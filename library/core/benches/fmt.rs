@@ -110,6 +110,17 @@ fn write_str_macro_debug(bh: &mut Bencher) {
 }
 
 #[bench]
+fn write_str_macro_debug_ascii(bh: &mut Bencher) {
+    bh.iter(|| {
+        let mut mem = String::new();
+        let wr = &mut mem as &mut dyn fmt::Write;
+        for _ in 0..1000 {
+            write!(wr, "{:?}", "Hello, World!").unwrap();
+        }
+    });
+}
+
+#[bench]
 fn write_u128_max(bh: &mut Bencher) {
     bh.iter(|| {
         test::black_box(format!("{}", u128::MAX));

@@ -4,7 +4,7 @@ use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
@@ -19,7 +19,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// an anonymous region, emit a descriptive diagnostic error.
     pub(super) fn try_report_placeholder_conflict(
         &self,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         match &self.error {
             ///////////////////////////////////////////////////////////////////////////
             // NB. The ordering of cases in this match is very
@@ -155,7 +155,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         sub_placeholder: Option<Region<'tcx>>,
         sup_placeholder: Option<Region<'tcx>>,
         value_pairs: &ValuePairs<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         let (expected_substs, found_substs, trait_def_id) = match value_pairs {
             ValuePairs::TraitRefs(ExpectedFound { expected, found })
                 if expected.def_id == found.def_id =>
@@ -203,7 +203,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         trait_def_id: DefId,
         expected_substs: SubstsRef<'tcx>,
         actual_substs: SubstsRef<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let span = cause.span(self.tcx());
         let msg = format!(
             "implementation of `{}` is not general enough",

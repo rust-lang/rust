@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_middle::dep_graph::{SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::OnDiskCache;
-use rustc_serialize::opaque::Decoder;
+use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::Decodable;
 use rustc_session::config::IncrementalStateAssertion;
 use rustc_session::Session;
@@ -27,7 +27,7 @@ pub enum LoadResult<T> {
     },
     /// The file either didn't exist or was produced by an incompatible compiler version.
     DataOutOfDate,
-    /// An error occured.
+    /// An error occurred.
     Error {
         #[allow(missing_docs)]
         message: String,
@@ -156,24 +156,22 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
         if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
             // Decode the list of work_products
-            let mut work_product_decoder = Decoder::new(&work_products_data[..], start_pos);
+            let mut work_product_decoder = MemDecoder::new(&work_products_data[..], start_pos);
             let work_products: Vec<SerializedWorkProduct> =
                 Decodable::decode(&mut work_product_decoder);
 
             for swp in work_products {
                 let mut all_files_exist = true;
-                if let Some(ref file_name) = swp.work_product.saved_file {
-                    let path = in_incr_comp_dir_sess(sess, file_name);
-                    if !path.exists() {
-                        all_files_exist = false;
+                let path = in_incr_comp_dir_sess(sess, &swp.work_product.saved_file);
+                if !path.exists() {
+                    all_files_exist = false;
 
-                        if sess.opts.debugging_opts.incremental_info {
-                            eprintln!(
-                                "incremental: could not find file for work \
+                    if sess.opts.debugging_opts.incremental_info {
+                        eprintln!(
+                            "incremental: could not find file for work \
                                     product: {}",
-                                path.display()
-                            );
-                        }
+                            path.display()
+                        );
                     }
                 }
 
@@ -195,7 +193,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
             LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
             LoadResult::Error { message } => LoadResult::Error { message },
             LoadResult::Ok { data: (bytes, start_pos) } => {
-                let mut decoder = Decoder::new(&bytes, start_pos);
+                let mut decoder = MemDecoder::new(&bytes, start_pos);
                 let prev_commandline_args_hash = u64::decode(&mut decoder);
 
                 if prev_commandline_args_hash != expected_hash {

@@ -3,6 +3,7 @@
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
+use crate::rustc_middle::ty::subst::Subst;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -13,6 +14,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Span;
+use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::ArgKind;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
@@ -172,6 +174,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
+            ty::Opaque(def_id, substs) => {
+                let bounds = self.tcx.bound_explicit_item_bounds(def_id);
+                let sig = bounds
+                    .transpose_iter()
+                    .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+                    .find_map(|(pred, span)| match pred.0.kind().skip_binder() {
+                        ty::PredicateKind::Projection(proj_predicate) => self
+                            .deduce_sig_from_projection(
+                                Some(span.0),
+                                pred.0.kind().rebind(
+                                    pred.map_bound(|_| proj_predicate).subst(self.tcx, substs),
+                                ),
+                            ),
+                        _ => None,
+                    });
+
+                let kind = bounds
+                    .transpose_iter()
+                    .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+                    .filter_map(|(pred, _)| match pred.0.kind().skip_binder() {
+                        ty::PredicateKind::Trait(tp) => {
+                            self.tcx.fn_trait_kind_from_lang_item(tp.def_id())
+                        }
+                        _ => None,
+                    })
+                    .fold(None, |best, cur| Some(best.map_or(cur, |best| cmp::min(best, cur))));
+                trace!(?sig, ?kind);
+                (sig, kind)
+            }
             ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
                     let pb = pb.with_self_ty(self.tcx, self.tcx.types.trait_object_dummy_self);
@@ -197,10 +228,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         let expected_sig =
             self.obligations_for_self_ty(expected_vid).find_map(|(_, obligation)| {
-                debug!(
-                    "deduce_expectations_from_obligations: obligation.predicate={:?}",
-                    obligation.predicate
-                );
+                debug!(?obligation.predicate);
 
                 let bound_predicate = obligation.predicate.kind();
                 if let ty::PredicateKind::Projection(proj_predicate) =
@@ -235,6 +263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// The `cause_span` should be the span that caused us to
     /// have this expected signature, or `None` if we can't readily
     /// know that.
+    #[instrument(level = "debug", skip(self, cause_span))]
     fn deduce_sig_from_projection(
         &self,
         cause_span: Option<Span>,
@@ -242,15 +271,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<ExpectedSig<'tcx>> {
         let tcx = self.tcx;
 
-        debug!("deduce_sig_from_projection({:?})", projection);
-
         let trait_def_id = projection.trait_def_id(tcx);
 
         let is_fn = tcx.fn_trait_kind_from_lang_item(trait_def_id).is_some();
         let gen_trait = tcx.require_lang_item(LangItem::Generator, cause_span);
         let is_gen = gen_trait == trait_def_id;
         if !is_fn && !is_gen {
-            debug!("deduce_sig_from_projection: not fn or generator");
+            debug!("not fn or generator");
             return None;
         }
 
@@ -259,7 +286,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // associated item and not yield.
             let return_assoc_item = self.tcx.associated_item_def_ids(gen_trait)[1];
             if return_assoc_item != projection.projection_def_id() {
-                debug!("deduce_sig_from_projection: not return assoc item of generator");
+                debug!("not return assoc item of generator");
                 return None;
             }
         }
@@ -267,7 +294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let input_tys = if is_fn {
             let arg_param_ty = projection.skip_binder().projection_ty.substs.type_at(1);
             let arg_param_ty = self.resolve_vars_if_possible(arg_param_ty);
-            debug!("deduce_sig_from_projection: arg_param_ty={:?}", arg_param_ty);
+            debug!(?arg_param_ty);
 
             match arg_param_ty.kind() {
                 &ty::Tuple(tys) => tys,
@@ -282,7 +309,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Since this is a return parameter type it is safe to unwrap.
         let ret_param_ty = projection.skip_binder().term.ty().unwrap();
         let ret_param_ty = self.resolve_vars_if_possible(ret_param_ty);
-        debug!("deduce_sig_from_projection: ret_param_ty={:?}", ret_param_ty);
+        debug!(?ret_param_ty);
 
         let sig = projection.rebind(self.tcx.mk_fn_sig(
             input_tys.iter(),
@@ -291,7 +318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::Unsafety::Normal,
             Abi::Rust,
         ));
-        debug!("deduce_sig_from_projection: sig={:?}", sig);
+        debug!(?sig);
 
         Some(ExpectedSig { cause_span, sig })
     }
@@ -350,7 +377,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// fn with_closure<F>(_: F)
     ///   where F: Fn(&u32) -> &u32 { .. }
     ///
@@ -401,9 +428,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // in this binder we are creating.
         assert!(!expected_sig.sig.skip_binder().has_vars_bound_above(ty::INNERMOST));
         let bound_sig = expected_sig.sig.map_bound(|sig| {
+            let output = self.hide_parent_opaque_types(
+                sig.output(),
+                expected_sig.cause_span.unwrap_or(DUMMY_SP),
+                body.id().hir_id,
+            );
             self.tcx.mk_fn_sig(
                 sig.inputs().iter().cloned(),
-                sig.output(),
+                output,
                 sig.c_variadic,
                 hir::Unsafety::Normal,
                 Abi::RustCall,
@@ -518,7 +550,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 expected_sigs.liberated_sig.inputs(), // `liberated_sig` is E'.
             ) {
                 // Instantiate (this part of..) S to S', i.e., with fresh variables.
-                let (supplied_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
+                let supplied_ty = self.infcx.replace_bound_vars_with_fresh_vars(
                     hir_ty.span,
                     LateBoundRegionConversionTime::FnCall,
                     supplied_sig.inputs().rebind(supplied_ty),
@@ -531,7 +563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 all_obligations.extend(obligations);
             }
 
-            let (supplied_output_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
+            let supplied_output_ty = self.infcx.replace_bound_vars_with_fresh_vars(
                 decl.output.span(),
                 LateBoundRegionConversionTime::FnCall,
                 supplied_sig.output(),
@@ -590,6 +622,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => astconv.ty_infer(None, decl.output.span()),
             },
         };
+        let supplied_return =
+            self.hide_parent_opaque_types(supplied_return, decl.output.span(), body.id().hir_id);
 
         let result = ty::Binder::bind_with_vars(
             self.tcx.mk_fn_sig(
@@ -610,27 +644,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         result
     }
 
+    fn hide_parent_opaque_types(&self, ty: Ty<'tcx>, span: Span, body_id: hir::HirId) -> Ty<'tcx> {
+        let InferOk { value, obligations } =
+            self.replace_opaque_types_with_inference_vars(ty, body_id, span, self.param_env);
+        self.register_predicates(obligations);
+        value
+    }
+
     /// Invoked when we are translating the generator that results
     /// from desugaring an `async fn`. Returns the "sugared" return
     /// type of the `async fn` -- that is, the return type that the
     /// user specified. The "desugared" return type is an `impl
     /// Future<Output = T>`, so we do this by searching through the
     /// obligations to extract the `T`.
+    #[instrument(skip(self), level = "debug")]
     fn deduce_future_output_from_obligations(&self, expr_def_id: DefId) -> Option<Ty<'tcx>> {
-        debug!("deduce_future_output_from_obligations(expr_def_id={:?})", expr_def_id);
-
         let ret_coercion = self.ret_coercion.as_ref().unwrap_or_else(|| {
             span_bug!(self.tcx.def_span(expr_def_id), "async fn generator outside of a fn")
         });
 
-        // In practice, the return type of the surrounding function is
-        // always a (not yet resolved) inference variable, because it
-        // is the hidden type for an `impl Trait` that we are going to
-        // be inferring.
         let ret_ty = ret_coercion.borrow().expected_ty();
         let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
-        let ret_vid = match *ret_ty.kind() {
-            ty::Infer(ty::TyVar(ret_vid)) => ret_vid,
+        let (def_id, substs) = match *ret_ty.kind() {
+            ty::Opaque(def_id, substs) => (def_id, substs),
             ty::Error(_) => return None,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
@@ -638,23 +674,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
         };
 
+        let item_bounds = self.tcx.bound_explicit_item_bounds(def_id);
+
         // Search for a pending obligation like
         //
         // `<R as Future>::Output = T`
         //
         // where R is the return type we are expecting. This type `T`
         // will be our output.
-        let output_ty = self.obligations_for_self_ty(ret_vid).find_map(|(_, obligation)| {
-            let bound_predicate = obligation.predicate.kind();
-            if let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder() {
-                self.deduce_future_output_from_projection(
-                    obligation.cause.span,
-                    bound_predicate.rebind(proj_predicate),
-                )
-            } else {
-                None
-            }
-        });
+        let output_ty = item_bounds
+            .transpose_iter()
+            .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+            .find_map(|(predicate, span)| {
+                let bound_predicate = predicate.subst(self.tcx, substs).kind();
+                if let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder()
+                {
+                    self.deduce_future_output_from_projection(
+                        span.0,
+                        bound_predicate.rebind(proj_predicate),
+                    )
+                } else {
+                    None
+                }
+            });
 
         debug!("deduce_future_output_from_obligations: output_ty={:?}", output_ty);
         output_ty
@@ -689,7 +731,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
-        // The `Future` trait has only one associted item, `Output`,
+        // The `Future` trait has only one associated item, `Output`,
         // so check that this is what we see.
         let output_assoc_item = self.tcx.associated_item_def_ids(future_trait)[0];
         if output_assoc_item != predicate.projection_ty.item_def_id {

@@ -6,7 +6,8 @@ trait SomeTrait<'a> {
 
 fn give_me_ice<T>() {
     callee::<fn(&()) -> <T as SomeTrait<'_>>::Associated>();
-    //~^ ERROR: the trait bound `T: SomeTrait<'_>` is not satisfied
+    //~^ ERROR the trait bound `T: SomeTrait<'_>` is not satisfied [E0277]
+    //~| ERROR the trait bound `T: SomeTrait<'_>` is not satisfied [E0277]
 }
 
 fn callee<T: Fn<(&'static (),)>>() {

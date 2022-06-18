@@ -52,17 +52,16 @@ declare_clippy_lint! {
     /// to a function that needs the memory address. For further details, refer to
     /// [this issue](https://github.com/rust-lang/rust-clippy/issues/5953)
     /// that explains a real case in which this false positive
-    /// led to an **undefined behaviour** introduced with unsafe code.
+    /// led to an **undefined behavior** introduced with unsafe code.
     ///
     /// ### Example
     ///
     /// ```rust
-    /// // Bad
     /// fn foo(v: &u32) {}
     /// ```
     ///
+    /// Use instead:
     /// ```rust
-    /// // Better
     /// fn foo(v: u32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -89,14 +88,13 @@ declare_clippy_lint! {
     /// #[derive(Clone, Copy)]
     /// struct TooLarge([u8; 2048]);
     ///
-    /// // Bad
     /// fn foo(v: TooLarge) {}
     /// ```
-    /// ```rust
-    /// #[derive(Clone, Copy)]
-    /// struct TooLarge([u8; 2048]);
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # #[derive(Clone, Copy)]
+    /// # struct TooLarge([u8; 2048]);
     /// fn foo(v: &TooLarge) {}
     /// ```
     #[clippy::version = "1.49.0"]
@@ -124,7 +122,7 @@ impl<'tcx> PassByRefOrValue {
             // Cap the calculated bit width at 32-bits to reduce
             // portability problems between 32 and 64-bit targets
             let bit_width = cmp::min(bit_width, 32);
-            #[allow(clippy::integer_division)]
+            #[expect(clippy::integer_division)]
             let byte_width = bit_width / 8;
             // Use a limit of 2 times the register byte width
             byte_width * 2
@@ -233,7 +231,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         if let hir::TraitItemKind::Fn(method_sig, _) = &item.kind {
-            self.check_poly_fn(cx, item.def_id, &*method_sig.decl, None);
+            self.check_poly_fn(cx, item.def_id, method_sig.decl, None);
         }
     }
 
@@ -251,7 +249,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _) => {
+            FnKind::ItemFn(.., header) => {
                 if header.abi != Abi::Rust {
                     return;
                 }

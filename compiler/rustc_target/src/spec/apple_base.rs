@@ -1,8 +1,8 @@
-use std::env;
+use std::{borrow::Cow, env};
 
-use crate::spec::{FramePointer, LldFlavor, SplitDebuginfo, TargetOptions};
+use crate::spec::{cvs, FramePointer, LldFlavor, SplitDebuginfo, TargetOptions};
 
-pub fn opts(os: &str) -> TargetOptions {
+pub fn opts(os: &'static str) -> TargetOptions {
     // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6
     // either the linker will complain if it is used or the binary will end up
     // segfaulting at runtime when run on 10.6. Rust by default supports macOS
@@ -19,20 +19,20 @@ pub fn opts(os: &str) -> TargetOptions {
     let has_thread_local = macos_deployment_target("x86_64") >= (10, 7);
 
     TargetOptions {
-        os: os.to_string(),
-        vendor: "apple".to_string(),
+        os: os.into(),
+        vendor: "apple".into(),
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
         linker_is_gnu: false,
         executables: true,
-        families: vec!["unix".to_string()],
+        families: cvs!["unix"],
         is_like_osx: true,
         dwarf_version: Some(2),
         frame_pointer: FramePointer::Always,
         has_rpath: true,
-        dll_suffix: ".dylib".to_string(),
-        archive_format: "darwin".to_string(),
+        dll_suffix: ".dylib".into(),
+        archive_format: "darwin".into(),
         has_thread_local,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
@@ -51,7 +51,7 @@ pub fn opts(os: &str) -> TargetOptions {
         // this environment variable too in recent versions.
         //
         // For some more info see the commentary on #47086
-        link_env: vec![("ZERO_AR_DATE".to_string(), "1".to_string())],
+        link_env: Cow::Borrowed(&[(Cow::Borrowed("ZERO_AR_DATE"), Cow::Borrowed("1"))]),
 
         ..Default::default()
     }
@@ -79,19 +79,19 @@ pub fn macos_llvm_target(arch: &str) -> String {
     format!("{}-apple-macosx{}.{}.0", arch, major, minor)
 }
 
-pub fn macos_link_env_remove() -> Vec<String> {
+pub fn macos_link_env_remove() -> Vec<Cow<'static, str>> {
     let mut env_remove = Vec::with_capacity(2);
     // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which
     // may occur when we're linking a custom build script while targeting iOS for example.
     if let Ok(sdkroot) = env::var("SDKROOT") {
         if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("iPhoneSimulator.platform") {
-            env_remove.push("SDKROOT".to_string())
+            env_remove.push("SDKROOT".into())
         }
     }
     // Additionally, `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
     // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
     // although this is apparently ignored when using the linker at "/usr/bin/ld".
-    env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".to_string());
+    env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
     env_remove
 }
 
@@ -113,4 +113,13 @@ pub fn ios_llvm_target(arch: &str) -> String {
 pub fn ios_sim_llvm_target(arch: &str) -> String {
     let (major, minor) = ios_deployment_target();
     format!("{}-apple-ios{}.{}.0-simulator", arch, major, minor)
+}
+
+fn watchos_deployment_target() -> (u32, u32) {
+    deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
+}
+
+pub fn watchos_sim_llvm_target(arch: &str) -> String {
+    let (major, minor) = watchos_deployment_target();
+    format!("{}-apple-watchos{}.{}.0-simulator", arch, major, minor)
 }

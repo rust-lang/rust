@@ -12,15 +12,3 @@ assert-css: ("#help", {"display": "flex"})
 assert-false: "#help.hidden"
 press-key: "Escape"
 assert-css: ("#help.hidden", {"display": "none"})
-// Check for the themes list.
-assert-css: ("#theme-choices", {"display": "none"})
-press-key: "t"
-assert-css: ("#theme-choices", {"display": "block"})
-press-key: "t"
-// We ensure that 't' hides back the menu.
-assert-css: ("#theme-choices", {"display": "none"})
-press-key: "t"
-assert-css: ("#theme-choices", {"display": "block"})
-press-key: "Escape"
-// We ensure that 'Escape' hides the menu too.
-assert-css: ("#theme-choices", {"display": "none"})

@@ -36,8 +36,11 @@ impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
     }
 }
 
-pub const COMMON_VTABLE_ENTRIES: &[VtblEntry<'_>] =
-    &[VtblEntry::MetadataDropInPlace, VtblEntry::MetadataSize, VtblEntry::MetadataAlign];
+// Needs to be associated with the `'tcx` lifetime
+impl<'tcx> TyCtxt<'tcx> {
+    pub const COMMON_VTABLE_ENTRIES: &'tcx [VtblEntry<'tcx>] =
+        &[VtblEntry::MetadataDropInPlace, VtblEntry::MetadataSize, VtblEntry::MetadataAlign];
+}
 
 pub const COMMON_VTABLE_ENTRIES_DROPINPLACE: usize = 0;
 pub const COMMON_VTABLE_ENTRIES_SIZE: usize = 1;
@@ -57,7 +60,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
 
         tcx.vtable_entries(trait_ref)
     } else {
-        COMMON_VTABLE_ENTRIES
+        TyCtxt::COMMON_VTABLE_ENTRIES
     };
 
     let layout = tcx

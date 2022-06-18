@@ -29,7 +29,7 @@
 //!
 //! For example, the `super_basic_block_data` method begins like this:
 //!
-//! ```rust
+//! ```ignore (pseudo-rust)
 //! fn super_basic_block_data(&mut self,
 //!                           block: BasicBlock,
 //!                           data: & $($mutability)? BasicBlockData<'tcx>) {
@@ -225,12 +225,14 @@ macro_rules! make_mir_visitor {
                 self.super_var_debug_info(var_debug_info);
             }
 
+            #[allow(rustc::pass_by_value)]
             fn visit_local(&mut self,
                             _local: & $($mutability)? Local,
                             _context: PlaceContext,
                             _location: Location) {
             }
 
+            #[allow(rustc::pass_by_value)]
             fn visit_source_scope(&mut self,
                                       scope: & $($mutability)? SourceScope) {
                 self.super_source_scope(scope);
@@ -256,6 +258,7 @@ macro_rules! make_mir_visitor {
                 // for best performance, we want to use an iterator rather
                 // than a for-loop, to avoid calling `body::Body::invalidate` for
                 // each basic block.
+                #[allow(unused_macro_rules)]
                 macro_rules! basic_blocks {
                     (mut) => (body.basic_blocks_mut().iter_enumerated_mut());
                     () => (body.basic_blocks().iter_enumerated());
@@ -277,6 +280,7 @@ macro_rules! make_mir_visitor {
                     self.visit_local_decl(local, & $($mutability)? body.local_decls[local]);
                 }
 
+                #[allow(unused_macro_rules)]
                 macro_rules! type_annotations {
                     (mut) => (body.user_type_annotations.iter_enumerated_mut());
                     () => (body.user_type_annotations.iter_enumerated());
@@ -393,9 +397,16 @@ macro_rules! make_mir_visitor {
                     StatementKind::SetDiscriminant { place, .. } => {
                         self.visit_place(
                             place,
-                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            PlaceContext::MutatingUse(MutatingUseContext::SetDiscriminant),
                             location
                         );
+                    }
+                    StatementKind::Deinit(place) => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::MutatingUse(MutatingUseContext::Deinit),
+                            location
+                        )
                     }
                     StatementKind::StorageLive(local) => {
                         self.visit_local(
@@ -523,6 +534,7 @@ macro_rules! make_mir_visitor {
                         func,
                         args,
                         destination,
+                        target: _,
                         cleanup: _,
                         from_hir_call: _,
                         fn_span: _
@@ -531,13 +543,11 @@ macro_rules! make_mir_visitor {
                         for arg in args {
                             self.visit_operand(arg, location);
                         }
-                        if let Some((destination, _)) = destination {
-                            self.visit_place(
-                                destination,
-                                PlaceContext::MutatingUse(MutatingUseContext::Call),
-                                location
-                            );
-                        }
+                        self.visit_place(
+                            destination,
+                            PlaceContext::MutatingUse(MutatingUseContext::Call),
+                            location
+                        );
                     }
 
                     TerminatorKind::Assert {
@@ -851,6 +861,7 @@ macro_rules! make_mir_visitor {
                 }
             }
 
+            #[allow(rustc::pass_by_value)]
             fn super_source_scope(&mut self,
                                       _scope: & $($mutability)? SourceScope) {
             }
@@ -922,6 +933,7 @@ macro_rules! make_mir_visitor {
                 body: &$($mutability)? Body<'tcx>,
                 location: Location
             ) {
+                #[allow(unused_macro_rules)]
                 macro_rules! basic_blocks {
                     (mut) => (body.basic_blocks_mut());
                     () => (body.basic_blocks());
@@ -1160,10 +1172,10 @@ pub enum NonMutatingUseContext {
     AddressOf,
     /// Used as base for another place, e.g., `x` in `x.y`. Will not mutate the place.
     /// For example, the projection `x.y` is not marked as a mutation in these cases:
-    ///
-    ///     z = x.y;
-    ///     f(&x.y);
-    ///
+    /// ```ignore (illustrative)
+    /// z = x.y;
+    /// f(&x.y);
+    /// ```
     Projection,
 }
 
@@ -1171,6 +1183,10 @@ pub enum NonMutatingUseContext {
 pub enum MutatingUseContext {
     /// Appears as LHS of an assignment.
     Store,
+    /// Appears on `SetDiscriminant`
+    SetDiscriminant,
+    /// Appears on `Deinit`
+    Deinit,
     /// Output operand of an inline assembly block.
     AsmOutput,
     /// Destination of a call.
@@ -1185,10 +1201,10 @@ pub enum MutatingUseContext {
     AddressOf,
     /// Used as base for another place, e.g., `x` in `x.y`. Could potentially mutate the place.
     /// For example, the projection `x.y` is marked as a mutation in these cases:
-    ///
-    ///     x.y = ...;
-    ///     f(&mut x.y);
-    ///
+    /// ```ignore (illustrative)
+    /// x.y = ...;
+    /// f(&mut x.y);
+    /// ```
     Projection,
     /// Retagging, a "Stacked Borrows" shadow state operation
     Retag,

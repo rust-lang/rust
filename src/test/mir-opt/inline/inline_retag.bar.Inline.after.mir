@@ -69,4 +69,8 @@ fn bar() -> bool {
         StorageDead(_4);                 // scope 0 at $DIR/inline-retag.rs:13:1: 13:2
         return;                          // scope 0 at $DIR/inline-retag.rs:13:2: 13:2
     }
+
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/inline-retag.rs:10:1: 13:2
+    }
 }

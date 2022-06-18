@@ -99,7 +99,7 @@ x--expand-yaml-anchors--remove:
         run: git config --global core.autocrlf false
 
       - name: checkout the source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 2
 
@@ -161,12 +161,12 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/install-wix.sh
         <<: *step
 
-      - name: ensure the build happens on a partition with enough space
-        run: src/ci/scripts/symlink-build-dir.sh
-        <<: *step
-
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
+        <<: *step
+
+      - name: checkout submodules
+        run: src/ci/scripts/checkout-submodules.sh
         <<: *step
 
       - name: install MSYS2
@@ -192,10 +192,6 @@ x--expand-yaml-anchors--remove:
       # appropriate line endings.
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        <<: *step
-
-      - name: checkout submodules
-        run: src/ci/scripts/checkout-submodules.sh
         <<: *step
 
       - name: ensure line endings are correct
@@ -703,7 +699,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 2
 

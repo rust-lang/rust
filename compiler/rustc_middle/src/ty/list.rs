@@ -61,6 +61,10 @@ impl<T> List<T> {
         static EMPTY_SLICE: InOrder<usize, MaxAlign> = InOrder(0, MaxAlign);
         unsafe { &*(&EMPTY_SLICE as *const _ as *const List<T>) }
     }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
 }
 
 impl<T: Copy> List<T> {
@@ -113,15 +117,8 @@ impl<T: fmt::Debug> fmt::Debug for List<T> {
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for List<T> {
     #[inline]
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        (**self).encode(s)
-    }
-}
-
-impl<S: Encoder, T: Encodable<S>> Encodable<S> for &List<T> {
-    #[inline]
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        (**self).encode(s)
+    fn encode(&self, s: &mut S) {
+        (**self).encode(s);
     }
 }
 

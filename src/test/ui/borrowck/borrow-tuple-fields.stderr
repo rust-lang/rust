@@ -5,7 +5,7 @@ LL |     let r = &x.0;
    |             ---- borrow of `x.0` occurs here
 LL |     let y = x;
    |             ^ move out of `x` occurs here
-LL | 
+LL |
 LL |     r.use_ref();
    |     ----------- borrow later used here
 

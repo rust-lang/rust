@@ -11,7 +11,8 @@ fn use_<'short,'long>(c: Foo<'short>,
                       s: &'short isize,
                       l: &'long isize,
                       _where:Option<&'short &'long ()>) {
-    let _: Foo<'long> = c; //~ ERROR E0623
+    let _: Foo<'long> = c;
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {

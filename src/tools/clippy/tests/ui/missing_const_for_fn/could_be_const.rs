@@ -49,8 +49,6 @@ fn sub(x: u32) -> usize {
     unsafe { transmute(&x) }
 }
 
-// NOTE: This is currently not yet allowed to be const
-// Once implemented, Clippy should be able to suggest this as const, too.
 fn generic_arr<T: Copy>(t: [T; 1]) -> T {
     t[0]
 }

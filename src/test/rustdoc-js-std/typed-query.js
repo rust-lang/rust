@@ -1,6 +1,7 @@
 // exact-check
 
 const QUERY = 'macro:print';
+const FILTER_CRATE = 'std';
 
 const EXPECTED = {
     'others': [
@@ -9,6 +10,8 @@ const EXPECTED = {
         { 'path': 'std', 'name': 'println' },
         { 'path': 'std', 'name': 'eprintln' },
         { 'path': 'std::pin', 'name': 'pin' },
-        { 'path': 'core::pin', 'name': 'pin' },
+        { 'path': 'std::future', 'name': 'join' },
+        { 'path': 'std', 'name': 'line' },
+        { 'path': 'std', 'name': 'write' },
     ],
 };

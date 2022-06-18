@@ -5,6 +5,7 @@ use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::lazy::SyncLazy as Lazy;
 use std::path::{Component, Path, PathBuf};
+use std::rc::Rc;
 
 use itertools::Itertools;
 use rustc_data_structures::flock;
@@ -21,27 +22,18 @@ use crate::{try_err, try_none};
 
 static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| {
     map! {
-        "FiraSans-Regular.woff2" => static_files::fira_sans::REGULAR2,
-        "FiraSans-Medium.woff2" => static_files::fira_sans::MEDIUM2,
-        "FiraSans-Regular.woff" => static_files::fira_sans::REGULAR,
-        "FiraSans-Medium.woff" => static_files::fira_sans::MEDIUM,
+        "FiraSans-Regular.woff2" => static_files::fira_sans::REGULAR,
+        "FiraSans-Medium.woff2" => static_files::fira_sans::MEDIUM,
         "FiraSans-LICENSE.txt" => static_files::fira_sans::LICENSE,
-        "SourceSerif4-Regular.ttf.woff2" => static_files::source_serif_4::REGULAR2,
-        "SourceSerif4-Bold.ttf.woff2" => static_files::source_serif_4::BOLD2,
-        "SourceSerif4-It.ttf.woff2" => static_files::source_serif_4::ITALIC2,
-        "SourceSerif4-Regular.ttf.woff" => static_files::source_serif_4::REGULAR,
-        "SourceSerif4-Bold.ttf.woff" => static_files::source_serif_4::BOLD,
-        "SourceSerif4-It.ttf.woff" => static_files::source_serif_4::ITALIC,
+        "SourceSerif4-Regular.ttf.woff2" => static_files::source_serif_4::REGULAR,
+        "SourceSerif4-Bold.ttf.woff2" => static_files::source_serif_4::BOLD,
+        "SourceSerif4-It.ttf.woff2" => static_files::source_serif_4::ITALIC,
         "SourceSerif4-LICENSE.md" => static_files::source_serif_4::LICENSE,
-        "SourceCodePro-Regular.ttf.woff2" => static_files::source_code_pro::REGULAR2,
-        "SourceCodePro-Semibold.ttf.woff2" => static_files::source_code_pro::SEMIBOLD2,
-        "SourceCodePro-It.ttf.woff2" => static_files::source_code_pro::ITALIC2,
-        "SourceCodePro-Regular.ttf.woff" => static_files::source_code_pro::REGULAR,
-        "SourceCodePro-Semibold.ttf.woff" => static_files::source_code_pro::SEMIBOLD,
-        "SourceCodePro-It.ttf.woff" => static_files::source_code_pro::ITALIC,
+        "SourceCodePro-Regular.ttf.woff2" => static_files::source_code_pro::REGULAR,
+        "SourceCodePro-Semibold.ttf.woff2" => static_files::source_code_pro::SEMIBOLD,
+        "SourceCodePro-It.ttf.woff2" => static_files::source_code_pro::ITALIC,
         "SourceCodePro-LICENSE.txt" => static_files::source_code_pro::LICENSE,
-        "NanumBarunGothic.ttf.woff2" => static_files::nanum_barun_gothic::REGULAR2,
-        "NanumBarunGothic.ttf.woff" => static_files::nanum_barun_gothic::REGULAR,
+        "NanumBarunGothic.ttf.woff2" => static_files::nanum_barun_gothic::REGULAR,
         "NanumBarunGothic-LICENSE.txt" => static_files::nanum_barun_gothic::LICENSE,
         "LICENSE-MIT.txt" => static_files::LICENSE_MIT,
         "LICENSE-APACHE.txt" => static_files::LICENSE_APACHE,
@@ -130,11 +122,13 @@ impl Context<'_> {
         if minify {
             let contents = contents.as_ref();
             let contents = if resource.extension() == Some(OsStr::new("css")) {
-                minifier::css::minify(contents).map_err(|e| {
-                    Error::new(format!("failed to minify CSS file: {}", e), resource.path(self))
-                })?
+                minifier::css::minify(contents)
+                    .map_err(|e| {
+                        Error::new(format!("failed to minify CSS file: {}", e), resource.path(self))
+                    })?
+                    .to_string()
             } else {
-                minifier::js::minify(contents)
+                minifier::js::minify(contents).to_string()
             };
             self.write_shared(resource, contents, emit)
         } else {
@@ -144,7 +138,7 @@ impl Context<'_> {
 }
 
 pub(super) fn write_shared(
-    cx: &Context<'_>,
+    cx: &mut Context<'_>,
     krate: &Crate,
     search_index: String,
     options: &RenderOptions,
@@ -247,7 +241,6 @@ pub(super) fn write_shared(
         write_toolchain("favicon-16x16.png", static_files::RUST_FAVICON_PNG_16)?;
         write_toolchain("favicon-32x32.png", static_files::RUST_FAVICON_PNG_32)?;
     }
-    write_toolchain("brush.svg", static_files::BRUSH_SVG)?;
     write_toolchain("wheel.svg", static_files::WHEEL_SVG)?;
     write_toolchain("clipboard.svg", static_files::CLIPBOARD_SVG)?;
     write_toolchain("down-arrow.svg", static_files::DOWN_ARROW_SVG)?;
@@ -426,7 +419,7 @@ pub(super) fn write_shared(
             ));
             all_sources.sort();
             Ok(format!(
-                "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
+                "var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
                 all_sources.join("\n")
             )
             .into_bytes())
@@ -448,7 +441,13 @@ pub(super) fn write_shared(
     write_crate("search-index.js", &|| {
         let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
         v.push_str(&all_indexes.join(",\\\n"));
-        v.push_str("\\\n}');\nif (window.initSearch) {window.initSearch(searchIndex)};");
+        v.push_str(
+            r#"\
+}');
+if (typeof window !== 'undefined' && window.initSearch) {window.initSearch(searchIndex)};
+if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
+"#,
+        );
         Ok(v.into_bytes())
     })?;
 
@@ -466,15 +465,16 @@ pub(super) fn write_shared(
             crate::markdown::render(&index_page, md_opts, cx.shared.edition())
                 .map_err(|e| Error::new(e, &index_page))?;
         } else {
+            let shared = Rc::clone(&cx.shared);
             let dst = cx.dst.join("index.html");
             let page = layout::Page {
                 title: "Index of crates",
                 css_class: "mod",
                 root_path: "./",
-                static_root_path: cx.shared.static_root_path.as_deref(),
+                static_root_path: shared.static_root_path.as_deref(),
                 description: "List of crates",
                 keywords: BASIC_KEYWORDS,
-                resource_suffix: &cx.shared.resource_suffix,
+                resource_suffix: &shared.resource_suffix,
                 extra_scripts: &[],
                 static_extra_scripts: &[],
             };
@@ -494,8 +494,8 @@ pub(super) fn write_shared(
                     })
                     .collect::<String>()
             );
-            let v = layout::render(&cx.shared.layout, &page, "", content, &cx.shared.style_files);
-            cx.shared.fs.write(dst, v)?;
+            let v = layout::render(&shared.layout, &page, "", content, &shared.style_files);
+            shared.fs.write(dst, v)?;
         }
     }
 
@@ -510,10 +510,13 @@ pub(super) fn write_shared(
         //
         // FIXME: this is a vague explanation for why this can't be a `get`, in
         //        theory it should be...
-        let &(ref remote_path, remote_item_type) = match cache.paths.get(&did) {
-            Some(p) => p,
+        let (remote_path, remote_item_type) = match cache.exact_paths.get(&did) {
+            Some(p) => match cache.paths.get(&did).or_else(|| cache.external_paths.get(&did)) {
+                Some((_, t)) => (p, t),
+                None => continue,
+            },
             None => match cache.external_paths.get(&did) {
-                Some(p) => p,
+                Some((p, t)) => (p, t),
                 None => continue,
             },
         };
@@ -535,7 +538,7 @@ pub(super) fn write_shared(
                 //
                 // If the implementation is from another crate then that crate
                 // should add it.
-                if imp.impl_item.def_id.krate() == did.krate || !imp.impl_item.def_id.is_local() {
+                if imp.impl_item.item_id.krate() == did.krate || !imp.impl_item.item_id.is_local() {
                     None
                 } else {
                     Some(Implementor {

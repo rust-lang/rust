@@ -5,6 +5,11 @@ LL |         vec![].last_mut().unwrap() = 3_u8;
    |         -------------------------- ^
    |         |
    |         cannot assign to this expression
+   |
+help: consider dereferencing here to assign to the mutably borrowed value
+   |
+LL |         *vec![].last_mut().unwrap() = 3_u8;
+   |         +
 
 error: aborting due to previous error
 

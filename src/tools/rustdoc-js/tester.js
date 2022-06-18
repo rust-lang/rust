@@ -1,169 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 
-function getNextStep(content, pos, stop) {
-    while (pos < content.length && content[pos] !== stop &&
-           (content[pos] === ' ' || content[pos] === '\t' || content[pos] === '\n')) {
-        pos += 1;
-    }
-    if (pos >= content.length) {
-        return null;
-    }
-    if (content[pos] !== stop) {
-        return pos * -1;
-    }
-    return pos;
-}
-
-// Stupid function extractor based on indent. Doesn't support block
-// comments. If someone puts a ' or an " in a block comment this
-// will blow up. Template strings are not tested and might also be
-// broken.
-function extractFunction(content, functionName) {
-    var level = 0;
-    var splitter = "function " + functionName + "(";
-    var stop;
-    var pos, start;
-
-    while (true) {
-        start = content.indexOf(splitter);
-        if (start === -1) {
-            break;
-        }
-        pos = start;
-        while (pos < content.length && content[pos] !== ')') {
-            pos += 1;
-        }
-        if (pos >= content.length) {
-            break;
-        }
-        pos = getNextStep(content, pos + 1, '{');
-        if (pos === null) {
-            break;
-        } else if (pos < 0) {
-            content = content.slice(-pos);
-            continue;
-        }
-        while (pos < content.length) {
-            // Eat single-line comments
-            if (content[pos] === '/' && pos > 0 && content[pos - 1] === '/') {
-                do {
-                    pos += 1;
-                } while (pos < content.length && content[pos] !== '\n');
-
-            // Eat multiline comment.
-            } else if (content[pos] === '*' && pos > 0 && content[pos - 1] === '/') {
-                do {
-                    pos += 1;
-                } while (pos < content.length && content[pos] !== '/' && content[pos - 1] !== '*');
-
-            // Eat quoted strings
-            } else if (content[pos] === '"' || content[pos] === "'" || content[pos] === "`") {
-                stop = content[pos];
-                do {
-                    if (content[pos] === '\\') {
-                        pos += 1;
-                    }
-                    pos += 1;
-                } while (pos < content.length && content[pos] !== stop);
-
-            // Otherwise, check for block level.
-            } else if (content[pos] === '{') {
-                level += 1;
-            } else if (content[pos] === '}') {
-                level -= 1;
-                if (level === 0) {
-                    return content.slice(start, pos + 1);
-                }
-            }
-            pos += 1;
-        }
-        content = content.slice(start + 1);
-    }
-    return null;
-}
-
-// Stupid function extractor for array.
-function extractArrayVariable(content, arrayName) {
-    var splitter = "var " + arrayName;
-    while (true) {
-        var start = content.indexOf(splitter);
-        if (start === -1) {
-            break;
-        }
-        var pos = getNextStep(content, start, '=');
-        if (pos === null) {
-            break;
-        } else if (pos < 0) {
-            content = content.slice(-pos);
-            continue;
-        }
-        pos = getNextStep(content, pos, '[');
-        if (pos === null) {
-            break;
-        } else if (pos < 0) {
-            content = content.slice(-pos);
-            continue;
-        }
-        while (pos < content.length) {
-            if (content[pos] === '"' || content[pos] === "'") {
-                var stop = content[pos];
-                do {
-                    if (content[pos] === '\\') {
-                        pos += 2;
-                    } else {
-                        pos += 1;
-                    }
-                } while (pos < content.length &&
-                         (content[pos] !== stop || content[pos - 1] === '\\'));
-            } else if (content[pos] === ']' &&
-                       pos + 1 < content.length &&
-                       content[pos + 1] === ';') {
-                return content.slice(start, pos + 2);
-            }
-            pos += 1;
-        }
-        content = content.slice(start + 1);
-    }
-    return null;
-}
-
-// Stupid function extractor for variable.
-function extractVariable(content, varName) {
-    var splitter = "var " + varName;
-    while (true) {
-        var start = content.indexOf(splitter);
-        if (start === -1) {
-            break;
-        }
-        var pos = getNextStep(content, start, '=');
-        if (pos === null) {
-            break;
-        } else if (pos < 0) {
-            content = content.slice(-pos);
-            continue;
-        }
-        while (pos < content.length) {
-            if (content[pos] === '"' || content[pos] === "'") {
-                var stop = content[pos];
-                do {
-                    if (content[pos] === '\\') {
-                        pos += 2;
-                    } else {
-                        pos += 1;
-                    }
-                } while (pos < content.length &&
-                         (content[pos] !== stop || content[pos - 1] === '\\'));
-            } else if (content[pos] === ';' || content[pos] === ',') {
-                return content.slice(start, pos + 1);
-            }
-            pos += 1;
-        }
-        content = content.slice(start + 1);
-    }
-    return null;
-}
-
 function loadContent(content) {
     var Module = module.constructor;
     var m = new Module();
@@ -179,20 +16,6 @@ function loadContent(content) {
 
 function readFile(filePath) {
     return fs.readFileSync(filePath, 'utf8');
-}
-
-function loadThings(thingsToLoad, kindOfLoad, funcToCall, fileContent) {
-    var content = '';
-    for (var i = 0; i < thingsToLoad.length; ++i) {
-        var tmp = funcToCall(fileContent, thingsToLoad[i]);
-        if (tmp === null) {
-            console.log('unable to find ' + kindOfLoad + ' "' + thingsToLoad[i] + '"');
-            process.exit(1);
-        }
-        content += tmp;
-        content += 'exports.' + thingsToLoad[i] + ' = ' + thingsToLoad[i] + ';';
-    }
-    return content;
 }
 
 function contentToDiffLine(key, value) {
@@ -251,47 +74,97 @@ function lookForEntry(entry, data) {
     return null;
 }
 
-function loadSearchJsAndIndex(searchJs, searchIndex, storageJs, crate) {
-    if (searchIndex[searchIndex.length - 1].length === 0) {
-        searchIndex.pop();
+// This function checks if `expected` has all the required fields needed for the checks.
+function checkNeededFields(fullPath, expected, error_text, queryName, position) {
+    let fieldsToCheck;
+    if (fullPath.length === 0) {
+        fieldsToCheck = [
+            "foundElems",
+            "original",
+            "returned",
+            "typeFilter",
+            "userQuery",
+            "error",
+        ];
+    } else if (fullPath.endsWith("elems") || fullPath.endsWith("generics")) {
+        fieldsToCheck = [
+            "name",
+            "fullPath",
+            "pathWithoutLast",
+            "pathLast",
+            "generics",
+        ];
+    } else {
+        fieldsToCheck = [];
     }
-    searchIndex.pop();
-    var fullSearchIndex = searchIndex.join("\n") + '\nexports.rawSearchIndex = searchIndex;';
-    searchIndex = loadContent(fullSearchIndex);
-    var finalJS = "";
-
-    var arraysToLoad = ["itemTypes"];
-    var variablesToLoad = ["MAX_LEV_DISTANCE", "MAX_RESULTS", "NO_TYPE_FILTER",
-                           "GENERICS_DATA", "NAME", "INPUTS_DATA", "OUTPUT_DATA",
-                           "TY_PRIMITIVE", "TY_KEYWORD",
-                           "levenshtein_row2"];
-    // execQuery first parameter is built in getQuery (which takes in the search input).
-    // execQuery last parameter is built in buildIndex.
-    // buildIndex requires the hashmap from search-index.
-    var functionsToLoad = ["buildHrefAndPath", "pathSplitter", "levenshtein", "validateResult",
-                           "handleAliases", "getQuery", "buildIndex", "execQuery", "execSearch",
-                           "removeEmptyStringsFromArray"];
-
-    const functions = ["hasOwnPropertyRustdoc", "onEach"];
-    ALIASES = {};
-    finalJS += 'window = { "currentCrate": "' + crate + '", rootPath: "../" };\n';
-    finalJS += loadThings(functions, 'function', extractFunction, storageJs);
-    finalJS += loadThings(arraysToLoad, 'array', extractArrayVariable, searchJs);
-    finalJS += loadThings(variablesToLoad, 'variable', extractVariable, searchJs);
-    finalJS += loadThings(functionsToLoad, 'function', extractFunction, searchJs);
-
-    var loaded = loadContent(finalJS);
-    var index = loaded.buildIndex(searchIndex.rawSearchIndex);
-
-    return [loaded, index];
+    for (var i = 0; i < fieldsToCheck.length; ++i) {
+        const field = fieldsToCheck[i];
+        if (!expected.hasOwnProperty(field)) {
+            let text = `${queryName}==> Mandatory key \`${field}\` is not present`;
+            if (fullPath.length > 0) {
+                text += ` in field \`${fullPath}\``;
+                if (position != null) {
+                    text += ` (position ${position})`;
+                }
+            }
+            error_text.push(text);
+        }
+    }
 }
 
-function runSearch(query, expected, index, loaded, loadedFile, queryName) {
-    const filter_crate = loadedFile.FILTER_CRATE;
+function valueCheck(fullPath, expected, result, error_text, queryName) {
+    if (Array.isArray(expected)) {
+        for (var i = 0; i < expected.length; ++i) {
+            checkNeededFields(fullPath, expected[i], error_text, queryName, i);
+            if (i >= result.length) {
+                error_text.push(`${queryName}==> EXPECTED has extra value in array from field ` +
+                    `\`${fullPath}\` (position ${i}): \`${JSON.stringify(expected[i])}\``);
+            } else {
+                valueCheck(fullPath + '[' + i + ']', expected[i], result[i], error_text, queryName);
+            }
+        }
+        for (; i < result.length; ++i) {
+            error_text.push(`${queryName}==> RESULT has extra value in array from field ` +
+                `\`${fullPath}\` (position ${i}): \`${JSON.stringify(result[i])}\` ` +
+                'compared to EXPECTED');
+        }
+    } else if (expected !== null && typeof expected !== "undefined" &&
+               expected.constructor == Object) {
+        for (const key in expected) {
+            if (!expected.hasOwnProperty(key)) {
+                continue;
+            }
+            if (!result.hasOwnProperty(key)) {
+                error_text.push('==> Unknown key "' + key + '"');
+                break;
+            }
+            const obj_path = fullPath + (fullPath.length > 0 ? '.' : '') + key;
+            valueCheck(obj_path, expected[key], result[key], error_text, queryName);
+        }
+    } else {
+        expectedValue = JSON.stringify(expected);
+        resultValue = JSON.stringify(result);
+        if (expectedValue != resultValue) {
+            error_text.push(`${queryName}==> Different values for field \`${fullPath}\`:\n` +
+                `EXPECTED: \`${expectedValue}\`\nRESULT:   \`${resultValue}\``);
+        }
+    }
+}
+
+function runParser(query, expected, parseQuery, queryName) {
+    var error_text = [];
+    checkNeededFields("", expected, error_text, queryName, null);
+    if (error_text.length === 0) {
+        valueCheck('', expected, parseQuery(query), error_text, queryName);
+    }
+    return error_text;
+}
+
+function runSearch(query, expected, doSearch, loadedFile, queryName) {
     const ignore_order = loadedFile.ignore_order;
     const exact_check = loadedFile.exact_check;
 
-    var results = loaded.execSearch(loaded.getQuery(query), index, filter_crate);
+    var results = doSearch(query, loadedFile.FILTER_CRATE);
     var error_text = [];
 
     for (var key in expected) {
@@ -353,49 +226,100 @@ function checkResult(error_text, loadedFile, displaySuccess) {
     return 1;
 }
 
-function runChecks(testFile, loaded, index) {
-    var testFileContent = readFile(testFile) + 'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;';
-    if (testFileContent.indexOf("FILTER_CRATE") !== -1) {
-        testFileContent += "exports.FILTER_CRATE = FILTER_CRATE;";
-    } else {
-        testFileContent += "exports.FILTER_CRATE = null;";
-    }
-    var loadedFile = loadContent(testFileContent);
-
-    const expected = loadedFile.EXPECTED;
+function runCheck(loadedFile, key, callback) {
+    const expected = loadedFile[key];
     const query = loadedFile.QUERY;
 
     if (Array.isArray(query)) {
         if (!Array.isArray(expected)) {
             console.log("FAILED");
-            console.log("==> If QUERY variable is an array, EXPECTED should be an array too");
+            console.log(`==> If QUERY variable is an array, ${key} should be an array too`);
             return 1;
         } else if (query.length !== expected.length) {
             console.log("FAILED");
-            console.log("==> QUERY variable should have the same length as EXPECTED");
+            console.log(`==> QUERY variable should have the same length as ${key}`);
             return 1;
         }
         for (var i = 0; i < query.length; ++i) {
-            var error_text = runSearch(query[i], expected[i], index, loaded, loadedFile,
-                "[ query `" + query[i] + "`]");
+            var error_text = callback(query[i], expected[i], "[ query `" + query[i] + "`]");
             if (checkResult(error_text, loadedFile, false) !== 0) {
                 return 1;
             }
         }
         console.log("OK");
-        return 0;
+    } else {
+        var error_text = callback(query, expected, "");
+        if (checkResult(error_text, loadedFile, true) !== 0) {
+            return 1;
+        }
     }
-    var error_text = runSearch(query, expected, index, loaded, loadedFile, "");
-    return checkResult(error_text, loadedFile, true);
+    return 0;
 }
 
-function load_files(doc_folder, resource_suffix, crate) {
-    var searchJs = readFile(path.join(doc_folder, "search" + resource_suffix + ".js"));
-    var storageJs = readFile(path.join(doc_folder, "storage" + resource_suffix + ".js"));
-    var searchIndex = readFile(
-        path.join(doc_folder, "search-index" + resource_suffix + ".js")).split("\n");
+function runChecks(testFile, doSearch, parseQuery) {
+    var checkExpected = false;
+    var checkParsed = false;
+    var testFileContent = readFile(testFile) + 'exports.QUERY = QUERY;';
 
-    return loadSearchJsAndIndex(searchJs, searchIndex, storageJs, crate);
+    if (testFileContent.indexOf("FILTER_CRATE") !== -1) {
+        testFileContent += "exports.FILTER_CRATE = FILTER_CRATE;";
+    } else {
+        testFileContent += "exports.FILTER_CRATE = null;";
+    }
+
+    if (testFileContent.indexOf("\nconst EXPECTED") !== -1) {
+        testFileContent += 'exports.EXPECTED = EXPECTED;';
+        checkExpected = true;
+    }
+    if (testFileContent.indexOf("\nconst PARSED") !== -1) {
+        testFileContent += 'exports.PARSED = PARSED;';
+        checkParsed = true;
+    }
+    if (!checkParsed && !checkExpected) {
+        console.log("FAILED");
+        console.log("==> At least `PARSED` or `EXPECTED` is needed!");
+        return 1;
+    }
+
+    const loadedFile = loadContent(testFileContent);
+    var res = 0;
+
+    if (checkExpected) {
+        res += runCheck(loadedFile, "EXPECTED", (query, expected, text) => {
+            return runSearch(query, expected, doSearch, loadedFile, text);
+        });
+    }
+    if (checkParsed) {
+        res += runCheck(loadedFile, "PARSED", (query, expected, text) => {
+            return runParser(query, expected, parseQuery, text);
+        });
+    }
+    return res;
+}
+
+/**
+ * Load searchNNN.js and search-indexNNN.js.
+ *
+ * @param {string} doc_folder      - Path to a folder generated by running rustdoc
+ * @param {string} resource_suffix - Version number between filename and .js, e.g. "1.59.0"
+ * @returns {Object}               - Object containing two keys: `doSearch`, which runs a search
+ *   with the loaded index and returns a table of results; and `parseQuery`, which is the
+ *   `parseQuery` function exported from the search module.
+ */
+function loadSearchJS(doc_folder, resource_suffix) {
+    const searchJs = path.join(doc_folder, "search" + resource_suffix + ".js");
+    const searchIndexJs = path.join(doc_folder, "search-index" + resource_suffix + ".js");
+    const searchIndex = require(searchIndexJs);
+    const searchModule = require(searchJs);
+    const searchWords = searchModule.initSearch(searchIndex.searchIndex);
+
+    return {
+        doSearch: function (queryStr, filterCrate, currentCrate) {
+            return searchModule.execQuery(searchModule.parseQuery(queryStr), searchWords,
+                filterCrate, currentCrate);
+        },
+        parseQuery: searchModule.parseQuery,
+    }
 }
 
 function showHelp() {
@@ -458,35 +382,34 @@ function parseOptions(args) {
     return null;
 }
 
-function checkFile(test_file, opts, loaded, index) {
-    const test_name = path.basename(test_file, ".js");
-
-    process.stdout.write('Checking "' + test_name + '" ... ');
-    return runChecks(test_file, loaded, index);
-}
-
 function main(argv) {
     var opts = parseOptions(argv.slice(2));
     if (opts === null) {
         return 1;
     }
 
-    var [loaded, index] = load_files(
+    let parseAndSearch = loadSearchJS(
         opts["doc_folder"],
-        opts["resource_suffix"],
-        opts["crate_name"]);
+        opts["resource_suffix"]);
     var errors = 0;
 
+    let doSearch = function (queryStr, filterCrate) {
+        return parseAndSearch.doSearch(queryStr, filterCrate, opts["crate_name"]);
+    };
+
     if (opts["test_file"].length !== 0) {
-        opts["test_file"].forEach(function(file) {
-            errors += checkFile(file, opts, loaded, index);
+        opts["test_file"].forEach(function (file) {
+            process.stdout.write(`Testing ${file} ... `);
+            errors += runChecks(file, doSearch, parseAndSearch.parseQuery);
         });
     } else if (opts["test_folder"].length !== 0) {
-        fs.readdirSync(opts["test_folder"]).forEach(function(file) {
+        fs.readdirSync(opts["test_folder"]).forEach(function (file) {
             if (!file.endsWith(".js")) {
                 return;
             }
-            errors += checkFile(path.join(opts["test_folder"], file), opts, loaded, index);
+            process.stdout.write(`Testing ${file} ... `);
+            errors += runChecks(path.join(opts["test_folder"], file), doSearch,
+                    parseAndSearch.parseQuery);
         });
     }
     return errors > 0 ? 1 : 0;

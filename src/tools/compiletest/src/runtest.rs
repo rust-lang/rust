@@ -28,7 +28,7 @@ use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Output, Stdio};
+use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 
 use glob::glob;
@@ -179,7 +179,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         }
 
         Some(Debugger::Lldb) => {
-            config.lldb_python.hash(&mut hash);
+            config.python.hash(&mut hash);
             config.lldb_python_dir.hash(&mut hash);
             env::var_os("PATH").hash(&mut hash);
             env::var_os("PYTHONPATH").hash(&mut hash);
@@ -661,6 +661,21 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_cdb_test_no_opt(&self) {
+        let exe_file = self.make_exe_name();
+
+        // Existing PDB files are update in-place. When changing the debuginfo
+        // the compiler generates for something, this can lead to the situation
+        // where both the old and the new version of the debuginfo for the same
+        // type is present in the PDB, which is very confusing.
+        // Therefore we delete any existing PDB file before compiling the test
+        // case.
+        // FIXME: If can reliably detect that MSVC's link.exe is used, then
+        //        passing `/INCREMENTAL:NO` might be a cleaner way to do this.
+        let pdb_file = exe_file.with_extension(".pdb");
+        if pdb_file.exists() {
+            std::fs::remove_file(pdb_file).unwrap();
+        }
+
         // compile test file (it should have 'compile-flags:-g' in the header)
         let should_run = self.run_if_enabled();
         let compile_result = self.compile_test(should_run, EmitMetadata::No);
@@ -670,8 +685,6 @@ impl<'test> TestCx<'test> {
         if let WillExecute::Disabled = should_run {
             return;
         }
-
-        let exe_file = self.make_exe_name();
 
         let prefixes = {
             static PREFIXES: &[&str] = &["cdb", "cdbg"];
@@ -916,6 +929,16 @@ impl<'test> TestCx<'test> {
                             "add-auto-load-safe-path {}\n",
                             rust_pp_module_abs_path.replace(r"\", r"\\")
                         ));
+
+                        let output_base_dir = self.output_base_dir().to_str().unwrap().to_owned();
+
+                        // Add the directory containing the output binary to
+                        // include embedded pretty printers to GDB's script
+                        // auto loading safe path
+                        script_str.push_str(&format!(
+                            "add-auto-load-safe-path {}\n",
+                            output_base_dir.replace(r"\", r"\\")
+                        ));
                     }
                 }
                 _ => {
@@ -1128,7 +1151,7 @@ impl<'test> TestCx<'test> {
         // Prepare the lldb_batchmode which executes the debugger script
         let lldb_script_path = rust_src_root.join("src/etc/lldb_batchmode.py");
         self.cmd2procres(
-            Command::new(&self.config.lldb_python)
+            Command::new(&self.config.python)
                 .arg(&lldb_script_path)
                 .arg(test_executable)
                 .arg(debugger_script)
@@ -1722,6 +1745,28 @@ impl<'test> TestCx<'test> {
         dylib
     }
 
+    fn read2_abbreviated(&self, child: Child) -> Output {
+        let mut filter_paths_from_len = Vec::new();
+        let mut add_path = |path: &Path| {
+            let path = path.display().to_string();
+            let windows = path.replace("\\", "\\\\");
+            if windows != path {
+                filter_paths_from_len.push(windows);
+            }
+            filter_paths_from_len.push(path);
+        };
+
+        // List of paths that will not be measured when determining whether the output is larger
+        // than the output truncation threshold.
+        //
+        // Note: avoid adding a subdirectory of an already filtered directory here, otherwise the
+        // same slice of text will be double counted and the truncation might not happen.
+        add_path(&self.config.src_base);
+        add_path(&self.config.build_base);
+
+        read2_abbreviated(child, &filter_paths_from_len).expect("failed to read output")
+    }
+
     fn compose_and_run(
         &self,
         mut command: Command,
@@ -1756,8 +1801,7 @@ impl<'test> TestCx<'test> {
             child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
         }
 
-        let Output { status, stdout, stderr } =
-            read2_abbreviated(child).expect("failed to read output");
+        let Output { status, stdout, stderr } = self.read2_abbreviated(child);
 
         let result = ProcRes {
             status,
@@ -1843,10 +1887,14 @@ impl<'test> TestCx<'test> {
                 rustc.args(&[
                     "-Copt-level=1",
                     "-Zdump-mir=all",
-                    "-Zmir-opt-level=4",
                     "-Zvalidate-mir",
                     "-Zdump-mir-exclude-pass-number",
                 ]);
+                if let Some(pass) = &self.props.mir_unit_test {
+                    rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);
+                } else {
+                    rustc.arg("-Zmir-opt-level=4");
+                }
 
                 let mir_dump_dir = self.get_mir_dump_dir();
                 let _ = fs::remove_dir_all(&mir_dump_dir);
@@ -1890,11 +1938,8 @@ impl<'test> TestCx<'test> {
         }
 
         match self.config.compare_mode {
-            Some(CompareMode::Nll) => {
-                rustc.args(&["-Zborrowck=mir"]);
-            }
             Some(CompareMode::Polonius) => {
-                rustc.args(&["-Zpolonius", "-Zborrowck=mir"]);
+                rustc.args(&["-Zpolonius"]);
             }
             Some(CompareMode::Chalk) => {
                 rustc.args(&["-Zchalk"]);
@@ -2243,7 +2288,7 @@ impl<'test> TestCx<'test> {
             self.check_rustdoc_test_option(proc_res);
         } else {
             let root = self.config.find_rust_src_root().unwrap();
-            let mut cmd = Command::new(&self.config.docck_python);
+            let mut cmd = Command::new(&self.config.python);
             cmd.arg(root.join("src/etc/htmldocck.py")).arg(&out_dir).arg(&self.testpaths.file);
             if self.config.bless {
                 cmd.arg("--bless");
@@ -2444,7 +2489,7 @@ impl<'test> TestCx<'test> {
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
         json_out.set_extension("json");
         let res = self.cmd2procres(
-            Command::new(&self.config.docck_python)
+            Command::new(&self.config.python)
                 .arg(root.join("src/etc/check_missing_items.py"))
                 .arg(&json_out),
         );
@@ -2839,7 +2884,7 @@ impl<'test> TestCx<'test> {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .env("TARGET", &self.config.target)
-            .env("PYTHON", &self.config.docck_python)
+            .env("PYTHON", &self.config.python)
             .env("S", src_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))
@@ -2919,15 +2964,22 @@ impl<'test> TestCx<'test> {
                 .map(|s| s.replace("/", "-"))
                 .collect::<Vec<_>>()
                 .join(" ");
+            let cxxflags = self
+                .config
+                .cxxflags
+                .split(' ')
+                .map(|s| s.replace("/", "-"))
+                .collect::<Vec<_>>()
+                .join(" ");
 
             cmd.env("IS_MSVC", "1")
                 .env("IS_WINDOWS", "1")
                 .env("MSVC_LIB", format!("'{}' -nologo", lib.display()))
                 .env("CC", format!("'{}' {}", self.config.cc, cflags))
-                .env("CXX", format!("'{}'", &self.config.cxx));
+                .env("CXX", format!("'{}' {}", &self.config.cxx, cxxflags));
         } else {
             cmd.env("CC", format!("{} {}", self.config.cc, self.config.cflags))
-                .env("CXX", format!("{} {}", self.config.cxx, self.config.cflags))
+                .env("CXX", format!("{} {}", self.config.cxx, self.config.cxxflags))
                 .env("AR", &self.config.ar);
 
             if self.config.target.contains("windows") {
@@ -2935,7 +2987,7 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let output = cmd.spawn().and_then(read2_abbreviated).expect("failed to spawn `make`");
+        let output = self.read2_abbreviated(cmd.spawn().expect("failed to spawn `make`"));
         if !output.status.success() {
             let res = ProcRes {
                 status: output.status,
@@ -3087,8 +3139,7 @@ impl<'test> TestCx<'test> {
 
         let expected_fixed = self.load_expected_output(UI_FIXED);
 
-        let modes_to_prune = vec![CompareMode::Nll];
-        self.prune_duplicate_outputs(&modes_to_prune);
+        self.check_and_prune_duplicate_outputs(&proc_res, &[], &[]);
 
         let mut errors = self.load_compare_outputs(&proc_res, TestOutput::Compile, explicit);
         let rustfix_input = json::rustfix_diagnostics_only(&proc_res.stderr);
@@ -3470,22 +3521,21 @@ impl<'test> TestCx<'test> {
         normalize_path(parent_dir, "$DIR");
 
         // Paths into the libstd/libcore
-        let src_dir = self
-            .config
-            .src_base
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("library");
+        let base_dir = self.config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
+        let src_dir = base_dir.join("library");
         normalize_path(&src_dir, "$SRC_DIR");
+
+        // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
+        // `rustc_macros`
+        // eg. /home/user/rust/compiler
+        let compiler_src_dir = base_dir.join("compiler");
+        normalize_path(&compiler_src_dir, "$COMPILER_DIR");
 
         if let Some(virtual_rust_source_base_dir) =
             option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from)
         {
             normalize_path(&virtual_rust_source_base_dir.join("library"), "$SRC_DIR");
+            normalize_path(&virtual_rust_source_base_dir.join("compiler"), "$COMPILER_DIR");
         }
 
         // Paths into the build directory
@@ -3605,12 +3655,7 @@ impl<'test> TestCx<'test> {
 
         if !path.exists() {
             if let Some(CompareMode::Polonius) = self.config.compare_mode {
-                path = expected_output_path(
-                    &self.testpaths,
-                    self.revision,
-                    &Some(CompareMode::Nll),
-                    kind,
-                );
+                path = expected_output_path(&self.testpaths, self.revision, &None, kind);
             }
         }
 
@@ -3707,28 +3752,54 @@ impl<'test> TestCx<'test> {
         if self.config.bless { 0 } else { 1 }
     }
 
-    fn prune_duplicate_output(&self, mode: CompareMode, kind: &str, canon_content: &str) {
-        let examined_path = expected_output_path(&self.testpaths, self.revision, &Some(mode), kind);
+    fn check_and_prune_duplicate_outputs(
+        &self,
+        proc_res: &ProcRes,
+        modes: &[CompareMode],
+        require_same_modes: &[CompareMode],
+    ) {
+        for kind in UI_EXTENSIONS {
+            let canon_comparison_path =
+                expected_output_path(&self.testpaths, self.revision, &None, kind);
 
-        let examined_content =
-            self.load_expected_output_from_path(&examined_path).unwrap_or_else(|_| String::new());
+            let canon = match self.load_expected_output_from_path(&canon_comparison_path) {
+                Ok(canon) => canon,
+                _ => continue,
+            };
+            let bless = self.config.bless;
+            let check_and_prune_duplicate_outputs = |mode: &CompareMode, require_same: bool| {
+                let examined_path =
+                    expected_output_path(&self.testpaths, self.revision, &Some(mode.clone()), kind);
 
-        if canon_content == examined_content {
-            self.delete_file(&examined_path);
-        }
-    }
+                // If there is no output, there is nothing to do
+                let examined_content = match self.load_expected_output_from_path(&examined_path) {
+                    Ok(content) => content,
+                    _ => return,
+                };
 
-    fn prune_duplicate_outputs(&self, modes: &[CompareMode]) {
-        if self.config.bless {
-            for kind in UI_EXTENSIONS {
-                let canon_comparison_path =
-                    expected_output_path(&self.testpaths, self.revision, &None, kind);
+                let is_duplicate = canon == examined_content;
 
-                if let Ok(canon) = self.load_expected_output_from_path(&canon_comparison_path) {
-                    for mode in modes {
-                        self.prune_duplicate_output(mode.clone(), kind, &canon);
+                match (bless, require_same, is_duplicate) {
+                    // If we're blessing and the output is the same, then delete the file.
+                    (true, _, true) => {
+                        self.delete_file(&examined_path);
                     }
+                    // If we want them to be the same, but they are different, then error.
+                    // We do this wether we bless or not
+                    (_, true, false) => {
+                        self.fatal_proc_rec(
+                            &format!("`{}` should not have different output from base test!", kind),
+                            proc_res,
+                        );
+                    }
+                    _ => {}
                 }
+            };
+            for mode in modes {
+                check_and_prune_duplicate_outputs(mode, false);
+            }
+            for mode in require_same_modes {
+                check_and_prune_duplicate_outputs(mode, true);
             }
         }
     }

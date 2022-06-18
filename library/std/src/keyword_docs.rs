@@ -64,18 +64,18 @@ mod as_keyword {}
 /// }
 ///
 /// assert_eq!(last, 12);
-/// println!("{}", last);
+/// println!("{last}");
 /// ```
 ///
 /// A break expression is normally associated with the innermost loop enclosing the
 /// `break` but a label can be used to specify which enclosing loop is affected.
 ///
-///```rust
+/// ```rust
 /// 'outer: for i in 1..=5 {
-///     println!("outer iteration (i): {}", i);
+///     println!("outer iteration (i): {i}");
 ///
 ///     '_inner: for j in 1..=200 {
-///         println!("    inner iteration (j): {}", j);
+///         println!("    inner iteration (j): {j}");
 ///         if j >= 3 {
 ///             // breaks from inner loop, lets outer loop continue.
 ///             break;
@@ -87,7 +87,7 @@ mod as_keyword {}
 ///     }
 /// }
 /// println!("Bye.");
-///```
+/// ```
 ///
 /// When associated with `loop`, a break expression may be used to return a value from that loop.
 /// This is only valid with `loop` and not with any other type of loop.
@@ -106,7 +106,7 @@ mod as_keyword {}
 /// };
 /// // first number in Fibonacci sequence over 10:
 /// assert_eq!(result, 13);
-/// println!("{}", result);
+/// println!("{result}");
 /// ```
 ///
 /// For more details consult the [Reference on "break expression"] and the [Reference on "break and
@@ -194,20 +194,20 @@ mod const_keyword {}
 /// When `continue` is encountered, the current iteration is terminated, returning control to the
 /// loop head, typically continuing with the next iteration.
 ///
-///```rust
+/// ```rust
 /// // Printing odd numbers by skipping even ones
 /// for number in 1..=10 {
 ///     if number % 2 == 0 {
 ///         continue;
 ///     }
-///     println!("{}", number);
+///     println!("{number}");
 /// }
-///```
+/// ```
 ///
 /// Like `break`, `continue` is normally associated with the innermost enclosing loop, but labels
 /// may be used to specify the affected loop.
 ///
-///```rust
+/// ```rust
 /// // Print Odd numbers under 30 with unit <= 5
 /// 'tens: for ten in 0..3 {
 ///     '_units: for unit in 0..=9 {
@@ -220,7 +220,7 @@ mod const_keyword {}
 ///         println!("{}", ten * 10 + unit);
 ///     }
 /// }
-///```
+/// ```
 ///
 /// See [continue expressions] from the reference for more details.
 ///
@@ -515,7 +515,7 @@ mod fn_keyword {}
 /// }
 ///
 /// for i in std::iter::repeat(5) {
-///     println!("turns out {} never stops being 5", i);
+///     println!("turns out {i} never stops being 5");
 ///     break; // would loop forever otherwise
 /// }
 ///
@@ -728,6 +728,20 @@ mod impl_keyword {}
 /// [`IntoIterator`]: ../book/ch13-04-performance.html
 /// [range patterns]: ../reference/patterns.html?highlight=range#range-patterns
 /// [`for`]: keyword.for.html
+///
+/// The other use of `in` is with the keyword `pub`. It allows users to declare an item as visible
+/// only within a given scope.
+///
+/// ## Literal Example:
+///
+///    * `pub(in crate::outer_mod) fn outer_mod_visible_fn() {}` - fn is visible in `outer_mod`
+///
+/// Starting with the 2018 edition, paths for `pub(in path)` must start with `crate`, `self` or
+/// `super`. The 2015 edition may also use paths starting with `::` or modules from the crate root.
+///
+/// For more information, see the [Reference].
+///
+/// [Reference]: ../reference/visibility-and-privacy.html#pubin-path-pubcrate-pubsuper-and-pubself
 mod in_keyword {}
 
 #[doc(keyword = "let")]
@@ -776,7 +790,7 @@ mod in_keyword {}
 /// let shadowing_example = true;
 /// let shadowing_example = 123.4;
 /// let shadowing_example = shadowing_example as u32;
-/// let mut shadowing_example = format!("cool! {}", shadowing_example);
+/// let mut shadowing_example = format!("cool! {shadowing_example}");
 /// shadowing_example += " something else!"; // not shadowing
 /// ```
 ///
@@ -805,7 +819,7 @@ mod let_keyword {}
 /// let mut counter = 0;
 ///
 /// while counter < 10 {
-///     println!("{}", counter);
+///     println!("{counter}");
 ///     counter += 1;
 /// }
 /// ```
@@ -836,7 +850,7 @@ mod let_keyword {}
 ///     if i == 10 {
 ///         counter = None;
 ///     } else {
-///         println!("{}", i);
+///         println!("{i}");
 ///         counter = Some (i + 1);
 ///     }
 /// }
@@ -866,7 +880,7 @@ mod while_keyword {}
 ///
 /// let mut i = 1;
 /// loop {
-///     println!("i is {}", i);
+///     println!("i is {i}");
 ///     if i > 100 {
 ///         break;
 ///     }
@@ -920,8 +934,8 @@ mod loop_keyword {}
 ///
 /// let a_number = Option::Some(10);
 /// match a_number {
-///     Some(x) if x <= 5 => println!("0 to 5 num = {}", x),
-///     Some(x @ 6..=10) => println!("6 to 10 num = {}", x),
+///     Some(x) if x <= 5 => println!("0 to 5 num = {x}"),
+///     Some(x @ 6..=10) => println!("6 to 10 num = {x}"),
 ///     None => panic!(),
 ///     // all other numbers
 ///     _ => panic!(),
@@ -940,8 +954,8 @@ mod loop_keyword {}
 ///
 /// let get_inner = Outer::Double(None, Some(String::new()));
 /// match get_inner {
-///     Outer::Double(None, Some(st)) => println!("{}", st),
-///     Outer::Single(opt) => println!("{:?}", opt),
+///     Outer::Double(None, Some(st)) => println!("{st}"),
+///     Outer::Single(opt) => println!("{opt:?}"),
 ///     _ => panic!(),
 /// }
 /// ```
@@ -988,7 +1002,7 @@ mod mod_keyword {}
 ///
 /// ```rust
 /// let data = vec![1, 2, 3];
-/// let closure = move || println!("captured {:?} by value", data);
+/// let closure = move || println!("captured {data:?} by value");
 ///
 /// // data is no longer available, it is owned by the closure
 /// ```
@@ -1001,7 +1015,7 @@ mod mod_keyword {}
 /// ```rust
 /// fn create_fn() -> impl Fn() {
 ///     let text = "Fn".to_owned();
-///     move || println!("This is a: {}", text)
+///     move || println!("This is a: {text}")
 /// }
 ///
 /// let fn_plain = create_fn();
@@ -1014,7 +1028,7 @@ mod mod_keyword {}
 /// let data = vec![1, 2, 3];
 ///
 /// std::thread::spawn(move || {
-///     println!("captured {:?} by value", data)
+///     println!("captured {data:?} by value")
 /// }).join().unwrap();
 ///
 /// // data was moved to the spawned thread, so we cannot use it here
@@ -1025,7 +1039,7 @@ mod mod_keyword {}
 /// ```rust
 /// let capture = "hello".to_owned();
 /// let block = async move {
-///     println!("rust says {} from async block", capture);
+///     println!("rust says {capture} from async block");
 /// };
 /// ```
 ///
@@ -1124,7 +1138,7 @@ mod pub_keyword {}
 /// let maybe_name = Some(String::from("Alice"));
 /// // The variable 'maybe_name' is consumed here ...
 /// match maybe_name {
-///     Some(n) => println!("Hello, {}", n),
+///     Some(n) => println!("Hello, {n}"),
 ///     _ => println!("Hello, world"),
 /// }
 /// // ... and is now unavailable.
@@ -1138,7 +1152,7 @@ mod pub_keyword {}
 /// let maybe_name = Some(String::from("Alice"));
 /// // Using `ref`, the value is borrowed, not moved ...
 /// match maybe_name {
-///     Some(ref n) => println!("Hello, {}", n),
+///     Some(ref n) => println!("Hello, {n}"),
 ///     _ => println!("Hello, world"),
 /// }
 /// // ... so it's available here!
@@ -1423,7 +1437,7 @@ mod self_upper_keyword {}
 /// // With a strictly read-only static, references will have the same address
 /// assert_eq!(r1, r2);
 /// // A static item can be used just like a variable in many cases
-/// println!("{:?}", FOO);
+/// println!("{FOO:?}");
 /// ```
 ///
 /// # Mutable `static`s
@@ -1675,7 +1689,7 @@ mod super_keyword {}
 /// # #![allow(dead_code)]
 /// fn debug_iter<I: Iterator>(it: I) where I::Item: std::fmt::Debug {
 ///     for elem in it {
-///         println!("{:#?}", elem);
+///         println!("{elem:#?}");
 ///     }
 /// }
 ///
@@ -2153,7 +2167,7 @@ mod use_keyword {}
 /// is missing: the `'b` lifetime is not known to live at least as long as `'a`
 /// which means this function cannot ensure it always returns a valid reference:
 ///
-/// ```rust,compile_fail,E0623
+/// ```rust,compile_fail
 /// fn select<'a, 'b>(s1: &'a str, s2: &'b str, second: bool) -> &'a str
 /// {
 ///     if second { s2 } else { s1 }
@@ -2185,7 +2199,7 @@ mod use_keyword {}
 /// pub enum Cow<'a, B>
 /// where
 ///     B: 'a + ToOwned + ?Sized,
-///  {
+/// {
 ///     Borrowed(&'a B),
 ///     Owned(<B as ToOwned>::Owned),
 /// }
@@ -2243,7 +2257,7 @@ mod await_keyword {}
 /// `dyn` is a prefix of a [trait object]'s type.
 ///
 /// The `dyn` keyword is used to highlight that calls to methods on the associated `Trait`
-/// are dynamically dispatched. To use the trait this way, it must be 'object safe'.
+/// are [dynamically dispatched]. To use the trait this way, it must be 'object safe'.
 ///
 /// Unlike generic parameters or `impl Trait`, the compiler does not know the concrete type that
 /// is being passed. That is, the type has been [erased].
@@ -2267,6 +2281,7 @@ mod await_keyword {}
 /// the method won't be duplicated for each concrete type.
 ///
 /// [trait object]: ../book/ch17-02-trait-objects.html
+/// [dynamically dispatched]: https://en.wikipedia.org/wiki/Dynamic_dispatch
 /// [ref-trait-obj]: ../reference/types/trait-object.html
 /// [ref-obj-safety]: ../reference/items/traits.html#object-safety
 /// [erased]: https://en.wikipedia.org/wiki/Type_erasure
@@ -2313,7 +2328,7 @@ mod dyn_keyword {}
 ///     match u {
 ///         IntOrFloat { i: 10 } => println!("Found exactly ten!"),
 ///         // Matching the field `f` provides an `f32`.
-///         IntOrFloat { f } => println!("Found f = {} !", f),
+///         IntOrFloat { f } => println!("Found f = {f} !"),
 ///     }
 /// }
 /// ```
@@ -2337,7 +2352,7 @@ mod dyn_keyword {}
 /// let i = unsafe { &mut u.i };
 ///
 /// *i = 10;
-/// println!("f = {} and i = {}", f, i);
+/// println!("f = {f} and i = {i}");
 /// ```
 ///
 /// See the [Reference][union] for more informations on `union`s.

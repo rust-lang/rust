@@ -7,6 +7,7 @@ mod for_loops_over_fallibles;
 mod iter_next_loop;
 mod manual_flatten;
 mod manual_memcpy;
+mod missing_spin_loop;
 mod mut_range_bound;
 mod needless_collect;
 mod needless_range_loop;
@@ -41,7 +42,8 @@ declare_clippy_lint! {
     ///     dst[i + 64] = src[i];
     /// }
     /// ```
-    /// Could be written as:
+    ///
+    /// Use instead:
     /// ```rust
     /// # let src = vec![1];
     /// # let mut dst = vec![0; 65];
@@ -69,7 +71,8 @@ declare_clippy_lint! {
     ///     println!("{}", vec[i]);
     /// }
     /// ```
-    /// Could be written as:
+    ///
+    /// Use instead:
     /// ```rust
     /// let vec = vec!['a', 'b', 'c'];
     /// for i in vec {
@@ -102,7 +105,8 @@ declare_clippy_lint! {
     ///     // ..
     /// }
     /// ```
-    /// can be rewritten to
+    ///
+    /// Use instead:
     /// ```rust
     /// # let y = vec![1];
     /// for x in &y {
@@ -179,29 +183,28 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let opt = Some(1);
-    ///
-    /// // Bad
+    /// # let res: Result<i32, std::io::Error> = Ok(1);
     /// for x in opt {
     ///     // ..
     /// }
     ///
-    /// // Good
-    /// if let Some(x) = opt {
-    ///     // ..
-    /// }
-    /// ```
-    ///
-    /// // or
-    ///
-    /// ```rust
-    /// # let res: Result<i32, std::io::Error> = Ok(1);
-    ///
-    /// // Bad
     /// for x in &res {
     ///     // ..
     /// }
     ///
-    /// // Good
+    /// for x in res.iter() {
+    ///     // ..
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let opt = Some(1);
+    /// # let res: Result<i32, std::io::Error> = Ok(1);
+    /// if let Some(x) = opt {
+    ///     // ..
+    /// }
+    ///
     /// if let Ok(x) = res {
     ///     // ..
     /// }
@@ -286,7 +289,8 @@ declare_clippy_lint! {
     ///     i += 1;
     /// }
     /// ```
-    /// Could be written as
+    ///
+    /// Use instead:
     /// ```rust
     /// # let v = vec![1];
     /// # fn bar(bar: usize, baz: usize) {}
@@ -473,7 +477,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// This kind of operation can be expressed more succinctly with
-    /// `vec![item;SIZE]` or `vec.resize(NEW_SIZE, item)` and using these alternatives may also
+    /// `vec![item; SIZE]` or `vec.resize(NEW_SIZE, item)` and using these alternatives may also
     /// have better performance.
     ///
     /// ### Example
@@ -488,7 +492,8 @@ declare_clippy_lint! {
     ///     vec.push(item2);
     /// }
     /// ```
-    /// could be written as
+    ///
+    /// Use instead:
     /// ```rust
     /// let item1 = 2;
     /// let item2 = 3;
@@ -516,7 +521,8 @@ declare_clippy_lint! {
     ///     println!("{}", item);
     /// }
     /// ```
-    /// could be written as
+    ///
+    /// Use instead:
     /// ```rust
     /// let item1 = 2;
     /// let item = &item1;
@@ -560,6 +566,42 @@ declare_clippy_lint! {
     "for loops over `Option`s or `Result`s with a single expression can be simplified"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Check for empty spin loops
+    ///
+    /// ### Why is this bad?
+    /// The loop body should have something like `thread::park()` or at least
+    /// `std::hint::spin_loop()` to avoid needlessly burning cycles and conserve
+    /// energy. Perhaps even better use an actual lock, if possible.
+    ///
+    /// ### Known problems
+    /// This lint doesn't currently trigger on `while let` or
+    /// `loop { match .. { .. } }` loops, which would be considered idiomatic in
+    /// combination with e.g. `AtomicBool::compare_exchange_weak`.
+    ///
+    /// ### Example
+    ///
+    /// ```ignore
+    /// use core::sync::atomic::{AtomicBool, Ordering};
+    /// let b = AtomicBool::new(true);
+    /// // give a ref to `b` to another thread,wait for it to become false
+    /// while b.load(Ordering::Acquire) {};
+    /// ```
+    /// Use instead:
+    /// ```rust,no_run
+    ///# use core::sync::atomic::{AtomicBool, Ordering};
+    ///# let b = AtomicBool::new(true);
+    /// while b.load(Ordering::Acquire) {
+    ///     std::hint::spin_loop()
+    /// }
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub MISSING_SPIN_LOOP,
+    perf,
+    "An empty busy waiting loop"
+}
+
 declare_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     MANUAL_FLATTEN,
@@ -579,10 +621,10 @@ declare_lint_pass!(Loops => [
     WHILE_IMMUTABLE_CONDITION,
     SAME_ITEM_PUSH,
     SINGLE_ELEMENT_LOOP,
+    MISSING_SPIN_LOOP,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
-    #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let for_loop = higher::ForLoop::hir(expr);
         if let Some(higher::ForLoop {
@@ -628,6 +670,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
 
         if let Some(higher::While { condition, body }) = higher::While::hir(expr) {
             while_immutable_condition::check(cx, condition, body);
+            missing_spin_loop::check(cx, condition, body);
         }
 
         needless_collect::check(expr, cx);
@@ -662,10 +705,14 @@ fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
         let method_name = method.ident.as_str();
         // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
         match method_name {
-            "iter" | "iter_mut" => explicit_iter_loop::check(cx, self_arg, arg, method_name),
+            "iter" | "iter_mut" => {
+                explicit_iter_loop::check(cx, self_arg, arg, method_name);
+                for_loops_over_fallibles::check(cx, pat, self_arg, Some(method_name));
+            },
             "into_iter" => {
                 explicit_iter_loop::check(cx, self_arg, arg, method_name);
                 explicit_into_iter_loop::check(cx, self_arg, arg);
+                for_loops_over_fallibles::check(cx, pat, self_arg, Some(method_name));
             },
             "next" => {
                 next_loop_linted = iter_next_loop::check(cx, arg);
@@ -675,6 +722,6 @@ fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     }
 
     if !next_loop_linted {
-        for_loops_over_fallibles::check(cx, pat, arg);
+        for_loops_over_fallibles::check(cx, pat, arg, None);
     }
 }

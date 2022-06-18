@@ -1,19 +1,23 @@
 use crate::traits;
+use crate::traits::error_reporting::InferCtxtExt as _;
+use crate::traits::TraitEngineExt as _;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
-use rustc_infer::infer::InferCtxt;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt as _};
+use rustc_infer::traits::{Obligation, ObligationCause, TraitEngine};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts};
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
+use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;
 
 pub trait InferCtxtExt<'tcx> {
     fn infer_opaque_definition_from_instantiation(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        instantiated_ty: Ty<'tcx>,
-        span: Span,
+        instantiated_ty: OpaqueHiddenType<'tcx>,
+        origin: OpaqueTyOrigin,
     ) -> Ty<'tcx>;
 }
 
@@ -23,17 +27,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// (*), computes the "definition type" for an opaque type
     /// definition -- that is, the inferred value of `Foo1<'x>` or
     /// `Foo2<'x>` that we would conceptually use in its definition:
-    ///
-    ///     type Foo1<'x> = impl Bar<'x> = AAA; <-- this type AAA
-    ///     type Foo2<'x> = impl Bar<'x> = BBB; <-- or this type BBB
-    ///     fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
-    ///
+    /// ```ignore (illustrative)
+    /// type Foo1<'x> = impl Bar<'x> = AAA;  // <-- this type AAA
+    /// type Foo2<'x> = impl Bar<'x> = BBB;  // <-- or this type BBB
+    /// fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
+    /// ```
     /// Note that these values are defined in terms of a distinct set of
     /// generic parameters (`'x` instead of `'a`) from C1 or C2. The main
     /// purpose of this function is to do that translation.
     ///
     /// (*) C1 and C2 were introduced in the comments on
-    /// `constrain_opaque_type`. Read that comment for more context.
+    /// `register_member_constraints`. Read that comment for more context.
     ///
     /// # Parameters
     ///
@@ -45,9 +49,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     fn infer_opaque_definition_from_instantiation(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        instantiated_ty: Ty<'tcx>,
-        span: Span,
+        instantiated_ty: OpaqueHiddenType<'tcx>,
+        origin: OpaqueTyOrigin,
     ) -> Ty<'tcx> {
+        if self.is_tainted_by_errors() {
+            return self.tcx.ty_error();
+        }
+
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
         // Use substs to build up a reverse map from regions to their
@@ -65,26 +73,184 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        let definition_ty = instantiated_ty.fold_with(&mut ReverseMapper::new(
+        let definition_ty = instantiated_ty.ty.fold_with(&mut ReverseMapper::new(
             self.tcx,
-            self.is_tainted_by_errors(),
             def_id,
             map,
-            instantiated_ty,
-            span,
+            instantiated_ty.ty,
+            instantiated_ty.span,
         ));
         debug!(?definition_ty);
 
-        definition_ty
+        if !check_opaque_type_parameter_valid(
+            self.tcx,
+            opaque_type_key,
+            origin,
+            instantiated_ty.span,
+        ) {
+            return self.tcx.ty_error();
+        }
+
+        // Only check this for TAIT. RPIT already supports `src/test/ui/impl-trait/nested-return-type2.rs`
+        // on stable and we'd break that.
+        if let OpaqueTyOrigin::TyAlias = origin {
+            // This logic duplicates most of `check_opaque_meets_bounds`.
+            // FIXME(oli-obk): Also do region checks here and then consider removing `check_opaque_meets_bounds` entirely.
+            let param_env = self.tcx.param_env(def_id);
+            let body_id = self.tcx.local_def_id_to_hir_id(def_id.as_local().unwrap());
+            self.tcx.infer_ctxt().enter(move |infcx| {
+                // Require the hidden type to be well-formed with only the generics of the opaque type.
+                // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
+                // hidden type is well formed even without those bounds.
+                let predicate =
+                    ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()))
+                        .to_predicate(infcx.tcx);
+                let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+
+                // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
+                // the bounds that the function supplies.
+                match infcx.register_hidden_type(
+                    OpaqueTypeKey { def_id, substs: id_substs },
+                    ObligationCause::misc(instantiated_ty.span, body_id),
+                    param_env,
+                    definition_ty,
+                    origin,
+                ) {
+                    Ok(infer_ok) => {
+                        for obligation in infer_ok.obligations {
+                            fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+                        }
+                    }
+                    Err(err) => {
+                        infcx
+                            .report_mismatched_types(
+                                &ObligationCause::misc(instantiated_ty.span, body_id),
+                                self.tcx.mk_opaque(def_id, id_substs),
+                                definition_ty,
+                                err,
+                            )
+                            .emit();
+                    }
+                }
+
+                fulfillment_cx.register_predicate_obligation(
+                    &infcx,
+                    Obligation::misc(instantiated_ty.span, body_id, param_env, predicate),
+                );
+
+                // Check that all obligations are satisfied by the implementation's
+                // version.
+                let errors = fulfillment_cx.select_all_or_error(&infcx);
+
+                let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+
+                if errors.is_empty() {
+                    definition_ty
+                } else {
+                    infcx.report_fulfillment_errors(&errors, None, false);
+                    self.tcx.ty_error()
+                }
+            })
+        } else {
+            definition_ty
+        }
     }
+}
+
+fn check_opaque_type_parameter_valid(
+    tcx: TyCtxt<'_>,
+    opaque_type_key: OpaqueTypeKey<'_>,
+    origin: OpaqueTyOrigin,
+    span: Span,
+) -> bool {
+    match origin {
+        // No need to check return position impl trait (RPIT)
+        // because for type and const parameters they are correct
+        // by construction: we convert
+        //
+        // fn foo<P0..Pn>() -> impl Trait
+        //
+        // into
+        //
+        // type Foo<P0...Pn>
+        // fn foo<P0..Pn>() -> Foo<P0...Pn>.
+        //
+        // For lifetime parameters we convert
+        //
+        // fn foo<'l0..'ln>() -> impl Trait<'l0..'lm>
+        //
+        // into
+        //
+        // type foo::<'p0..'pn>::Foo<'q0..'qm>
+        // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
+        //
+        // which would error here on all of the `'static` args.
+        OpaqueTyOrigin::FnReturn(..) | OpaqueTyOrigin::AsyncFn(..) => return true,
+        // Check these
+        OpaqueTyOrigin::TyAlias => {}
+    }
+    let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
+    let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
+    for (i, arg) in opaque_type_key.substs.iter().enumerate() {
+        let arg_is_param = match arg.unpack() {
+            GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
+            GenericArgKind::Lifetime(lt) if lt.is_static() => {
+                tcx.sess
+                    .struct_span_err(span, "non-defining opaque type use in defining scope")
+                    .span_label(
+                        tcx.def_span(opaque_generics.param_at(i, tcx).def_id),
+                        "cannot use static lifetime; use a bound lifetime \
+                                    instead or remove the lifetime parameter from the \
+                                    opaque type",
+                    )
+                    .emit();
+                return false;
+            }
+            GenericArgKind::Lifetime(lt) => {
+                matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
+            }
+            GenericArgKind::Const(ct) => matches!(ct.kind(), ty::ConstKind::Param(_)),
+        };
+
+        if arg_is_param {
+            seen_params.entry(arg).or_default().push(i);
+        } else {
+            // Prevent `fn foo() -> Foo<u32>` from being defining.
+            let opaque_param = opaque_generics.param_at(i, tcx);
+            tcx.sess
+                .struct_span_err(span, "non-defining opaque type use in defining scope")
+                .span_note(
+                    tcx.def_span(opaque_param.def_id),
+                    &format!(
+                        "used non-generic {} `{}` for generic parameter",
+                        opaque_param.kind.descr(),
+                        arg,
+                    ),
+                )
+                .emit();
+            return false;
+        }
+    }
+
+    for (_, indices) in seen_params {
+        if indices.len() > 1 {
+            let descr = opaque_generics.param_at(indices[0], tcx).kind.descr();
+            let spans: Vec<_> = indices
+                .into_iter()
+                .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
+                .collect();
+            tcx.sess
+                .struct_span_err(span, "non-defining opaque type use in defining scope")
+                .span_note(spans, &format!("{} used multiple times", descr))
+                .emit();
+            return false;
+        }
+    }
+    true
 }
 
 struct ReverseMapper<'tcx> {
     tcx: TyCtxt<'tcx>,
-
-    /// If errors have already been reported in this fn, we suppress
-    /// our own errors because they are sometimes derivative.
-    tainted_by_errors: bool,
 
     opaque_type_def_id: DefId,
     map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
@@ -100,7 +266,6 @@ struct ReverseMapper<'tcx> {
 impl<'tcx> ReverseMapper<'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        tainted_by_errors: bool,
         opaque_type_def_id: DefId,
         map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
         hidden_ty: Ty<'tcx>,
@@ -108,7 +273,6 @@ impl<'tcx> ReverseMapper<'tcx> {
     ) -> Self {
         Self {
             tcx,
-            tainted_by_errors,
             opaque_type_def_id,
             map,
             map_missing_regions_to_empty: false,
@@ -144,7 +308,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
         match *r {
             // Ignore bound regions and `'static` regions that appear in the
             // type, we only need to remap regions that reference lifetimes
-            // from the function declaraion.
+            // from the function declaration.
             // This would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
             ty::ReLateBound(..) | ty::ReStatic => return r,
 
@@ -167,9 +331,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
         match self.map.get(&r.into()).map(|k| k.unpack()) {
             Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
-            None if self.map_missing_regions_to_empty || self.tainted_by_errors => {
-                self.tcx.lifetimes.re_root_empty
-            }
+            None if self.map_missing_regions_to_empty => self.tcx.lifetimes.re_root_empty,
             None if generics.parent.is_some() => {
                 if let Some(hidden_ty) = self.hidden_ty.take() {
                     unexpected_hidden_region_diagnostic(
@@ -290,7 +452,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         trace!("checking const {:?}", ct);
         // Find a const parameter
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Param(..) => {
                 // Look it up in the substitution list.
                 match self.map.get(&ct.into()).map(|k| k.unpack()) {
@@ -338,7 +500,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
 #[instrument(skip(tcx, predicates), level = "debug")]
-crate fn required_region_bounds<'tcx>(
+pub(crate) fn required_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     erased_self_ty: Ty<'tcx>,
     predicates: impl Iterator<Item = ty::Predicate<'tcx>>,

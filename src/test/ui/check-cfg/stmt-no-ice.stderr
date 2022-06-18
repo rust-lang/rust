@@ -1,0 +1,10 @@
+warning: unexpected `cfg` condition name
+  --> $DIR/stmt-no-ice.rs:7:11
+   |
+LL |     #[cfg(crossbeam_loom)]
+   |           ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

@@ -5,10 +5,7 @@ LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
 ...
 LL |         (_, 2) if take(x) => (),
-   |                        ^
-   |                        |
-   |                        value moved here
-   |                        value used here after move
+   |                        ^ value used here after move
 
 error: aborting due to previous error
 

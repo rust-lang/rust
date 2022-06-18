@@ -1,10 +1,13 @@
 error[E0282]: type annotations needed for `Vec<T>`
-  --> $DIR/method-ambig-one-trait-unknown-int-type.rs:24:17
+  --> $DIR/method-ambig-one-trait-unknown-int-type.rs:24:9
    |
 LL |     let mut x = Vec::new();
-   |         -----   ^^^^^^^^ cannot infer type for type parameter `T`
-   |         |
-   |         consider giving `x` the explicit type `Vec<T>`, where the type parameter `T` is specified
+   |         ^^^^^
+   |
+help: consider giving `x` an explicit type, where the type for type parameter `T` is specified
+   |
+LL |     let mut x: Vec<T> = Vec::new();
+   |              ++++++++
 
 error[E0283]: type annotations needed
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:26:7

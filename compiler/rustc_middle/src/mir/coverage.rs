@@ -46,7 +46,7 @@ impl CounterValueReference {
 
     /// Returns explicitly-requested zero-based version of the counter id, used
     /// during codegen. LLVM expects zero-based indexes.
-    pub fn zero_based_index(&self) -> u32 {
+    pub fn zero_based_index(self) -> u32 {
         let one_based_index = self.as_u32();
         debug_assert!(one_based_index > 0);
         one_based_index - 1

@@ -7,7 +7,7 @@ use std::path::Path;
 const CLIPPY_DEV_DIR: &str = "clippy_dev";
 
 /// This function verifies that the tool is being executed in the clippy directory.
-/// This is useful to ensure that setups only modify Clippys resources. The verification
+/// This is useful to ensure that setups only modify Clippy's resources. The verification
 /// is done by checking that `clippy_dev` is a sub directory of the current directory.
 ///
 /// It will print an error message and return `false` if the directory could not be
@@ -17,7 +17,7 @@ fn verify_inside_clippy_dir() -> bool {
     if path.exists() && path.is_dir() {
         true
     } else {
-        eprintln!("error: unable to verify that the working directory is clippys directory");
+        eprintln!("error: unable to verify that the working directory is clippy's directory");
         false
     }
 }

@@ -40,9 +40,9 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     // If there exists a local definition that dominates all uses of that local,
-    // the definition should be visited first. Traverse blocks in preorder which
+    // the definition should be visited first. Traverse blocks in an order that
     // is a topological sort of dominance partial order.
-    for (bb, data) in traversal::preorder(&mir) {
+    for (bb, data) in traversal::reverse_postorder(&mir) {
         analyzer.visit_basic_block_data(bb, data);
     }
 
@@ -211,6 +211,8 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store
+                | MutatingUseContext::Deinit
+                | MutatingUseContext::SetDiscriminant
                 | MutatingUseContext::AsmOutput
                 | MutatingUseContext::Borrow
                 | MutatingUseContext::AddressOf
@@ -326,7 +328,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 bb, data, result[bb], funclet
             );
 
-            for &succ in data.terminator().successors() {
+            for succ in data.terminator().successors() {
                 let kind = result[succ];
                 debug!("cleanup_kinds: propagating {:?} to {:?}/{:?}", funclet, succ, kind);
                 match kind {

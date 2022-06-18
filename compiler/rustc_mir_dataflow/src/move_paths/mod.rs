@@ -37,8 +37,8 @@ rustc_index::newtype_index! {
 }
 
 impl MoveOutIndex {
-    pub fn move_path_index(&self, move_data: &MoveData<'_>) -> MovePathIndex {
-        move_data.moves[*self].path
+    pub fn move_path_index(self, move_data: &MoveData<'_>) -> MovePathIndex {
+        move_data.moves[self].path
     }
 }
 
@@ -338,8 +338,8 @@ impl MovePathLookup {
     /// `MovePathIndex`es.
     pub fn iter_locals_enumerated(
         &self,
-    ) -> impl DoubleEndedIterator<Item = (Local, &MovePathIndex)> + ExactSizeIterator {
-        self.locals.iter_enumerated()
+    ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> + ExactSizeIterator + '_ {
+        self.locals.iter_enumerated().map(|(l, &idx)| (l, idx))
     }
 }
 

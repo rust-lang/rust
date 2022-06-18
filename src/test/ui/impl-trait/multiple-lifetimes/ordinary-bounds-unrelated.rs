@@ -14,7 +14,6 @@ struct Ordinary<'a>(&'a u8);
 // by both `'a` and `'b`.
 
 fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'d, 'e>
-//~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
 where
     'a: 'e,
     'b: 'd,
@@ -27,6 +26,7 @@ where
     // 'a in ['d, 'e]
     // ```
     if condition() { a } else { b }
+    //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
 }
 
 fn condition() -> bool {

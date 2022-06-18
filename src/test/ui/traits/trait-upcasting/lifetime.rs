@@ -1,5 +1,4 @@
 // run-pass
-// ignore-compare-mode-nll
 
 #![feature(trait_upcasting)]
 #![allow(incomplete_features)]

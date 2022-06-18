@@ -10,4 +10,9 @@ fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
   //~| ERROR this associated type takes 0 generic arguments but 1 generic argument
   //~| ERROR this associated type takes 1 lifetime argument but 0 lifetime arguments
 
+
+fn bar<'a>(arg: Box<dyn X<Y() = ()>>) {}
+  //~^ ERROR: parenthesized generic arguments cannot be used
+  //~| ERROR this associated type takes 1 lifetime argument but 0 lifetime arguments
+
 fn main() {}

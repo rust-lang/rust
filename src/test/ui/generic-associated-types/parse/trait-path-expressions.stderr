@@ -13,6 +13,11 @@ LL |   fn f2<'a>(arg : Box<dyn X< { 1 } = 32 >>) {}
    |                                  - ^ expected one of `,`, `:`, or `>`
    |                                  |
    |                                  maybe try to close unmatched angle bracket
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |   fn f2<'a>(arg : Box<dyn X< { 1 }> = 32 >>) {}
+   |                                   +
 
 error: aborting due to 2 previous errors
 

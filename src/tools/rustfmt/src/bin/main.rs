@@ -26,7 +26,7 @@ fn main() {
     let exit_code = match execute(&opts) {
         Ok(code) => code,
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("{:#}", e);
             1
         }
     };
@@ -74,14 +74,10 @@ pub enum OperationError {
     /// An io error during reading or writing.
     #[error("{0}")]
     IoError(IoError),
-    /// Attempt to use --check with stdin, which isn't currently
-    /// supported.
-    #[error("The `--check` option is not supported with standard input.")]
-    CheckWithStdin,
-    /// Attempt to use --emit=json with stdin, which isn't currently
-    /// supported.
-    #[error("Using `--emit` other than stdout is not supported with standard input.")]
-    EmitWithStdin,
+    /// Attempt to use --emit with a mode which is not currently
+    /// supported with stdandard input.
+    #[error("Emit mode {0} not supported with standard output.")]
+    StdinBadEmit(EmitMode),
 }
 
 impl From<IoError> for OperationError {
@@ -255,15 +251,20 @@ fn format_string(input: String, options: GetOptsOptions) -> Result<i32> {
     let (mut config, _) = load_config(Some(Path::new(".")), Some(options.clone()))?;
 
     if options.check {
-        return Err(OperationError::CheckWithStdin.into());
-    }
-    if let Some(emit_mode) = options.emit_mode {
-        if emit_mode != EmitMode::Stdout {
-            return Err(OperationError::EmitWithStdin.into());
+        config.set().emit_mode(EmitMode::Diff);
+    } else {
+        match options.emit_mode {
+            // Emit modes which work with standard input
+            // None means default, which is Stdout.
+            None | Some(EmitMode::Stdout) | Some(EmitMode::Checkstyle) | Some(EmitMode::Json) => {}
+            Some(emit_mode) => {
+                return Err(OperationError::StdinBadEmit(emit_mode).into());
+            }
         }
+        config
+            .set()
+            .emit_mode(options.emit_mode.unwrap_or(EmitMode::Stdout));
     }
-    // emit mode is always Stdout for Stdin.
-    config.set().emit_mode(EmitMode::Stdout);
     config.set().verbose(Verbosity::Quiet);
 
     // parse file_lines
@@ -393,9 +394,8 @@ fn print_usage_to_stdout(opts: &Options, reason: &str) {
         format!("{}\n\n", reason)
     };
     let msg = format!(
-        "{}Format Rust code\n\nusage: {} [options] <file>...",
-        sep,
-        env::args_os().next().unwrap().to_string_lossy()
+        "{}Format Rust code\n\nusage: rustfmt [options] <file>...",
+        sep
     );
     println!("{}", opts.usage(&msg));
 }
@@ -693,6 +693,7 @@ fn edition_from_edition_str(edition_str: &str) -> Result<Edition> {
         "2015" => Ok(Edition::Edition2015),
         "2018" => Ok(Edition::Edition2018),
         "2021" => Ok(Edition::Edition2021),
+        "2024" => Ok(Edition::Edition2024),
         _ => Err(format_err!("Invalid value for `--edition`")),
     }
 }

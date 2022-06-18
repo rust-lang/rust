@@ -26,7 +26,7 @@ At the top is some at-a-glance info and controls:
 - a button to collapse or expand the top-level documentation for that item
   (`[+]` or `[-]`),
 - a link to the source code (`[src]`),
-  if [configured](the-doc-attribute.html#html_no_source),
+  if [configured](write-documentation/the-doc-attribute.html#html_no_source),
   and present (the source may not be available if
   the documentation was created with `cargo doc --no-deps`),
 - and the version in which the item became stable,
@@ -52,22 +52,15 @@ For example, when looking at documentation for the crate root,
 it shows all the crates documented in the documentation bundle,
 and quick links to the modules, structs, traits, functions, and macros available
 from the current crate.
-At the top, it displays a [configurable logo](the-doc-attribute.html#html_logo_url)
+At the top, it displays a [configurable logo](write-documentation/the-doc-attribute.html#html_logo_url)
 alongside the current crate's name and version,
 or the current item whose documentation is being displayed.
 
 ## The Theme Picker and Search Interface
 
 When viewing `rustdoc`'s output in a browser with JavaScript enabled,
-a dynamic interface appears at the top of the page.
-To the left is the theme picker, denoted with a paint-brush icon,
-and the search interface, help screen, and options appear to the right of that.
-
-### The Theme Picker
-
-Clicking on the theme picker provides a list of themes -
-by default `ayu`, `light`, and `dark` -
-which are available for viewing.
+a dynamic interface appears at the top of the page composed of the search
+interface, help screen, and options.
 
 ### The Search Interface
 
@@ -91,12 +84,16 @@ When typing in the search bar, you can prefix your search term with a type
 followed by a colon (such as `mod:`) to restrict the results to just that
 kind of item. (The available items are listed in the help popup.)
 
+### Changing displayed theme
+
+You can change the displayed theme by opening the settings menu (the gear
+icon in the upper right) and then pick a new one from there.
+
 ### Shortcuts
 
 Pressing `S` while focused elsewhere on the page will move focus to the
 search bar, and pressing `?` shows the help screen,
 which includes all these shortcuts and more.
-Pressing `T` focuses the theme picker.
 
 When the search results are focused,
 the left and right arrows move between tabs and the up and down arrows move

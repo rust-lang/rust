@@ -1,6 +1,7 @@
 pub use Integer::*;
 pub use Primitive::*;
 
+use crate::json::{Json, ToJson};
 use crate::spec::Target;
 
 use std::convert::{TryFrom, TryInto};
@@ -10,9 +11,9 @@ use std::num::NonZeroUsize;
 use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
+use rustc_data_structures::intern::Interned;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::json::{Json, ToJson};
 
 pub mod call;
 
@@ -165,7 +166,8 @@ impl TargetDataLayout {
             ));
         }
 
-        if dl.pointer_size.bits() != target.pointer_width.into() {
+        let target_pointer_width: u64 = target.pointer_width.into();
+        if dl.pointer_size.bits() != target_pointer_width {
             return Err(format!(
                 "inconsistent target specification: \"data-layout\" claims \
                  pointers are {}-bit, while \"target-pointer-width\" is `{}`",
@@ -275,33 +277,26 @@ impl ToJson for Endian {
 }
 
 /// Size of a type in bytes.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub struct Size {
-    // The top 3 bits are ALWAYS zero.
     raw: u64,
+}
+
+// This is debug-printed a lot in larger structs, don't waste too much space there
+impl fmt::Debug for Size {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Size({} bytes)", self.bytes())
+    }
 }
 
 impl Size {
     pub const ZERO: Size = Size { raw: 0 };
 
     /// Rounds `bits` up to the next-higher byte boundary, if `bits` is
-    /// is not aligned.
+    /// not a multiple of 8.
     pub fn from_bits(bits: impl TryInto<u64>) -> Size {
         let bits = bits.try_into().ok().unwrap();
-
-        #[cold]
-        fn overflow(bits: u64) -> ! {
-            panic!("Size::from_bits({}) has overflowed", bits);
-        }
-
-        // This is the largest value of `bits` that does not cause overflow
-        // during rounding, and guarantees that the resulting number of bytes
-        // cannot cause overflow when multiplied by 8.
-        if bits > 0xffff_ffff_ffff_fff8 {
-            overflow(bits);
-        }
-
         // Avoid potential overflow from `bits + 7`.
         Size { raw: bits / 8 + ((bits % 8) + 7) / 8 }
     }
@@ -324,7 +319,12 @@ impl Size {
 
     #[inline]
     pub fn bits(self) -> u64 {
-        self.raw << 3
+        #[cold]
+        fn overflow(bytes: u64) -> ! {
+            panic!("Size::bits: {} bytes in bits doesn't fit in u64", bytes)
+        }
+
+        self.bytes().checked_mul(8).unwrap_or_else(|| overflow(self.bytes()))
     }
 
     #[inline]
@@ -493,10 +493,17 @@ impl Step for Size {
 }
 
 /// Alignment of a type in bytes (always a power of two).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub struct Align {
     pow2: u8,
+}
+
+// This is debug-printed a lot in larger structs, don't waste too much space there
+impl fmt::Debug for Align {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Align({} bytes)", self.bytes())
+    }
 }
 
 impl Align {
@@ -568,7 +575,7 @@ impl Align {
 }
 
 /// A pair of alignments, ABI-mandated and preferred.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub struct AbiAndPrefAlign {
     pub abi: Align,
@@ -740,6 +747,11 @@ impl Primitive {
     pub fn is_int(self) -> bool {
         matches!(self, Int(..))
     }
+
+    #[inline]
+    pub fn is_ptr(self) -> bool {
+        matches!(self, Pointer)
+    }
 }
 
 /// Inclusive wrap-around range of valid values, that is, if
@@ -760,6 +772,10 @@ pub struct WrappingRange {
 }
 
 impl WrappingRange {
+    pub fn full(size: Size) -> Self {
+        Self { start: 0, end: size.unsigned_int_max() }
+    }
+
     /// Returns `true` if `v` is contained in the range.
     #[inline(always)]
     pub fn contains(&self, v: u128) -> bool {
@@ -807,13 +823,23 @@ impl fmt::Debug for WrappingRange {
 /// Information about one scalar component of a Rust type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable_Generic)]
-pub struct Scalar {
-    pub value: Primitive,
+pub enum Scalar {
+    Initialized {
+        value: Primitive,
 
-    // FIXME(eddyb) always use the shortest range, e.g., by finding
-    // the largest space between two consecutive valid values and
-    // taking everything else as the (shortest) valid range.
-    pub valid_range: WrappingRange,
+        // FIXME(eddyb) always use the shortest range, e.g., by finding
+        // the largest space between two consecutive valid values and
+        // taking everything else as the (shortest) valid range.
+        valid_range: WrappingRange,
+    },
+    Union {
+        /// Even for unions, we need to use the correct registers for the kind of
+        /// values inside the union, so we keep the `Primitive` type around. We
+        /// also use it to compute the size of the scalar.
+        /// However, unions never have niches and even allow undef,
+        /// so there is no `valid_range`.
+        value: Primitive,
+    },
 }
 
 impl Scalar {
@@ -821,14 +847,67 @@ impl Scalar {
     pub fn is_bool(&self) -> bool {
         matches!(
             self,
-            Scalar { value: Int(I8, false), valid_range: WrappingRange { start: 0, end: 1 } }
+            Scalar::Initialized {
+                value: Int(I8, false),
+                valid_range: WrappingRange { start: 0, end: 1 }
+            }
         )
+    }
+
+    /// Get the primitive representation of this type, ignoring the valid range and whether the
+    /// value is allowed to be undefined (due to being a union).
+    pub fn primitive(&self) -> Primitive {
+        match *self {
+            Scalar::Initialized { value, .. } | Scalar::Union { value } => value,
+        }
+    }
+
+    pub fn align(self, cx: &impl HasDataLayout) -> AbiAndPrefAlign {
+        self.primitive().align(cx)
+    }
+
+    pub fn size(self, cx: &impl HasDataLayout) -> Size {
+        self.primitive().size(cx)
+    }
+
+    #[inline]
+    pub fn to_union(&self) -> Self {
+        Self::Union { value: self.primitive() }
+    }
+
+    #[inline]
+    pub fn valid_range(&self, cx: &impl HasDataLayout) -> WrappingRange {
+        match *self {
+            Scalar::Initialized { valid_range, .. } => valid_range,
+            Scalar::Union { value } => WrappingRange::full(value.size(cx)),
+        }
+    }
+
+    #[inline]
+    /// Allows the caller to mutate the valid range. This operation will panic if attempted on a union.
+    pub fn valid_range_mut(&mut self) -> &mut WrappingRange {
+        match self {
+            Scalar::Initialized { valid_range, .. } => valid_range,
+            Scalar::Union { .. } => panic!("cannot change the valid range of a union"),
+        }
     }
 
     /// Returns `true` if all possible numbers are valid, i.e `valid_range` covers the whole layout
     #[inline]
     pub fn is_always_valid<C: HasDataLayout>(&self, cx: &C) -> bool {
-        self.valid_range.is_full_for(self.value.size(cx))
+        match *self {
+            Scalar::Initialized { valid_range, .. } => valid_range.is_full_for(self.size(cx)),
+            Scalar::Union { .. } => true,
+        }
+    }
+
+    /// Returns `true` if this type can be left uninit.
+    #[inline]
+    pub fn is_uninit_valid(&self) -> bool {
+        match *self {
+            Scalar::Initialized { .. } => false,
+            Scalar::Union { .. } => true,
+        }
     }
 }
 
@@ -996,7 +1075,7 @@ impl Abi {
     #[inline]
     pub fn is_signed(&self) -> bool {
         match self {
-            Abi::Scalar(scal) => match scal.value {
+            Abi::Scalar(scal) => match scal.primitive() {
                 Primitive::Int(_, signed) => signed,
                 _ => false,
             },
@@ -1024,7 +1103,7 @@ rustc_index::newtype_index! {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub enum Variants {
+pub enum Variants<'a> {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single { index: VariantIdx },
 
@@ -1038,7 +1117,7 @@ pub enum Variants {
         tag: Scalar,
         tag_encoding: TagEncoding,
         tag_field: usize,
-        variants: IndexVec<VariantIdx, Layout>,
+        variants: IndexVec<VariantIdx, Layout<'a>>,
     },
 }
 
@@ -1068,17 +1147,19 @@ pub enum TagEncoding {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct Niche {
     pub offset: Size,
-    pub scalar: Scalar,
+    pub value: Primitive,
+    pub valid_range: WrappingRange,
 }
 
 impl Niche {
     pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
-        let niche = Niche { offset, scalar };
+        let Scalar::Initialized { value, valid_range } = scalar else { return None };
+        let niche = Niche { offset, value, valid_range };
         if niche.available(cx) > 0 { Some(niche) } else { None }
     }
 
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
-        let Scalar { value, valid_range: v } = self.scalar;
+        let Self { value, valid_range: v, .. } = *self;
         let size = value.size(cx);
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
@@ -1091,7 +1172,7 @@ impl Niche {
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
 
-        let Scalar { value, valid_range: v } = self.scalar;
+        let Self { value, valid_range: v, .. } = *self;
         let size = value.size(cx);
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
@@ -1104,7 +1185,7 @@ impl Niche {
 
         // Extend the range of valid values being reserved by moving either `v.start` or `v.end` bound.
         // Given an eventual `Option<T>`, we try to maximize the chance for `None` to occupy the niche of zero.
-        // This is accomplished by prefering enums with 2 variants(`count==1`) and always taking the shortest path to niche zero.
+        // This is accomplished by preferring enums with 2 variants(`count==1`) and always taking the shortest path to niche zero.
         // Having `None` in niche zero can enable some special optimizations.
         //
         // Bound selection criteria:
@@ -1115,12 +1196,12 @@ impl Niche {
         // If niche zero is already reserved, the selection of bounds are of little interest.
         let move_start = |v: WrappingRange| {
             let start = v.start.wrapping_sub(count) & max_value;
-            Some((start, Scalar { value, valid_range: v.with_start(start) }))
+            Some((start, Scalar::Initialized { value, valid_range: v.with_start(start) }))
         };
         let move_end = |v: WrappingRange| {
             let start = v.end.wrapping_add(1) & max_value;
             let end = v.end.wrapping_add(count) & max_value;
-            Some((start, Scalar { value, valid_range: v.with_end(end) }))
+            Some((start, Scalar::Initialized { value, valid_range: v.with_end(end) }))
         };
         let distance_end_zero = max_value - v.end;
         if v.start > v.end {
@@ -1146,8 +1227,8 @@ impl Niche {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub struct Layout {
+#[derive(PartialEq, Eq, Hash, HashStable_Generic)]
+pub struct LayoutS<'a> {
     /// Says where the fields are located within the layout.
     pub fields: FieldsShape,
 
@@ -1158,7 +1239,7 @@ pub struct Layout {
     ///
     /// To access all fields of this layout, both `fields` and the fields of the active variant
     /// must be taken into account.
-    pub variants: Variants,
+    pub variants: Variants<'a>,
 
     /// The `abi` defines how this data is passed between functions, and it defines
     /// value restrictions via `valid_range`.
@@ -1177,12 +1258,12 @@ pub struct Layout {
     pub size: Size,
 }
 
-impl Layout {
+impl<'a> LayoutS<'a> {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
-        let size = scalar.value.size(cx);
-        let align = scalar.value.align(cx);
-        Layout {
+        let size = scalar.size(cx);
+        let align = scalar.align(cx);
+        LayoutS {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Scalar(scalar),
@@ -1190,6 +1271,59 @@ impl Layout {
             size,
             align,
         }
+    }
+}
+
+impl<'a> fmt::Debug for LayoutS<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // This is how `Layout` used to print before it become
+        // `Interned<LayoutS>`. We print it like this to avoid having to update
+        // expected output in a lot of tests.
+        f.debug_struct("Layout")
+            .field("fields", &self.fields)
+            .field("variants", &self.variants)
+            .field("abi", &self.abi)
+            .field("largest_niche", &self.largest_niche)
+            .field("align", &self.align)
+            .field("size", &self.size)
+            .finish()
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
+#[rustc_pass_by_value]
+pub struct Layout<'a>(pub Interned<'a, LayoutS<'a>>);
+
+impl<'a> fmt::Debug for Layout<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // See comment on `<LayoutS as Debug>::fmt` above.
+        self.0.0.fmt(f)
+    }
+}
+
+impl<'a> Layout<'a> {
+    pub fn fields(self) -> &'a FieldsShape {
+        &self.0.0.fields
+    }
+
+    pub fn variants(self) -> &'a Variants<'a> {
+        &self.0.0.variants
+    }
+
+    pub fn abi(self) -> Abi {
+        self.0.0.abi
+    }
+
+    pub fn largest_niche(self) -> Option<Niche> {
+        self.0.0.largest_niche
+    }
+
+    pub fn align(self) -> AbiAndPrefAlign {
+        self.0.0.align
+    }
+
+    pub fn size(self) -> Size {
+        self.0.0.size
     }
 }
 
@@ -1203,13 +1337,13 @@ impl Layout {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct TyAndLayout<'a, Ty> {
     pub ty: Ty,
-    pub layout: &'a Layout,
+    pub layout: Layout<'a>,
 }
 
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
-    type Target = &'a Layout;
-    fn deref(&self) -> &&'a Layout {
-        &self.layout
+    type Target = &'a LayoutS<'a>;
+    fn deref(&self) -> &&'a LayoutS<'a> {
+        &self.layout.0.0
     }
 }
 
@@ -1236,6 +1370,14 @@ pub struct PointeeInfo {
     pub address_space: AddressSpace,
 }
 
+/// Used in `might_permit_raw_init` to indicate the kind of initialisation
+/// that is checked to be valid
+#[derive(Copy, Clone, Debug)]
+pub enum InitKind {
+    Zero,
+    Uninit,
+}
+
 /// Trait that needs to be implemented by the higher-level type representation
 /// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
 pub trait TyAbiInterface<'a, C>: Sized {
@@ -1250,6 +1392,10 @@ pub trait TyAbiInterface<'a, C>: Sized {
         cx: &C,
         offset: Size,
     ) -> Option<PointeeInfo>;
+    fn is_adt(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_never(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
+    fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
@@ -1280,7 +1426,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         C: HasDataLayout,
     {
         match self.abi {
-            Abi::Scalar(scalar) => scalar.value.is_float(),
+            Abi::Scalar(scalar) => scalar.primitive().is_float(),
             Abi::Aggregate { .. } => {
                 if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
                     self.field(cx, 0).is_single_fp_element(cx)
@@ -1290,6 +1436,34 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             }
             _ => false,
         }
+    }
+
+    pub fn is_adt<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_adt(self)
+    }
+
+    pub fn is_never<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_never(self)
+    }
+
+    pub fn is_tuple<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_tuple(self)
+    }
+
+    pub fn is_unit<C>(self) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+    {
+        Ty::is_unit(self)
     }
 }
 
@@ -1310,26 +1484,37 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
     /// Determines if this type permits "raw" initialization by just transmuting some
     /// memory into an instance of `T`.
-    /// `zero` indicates if the memory is zero-initialized, or alternatively
-    /// left entirely uninitialized.
+    ///
+    /// `init_kind` indicates if the memory is zero-initialized or left uninitialized.
+    ///
+    /// `strict` is an opt-in debugging flag added in #97323 that enables more checks.
+    ///
     /// This is conservative: in doubt, it will answer `true`.
     ///
     /// FIXME: Once we removed all the conservatism, we could alternatively
     /// create an all-0/all-undef constant and run the const value validator to see if
     /// this is a valid value for the given type.
-    pub fn might_permit_raw_init<C>(self, cx: &C, zero: bool) -> bool
+    pub fn might_permit_raw_init<C>(self, cx: &C, init_kind: InitKind, strict: bool) -> bool
     where
         Self: Copy,
         Ty: TyAbiInterface<'a, C>,
         C: HasDataLayout,
     {
         let scalar_allows_raw_init = move |s: Scalar| -> bool {
-            if zero {
-                // The range must contain 0.
-                s.valid_range.contains(0)
-            } else {
-                // The range must include all values.
-                s.is_always_valid(cx)
+            match init_kind {
+                InitKind::Zero => {
+                    // The range must contain 0.
+                    s.valid_range(cx).contains(0)
+                }
+                InitKind::Uninit => {
+                    if strict {
+                        // The type must be allowed to be uninit (which means "is a union").
+                        s.is_uninit_valid()
+                    } else {
+                        // The range must include all values.
+                        s.is_always_valid(cx)
+                    }
+                }
             }
         };
 
@@ -1349,12 +1534,19 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         // If we have not found an error yet, we need to recursively descend into fields.
         match &self.fields {
             FieldsShape::Primitive | FieldsShape::Union { .. } => {}
-            FieldsShape::Array { .. } => {
-                // FIXME(#66151): For now, we are conservative and do not check arrays.
+            FieldsShape::Array { count, .. } => {
+                // FIXME(#66151): For now, we are conservative and do not check arrays by default.
+                if strict
+                    && *count > 0
+                    && !self.field(cx, 0).might_permit_raw_init(cx, init_kind, strict)
+                {
+                    // Found non empty array with a type that is unhappy about this kind of initialization
+                    return false;
+                }
             }
             FieldsShape::Arbitrary { offsets, .. } => {
                 for idx in 0..offsets.len() {
-                    if !self.field(cx, idx).might_permit_raw_init(cx, zero) {
+                    if !self.field(cx, idx).might_permit_raw_init(cx, init_kind, strict) {
                         // We found a field that is unhappy with this kind of initialization.
                         return false;
                     }

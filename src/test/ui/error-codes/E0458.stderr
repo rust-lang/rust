@@ -1,12 +1,10 @@
-error[E0458]: unknown kind: `wonderful_unicorn`
-  --> $DIR/E0458.rs:1:8
+error[E0458]: unknown link kind `wonderful_unicorn`, expected one of: static, dylib, framework, raw-dylib
+  --> $DIR/E0458.rs:1:15
    |
 LL | #[link(kind = "wonderful_unicorn")] extern "C" {}
-   | -------^^^^^^^^^^^^^^^^^^^^^^^^^^--
-   |        |
-   |        unknown kind
+   |               ^^^^^^^^^^^^^^^^^^^ unknown link kind
 
-error[E0459]: `#[link(...)]` specified without `name = "foo"`
+error[E0459]: `#[link]` attribute requires a `name = "string"` argument
   --> $DIR/E0458.rs:1:1
    |
 LL | #[link(kind = "wonderful_unicorn")] extern "C" {}

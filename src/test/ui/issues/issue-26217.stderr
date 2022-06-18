@@ -1,9 +1,10 @@
-error[E0477]: the type `&'a i32` does not fulfill the required lifetime
+error: lifetime may not live long enough
   --> $DIR/issue-26217.rs:4:5
    |
+LL | fn bar<'a>() {
+   |        -- lifetime `'a` defined here
 LL |     foo::<&'a i32>();
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0477`.

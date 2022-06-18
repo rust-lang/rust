@@ -166,36 +166,6 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
 
 language_item_table! {
 //  Variant name,            Name,                     Method name,                Target                  Generic requirements;
-    Bool,                    sym::bool,                bool_impl,                  Target::Impl,           GenericRequirement::None;
-    Char,                    sym::char,                char_impl,                  Target::Impl,           GenericRequirement::None;
-    Str,                     sym::str,                 str_impl,                   Target::Impl,           GenericRequirement::None;
-    Array,                   sym::array,               array_impl,                 Target::Impl,           GenericRequirement::None;
-    Slice,                   sym::slice,               slice_impl,                 Target::Impl,           GenericRequirement::None;
-    SliceU8,                 sym::slice_u8,            slice_u8_impl,              Target::Impl,           GenericRequirement::None;
-    StrAlloc,                sym::str_alloc,           str_alloc_impl,             Target::Impl,           GenericRequirement::None;
-    SliceAlloc,              sym::slice_alloc,         slice_alloc_impl,           Target::Impl,           GenericRequirement::None;
-    SliceU8Alloc,            sym::slice_u8_alloc,      slice_u8_alloc_impl,        Target::Impl,           GenericRequirement::None;
-    ConstPtr,                sym::const_ptr,           const_ptr_impl,             Target::Impl,           GenericRequirement::None;
-    MutPtr,                  sym::mut_ptr,             mut_ptr_impl,               Target::Impl,           GenericRequirement::None;
-    ConstSlicePtr,           sym::const_slice_ptr,     const_slice_ptr_impl,       Target::Impl,           GenericRequirement::None;
-    MutSlicePtr,             sym::mut_slice_ptr,       mut_slice_ptr_impl,         Target::Impl,           GenericRequirement::None;
-    I8,                      sym::i8,                  i8_impl,                    Target::Impl,           GenericRequirement::None;
-    I16,                     sym::i16,                 i16_impl,                   Target::Impl,           GenericRequirement::None;
-    I32,                     sym::i32,                 i32_impl,                   Target::Impl,           GenericRequirement::None;
-    I64,                     sym::i64,                 i64_impl,                   Target::Impl,           GenericRequirement::None;
-    I128,                    sym::i128,                i128_impl,                  Target::Impl,           GenericRequirement::None;
-    Isize,                   sym::isize,               isize_impl,                 Target::Impl,           GenericRequirement::None;
-    U8,                      sym::u8,                  u8_impl,                    Target::Impl,           GenericRequirement::None;
-    U16,                     sym::u16,                 u16_impl,                   Target::Impl,           GenericRequirement::None;
-    U32,                     sym::u32,                 u32_impl,                   Target::Impl,           GenericRequirement::None;
-    U64,                     sym::u64,                 u64_impl,                   Target::Impl,           GenericRequirement::None;
-    U128,                    sym::u128,                u128_impl,                  Target::Impl,           GenericRequirement::None;
-    Usize,                   sym::usize,               usize_impl,                 Target::Impl,           GenericRequirement::None;
-    F32,                     sym::f32,                 f32_impl,                   Target::Impl,           GenericRequirement::None;
-    F64,                     sym::f64,                 f64_impl,                   Target::Impl,           GenericRequirement::None;
-    F32Runtime,              sym::f32_runtime,         f32_runtime_impl,           Target::Impl,           GenericRequirement::None;
-    F64Runtime,              sym::f64_runtime,         f64_runtime_impl,           Target::Impl,           GenericRequirement::None;
-
     Sized,                   sym::sized,               sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
@@ -216,6 +186,7 @@ language_item_table! {
     Freeze,                  sym::freeze,              freeze_trait,               Target::Trait,          GenericRequirement::Exact(0);
 
     Drop,                    sym::drop,                drop_trait,                 Target::Trait,          GenericRequirement::None;
+    Destruct,                sym::destruct,            destruct_trait,             Target::Trait,          GenericRequirement::None;
 
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);
@@ -322,6 +293,7 @@ language_item_table! {
     TryTraitFromResidual,    sym::from_residual,       from_residual_fn,           Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     TryTraitFromOutput,      sym::from_output,         from_output_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     TryTraitBranch,          sym::branch,              branch_fn,                  Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    TryTraitFromYeet,        sym::from_yeet,           from_yeet_fn,               Target::Fn,             GenericRequirement::None;
 
     PollReady,               sym::Ready,               poll_ready_variant,         Target::Variant,        GenericRequirement::None;
     PollPending,             sym::Pending,             poll_pending_variant,       Target::Variant,        GenericRequirement::None;

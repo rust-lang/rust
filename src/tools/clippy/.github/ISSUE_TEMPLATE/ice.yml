@@ -10,7 +10,7 @@ body:
     attributes:
       label: Summary
       description: |
-        If possible, try to provide a minimal verifiable example. You can read ["Rust Bug Minimization Patterns"][mve] for how to create smaller examples. Otherwise, provide the crate where the ICE occured.
+        If possible, try to provide a minimal verifiable example. You can read ["Rust Bug Minimization Patterns"][mve] for how to create smaller examples. Otherwise, provide the crate where the ICE occurred.
 
         [mve]: http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/
     validations:

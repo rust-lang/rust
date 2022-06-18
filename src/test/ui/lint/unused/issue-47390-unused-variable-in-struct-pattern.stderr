@@ -49,11 +49,6 @@ warning: value assigned to `hours_are_suns` is never read
 LL |         hours_are_suns = false;
    |         ^^^^^^^^^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:5:9
-   |
-LL | #![warn(unused)] // UI tests pass `-A unused` (#43896)
-   |         ^^^^^^
    = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
    = help: maybe it is overwritten before being read?
 
@@ -107,11 +102,6 @@ LL |     let mut mut_unused_var = 1;
    |         |
    |         help: remove this `mut`
    |
-note: the lint level is defined here
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:5:9
-   |
-LL | #![warn(unused)] // UI tests pass `-A unused` (#43896)
-   |         ^^^^^^
    = note: `#[warn(unused_mut)]` implied by `#[warn(unused)]`
 
 warning: variable does not need to be mutable

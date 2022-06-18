@@ -1,0 +1,17 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-95272.rs:10:13
+   |
+LL | fn test<'a, 'b>(x: Cell<&'a ()>, y: Cell<&'b ()>) {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     let f = check;
+   |             ^^^^^ assignment requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a function pointer to `check`
+   = note: the function `check` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to previous error
+

@@ -51,12 +51,12 @@ impl RedundantStaticLifetimes {
     fn visit_type(&mut self, ty: &Ty, cx: &EarlyContext<'_>, reason: &str) {
         match ty.kind {
             // Be careful of nested structures (arrays and tuples)
-            TyKind::Array(ref ty, _) => {
-                self.visit_type(&*ty, cx, reason);
+            TyKind::Array(ref ty, _) | TyKind::Slice(ref ty) => {
+                self.visit_type(ty, cx, reason);
             },
             TyKind::Tup(ref tup) => {
                 for tup_ty in tup {
-                    self.visit_type(&*tup_ty, cx, reason);
+                    self.visit_type(tup_ty, cx, reason);
                 }
             },
             // This is what we are looking for !
@@ -89,9 +89,6 @@ impl RedundantStaticLifetimes {
                 }
                 self.visit_type(&*borrow_type.ty, cx, reason);
             },
-            TyKind::Slice(ref ty) => {
-                self.visit_type(ty, cx, reason);
-            },
             _ => {},
         }
     }
@@ -99,7 +96,7 @@ impl RedundantStaticLifetimes {
 
 impl EarlyLintPass for RedundantStaticLifetimes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::STATIC_IN_CONST) {
+        if !meets_msrv(self.msrv, msrvs::STATIC_IN_CONST) {
             return;
         }
 

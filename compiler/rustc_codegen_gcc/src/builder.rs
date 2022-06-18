@@ -3,11 +3,11 @@ use std::cell::Cell;
 use std::convert::TryFrom;
 use std::ops::Deref;
 
-use gccjit::FunctionType;
 use gccjit::{
     BinaryOp,
     Block,
     ComparisonOp,
+    Context,
     Function,
     LValue,
     RValue,
@@ -30,6 +30,7 @@ use rustc_codegen_ssa::traits::{
     OverflowOp,
     StaticBuilderMethods,
 };
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_span::Span;
@@ -47,6 +48,7 @@ use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
+use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
 
 // TODO(antoyo)
@@ -60,41 +62,23 @@ enum ExtremumOperation {
     Min,
 }
 
-trait EnumClone {
-    fn clone(&self) -> Self;
-}
-
-impl EnumClone for AtomicOrdering {
-    fn clone(&self) -> Self {
-        match *self {
-            AtomicOrdering::NotAtomic => AtomicOrdering::NotAtomic,
-            AtomicOrdering::Unordered => AtomicOrdering::Unordered,
-            AtomicOrdering::Monotonic => AtomicOrdering::Monotonic,
-            AtomicOrdering::Acquire => AtomicOrdering::Acquire,
-            AtomicOrdering::Release => AtomicOrdering::Release,
-            AtomicOrdering::AcquireRelease => AtomicOrdering::AcquireRelease,
-            AtomicOrdering::SequentiallyConsistent => AtomicOrdering::SequentiallyConsistent,
-        }
-    }
-}
-
 pub struct Builder<'a: 'gcc, 'gcc, 'tcx> {
     pub cx: &'a CodegenCx<'gcc, 'tcx>,
-    pub block: Option<Block<'gcc>>,
+    pub block: Block<'gcc>,
     stack_var_count: Cell<usize>,
 }
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
-    fn with_cx(cx: &'a CodegenCx<'gcc, 'tcx>) -> Self {
+    fn with_cx(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Self {
         Builder {
             cx,
-            block: None,
+            block,
             stack_var_count: Cell::new(0),
         }
     }
 
     fn atomic_extremum(&mut self, operation: ExtremumOperation, dst: RValue<'gcc>, src: RValue<'gcc>, order: AtomicOrdering) -> RValue<'gcc> {
-        let size = self.cx.int_width(src.get_type()) / 8;
+        let size = src.get_type().get_size();
 
         let func = self.current_func();
 
@@ -102,9 +86,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             match order {
                 // TODO(antoyo): does this make sense?
                 AtomicOrdering::AcquireRelease | AtomicOrdering::Release => AtomicOrdering::Acquire,
-                _ => order.clone(),
+                _ => order,
             };
-        let previous_value = self.atomic_load(dst.get_type(), dst, load_ordering.clone(), Size::from_bytes(size));
+        let previous_value = self.atomic_load(dst.get_type(), dst, load_ordering, Size::from_bytes(size));
         let previous_var = func.new_local(None, previous_value.get_type(), "previous_value");
         let return_value = func.new_local(None, previous_value.get_type(), "return_value");
         self.llbb().add_assignment(None, previous_var, previous_value);
@@ -114,10 +98,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let after_block = func.new_block("after_while");
         self.llbb().end_with_jump(None, while_block);
 
-        // NOTE: since jumps were added and compare_exchange doesn't expect this, the current blocks in the
+        // NOTE: since jumps were added and compare_exchange doesn't expect this, the current block in the
         // state need to be updated.
-        self.block = Some(while_block);
-        *self.cx.current_block.borrow_mut() = Some(while_block);
+        self.switch_to_block(while_block);
 
         let comparison_operator =
             match operation {
@@ -132,17 +115,16 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         while_block.end_with_conditional(None, cond, while_block, after_block);
 
-        // NOTE: since jumps were added in a place rustc does not expect, the current blocks in the
+        // NOTE: since jumps were added in a place rustc does not expect, the current block in the
         // state need to be updated.
-        self.block = Some(after_block);
-        *self.cx.current_block.borrow_mut() = Some(after_block);
+        self.switch_to_block(after_block);
 
         return_value.to_rvalue()
     }
 
     fn compare_exchange(&self, dst: RValue<'gcc>, cmp: LValue<'gcc>, src: RValue<'gcc>, order: AtomicOrdering, failure_order: AtomicOrdering, weak: bool) -> RValue<'gcc> {
-        let size = self.cx.int_width(src.get_type());
-        let compare_exchange = self.context.get_builtin_function(&format!("__atomic_compare_exchange_{}", size / 8));
+        let size = src.get_type().get_size();
+        let compare_exchange = self.context.get_builtin_function(&format!("__atomic_compare_exchange_{}", size));
         let order = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
         let failure_order = self.context.new_rvalue_from_int(self.i32_type, failure_order.to_gcc());
         let weak = self.context.new_rvalue_from_int(self.bool_type, weak as i32);
@@ -209,18 +191,39 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             param_types.push(param);
         }
 
+        let mut on_stack_param_indices = FxHashSet::default();
+        if let Some(indices) = self.on_stack_params.borrow().get(&gcc_func) {
+            on_stack_param_indices = indices.clone();
+        }
+
         if all_args_match {
             return Cow::Borrowed(args);
         }
+
+        let func_name = format!("{:?}", func_ptr);
 
         let casted_args: Vec<_> = param_types
             .into_iter()
             .zip(args.iter())
             .enumerate()
-            .map(|(_i, (expected_ty, &actual_val))| {
+            .map(|(index, (expected_ty, &actual_val))| {
+                if llvm::ignore_arg_cast(&func_name, index, args.len()) {
+                    return actual_val;
+                }
+
                 let actual_ty = actual_val.get_type();
                 if expected_ty != actual_ty {
-                    self.bitcast(actual_val, expected_ty)
+                    if !actual_ty.is_vector() && !expected_ty.is_vector() && actual_ty.is_integral() && expected_ty.is_integral() && actual_ty.get_size() != expected_ty.get_size() {
+                        self.context.new_cast(None, actual_val, expected_ty)
+                    }
+                    else if on_stack_param_indices.contains(&index) {
+                        actual_val.dereference(None).to_rvalue()
+                    }
+                    else {
+                        assert!(!((actual_ty.is_vector() && !expected_ty.is_vector()) || (!actual_ty.is_vector() && expected_ty.is_vector())), "{:?} ({}) -> {:?} ({}), index: {:?}[{}]", actual_ty, actual_ty.is_vector(), expected_ty, expected_ty.is_vector(), func_ptr, index);
+                        // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
+                        self.bitcast(actual_val, expected_ty)
+                    }
                 }
                 else {
                     actual_val
@@ -245,7 +248,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     pub fn current_func(&self) -> Function<'gcc> {
-        self.block.expect("block").get_function()
+        self.block.get_function()
     }
 
     fn function_call(&mut self, func: RValue<'gcc>, args: &[RValue<'gcc>], _funclet: Option<&Funclet>) -> RValue<'gcc> {
@@ -256,17 +259,16 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
         let return_type = func.get_return_type();
-        let current_block = self.current_block.borrow().expect("block");
         let void_type = self.context.new_type::<()>();
-        let current_func = current_block.get_function();
+        let current_func = self.block.get_function();
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
             let result = current_func.new_local(None, return_type, &format!("returnValue{}", unsafe { RETURN_VALUE_COUNT }));
-            current_block.add_assignment(None, result, self.cx.context.new_call(None, func, &args));
+            self.block.add_assignment(None, result, self.cx.context.new_call(None, func, &args));
             result.to_rvalue()
         }
         else {
-            current_block.add_eval(None, self.cx.context.new_call(None, func, &args));
+            self.block.add_eval(None, self.cx.context.new_call(None, func, &args));
             // Return dummy value when not having return value.
             self.context.new_rvalue_from_long(self.isize_type, 0)
         }
@@ -278,47 +280,45 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
         let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
-        let mut return_type = gcc_func.get_return_type();
-        let current_block = self.current_block.borrow().expect("block");
+        let return_type = gcc_func.get_return_type();
         let void_type = self.context.new_type::<()>();
-        let current_func = current_block.get_function();
-
-        // FIXME(antoyo): As a temporary workaround for unsupported LLVM intrinsics.
-        if gcc_func.get_param_count() == 0 && format!("{:?}", func_ptr) == "__builtin_ia32_pmovmskb128" {
-            return_type = self.int_type;
-        }
+        let current_func = self.block.get_function();
 
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
-            let result = current_func.new_local(None, return_type, &format!("returnValue{}", unsafe { RETURN_VALUE_COUNT }));
-            current_block.add_assignment(None, result, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
+            let result = current_func.new_local(None, return_type, &format!("ptrReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
+            let func_name = format!("{:?}", func_ptr);
+            let args = llvm::adjust_intrinsic_arguments(&self, gcc_func, args, &func_name);
+            self.block.add_assignment(None, result, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             result.to_rvalue()
         }
         else {
+            #[cfg(not(feature="master"))]
             if gcc_func.get_param_count() == 0 {
                 // FIXME(antoyo): As a temporary workaround for unsupported LLVM intrinsics.
-                current_block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &[]));
+                self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &[]));
             }
             else {
-                current_block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
+                self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             }
+            #[cfg(feature="master")]
+            self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             // Return dummy value when not having return value.
             let result = current_func.new_local(None, self.isize_type, "dummyValueThatShouldNeverBeUsed");
-            current_block.add_assignment(None, result, self.context.new_rvalue_from_long(self.isize_type, 0));
+            self.block.add_assignment(None, result, self.context.new_rvalue_from_long(self.isize_type, 0));
             result.to_rvalue()
         }
     }
 
-    pub fn overflow_call(&mut self, func: Function<'gcc>, args: &[RValue<'gcc>], _funclet: Option<&Funclet>) -> RValue<'gcc> {
+    pub fn overflow_call(&self, func: Function<'gcc>, args: &[RValue<'gcc>], _funclet: Option<&Funclet>) -> RValue<'gcc> {
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local.
         let return_type = self.context.new_type::<bool>();
-        let current_block = self.current_block.borrow().expect("block");
-        let current_func = current_block.get_function();
+        let current_func = self.block.get_function();
         // TODO(antoyo): return the new_call() directly? Since the overflow function has no side-effects.
         unsafe { RETURN_VALUE_COUNT += 1 };
-        let result = current_func.new_local(None, return_type, &format!("returnValue{}", unsafe { RETURN_VALUE_COUNT }));
-        current_block.add_assignment(None, result, self.cx.context.new_call(None, func, &args));
+        let result = current_func.new_local(None, return_type, &format!("overflowReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
+        self.block.add_assignment(None, result, self.cx.context.new_call(None, func, &args));
         result.to_rvalue()
     }
 }
@@ -384,14 +384,11 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
 
 impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Self {
-        let mut bx = Builder::with_cx(cx);
-        *cx.current_block.borrow_mut() = Some(block);
-        bx.block = Some(block);
-        bx
+        Builder::with_cx(cx, block)
     }
 
     fn llbb(&self) -> Block<'gcc> {
-        self.block.expect("block")
+        self.block
     }
 
     fn append_block(cx: &'a CodegenCx<'gcc, 'tcx>, func: RValue<'gcc>, name: &str) -> Block<'gcc> {
@@ -405,8 +402,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn switch_to_block(&mut self, block: Self::BasicBlock) {
-        *self.cx.current_block.borrow_mut() = Some(block);
-        self.block = Some(block);
+        self.block = block;
     }
 
     fn ret_void(&mut self) {
@@ -441,50 +437,42 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             let on_val = self.const_uint_big(typ, on_val);
             gcc_cases.push(self.context.new_case(on_val, on_val, dest));
         }
-        self.block.expect("block").end_with_switch(None, value, default_block, &gcc_cases);
+        self.block.end_with_switch(None, value, default_block, &gcc_cases);
     }
 
-    fn invoke(&mut self, _typ: Type<'gcc>, _func: RValue<'gcc>, _args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
-        let condition = self.context.new_rvalue_from_int(self.bool_type, 0);
+    fn invoke(&mut self, typ: Type<'gcc>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+        // TODO(bjorn3): Properly implement unwinding.
+        let call_site = self.call(typ, func, args, None);
+        let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(None, condition, then, catch);
-        self.context.new_rvalue_from_int(self.int_type, 0)
-
-        // TODO(antoyo)
+        call_site
     }
 
     fn unreachable(&mut self) {
         let func = self.context.get_builtin_function("__builtin_unreachable");
-        let block = self.block.expect("block");
-        block.add_eval(None, self.context.new_call(None, func, &[]));
-        let return_type = block.get_function().get_return_type();
+        self.block.add_eval(None, self.context.new_call(None, func, &[]));
+        let return_type = self.block.get_function().get_return_type();
         let void_type = self.context.new_type::<()>();
         if return_type == void_type {
-            block.end_with_void_return(None)
+            self.block.end_with_void_return(None)
         }
         else {
             let return_value = self.current_func()
                 .new_local(None, return_type, "unreachableReturn");
-            block.end_with_return(None, return_value)
+            self.block.end_with_return(None, return_value)
         }
     }
 
-    fn add(&mut self, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
-        // FIXME(antoyo): this should not be required.
-        if format!("{:?}", a.get_type()) != format!("{:?}", b.get_type()) {
-            b = self.context.new_cast(None, b, a.get_type());
-        }
-        a + b
+    fn add(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        self.gcc_add(a, b)
     }
 
     fn fadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         a + b
     }
 
-    fn sub(&mut self, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
-        if a.get_type() != b.get_type() {
-            b = self.context.new_cast(None, b, a.get_type());
-        }
-        a - b
+    fn sub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        self.gcc_sub(a, b)
     }
 
     fn fsub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -492,7 +480,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn mul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a * b
+        self.gcc_mul(a, b)
     }
 
     fn fmul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -500,23 +488,24 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn udiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): convert the arguments to unsigned?
-        a / b
+        self.gcc_udiv(a, b)
     }
 
     fn exactudiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): convert the arguments to unsigned?
         // TODO(antoyo): poison if not exact.
+        let a_type = a.get_type().to_unsigned(self);
+        let a = self.gcc_int_cast(a, a_type);
+        let b_type = b.get_type().to_unsigned(self);
+        let b = self.gcc_int_cast(b, b_type);
         a / b
     }
 
     fn sdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): convert the arguments to signed?
-        a / b
+        self.gcc_sdiv(a, b)
     }
 
     fn exactsdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): posion if not exact.
+        // TODO(antoyo): poison if not exact.
         // FIXME(antoyo): rustc_codegen_ssa::mir::intrinsic uses different types for a and b but they
         // should be the same.
         let typ = a.get_type().to_signed(self);
@@ -529,101 +518,53 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn urem(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a % b
+        self.gcc_urem(a, b)
     }
 
     fn srem(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a % b
+        self.gcc_srem(a, b)
     }
 
     fn frem(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        if a.get_type() == self.cx.float_type {
+        if a.get_type().is_compatible_with(self.cx.float_type) {
             let fmodf = self.context.get_builtin_function("fmodf");
             // FIXME(antoyo): this seems to produce the wrong result.
             return self.context.new_call(None, fmodf, &[a, b]);
         }
-        assert_eq!(a.get_type(), self.cx.double_type);
+        assert_eq!(a.get_type().unqualified(), self.cx.double_type);
 
         let fmod = self.context.get_builtin_function("fmod");
         return self.context.new_call(None, fmod, &[a, b]);
     }
 
     fn shl(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // FIXME(antoyo): remove the casts when libgccjit can shift an unsigned number by an unsigned number.
-        let a_type = a.get_type();
-        let b_type = b.get_type();
-        if a_type.is_unsigned(self) && b_type.is_signed(self) {
-            let a = self.context.new_cast(None, a, b_type);
-            let result = a << b;
-            self.context.new_cast(None, result, a_type)
-        }
-        else if a_type.is_signed(self) && b_type.is_unsigned(self) {
-            let b = self.context.new_cast(None, b, a_type);
-            a << b
-        }
-        else {
-            a << b
-        }
+        self.gcc_shl(a, b)
     }
 
     fn lshr(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // FIXME(antoyo): remove the casts when libgccjit can shift an unsigned number by an unsigned number.
-        // TODO(antoyo): cast to unsigned to do a logical shift if that does not work.
-        let a_type = a.get_type();
-        let b_type = b.get_type();
-        if a_type.is_unsigned(self) && b_type.is_signed(self) {
-            let a = self.context.new_cast(None, a, b_type);
-            let result = a >> b;
-            self.context.new_cast(None, result, a_type)
-        }
-        else if a_type.is_signed(self) && b_type.is_unsigned(self) {
-            let b = self.context.new_cast(None, b, a_type);
-            a >> b
-        }
-        else {
-            a >> b
-        }
+        self.gcc_lshr(a, b)
     }
 
     fn ashr(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): check whether behavior is an arithmetic shift for >> .
-        // FIXME(antoyo): remove the casts when libgccjit can shift an unsigned number by an unsigned number.
-        let a_type = a.get_type();
-        let b_type = b.get_type();
-        if a_type.is_unsigned(self) && b_type.is_signed(self) {
-            let a = self.context.new_cast(None, a, b_type);
-            let result = a >> b;
-            self.context.new_cast(None, result, a_type)
-        }
-        else if a_type.is_signed(self) && b_type.is_unsigned(self) {
-            let b = self.context.new_cast(None, b, a_type);
-            a >> b
-        }
-        else {
-            a >> b
-        }
+        // It seems to be if the value is signed.
+        self.gcc_lshr(a, b)
     }
 
-    fn and(&mut self, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
-        if a.get_type() != b.get_type() {
-            b = self.context.new_cast(None, b, a.get_type());
-        }
-        a & b
+    fn and(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        self.gcc_and(a, b)
     }
 
-    fn or(&mut self, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
-        if a.get_type() != b.get_type() {
-            b = self.context.new_cast(None, b, a.get_type());
-        }
-        a | b
+    fn or(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        self.cx.gcc_or(a, b)
     }
 
     fn xor(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a ^ b
+        self.gcc_xor(a, b)
     }
 
     fn neg(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
-        self.cx.context.new_unary_op(None, UnaryOp::Minus, a.get_type(), a)
+        self.gcc_neg(a)
     }
 
     fn fneg(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
@@ -631,14 +572,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn not(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
-        let operation =
-            if a.get_type().is_bool() {
-                UnaryOp::LogicalNegate
-            }
-            else {
-                UnaryOp::BitwiseNegate
-            };
-        self.cx.context.new_unary_op(None, operation, a.get_type(), a)
+        self.gcc_not(a)
     }
 
     fn unchecked_sadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -646,7 +580,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn unchecked_uadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        a + b
+        self.gcc_add(a, b)
     }
 
     fn unchecked_ssub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -655,7 +589,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn unchecked_usub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): should generate poison value?
-        a - b
+        self.gcc_sub(a, b)
     }
 
     fn unchecked_smul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -687,76 +621,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn checked_binop(&mut self, oop: OverflowOp, typ: Ty<'_>, lhs: Self::Value, rhs: Self::Value) -> (Self::Value, Self::Value) {
-        use rustc_middle::ty::{Int, IntTy::*, Uint, UintTy::*};
-
-        let new_kind =
-            match typ.kind() {
-                Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.pointer_width)),
-                Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.pointer_width)),
-                t @ (Uint(_) | Int(_)) => t.clone(),
-                _ => panic!("tried to get overflow intrinsic for op applied to non-int type"),
-            };
-
-        // TODO(antoyo): remove duplication with intrinsic?
-        let name =
-            match oop {
-                OverflowOp::Add =>
-                    match new_kind {
-                        Int(I8) => "__builtin_add_overflow",
-                        Int(I16) => "__builtin_add_overflow",
-                        Int(I32) => "__builtin_sadd_overflow",
-                        Int(I64) => "__builtin_saddll_overflow",
-                        Int(I128) => "__builtin_add_overflow",
-
-                        Uint(U8) => "__builtin_add_overflow",
-                        Uint(U16) => "__builtin_add_overflow",
-                        Uint(U32) => "__builtin_uadd_overflow",
-                        Uint(U64) => "__builtin_uaddll_overflow",
-                        Uint(U128) => "__builtin_add_overflow",
-
-                        _ => unreachable!(),
-                    },
-                OverflowOp::Sub =>
-                    match new_kind {
-                        Int(I8) => "__builtin_sub_overflow",
-                        Int(I16) => "__builtin_sub_overflow",
-                        Int(I32) => "__builtin_ssub_overflow",
-                        Int(I64) => "__builtin_ssubll_overflow",
-                        Int(I128) => "__builtin_sub_overflow",
-
-                        Uint(U8) => "__builtin_sub_overflow",
-                        Uint(U16) => "__builtin_sub_overflow",
-                        Uint(U32) => "__builtin_usub_overflow",
-                        Uint(U64) => "__builtin_usubll_overflow",
-                        Uint(U128) => "__builtin_sub_overflow",
-
-                        _ => unreachable!(),
-                    },
-                OverflowOp::Mul =>
-                    match new_kind {
-                        Int(I8) => "__builtin_mul_overflow",
-                        Int(I16) => "__builtin_mul_overflow",
-                        Int(I32) => "__builtin_smul_overflow",
-                        Int(I64) => "__builtin_smulll_overflow",
-                        Int(I128) => "__builtin_mul_overflow",
-
-                        Uint(U8) => "__builtin_mul_overflow",
-                        Uint(U16) => "__builtin_mul_overflow",
-                        Uint(U32) => "__builtin_umul_overflow",
-                        Uint(U64) => "__builtin_umulll_overflow",
-                        Uint(U128) => "__builtin_mul_overflow",
-
-                        _ => unreachable!(),
-                    },
-            };
-
-        let intrinsic = self.context.get_builtin_function(&name);
-        let res = self.current_func()
-            // TODO(antoyo): is it correct to use rhs type instead of the parameter typ?
-            .new_local(None, rhs.get_type(), "binopResult")
-            .get_address(None);
-        let overflow = self.overflow_call(intrinsic, &[lhs, rhs, res], None);
-        (res.dereference(None).to_rvalue(), overflow)
+        self.gcc_checked_binop(oop, typ, lhs, rhs)
     }
 
     fn alloca(&mut self, ty: Type<'gcc>, align: Align) -> RValue<'gcc> {
@@ -782,18 +647,17 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn load(&mut self, _ty: Type<'gcc>, ptr: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
-        // TODO(antoyo): use ty.
+    fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
         let block = self.llbb();
         let function = block.get_function();
         // NOTE: instead of returning the dereference here, we have to assign it to a variable in
         // the current basic block. Otherwise, it could be used in another basic block, causing a
         // dereference after a drop, for instance.
-        // TODO(antoyo): handle align.
+        // TODO(antoyo): handle align of the load instruction.
+        let ptr = self.context.new_cast(None, ptr, pointee_ty.make_pointer());
         let deref = ptr.dereference(None).to_rvalue();
-        let value_type = deref.get_type();
         unsafe { RETURN_VALUE_COUNT += 1 };
-        let loaded_value = function.new_local(None, value_type, &format!("loadedValue{}", unsafe { RETURN_VALUE_COUNT }));
+        let loaded_value = function.new_local(None, pointee_ty, &format!("loadedValue{}", unsafe { RETURN_VALUE_COUNT }));
         block.add_assignment(None, loaded_value, deref);
         loaded_value.to_rvalue()
     }
@@ -826,11 +690,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
 
         fn scalar_load_metadata<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, load: RValue<'gcc>, scalar: &abi::Scalar) {
-            let vr = scalar.valid_range.clone();
-            match scalar.value {
+            let vr = scalar.valid_range(bx);
+            match scalar.primitive() {
                 abi::Int(..) => {
                     if !scalar.is_always_valid(bx) {
-                        bx.range_metadata(load, scalar.valid_range);
+                        bx.range_metadata(load, vr);
                     }
                 }
                 abi::Pointer if vr.start < vr.end && !vr.contains(0) => {
@@ -845,19 +709,24 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 OperandValue::Ref(place.llval, Some(llextra), place.align)
             }
             else if place.layout.is_gcc_immediate() {
-                let load = self.load(place.llval.get_type(), place.llval, place.align);
+                let load = self.load(
+                    place.layout.gcc_type(self, false),
+                    place.llval,
+                    place.align,
+                );
                 if let abi::Abi::Scalar(ref scalar) = place.layout.abi {
                     scalar_load_metadata(self, load, scalar);
                 }
                 OperandValue::Immediate(self.to_immediate(load, place.layout))
             }
             else if let abi::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
-                let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
+                let b_offset = a.size(self).align_to(b.align(self).abi);
                 let pair_type = place.layout.gcc_type(self, false);
 
                 let mut load = |i, scalar: &abi::Scalar, align| {
                     let llptr = self.struct_gep(pair_type, place.llval, i as u64);
-                    let load = self.load(llptr.get_type(), llptr, align);
+                    let llty = place.layout.scalar_pair_element_gcc_type(self, i, false);
+                    let load = self.load(llty, llptr, align);
                     scalar_load_metadata(self, load, scalar);
                     if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
                 };
@@ -929,9 +798,16 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.store_with_flags(val, ptr, align, MemFlags::empty())
     }
 
-    fn store_with_flags(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, _align: Align, _flags: MemFlags) -> RValue<'gcc> {
+    fn store_with_flags(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align, _flags: MemFlags) -> RValue<'gcc> {
         let ptr = self.check_store(val, ptr);
-        self.llbb().add_assignment(None, ptr.dereference(None), val);
+        let destination = ptr.dereference(None);
+        // NOTE: libgccjit does not support specifying the alignment on the assignment, so we cast
+        // to type so it gets the proper alignment.
+        let destination_type = destination.to_rvalue().get_type().unqualified();
+        let aligned_type = destination_type.get_aligned(align.bytes()).make_pointer();
+        let aligned_destination = self.cx.context.new_bitcast(None, ptr, aligned_type);
+        let aligned_destination = aligned_destination.dereference(None);
+        self.llbb().add_assignment(None, aligned_destination, val);
         // TODO(antoyo): handle align and flags.
         // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
         self.cx.context.new_rvalue_zero(self.type_i32())
@@ -1006,7 +882,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     /* Casts */
     fn trunc(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): check that it indeed truncate the value.
-        self.context.new_cast(None, value, dest_ty)
+        self.gcc_int_cast(value, dest_ty)
     }
 
     fn sext(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
@@ -1019,19 +895,19 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn fptoui(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.context.new_cast(None, value, dest_ty)
+        self.gcc_float_to_uint_cast(value, dest_ty)
     }
 
     fn fptosi(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.context.new_cast(None, value, dest_ty)
+        self.gcc_float_to_int_cast(value, dest_ty)
     }
 
     fn uitofp(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.context.new_cast(None, value, dest_ty)
+        self.gcc_uint_to_float_cast(value, dest_ty)
     }
 
     fn sitofp(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.context.new_cast(None, value, dest_ty)
+        self.gcc_int_to_float_cast(value, dest_ty)
     }
 
     fn fptrunc(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
@@ -1044,11 +920,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn ptrtoint(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.cx.ptrtoint(self.block.expect("block"), value, dest_ty)
+        let usize_value = self.cx.const_bitcast(value, self.cx.type_isize());
+        self.intcast(usize_value, dest_ty, false)
     }
 
     fn inttoptr(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.cx.inttoptr(self.block.expect("block"), value, dest_ty)
+        let usize_value = self.intcast(value, self.cx.type_isize(), false);
+        self.cx.const_bitcast(usize_value, dest_ty)
     }
 
     fn bitcast(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
@@ -1057,14 +935,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn intcast(&mut self, value: RValue<'gcc>, dest_typ: Type<'gcc>, _is_signed: bool) -> RValue<'gcc> {
         // NOTE: is_signed is for value, not dest_typ.
-        self.cx.context.new_cast(None, value, dest_typ)
+        self.gcc_int_cast(value, dest_typ)
     }
 
     fn pointercast(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         let val_type = value.get_type();
         match (type_is_pointer(val_type), type_is_pointer(dest_ty)) {
             (false, true) => {
-                // NOTE: Projecting a field of a pointer type will attemp a cast from a signed char to
+                // NOTE: Projecting a field of a pointer type will attempt a cast from a signed char to
                 // a pointer, which is not supported by gccjit.
                 return self.cx.context.new_cast(None, self.inttoptr(value, val_type.make_pointer()), dest_ty);
             },
@@ -1078,21 +956,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     /* Comparisons */
-    fn icmp(&mut self, op: IntPredicate, mut lhs: RValue<'gcc>, mut rhs: RValue<'gcc>) -> RValue<'gcc> {
-        let left_type = lhs.get_type();
-        let right_type = rhs.get_type();
-        if left_type != right_type {
-            // NOTE: because libgccjit cannot compare function pointers.
-            if left_type.dyncast_function_ptr_type().is_some() && right_type.dyncast_function_ptr_type().is_some() {
-                lhs = self.context.new_cast(None, lhs, self.usize_type.make_pointer());
-                rhs = self.context.new_cast(None, rhs, self.usize_type.make_pointer());
-            }
-            // NOTE: hack because we try to cast a vector type to the same vector type.
-            else if format!("{:?}", left_type) != format!("{:?}", right_type) {
-                rhs = self.context.new_cast(None, rhs, left_type);
-            }
-        }
-        self.context.new_comparison(None, op.to_gcc_comparison(), lhs, rhs)
+    fn icmp(&mut self, op: IntPredicate, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
+        self.gcc_icmp(op, lhs, rhs)
     }
 
     fn fcmp(&mut self, op: RealPredicate, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
@@ -1100,28 +965,21 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     /* Miscellaneous instructions */
-    fn memcpy(&mut self, dst: RValue<'gcc>, dst_align: Align, src: RValue<'gcc>, src_align: Align, size: RValue<'gcc>, flags: MemFlags) {
-        if flags.contains(MemFlags::NONTEMPORAL) {
-            // HACK(nox): This is inefficient but there is no nontemporal memcpy.
-            let val = self.load(src.get_type(), src, src_align);
-            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
-            self.store_with_flags(val, ptr, dst_align, flags);
-            return;
-        }
+    fn memcpy(&mut self, dst: RValue<'gcc>, _dst_align: Align, src: RValue<'gcc>, _src_align: Align, size: RValue<'gcc>, flags: MemFlags) {
+        assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_size_t(), false);
         let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let dst = self.pointercast(dst, self.type_i8p());
         let src = self.pointercast(src, self.type_ptr_to(self.type_void()));
         let memcpy = self.context.get_builtin_function("memcpy");
-        let block = self.block.expect("block");
         // TODO(antoyo): handle aligns and is_volatile.
-        block.add_eval(None, self.context.new_call(None, memcpy, &[dst, src, size]));
+        self.block.add_eval(None, self.context.new_call(None, memcpy, &[dst, src, size]));
     }
 
     fn memmove(&mut self, dst: RValue<'gcc>, dst_align: Align, src: RValue<'gcc>, src_align: Align, size: RValue<'gcc>, flags: MemFlags) {
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memmove.
-            let val = self.load(src.get_type(), src, src_align);
+            let val = self.load(src.get_type().get_pointee().expect("get_pointee"), src, src_align);
             let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
             self.store_with_flags(val, ptr, dst_align, flags);
             return;
@@ -1132,20 +990,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let src = self.pointercast(src, self.type_ptr_to(self.type_void()));
 
         let memmove = self.context.get_builtin_function("memmove");
-        let block = self.block.expect("block");
         // TODO(antoyo): handle is_volatile.
-        block.add_eval(None, self.context.new_call(None, memmove, &[dst, src, size]));
+        self.block.add_eval(None, self.context.new_call(None, memmove, &[dst, src, size]));
     }
 
     fn memset(&mut self, ptr: RValue<'gcc>, fill_byte: RValue<'gcc>, size: RValue<'gcc>, _align: Align, flags: MemFlags) {
         let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let ptr = self.pointercast(ptr, self.type_i8p());
         let memset = self.context.get_builtin_function("memset");
-        let block = self.block.expect("block");
         // TODO(antoyo): handle align and is_volatile.
         let fill_byte = self.context.new_cast(None, fill_byte, self.i32_type);
         let size = self.intcast(size, self.type_size_t(), false);
-        block.add_eval(None, self.context.new_call(None, memset, &[ptr, fill_byte, size]));
+        self.block.add_eval(None, self.context.new_call(None, memset, &[ptr, fill_byte, size]));
     }
 
     fn select(&mut self, cond: RValue<'gcc>, then_val: RValue<'gcc>, mut else_val: RValue<'gcc>) -> RValue<'gcc> {
@@ -1159,16 +1015,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         then_block.add_assignment(None, variable, then_val);
         then_block.end_with_jump(None, after_block);
 
-        if then_val.get_type() != else_val.get_type() {
+        if !then_val.get_type().is_compatible_with(else_val.get_type()) {
             else_val = self.context.new_cast(None, else_val, then_val.get_type());
         }
         else_block.add_assignment(None, variable, else_val);
         else_block.end_with_jump(None, after_block);
 
-        // NOTE: since jumps were added in a place rustc does not expect, the current blocks in the
+        // NOTE: since jumps were added in a place rustc does not expect, the current block in the
         // state need to be updated.
-        self.block = Some(after_block);
-        *self.cx.current_block.borrow_mut() = Some(after_block);
+        self.switch_to_block(after_block);
 
         variable.to_rvalue()
     }
@@ -1264,7 +1119,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>) -> RValue<'gcc> {
-        let field1 = self.context.new_field(None, self.u8_type, "landing_pad_field_1");
+        let field1 = self.context.new_field(None, self.u8_type.make_pointer(), "landing_pad_field_1");
         let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
         let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
         self.current_func().new_local(None, struct_type.as_type(), "landing_pad")
@@ -1275,7 +1130,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn resume(&mut self, _exn: RValue<'gcc>) {
-        unimplemented!();
+        // TODO(bjorn3): Properly implement unwinding.
+        self.unreachable();
     }
 
     fn cleanup_pad(&mut self, _parent: Option<RValue<'gcc>>, _args: &[RValue<'gcc>]) -> Funclet {
@@ -1322,7 +1178,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn atomic_rmw(&mut self, op: AtomicRmwBinOp, dst: RValue<'gcc>, src: RValue<'gcc>, order: AtomicOrdering) -> RValue<'gcc> {
-        let size = self.cx.int_width(src.get_type()) / 8;
+        let size = src.get_type().get_size();
         let name =
             match op {
                 AtomicRmwBinOp::AtomicXchg => format!("__atomic_exchange_{}", size),
@@ -1396,7 +1252,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             // Fix the code in codegen_ssa::base::from_immediate.
             return value;
         }
-        self.context.new_cast(None, value, dest_typ)
+        self.gcc_int_cast(value, dest_typ)
     }
 
     fn cx(&self) -> &CodegenCx<'gcc, 'tcx> {
@@ -1404,7 +1260,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn do_not_inline(&mut self, _llret: RValue<'gcc>) {
-        unimplemented!();
+        // FIXME(bjorn3): implement
     }
 
     fn set_span(&mut self, _span: Span) {}
@@ -1439,16 +1295,183 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 }
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
+    #[cfg(feature="master")]
     pub fn shuffle_vector(&mut self, v1: RValue<'gcc>, v2: RValue<'gcc>, mask: RValue<'gcc>) -> RValue<'gcc> {
-        let return_type = v1.get_type();
-        let params = [
-            self.context.new_parameter(None, return_type, "v1"),
-            self.context.new_parameter(None, return_type, "v2"),
-            self.context.new_parameter(None, mask.get_type(), "mask"),
-        ];
-        let shuffle = self.context.new_function(None, FunctionType::Extern, return_type, &params, "_mm_shuffle_epi8", false);
-        self.context.new_call(None, shuffle, &[v1, v2, mask])
+        let struct_type = mask.get_type().is_struct().expect("mask of struct type");
+
+        // TODO(antoyo): use a recursive unqualified() here.
+        let vector_type = v1.get_type().unqualified().dyncast_vector().expect("vector type");
+        let element_type = vector_type.get_element_type();
+        let vec_num_units = vector_type.get_num_units();
+
+        let mask_num_units = struct_type.get_field_count();
+        let mut vector_elements = vec![];
+        let mask_element_type =
+            if element_type.is_integral() {
+                element_type
+            }
+            else {
+                #[cfg(feature="master")]
+                {
+                    self.cx.type_ix(element_type.get_size() as u64 * 8)
+                }
+                #[cfg(not(feature="master"))]
+                self.int_type
+            };
+        for i in 0..mask_num_units {
+            let field = struct_type.get_field(i as i32);
+            vector_elements.push(self.context.new_cast(None, mask.access_field(None, field).to_rvalue(), mask_element_type));
+        }
+
+        // NOTE: the mask needs to be the same length as the input vectors, so add the missing
+        // elements in the mask if needed.
+        for _ in mask_num_units..vec_num_units {
+            vector_elements.push(self.context.new_rvalue_zero(mask_element_type));
+        }
+
+        let array_type = self.context.new_array_type(None, element_type, vec_num_units as i32);
+        let result_type = self.context.new_vector_type(element_type, mask_num_units as u64);
+        let (v1, v2) =
+            if vec_num_units < mask_num_units {
+                // NOTE: the mask needs to be the same length as the input vectors, so join the 2
+                // vectors and create a dummy second vector.
+                // TODO(antoyo): switch to using new_vector_access.
+                let array = self.context.new_bitcast(None, v1, array_type);
+                let mut elements = vec![];
+                for i in 0..vec_num_units {
+                    elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+                }
+                // TODO(antoyo): switch to using new_vector_access.
+                let array = self.context.new_bitcast(None, v2, array_type);
+                for i in 0..(mask_num_units - vec_num_units) {
+                    elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+                }
+                let v1 = self.context.new_rvalue_from_vector(None, result_type, &elements);
+                let zero = self.context.new_rvalue_zero(element_type);
+                let v2 = self.context.new_rvalue_from_vector(None, result_type, &vec![zero; mask_num_units]);
+                (v1, v2)
+            }
+            else {
+                (v1, v2)
+            };
+
+        let new_mask_num_units = std::cmp::max(mask_num_units, vec_num_units);
+        let mask_type = self.context.new_vector_type(mask_element_type, new_mask_num_units as u64);
+        let mask = self.context.new_rvalue_from_vector(None, mask_type, &vector_elements);
+        let result = self.context.new_rvalue_vector_perm(None, v1, v2, mask);
+
+        if vec_num_units != mask_num_units {
+            // NOTE: if padding was added, only select the number of elements of the masks to
+            // remove that padding in the result.
+            let mut elements = vec![];
+            // TODO(antoyo): switch to using new_vector_access.
+            let array = self.context.new_bitcast(None, result, array_type);
+            for i in 0..mask_num_units {
+                elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+            }
+            self.context.new_rvalue_from_vector(None, result_type, &elements)
+        }
+        else {
+            result
+        }
     }
+
+    #[cfg(not(feature="master"))]
+    pub fn shuffle_vector(&mut self, _v1: RValue<'gcc>, _v2: RValue<'gcc>, _mask: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    #[cfg(feature="master")]
+    pub fn vector_reduce<F>(&mut self, src: RValue<'gcc>, op: F) -> RValue<'gcc>
+    where F: Fn(RValue<'gcc>, RValue<'gcc>, &'gcc Context<'gcc>) -> RValue<'gcc>
+    {
+        let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
+        let element_count = vector_type.get_num_units();
+        let mut vector_elements = vec![];
+        for i in 0..element_count {
+            vector_elements.push(i);
+        }
+        let mask_type = self.context.new_vector_type(self.int_type, element_count as u64);
+        let mut shift = 1;
+        let mut res = src;
+        while shift < element_count {
+            let vector_elements: Vec<_> =
+                vector_elements.iter()
+                    .map(|i| self.context.new_rvalue_from_int(self.int_type, ((i + shift) % element_count) as i32))
+                    .collect();
+            let mask = self.context.new_rvalue_from_vector(None, mask_type, &vector_elements);
+            let shifted = self.context.new_rvalue_vector_perm(None, res, res, mask);
+            shift *= 2;
+            res = op(res, shifted, &self.context);
+        }
+        self.context.new_vector_access(None, res, self.context.new_rvalue_zero(self.int_type))
+            .to_rvalue()
+    }
+
+    #[cfg(not(feature="master"))]
+    pub fn vector_reduce<F>(&mut self, src: RValue<'gcc>, op: F) -> RValue<'gcc>
+    where F: Fn(RValue<'gcc>, RValue<'gcc>, &'gcc Context<'gcc>) -> RValue<'gcc>
+    {
+        unimplemented!();
+    }
+
+    pub fn vector_reduce_op(&mut self, src: RValue<'gcc>, op: BinaryOp) -> RValue<'gcc> {
+        self.vector_reduce(src, |a, b, context| context.new_binary_op(None, op, a.get_type(), a, b))
+    }
+
+    pub fn vector_reduce_fadd_fast(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    pub fn vector_reduce_fmul_fast(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    // Inspired by Hacker's Delight min implementation.
+    pub fn vector_reduce_min(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
+        self.vector_reduce(src, |a, b, context| {
+            let differences_or_zeros = difference_or_zero(a, b, context);
+            context.new_binary_op(None, BinaryOp::Minus, a.get_type(), a, differences_or_zeros)
+        })
+    }
+
+    // Inspired by Hacker's Delight max implementation.
+    pub fn vector_reduce_max(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
+        self.vector_reduce(src, |a, b, context| {
+            let differences_or_zeros = difference_or_zero(a, b, context);
+            context.new_binary_op(None, BinaryOp::Plus, b.get_type(), b, differences_or_zeros)
+        })
+    }
+
+    pub fn vector_select(&mut self, cond: RValue<'gcc>, then_val: RValue<'gcc>, else_val: RValue<'gcc>) -> RValue<'gcc> {
+        // cond is a vector of integers, not of bools.
+        let cond_type = cond.get_type();
+        let vector_type = cond_type.unqualified().dyncast_vector().expect("vector type");
+        let num_units = vector_type.get_num_units();
+        let element_type = vector_type.get_element_type();
+        let zeros = vec![self.context.new_rvalue_zero(element_type); num_units];
+        let zeros = self.context.new_rvalue_from_vector(None, cond_type, &zeros);
+
+        let masks = self.context.new_comparison(None, ComparisonOp::NotEquals, cond, zeros);
+        let then_vals = masks & then_val;
+
+        let ones = vec![self.context.new_rvalue_one(element_type); num_units];
+        let ones = self.context.new_rvalue_from_vector(None, cond_type, &ones);
+        let inverted_masks = masks + ones;
+        // NOTE: sometimes, the type of else_val can be different than the type of then_val in
+        // libgccjit (vector of int vs vector of int32_t), but they should be the same for the AND
+        // operation to work.
+        let else_val = self.context.new_bitcast(None, else_val, then_val.get_type());
+        let else_vals = inverted_masks & else_val;
+
+        then_vals | else_vals
+    }
+}
+
+fn difference_or_zero<'gcc>(a: RValue<'gcc>, b: RValue<'gcc>, context: &'gcc Context<'gcc>) -> RValue<'gcc> {
+    let difference = a - b;
+    let masks = context.new_comparison(None, ComparisonOp::GreaterThanEquals, b, a);
+    difference & masks
 }
 
 impl<'a, 'gcc, 'tcx> StaticBuilderMethods for Builder<'a, 'gcc, 'tcx> {
@@ -1470,7 +1493,7 @@ impl<'tcx> HasTargetSpec for Builder<'_, '_, 'tcx> {
     }
 }
 
-trait ToGccComp {
+pub trait ToGccComp {
     fn to_gcc_comparison(&self) -> ComparisonOp;
 }
 
@@ -1536,9 +1559,8 @@ impl ToGccOrdering for AtomicOrdering {
 
         let ordering =
             match self {
-                AtomicOrdering::NotAtomic => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
                 AtomicOrdering::Unordered => __ATOMIC_RELAXED,
-                AtomicOrdering::Monotonic => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
+                AtomicOrdering::Relaxed => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
                 AtomicOrdering::Acquire => __ATOMIC_ACQUIRE,
                 AtomicOrdering::Release => __ATOMIC_RELEASE,
                 AtomicOrdering::AcquireRelease => __ATOMIC_ACQ_REL,

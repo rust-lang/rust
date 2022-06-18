@@ -76,7 +76,7 @@ use crate::sys_common::rwlock as sys;
 /// [`Mutex`]: super::Mutex
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLock<T: ?Sized> {
-    inner: sys::MovableRWLock,
+    inner: sys::MovableRwLock,
     poison: poison::Flag,
     data: UnsafeCell<T>,
 }
@@ -99,6 +99,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
                       points can cause deadlocks, delays, \
                       and cause Futures to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[clippy::has_significant_drop]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
     lock: &'a RwLock<T>,
 }
@@ -122,6 +123,7 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
                       points can cause deadlocks, delays, \
                       and cause Future's to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[clippy::has_significant_drop]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
     lock: &'a RwLock<T>,
     poison: poison::Guard,
@@ -146,7 +148,7 @@ impl<T> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> RwLock<T> {
         RwLock {
-            inner: sys::MovableRWLock::new(),
+            inner: sys::MovableRwLock::new(),
             poison: poison::Flag::new(),
             data: UnsafeCell::new(t),
         }
@@ -364,6 +366,45 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn is_poisoned(&self) -> bool {
         self.poison.get()
+    }
+
+    /// Clear the poisoned state from a lock
+    ///
+    /// If the lock is poisoned, it will remain poisoned until this function is called. This allows
+    /// recovering from a poisoned state and marking that it has recovered. For example, if the
+    /// value is overwritten by a known-good value, then the mutex can be marked as un-poisoned. Or
+    /// possibly, the value could be inspected to determine if it is in a consistent state, and if
+    /// so the poison is removed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mutex_unpoison)]
+    ///
+    /// use std::sync::{Arc, RwLock};
+    /// use std::thread;
+    ///
+    /// let lock = Arc::new(RwLock::new(0));
+    /// let c_lock = Arc::clone(&lock);
+    ///
+    /// let _ = thread::spawn(move || {
+    ///     let _lock = c_lock.write().unwrap();
+    ///     panic!(); // the mutex gets poisoned
+    /// }).join();
+    ///
+    /// assert_eq!(lock.is_poisoned(), true);
+    /// let guard = lock.write().unwrap_or_else(|mut e| {
+    ///     **e.get_mut() = 1;
+    ///     lock.clear_poison();
+    ///     e.into_inner()
+    /// });
+    /// assert_eq!(lock.is_poisoned(), false);
+    /// assert_eq!(*guard, 1);
+    /// ```
+    #[inline]
+    #[unstable(feature = "mutex_unpoison", issue = "96469")]
+    pub fn clear_poison(&self) {
+        self.poison.clear();
     }
 
     /// Consumes this `RwLock`, returning the underlying data.

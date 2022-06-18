@@ -1,16 +1,18 @@
 error[E0283]: type annotations needed
-  --> $DIR/issue-72616.rs:20:30
+  --> $DIR/issue-72616.rs:20:37
    |
 LL |         if String::from("a") == "a".try_into().unwrap() {}
-   |                              ^^ -------------- this method call resolves to `Result<T, <Self as TryInto<T>>::Error>`
-   |                              |
-   |                              cannot infer type
+   |                                     ^^^^^^^^
    |
    = note: multiple `impl`s satisfying `String: PartialEq<_>` found in the `alloc` crate:
            - impl PartialEq for String;
            - impl<'a, 'b> PartialEq<&'a str> for String;
            - impl<'a, 'b> PartialEq<Cow<'a, str>> for String;
            - impl<'a, 'b> PartialEq<str> for String;
+help: try using a fully qualified path to specify the expected types
+   |
+LL |         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
+   |                                 +++++++++++++++++++++++++++++++   ~
 
 error: aborting due to previous error
 

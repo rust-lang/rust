@@ -27,4 +27,8 @@ fn a(_1: &mut [T]) -> &mut [T] {
         StorageDead(_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:4:1: 4:2
         return;                          // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:4:2: 4:2
     }
+
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:2:1: 4:2
+    }
 }

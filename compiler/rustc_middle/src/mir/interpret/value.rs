@@ -11,7 +11,8 @@ use rustc_target::abi::{HasDataLayout, Size};
 use crate::ty::{Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{
-    AllocId, AllocRange, Allocation, InterpResult, Pointer, PointerArithmetic, Provenance,
+    AllocId, AllocRange, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
+    ScalarSizeMismatch,
 };
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
@@ -34,13 +35,13 @@ pub enum ConstValue<'tcx> {
     Scalar(Scalar),
 
     /// Used only for `&[u8]` and `&str`
-    Slice { data: &'tcx Allocation, start: usize, end: usize },
+    Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
 
     /// A value not represented/representable by `Scalar` or `Slice`
     ByRef {
         /// The backing memory of the value, may contain more memory than needed for just the value
-        /// in order to share `Allocation`s between values
-        alloc: &'tcx Allocation,
+        /// in order to share `ConstAllocation`s between values
+        alloc: ConstAllocation<'tcx>,
         /// Offset into `alloc`
         offset: Size,
     },
@@ -109,6 +110,10 @@ impl<'tcx> ConstValue<'tcx> {
 
     pub fn from_machine_usize(i: u64, cx: &impl HasDataLayout) -> Self {
         ConstValue::Scalar(Scalar::from_machine_usize(i, cx))
+    }
+
+    pub fn zst() -> Self {
+        Self::Scalar(Scalar::ZST)
     }
 }
 
@@ -300,16 +305,29 @@ impl<Tag> Scalar<Tag> {
     ///
     /// This method only exists for the benefit of low-level operations that truly need to treat the
     /// scalar in whatever form it is.
+    ///
+    /// This throws UB (instead of ICEing) on a size mismatch since size mismatches can arise in
+    /// Miri when someone declares a function that we shim (such as `malloc`) with a wrong type.
     #[inline]
-    pub fn to_bits_or_ptr_internal(self, target_size: Size) -> Result<u128, Pointer<Tag>> {
+    pub fn to_bits_or_ptr_internal(
+        self,
+        target_size: Size,
+    ) -> Result<Result<u128, Pointer<Tag>>, ScalarSizeMismatch> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        match self {
-            Scalar::Int(int) => Ok(int.assert_bits(target_size)),
+        Ok(match self {
+            Scalar::Int(int) => Ok(int.to_bits(target_size).map_err(|size| {
+                ScalarSizeMismatch { target_size: target_size.bytes(), data_size: size.bytes() }
+            })?),
             Scalar::Ptr(ptr, sz) => {
-                assert_eq!(target_size.bytes(), u64::from(sz));
+                if target_size.bytes() != u64::from(sz) {
+                    return Err(ScalarSizeMismatch {
+                        target_size: target_size.bytes(),
+                        data_size: sz.into(),
+                    });
+                }
                 Err(ptr)
             }
-        }
+        })
     }
 }
 
@@ -330,7 +348,8 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
                 } else {
                     // We know `offset` is relative, since `OFFSET_IS_ADDR == false`.
                     let (tag, offset) = ptr.into_parts();
-                    Err(Scalar::Ptr(Pointer::new(tag.get_alloc_id(), offset), sz))
+                    // Because `OFFSET_IS_ADDR == false`, this unwrap can never fail.
+                    Err(Scalar::Ptr(Pointer::new(tag.get_alloc_id().unwrap(), offset), sz))
                 }
             }
         }
@@ -348,10 +367,10 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         self.try_to_int().map_err(|_| err_unsup!(ReadPointerAsBytes))?.to_bits(target_size).map_err(
             |size| {
-                err_ub!(ScalarSizeMismatch {
+                err_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
                     target_size: target_size.bytes(),
                     data_size: size.bytes(),
-                })
+                }))
                 .into()
             },
         )
@@ -382,38 +401,38 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
     /// Converts the scalar to produce an unsigned integer of the given size.
     /// Fails if the scalar is a pointer.
     #[inline]
-    pub fn to_uint(self, size: Size) -> InterpResult<'static, u128> {
+    pub fn to_uint(self, size: Size) -> InterpResult<'tcx, u128> {
         self.to_bits(size)
     }
 
     /// Converts the scalar to produce a `u8`. Fails if the scalar is a pointer.
-    pub fn to_u8(self) -> InterpResult<'static, u8> {
+    pub fn to_u8(self) -> InterpResult<'tcx, u8> {
         self.to_uint(Size::from_bits(8)).map(|v| u8::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u16`. Fails if the scalar is a pointer.
-    pub fn to_u16(self) -> InterpResult<'static, u16> {
+    pub fn to_u16(self) -> InterpResult<'tcx, u16> {
         self.to_uint(Size::from_bits(16)).map(|v| u16::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u32`. Fails if the scalar is a pointer.
-    pub fn to_u32(self) -> InterpResult<'static, u32> {
+    pub fn to_u32(self) -> InterpResult<'tcx, u32> {
         self.to_uint(Size::from_bits(32)).map(|v| u32::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u64`. Fails if the scalar is a pointer.
-    pub fn to_u64(self) -> InterpResult<'static, u64> {
+    pub fn to_u64(self) -> InterpResult<'tcx, u64> {
         self.to_uint(Size::from_bits(64)).map(|v| u64::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u128`. Fails if the scalar is a pointer.
-    pub fn to_u128(self) -> InterpResult<'static, u128> {
+    pub fn to_u128(self) -> InterpResult<'tcx, u128> {
         self.to_uint(Size::from_bits(128))
     }
 
     /// Converts the scalar to produce a machine-pointer-sized unsigned integer.
     /// Fails if the scalar is a pointer.
-    pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'static, u64> {
+    pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
         let b = self.to_uint(cx.data_layout().pointer_size)?;
         Ok(u64::try_from(b).unwrap())
     }
@@ -421,51 +440,51 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
     /// Converts the scalar to produce a signed integer of the given size.
     /// Fails if the scalar is a pointer.
     #[inline]
-    pub fn to_int(self, size: Size) -> InterpResult<'static, i128> {
+    pub fn to_int(self, size: Size) -> InterpResult<'tcx, i128> {
         let b = self.to_bits(size)?;
         Ok(size.sign_extend(b) as i128)
     }
 
     /// Converts the scalar to produce an `i8`. Fails if the scalar is a pointer.
-    pub fn to_i8(self) -> InterpResult<'static, i8> {
+    pub fn to_i8(self) -> InterpResult<'tcx, i8> {
         self.to_int(Size::from_bits(8)).map(|v| i8::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i16`. Fails if the scalar is a pointer.
-    pub fn to_i16(self) -> InterpResult<'static, i16> {
+    pub fn to_i16(self) -> InterpResult<'tcx, i16> {
         self.to_int(Size::from_bits(16)).map(|v| i16::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i32`. Fails if the scalar is a pointer.
-    pub fn to_i32(self) -> InterpResult<'static, i32> {
+    pub fn to_i32(self) -> InterpResult<'tcx, i32> {
         self.to_int(Size::from_bits(32)).map(|v| i32::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i64`. Fails if the scalar is a pointer.
-    pub fn to_i64(self) -> InterpResult<'static, i64> {
+    pub fn to_i64(self) -> InterpResult<'tcx, i64> {
         self.to_int(Size::from_bits(64)).map(|v| i64::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i128`. Fails if the scalar is a pointer.
-    pub fn to_i128(self) -> InterpResult<'static, i128> {
+    pub fn to_i128(self) -> InterpResult<'tcx, i128> {
         self.to_int(Size::from_bits(128))
     }
 
     /// Converts the scalar to produce a machine-pointer-sized signed integer.
     /// Fails if the scalar is a pointer.
-    pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {
+    pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, i64> {
         let b = self.to_int(cx.data_layout().pointer_size)?;
         Ok(i64::try_from(b).unwrap())
     }
 
     #[inline]
-    pub fn to_f32(self) -> InterpResult<'static, Single> {
+    pub fn to_f32(self) -> InterpResult<'tcx, Single> {
         // Going through `u32` to check size and truncation.
         Ok(Single::from_bits(self.to_u32()?.into()))
     }
 
     #[inline]
-    pub fn to_f64(self) -> InterpResult<'static, Double> {
+    pub fn to_f64(self) -> InterpResult<'tcx, Double> {
         // Going through `u64` to check size and truncation.
         Ok(Double::from_bits(self.to_u64()?.into()))
     }
@@ -519,7 +538,7 @@ impl<Tag> ScalarMaybeUninit<Tag> {
     }
 
     #[inline]
-    pub fn check_init(self) -> InterpResult<'static, Scalar<Tag>> {
+    pub fn check_init<'tcx>(self) -> InterpResult<'tcx, Scalar<Tag>> {
         match self {
             ScalarMaybeUninit::Scalar(scalar) => Ok(scalar),
             ScalarMaybeUninit::Uninit => throw_ub!(InvalidUninitBytes(None)),
@@ -603,11 +622,12 @@ impl<'tcx, Tag: Provenance> ScalarMaybeUninit<Tag> {
 pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> &'tcx [u8] {
     if let ConstValue::Slice { data, start, end } = val {
         let len = end - start;
-        data.get_bytes(
-            cx,
-            AllocRange { start: Size::from_bytes(start), size: Size::from_bytes(len) },
-        )
-        .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
+        data.inner()
+            .get_bytes(
+                cx,
+                AllocRange { start: Size::from_bytes(start), size: Size::from_bytes(len) },
+            )
+            .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
     } else {
         bug!("expected const slice, but found another const value");
     }

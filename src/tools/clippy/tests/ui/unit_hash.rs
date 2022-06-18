@@ -1,4 +1,5 @@
 #![warn(clippy::unit_hash)]
+#![allow(clippy::let_unit_value)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;

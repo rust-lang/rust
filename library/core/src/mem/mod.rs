@@ -21,6 +21,12 @@ mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
+mod valid_align;
+// For now this type is left crate-local.  It could potentially make sense to expose
+// it publicly, as it would be a nice parameter type for methods which need to take
+// alignment as a parameter, such as `Layout::padding_needed_for`.
+pub(crate) use valid_align::ValidAlign;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::transmute;
@@ -299,7 +305,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
-#[rustc_const_stable(feature = "const_size_of", since = "1.24.0")]
+#[rustc_const_stable(feature = "const_mem_size_of", since = "1.24.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of")]
 pub const fn size_of<T>() -> usize {
     intrinsics::size_of::<T>()
@@ -383,7 +389,7 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     unsafe { intrinsics::size_of_val(val) }
 }
 
-/// Returns the [ABI]-required minimum alignment of a type.
+/// Returns the [ABI]-required minimum alignment of a type in bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -402,12 +408,13 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(reason = "use `align_of` instead", since = "1.2.0")]
+#[deprecated(note = "use `align_of` instead", since = "1.2.0")]
 pub fn min_align_of<T>() -> usize {
     intrinsics::min_align_of::<T>()
 }
 
-/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
+/// bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -424,13 +431,13 @@ pub fn min_align_of<T>() -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(reason = "use `align_of_val` instead", since = "1.2.0")]
+#[deprecated(note = "use `align_of_val` instead", since = "1.2.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: val is a reference, so it's a valid raw pointer
     unsafe { intrinsics::min_align_of_val(val) }
 }
 
-/// Returns the [ABI]-required minimum alignment of a type.
+/// Returns the [ABI]-required minimum alignment of a type in bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -454,7 +461,8 @@ pub const fn align_of<T>() -> usize {
     intrinsics::min_align_of::<T>()
 }
 
-/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
+/// bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -477,7 +485,8 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::min_align_of_val(val) }
 }
 
-/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to in
+/// bytes.
 ///
 /// Every reference to a value of the type `T` must be a multiple of this number.
 ///
@@ -581,9 +590,9 @@ pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "needs_drop", since = "1.21.0")]
-#[rustc_const_stable(feature = "const_needs_drop", since = "1.36.0")]
+#[rustc_const_stable(feature = "const_mem_needs_drop", since = "1.36.0")]
 #[rustc_diagnostic_item = "needs_drop"]
-pub const fn needs_drop<T>() -> bool {
+pub const fn needs_drop<T: ?Sized>() -> bool {
     intrinsics::needs_drop::<T>()
 }
 
@@ -664,7 +673,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// [inv]: MaybeUninit#initialization-invariant
 #[inline(always)]
 #[must_use]
-#[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
+#[deprecated(since = "1.39.0", note = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated_in_future)]
 #[allow(deprecated)]

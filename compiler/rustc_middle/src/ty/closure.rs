@@ -119,9 +119,21 @@ impl<'tcx> ClosureKind {
     /// See `Ty::to_opt_closure_kind` for more details.
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
-            ty::ClosureKind::Fn => tcx.types.i8,
-            ty::ClosureKind::FnMut => tcx.types.i16,
-            ty::ClosureKind::FnOnce => tcx.types.i32,
+            ClosureKind::Fn => tcx.types.i8,
+            ClosureKind::FnMut => tcx.types.i16,
+            ClosureKind::FnOnce => tcx.types.i32,
+        }
+    }
+
+    pub fn from_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ClosureKind> {
+        if Some(def_id) == tcx.lang_items().fn_once_trait() {
+            Some(ClosureKind::FnOnce)
+        } else if Some(def_id) == tcx.lang_items().fn_mut_trait() {
+            Some(ClosureKind::FnMut)
+        } else if Some(def_id) == tcx.lang_items().fn_trait() {
+            Some(ClosureKind::Fn)
+        } else {
+            None
         }
     }
 }
@@ -164,7 +176,7 @@ impl<'tcx> CapturedPlace<'tcx> {
                         write!(
                             &mut symbol,
                             "__{}",
-                            def.variants[variant].fields[idx as usize].name.as_str(),
+                            def.variant(variant).fields[idx as usize].name.as_str(),
                         )
                         .unwrap();
                     }
@@ -281,7 +293,7 @@ pub struct CaptureInfo {
     /// let mut t = (0,1);
     ///
     /// let c = || {
-    ///     println!("{}",t); // L1
+    ///     println!("{t:?}"); // L1
     ///     t.1 = 4; // L2
     /// };
     /// ```
@@ -297,7 +309,7 @@ pub struct CaptureInfo {
     /// let x = 5;
     ///
     /// let c = || {
-    ///     let _ = x
+    ///     let _ = x;
     /// };
     /// ```
     ///
@@ -330,7 +342,7 @@ pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tc
                     curr_string = format!(
                         "{}.{}",
                         curr_string,
-                        def.variants[variant].fields[idx as usize].name.as_str()
+                        def.variant(variant).fields[idx as usize].name.as_str()
                     );
                 }
                 ty::Tuple(_) => {
@@ -361,17 +373,19 @@ pub enum BorrowKind {
     /// is borrowing or mutating a mutable referent, e.g.:
     ///
     /// ```
-    /// let x: &mut isize = ...;
+    /// let mut z = 3;
+    /// let x: &mut isize = &mut z;
     /// let y = || *x += 5;
     /// ```
     ///
     /// If we were to try to translate this closure into a more explicit
     /// form, we'd encounter an error with the code as written:
     ///
-    /// ```
-    /// struct Env { x: & &mut isize }
-    /// let x: &mut isize = ...;
-    /// let y = (&mut Env { &x }, fn_ptr);  // Closure is pair of env and fn
+    /// ```compile_fail,E0594
+    /// struct Env<'a> { x: &'a &'a mut isize }
+    /// let mut z = 3;
+    /// let x: &mut isize = &mut z;
+    /// let y = (&mut Env { x: &x }, fn_ptr);  // Closure is pair of env and fn
     /// fn fn_ptr(env: &mut Env) { **env.x += 5; }
     /// ```
     ///
@@ -379,10 +393,11 @@ pub enum BorrowKind {
     /// in an aliasable location. To solve, you'd have to translate with
     /// an `&mut` borrow:
     ///
-    /// ```
-    /// struct Env { x: &mut &mut isize }
-    /// let x: &mut isize = ...;
-    /// let y = (&mut Env { &mut x }, fn_ptr); // changed from &x to &mut x
+    /// ```compile_fail,E0596
+    /// struct Env<'a> { x: &'a mut &'a mut isize }
+    /// let mut z = 3;
+    /// let x: &mut isize = &mut z;
+    /// let y = (&mut Env { x: &mut x }, fn_ptr); // changed from &x to &mut x
     /// fn fn_ptr(env: &mut Env) { **env.x += 5; }
     /// ```
     ///

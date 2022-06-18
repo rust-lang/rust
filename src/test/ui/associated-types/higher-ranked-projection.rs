@@ -1,6 +1,5 @@
-#![feature(rustc_attrs)]
-
 // revisions: good bad
+//[good] check-pass
 
 trait Mirror {
     type Image;
@@ -20,8 +19,7 @@ fn foo<U, T>(_t: T)
     where for<'a> &'a T: Mirror<Image=&'a U>
 {}
 
-#[rustc_error]
-fn main() { //[good]~ ERROR fatal error triggered by #[rustc_error]
+fn main() {
     foo(());
     //[bad]~^ ERROR mismatched types
 }

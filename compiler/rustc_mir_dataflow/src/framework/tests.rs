@@ -14,7 +14,7 @@ use super::*;
 ///
 /// This is the `Body` that will be used by the `MockAnalysis` below. The shape of its CFG is not
 /// important.
-fn mock_body() -> mir::Body<'static> {
+fn mock_body<'tcx>() -> mir::Body<'tcx> {
     let source_info = mir::SourceInfo::outermost(DUMMY_SP);
 
     let mut blocks = IndexVec::new();
@@ -37,7 +37,8 @@ fn mock_body() -> mir::Body<'static> {
         mir::TerminatorKind::Call {
             func: mir::Operand::Copy(dummy_place.clone()),
             args: vec![],
-            destination: Some((dummy_place.clone(), mir::START_BLOCK)),
+            destination: dummy_place.clone(),
+            target: Some(mir::START_BLOCK),
             cleanup: None,
             from_hir_call: false,
             fn_span: DUMMY_SP,
@@ -50,7 +51,8 @@ fn mock_body() -> mir::Body<'static> {
         mir::TerminatorKind::Call {
             func: mir::Operand::Copy(dummy_place.clone()),
             args: vec![],
-            destination: Some((dummy_place.clone(), mir::START_BLOCK)),
+            destination: dummy_place.clone(),
+            target: Some(mir::START_BLOCK),
             cleanup: None,
             from_hir_call: false,
             fn_span: DUMMY_SP,
@@ -138,7 +140,7 @@ impl<D: Direction> MockAnalysis<'_, D> {
             SeekTarget::After(loc) => Effect::Primary.at_index(loc.statement_index),
         };
 
-        let mut pos = if D::is_forward() {
+        let mut pos = if D::IS_FORWARD {
             Effect::Before.at_index(0)
         } else {
             Effect::Before.at_index(self.body[block].statements.len())
@@ -151,7 +153,7 @@ impl<D: Direction> MockAnalysis<'_, D> {
                 return ret;
             }
 
-            if D::is_forward() {
+            if D::IS_FORWARD {
                 pos = pos.next_in_forward_order();
             } else {
                 pos = pos.next_in_backward_order();

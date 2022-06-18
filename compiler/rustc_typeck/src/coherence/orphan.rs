@@ -3,12 +3,15 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
-use rustc_middle::ty::{self, ImplPolarity, Ty, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::util::IgnoreRegions;
+use rustc_middle::ty::{
+    self, ImplPolarity, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor,
+};
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
@@ -21,7 +24,7 @@ pub(super) fn orphan_check_crate(tcx: TyCtxt<'_>, (): ()) -> &[LocalDefId] {
         for &impl_of_trait in impls_of_trait {
             match orphan_check_impl(tcx, impl_of_trait) {
                 Ok(()) => {}
-                Err(ErrorReported) => errors.push(impl_of_trait),
+                Err(_) => errors.push(impl_of_trait),
             }
         }
 
@@ -33,7 +36,7 @@ pub(super) fn orphan_check_crate(tcx: TyCtxt<'_>, (): ()) -> &[LocalDefId] {
 }
 
 #[instrument(skip(tcx), level = "debug")]
-fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorReported> {
+fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
     let trait_def_id = trait_ref.def_id;
 
@@ -43,12 +46,66 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorRep
     };
     let sp = tcx.sess.source_map().guess_head_span(item.span);
     let tr = impl_.of_trait.as_ref().unwrap();
+
+    // Ensure no opaque types are present in this impl header. See issues #76202 and #86411 for examples,
+    // and #84660 where it would otherwise allow unsoundness.
+    if trait_ref.has_opaque_types() {
+        trace!("{:#?}", item);
+        // First we find the opaque type in question.
+        for ty in trait_ref.substs {
+            for ty in ty.walk() {
+                let ty::subst::GenericArgKind::Type(ty) = ty.unpack() else { continue };
+                let ty::Opaque(def_id, _) = *ty.kind() else { continue };
+                trace!(?def_id);
+
+                // Then we search for mentions of the opaque type's type alias in the HIR
+                struct SpanFinder<'tcx> {
+                    sp: Span,
+                    def_id: DefId,
+                    tcx: TyCtxt<'tcx>,
+                }
+                impl<'v, 'tcx> hir::intravisit::Visitor<'v> for SpanFinder<'tcx> {
+                    #[instrument(level = "trace", skip(self, _id))]
+                    fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
+                        // You can't mention an opaque type directly, so we look for type aliases
+                        if let hir::def::Res::Def(hir::def::DefKind::TyAlias, def_id) = path.res {
+                            // And check if that type alias's type contains the opaque type we're looking for
+                            for arg in self.tcx.type_of(def_id).walk() {
+                                if let GenericArgKind::Type(ty) = arg.unpack() {
+                                    if let ty::Opaque(def_id, _) = *ty.kind() {
+                                        if def_id == self.def_id {
+                                            // Finally we update the span to the mention of the type alias
+                                            self.sp = path.span;
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        hir::intravisit::walk_path(self, path)
+                    }
+                }
+
+                let mut visitor = SpanFinder { sp, def_id, tcx };
+                hir::intravisit::walk_item(&mut visitor, item);
+                let reported = tcx
+                    .sess
+                    .struct_span_err(visitor.sp, "cannot implement trait on type alias impl trait")
+                    .span_note(tcx.def_span(def_id), "type alias impl trait defined here")
+                    .emit();
+                return Err(reported);
+            }
+        }
+        span_bug!(sp, "opaque type not found, but `has_opaque_types` is set")
+    }
+
     match traits::orphan_check(tcx, item.def_id.to_def_id()) {
         Ok(()) => {}
         Err(err) => emit_orphan_check_error(
             tcx,
             sp,
             tr.path.span,
+            trait_ref.self_ty(),
             impl_.self_ty.span,
             &impl_.generics,
             err,
@@ -97,7 +154,7 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorRep
     if tcx.trait_is_auto(trait_def_id) && !trait_def_id.is_local() {
         let self_ty = trait_ref.self_ty();
         let opt_self_def_id = match *self_ty.kind() {
-            ty::Adt(self_def, _) => Some(self_def.did),
+            ty::Adt(self_def, _) => Some(self_def.did()),
             ty::Foreign(did) => Some(did),
             _ => None,
         };
@@ -135,17 +192,10 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorRep
         };
 
         if let Some((msg, label)) = msg {
-            struct_span_err!(tcx.sess, sp, E0321, "{}", msg).span_label(sp, label).emit();
-            return Err(ErrorReported);
+            let reported =
+                struct_span_err!(tcx.sess, sp, E0321, "{}", msg).span_label(sp, label).emit();
+            return Err(reported);
         }
-    }
-
-    if let ty::Opaque(def_id, _) = *trait_ref.self_ty().kind() {
-        tcx.sess
-            .struct_span_err(sp, "cannot implement trait on type alias impl trait")
-            .span_note(tcx.def_span(def_id), "type alias impl trait defined here")
-            .emit();
-        return Err(ErrorReported);
     }
 
     Ok(())
@@ -155,18 +205,23 @@ fn emit_orphan_check_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     trait_span: Span,
+    self_ty: Ty<'tcx>,
     self_ty_span: Span,
     generics: &hir::Generics<'tcx>,
     err: traits::OrphanCheckErr<'tcx>,
-) -> Result<!, ErrorReported> {
+) -> Result<!, ErrorGuaranteed> {
     Err(match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
+            let msg = match self_ty.kind() {
+                ty::Adt(..) => "can be implemented for types defined outside of the crate",
+                _ if self_ty.is_primitive() => "can be implemented for primitive types",
+                _ => "can be implemented for arbitrary types",
+            };
             let mut err = struct_span_err!(
                 tcx.sess,
                 sp,
                 E0117,
-                "only traits defined in the current crate can be implemented for \
-                        arbitrary types"
+                "only traits defined in the current crate {msg}"
             );
             err.span_label(sp, "impl doesn't use only types from inside the current crate");
             for (ty, is_target_ty) in &tys {
@@ -181,7 +236,7 @@ fn emit_orphan_check_error<'tcx>(
                     // That way if we had `Vec<MyType>`, we will properly attribute the
                     // problem to `Vec<T>` and avoid confusing the user if they were to see
                     // `MyType` in the error.
-                    ty::Adt(def, _) => tcx.mk_adt(def, ty::List::empty()),
+                    ty::Adt(def, _) => tcx.mk_adt(*def, ty::List::empty()),
                     _ => ty,
                 };
                 let this = "this".to_string();
@@ -272,57 +327,6 @@ fn emit_orphan_check_error<'tcx>(
     })
 }
 
-#[derive(Default)]
-struct AreUniqueParamsVisitor {
-    seen: GrowableBitSet<u32>,
-}
-
-#[derive(Copy, Clone)]
-enum NotUniqueParam<'tcx> {
-    DuplicateParam(GenericArg<'tcx>),
-    NotParam(GenericArg<'tcx>),
-}
-
-impl<'tcx> TypeVisitor<'tcx> for AreUniqueParamsVisitor {
-    type BreakTy = NotUniqueParam<'tcx>;
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match t.kind() {
-            ty::Param(p) => {
-                if self.seen.insert(p.index) {
-                    ControlFlow::CONTINUE
-                } else {
-                    ControlFlow::Break(NotUniqueParam::DuplicateParam(t.into()))
-                }
-            }
-            _ => ControlFlow::Break(NotUniqueParam::NotParam(t.into())),
-        }
-    }
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match *r {
-            ty::ReEarlyBound(p) => {
-                if self.seen.insert(p.index) {
-                    ControlFlow::CONTINUE
-                } else {
-                    ControlFlow::Break(NotUniqueParam::DuplicateParam(r.into()))
-                }
-            }
-            _ => ControlFlow::Break(NotUniqueParam::NotParam(r.into())),
-        }
-    }
-    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match c.val() {
-            ty::ConstKind::Param(p) => {
-                if self.seen.insert(p.index) {
-                    ControlFlow::CONTINUE
-                } else {
-                    ControlFlow::Break(NotUniqueParam::DuplicateParam(c.into()))
-                }
-            }
-            _ => ControlFlow::Break(NotUniqueParam::NotParam(c.into())),
-        }
-    }
-}
-
 /// Lint impls of auto traits if they are likely to have
 /// unsound or surprising effects on auto impls.
 fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDefId]) {
@@ -340,7 +344,7 @@ fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDef
         assert_eq!(trait_ref.substs.len(), 1);
         let self_ty = trait_ref.self_ty();
         let (self_type_did, substs) = match self_ty.kind() {
-            ty::Adt(def, substs) => (def.did, substs),
+            ty::Adt(def, substs) => (def.did(), substs),
             _ => {
                 // FIXME: should also lint for stuff like `&i32` but
                 // considering that auto traits are unstable, that
@@ -353,9 +357,9 @@ fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDef
         // Impls which completely cover a given root type are fine as they
         // disable auto impls entirely. So only lint if the substs
         // are not a permutation of the identity substs.
-        match substs.visit_with(&mut AreUniqueParamsVisitor::default()) {
-            ControlFlow::Continue(()) => {} // ok
-            ControlFlow::Break(arg) => {
+        match tcx.uses_unique_generic_params(substs, IgnoreRegions::Yes) {
+            Ok(()) => {} // ok
+            Err(arg) => {
                 // Ideally:
                 //
                 // - compute the requirements for the auto impl candidate
@@ -382,13 +386,21 @@ fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDef
             tcx.hir().local_def_id_to_hir_id(impl_def_id),
             tcx.def_span(impl_def_id),
             |err| {
+                let item_span = tcx.def_span(self_type_did);
+                let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
                 let mut err = err.build(&format!(
                     "cross-crate traits with a default impl, like `{}`, \
                          should not be specialized",
                     tcx.def_path_str(trait_def_id),
                 ));
-                let item_span = tcx.def_span(self_type_did);
-                let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
+                match arg {
+                    ty::util::NotUniqueParam::DuplicateParam(arg) => {
+                        err.note(&format!("`{}` is mentioned multiple times", arg));
+                    }
+                    ty::util::NotUniqueParam::NotParam(arg) => {
+                        err.note(&format!("`{}` is not a generic parameter", arg));
+                    }
+                }
                 err.span_note(
                     item_span,
                     &format!(
@@ -396,14 +408,6 @@ fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDef
                         self_descr,
                     ),
                 );
-                match arg {
-                    NotUniqueParam::DuplicateParam(arg) => {
-                        err.note(&format!("`{}` is mentioned multiple times", arg));
-                    }
-                    NotUniqueParam::NotParam(arg) => {
-                        err.note(&format!("`{}` is not a generic parameter", arg));
-                    }
-                }
                 err.emit();
             },
         );
@@ -437,13 +441,13 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
             }
 
             match t.kind() {
-                ty::Adt(def, substs) if def.is_phantom_data() => substs.super_visit_with(self),
+                ty::Adt(def, substs) if def.is_phantom_data() => substs.visit_with(self),
                 ty::Adt(def, substs) => {
                     // @lcnr: This is the only place where cycles can happen. We avoid this
                     // by only visiting each `DefId` once.
                     //
                     // This will be is incorrect in subtle cases, but I don't care :)
-                    if self.seen.insert(def.did) {
+                    if self.seen.insert(def.did()) {
                         for ty in def.all_fields().map(|field| field.ty(tcx, substs)) {
                             ty.visit_with(self)?;
                         }
@@ -457,7 +461,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
     }
 
     let self_ty_root = match self_ty.kind() {
-        ty::Adt(def, _) => tcx.mk_adt(def, InternalSubsts::identity_for_item(tcx, def.did)),
+        ty::Adt(def, _) => tcx.mk_adt(*def, InternalSubsts::identity_for_item(tcx, def.did())),
         _ => unimplemented!("unexpected self ty {:?}", self_ty),
     };
 

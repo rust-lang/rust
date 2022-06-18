@@ -1,4 +1,4 @@
-// check-pass
+// build-pass
 // compile-flags: -Cdebuginfo=2
 // fixes issue #94149
 

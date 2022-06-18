@@ -23,11 +23,10 @@ LL |         (A, B) | (ref B, c) | (c, A) => ()
    |          |       pattern doesn't bind `A`
    |          variable not in all patterns
    |
-help: if you meant to match on a variant or a `const` item, consider making the path in the pattern qualified: `?::A`
-  --> $DIR/resolve-inconsistent-names.rs:19:10
+help: if you meant to match on unit variant `E::A`, use the full path in the pattern
    |
-LL |         (A, B) | (ref B, c) | (c, A) => ()
-   |          ^
+LL |         (E::A, B) | (ref B, c) | (c, A) => ()
+   |          ~~~~
 
 error[E0408]: variable `B` is not bound in all patterns
   --> $DIR/resolve-inconsistent-names.rs:19:31
@@ -63,11 +62,11 @@ LL |         (CONST1, _) | (_, Const2) => ()
    |          |
    |          variable not in all patterns
    |
-help: if you meant to match on a variant or a `const` item, consider making the path in the pattern qualified: `?::CONST1`
-  --> $DIR/resolve-inconsistent-names.rs:30:10
+note: you might have meant to match on constant `m::CONST1`, which exists but is inaccessible
+  --> $DIR/resolve-inconsistent-names.rs:6:5
    |
-LL |         (CONST1, _) | (_, Const2) => ()
-   |          ^^^^^^
+LL |     const CONST1: usize = 10;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
 
 error[E0408]: variable `Const2` is not bound in all patterns
   --> $DIR/resolve-inconsistent-names.rs:30:9
@@ -77,11 +76,10 @@ LL |         (CONST1, _) | (_, Const2) => ()
    |         |
    |         pattern doesn't bind `Const2`
    |
-help: if you meant to match on a variant or a `const` item, consider making the path in the pattern qualified: `?::Const2`
-  --> $DIR/resolve-inconsistent-names.rs:30:27
+help: if you meant to match on constant `m::Const2`, use the full path in the pattern
    |
-LL |         (CONST1, _) | (_, Const2) => ()
-   |                           ^^^^^^
+LL |         (CONST1, _) | (_, m::Const2) => ()
+   |                           ~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-names.rs:19:19

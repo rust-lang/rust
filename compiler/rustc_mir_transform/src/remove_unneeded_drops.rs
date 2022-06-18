@@ -2,7 +2,7 @@
 //!
 //! When the MIR is built, we check `needs_drop` before emitting a `Drop` for a place. This pass is
 //! useful because (unlike MIR building) it runs after type checking, so it can make use of
-//! `Reveal::All` to provide more precies type information.
+//! `Reveal::All` to provide more precise type information.
 
 use crate::MirPass;
 use rustc_middle::mir::*;

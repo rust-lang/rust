@@ -41,6 +41,7 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// let infinite_iter = 0..;
+    /// # #[allow(unused)]
     /// [0..].iter().zip(infinite_iter.take_while(|x| *x > 5));
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -158,8 +159,8 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 }
             }
             if method.ident.name == sym!(flat_map) && args.len() == 2 {
-                if let ExprKind::Closure(_, _, body_id, _, _) = args[1].kind {
-                    let body = cx.tcx.hir().body(body_id);
+                if let ExprKind::Closure { body, .. } = args[1].kind {
+                    let body = cx.tcx.hir().body(body);
                     return is_infinite(cx, &body.value);
                 }
             }

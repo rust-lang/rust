@@ -2,7 +2,7 @@
 
 use std::string::String;
 
-struct TestStruct {}
+struct TestStruct;
 
 impl TestStruct {
     fn ends_with(self, arg: &str) {}

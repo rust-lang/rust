@@ -18,15 +18,16 @@ declare_clippy_lint! {
     /// Checks for literal calls to `Default::default()`.
     ///
     /// ### Why is this bad?
-    /// It's more clear to the reader to use the name of the type whose default is
-    /// being gotten than the generic `Default`.
+    /// It's easier for the reader if the name of the type is used, rather than the
+    /// generic `Default`.
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let s: String = Default::default();
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let s = String::default();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -47,13 +48,13 @@ declare_clippy_lint! {
     /// Assignments to patterns that are of tuple type are not linted.
     ///
     /// ### Example
-    /// Bad:
     /// ```
     /// # #[derive(Default)]
     /// # struct A { i: i32 }
     /// let mut a: A = Default::default();
     /// a.i = 42;
     /// ```
+    ///
     /// Use instead:
     /// ```
     /// # #[derive(Default)]
@@ -96,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             then {
                 // TODO: Work out a way to put "whatever the imported way of referencing
                 // this type in this file" rather than a fully-qualified type.
-                let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did));
+                let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did()));
                 span_lint_and_sugg(
                     cx,
                     DEFAULT_TRAIT_ACCESS,
@@ -110,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &Block<'tcx>) {
         // start from the `let mut _ = _::default();` and look at all the following
         // statements, see if they re-assign the fields of the binding
@@ -137,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 if let Some(adt) = binding_type.ty_adt_def();
                 if adt.is_struct();
                 let variant = adt.non_enum_variant();
-                if adt.did.is_local() || !variant.is_field_list_non_exhaustive();
+                if adt.did().is_local() || !variant.is_field_list_non_exhaustive();
                 let module_did = cx.tcx.parent_module(stmt.hir_id).to_def_id();
                 if variant
                     .fields
@@ -216,7 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     if let ty::Adt(adt_def, substs) = binding_type.kind();
                     if !substs.is_empty();
                     then {
-                        let adt_def_ty_name = cx.tcx.item_name(adt_def.did);
+                        let adt_def_ty_name = cx.tcx.item_name(adt_def.did());
                         let generic_args = substs.iter().collect::<Vec<_>>();
                         let tys_str = generic_args
                             .iter()

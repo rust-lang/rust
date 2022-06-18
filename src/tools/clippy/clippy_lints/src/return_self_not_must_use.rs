@@ -26,19 +26,20 @@ declare_clippy_lint! {
     /// if it was added on constructors for example.
     ///
     /// ### Example
-    /// Missing attribute
     /// ```rust
     /// pub struct Bar;
     /// impl Bar {
-    ///     // Bad
+    ///     // Missing attribute
     ///     pub fn bar(&self) -> Self {
     ///         Self
     ///     }
     /// }
     /// ```
     ///
-    /// It's better to have the `#[must_use]` attribute on the method like this:
+    /// Use instead:
     /// ```rust
+    /// # {
+    /// // It's better to have the `#[must_use]` attribute on the method like this:
     /// pub struct Bar;
     /// impl Bar {
     ///     #[must_use]
@@ -46,10 +47,10 @@ declare_clippy_lint! {
     ///         Self
     ///     }
     /// }
-    /// ```
+    /// # }
     ///
-    /// Or on the type definition like this:
-    /// ```rust
+    /// # {
+    /// // Or on the type definition like this:
     /// #[must_use]
     /// pub struct Bar;
     /// impl Bar {
@@ -57,6 +58,7 @@ declare_clippy_lint! {
     ///         Self
     ///     }
     /// }
+    /// # }
     /// ```
     #[clippy::version = "1.59.0"]
     pub RETURN_SELF_NOT_MUST_USE,
@@ -111,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for ReturnSelfNotMustUse {
     ) {
         if_chain! {
             // We are only interested in methods, not in functions or associated functions.
-            if matches!(kind, FnKind::Method(_, _, _));
+            if matches!(kind, FnKind::Method(_, _));
             if let Some(fn_def) = cx.tcx.hir().opt_local_def_id(hir_id);
             if let Some(impl_def) = cx.tcx.impl_of_method(fn_def.to_def_id());
             // We don't want this method to be te implementation of a trait because the

@@ -1,4 +1,5 @@
 #![warn(clippy::let_underscore_drop)]
+#![allow(clippy::let_unit_value)]
 
 struct Droppable;
 

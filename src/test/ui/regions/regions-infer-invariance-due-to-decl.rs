@@ -9,7 +9,8 @@ fn to_same_lifetime<'r>(b_isize: Invariant<'r>) {
 }
 
 fn to_longer_lifetime<'r>(b_isize: Invariant<'r>) -> Invariant<'static> {
-    b_isize //~ ERROR mismatched types
+    b_isize
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {

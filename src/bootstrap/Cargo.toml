@@ -3,6 +3,7 @@ name = "bootstrap"
 version = "0.0.0"
 edition = "2021"
 build = "build.rs"
+default-run = "bootstrap"
 
 [lib]
 path = "lib.rs"
@@ -34,19 +35,25 @@ path = "bin/llvm-config-wrapper.rs"
 test = false
 
 [dependencies]
-build_helper = { path = "../build_helper" }
 cmake = "0.1.38"
 filetime = "0.2"
 num_cpus = "1.0"
 getopts = "0.2.19"
 cc = "1.0.69"
 libc = "0.2"
+hex = "0.4"
 serde = { version = "1.0.8", features = ["derive"] }
 serde_json = "1.0.2"
+sha2 = "0.10"
+tar = "0.4"
 toml = "0.5"
 ignore = "0.4.10"
 opener = "0.5"
 once_cell = "1.7.2"
+xz2 = "0.1"
+
+# Dependencies needed by the build-metrics feature
+sysinfo = { version = "0.24.1", optional = true }
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
@@ -63,3 +70,6 @@ features = [
 
 [dev-dependencies]
 pretty_assertions = "0.7"
+
+[features]
+build-metrics = ["sysinfo"]

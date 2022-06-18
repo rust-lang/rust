@@ -37,8 +37,8 @@ LL |     y: Option<Option<D<T>>>,
    |
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `C` representable
    |
-LL |     y: Box<Option<Option<D<T>>>>,
-   |        ++++                    +
+LL |     y: Option<Box<Option<D<T>>>>,
+   |               ++++            +
 
 error[E0072]: recursive type `D` has infinite size
   --> $DIR/mutual-struct-recursion.rs:18:1
@@ -51,8 +51,8 @@ LL |     z: Option<Option<C<T>>>,
    |
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `D` representable
    |
-LL |     z: Box<Option<Option<C<T>>>>,
-   |        ++++                    +
+LL |     z: Option<Box<Option<C<T>>>>,
+   |               ++++            +
 
 error: aborting due to 4 previous errors
 

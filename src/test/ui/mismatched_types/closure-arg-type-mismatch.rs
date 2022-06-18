@@ -8,8 +8,4 @@ fn main() {
 fn baz<F: Fn(*mut &u32)>(_: F) {}
 fn _test<'a>(f: fn(*mut &'a u32)) {
     baz(f);
-    //~^ ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR mismatched types
-    //~| ERROR mismatched types
 }

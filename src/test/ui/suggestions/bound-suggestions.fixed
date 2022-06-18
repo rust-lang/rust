@@ -35,7 +35,7 @@ fn test_one_bound_where<X>(x: X) where X: Sized + std::fmt::Debug {
 }
 
 #[allow(dead_code)]
-fn test_many_bounds_where<X>(x: X) where X: Sized, X: Sized, X: std::fmt::Debug {
+fn test_many_bounds_where<X>(x: X) where X: Sized + std::fmt::Debug, X: Sized {
     println!("{:?}", x);
     //~^ ERROR doesn't implement
 }

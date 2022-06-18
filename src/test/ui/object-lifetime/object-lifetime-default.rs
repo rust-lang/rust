@@ -1,5 +1,3 @@
-// ignore-compare-mode-nll
-
 #![feature(rustc_attrs)]
 
 #[rustc_object_lifetime_default]

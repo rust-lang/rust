@@ -1,5 +1,4 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sso::SsoHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
@@ -8,9 +7,9 @@ use rustc_middle::ty::{self, subst::SubstsRef, InstanceDef, TyCtxt};
 use rustc_session::Limit;
 
 // FIXME: check whether it is cheaper to precompute the entire call graph instead of invoking
-// this query riddiculously often.
+// this query ridiculously often.
 #[instrument(level = "debug", skip(tcx, root, target))]
-crate fn mir_callgraph_reachable<'tcx>(
+pub(crate) fn mir_callgraph_reachable<'tcx>(
     tcx: TyCtxt<'tcx>,
     (root, target): (ty::Instance<'tcx>, LocalDefId),
 ) -> bool {
@@ -45,7 +44,10 @@ crate fn mir_callgraph_reachable<'tcx>(
     ) -> bool {
         trace!(%caller);
         for &(callee, substs) in tcx.mir_inliner_callees(caller.def) {
-            let substs = caller.subst_mir_and_normalize_erasing_regions(tcx, param_env, substs);
+            let Ok(substs) = caller.try_subst_mir_and_normalize_erasing_regions(tcx, param_env, substs) else {
+                trace!(?caller, ?param_env, ?substs, "cannot normalize, skipping");
+                continue;
+            };
             let Some(callee) = ty::Instance::resolve(tcx, param_env, callee, substs).unwrap() else {
                 trace!(?callee, "cannot resolve, skipping");
                 continue;
@@ -134,7 +136,7 @@ crate fn mir_callgraph_reachable<'tcx>(
     )
 }
 
-crate fn mir_inliner_callees<'tcx>(
+pub(crate) fn mir_inliner_callees<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
 ) -> &'tcx [(DefId, SubstsRef<'tcx>)] {
@@ -150,7 +152,7 @@ crate fn mir_inliner_callees<'tcx>(
         // Functions from other crates and MIR shims
         _ => tcx.instance_mir(instance),
     };
-    let mut calls = SsoHashSet::new();
+    let mut calls = FxIndexSet::default();
     for bb_data in body.basic_blocks() {
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func, .. } = &terminator.kind {

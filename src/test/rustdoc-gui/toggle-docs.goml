@@ -8,23 +8,28 @@ wait-for: 50
 assert-attribute-false: ("#main-content > details.top-doc", {"open": ""})
 assert-text: ("#toggle-all-docs", "[+]")
 click: "#toggle-all-docs"
-wait-for: 50
 // Not collapsed anymore so the "open" attribute should be back.
-assert-attribute: ("#main-content > details.top-doc", {"open": ""})
+wait-for-attribute: ("#main-content > details.top-doc", {"open": ""})
 assert-text: ("#toggle-all-docs", "[−]")
 
 // Check that it works on non-module pages as well.
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html
 // We first check that everything is visible.
 assert-text: ("#toggle-all-docs", "[−]")
-assert-attribute: ("details.rustdoc-toggle", {"open": ""}, ALL)
+assert-attribute: ("#implementations-list details.rustdoc-toggle", {"open": ""}, ALL)
+assert-attribute: ("#trait-implementations-list details.rustdoc-toggle", {"open": ""}, ALL)
+assert-attribute-false: (
+    "#blanket-implementations-list > details.rustdoc-toggle",
+    {"open": ""},
+    ALL,
+)
+
 // We collapse them all.
 click: "#toggle-all-docs"
-wait-for: 50
-assert-text: ("#toggle-all-docs", "[+]")
+wait-for-text: ("#toggle-all-docs", "[+]")
 // We check that all <details> are collapsed (except for the impl block ones).
 assert-attribute-false: ("details.rustdoc-toggle:not(.implementors-toggle)", {"open": ""}, ALL)
-assert-attribute: ("details.rustdoc-toggle.implementors-toggle", {"open": ""})
+assert-attribute: ("#implementations-list > details.implementors-toggle", {"open": ""})
 // We now check that the other impl blocks are collapsed.
 assert-attribute-false: (
     "#blanket-implementations-list > details.rustdoc-toggle.implementors-toggle",
@@ -33,6 +38,5 @@ assert-attribute-false: (
 )
 // We open them all again.
 click: "#toggle-all-docs"
-wait-for: 50
-assert-text: ("#toggle-all-docs", "[−]")
+wait-for-text: ("#toggle-all-docs", "[−]")
 assert-attribute: ("details.rustdoc-toggle", {"open": ""}, ALL)

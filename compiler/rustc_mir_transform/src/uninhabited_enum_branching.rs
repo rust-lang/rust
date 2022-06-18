@@ -65,7 +65,7 @@ fn variant_discriminants<'tcx>(
         Variants::Multiple { variants, .. } => variants
             .iter_enumerated()
             .filter_map(|(idx, layout)| {
-                (layout.abi != Abi::Uninhabited)
+                (layout.abi() != Abi::Uninhabited)
                     .then(|| ty.discriminant_for_variant(tcx, idx).unwrap().val)
             })
             .collect(),

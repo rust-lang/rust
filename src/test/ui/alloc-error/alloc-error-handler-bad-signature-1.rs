@@ -1,6 +1,6 @@
 // compile-flags:-C panic=abort
 
-#![feature(alloc_error_handler, panic_handler)]
+#![feature(alloc_error_handler)]
 #![no_std]
 #![no_main]
 

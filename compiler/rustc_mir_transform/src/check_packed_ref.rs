@@ -1,10 +1,9 @@
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::UNALIGNED_REFERENCES;
-use rustc_span::symbol::sym;
 
 use crate::util;
 use crate::MirLint;
@@ -46,24 +45,8 @@ fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
              does not derive Copy (error E0133)"
                 .to_string()
         };
-        lint.build(&message).emit()
+        lint.build(&message).emit();
     });
-}
-
-fn builtin_derive_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
-    debug!("builtin_derive_def_id({:?})", def_id);
-    if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
-        if tcx.has_attr(impl_def_id, sym::automatically_derived) {
-            debug!("builtin_derive_def_id({:?}) - is {:?}", def_id, impl_def_id);
-            Some(impl_def_id)
-        } else {
-            debug!("builtin_derive_def_id({:?}) - not automatically derived", def_id);
-            None
-        }
-    } else {
-        debug!("builtin_derive_def_id({:?}) - not a method", def_id);
-        None
-    }
 }
 
 impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
@@ -83,7 +66,11 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
         if context.is_borrow() {
             if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
                 let def_id = self.body.source.instance.def_id();
-                if let Some(impl_def_id) = builtin_derive_def_id(self.tcx, def_id) {
+                if let Some(impl_def_id) = self
+                    .tcx
+                    .impl_of_method(def_id)
+                    .filter(|&def_id| self.tcx.is_builtin_derive(def_id))
+                {
                     // If a method is defined in the local crate,
                     // the impl containing that method should also be.
                     self.tcx.ensure().unsafe_derive_on_repr_packed(impl_def_id.expect_local());
@@ -110,7 +97,7 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
                                     reference with a raw pointer and use `read_unaligned`/`write_unaligned` \
                                     (loads and stores via `*p` must be properly aligned even when using raw pointers)"
                                 )
-                                .emit()
+                                .emit();
                         },
                     );
                 }

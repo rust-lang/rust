@@ -1,5 +1,4 @@
 #![feature(const_trait_impl)]
-
 #![feature(staged_api)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -13,9 +12,7 @@ pub trait MyTrait {
 pub struct Unstable;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "staged", issue = "none")]
+#[rustc_const_unstable(feature = "unstable", issue = "none")]
 impl const MyTrait for Unstable {
-    fn func() {
-
-    }
+    fn func() {}
 }

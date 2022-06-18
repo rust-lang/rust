@@ -1,5 +1,6 @@
 // edition:2021
 // run-pass
+// compile-flags: -Zdrop-tracking
 
 #![feature(never_type)]
 
@@ -32,7 +33,7 @@ fn never() -> Never {
 }
 
 async fn includes_never(crash: bool, x: u32) -> u32 {
-    let mut result = async { x * x }.await;
+    let result = async { x * x }.await;
     if !crash {
         return result;
     }

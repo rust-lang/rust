@@ -152,15 +152,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match *match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: thir::Ascription { variance, user_ty, user_ty_span },
+                ascription: thir::Ascription { ref annotation, variance },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
                 if let Ok(place_resolved) =
                     match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
                 {
                     candidate.ascriptions.push(Ascription {
-                        span: user_ty_span,
-                        user_ty,
+                        annotation: annotation.clone(),
                         source: place_resolved.into_place(self.tcx, self.typeck_results),
                         variance,
                     });
@@ -228,17 +227,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => (None, 0),
                 };
                 if let Some((min, max, sz)) = range {
-                    if let (Some(lo), Some(hi)) =
-                        (lo.val().try_to_bits(sz), hi.val().try_to_bits(sz))
-                    {
-                        // We want to compare ranges numerically, but the order of the bitwise
-                        // representation of signed integers does not match their numeric order.
-                        // Thus, to correct the ordering, we need to shift the range of signed
-                        // integers to correct the comparison. This is achieved by XORing with a
-                        // bias (see pattern/_match.rs for another pertinent example of this
-                        // pattern).
-                        let (lo, hi) = (lo ^ bias, hi ^ bias);
-                        if lo <= min && (hi > max || hi == max && end == RangeEnd::Included) {
+                    // We want to compare ranges numerically, but the order of the bitwise
+                    // representation of signed integers does not match their numeric order. Thus,
+                    // to correct the ordering, we need to shift the range of signed integers to
+                    // correct the comparison. This is achieved by XORing with a bias (see
+                    // pattern/_match.rs for another pertinent example of this pattern).
+                    //
+                    // Also, for performance, it's important to only do the second `try_to_bits` if
+                    // necessary.
+                    let lo = lo.try_to_bits(sz).unwrap() ^ bias;
+                    if lo <= min {
+                        let hi = hi.try_to_bits(sz).unwrap() ^ bias;
+                        if hi > max || hi == max && end == RangeEnd::Included {
                             // Irrefutable pattern match.
                             return Ok(());
                         }
@@ -264,7 +264,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
-                let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
+                let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
                         self.tcx.features().exhaustive_patterns
                             && !v
@@ -276,7 +276,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 )
                                 .is_empty()
                     }
-                }) && (adt_def.did.is_local()
+                }) && (adt_def.did().is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
                     let place_builder = match_pair.place.downcast(adt_def, variant_index);

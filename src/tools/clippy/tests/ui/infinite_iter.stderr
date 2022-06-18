@@ -98,7 +98,7 @@ LL |     (0..).all(|x| x == 24); // maybe infinite iter
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: infinite iteration detected
-  --> $DIR/infinite_iter.rs:64:31
+  --> $DIR/infinite_iter.rs:63:31
    |
 LL |         let _: HashSet<i32> = (0..).collect(); // Infinite iter
    |                               ^^^^^^^^^^^^^^^

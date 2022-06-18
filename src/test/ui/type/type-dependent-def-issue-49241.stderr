@@ -6,6 +6,13 @@ LL |     const l: usize = v.count();
    |     |
    |     help: consider using `let` instead of `const`: `let l`
 
-error: aborting due to previous error
+error[E0080]: evaluation of constant value failed
+  --> $DIR/type-dependent-def-issue-49241.rs:4:18
+   |
+LL |     let s: [u32; l] = v.into_iter().collect();
+   |                  ^ referenced constant has errors
 
-For more information about this error, try `rustc --explain E0435`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0435.
+For more information about an error, try `rustc --explain E0080`.

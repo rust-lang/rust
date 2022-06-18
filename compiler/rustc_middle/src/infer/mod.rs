@@ -10,7 +10,7 @@ use rustc_span::Span;
 /// Requires that `region` must be equal to one of the regions in `choice_regions`.
 /// We often denote this using the syntax:
 ///
-/// ```
+/// ```text
 /// R0 member of [O1..On]
 /// ```
 #[derive(Debug, Clone, HashStable, TypeFoldable, Lift)]

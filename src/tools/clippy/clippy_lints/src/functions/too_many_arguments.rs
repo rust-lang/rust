@@ -26,9 +26,8 @@ pub(super) fn check_fn(
                     header: hir::FnHeader { abi: Abi::Rust, .. },
                     ..
                 },
-                _,
             )
-            | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _) => check_arg_number(
+            | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }) => check_arg_number(
                 cx,
                 decl,
                 span.with_hi(decl.output.span().hi()),

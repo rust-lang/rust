@@ -16,14 +16,17 @@
 
 use super::validity::RefTracking;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::InterpResult;
 use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
 
 use rustc_ast::Mutability;
 
-use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, ValueVisitor};
+use super::{
+    AllocId, Allocation, ConstAllocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy,
+    ValueVisitor,
+};
 use crate::const_eval;
 
 pub trait CompileTimeMachine<'mir, 'tcx, T> = Machine<
@@ -70,7 +73,7 @@ struct IsStaticOrFn;
 
 /// Intern an allocation without looking at its children.
 /// `mode` is the mode of the environment where we found this pointer.
-/// `mutablity` is the mutability of the place to be interned; even if that says
+/// `mutability` is the mutability of the place to be interned; even if that says
 /// `immutable` things might become mutable if `ty` is not frozen.
 /// `ty` can be `None` if there is no potential interior mutability
 /// to account for (e.g. for vtables).
@@ -131,8 +134,8 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
         alloc.mutability = Mutability::Not;
     };
     // link the alloc id to the actual allocation
-    let alloc = tcx.intern_const_alloc(alloc);
     leftover_allocations.extend(alloc.relocations().iter().map(|&(_, alloc_id)| alloc_id));
+    let alloc = tcx.intern_const_alloc(alloc);
     tcx.set_alloc_id_memory(alloc_id, alloc);
     None
 }
@@ -171,7 +174,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
         }
 
         if let Some(def) = mplace.layout.ty.ty_adt_def() {
-            if Some(def.did) == self.ecx.tcx.lang_items().unsafe_cell_type() {
+            if Some(def.did()) == self.ecx.tcx.lang_items().unsafe_cell_type() {
                 // We are crossing over an `UnsafeCell`, we can mutate again. This means that
                 // References we encounter inside here are interned as pointing to mutable
                 // allocations.
@@ -199,7 +202,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
             if let ty::Dynamic(..) =
                 tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind()
             {
-                let ptr = self.ecx.scalar_to_ptr(mplace.meta.unwrap_meta());
+                let ptr = self.ecx.scalar_to_ptr(mplace.meta.unwrap_meta())?;
                 if let Some(alloc_id) = ptr.provenance {
                     // Explicitly choose const mode here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
@@ -297,7 +300,7 @@ pub fn intern_const_alloc_recursive<
     ecx: &mut InterpCx<'mir, 'tcx, M>,
     intern_kind: InternKind,
     ret: &MPlaceTy<'tcx>,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     let tcx = ecx.tcx;
     let base_intern_mode = match intern_kind {
         InternKind::Static(mutbl) => InternMode::Static(mutbl),
@@ -356,6 +359,8 @@ pub fn intern_const_alloc_recursive<
     // pointers, ... So we can't intern them according to their type rules
 
     let mut todo: Vec<_> = leftover_allocations.iter().cloned().collect();
+    debug!(?todo);
+    debug!("dead_alloc_map: {:#?}", ecx.memory.dead_alloc_map);
     while let Some(alloc_id) = todo.pop() {
         if let Some((_, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) {
             // We can't call the `intern_shallow` method here, as its logic is tailored to safe
@@ -393,7 +398,7 @@ pub fn intern_const_alloc_recursive<
             }
             let alloc = tcx.intern_const_alloc(alloc);
             tcx.set_alloc_id_memory(alloc_id, alloc);
-            for &(_, alloc_id) in alloc.relocations().iter() {
+            for &(_, alloc_id) in alloc.inner().relocations().iter() {
                 if leftover_allocations.insert(alloc_id) {
                     todo.push(alloc_id);
                 }
@@ -401,8 +406,11 @@ pub fn intern_const_alloc_recursive<
         } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
             // Codegen does not like dangling pointers, and generally `tcx` assumes that
             // all allocations referenced anywhere actually exist. So, make sure we error here.
-            ecx.tcx.sess.span_err(ecx.tcx.span, "encountered dangling pointer in final constant");
-            return Err(ErrorReported);
+            let reported = ecx
+                .tcx
+                .sess
+                .span_err(ecx.tcx.span, "encountered dangling pointer in final constant");
+            return Err(reported);
         } else if ecx.tcx.get_global_alloc(alloc_id).is_none() {
             // We have hit an `AllocId` that is neither in local or global memory and isn't
             // marked as dangling by local memory.  That should be impossible.
@@ -425,7 +433,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
             &mut InterpCx<'mir, 'tcx, M>,
             &PlaceTy<'tcx, M::PointerTag>,
         ) -> InterpResult<'tcx, ()>,
-    ) -> InterpResult<'tcx, &'tcx Allocation> {
+    ) -> InterpResult<'tcx, ConstAllocation<'tcx>> {
         let dest = self.allocate(layout, MemoryKind::Stack)?;
         f(self, &dest.into())?;
         let mut alloc = self.memory.alloc_map.remove(&dest.ptr.provenance.unwrap()).unwrap().1;

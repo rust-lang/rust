@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/E0396-fixed.rs:5:28
    |
 LL | const VALUE: u8 = unsafe { *REG_ADDR };
-   |                            ^^^^^^^^^ 0x5f3759df is not a valid pointer
+   |                            ^^^^^^^^^ dereferencing pointer failed: 0x5f3759df is not a valid pointer
 
 error: aborting due to previous error
 

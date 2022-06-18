@@ -30,7 +30,7 @@ struct StreamEnumerate<I> {
 }
 
 impl<I: StreamingIterator> StreamingIterator for StreamEnumerate<I> {
-    type Item<'a> where Self: 'a = (usize, I::Item<'a>);
+    type Item<'a> = (usize, I::Item<'a>) where Self: 'a;
     fn next<'a>(&'a mut self) -> Option<Self::Item<'a>> {
         match self.iter.next() {
             None => None,
@@ -44,7 +44,7 @@ impl<I: StreamingIterator> StreamingIterator for StreamEnumerate<I> {
 }
 
 impl<I: Iterator> StreamingIterator for I {
-    type Item<'a> where Self: 'a = <I as Iterator>::Item;
+    type Item<'a> = <I as Iterator>::Item where Self: 'a;
     fn next(&mut self) -> Option<<I as StreamingIterator>::Item<'_>> {
         Iterator::next(self)
     }

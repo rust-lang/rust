@@ -41,4 +41,10 @@ unsafe impl<T> Send for WithPhantomDataSend<*const T, i8> {}
 //~^ ERROR
 //~| WARNING this will change its meaning
 
+pub struct WithLifetime<'a, T>(&'a (), T);
+unsafe impl<T> Send for WithLifetime<'static, T> {} // ok
+unsafe impl<T> Sync for WithLifetime<'static, Vec<T>> {}
+//~^ ERROR
+//~| WARNING this will change its meaning
+
 fn main() {}

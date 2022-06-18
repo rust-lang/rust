@@ -45,3 +45,13 @@ pub mod rust_2021 {
     #[doc(no_inline)]
     pub use crate::convert::{TryFrom, TryInto};
 }
+
+/// The 2024 edition of the core prelude.
+///
+/// See the [module-level documentation](self) for more.
+#[unstable(feature = "prelude_2024", issue = "none")]
+pub mod rust_2024 {
+    #[unstable(feature = "prelude_2024", issue = "none")]
+    #[doc(no_inline)]
+    pub use super::rust_2021::*;
+}

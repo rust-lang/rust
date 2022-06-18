@@ -4,8 +4,6 @@
 //
 // compile-flags:-Zno-leak-check
 
-#![feature(nll)]
-
 fn make_it() -> for<'a> fn(&'a u32, &'a u32) -> &'a u32 {
     panic!()
 }

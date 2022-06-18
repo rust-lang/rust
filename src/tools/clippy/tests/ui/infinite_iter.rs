@@ -51,7 +51,6 @@ fn main() {
 
 mod finite_collect {
     use std::collections::HashSet;
-    use std::iter::FromIterator;
 
     struct C;
     impl FromIterator<i32> for C {

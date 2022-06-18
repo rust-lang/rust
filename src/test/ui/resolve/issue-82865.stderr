@@ -3,6 +3,8 @@ error[E0433]: failed to resolve: maybe a missing crate `x`?
    |
 LL | use x::y::z;
    |     ^ maybe a missing crate `x`?
+   |
+   = help: consider adding `extern crate x` to use the `x` crate
 
 error[E0599]: no function or associated item named `z` found for struct `Box<_, _>` in the current scope
   --> $DIR/issue-82865.rs:8:10

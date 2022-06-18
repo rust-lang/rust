@@ -15,16 +15,20 @@
 //! the ones containing the most important type-related information, such as
 //! `Ty`, `Predicate`, `Region`, and `Const`.
 //!
-//! There are two traits involved in each traversal type.
-//! - The first trait is `TypeFoldable`, which is implemented once for many
-//!   types. This includes both (a) types of interest, and (b) all other
-//!   relevant types, including generic containers like `Vec` and `Option`. It
-//!   defines a "skeleton" of how they should be traversed, for both folding
-//!   and visiting.
-//! - The second trait is `TypeFolder`/`FallibleTypeFolder` (for
-//!   infallible/fallible folding traversals) or `TypeVisitor` (for visiting
-//!   traversals). One of these is implemented for each folder/visitor. This
-//!   defines how types of interest are handled.
+//! There are three traits involved in each traversal type.
+//! - `TypeFoldable`. This is implemented once for many types. This includes
+//!   both:
+//!   - Types of interest, for which the the methods delegate to the
+//!     folder/visitor.
+//!   - All other types, including generic containers like `Vec` and `Option`.
+//!     It defines a "skeleton" of how they should be traversed, for both
+//!     folding and visiting.
+//! - `TypeSuperFoldable`. This is implemented only for each type of interest,
+//!   and defines the traversal "skeleton" for these types.
+//! - `TypeFolder`/`FallibleTypeFolder` (for infallible/fallible folding
+//!   traversals) or `TypeVisitor` (for visiting traversals). One of these is
+//!   implemented for each folder/visitor. This defines how types of interest
+//!   are folded/visited.
 //!
 //! This means each traversal is a mixture of (a) generic traversal operations,
 //! and (b) custom fold/visit operations that are specific to the
@@ -32,25 +36,27 @@
 //! - The `TypeFoldable` impls handle most of the traversal, and call into
 //!   `TypeFolder`/`FallibleTypeFolder`/`TypeVisitor` when they encounter a
 //!   type of interest.
-//! - A `TypeFolder`/`FallibleTypeFolder`/`TypeVisitor` may also call back into
-//!   a `TypeFoldable` impl, because (a) the types of interest are recursive
-//!   and can contain other types of interest, and (b) each folder/visitor
-//!   might provide custom handling only for some types of interest, or only
-//!   for some variants of each type of interest, and then use default
-//!   traversal for the remaining cases.
+//! - A `TypeFolder`/`FallibleTypeFolder`/`TypeVisitor` may call into another
+//!   `TypeFoldable` impl, because some of the types of interest are recursive
+//!   and can contain other types of interest.
+//! - A `TypeFolder`/`FallibleTypeFolder`/`TypeVisitor` may also call into
+//!   a `TypeSuperFoldable` impl, because each folder/visitor might provide
+//!   custom handling only for some types of interest, or only for some
+//!   variants of each type of interest, and then use default traversal for the
+//!   remaining cases.
 //!
 //! For example, if you have `struct S(Ty, U)` where `S: TypeFoldable` and `U:
-//! TypeFoldable`, and an instance `S(ty, u)`, it would be visited like so:
-//! ```
+//! TypeFoldable`, and an instance `s = S(ty, u)`, it would be visited like so:
+//! ```text
 //! s.visit_with(visitor) calls
-//! - s.super_visit_with(visitor) calls
-//!   - ty.visit_with(visitor) calls
-//!     - visitor.visit_ty(ty) may call
-//!       - ty.super_visit_with(visitor)
-//!   - u.visit_with(visitor)
+//! - ty.visit_with(visitor) calls
+//!   - visitor.visit_ty(ty) may call
+//!     - ty.super_visit_with(visitor)
+//! - u.visit_with(visitor)
 //! ```
 use crate::mir;
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -65,18 +71,17 @@ use std::ops::ControlFlow;
 /// To implement this conveniently, use the derive macro located in
 /// `rustc_macros`.
 pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
-    /// The main entry point for folding. To fold a value `t` with a folder `f`
+    /// The entry point for folding. To fold a value `t` with a folder `f`
     /// call: `t.try_fold_with(f)`.
     ///
-    /// For types of interest (such as `Ty`), this default is overridden with a
-    /// method that calls a folder method specifically for that type (such as
+    /// For most types, this just traverses the value, calling `try_fold_with`
+    /// on each field/element.
+    ///
+    /// For types of interest (such as `Ty`), the implementation of method
+    /// calls a folder method specifically for that type (such as
     /// `F::try_fold_ty`). This is where control transfers from `TypeFoldable`
     /// to `TypeFolder`.
-    ///
-    /// For other types, this default is used.
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        self.try_super_fold_with(folder)
-    }
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error>;
 
     /// A convenient alternative to `try_fold_with` for use with infallible
     /// folders. Do not override this method, to ensure coherence with
@@ -85,40 +90,17 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.try_fold_with(folder).into_ok()
     }
 
-    /// Traverses the type in question, typically by calling `try_fold_with` on
-    /// each field/element. This is true even for types of interest such as
-    /// `Ty`. This should only be called within `TypeFolder` methods, when
-    /// non-custom traversals are desired for types of interest.
-    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error>;
-
-    /// A convenient alternative to `try_super_fold_with` for use with
-    /// infallible folders. Do not override this method, to ensure coherence
-    /// with `try_super_fold_with`.
-    fn super_fold_with<F: TypeFolder<'tcx, Error = !>>(self, folder: &mut F) -> Self {
-        self.try_super_fold_with(folder).into_ok()
-    }
-
     /// The entry point for visiting. To visit a value `t` with a visitor `v`
     /// call: `t.visit_with(v)`.
     ///
-    /// For types of interest (such as `Ty`), this default is overridden with a
-    /// method that calls a visitor method specifically for that type (such as
+    /// For most types, this just traverses the value, calling `visit_with` on
+    /// each field/element.
+    ///
+    /// For types of interest (such as `Ty`), the implementation of this method
+    /// that calls a visitor method specifically for that type (such as
     /// `V::visit_ty`). This is where control transfers from `TypeFoldable` to
     /// `TypeVisitor`.
-    ///
-    /// For other types, this default is used.
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.super_visit_with(visitor)
-    }
-
-    /// Traverses the type in question, typically by calling `visit_with` on
-    /// each field/element. This is true even for types of interest such as
-    /// `Ty`. This should only be called within `TypeVisitor` methods, when
-    /// non-custom traversals are desired for types of interest.
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
 
     /// Returns `true` if `self` has any late-bound regions that are either
     /// bound by `binder` or bound by some binder outside of `binder`.
@@ -150,6 +132,13 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
+    }
+    fn error_reported(&self) -> Option<ErrorGuaranteed> {
+        if self.references_error() {
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+        } else {
+            None
+        }
     }
     fn has_param_types_or_consts(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_CT_PARAM)
@@ -211,9 +200,40 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
 }
 
+// This trait is implemented for types of interest.
+pub trait TypeSuperFoldable<'tcx>: TypeFoldable<'tcx> {
+    /// Provides a default fold for a type of interest. This should only be
+    /// called within `TypeFolder` methods, when a non-custom traversal is
+    /// desired for the value of the type of interest passed to that method.
+    /// For example, in `MyFolder::try_fold_ty(ty)`, it is valid to call
+    /// `ty.try_super_fold_with(self)`, but any other folding should be done
+    /// with `xyz.try_fold_with(self)`.
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error>;
+
+    /// A convenient alternative to `try_super_fold_with` for use with
+    /// infallible folders. Do not override this method, to ensure coherence
+    /// with `try_super_fold_with`.
+    fn super_fold_with<F: TypeFolder<'tcx, Error = !>>(self, folder: &mut F) -> Self {
+        self.try_super_fold_with(folder).into_ok()
+    }
+
+    /// Provides a default visit for a type of interest. This should only be
+    /// called within `TypeVisitor` methods, when a non-custom traversal is
+    /// desired for the value of the type of interest passed to that method.
+    /// For example, in `MyVisitor::visit_ty(ty)`, it is valid to call
+    /// `ty.super_visit_with(self)`, but any other visiting should be done
+    /// with `xyz.visit_with(self)`.
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
+}
+
 /// This trait is implemented for every folding traversal. There is a fold
 /// method defined for every type of interest. Each such method has a default
-/// that does an "identity" fold.
+/// that does an "identity" fold. Implementations of these methods often fall
+/// back to a `super_fold_with` method if the primary argument doesn't
+/// satisfy a particular condition.
 ///
 /// If this folder is fallible (and therefore its [`Error`][`TypeFolder::Error`]
 /// associated type is something other than the default `!`) then
@@ -255,6 +275,13 @@ pub trait TypeFolder<'tcx>: Sized {
         c.super_fold_with(self)
     }
 
+    fn fold_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ty::Unevaluated<'tcx>
+    where
+        Self: TypeFolder<'tcx, Error = !>,
+    {
+        uv.super_fold_with(self)
+    }
+
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx>
     where
         Self: TypeFolder<'tcx, Error = !>,
@@ -294,6 +321,13 @@ pub trait FallibleTypeFolder<'tcx>: TypeFolder<'tcx> {
     }
 
     fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+        c.try_super_fold_with(self)
+    }
+
+    fn try_fold_unevaluated(
+        &mut self,
+        c: ty::Unevaluated<'tcx>,
+    ) -> Result<ty::Unevaluated<'tcx>, Self::Error> {
         c.try_super_fold_with(self)
     }
 
@@ -377,12 +411,16 @@ pub trait TypeVisitor<'tcx>: Sized {
         c.super_visit_with(self)
     }
 
-    fn visit_unevaluated_const(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
         uv.super_visit_with(self)
     }
 
     fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         p.super_visit_with(self)
+    }
+
+    fn visit_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> ControlFlow<Self::BreakTy> {
+        c.super_visit_with(self)
     }
 }
 
@@ -478,13 +516,13 @@ impl<'tcx> TyCtxt<'tcx> {
             /// traversed. If we encounter a bound region bound by this
             /// binder or one outer to it, it appears free. Example:
             ///
-            /// ```
-            ///    for<'a> fn(for<'b> fn(), T)
-            /// ^          ^          ^     ^
-            /// |          |          |     | here, would be shifted in 1
-            /// |          |          | here, would be shifted in 2
-            /// |          | here, would be `INNERMOST` shifted in by 1
-            /// | here, initially, binder would be `INNERMOST`
+            /// ```ignore (illustrative)
+            ///       for<'a> fn(for<'b> fn(), T)
+            /// // ^          ^          ^     ^
+            /// // |          |          |     | here, would be shifted in 1
+            /// // |          |          | here, would be shifted in 2
+            /// // |          | here, would be `INNERMOST` shifted in by 1
+            /// // | here, initially, binder would be `INNERMOST`
             /// ```
             ///
             /// You see that, initially, *any* bound value is free,
@@ -506,7 +544,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 t: &Binder<'tcx, T>,
             ) -> ControlFlow<Self::BreakTy> {
                 self.outer_index.shift_in(1);
-                let result = t.as_ref().skip_binder().visit_with(self);
+                let result = t.super_visit_with(self);
                 self.outer_index.shift_out(1);
                 result
             }
@@ -618,17 +656,17 @@ struct BoundVarReplacer<'a, 'tcx> {
     /// the ones we have visited.
     current_index: ty::DebruijnIndex,
 
-    fld_r: Option<&'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a)>,
-    fld_t: Option<&'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a)>,
-    fld_c: Option<&'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx> + 'a)>,
+    fld_r: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
+    fld_t: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
+    fld_c: &'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx> + 'a),
 }
 
 impl<'a, 'tcx> BoundVarReplacer<'a, 'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        fld_r: Option<&'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a)>,
-        fld_t: Option<&'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a)>,
-        fld_c: Option<&'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx> + 'a)>,
+        fld_r: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
+        fld_t: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
+        fld_c: &'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx> + 'a),
     ) -> Self {
         BoundVarReplacer { tcx, current_index: ty::INNERMOST, fld_r, fld_t, fld_c }
     }
@@ -652,55 +690,42 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match *t.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.current_index => {
-                if let Some(fld_t) = self.fld_t.as_mut() {
-                    let ty = fld_t(bound_ty);
-                    return ty::fold::shift_vars(self.tcx, ty, self.current_index.as_u32());
-                }
+                let ty = (self.fld_t)(bound_ty);
+                ty::fold::shift_vars(self.tcx, ty, self.current_index.as_u32())
             }
-            _ if t.has_vars_bound_at_or_above(self.current_index) => {
-                return t.super_fold_with(self);
-            }
-            _ => {}
+            _ if t.has_vars_bound_at_or_above(self.current_index) => t.super_fold_with(self),
+            _ => t,
         }
-        t
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
             ty::ReLateBound(debruijn, br) if debruijn == self.current_index => {
-                if let Some(fld_r) = self.fld_r.as_mut() {
-                    let region = fld_r(br);
-                    return if let ty::ReLateBound(debruijn1, br) = *region {
-                        // If the callback returns a late-bound region,
-                        // that region should always use the INNERMOST
-                        // debruijn index. Then we adjust it to the
-                        // correct depth.
-                        assert_eq!(debruijn1, ty::INNERMOST);
-                        self.tcx.mk_region(ty::ReLateBound(debruijn, br))
-                    } else {
-                        region
-                    };
+                let region = (self.fld_r)(br);
+                if let ty::ReLateBound(debruijn1, br) = *region {
+                    // If the callback returns a late-bound region,
+                    // that region should always use the INNERMOST
+                    // debruijn index. Then we adjust it to the
+                    // correct depth.
+                    assert_eq!(debruijn1, ty::INNERMOST);
+                    self.tcx.mk_region(ty::ReLateBound(debruijn, br))
+                } else {
+                    region
                 }
             }
-            _ => {}
+            _ => r,
         }
-        r
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
-                if let Some(fld_c) = self.fld_c.as_mut() {
-                    let ct = fld_c(bound_const, ct.ty());
-                    return ty::fold::shift_vars(self.tcx, ct, self.current_index.as_u32());
-                }
+                let ct = (self.fld_c)(bound_const, ct.ty());
+                ty::fold::shift_vars(self.tcx, ct, self.current_index.as_u32())
             }
-            _ if ct.has_vars_bound_at_or_above(self.current_index) => {
-                return ct.super_fold_with(self);
-            }
-            _ => {}
+            _ if ct.has_vars_bound_at_or_above(self.current_index) => ct.super_fold_with(self),
+            _ => ct,
         }
-        ct
     }
 }
 
@@ -714,8 +739,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// returned at the end with each bound region and the free region
     /// that replaced it.
     ///
-    /// This method only replaces late bound regions and the result may still
-    /// contain escaping bound types.
+    /// # Panics
+    ///
+    /// This method only replaces late bound regions. Any types or
+    /// constants bound by `value` will cause an ICE.
     pub fn replace_late_bound_regions<T, F>(
         self,
         value: Binder<'tcx, T>,
@@ -726,22 +753,35 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<'tcx>,
     {
         let mut region_map = BTreeMap::new();
-        let mut real_fld_r =
-            |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
+        let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
+        let value = self.replace_late_bound_regions_uncached(value, real_fld_r);
+        (value, region_map)
+    }
+
+    pub fn replace_late_bound_regions_uncached<T, F>(
+        self,
+        value: Binder<'tcx, T>,
+        mut fld_r: F,
+    ) -> T
+    where
+        F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
+        T: TypeFoldable<'tcx>,
+    {
+        let mut fld_t = |b| bug!("unexpected bound ty in binder: {b:?}");
+        let mut fld_c = |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}");
         let value = value.skip_binder();
-        let value = if !value.has_escaping_bound_vars() {
+        if !value.has_escaping_bound_vars() {
             value
         } else {
-            let mut replacer = BoundVarReplacer::new(self, Some(&mut real_fld_r), None, None);
+            let mut replacer = BoundVarReplacer::new(self, &mut fld_r, &mut fld_t, &mut fld_c);
             value.fold_with(&mut replacer)
-        };
-        (value, region_map)
+        }
     }
 
     /// Replaces all escaping bound vars. The `fld_r` closure replaces escaping
     /// bound regions; the `fld_t` closure replaces escaping bound types and the `fld_c`
     /// closure replaces escaping bound consts.
-    pub fn replace_escaping_bound_vars<T, F, G, H>(
+    pub fn replace_escaping_bound_vars_uncached<T, F, G, H>(
         self,
         value: T,
         mut fld_r: F,
@@ -757,32 +797,28 @@ impl<'tcx> TyCtxt<'tcx> {
         if !value.has_escaping_bound_vars() {
             value
         } else {
-            let mut replacer =
-                BoundVarReplacer::new(self, Some(&mut fld_r), Some(&mut fld_t), Some(&mut fld_c));
+            let mut replacer = BoundVarReplacer::new(self, &mut fld_r, &mut fld_t, &mut fld_c);
             value.fold_with(&mut replacer)
         }
     }
 
     /// Replaces all types or regions bound by the given `Binder`. The `fld_r`
-    /// closure replaces bound regions while the `fld_t` closure replaces bound
-    /// types.
-    pub fn replace_bound_vars<T, F, G, H>(
+    /// closure replaces bound regions, the `fld_t` closure replaces bound
+    /// types, and `fld_c` replaces bound constants.
+    pub fn replace_bound_vars_uncached<T, F, G, H>(
         self,
         value: Binder<'tcx, T>,
-        mut fld_r: F,
+        fld_r: F,
         fld_t: G,
         fld_c: H,
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> T
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         G: FnMut(ty::BoundTy) -> Ty<'tcx>,
         H: FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx>,
         T: TypeFoldable<'tcx>,
     {
-        let mut region_map = BTreeMap::new();
-        let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
-        let value = self.replace_escaping_bound_vars(value.skip_binder(), real_fld_r, fld_t, fld_c);
-        (value, region_map)
+        self.replace_escaping_bound_vars_uncached(value.skip_binder(), fld_r, fld_t, fld_c)
     }
 
     /// Replaces any late-bound regions bound in `value` with
@@ -795,20 +831,19 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        self.replace_late_bound_regions(value, |br| {
+        self.replace_late_bound_regions_uncached(value, |br| {
             self.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: all_outlive_scope,
                 bound_region: br.kind,
             }))
         })
-        .0
     }
 
     pub fn shift_bound_var_indices<T>(self, bound_vars: usize, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
-        self.replace_escaping_bound_vars(
+        self.replace_escaping_bound_vars_uncached(
             value,
             |r| {
                 self.mk_region(ty::ReLateBound(
@@ -830,7 +865,7 @@ impl<'tcx> TyCtxt<'tcx> {
             },
             |c, ty| {
                 self.mk_const(ty::ConstS {
-                    val: ty::ConstKind::Bound(
+                    kind: ty::ConstKind::Bound(
                         ty::INNERMOST,
                         ty::BoundVar::from_usize(c.as_usize() + bound_vars),
                     ),
@@ -1083,13 +1118,13 @@ impl<'tcx> TypeFolder<'tcx> for Shifter<'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Bound(debruijn, bound_ct) = ct.val() {
+        if let ty::ConstKind::Bound(debruijn, bound_ct) = ct.kind() {
             if self.amount == 0 || debruijn < self.current_index {
                 ct
             } else {
                 let debruijn = debruijn.shifted_in(self.amount);
                 self.tcx.mk_const(ty::ConstS {
-                    val: ty::ConstKind::Bound(debruijn, bound_ct),
+                    kind: ty::ConstKind::Bound(debruijn, bound_ct),
                     ty: ct.ty(),
                 })
             }
@@ -1199,7 +1234,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // otherwise we do want to remember to visit the rest of the
         // const, as it has types/regions embedded in a lot of other
         // places.
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
                 ControlFlow::Break(FoundEscapingVars)
             }
@@ -1235,15 +1270,11 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
 
     #[inline]
-    #[instrument(level = "trace")]
-    fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
-        debug!(
-            "HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}",
-            t,
-            t.flags(),
-            self.flags
-        );
-        if t.flags().intersects(self.flags) {
+    #[instrument(skip(self), level = "trace")]
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        let flags = t.flags();
+        trace!(t.flags=?t.flags());
+        if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::CONTINUE
@@ -1276,7 +1307,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
 
     #[inline]
     #[instrument(level = "trace")]
-    fn visit_unevaluated_const(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_unevaluated_const(uv);
         trace!(r.flags=?flags);
         if flags.intersects(self.flags) {
@@ -1345,7 +1376,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // ignore the inputs to a projection, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            if let ty::Projection(..) | ty::Opaque(..) = t.kind() {
+            if let ty::Projection(..) = t.kind() {
                 return ControlFlow::CONTINUE;
             }
         }
@@ -1358,7 +1389,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // ignore the inputs of an unevaluated const, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            if let ty::ConstKind::Unevaluated(..) = c.val() {
+            if let ty::ConstKind::Unevaluated(..) = c.kind() {
                 return ControlFlow::CONTINUE;
             }
         }
@@ -1372,6 +1403,53 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
                 self.regions.insert(br.kind);
             }
         }
+        ControlFlow::CONTINUE
+    }
+}
+
+/// Finds the max universe present
+pub struct MaxUniverse {
+    max_universe: ty::UniverseIndex,
+}
+
+impl MaxUniverse {
+    pub fn new() -> Self {
+        MaxUniverse { max_universe: ty::UniverseIndex::ROOT }
+    }
+
+    pub fn max_universe(self) -> ty::UniverseIndex {
+        self.max_universe
+    }
+}
+
+impl<'tcx> TypeVisitor<'tcx> for MaxUniverse {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if let ty::Placeholder(placeholder) = t.kind() {
+            self.max_universe = ty::UniverseIndex::from_u32(
+                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
+            );
+        }
+
+        t.super_visit_with(self)
+    }
+
+    fn visit_const(&mut self, c: ty::consts::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if let ty::ConstKind::Placeholder(placeholder) = c.kind() {
+            self.max_universe = ty::UniverseIndex::from_u32(
+                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
+            );
+        }
+
+        c.super_visit_with(self)
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if let ty::RePlaceholder(placeholder) = *r {
+            self.max_universe = ty::UniverseIndex::from_u32(
+                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
+            );
+        }
+
         ControlFlow::CONTINUE
     }
 }

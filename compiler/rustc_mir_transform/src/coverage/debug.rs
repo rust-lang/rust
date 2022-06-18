@@ -124,6 +124,7 @@ use rustc_span::Span;
 
 use std::iter;
 use std::lazy::SyncOnceCell;
+use std::ops::Deref;
 
 pub const NESTED_INDENT: &str = "    ";
 
@@ -357,14 +358,12 @@ impl DebugCounters {
         if let Some(counters) = &self.some_counters {
             if let Some(DebugCounter { counter_kind, some_block_label }) = counters.get(&operand) {
                 if let CoverageKind::Expression { .. } = counter_kind {
-                    if let Some(block_label) = some_block_label {
-                        if debug_options().counter_format.block {
-                            return format!(
-                                "{}:({})",
-                                block_label,
-                                self.format_counter_kind(counter_kind)
-                            );
-                        }
+                    if let Some(label) = some_block_label && debug_options().counter_format.block {
+                        return format!(
+                            "{}:({})",
+                            label,
+                            self.format_counter_kind(counter_kind)
+                        );
                     }
                     return format!("({})", self.format_counter_kind(counter_kind));
                 }
@@ -436,11 +435,11 @@ impl GraphvizData {
     pub fn get_bcb_coverage_spans_with_counters(
         &self,
         bcb: BasicCoverageBlock,
-    ) -> Option<&Vec<(CoverageSpan, CoverageKind)>> {
+    ) -> Option<&[(CoverageSpan, CoverageKind)]> {
         if let Some(bcb_to_coverage_spans_with_counters) =
             self.some_bcb_to_coverage_spans_with_counters.as_ref()
         {
-            bcb_to_coverage_spans_with_counters.get(&bcb)
+            bcb_to_coverage_spans_with_counters.get(&bcb).map(Deref::deref)
         } else {
             None
         }
@@ -459,12 +458,9 @@ impl GraphvizData {
         }
     }
 
-    pub fn get_bcb_dependency_counters(
-        &self,
-        bcb: BasicCoverageBlock,
-    ) -> Option<&Vec<CoverageKind>> {
+    pub fn get_bcb_dependency_counters(&self, bcb: BasicCoverageBlock) -> Option<&[CoverageKind]> {
         if let Some(bcb_to_dependency_counters) = self.some_bcb_to_dependency_counters.as_ref() {
-            bcb_to_dependency_counters.get(&bcb)
+            bcb_to_dependency_counters.get(&bcb).map(Deref::deref)
         } else {
             None
         }
@@ -573,11 +569,11 @@ impl UsedExpressions {
     /// associated with a coverage span).
     pub fn validate(
         &mut self,
-        bcb_counters_without_direct_coverage_spans: &Vec<(
+        bcb_counters_without_direct_coverage_spans: &[(
             Option<BasicCoverageBlock>,
             BasicCoverageBlock,
             CoverageKind,
-        )>,
+        )],
     ) {
         if self.is_enabled() {
             let mut not_validated = bcb_counters_without_direct_coverage_spans
@@ -636,7 +632,7 @@ pub(super) fn dump_coverage_spanview<'tcx>(
     basic_coverage_blocks: &CoverageGraph,
     pass_name: &str,
     body_span: Span,
-    coverage_spans: &Vec<CoverageSpan>,
+    coverage_spans: &[CoverageSpan],
 ) {
     let mir_source = mir_body.source;
     let def_id = mir_source.def_id();
@@ -656,7 +652,7 @@ fn span_viewables<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     basic_coverage_blocks: &CoverageGraph,
-    coverage_spans: &Vec<CoverageSpan>,
+    coverage_spans: &[CoverageSpan],
 ) -> Vec<SpanViewable> {
     let mut span_viewables = Vec::new();
     for coverage_span in coverage_spans {
@@ -678,7 +674,7 @@ pub(super) fn dump_coverage_graphviz<'tcx>(
     basic_coverage_blocks: &CoverageGraph,
     debug_counters: &DebugCounters,
     graphviz_data: &GraphvizData,
-    intermediate_expressions: &Vec<CoverageKind>,
+    intermediate_expressions: &[CoverageKind],
     debug_used_expressions: &UsedExpressions,
 ) {
     let mir_source = mir_body.source;
@@ -703,7 +699,7 @@ pub(super) fn dump_coverage_graphviz<'tcx>(
         edge_labels.retain(|label| label != "unreachable");
         let edge_counters = from_terminator
             .successors()
-            .map(|&successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
+            .map(|successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
         iter::zip(&edge_labels, edge_counters)
             .map(|(label, some_counter)| {
                 if let Some(counter) = some_counter {
@@ -755,9 +751,9 @@ fn bcb_to_string_sections<'tcx>(
     mir_body: &mir::Body<'tcx>,
     debug_counters: &DebugCounters,
     bcb_data: &BasicCoverageBlockData,
-    some_coverage_spans_with_counters: Option<&Vec<(CoverageSpan, CoverageKind)>>,
-    some_dependency_counters: Option<&Vec<CoverageKind>>,
-    some_intermediate_expressions: Option<&Vec<CoverageKind>>,
+    some_coverage_spans_with_counters: Option<&[(CoverageSpan, CoverageKind)]>,
+    some_dependency_counters: Option<&[CoverageKind]>,
+    some_intermediate_expressions: Option<&[CoverageKind]>,
 ) -> Vec<String> {
     let len = bcb_data.basic_blocks.len();
     let mut sections = Vec::new();

@@ -5,6 +5,7 @@ use clippy_utils::{get_parent_expr, is_lint_allowed, match_function_call, method
 use clippy_utils::{peel_blocks, SpanlessEq};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -98,11 +99,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
-    /// let bs = "a byte string".as_bytes();
+    /// let bstr = "a byte string".as_bytes();
+    /// ```
     ///
-    /// // Good
-    /// let bs = b"a byte string";
+    /// Use instead:
+    /// ```rust
+    /// let bstr = b"a byte string";
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub STRING_LIT_AS_BYTES,
@@ -222,11 +224,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// let _ = std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
+    /// std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
     /// ```
-    /// could be written as
+    ///
+    /// Use instead:
     /// ```rust
-    /// let _ = &"Hello World!"[6..11];
+    /// &"Hello World!"[6..11];
     /// ```
     #[clippy::version = "1.50.0"]
     pub STRING_FROM_UTF8_AS_BYTES,
@@ -450,4 +453,59 @@ impl<'tcx> LateLintPass<'tcx> for StringToString {
             }
         }
     }
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns about calling `str::trim` (or variants) before `str::split_whitespace`.
+    ///
+    /// ### Why is this bad?
+    /// `split_whitespace` already ignores leading and trailing whitespace.
+    ///
+    /// ### Example
+    /// ```rust
+    /// " A B C ".trim().split_whitespace();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// " A B C ".split_whitespace();
+    /// ```
+    #[clippy::version = "1.62.0"]
+    pub TRIM_SPLIT_WHITESPACE,
+    style,
+    "using `str::trim()` or alike before `str::split_whitespace`"
+}
+declare_lint_pass!(TrimSplitWhitespace => [TRIM_SPLIT_WHITESPACE]);
+
+impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
+        let tyckres = cx.typeck_results();
+        if_chain! {
+            if let ExprKind::MethodCall(path, [split_recv], split_ws_span) = expr.kind;
+            if path.ident.name == sym!(split_whitespace);
+            if let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id);
+            if cx.tcx.is_diagnostic_item(sym::str_split_whitespace, split_ws_def_id);
+            if let ExprKind::MethodCall(path, [_trim_recv], trim_span) = split_recv.kind;
+            if let trim_fn_name @ ("trim" | "trim_start" | "trim_end") = path.ident.name.as_str();
+            if let Some(trim_def_id) = tyckres.type_dependent_def_id(split_recv.hir_id);
+            if is_one_of_trim_diagnostic_items(cx, trim_def_id);
+            then {
+                span_lint_and_sugg(
+                    cx,
+                    TRIM_SPLIT_WHITESPACE,
+                    trim_span.with_hi(split_ws_span.lo()),
+                    &format!("found call to `str::{}` before `str::split_whitespace`", trim_fn_name),
+                    &format!("remove `{}()`", trim_fn_name),
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+    }
+}
+
+fn is_one_of_trim_diagnostic_items(cx: &LateContext<'_>, trim_def_id: DefId) -> bool {
+    cx.tcx.is_diagnostic_item(sym::str_trim, trim_def_id)
+        || cx.tcx.is_diagnostic_item(sym::str_trim_start, trim_def_id)
+        || cx.tcx.is_diagnostic_item(sym::str_trim_end, trim_def_id)
 }

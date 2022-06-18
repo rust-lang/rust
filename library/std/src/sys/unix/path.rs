@@ -28,7 +28,8 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
     // See 4.13 Pathname Resolution, IEEE Std 1003.1-2017
     // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
 
-    let mut components = path.components();
+    // Get the components, skipping the redundant leading "." component if it exists.
+    let mut components = path.strip_prefix(".").unwrap_or(path).components();
     let path_os = path.as_os_str().bytes();
 
     let mut normalized = if path.is_absolute() {

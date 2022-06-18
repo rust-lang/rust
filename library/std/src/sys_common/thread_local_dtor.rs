@@ -11,7 +11,7 @@
 //! or implement something more efficient.
 
 #![unstable(feature = "thread_local_internals", issue = "none")]
-#![allow(dead_code)] // sys isn't exported yet
+#![allow(dead_code)]
 
 use crate::ptr;
 use crate::sys_common::thread_local_key::StaticKey;

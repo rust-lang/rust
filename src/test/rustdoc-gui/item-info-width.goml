@@ -4,5 +4,5 @@ goto: file://|DOC_PATH|/lib2/struct.Foo.html
 size: (1100, 800)
 // We check that ".item-info" is bigger than its content.
 assert-css: (".item-info", {"width": "790px"})
-assert-css: (".item-info .stab", {"width": "340px"})
+assert-css: (".item-info .stab", {"width": "289px"})
 assert-position: (".item-info .stab", {"x": 295})

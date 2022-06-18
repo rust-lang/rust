@@ -6,11 +6,31 @@ fn main() {
     let item1 = 2;
     {
         let item = &item1;
-        println!("{}", item);
+        dbg!(item);
     }
 
     {
         let item = &item1;
-        println!("{:?}", item);
+        dbg!(item);
+    }
+
+    {
+        let item = &(0..5);
+        dbg!(item);
+    }
+
+    {
+        let item = &mut (0..5);
+        dbg!(item);
+    }
+
+    {
+        let item = 0..5;
+        dbg!(item);
+    }
+
+    {
+        let item = 0..5;
+        dbg!(item);
     }
 }

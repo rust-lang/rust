@@ -8,12 +8,13 @@ use crate::placeholders::{placeholder, PlaceholderExpander};
 use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::token;
+use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AssocItemKind, AstLike, AstLikeWrapper, AttrStyle, ExprKind, ForeignItemKind};
-use rustc_ast::{Inline, ItemKind, MacArgs, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem};
-use rustc_ast::{NodeId, PatKind, StmtKind, TyKind};
+use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrStyle, ExprKind, ForeignItemKind};
+use rustc_ast::{HasAttrs, HasNodeId};
+use rustc_ast::{Inline, ItemKind, MacArgs, MacStmtStyle, MetaItemKind, ModKind};
+use rustc_ast::{NestedMetaItem, NodeId, PatKind, StmtKind, TyKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::sync::Lrc;
@@ -83,9 +84,7 @@ macro_rules! ast_fragments {
                 }
                 match self {
                     $($(AstFragment::$Kind(ast) => ast.extend(placeholders.iter().flat_map(|id| {
-                        // We are repeating through arguments with `many`, to do that we have to
-                        // mention some macro variable from those arguments even if it's not used.
-                        macro _repeating($flat_map_ast_elt) {}
+                        ${ignore(flat_map_ast_elt)}
                         placeholder(AstFragmentKind::$Kind, *id, None).$make_ast()
                     })),)?)*
                     _ => panic!("unexpected AST fragment kind")
@@ -215,7 +214,7 @@ pub enum SupportsMacroExpansion {
 }
 
 impl AstFragmentKind {
-    crate fn dummy(self, span: Span) -> AstFragment {
+    pub(crate) fn dummy(self, span: Span) -> AstFragment {
         self.make_from(DummyResult::any(span)).expect("couldn't create a dummy AST fragment")
     }
 
@@ -364,7 +363,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     pub fn expand_crate(&mut self, krate: ast::Crate) -> ast::Crate {
-        let file_path = match self.cx.source_map().span_to_filename(krate.span) {
+        let file_path = match self.cx.source_map().span_to_filename(krate.spans.inner_span) {
             FileName::Real(name) => name
                 .into_local_path()
                 .expect("attempting to resolve a file path in an external file"),
@@ -551,11 +550,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 // attribute is expanded. Therefore, we don't need to configure the tokens
                 // Derive macros *can* see the results of cfg-expansion - they are handled
                 // specially in `fully_expand_fragment`
-                cfg: StripUnconfigured {
-                    sess: &self.cx.sess,
-                    features: self.cx.ecfg.features,
-                    config_tokens: false,
-                },
                 cx: self.cx,
                 invocations: Vec::new(),
                 monotonic: self.monotonic,
@@ -685,12 +679,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     )
                                 ) =>
                         {
-                            rustc_parse::fake_token_stream(
+                            rustc_parse::fake_token_stream_for_item(
                                 &self.cx.sess.parse_sess,
-                                &item.into_nonterminal(),
+                                item_inner,
                             )
                         }
-                        _ => item.into_tokens(&self.cx.sess.parse_sess),
+                        _ => item.to_tokens(),
                     };
                     let attr_item = attr.unwrap_normal_item();
                     if let MacArgs::Eq(..) = attr_item.args {
@@ -891,7 +885,7 @@ pub fn parse_ast_fragment<'a>(
         AstFragmentKind::Stmts => {
             let mut stmts = SmallVec::new();
             // Won't make progress on a `}`.
-            while this.token != token::Eof && this.token != token::CloseDelim(token::Brace) {
+            while this.token != token::Eof && this.token != token::CloseDelim(Delimiter::Brace) {
                 if let Some(stmt) = this.parse_full_stmt(AttemptLocalParseRecovery::Yes)? {
                     stmts.push(stmt);
                 }
@@ -951,7 +945,7 @@ pub fn ensure_complete_parse<'a>(
                 err.span_suggestion(
                     semi_span,
                     "you might be missing a semicolon here",
-                    ";".to_owned(),
+                    ";",
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1005,13 +999,12 @@ enum AddSemicolon {
 
 /// A trait implemented for all `AstFragment` nodes and providing all pieces
 /// of functionality used by `InvocationCollector`.
-trait InvocationCollectorNode: AstLike {
+trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     type OutputTy = SmallVec<[Self; 1]>;
     type AttrsTy: Deref<Target = [ast::Attribute]> = Vec<ast::Attribute>;
     const KIND: AstFragmentKind;
     fn to_annotatable(self) -> Annotatable;
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy;
-    fn id(&mut self) -> &mut NodeId;
     fn descr() -> &'static str {
         unreachable!()
     }
@@ -1046,9 +1039,6 @@ impl InvocationCollectorNode for P<ast::Item> {
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_items()
-    }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_item(self, visitor)
@@ -1096,7 +1086,7 @@ impl InvocationCollectorNode for P<ast::Item> {
             ModKind::Unloaded => {
                 // We have an outline `mod foo;` so we need to parse the file.
                 let old_attrs_len = attrs.len();
-                let ParsedExternalMod { items, inner_span, file_path, dir_path, dir_ownership } =
+                let ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership } =
                     parse_external_mod(
                         &ecx.sess,
                         ident,
@@ -1117,7 +1107,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                     );
                 }
 
-                *mod_kind = ModKind::Loaded(items, Inline::No, inner_span);
+                *mod_kind = ModKind::Loaded(items, Inline::No, spans);
                 node.attrs = attrs;
                 if node.attrs.len() > old_attrs_len {
                     // If we loaded an out-of-line module and added some inner attributes,
@@ -1149,7 +1139,7 @@ impl InvocationCollectorNode for P<ast::Item> {
 }
 
 struct TraitItemTag;
-impl InvocationCollectorNode for AstLikeWrapper<P<ast::AssocItem>, TraitItemTag> {
+impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitItemTag> {
     type OutputTy = SmallVec<[P<ast::AssocItem>; 1]>;
     const KIND: AstFragmentKind = AstFragmentKind::TraitItems;
     fn to_annotatable(self) -> Annotatable {
@@ -1157,9 +1147,6 @@ impl InvocationCollectorNode for AstLikeWrapper<P<ast::AssocItem>, TraitItemTag>
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_trait_items()
-    }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.wrapped.id
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_assoc_item(self.wrapped, visitor)
@@ -1177,7 +1164,7 @@ impl InvocationCollectorNode for AstLikeWrapper<P<ast::AssocItem>, TraitItemTag>
 }
 
 struct ImplItemTag;
-impl InvocationCollectorNode for AstLikeWrapper<P<ast::AssocItem>, ImplItemTag> {
+impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> {
     type OutputTy = SmallVec<[P<ast::AssocItem>; 1]>;
     const KIND: AstFragmentKind = AstFragmentKind::ImplItems;
     fn to_annotatable(self) -> Annotatable {
@@ -1185,9 +1172,6 @@ impl InvocationCollectorNode for AstLikeWrapper<P<ast::AssocItem>, ImplItemTag> 
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_impl_items()
-    }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.wrapped.id
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_assoc_item(self.wrapped, visitor)
@@ -1212,9 +1196,6 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_foreign_items()
     }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
-    }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_foreign_item(self, visitor)
     }
@@ -1238,9 +1219,6 @@ impl InvocationCollectorNode for ast::Variant {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_variants()
     }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
-    }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_variant(self, visitor)
     }
@@ -1253,9 +1231,6 @@ impl InvocationCollectorNode for ast::FieldDef {
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_field_defs()
-    }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_field_def(self, visitor)
@@ -1270,9 +1245,6 @@ impl InvocationCollectorNode for ast::PatField {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_pat_fields()
     }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
-    }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_pat_field(self, visitor)
     }
@@ -1285,9 +1257,6 @@ impl InvocationCollectorNode for ast::ExprField {
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_expr_fields()
-    }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_expr_field(self, visitor)
@@ -1302,9 +1271,6 @@ impl InvocationCollectorNode for ast::Param {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_params()
     }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
-    }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_param(self, visitor)
     }
@@ -1317,9 +1283,6 @@ impl InvocationCollectorNode for ast::GenericParam {
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_generic_params()
-    }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_generic_param(self, visitor)
@@ -1334,9 +1297,6 @@ impl InvocationCollectorNode for ast::Arm {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_arms()
     }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
-    }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_arm(self, visitor)
     }
@@ -1350,9 +1310,6 @@ impl InvocationCollectorNode for ast::Stmt {
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_stmts()
-    }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
     }
     fn noop_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         noop_flat_map_stmt(self, visitor)
@@ -1410,9 +1367,6 @@ impl InvocationCollectorNode for ast::Crate {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_crate()
     }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
-    }
     fn noop_visit<V: MutVisitor>(&mut self, visitor: &mut V) {
         noop_visit_crate(self, visitor)
     }
@@ -1426,9 +1380,6 @@ impl InvocationCollectorNode for P<ast::Ty> {
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_ty()
-    }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
     }
     fn noop_visit<V: MutVisitor>(&mut self, visitor: &mut V) {
         noop_visit_ty(self, visitor)
@@ -1453,9 +1404,6 @@ impl InvocationCollectorNode for P<ast::Pat> {
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_pat()
-    }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
     }
     fn noop_visit<V: MutVisitor>(&mut self, visitor: &mut V) {
         noop_visit_pat(self, visitor)
@@ -1482,9 +1430,6 @@ impl InvocationCollectorNode for P<ast::Expr> {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_expr()
     }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.id
-    }
     fn descr() -> &'static str {
         "an expression"
     }
@@ -1504,7 +1449,7 @@ impl InvocationCollectorNode for P<ast::Expr> {
 }
 
 struct OptExprTag;
-impl InvocationCollectorNode for AstLikeWrapper<P<ast::Expr>, OptExprTag> {
+impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
     type OutputTy = Option<P<ast::Expr>>;
     type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::OptExpr;
@@ -1513,9 +1458,6 @@ impl InvocationCollectorNode for AstLikeWrapper<P<ast::Expr>, OptExprTag> {
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_opt_expr()
-    }
-    fn id(&mut self) -> &mut NodeId {
-        &mut self.wrapped.id
     }
     fn noop_flat_map<V: MutVisitor>(mut self, visitor: &mut V) -> Self::OutputTy {
         noop_visit_expr(&mut self.wrapped, visitor);
@@ -1538,12 +1480,20 @@ impl InvocationCollectorNode for AstLikeWrapper<P<ast::Expr>, OptExprTag> {
 
 struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
-    cfg: StripUnconfigured<'a>,
     invocations: Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>,
     monotonic: bool,
 }
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
+    fn cfg(&self) -> StripUnconfigured<'_> {
+        StripUnconfigured {
+            sess: &self.cx.sess,
+            features: self.cx.ecfg.features,
+            config_tokens: false,
+            lint_node_id: self.cx.current_expansion.lint_node_id,
+        }
+    }
+
     fn collect(&mut self, fragment_kind: AstFragmentKind, kind: InvocationKind) -> AstFragment {
         let expn_id = LocalExpnId::fresh_empty();
         let vis = kind.placeholder_visibility();
@@ -1583,7 +1533,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     /// legacy derive helpers (helpers written before derives that introduce them).
     fn take_first_attr(
         &self,
-        item: &mut impl AstLike,
+        item: &mut impl HasAttrs,
     ) -> Option<(ast::Attribute, usize, Vec<ast::Path>)> {
         let mut attr = None;
 
@@ -1679,11 +1629,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn expand_cfg_true(
         &mut self,
-        node: &mut impl AstLike,
+        node: &mut impl HasAttrs,
         attr: ast::Attribute,
         pos: usize,
     ) -> bool {
-        let res = self.cfg.cfg_true(&attr);
+        let res = self.cfg().cfg_true(&attr);
         if res {
             // FIXME: `cfg(TRUE)` attributes do not currently remove themselves during expansion,
             // and some tools like rustdoc and clippy rely on that. Find a way to remove them
@@ -1694,9 +1644,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         res
     }
 
-    fn expand_cfg_attr(&self, node: &mut impl AstLike, attr: ast::Attribute, pos: usize) {
+    fn expand_cfg_attr(&self, node: &mut impl HasAttrs, attr: ast::Attribute, pos: usize) {
         node.visit_attrs(|attrs| {
-            attrs.splice(pos..pos, self.cfg.expand_cfg_attr(attr, false));
+            attrs.splice(pos..pos, self.cfg().expand_cfg_attr(attr, false));
         });
     }
 
@@ -1718,7 +1668,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         continue;
                     }
                     _ => {
-                        Node::pre_flat_map_node_collect_attr(&self.cfg, &attr);
+                        Node::pre_flat_map_node_collect_attr(&self.cfg(), &attr);
                         self.collect_attr((attr, pos, derives), node.to_annotatable(), Node::KIND)
                             .make_ast::<Node>()
                     }
@@ -1732,7 +1682,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 }
                 None => {
                     match Node::wrap_flat_map_node_noop_flat_map(node, self, |mut node, this| {
-                        assign_id!(this, node.id(), || node.noop_flat_map(this))
+                        assign_id!(this, node.node_id_mut(), || node.noop_flat_map(this))
                     }) {
                         Ok(output) => output,
                         Err(returned_node) => {
@@ -1780,7 +1730,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     })
                 }
                 None => {
-                    assign_id!(self, node.id(), || node.noop_visit(self))
+                    assign_id!(self, node.node_id_mut(), || node.noop_visit(self))
                 }
             };
         }
@@ -1793,11 +1743,11 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn flat_map_trait_item(&mut self, node: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        self.flat_map_node(AstLikeWrapper::new(node, TraitItemTag))
+        self.flat_map_node(AstNodeWrapper::new(node, TraitItemTag))
     }
 
     fn flat_map_impl_item(&mut self, node: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        self.flat_map_node(AstLikeWrapper::new(node, ImplItemTag))
+        self.flat_map_node(AstNodeWrapper::new(node, ImplItemTag))
     }
 
     fn flat_map_foreign_item(
@@ -1838,13 +1788,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_stmt(&mut self, mut node: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
+    fn flat_map_stmt(&mut self, node: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         // FIXME: invocations in semicolon-less expressions positions are expanded as expressions,
         // changing that requires some compatibility measures.
         if node.is_expr() {
             // The only way that we can end up with a `MacCall` expression statement,
             // (as opposed to a `StmtKind::MacCall`) is if we have a macro as the
-            // traiing expression in a block (e.g. `fn foo() { my_macro!() }`).
+            // trailing expression in a block (e.g. `fn foo() { my_macro!() }`).
             // Record this information, so that we can report a more specific
             // `SEMICOLON_IN_EXPRESSIONS_FROM_MACROS` lint if needed.
             // See #78991 for an investigation of treating macros in this position
@@ -1860,7 +1810,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     self.cx.current_expansion.is_trailing_mac = false;
                     res
                 }
-                _ => assign_id!(self, &mut node.id, || noop_flat_map_stmt(node, self)),
+                _ => noop_flat_map_stmt(node, self),
             };
         }
 
@@ -1882,13 +1832,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_expr(&mut self, node: &mut P<ast::Expr>) {
         // FIXME: Feature gating is performed inconsistently between `Expr` and `OptExpr`.
         if let Some(attr) = node.attrs.first() {
-            self.cfg.maybe_emit_expr_attr_err(attr);
+            self.cfg().maybe_emit_expr_attr_err(attr);
         }
         self.visit_node(node)
     }
 
     fn filter_map_expr(&mut self, node: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        self.flat_map_node(AstLikeWrapper::new(node, OptExprTag))
+        self.flat_map_node(AstNodeWrapper::new(node, OptExprTag))
     }
 
     fn visit_block(&mut self, node: &mut P<ast::Block>) {

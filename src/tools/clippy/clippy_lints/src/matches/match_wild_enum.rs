@@ -10,7 +10,7 @@ use rustc_span::sym;
 
 use super::{MATCH_WILDCARD_FOR_SINGLE_VARIANTS, WILDCARD_ENUM_MATCH_ARM};
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ty = cx.typeck_results().expr_ty(ex).peel_refs();
     let adt_def = match ty.kind() {
@@ -45,8 +45,8 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
 
     // Accumulate the variants which should be put in place of the wildcard because they're not
     // already covered.
-    let has_hidden = adt_def.variants.iter().any(|x| is_hidden(cx, x));
-    let mut missing_variants: Vec<_> = adt_def.variants.iter().filter(|x| !is_hidden(cx, x)).collect();
+    let has_hidden = adt_def.variants().iter().any(|x| is_hidden(cx, x));
+    let mut missing_variants: Vec<_> = adt_def.variants().iter().filter(|x| !is_hidden(cx, x)).collect();
 
     let mut path_prefix = CommonPrefixSearcher::None;
     for arm in arms {
@@ -56,7 +56,6 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
         recurse_or_patterns(arm.pat, |pat| {
             let path = match &peel_hir_pat_refs(pat).0.kind {
                 PatKind::Path(path) => {
-                    #[allow(clippy::match_same_arms)]
                     let id = match cx.qpath_res(path, pat.hir_id) {
                         Res::Def(
                             DefKind::Const | DefKind::ConstParam | DefKind::AnonConst | DefKind::InlineConst,
@@ -118,7 +117,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                 }
                 s
             } else {
-                let mut s = cx.tcx.def_path_str(adt_def.did);
+                let mut s = cx.tcx.def_path_str(adt_def.did());
                 s.push_str("::");
                 s
             },
@@ -193,6 +192,5 @@ impl<'a> CommonPrefixSearcher<'a> {
 }
 
 fn is_hidden(cx: &LateContext<'_>, variant_def: &VariantDef) -> bool {
-    let attrs = cx.tcx.get_attrs(variant_def.def_id);
-    clippy_utils::attrs::is_doc_hidden(attrs) || clippy_utils::attrs::is_unstable(attrs)
+    cx.tcx.is_doc_hidden(variant_def.def_id) || cx.tcx.has_attr(variant_def.def_id, sym::unstable)
 }

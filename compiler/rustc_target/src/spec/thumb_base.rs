@@ -36,7 +36,7 @@ pub fn opts() -> TargetOptions {
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         executables: true,
         // In most cases, LLD is good enough
-        linker: Some("rust-lld".to_string()),
+        linker: Some("rust-lld".into()),
         // Because these devices have very little resources having an unwinder is too onerous so we
         // default to "abort" because the "unwind" strategy is very rare.
         panic_strategy: PanicStrategy::Abort,

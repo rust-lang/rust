@@ -27,7 +27,7 @@ help: consider removing the borrow
    |
 LL -     [(); & { loop { continue } } ];
 LL +     [(); { loop { continue } } ];
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/issue-52443.rs:4:17
@@ -47,8 +47,8 @@ LL |     [(); { for _ in 0usize.. {}; 0}];
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    |
-LL | impl<I: Iterator> IntoIterator for I {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<I: ~const Iterator> const IntoIterator for I {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error[E0658]: mutable references are not allowed in constants

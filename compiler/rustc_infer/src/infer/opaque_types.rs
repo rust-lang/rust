@@ -1,102 +1,196 @@
-use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits;
+use hir::def_id::{DefId, LocalDefId};
+use hir::{HirId, OpaqueTyOrigin};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{
+    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor,
+};
 use rustc_span::Span;
 
 use std::ops::ControlFlow;
 
 pub type OpaqueTypeMap<'tcx> = VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 
+mod table;
+
+pub use table::{OpaqueTypeStorage, OpaqueTypeTable};
+
+use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use super::InferResult;
+
 /// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
 /// appear in the return type).
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct OpaqueTypeDecl<'tcx> {
-    /// The opaque type (`ty::Opaque`) for this declaration.
-    pub opaque_type: Ty<'tcx>,
-
-    /// The span of this particular definition of the opaque type. So
-    /// for example:
-    ///
-    /// ```ignore (incomplete snippet)
-    /// type Foo = impl Baz;
-    /// fn bar() -> Foo {
-    /// //          ^^^ This is the span we are looking for!
-    /// }
-    /// ```
-    ///
-    /// In cases where the fn returns `(impl Trait, impl Trait)` or
-    /// other such combinations, the result is currently
-    /// over-approximated, but better than nothing.
-    pub definition_span: Span,
-
-    /// The type variable that represents the value of the opaque type
-    /// that we require. In other words, after we compile this function,
-    /// we will be created a constraint like:
-    ///
-    ///     Foo<'a, T> = ?C
-    ///
-    /// where `?C` is the value of this type variable. =) It may
-    /// naturally refer to the type and lifetime parameters in scope
-    /// in this function, though ultimately it should only reference
-    /// those that are arguments to `Foo` in the constraint above. (In
-    /// other words, `?C` should not include `'b`, even though it's a
-    /// lifetime parameter on `foo`.)
-    pub concrete_ty: Ty<'tcx>,
+    /// The hidden types that have been inferred for this opaque type.
+    /// There can be multiple, but they are all `lub`ed together at the end
+    /// to obtain the canonical hidden type.
+    pub hidden_type: OpaqueHiddenType<'tcx>,
 
     /// The origin of the opaque type.
     pub origin: hir::OpaqueTyOrigin,
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    /// Replaces all opaque types in `value` with fresh inference variables
-    /// and creates appropriate obligations. For example, given the input:
-    ///
-    ///     impl Iterator<Item = impl Debug>
-    ///
-    /// this method would create two type variables, `?0` and `?1`. It would
-    /// return the type `?0` but also the obligations:
-    ///
-    ///     ?0: Iterator<Item = ?1>
-    ///     ?1: Debug
-    ///
-    /// Moreover, it returns an `OpaqueTypeMap` that would map `?0` to
-    /// info about the `impl Iterator<..>` type and `?1` to info about
-    /// the `impl Debug` type.
-    ///
-    /// # Parameters
-    ///
-    /// - `parent_def_id` -- the `DefId` of the function in which the opaque type
-    ///   is defined
-    /// - `body_id` -- the body-id with which the resulting obligations should
-    ///   be associated
-    /// - `param_env` -- the in-scope parameter environment to be used for
-    ///   obligations
-    /// - `value` -- the value within which we are instantiating opaque types
-    /// - `value_span` -- the span where the value came from, used in error reporting
-    pub fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
+    /// This is a backwards compatibility hack to prevent breaking changes from
+    /// lazy TAIT around RPIT handling.
+    pub fn replace_opaque_types_with_inference_vars<T: TypeFoldable<'tcx>>(
         &self,
-        body_id: hir::HirId,
-        param_env: ty::ParamEnv<'tcx>,
         value: T,
-        value_span: Span,
+        body_id: HirId,
+        span: Span,
+        param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, T> {
-        debug!(
-            "instantiate_opaque_types(value={:?}, body_id={:?}, \
-             param_env={:?}, value_span={:?})",
-            value, body_id, param_env, value_span,
-        );
-        let mut instantiator =
-            Instantiator { infcx: self, body_id, param_env, value_span, obligations: vec![] };
-        let value = instantiator.instantiate_opaque_types_in_map(value);
-        InferOk { value, obligations: instantiator.obligations }
+        if !value.has_opaque_types() {
+            return InferOk { value, obligations: vec![] };
+        }
+        let mut obligations = vec![];
+        let value = value.fold_with(&mut ty::fold::BottomUpFolder {
+            tcx: self.tcx,
+            lt_op: |lt| lt,
+            ct_op: |ct| ct,
+            ty_op: |ty| match *ty.kind() {
+                // Closures can't create hidden types for opaque types of their parent, as they
+                // do not have all the outlives information available. Also `type_of` looks for
+                // hidden types in the owner (so the closure's parent), so it would not find these
+                // definitions.
+                ty::Opaque(def_id, _substs)
+                    if matches!(
+                        self.opaque_type_origin(def_id, span),
+                        Some(OpaqueTyOrigin::FnReturn(..))
+                    ) =>
+                {
+                    let span = if span.is_dummy() { self.tcx.def_span(def_id) } else { span };
+                    let cause = ObligationCause::misc(span, body_id);
+                    let ty_var = self.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::TypeInference,
+                        span: cause.span,
+                    });
+                    obligations.extend(
+                        self.handle_opaque_type(ty, ty_var, true, &cause, param_env)
+                            .unwrap()
+                            .obligations,
+                    );
+                    ty_var
+                }
+                _ => ty,
+            },
+        });
+        InferOk { value, obligations }
+    }
+
+    pub fn handle_opaque_type(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        a_is_expected: bool,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> InferResult<'tcx, ()> {
+        if a.references_error() || b.references_error() {
+            return Ok(InferOk { value: (), obligations: vec![] });
+        }
+        let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
+        let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
+            ty::Opaque(def_id, substs) => {
+                let origin = if self.defining_use_anchor.is_some() {
+                    // Check that this is `impl Trait` type is
+                    // declared by `parent_def_id` -- i.e., one whose
+                    // value we are inferring.  At present, this is
+                    // always true during the first phase of
+                    // type-check, but not always true later on during
+                    // NLL. Once we support named opaque types more fully,
+                    // this same scenario will be able to arise during all phases.
+                    //
+                    // Here is an example using type alias `impl Trait`
+                    // that indicates the distinction we are checking for:
+                    //
+                    // ```rust
+                    // mod a {
+                    //   pub type Foo = impl Iterator;
+                    //   pub fn make_foo() -> Foo { .. }
+                    // }
+                    //
+                    // mod b {
+                    //   fn foo() -> a::Foo { a::make_foo() }
+                    // }
+                    // ```
+                    //
+                    // Here, the return type of `foo` references an
+                    // `Opaque` indeed, but not one whose value is
+                    // presently being inferred. You can get into a
+                    // similar situation with closure return types
+                    // today:
+                    //
+                    // ```rust
+                    // fn foo() -> impl Iterator { .. }
+                    // fn bar() {
+                    //     let x = || foo(); // returns the Opaque assoc with `foo`
+                    // }
+                    // ```
+                    self.opaque_type_origin(def_id, cause.span)?
+                } else {
+                    self.opaque_ty_origin_unchecked(def_id, cause.span)
+                };
+                if let ty::Opaque(did2, _) = *b.kind() {
+                    // We could accept this, but there are various ways to handle this situation, and we don't
+                    // want to make a decision on it right now. Likely this case is so super rare anyway, that
+                    // no one encounters it in practice.
+                    // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
+                    // where it is of no concern, so we only check for TAITs.
+                    if let Some(OpaqueTyOrigin::TyAlias) = self.opaque_type_origin(did2, cause.span)
+                    {
+                        self.tcx
+                                .sess
+                                .struct_span_err(
+                                    cause.span,
+                                    "opaque type's hidden type cannot be another opaque type from the same scope",
+                                )
+                                .span_label(cause.span, "one of the two opaque types used here has to be outside its defining scope")
+                                .span_note(
+                                    self.tcx.def_span(def_id),
+                                    "opaque type whose hidden type is being assigned",
+                                )
+                                .span_note(
+                                    self.tcx.def_span(did2),
+                                    "opaque type being used as hidden type",
+                                )
+                                .emit();
+                    }
+                }
+                Some(self.register_hidden_type(
+                    OpaqueTypeKey { def_id, substs },
+                    cause.clone(),
+                    param_env,
+                    b,
+                    origin,
+                ))
+            }
+            _ => None,
+        };
+        if let Some(res) = process(a, b) {
+            res
+        } else if let Some(res) = process(b, a) {
+            res
+        } else {
+            // Rerun equality check, but this time error out due to
+            // different types.
+            match self.at(cause, param_env).define_opaque_types(false).eq(a, b) {
+                Ok(_) => span_bug!(
+                    cause.span,
+                    "opaque types are never equal to anything but themselves: {:#?}",
+                    (a.kind(), b.kind())
+                ),
+                Err(e) => Err(e),
+            }
+        }
     }
 
     /// Given the map `opaque_types` containing the opaque
@@ -212,17 +306,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// # Constrain regions, not the hidden concrete type
     ///
     /// Note that generating constraints on each region `Rc` is *not*
-    /// the same as generating an outlives constraint on `Tc` iself.
+    /// the same as generating an outlives constraint on `Tc` itself.
     /// For example, if we had a function like this:
     ///
-    /// ```rust
+    /// ```
+    /// # #![feature(type_alias_impl_trait)]
+    /// # fn main() {}
+    /// # trait Foo<'a> {}
+    /// # impl<'a, T> Foo<'a> for (&'a u32, T) {}
     /// fn foo<'a, T>(x: &'a u32, y: T) -> impl Foo<'a> {
     ///   (x, y)
     /// }
     ///
     /// // Equivalent to:
+    /// # mod dummy { use super::*;
     /// type FooReturn<'a, T> = impl Foo<'a>;
-    /// fn foo<'a, T>(..) -> FooReturn<'a, T> { .. }
+    /// fn foo<'a, T>(x: &'a u32, y: T) -> FooReturn<'a, T> {
+    ///   (x, y)
+    /// }
+    /// # }
     /// ```
     ///
     /// then the hidden type `Tc` would be `(&'0 u32, T)` (where `'0`
@@ -231,51 +333,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// but this is not necessary, because the opaque type we
     /// create will be allowed to reference `T`. So we only generate a
     /// constraint that `'0: 'a`.
-    ///
-    /// # The `free_region_relations` parameter
-    ///
-    /// The `free_region_relations` argument is used to find the
-    /// "minimum" of the regions supplied to a given opaque type.
-    /// It must be a relation that can answer whether `'a <= 'b`,
-    /// where `'a` and `'b` are regions that appear in the "substs"
-    /// for the opaque type references (the `<'a>` in `Foo1<'a>`).
-    ///
-    /// Note that we do not impose the constraints based on the
-    /// generic regions from the `Foo1` definition (e.g., `'x`). This
-    /// is because the constraints we are imposing here is basically
-    /// the concern of the one generating the constraining type C1,
-    /// which is the current function. It also means that we can
-    /// take "implied bounds" into account in some cases:
-    ///
-    /// ```text
-    /// trait SomeTrait<'a, 'b> { }
-    /// fn foo<'a, 'b>(_: &'a &'b u32) -> impl SomeTrait<'a, 'b> { .. }
-    /// ```
-    ///
-    /// Here, the fact that `'b: 'a` is known only because of the
-    /// implied bounds from the `&'a &'b u32` parameter, and is not
-    /// "inherent" to the opaque type definition.
-    ///
-    /// # Parameters
-    ///
-    /// - `opaque_types` -- the map produced by `instantiate_opaque_types`
-    /// - `free_region_relations` -- something that can be used to relate
-    ///   the free regions (`'a`) that appear in the impl trait.
     #[instrument(level = "debug", skip(self))]
-    pub fn constrain_opaque_type(
+    pub fn register_member_constraints(
         &self,
+        param_env: ty::ParamEnv<'tcx>,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        opaque_defn: &OpaqueTypeDecl<'tcx>,
+        concrete_ty: Ty<'tcx>,
+        span: Span,
     ) {
         let def_id = opaque_type_key.def_id;
 
         let tcx = self.tcx;
 
-        let concrete_ty = self.resolve_vars_if_possible(opaque_defn.concrete_ty);
+        let concrete_ty = self.resolve_vars_if_possible(concrete_ty);
 
         debug!(?concrete_ty);
 
-        let first_own_region = match opaque_defn.origin {
+        let first_own_region = match self.opaque_ty_origin_unchecked(def_id, span) {
             hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {
                 // We lower
                 //
@@ -319,7 +393,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             op: |r| {
                 self.member_constraint(
                     opaque_type_key.def_id,
-                    opaque_defn.definition_span,
+                    span,
                     concrete_ty,
                     r,
                     &choice_regions,
@@ -328,15 +402,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         });
     }
 
-    fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<hir::OpaqueTyOrigin> {
-        let tcx = self.tcx;
-        let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    #[instrument(skip(self), level = "trace")]
+    pub fn opaque_type_origin(&self, opaque_def_id: DefId, span: Span) -> Option<OpaqueTyOrigin> {
+        let def_id = opaque_def_id.as_local()?;
+        let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let parent_def_id = self.defining_use_anchor?;
-        let item_kind = &tcx.hir().expect_item(def_id).kind;
+        let item_kind = &self.tcx.hir().expect_item(def_id).kind;
+
         let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, ..  }) = item_kind else {
             span_bug!(
-                tcx.def_span(def_id),
-                "weird opaque type: {:#?}",
+                span,
+                "weird opaque type: {:#?}, {:#?}",
+                opaque_def_id,
                 item_kind
             )
         };
@@ -347,10 +424,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
             // Named `type Foo = impl Bar;`
             hir::OpaqueTyOrigin::TyAlias => {
-                may_define_opaque_type(tcx, parent_def_id, opaque_hir_id)
+                may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
             }
         };
+        trace!(?origin);
         in_definition_scope.then_some(*origin)
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn opaque_ty_origin_unchecked(&self, opaque_def_id: DefId, span: Span) -> OpaqueTyOrigin {
+        let def_id = opaque_def_id.as_local().unwrap();
+        let origin = match self.tcx.hir().expect_item(def_id).kind {
+            hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => origin,
+            ref itemkind => {
+                span_bug!(span, "weird opaque type: {:?}, {:#?}", opaque_def_id, itemkind)
+            }
+        };
+        trace!(?origin);
+        origin
     }
 }
 
@@ -379,7 +470,7 @@ where
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
-        t.as_ref().skip_binder().visit_with(self);
+        t.super_visit_with(self);
         ControlFlow::CONTINUE
     }
 
@@ -426,197 +517,110 @@ where
     }
 }
 
-struct Instantiator<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
-    body_id: hir::HirId,
-    param_env: ty::ParamEnv<'tcx>,
-    value_span: Span,
-    obligations: Vec<traits::PredicateObligation<'tcx>>,
+pub enum UseKind {
+    DefiningUse,
+    OpaqueUse,
 }
 
-impl<'a, 'tcx> Instantiator<'a, 'tcx> {
-    fn instantiate_opaque_types_in_map<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
-        let tcx = self.infcx.tcx;
-        value.fold_with(&mut BottomUpFolder {
-            tcx,
-            ty_op: |ty| {
-                if ty.references_error() {
-                    return tcx.ty_error();
-                } else if let ty::Opaque(def_id, substs) = ty.kind() {
-                    // Check that this is `impl Trait` type is
-                    // declared by `parent_def_id` -- i.e., one whose
-                    // value we are inferring.  At present, this is
-                    // always true during the first phase of
-                    // type-check, but not always true later on during
-                    // NLL. Once we support named opaque types more fully,
-                    // this same scenario will be able to arise during all phases.
-                    //
-                    // Here is an example using type alias `impl Trait`
-                    // that indicates the distinction we are checking for:
-                    //
-                    // ```rust
-                    // mod a {
-                    //   pub type Foo = impl Iterator;
-                    //   pub fn make_foo() -> Foo { .. }
-                    // }
-                    //
-                    // mod b {
-                    //   fn foo() -> a::Foo { a::make_foo() }
-                    // }
-                    // ```
-                    //
-                    // Here, the return type of `foo` references an
-                    // `Opaque` indeed, but not one whose value is
-                    // presently being inferred. You can get into a
-                    // similar situation with closure return types
-                    // today:
-                    //
-                    // ```rust
-                    // fn foo() -> impl Iterator { .. }
-                    // fn bar() {
-                    //     let x = || foo(); // returns the Opaque assoc with `foo`
-                    // }
-                    // ```
-                    if let Some(def_id) = def_id.as_local() {
-                        if let Some(origin) = self.infcx.opaque_type_origin(def_id) {
-                            let opaque_type_key =
-                                OpaqueTypeKey { def_id: def_id.to_def_id(), substs };
-                            return self.fold_opaque_ty(ty, opaque_type_key, origin);
-                        }
-
-                        debug!(
-                            "instantiate_opaque_types_in_map: \
-                             encountered opaque outside its definition scope \
-                             def_id={:?}",
-                            def_id,
-                        );
-                    }
-                }
-
-                ty
-            },
-            lt_op: |lt| lt,
-            ct_op: |ct| ct,
-        })
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    fn fold_opaque_ty(
-        &mut self,
-        ty: Ty<'tcx>,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
-        origin: hir::OpaqueTyOrigin,
-    ) -> Ty<'tcx> {
-        let infcx = self.infcx;
-        let tcx = infcx.tcx;
-        let OpaqueTypeKey { def_id, substs } = opaque_type_key;
-
-        // Use the same type variable if the exact same opaque type appears more
-        // than once in the return type (e.g., if it's passed to a type alias).
-        if let Some(opaque_defn) = infcx.inner.borrow().opaque_types.get(&opaque_type_key) {
-            debug!("re-using cached concrete type {:?}", opaque_defn.concrete_ty.kind());
-            return opaque_defn.concrete_ty;
+impl UseKind {
+    pub fn is_defining(self) -> bool {
+        match self {
+            UseKind::DefiningUse => true,
+            UseKind::OpaqueUse => false,
         }
+    }
+}
 
-        let ty_var = infcx.next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::TypeInference,
-            span: self.value_span,
-        });
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    #[instrument(skip(self), level = "debug")]
+    pub fn register_hidden_type(
+        &self,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
+        cause: ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        origin: hir::OpaqueTyOrigin,
+    ) -> InferResult<'tcx, ()> {
+        let tcx = self.tcx;
+        let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
         // value being folded. In simple cases like `-> impl Foo`,
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
-        let definition_span = self.value_span;
+        let span = cause.span;
 
-        {
-            let mut infcx = self.infcx.inner.borrow_mut();
-            infcx.opaque_types.insert(
-                OpaqueTypeKey { def_id, substs },
-                OpaqueTypeDecl { opaque_type: ty, definition_span, concrete_ty: ty_var, origin },
-            );
-            infcx.opaque_types_vars.insert(ty_var, ty);
+        let mut obligations = vec![];
+        let prev = self.inner.borrow_mut().opaque_types().register(
+            OpaqueTypeKey { def_id, substs },
+            OpaqueHiddenType { ty: hidden_ty, span },
+            origin,
+        );
+        if let Some(prev) = prev {
+            obligations = self.at(&cause, param_env).eq(prev, hidden_ty)?.obligations;
         }
 
-        debug!("generated new type inference var {:?}", ty_var.kind());
+        let item_bounds = tcx.bound_explicit_item_bounds(def_id);
 
-        let item_bounds = tcx.explicit_item_bounds(def_id);
-
-        self.obligations.reserve(item_bounds.len());
-        for (predicate, _) in item_bounds {
+        for predicate in item_bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
             debug!(?predicate);
             let predicate = predicate.subst(tcx, substs);
-            debug!(?predicate);
 
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
                 ty_op: |ty| match *ty.kind() {
+                    // We can't normalize associated types from `rustc_infer`,
+                    // but we can eagerly register inference variables for them.
+                    ty::Projection(projection_ty) if !projection_ty.has_escaping_bound_vars() => {
+                        self.infer_projection(
+                            param_env,
+                            projection_ty,
+                            cause.clone(),
+                            0,
+                            &mut obligations,
+                        )
+                    }
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
                     ty::Opaque(def_id2, substs2) if def_id == def_id2 && substs == substs2 => {
-                        ty_var
-                    }
-                    // Instantiate nested instances of `impl Trait`.
-                    ty::Opaque(..) => self.instantiate_opaque_types_in_map(ty),
-                    _ => ty,
-                },
-                lt_op: |lt| lt,
-                ct_op: |ct| ct,
-            });
-
-            // We can't normalize associated types from `rustc_infer`, but we can eagerly register inference variables for them.
-            let predicate = predicate.fold_with(&mut BottomUpFolder {
-                tcx,
-                ty_op: |ty| match ty.kind() {
-                    ty::Projection(projection_ty) if !projection_ty.has_escaping_bound_vars() => {
-                        infcx.infer_projection(
-                            self.param_env,
-                            *projection_ty,
-                            traits::ObligationCause::misc(self.value_span, self.body_id),
-                            0,
-                            &mut self.obligations,
-                        )
+                        hidden_ty
                     }
                     _ => ty,
                 },
                 lt_op: |lt| lt,
                 ct_op: |ct| ct,
             });
-            debug!(?predicate);
 
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
                 if projection.term.references_error() {
-                    return tcx.ty_error();
+                    // No point on adding these obligations since there's a type error involved.
+                    return Ok(InferOk { value: (), obligations: vec![] });
                 }
+                trace!("{:#?}", projection.term);
             }
-
-            let cause =
-                traits::ObligationCause::new(self.value_span, self.body_id, traits::OpaqueType);
-
             // Require that the predicate holds for the concrete type.
             debug!(?predicate);
-            self.obligations.push(traits::Obligation::new(cause, self.param_env, predicate));
+            obligations.push(traits::Obligation::new(cause.clone(), param_env, predicate));
         }
-
-        ty_var
+        Ok(InferOk { value: (), obligations })
     }
 }
 
 /// Returns `true` if `opaque_hir_id` is a sibling or a child of a sibling of `def_id`.
 ///
 /// Example:
-/// ```rust
+/// ```ignore UNSOLVED (is this a bug?)
+/// # #![feature(type_alias_impl_trait)]
 /// pub mod foo {
 ///     pub mod bar {
-///         pub trait Bar { .. }
-///
+///         pub trait Bar { /* ... */ }
 ///         pub type Baz = impl Bar;
 ///
-///         fn f1() -> Baz { .. }
+///         # impl Bar for () {}
+///         fn f1() -> Baz { /* ... */ }
 ///     }
-///
-///     fn f2() -> bar::Baz { .. }
+///     fn f2() -> bar::Baz { /* ... */ }
 /// }
 /// ```
 ///

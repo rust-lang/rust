@@ -180,13 +180,13 @@ impl EarlyLintPass for NonAsciiIdents {
             }
             has_non_ascii_idents = true;
             cx.struct_span_lint(NON_ASCII_IDENTS, sp, |lint| {
-                lint.build("identifier contains non-ASCII characters").emit()
+                lint.build("identifier contains non-ASCII characters").emit();
             });
             if check_uncommon_codepoints
                 && !symbol_str.chars().all(GeneralSecurityProfile::identifier_allowed)
             {
                 cx.struct_span_lint(UNCOMMON_CODEPOINTS, sp, |lint| {
-                    lint.build("identifier contains uncommon Unicode codepoints").emit()
+                    lint.build("identifier contains uncommon Unicode codepoints").emit();
                 })
             }
         }
@@ -337,7 +337,7 @@ impl EarlyLintPass for NonAsciiIdents {
                             let char_info = format!("'{}' (U+{:04X})", ch, ch as u32);
                             note += &char_info;
                         }
-                        lint.build(&message).note(&note).note("please recheck to make sure their usages are indeed what you want").emit()
+                        lint.build(&message).note(&note).note("please recheck to make sure their usages are indeed what you want").emit();
                     });
                 }
             }

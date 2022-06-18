@@ -89,16 +89,16 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(never_type)]
-#![feature(nll)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate rustc_middle;
 
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::SubstsRef;
@@ -155,6 +155,13 @@ pub fn typeid_for_fnabi<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>)
     v0::mangle_typeid_for_fnabi(tcx, fn_abi)
 }
 
+pub fn typeid_for_trait_ref<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
+) -> String {
+    v0::mangle_typeid_for_trait_ref(tcx, trait_ref)
+}
+
 /// Computes the symbol name for the given instance. This function will call
 /// `compute_instantiating_crate` if it needs to factor the instantiating crate
 /// into the symbol name.
@@ -168,18 +175,19 @@ fn compute_symbol_name<'tcx>(
 
     debug!("symbol_name(def_id={:?}, substs={:?})", def_id, substs);
 
-    // FIXME(eddyb) Precompute a custom symbol name based on attributes.
-    let is_foreign = if let Some(def_id) = def_id.as_local() {
+    if let Some(def_id) = def_id.as_local() {
         if tcx.proc_macro_decls_static(()) == Some(def_id) {
             let stable_crate_id = tcx.sess.local_stable_crate_id();
             return tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
         }
-        matches!(tcx.hir().get_by_def_id(def_id), Node::ForeignItem(_))
-    } else {
-        tcx.is_foreign_item(def_id)
-    };
+    }
 
-    let attrs = tcx.codegen_fn_attrs(def_id);
+    // FIXME(eddyb) Precompute a custom symbol name based on attributes.
+    let attrs = if tcx.def_kind(def_id).has_codegen_attrs() {
+        tcx.codegen_fn_attrs(def_id)
+    } else {
+        CodegenFnAttrs::EMPTY
+    };
 
     // Foreign items by default use no mangling for their symbol name. There's a
     // few exceptions to this rule though:
@@ -197,7 +205,7 @@ fn compute_symbol_name<'tcx>(
     //   show up in the `wasm-import-name` custom attribute in LLVM IR.
     //
     // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
-    if is_foreign
+    if tcx.is_foreign_item(def_id)
         && (!tcx.sess.target.is_like_wasm
             || !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id))
     {
@@ -217,20 +225,25 @@ fn compute_symbol_name<'tcx>(
         return tcx.item_name(def_id).to_string();
     }
 
-    let avoid_cross_crate_conflicts =
-        // If this is an instance of a generic function, we also hash in
-        // the ID of the instantiating crate. This avoids symbol conflicts
-        // in case the same instances is emitted in two crates of the same
-        // project.
-        is_generic(substs) ||
+    // If we're dealing with an instance of a function that's inlined from
+    // another crate but we're marking it as globally shared to our
+    // compilation (aka we're not making an internal copy in each of our
+    // codegen units) then this symbol may become an exported (but hidden
+    // visibility) symbol. This means that multiple crates may do the same
+    // and we want to be sure to avoid any symbol conflicts here.
+    let is_globally_shared_function = matches!(
+        tcx.def_kind(instance.def_id()),
+        DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator | DefKind::Ctor(..)
+    ) && matches!(
+        MonoItem::Fn(instance).instantiation_mode(tcx),
+        InstantiationMode::GloballyShared { may_conflict: true }
+    );
 
-        // If we're dealing with an instance of a function that's inlined from
-        // another crate but we're marking it as globally shared to our
-        // compliation (aka we're not making an internal copy in each of our
-        // codegen units) then this symbol may become an exported (but hidden
-        // visibility) symbol. This means that multiple crates may do the same
-        // and we want to be sure to avoid any symbol conflicts here.
-        matches!(MonoItem::Fn(instance).instantiation_mode(tcx), InstantiationMode::GloballyShared { may_conflict: true });
+    // If this is an instance of a generic function, we also hash in
+    // the ID of the instantiating crate. This avoids symbol conflicts
+    // in case the same instances is emitted in two crates of the same
+    // project.
+    let avoid_cross_crate_conflicts = is_generic(substs) || is_globally_shared_function;
 
     let instantiating_crate =
         if avoid_cross_crate_conflicts { Some(compute_instantiating_crate()) } else { None };

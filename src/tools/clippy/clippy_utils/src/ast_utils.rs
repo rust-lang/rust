@@ -242,7 +242,7 @@ pub fn eq_item<K>(l: &Item<K>, r: &Item<K>, mut eq_kind: impl FnMut(&K, &K) -> b
     eq_id(l.ident, r.ident) && over(&l.attrs, &r.attrs, eq_attr) && eq_vis(&l.vis, &r.vis) && eq_kind(&l.kind, &r.kind)
 }
 
-#[allow(clippy::too_many_lines)] // Just a big match statement
+#[expect(clippy::too_many_lines)] // Just a big match statement
 pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
     use ItemKind::*;
     match (l, r) {
@@ -285,12 +285,14 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 generics: lg,
                 bounds: lb,
                 ty: lt,
+                ..
             }),
             TyAlias(box ast::TyAlias {
                 defaultness: rd,
                 generics: rg,
                 bounds: rb,
                 ty: rt,
+                ..
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -388,12 +390,14 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 generics: lg,
                 bounds: lb,
                 ty: lt,
+                ..
             }),
             TyAlias(box ast::TyAlias {
                 defaultness: rd,
                 generics: rg,
                 bounds: rb,
                 ty: rt,
+                ..
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -432,12 +436,14 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 generics: lg,
                 bounds: lb,
                 ty: lt,
+                ..
             }),
             TyAlias(box ast::TyAlias {
                 defaultness: rd,
                 generics: rg,
                 bounds: rb,
                 ty: rt,
+                ..
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -539,7 +545,7 @@ pub fn eq_defaultness(l: Defaultness, r: Defaultness) -> bool {
 pub fn eq_vis(l: &Visibility, r: &Visibility) -> bool {
     use VisibilityKind::*;
     match (&l.kind, &r.kind) {
-        (Public, Public) | (Inherited, Inherited) | (Crate(_), Crate(_)) => true,
+        (Public, Public) | (Inherited, Inherited) => true,
         (Restricted { path: l, .. }, Restricted { path: r, .. }) => eq_path(l, r),
         _ => false,
     }
@@ -682,7 +688,8 @@ pub fn eq_mac_args(l: &MacArgs, r: &MacArgs) -> bool {
     match (l, r) {
         (Empty, Empty) => true,
         (Delimited(_, ld, lts), Delimited(_, rd, rts)) => ld == rd && lts.eq_unspanned(rts),
-        (Eq(_, lt), Eq(_, rt)) => lt.kind == rt.kind,
+        (Eq(_, MacArgsEq::Ast(le)), Eq(_, MacArgsEq::Ast(re))) => eq_expr(le, re),
+        (Eq(_, MacArgsEq::Hir(ll)), Eq(_, MacArgsEq::Hir(rl))) => ll.kind == rl.kind,
         _ => false,
     }
 }

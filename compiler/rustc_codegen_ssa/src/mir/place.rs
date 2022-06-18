@@ -100,7 +100,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     self.llval
                 }
                 Abi::ScalarPair(a, b)
-                    if offset == a.value.size(bx.cx()).align_to(b.value.align(bx.cx()).abi) =>
+                    if offset == a.size(bx.cx()).align_to(b.align(bx.cx()).abi) =>
                 {
                     // Offset matches second field.
                     let ty = bx.backend_type(self.layout);
@@ -149,7 +149,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             _ if !field.is_unsized() => return simple(),
             ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(),
             ty::Adt(def, _) => {
-                if def.repr.packed() {
+                if def.repr().packed() {
                     // FIXME(eddyb) generalize the adjustment when we
                     // start supporting packing to larger alignments.
                     assert_eq!(self.layout.align.abi.bytes(), 1);
@@ -234,7 +234,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         // Decode the discriminant (specifically if it's niche-encoded).
         match *tag_encoding {
             TagEncoding::Direct => {
-                let signed = match tag_scalar.value {
+                let signed = match tag_scalar.primitive() {
                     // We use `i1` for bytes that are always `0` or `1`,
                     // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                     // let LLVM interpret the `i1` as signed, because
@@ -441,24 +441,34 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .find(|elem| matches!(elem.1, mir::ProjectionElem::Deref))
                 {
                     base = elem.0 + 1;
-                    self.codegen_consume(
+                    let cg_base = self.codegen_consume(
                         bx,
                         mir::PlaceRef { projection: &place_ref.projection[..elem.0], ..place_ref },
-                    )
-                    .deref(bx.cx())
+                    );
+
+                    // a box with a non-zst allocator should not be directly dereferenced
+                    if cg_base.layout.ty.is_box() && !cg_base.layout.field(cx, 1).is_zst() {
+                        // Extract `Box<T>` -> `Unique<T>` -> `NonNull<T>` -> `*const T`
+                        let ptr =
+                            cg_base.extract_field(bx, 0).extract_field(bx, 0).extract_field(bx, 0);
+
+                        ptr.deref(bx.cx())
+                    } else {
+                        cg_base.deref(bx.cx())
+                    }
                 } else {
                     bug!("using operand local {:?} as place", place_ref);
                 }
             }
         };
         for elem in place_ref.projection[base..].iter() {
-            cg_base = match elem.clone() {
+            cg_base = match *elem {
                 mir::ProjectionElem::Deref => {
-                    // custom allocators can change box's abi, making it unable to be derefed directly
-                    if cg_base.layout.ty.is_box()
-                        && matches!(cg_base.layout.abi, Abi::Aggregate { .. } | Abi::Uninhabited)
-                    {
-                        let ptr = cg_base.project_field(bx, 0).project_field(bx, 0);
+                    // a box with a non-zst allocator should not be directly dereferenced
+                    if cg_base.layout.ty.is_box() && !cg_base.layout.field(cx, 1).is_zst() {
+                        // Project `Box<T>` -> `Unique<T>` -> `NonNull<T>` -> `*const T`
+                        let ptr =
+                            cg_base.project_field(bx, 0).project_field(bx, 0).project_field(bx, 0);
 
                         bx.load_operand(ptr).deref(bx.cx())
                     } else {

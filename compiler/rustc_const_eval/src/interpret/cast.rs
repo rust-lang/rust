@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::convert::TryFrom;
 
 use rustc_apfloat::ieee::{Double, Single};
@@ -8,6 +9,7 @@ use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty, TypeAndMut};
 use rustc_target::abi::{Integer, Variants};
+use rustc_type_ir::sty::TyKind::*;
 
 use super::{
     util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy,
@@ -27,6 +29,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Pointer(PointerCast::Unsize) => {
                 let cast_ty = self.layout_of(cast_ty)?;
                 self.unsize_into(src, cast_ty, dest)?;
+            }
+
+            PointerExposeAddress => {
+                let src = self.read_immediate(src)?;
+                let res = self.pointer_expose_address_cast(&src, cast_ty)?;
+                self.write_immediate(res, dest)?;
+            }
+
+            PointerFromExposedAddress => {
+                let src = self.read_immediate(src)?;
+                let res = self.pointer_from_exposed_address_cast(&src, cast_ty)?;
+                self.write_immediate(res, dest)?;
             }
 
             Misc => {
@@ -56,7 +70,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         )
                         .ok_or_else(|| err_inval!(TooGeneric))?;
 
-                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
+                        let fn_ptr = self.create_fn_alloc_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
                     _ => span_bug!(self.cur_span(), "reify fn pointer on {:?}", src.layout.ty),
@@ -87,7 +101,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             substs,
                             ty::ClosureKind::FnOnce,
                         );
-                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
+                        let fn_ptr = self.create_fn_alloc_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
                     _ => span_bug!(self.cur_span(), "closure fn pointer on {:?}", src.layout.ty),
@@ -97,12 +111,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    fn misc_cast(
-        &self,
+    pub fn misc_cast(
+        &mut self,
         src: &ImmTy<'tcx, M::PointerTag>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
-        use rustc_middle::ty::TyKind::*;
+        use rustc_type_ir::sty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", *src, src.layout.ty, cast_ty);
 
         match src.layout.ty.kind() {
@@ -139,7 +153,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if let Some(discr) = src.layout.ty.discriminant_for_variant(*self.tcx, index) {
                     assert!(src.layout.is_zst());
                     let discr_layout = self.layout_of(discr.ty)?;
-                    return Ok(self.cast_from_scalar(discr.val, discr_layout, cast_ty).into());
+
+                    let scalar = Scalar::from_uint(discr.val, discr_layout.layout.size());
+                    return Ok(self.cast_from_int_like(scalar, discr_layout, cast_ty)?.into());
                 }
             }
             Variants::Multiple { .. } => {}
@@ -153,8 +169,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 return Ok(**src);
             } else {
                 // Casting the metadata away from a fat ptr.
-                assert_eq!(src.layout.size, 2 * self.memory.pointer_size());
-                assert_eq!(dest_layout.size, self.memory.pointer_size());
+                assert_eq!(src.layout.size, 2 * self.pointer_size());
+                assert_eq!(dest_layout.size, self.pointer_size());
                 assert!(src.layout.ty.is_unsafe_ptr());
                 return match **src {
                     Immediate::ScalarPair(data, _) => Ok(data.into()),
@@ -169,33 +185,64 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        // # The remaining source values are scalar.
-
-        // For all remaining casts, we either
-        // (a) cast a raw ptr to usize, or
-        // (b) cast from an integer-like (including bool, char, enums).
-        // In both cases we want the bits.
-        let bits = src.to_scalar()?.to_bits(src.layout.size)?;
-        Ok(self.cast_from_scalar(bits, src.layout, cast_ty).into())
+        // # The remaining source values are scalar and "int-like".
+        let scalar = src.to_scalar()?;
+        Ok(self.cast_from_int_like(scalar, src.layout, cast_ty)?.into())
     }
 
-    pub(super) fn cast_from_scalar(
+    pub fn pointer_expose_address_cast(
+        &mut self,
+        src: &ImmTy<'tcx, M::PointerTag>,
+        cast_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+        assert_matches!(src.layout.ty.kind(), ty::RawPtr(_) | ty::FnPtr(_));
+        assert!(cast_ty.is_integral());
+
+        let scalar = src.to_scalar()?;
+        let ptr = self.scalar_to_ptr(scalar)?;
+        match ptr.into_pointer_or_addr() {
+            Ok(ptr) => M::expose_ptr(self, ptr)?,
+            Err(_) => {} // do nothing, exposing an invalid pointer has no meaning
+        };
+        Ok(self.cast_from_int_like(scalar, src.layout, cast_ty)?.into())
+    }
+
+    pub fn pointer_from_exposed_address_cast(
+        &mut self,
+        src: &ImmTy<'tcx, M::PointerTag>,
+        cast_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+        assert!(src.layout.ty.is_integral());
+        assert_matches!(cast_ty.kind(), ty::RawPtr(_));
+
+        // First cast to usize.
+        let scalar = src.to_scalar()?;
+        let addr = self.cast_from_int_like(scalar, src.layout, self.tcx.types.usize)?;
+        let addr = addr.to_machine_usize(self)?;
+
+        // Then turn address into pointer.
+        let ptr = M::ptr_from_addr_cast(&self, addr)?;
+        Ok(Scalar::from_maybe_pointer(ptr, self).into())
+    }
+
+    pub fn cast_from_int_like(
         &self,
-        v: u128, // raw bits (there is no ScalarTy so we separate data+layout)
+        scalar: Scalar<M::PointerTag>, // input value (there is no ScalarTy so we separate data+layout)
         src_layout: TyAndLayout<'tcx>,
         cast_ty: Ty<'tcx>,
-    ) -> Scalar<M::PointerTag> {
+    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         // Let's make sure v is sign-extended *if* it has a signed type.
         let signed = src_layout.abi.is_signed(); // Also asserts that abi is `Scalar`.
+
+        let v = scalar.to_bits(src_layout.size)?;
         let v = if signed { self.sign_extend(v, src_layout) } else { v };
         trace!("cast_from_scalar: {}, {} -> {}", v, src_layout.ty, cast_ty);
-        use rustc_middle::ty::TyKind::*;
-        match *cast_ty.kind() {
-            Int(_) | Uint(_) | RawPtr(_) => {
+
+        Ok(match *cast_ty.kind() {
+            Int(_) | Uint(_) => {
                 let size = match *cast_ty.kind() {
                     Int(t) => Integer::from_int_ty(self, t).size(),
                     Uint(t) => Integer::from_uint_ty(self, t).size(),
-                    RawPtr(_) => self.pointer_size(),
                     _ => bug!(),
                 };
                 let v = size.truncate(v);
@@ -214,14 +261,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
             _ => span_bug!(self.cur_span(), "invalid int to {:?} cast", cast_ty),
-        }
+        })
     }
 
     fn cast_from_float<F>(&self, f: F, dest_ty: Ty<'tcx>) -> Scalar<M::PointerTag>
     where
         F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>,
     {
-        use rustc_middle::ty::TyKind::*;
+        use rustc_type_ir::sty::TyKind::*;
         match *dest_ty.kind() {
             // float -> uint
             Uint(t) => {
@@ -283,7 +330,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if let Some(entry_idx) = vptr_entry_idx {
                     let entry_idx = u64::try_from(entry_idx).unwrap();
                     let (old_data, old_vptr) = val.to_scalar_pair()?;
-                    let old_vptr = self.scalar_to_ptr(old_vptr);
+                    let old_vptr = self.scalar_to_ptr(old_vptr)?;
                     let new_vptr = self
                         .read_new_vtable_after_trait_upcasting_from_vtable(old_vptr, entry_idx)?;
                     self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)

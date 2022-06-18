@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{ExprKind, GenericParam, GenericParamKind, HirId, Mod, Node};
+use rustc_hir::{ExprKind, HirId, Mod, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 /// Otherwise, we store the definition `DefId` and will generate a link to the documentation page
 /// instead of the source code directly.
 #[derive(Debug)]
-crate enum LinkFromSrc {
+pub(crate) enum LinkFromSrc {
     Local(clean::Span),
     External(DefId),
     Primitive(PrimitiveType),
@@ -36,7 +36,7 @@ crate enum LinkFromSrc {
 /// Note about the `span` correspondance map: the keys are actually `(lo, hi)` of `span`s. We don't
 /// need the `span` context later on, only their position, so instead of keep a whole `Span`, we
 /// only keep the `lo` and `hi`.
-crate fn collect_spans_and_sources(
+pub(crate) fn collect_spans_and_sources(
     tcx: TyCtxt<'_>,
     krate: &clean::Crate,
     src_root: &Path,
@@ -49,7 +49,7 @@ crate fn collect_spans_and_sources(
         if generate_link_to_definition {
             tcx.hir().walk_toplevel_module(&mut visitor);
         }
-        let sources = sources::collect_local_sources(tcx, src_root, &krate);
+        let sources = sources::collect_local_sources(tcx, src_root, krate);
         (sources, visitor.matches)
     } else {
         (Default::default(), Default::default())
@@ -57,8 +57,8 @@ crate fn collect_spans_and_sources(
 }
 
 struct SpanMapVisitor<'tcx> {
-    crate tcx: TyCtxt<'tcx>,
-    crate matches: FxHashMap<Span, LinkFromSrc>,
+    pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) matches: FxHashMap<Span, LinkFromSrc>,
 }
 
 impl<'tcx> SpanMapVisitor<'tcx> {
@@ -100,17 +100,6 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_generic_param(&mut self, p: &'tcx GenericParam<'tcx>) {
-        if !matches!(p.kind, GenericParamKind::Type { .. }) {
-            return;
-        }
-        for bound in p.bounds {
-            if let Some(trait_ref) = bound.trait_ref() {
-                self.handle_path(trait_ref.path, None);
-            }
-        }
-    }
-
     fn visit_path(&mut self, path: &'tcx rustc_hir::Path<'tcx>, _id: HirId) {
         self.handle_path(path, None);
         intravisit::walk_path(self, path);
@@ -119,11 +108,14 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: Span, id: HirId) {
         // To make the difference between "mod foo {}" and "mod foo;". In case we "import" another
         // file, we want to link to it. Otherwise no need to create a link.
-        if !span.overlaps(m.inner) {
+        if !span.overlaps(m.spans.inner_span) {
             // Now that we confirmed it's a file import, we want to get the span for the module
             // name only and not all the "mod foo;".
             if let Some(Node::Item(item)) = self.tcx.hir().find(id) {
-                self.matches.insert(item.ident.span, LinkFromSrc::Local(clean::Span::new(m.inner)));
+                self.matches.insert(
+                    item.ident.span,
+                    LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)),
+                );
             }
         }
         intravisit::walk_mod(self, m, id);

@@ -1,13 +1,12 @@
-use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
-use crate::os::raw::NonZero_c_int;
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
+use core::ffi::NonZero_c_int;
 
 #[cfg(target_os = "linux")]
 use crate::os::linux::process::PidFd;
@@ -27,7 +26,10 @@ use crate::sys::weak::weak;
 use libc::RTP_ID as pid_t;
 
 #[cfg(not(target_os = "vxworks"))]
-use libc::{c_int, gid_t, pid_t, uid_t};
+use libc::{c_int, pid_t};
+
+#[cfg(not(any(target_os = "vxworks", target_os = "l4re")))]
+use libc::{gid_t, uid_t};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -120,7 +122,7 @@ impl Command {
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => {
                     assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
-                    panic!("the CLOEXEC pipe failed: {:?}", e)
+                    panic!("the CLOEXEC pipe failed: {e:?}")
                 }
                 Ok(..) => {
                     // pipe I/O up to PIPE_BUF bytes should be atomic
@@ -317,10 +319,15 @@ impl Command {
             cvt(libc::chdir(cwd.as_ptr()))?;
         }
 
+        if let Some(pgroup) = self.get_pgroup() {
+            cvt(libc::setpgid(0, pgroup))?;
+        }
+
         // emscripten has no signal support.
         #[cfg(not(target_os = "emscripten"))]
         {
             use crate::mem::MaybeUninit;
+            use crate::sys::cvt_nz;
             // Reset signal handling so the child process starts in a
             // standardized state. libstd ignores SIGPIPE, and signal-handling
             // libraries often set a mask. Child processes inherit ignored
@@ -330,7 +337,7 @@ impl Command {
             // we're about to run.
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
             cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
+            cvt_nz(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
 
             #[cfg(target_os = "android")] // see issue #88585
             {
@@ -456,6 +463,8 @@ impl Command {
             None => None,
         };
 
+        let pgroup = self.get_pgroup();
+
         // Safety: -1 indicates we don't have a pidfd.
         let mut p = unsafe { Process::new(0, -1) };
 
@@ -483,6 +492,8 @@ impl Command {
             let mut attrs = MaybeUninit::uninit();
             cvt_nz(libc::posix_spawnattr_init(attrs.as_mut_ptr()))?;
             let attrs = PosixSpawnattr(&mut attrs);
+
+            let mut flags = 0;
 
             let mut file_actions = MaybeUninit::uninit();
             cvt_nz(libc::posix_spawn_file_actions_init(file_actions.as_mut_ptr()))?;
@@ -513,13 +524,18 @@ impl Command {
                 cvt_nz(f(file_actions.0.as_mut_ptr(), cwd.as_ptr()))?;
             }
 
+            if let Some(pgroup) = pgroup {
+                flags |= libc::POSIX_SPAWN_SETPGROUP;
+                cvt_nz(libc::posix_spawnattr_setpgroup(attrs.0.as_mut_ptr(), pgroup))?;
+            }
+
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
             cvt(sigemptyset(set.as_mut_ptr()))?;
             cvt_nz(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(), set.as_ptr()))?;
             cvt(sigaddset(set.as_mut_ptr(), libc::SIGPIPE))?;
             cvt_nz(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(), set.as_ptr()))?;
 
-            let flags = libc::POSIX_SPAWN_SETSIGDEF | libc::POSIX_SPAWN_SETSIGMASK;
+            flags |= libc::POSIX_SPAWN_SETSIGDEF | libc::POSIX_SPAWN_SETSIGMASK;
             cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
@@ -648,11 +664,11 @@ impl ExitStatus {
     }
 
     pub fn code(&self) -> Option<i32> {
-        if self.exited() { Some(libc::WEXITSTATUS(self.0)) } else { None }
+        self.exited().then(|| libc::WEXITSTATUS(self.0))
     }
 
     pub fn signal(&self) -> Option<i32> {
-        if libc::WIFSIGNALED(self.0) { Some(libc::WTERMSIG(self.0)) } else { None }
+        libc::WIFSIGNALED(self.0).then(|| libc::WTERMSIG(self.0))
     }
 
     pub fn core_dumped(&self) -> bool {
@@ -660,7 +676,7 @@ impl ExitStatus {
     }
 
     pub fn stopped_signal(&self) -> Option<i32> {
-        if libc::WIFSTOPPED(self.0) { Some(libc::WSTOPSIG(self.0)) } else { None }
+        libc::WIFSTOPPED(self.0).then(|| libc::WSTOPSIG(self.0))
     }
 
     pub fn continued(&self) -> bool {
@@ -679,18 +695,95 @@ impl From<c_int> for ExitStatus {
     }
 }
 
+/// Convert a signal number to a readable, searchable name.
+///
+/// This string should be displayed right after the signal number.
+/// If a signal is unrecognized, it returns the empty string, so that
+/// you just get the number like "0". If it is recognized, you'll get
+/// something like "9 (SIGKILL)".
+fn signal_string(signal: i32) -> &'static str {
+    match signal {
+        libc::SIGHUP => " (SIGHUP)",
+        libc::SIGINT => " (SIGINT)",
+        libc::SIGQUIT => " (SIGQUIT)",
+        libc::SIGILL => " (SIGILL)",
+        libc::SIGTRAP => " (SIGTRAP)",
+        libc::SIGABRT => " (SIGABRT)",
+        libc::SIGBUS => " (SIGBUS)",
+        libc::SIGFPE => " (SIGFPE)",
+        libc::SIGKILL => " (SIGKILL)",
+        libc::SIGUSR1 => " (SIGUSR1)",
+        libc::SIGSEGV => " (SIGSEGV)",
+        libc::SIGUSR2 => " (SIGUSR2)",
+        libc::SIGPIPE => " (SIGPIPE)",
+        libc::SIGALRM => " (SIGALRM)",
+        libc::SIGTERM => " (SIGTERM)",
+        libc::SIGCHLD => " (SIGCHLD)",
+        libc::SIGCONT => " (SIGCONT)",
+        libc::SIGSTOP => " (SIGSTOP)",
+        libc::SIGTSTP => " (SIGTSTP)",
+        libc::SIGTTIN => " (SIGTTIN)",
+        libc::SIGTTOU => " (SIGTTOU)",
+        libc::SIGURG => " (SIGURG)",
+        libc::SIGXCPU => " (SIGXCPU)",
+        libc::SIGXFSZ => " (SIGXFSZ)",
+        libc::SIGVTALRM => " (SIGVTALRM)",
+        libc::SIGPROF => " (SIGPROF)",
+        libc::SIGWINCH => " (SIGWINCH)",
+        #[cfg(not(target_os = "haiku"))]
+        libc::SIGIO => " (SIGIO)",
+        libc::SIGSYS => " (SIGSYS)",
+        // For information on Linux signals, run `man 7 signal`
+        #[cfg(all(
+            target_os = "linux",
+            any(
+                target_arch = "x86_64",
+                target_arch = "x86",
+                target_arch = "arm",
+                target_arch = "aarch64"
+            )
+        ))]
+        libc::SIGSTKFLT => " (SIGSTKFLT)",
+        #[cfg(target_os = "linux")]
+        libc::SIGPWR => " (SIGPWR)",
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd",
+            target_os = "dragonfly"
+        ))]
+        libc::SIGEMT => " (SIGEMT)",
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd",
+            target_os = "dragonfly"
+        ))]
+        libc::SIGINFO => " (SIGINFO)",
+        _ => "",
+    }
+}
+
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
-            write!(f, "exit status: {}", code)
+            write!(f, "exit status: {code}")
         } else if let Some(signal) = self.signal() {
+            let signal_string = signal_string(signal);
             if self.core_dumped() {
-                write!(f, "signal: {} (core dumped)", signal)
+                write!(f, "signal: {signal}{signal_string} (core dumped)")
             } else {
-                write!(f, "signal: {}", signal)
+                write!(f, "signal: {signal}{signal_string}")
             }
         } else if let Some(signal) = self.stopped_signal() {
-            write!(f, "stopped (not terminated) by signal: {}", signal)
+            let signal_string = signal_string(signal);
+            write!(f, "stopped (not terminated) by signal: {signal}{signal_string}")
         } else if self.continued() {
             write!(f, "continued (WIFCONTINUED)")
         } else {

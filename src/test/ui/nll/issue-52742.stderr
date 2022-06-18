@@ -1,20 +1,12 @@
-error[E0312]: lifetime of reference outlives lifetime of borrowed content...
-  --> $DIR/issue-52742.rs:12:18
-   |
-LL |         self.y = b.z
-   |                  ^^^
-   |
-note: ...the reference is valid for the lifetime `'_` as defined here...
-  --> $DIR/issue-52742.rs:10:10
-   |
-LL | impl Foo<'_, '_> {
-   |          ^^
-note: ...but the borrowed content is only valid for the anonymous lifetime defined here
-  --> $DIR/issue-52742.rs:11:31
+error: lifetime may not live long enough
+  --> $DIR/issue-52742.rs:12:9
    |
 LL |     fn take_bar(&mut self, b: Bar<'_>) {
-   |                               ^^^^^^^
+   |                 ---------  - has type `Bar<'1>`
+   |                 |
+   |                 has type `&mut Foo<'_, '2>`
+LL |         self.y = b.z
+   |         ^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0312`.

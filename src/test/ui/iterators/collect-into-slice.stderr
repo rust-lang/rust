@@ -8,7 +8,7 @@ LL |     let some_generated_vec = (0..10).collect();
    = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
 
-error[E0277]: a value of type `[i32]` cannot be built since `[i32]` has no definite size
+error[E0277]: a slice of type `[i32]` cannot be built since `[i32]` has no definite size
   --> $DIR/collect-into-slice.rs:7:38
    |
 LL |     let some_generated_vec = (0..10).collect();

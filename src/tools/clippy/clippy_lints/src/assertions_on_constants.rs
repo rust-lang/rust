@@ -14,9 +14,6 @@ declare_clippy_lint! {
     /// Will be optimized out by the compiler or should probably be replaced by a
     /// `panic!()` or `unreachable!()`
     ///
-    /// ### Known problems
-    /// None
-    ///
     /// ### Example
     /// ```rust,ignore
     /// assert!(false)

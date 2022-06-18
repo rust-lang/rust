@@ -1,21 +1,49 @@
-error[E0081]: discriminant value `3` already exists
-  --> $DIR/E0081.rs:4:9
+error[E0081]: discriminant value `3` assigned more than once
+  --> $DIR/E0081.rs:1:1
    |
-LL |     P = 3,
-   |         - first use of `3`
-LL |
-LL |     X = 3,
-   |         ^ enum already has `3`
+LL | / enum Enum {
+LL | |
+LL | |     P = 3,
+   | |         - first assignment of `3`
+LL | |
+LL | |     X = 3,
+   | |         - second assignment of `3`
+LL | |
+LL | |     Y = 5
+LL | | }
+   | |_^
 
-error[E0081]: discriminant value `1` already exists
-  --> $DIR/E0081.rs:14:9
+error[E0081]: discriminant value `1` assigned more than once
+  --> $DIR/E0081.rs:11:1
    |
-LL |     P = 257,
-   |         --- first use of `1` (overflowed from `257`)
-LL |
-LL |     X = 513,
-   |         ^^^ enum already has `1` (overflowed from `513`)
+LL | / enum EnumOverflowRepr {
+LL | |
+LL | |     P = 257,
+   | |         --- first assignment of `1` (overflowed from `257`)
+LL | |
+LL | |     X = 513,
+   | |         --- second assignment of `1` (overflowed from `513`)
+LL | |
+LL | | }
+   | |_^
 
-error: aborting due to 2 previous errors
+error[E0081]: discriminant value `-1` assigned more than once
+  --> $DIR/E0081.rs:20:1
+   |
+LL | / enum NegDisEnum {
+LL | |
+LL | |     First = -1,
+   | |             -- first assignment of `-1`
+LL | |
+LL | |     Second = -2,
+   | |     ----------- assigned discriminant for `Last` was incremented from this discriminant
+LL | |
+LL | |     Last,
+   | |     ---- second assignment of `-1`
+LL | |
+LL | | }
+   | |_^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0081`.

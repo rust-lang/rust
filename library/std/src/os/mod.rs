@@ -81,7 +81,7 @@ pub mod unix;
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
-#[cfg(any(target_os = "linux", target_os = "l4re", doc))]
+#[cfg(any(target_os = "linux", doc))]
 pub mod linux;
 
 // wasi
@@ -123,10 +123,14 @@ pub mod freebsd;
 pub mod fuchsia;
 #[cfg(target_os = "haiku")]
 pub mod haiku;
+#[cfg(target_os = "horizon")]
+pub mod horizon;
 #[cfg(target_os = "illumos")]
 pub mod illumos;
 #[cfg(target_os = "ios")]
 pub mod ios;
+#[cfg(target_os = "l4re")]
+pub mod l4re;
 #[cfg(target_os = "macos")]
 pub mod macos;
 #[cfg(target_os = "netbsd")]

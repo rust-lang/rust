@@ -5,7 +5,7 @@ trait Foo<'a> {
     fn foo(&'a self);
     fn bar(&self) {
         self.foo();
-        //~^ ERROR cannot infer
+        //~^ ERROR lifetime may not live long enough
     }
 }
 

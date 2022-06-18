@@ -14,25 +14,11 @@ LL |     x0 as f64;
    |
    = note: `-D clippy::cast-precision-loss` implied by `-D warnings`
 
-error: casting `isize` to `f64` may become silently lossy if you later change the type
-  --> $DIR/cast_size_32bit.rs:15:5
-   |
-LL |     x0 as f64;
-   |     ^^^^^^^^^ help: try: `f64::from(x0)`
-   |
-   = note: `-D clippy::cast-lossless` implied by `-D warnings`
-
 error: casting `usize` to `f64` causes a loss of precision on targets with 64-bit wide pointers (`usize` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)
   --> $DIR/cast_size_32bit.rs:16:5
    |
 LL |     x1 as f64;
    |     ^^^^^^^^^
-
-error: casting `usize` to `f64` may become silently lossy if you later change the type
-  --> $DIR/cast_size_32bit.rs:16:5
-   |
-LL |     x1 as f64;
-   |     ^^^^^^^^^ help: try: `f64::from(x1)`
 
 error: casting `isize` to `f32` causes a loss of precision (`isize` is 32 or 64 bits wide, but `f32`'s mantissa is only 23 bits wide)
   --> $DIR/cast_size_32bit.rs:17:5

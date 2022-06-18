@@ -8,9 +8,9 @@ extern crate std;
 
 // #4264 fixed-length vector types
 
-pub fn foo(_: [i32; (3 as usize)]) ({ } as ())
+fn foo(_: [i32; (3 as usize)]) ({ } as ())
 
-pub fn bar() ({
+fn bar() ({
         const FOO: usize = ((5 as usize) - (4 as usize) as usize);
         let _: [(); (FOO as usize)] = ([(() as ())] as [(); 1]);
 
@@ -41,14 +41,14 @@ pub fn bar() ({
                 (res as String)
             } as String);
     } as ())
-pub type Foo = [i32; (3 as usize)];
-pub struct Bar {
-    pub x: [i32; (3 as usize)],
+type Foo = [i32; (3 as usize)];
+struct Bar {
+    x: [i32; (3 as usize)],
 }
-pub struct TupleBar([i32; (4 as usize)]);
-pub enum Baz { BazVariant([i32; (5 as usize)]), }
-pub fn id<T>(x: T) -> T ({ (x as T) } as T)
-pub fn use_id() ({
+struct TupleBar([i32; (4 as usize)]);
+enum Baz { BazVariant([i32; (5 as usize)]), }
+fn id<T>(x: T) -> T ({ (x as T) } as T)
+fn use_id() ({
         let _ =
             ((id::<[i32; (3 as usize)]> as
                     fn([i32; 3]) -> [i32; 3] {id::<[i32; 3]>})(([(1 as i32),

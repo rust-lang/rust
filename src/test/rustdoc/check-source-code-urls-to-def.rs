@@ -46,6 +46,24 @@ pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::Sour
 // @has - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#14-16"]' 'Trait'
 pub fn foo2<T: bar::sub::Trait, V: Trait>(t: &T, v: &V, b: bool) {}
 
+pub trait AnotherTrait {}
+pub trait WhyNot {}
+
+// @has - '//a[@href="../../src/foo/check-source-code-urls-to-def.rs.html#49"]' 'AnotherTrait'
+// @has - '//a[@href="../../src/foo/check-source-code-urls-to-def.rs.html#50"]' 'WhyNot'
+pub fn foo3<T, V>(t: &T, v: &V)
+where
+    T: AnotherTrait,
+    V: WhyNot
+{}
+
+pub trait AnotherTrait2 {}
+
+// @has - '//a[@href="../../src/foo/check-source-code-urls-to-def.rs.html#60"]' 'AnotherTrait2'
+pub fn foo4() {
+    let x: Vec<AnotherTrait2> = Vec::new();
+}
+
 // @has - '//a[@href="../../foo/primitive.bool.html"]' 'bool'
 #[doc(primitive = "bool")]
 mod whatever {}

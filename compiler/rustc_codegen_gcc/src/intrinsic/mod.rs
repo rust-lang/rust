@@ -1,7 +1,7 @@
 pub mod llvm;
 mod simd;
 
-use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp};
+use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp, FunctionType};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::{IntPredicate, span_invalid_monomorphization_error};
@@ -175,19 +175,18 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                                     let arg = args[0].immediate();
                                     let result = func.new_local(None, arg.get_type(), "zeros");
-                                    let zero = self.cx.context.new_rvalue_zero(arg.get_type());
-                                    let cond = self.cx.context.new_comparison(None, ComparisonOp::Equals, arg, zero);
+                                    let zero = self.cx.gcc_zero(arg.get_type());
+                                    let cond = self.gcc_icmp(IntPredicate::IntEQ, arg, zero);
                                     self.llbb().end_with_conditional(None, cond, then_block, else_block);
 
-                                    let zero_result = self.cx.context.new_rvalue_from_long(arg.get_type(), width as i64);
+                                    let zero_result = self.cx.gcc_uint(arg.get_type(), width);
                                     then_block.add_assignment(None, result, zero_result);
                                     then_block.end_with_jump(None, after_block);
 
                                     // NOTE: since jumps were added in a place
-                                    // count_leading_zeroes() does not expect, the current blocks
+                                    // count_leading_zeroes() does not expect, the current block
                                     // in the state need to be updated.
-                                    *self.current_block.borrow_mut() = Some(else_block);
-                                    self.block = Some(else_block);
+                                    self.switch_to_block(else_block);
 
                                     let zeros =
                                         match name {
@@ -195,13 +194,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                             sym::cttz => self.count_trailing_zeroes(width, arg),
                                             _ => unreachable!(),
                                         };
-                                    else_block.add_assignment(None, result, zeros);
-                                    else_block.end_with_jump(None, after_block);
+                                    self.llbb().add_assignment(None, result, zeros);
+                                    self.llbb().end_with_jump(None, after_block);
 
                                     // NOTE: since jumps were added in a place rustc does not
-                                    // expect, the current blocks in the state need to be updated.
-                                    *self.current_block.borrow_mut() = Some(after_block);
-                                    self.block = Some(after_block);
+                                    // expect, the current block in the state need to be updated.
+                                    self.switch_to_block(after_block);
 
                                     result.to_rvalue()
                                 }
@@ -217,17 +215,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                         args[0].immediate() // byte swap a u8/i8 is just a no-op
                                     }
                                     else {
-                                        // TODO(antoyo): check if it's faster to use string literals and a
-                                        // match instead of format!.
-                                        let bswap = self.cx.context.get_builtin_function(&format!("__builtin_bswap{}", width));
-                                        let mut arg = args[0].immediate();
-                                        // FIXME(antoyo): this cast should not be necessary. Remove
-                                        // when having proper sized integer types.
-                                        let param_type = bswap.get_param(0).to_rvalue().get_type();
-                                        if param_type != arg.get_type() {
-                                            arg = self.bitcast(arg, param_type);
-                                        }
-                                        self.cx.context.new_call(None, bswap, &[arg])
+                                        self.gcc_bswap(args[0].immediate(), width)
                                     }
                                 },
                                 sym::bitreverse => self.bit_reverse(width, args[0].immediate()),
@@ -272,20 +260,20 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     use rustc_target::abi::Abi::*;
                     let tp_ty = substs.type_at(0);
                     let layout = self.layout_of(tp_ty).layout;
-                    let _use_integer_compare = match layout.abi {
+                    let _use_integer_compare = match layout.abi() {
                         Scalar(_) | ScalarPair(_, _) => true,
                         Uninhabited | Vector { .. } => false,
                         Aggregate { .. } => {
                             // For rusty ABIs, small aggregates are actually passed
                             // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
                             // so we re-use that same threshold here.
-                            layout.size <= self.data_layout().pointer_size * 2
+                            layout.size() <= self.data_layout().pointer_size * 2
                         }
                     };
 
                     let a = args[0].immediate();
                     let b = args[1].immediate();
-                    if layout.size.bytes() == 0 {
+                    if layout.size().bytes() == 0 {
                         self.const_bool(true)
                     }
                     /*else if use_integer_compare {
@@ -301,7 +289,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         let void_ptr_type = self.context.new_type::<*const ()>();
                         let a_ptr = self.bitcast(a, void_ptr_type);
                         let b_ptr = self.bitcast(b, void_ptr_type);
-                        let n = self.context.new_cast(None, self.const_usize(layout.size.bytes()), self.sizet_type);
+                        let n = self.context.new_cast(None, self.const_usize(layout.size().bytes()), self.sizet_type);
                         let builtin = self.context.get_builtin_function("memcmp");
                         let cmp = self.context.new_call(None, builtin, &[a_ptr, b_ptr, n]);
                         self.icmp(IntPredicate::IntEQ, cmp, self.const_i32(0))
@@ -352,7 +340,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn assume(&mut self, value: Self::Value) {
-        // TODO(antoyo): switch to asumme when it exists.
+        // TODO(antoyo): switch to assume when it exists.
         // Or use something like this:
         // #define __assume(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
         self.expect(value, true);
@@ -364,6 +352,16 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn type_test(&mut self, _pointer: Self::Value, _typeid: Self::Value) -> Self::Value {
+        // Unsupported.
+        self.context.new_rvalue_from_int(self.int_type, 0)
+    }
+
+    fn type_checked_load(
+        &mut self,
+        _llvtable: Self::Value,
+        _vtable_byte_offset: u64,
+        _typeid: Self::Value,
+    ) -> Self::Value {
         // Unsupported.
         self.context.new_rvalue_from_int(self.int_type, 0)
     }
@@ -476,17 +474,17 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             val.to_rvalue()
         };
         match self.mode {
-            PassMode::Ignore => {}
+            PassMode::Ignore => {},
             PassMode::Pair(..) => {
                 OperandValue::Pair(next(), next()).store(bx, dst);
-            }
+            },
             PassMode::Indirect { extra_attrs: Some(_), .. } => {
                 OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
-            }
+            },
             PassMode::Direct(_) | PassMode::Indirect { extra_attrs: None, .. } | PassMode::Cast(_) => {
                 let next_arg = next();
-                self.store(bx, next_arg.to_rvalue(), dst);
-            }
+                self.store(bx, next_arg, dst);
+            },
         }
     }
 }
@@ -526,7 +524,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let value =
             if result_type.is_signed(self.cx) {
-                self.context.new_cast(None, value, typ)
+                self.gcc_int_cast(value, typ)
             }
             else {
                 value
@@ -673,30 +671,33 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 },
                 128 => {
                     // TODO(antoyo): find a more efficient implementation?
-                    let sixty_four = self.context.new_rvalue_from_long(typ, 64);
-                    let high = self.context.new_cast(None, value >> sixty_four, self.u64_type);
-                    let low = self.context.new_cast(None, value, self.u64_type);
+                    let sixty_four = self.gcc_int(typ, 64);
+                    let right_shift = self.gcc_lshr(value, sixty_four);
+                    let high = self.gcc_int_cast(right_shift, self.u64_type);
+                    let low = self.gcc_int_cast(value, self.u64_type);
 
                     let reversed_high = self.bit_reverse(64, high);
                     let reversed_low = self.bit_reverse(64, low);
 
-                    let new_low = self.context.new_cast(None, reversed_high, typ);
-                    let new_high = self.context.new_cast(None, reversed_low, typ) << sixty_four;
+                    let new_low = self.gcc_int_cast(reversed_high, typ);
+                    let new_high = self.shl(self.gcc_int_cast(reversed_low, typ), sixty_four);
 
-                    new_low | new_high
+                    self.gcc_or(new_low, new_high)
                 },
                 _ => {
                     panic!("cannot bit reverse with width = {}", width);
                 },
             };
 
-        self.context.new_cast(None, result, result_type)
+        self.gcc_int_cast(result, result_type)
     }
 
-    fn count_leading_zeroes(&self, width: u64, arg: RValue<'gcc>) -> RValue<'gcc> {
+    fn count_leading_zeroes(&mut self, width: u64, arg: RValue<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): use width?
         let arg_type = arg.get_type();
         let count_leading_zeroes =
+            // TODO(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
+            // instead of using is_uint().
             if arg_type.is_uint(&self.cx) {
                 "__builtin_clz"
             }
@@ -712,9 +713,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let result = self.current_func()
                     .new_local(None, array_type, "count_loading_zeroes_results");
 
-                let sixty_four = self.context.new_rvalue_from_long(arg_type, 64);
-                let high = self.context.new_cast(None, arg >> sixty_four, self.u64_type);
-                let low = self.context.new_cast(None, arg, self.u64_type);
+                let sixty_four = self.const_uint(arg_type, 64);
+                let shift = self.lshr(arg, sixty_four);
+                let high = self.gcc_int_cast(shift, self.u64_type);
+                let low = self.gcc_int_cast(arg, self.u64_type);
 
                 let zero = self.context.new_rvalue_zero(self.usize_type);
                 let one = self.context.new_rvalue_one(self.usize_type);
@@ -723,17 +725,18 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let clzll = self.context.get_builtin_function("__builtin_clzll");
 
                 let first_elem = self.context.new_array_access(None, result, zero);
-                let first_value = self.context.new_cast(None, self.context.new_call(None, clzll, &[high]), arg_type);
+                let first_value = self.gcc_int_cast(self.context.new_call(None, clzll, &[high]), arg_type);
                 self.llbb()
                     .add_assignment(None, first_elem, first_value);
 
                 let second_elem = self.context.new_array_access(None, result, one);
-                let second_value = self.context.new_cast(None, self.context.new_call(None, clzll, &[low]), arg_type) + sixty_four;
+                let cast = self.gcc_int_cast(self.context.new_call(None, clzll, &[low]), arg_type);
+                let second_value = self.add(cast, sixty_four);
                 self.llbb()
                     .add_assignment(None, second_elem, second_value);
 
                 let third_elem = self.context.new_array_access(None, result, two);
-                let third_value = self.context.new_rvalue_from_long(arg_type, 128);
+                let third_value = self.const_uint(arg_type, 128);
                 self.llbb()
                     .add_assignment(None, third_elem, third_value);
 
@@ -749,13 +752,13 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
                 let res = self.context.new_array_access(None, result, index);
 
-                return self.context.new_cast(None, res, arg_type);
+                return self.gcc_int_cast(res.to_rvalue(), arg_type);
             }
             else {
-                let count_leading_zeroes = self.context.get_builtin_function("__builtin_clz");
-                let arg = self.context.new_cast(None, arg, self.uint_type);
-                let diff = self.int_width(self.uint_type) - self.int_width(arg_type);
-                let diff = self.context.new_rvalue_from_long(self.int_type, diff);
+                let count_leading_zeroes = self.context.get_builtin_function("__builtin_clzll");
+                let arg = self.context.new_cast(None, arg, self.ulonglong_type);
+                let diff = self.ulonglong_type.get_size() as i64 - arg_type.get_size() as i64;
+                let diff = self.context.new_rvalue_from_long(self.int_type, diff * 8);
                 let res = self.context.new_call(None, count_leading_zeroes, &[arg]) - diff;
                 return self.context.new_cast(None, res, arg_type);
             };
@@ -764,18 +767,20 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.context.new_cast(None, res, arg_type)
     }
 
-    fn count_trailing_zeroes(&self, _width: u64, arg: RValue<'gcc>) -> RValue<'gcc> {
+    fn count_trailing_zeroes(&mut self, _width: u64, arg: RValue<'gcc>) -> RValue<'gcc> {
         let result_type = arg.get_type();
         let arg =
             if result_type.is_signed(self.cx) {
                 let new_type = result_type.to_unsigned(self.cx);
-                self.context.new_cast(None, arg, new_type)
+                self.gcc_int_cast(arg, new_type)
             }
             else {
                 arg
             };
         let arg_type = arg.get_type();
         let (count_trailing_zeroes, expected_type) =
+            // TODO(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
+            // instead of using is_uint().
             if arg_type.is_uchar(&self.cx) || arg_type.is_ushort(&self.cx) || arg_type.is_uint(&self.cx) {
                 // NOTE: we don't need to & 0xFF for uchar because the result is undefined on zero.
                 ("__builtin_ctz", self.cx.uint_type)
@@ -792,9 +797,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let result = self.current_func()
                     .new_local(None, array_type, "count_loading_zeroes_results");
 
-                let sixty_four = self.context.new_rvalue_from_long(arg_type, 64);
-                let high = self.context.new_cast(None, arg >> sixty_four, self.u64_type);
-                let low = self.context.new_cast(None, arg, self.u64_type);
+                let sixty_four = self.gcc_int(arg_type, 64);
+                let shift = self.gcc_lshr(arg, sixty_four);
+                let high = self.gcc_int_cast(shift, self.u64_type);
+                let low = self.gcc_int_cast(arg, self.u64_type);
 
                 let zero = self.context.new_rvalue_zero(self.usize_type);
                 let one = self.context.new_rvalue_one(self.usize_type);
@@ -803,17 +809,17 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let ctzll = self.context.get_builtin_function("__builtin_ctzll");
 
                 let first_elem = self.context.new_array_access(None, result, zero);
-                let first_value = self.context.new_cast(None, self.context.new_call(None, ctzll, &[low]), arg_type);
+                let first_value = self.gcc_int_cast(self.context.new_call(None, ctzll, &[low]), arg_type);
                 self.llbb()
                     .add_assignment(None, first_elem, first_value);
 
                 let second_elem = self.context.new_array_access(None, result, one);
-                let second_value = self.context.new_cast(None, self.context.new_call(None, ctzll, &[high]), arg_type) + sixty_four;
+                let second_value = self.gcc_add(self.gcc_int_cast(self.context.new_call(None, ctzll, &[high]), arg_type), sixty_four);
                 self.llbb()
                     .add_assignment(None, second_elem, second_value);
 
                 let third_elem = self.context.new_array_access(None, result, two);
-                let third_value = self.context.new_rvalue_from_long(arg_type, 128);
+                let third_value = self.gcc_int(arg_type, 128);
                 self.llbb()
                     .add_assignment(None, third_elem, third_value);
 
@@ -829,10 +835,20 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
                 let res = self.context.new_array_access(None, result, index);
 
-                return self.context.new_cast(None, res, result_type);
+                return self.gcc_int_cast(res.to_rvalue(), result_type);
             }
             else {
-                unimplemented!("count_trailing_zeroes for {:?}", arg_type);
+                let count_trailing_zeroes = self.context.get_builtin_function("__builtin_ctzll");
+                let arg_size = arg_type.get_size();
+                let casted_arg = self.context.new_cast(None, arg, self.ulonglong_type);
+                let byte_diff = self.ulonglong_type.get_size() as i64 - arg_size as i64;
+                let diff = self.context.new_rvalue_from_long(self.int_type, byte_diff * 8);
+                let mask = self.context.new_rvalue_from_long(arg_type, -1); // To get the value with all bits set.
+                let masked = mask & self.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, arg);
+                let cond = self.context.new_comparison(None, ComparisonOp::Equals, masked, mask);
+                let diff = diff * self.context.new_cast(None, cond, self.int_type);
+                let res = self.context.new_call(None, count_trailing_zeroes, &[casted_arg]) - diff;
+                return self.context.new_cast(None, res, result_type);
             };
         let count_trailing_zeroes = self.context.get_builtin_function(count_trailing_zeroes);
         let arg =
@@ -846,18 +862,14 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.context.new_cast(None, res, result_type)
     }
 
-    fn int_width(&self, typ: Type<'gcc>) -> i64 {
-        self.cx.int_width(typ) as i64
-    }
-
-    fn pop_count(&self, value: RValue<'gcc>) -> RValue<'gcc> {
+    fn pop_count(&mut self, value: RValue<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): use the optimized version with fewer operations.
         let result_type = value.get_type();
         let value_type = result_type.to_unsigned(self.cx);
 
         let value =
             if result_type.is_signed(self.cx) {
-                self.context.new_cast(None, value, value_type)
+                self.gcc_int_cast(value, value_type)
             }
             else {
                 value
@@ -867,13 +879,14 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             // TODO(antoyo): implement in the normal algorithm below to have a more efficient
             // implementation (that does not require a call to __popcountdi2).
             let popcount = self.context.get_builtin_function("__builtin_popcountll");
-            let sixty_four = self.context.new_rvalue_from_long(value_type, 64);
-            let high = self.context.new_cast(None, value >> sixty_four, self.cx.ulonglong_type);
+            let sixty_four = self.gcc_int(value_type, 64);
+            let right_shift = self.gcc_lshr(value, sixty_four);
+            let high = self.gcc_int_cast(right_shift, self.cx.ulonglong_type);
             let high = self.context.new_call(None, popcount, &[high]);
-            let low = self.context.new_cast(None, value, self.cx.ulonglong_type);
+            let low = self.gcc_int_cast(value, self.cx.ulonglong_type);
             let low = self.context.new_call(None, popcount, &[low]);
             let res = high + low;
-            return self.context.new_cast(None, res, result_type);
+            return self.gcc_int_cast(res, result_type);
         }
 
         // First step.
@@ -935,13 +948,14 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
     // Algorithm from: https://blog.regehr.org/archives/1063
     fn rotate_left(&mut self, value: RValue<'gcc>, shift: RValue<'gcc>, width: u64) -> RValue<'gcc> {
-        let max = self.context.new_rvalue_from_long(shift.get_type(), width as i64);
-        let shift = shift % max;
+        let max = self.const_uint(shift.get_type(), width);
+        let shift = self.urem(shift, max);
         let lhs = self.shl(value, shift);
+        let result_neg = self.neg(shift);
         let result_and =
             self.and(
-                self.context.new_unary_op(None, UnaryOp::Minus, shift.get_type(), shift),
-                self.context.new_rvalue_from_long(shift.get_type(), width as i64 - 1),
+                result_neg,
+                self.const_uint(shift.get_type(), width - 1),
             );
         let rhs = self.lshr(value, result_and);
         self.or(lhs, rhs)
@@ -949,120 +963,162 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
     // Algorithm from: https://blog.regehr.org/archives/1063
     fn rotate_right(&mut self, value: RValue<'gcc>, shift: RValue<'gcc>, width: u64) -> RValue<'gcc> {
-        let max = self.context.new_rvalue_from_long(shift.get_type(), width as i64);
-        let shift = shift % max;
+        let max = self.const_uint(shift.get_type(), width);
+        let shift = self.urem(shift, max);
         let lhs = self.lshr(value, shift);
+        let result_neg = self.neg(shift);
         let result_and =
             self.and(
-                self.context.new_unary_op(None, UnaryOp::Minus, shift.get_type(), shift),
-                self.context.new_rvalue_from_long(shift.get_type(), width as i64 - 1),
+                result_neg,
+                self.const_uint(shift.get_type(), width - 1),
             );
         let rhs = self.shl(value, result_and);
         self.or(lhs, rhs)
     }
 
     fn saturating_add(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>, signed: bool, width: u64) -> RValue<'gcc> {
-        let func = self.current_func.borrow().expect("func");
-
+        let result_type = lhs.get_type();
         if signed {
-            // Algorithm from: https://stackoverflow.com/a/56531252/389119
-            let after_block = func.new_block("after");
-            let func_name =
-                match width {
-                    8 => "__builtin_add_overflow",
-                    16 => "__builtin_add_overflow",
-                    32 => "__builtin_sadd_overflow",
-                    64 => "__builtin_saddll_overflow",
-                    128 => "__builtin_add_overflow",
-                    _ => unreachable!(),
-                };
-            let overflow_func = self.context.get_builtin_function(func_name);
-            let result_type = lhs.get_type();
+            // Based on algorithm from: https://stackoverflow.com/a/56531252/389119
+            let func = self.current_func.borrow().expect("func");
             let res = func.new_local(None, result_type, "saturating_sum");
-            let overflow = self.overflow_call(overflow_func, &[lhs, rhs, res.get_address(None)], None);
+            let supports_native_type = self.is_native_int_type(result_type);
+            let overflow =
+                if supports_native_type {
+                    let func_name =
+                        match width {
+                            8 => "__builtin_add_overflow",
+                            16 => "__builtin_add_overflow",
+                            32 => "__builtin_sadd_overflow",
+                            64 => "__builtin_saddll_overflow",
+                            128 => "__builtin_add_overflow",
+                            _ => unreachable!(),
+                        };
+                    let overflow_func = self.context.get_builtin_function(func_name);
+                    self.overflow_call(overflow_func, &[lhs, rhs, res.get_address(None)], None)
+                }
+                else {
+                    let func_name =
+                        match width {
+                            128 => "__rust_i128_addo",
+                            _ => unreachable!(),
+                        };
+                    let param_a = self.context.new_parameter(None, result_type, "a");
+                    let param_b = self.context.new_parameter(None, result_type, "b");
+                    let result_field = self.context.new_field(None, result_type, "result");
+                    let overflow_field = self.context.new_field(None, self.bool_type, "overflow");
+                    let return_type = self.context.new_struct_type(None, "result_overflow", &[result_field, overflow_field]);
+                    let func = self.context.new_function(None, FunctionType::Extern, return_type.as_type(), &[param_a, param_b], func_name, false);
+                    let result = self.context.new_call(None, func, &[lhs, rhs]);
+                    let overflow = result.access_field(None, overflow_field);
+                    let int_result = result.access_field(None, result_field);
+                    self.llbb().add_assignment(None, res, int_result);
+                    overflow
+                };
 
             let then_block = func.new_block("then");
+            let after_block = func.new_block("after");
 
-            let unsigned_type = self.context.new_int_type(width as i32 / 8, false);
-            let shifted = self.context.new_cast(None, lhs, unsigned_type) >> self.context.new_rvalue_from_int(unsigned_type, width as i32 - 1);
-            let uint_max = self.context.new_unary_op(None, UnaryOp::BitwiseNegate, unsigned_type,
-                self.context.new_rvalue_from_int(unsigned_type, 0)
-            );
-            let int_max = uint_max >> self.context.new_rvalue_one(unsigned_type);
-            then_block.add_assignment(None, res, self.context.new_cast(None, shifted + int_max, result_type));
+            // Return `result_type`'s maximum or minimum value on overflow
+            // NOTE: convert the type to unsigned to have an unsigned shift.
+            let unsigned_type = result_type.to_unsigned(&self.cx);
+            let shifted = self.gcc_lshr(self.gcc_int_cast(lhs, unsigned_type), self.gcc_int(unsigned_type, width as i64 - 1));
+            let uint_max = self.gcc_not(self.gcc_int(unsigned_type, 0));
+            let int_max = self.gcc_lshr(uint_max, self.gcc_int(unsigned_type, 1));
+            then_block.add_assignment(None, res, self.gcc_int_cast(self.gcc_add(shifted, int_max), result_type));
             then_block.end_with_jump(None, after_block);
 
             self.llbb().end_with_conditional(None, overflow, then_block, after_block);
 
             // NOTE: since jumps were added in a place rustc does not
-            // expect, the current blocks in the state need to be updated.
-            *self.current_block.borrow_mut() = Some(after_block);
-            self.block = Some(after_block);
+            // expect, the current block in the state need to be updated.
+            self.switch_to_block(after_block);
 
             res.to_rvalue()
         }
         else {
             // Algorithm from: http://locklessinc.com/articles/sat_arithmetic/
-            let res = lhs + rhs;
-            let res_type = res.get_type();
-            let cond = self.context.new_comparison(None, ComparisonOp::LessThan, res, lhs);
-            let value = self.context.new_unary_op(None, UnaryOp::Minus, res_type, self.context.new_cast(None, cond, res_type));
-            res | value
+            let res = self.gcc_add(lhs, rhs);
+            let cond = self.gcc_icmp(IntPredicate::IntULT, res, lhs);
+            let value = self.gcc_neg(self.gcc_int_cast(cond, result_type));
+            self.gcc_or(res, value)
         }
     }
 
     // Algorithm from: https://locklessinc.com/articles/sat_arithmetic/
     fn saturating_sub(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>, signed: bool, width: u64) -> RValue<'gcc> {
+        let result_type = lhs.get_type();
         if signed {
-            // Also based on algorithm from: https://stackoverflow.com/a/56531252/389119
-            let func_name =
-                match width {
-                    8 => "__builtin_sub_overflow",
-                    16 => "__builtin_sub_overflow",
-                    32 => "__builtin_ssub_overflow",
-                    64 => "__builtin_ssubll_overflow",
-                    128 => "__builtin_sub_overflow",
-                    _ => unreachable!(),
-                };
-            let overflow_func = self.context.get_builtin_function(func_name);
-            let result_type = lhs.get_type();
+            // Based on algorithm from: https://stackoverflow.com/a/56531252/389119
             let func = self.current_func.borrow().expect("func");
             let res = func.new_local(None, result_type, "saturating_diff");
-            let overflow = self.overflow_call(overflow_func, &[lhs, rhs, res.get_address(None)], None);
+            let supports_native_type = self.is_native_int_type(result_type);
+            let overflow =
+                if supports_native_type {
+                    let func_name =
+                        match width {
+                            8 => "__builtin_sub_overflow",
+                            16 => "__builtin_sub_overflow",
+                            32 => "__builtin_ssub_overflow",
+                            64 => "__builtin_ssubll_overflow",
+                            128 => "__builtin_sub_overflow",
+                            _ => unreachable!(),
+                        };
+                    let overflow_func = self.context.get_builtin_function(func_name);
+                    self.overflow_call(overflow_func, &[lhs, rhs, res.get_address(None)], None)
+                }
+                else {
+                    let func_name =
+                        match width {
+                            128 => "__rust_i128_subo",
+                            _ => unreachable!(),
+                        };
+                    let param_a = self.context.new_parameter(None, result_type, "a");
+                    let param_b = self.context.new_parameter(None, result_type, "b");
+                    let result_field = self.context.new_field(None, result_type, "result");
+                    let overflow_field = self.context.new_field(None, self.bool_type, "overflow");
+                    let return_type = self.context.new_struct_type(None, "result_overflow", &[result_field, overflow_field]);
+                    let func = self.context.new_function(None, FunctionType::Extern, return_type.as_type(), &[param_a, param_b], func_name, false);
+                    let result = self.context.new_call(None, func, &[lhs, rhs]);
+                    let overflow = result.access_field(None, overflow_field);
+                    let int_result = result.access_field(None, result_field);
+                    self.llbb().add_assignment(None, res, int_result);
+                    overflow
+                };
 
             let then_block = func.new_block("then");
             let after_block = func.new_block("after");
 
-            let unsigned_type = self.context.new_int_type(width as i32 / 8, false);
-            let shifted = self.context.new_cast(None, lhs, unsigned_type) >> self.context.new_rvalue_from_int(unsigned_type, width as i32 - 1);
-            let uint_max = self.context.new_unary_op(None, UnaryOp::BitwiseNegate, unsigned_type,
-                self.context.new_rvalue_from_int(unsigned_type, 0)
-            );
-            let int_max = uint_max >> self.context.new_rvalue_one(unsigned_type);
-            then_block.add_assignment(None, res, self.context.new_cast(None, shifted + int_max, result_type));
+            // Return `result_type`'s maximum or minimum value on overflow
+            // NOTE: convert the type to unsigned to have an unsigned shift.
+            let unsigned_type = result_type.to_unsigned(&self.cx);
+            let shifted = self.gcc_lshr(self.gcc_int_cast(lhs, unsigned_type), self.gcc_int(unsigned_type, width as i64 - 1));
+            let uint_max = self.gcc_not(self.gcc_int(unsigned_type, 0));
+            let int_max = self.gcc_lshr(uint_max, self.gcc_int(unsigned_type, 1));
+            then_block.add_assignment(None, res, self.gcc_int_cast(self.gcc_add(shifted, int_max), result_type));
             then_block.end_with_jump(None, after_block);
 
             self.llbb().end_with_conditional(None, overflow, then_block, after_block);
 
             // NOTE: since jumps were added in a place rustc does not
-            // expect, the current blocks in the state need to be updated.
-            *self.current_block.borrow_mut() = Some(after_block);
-            self.block = Some(after_block);
+            // expect, the current block in the state need to be updated.
+            self.switch_to_block(after_block);
 
             res.to_rvalue()
         }
         else {
-            let res = lhs - rhs;
-            let comparison = self.context.new_comparison(None, ComparisonOp::LessThanEquals, res, lhs);
-            let comparison = self.context.new_cast(None, comparison, lhs.get_type());
-            let unary_op = self.context.new_unary_op(None, UnaryOp::Minus, comparison.get_type(), comparison);
-            self.and(res, unary_op)
+            let res = self.gcc_sub(lhs, rhs);
+            let comparison = self.gcc_icmp(IntPredicate::IntULE, res, lhs);
+            let value = self.gcc_neg(self.gcc_int_cast(comparison, result_type));
+            self.gcc_and(res, value)
         }
     }
 }
 
 fn try_intrinsic<'gcc, 'tcx>(bx: &mut Builder<'_, 'gcc, 'tcx>, try_func: RValue<'gcc>, data: RValue<'gcc>, _catch_func: RValue<'gcc>, dest: RValue<'gcc>) {
-    if bx.sess().panic_strategy() == PanicStrategy::Abort {
+    // NOTE: the `|| true` here is to use the panic=abort strategy with panic=unwind too
+    if bx.sess().panic_strategy() == PanicStrategy::Abort || true {
+        // TODO(bjorn3): Properly implement unwinding and remove the `|| true` once this is done.
         bx.call(bx.type_void(), try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.

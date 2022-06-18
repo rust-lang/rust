@@ -3,7 +3,7 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceCell;
 use rustc_index::vec::IndexVec;
-use rustc_serialize as serialize;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 
 use crate::mir::{BasicBlock, BasicBlockData};
@@ -43,7 +43,7 @@ impl PredecessorCache {
             let mut preds = IndexVec::from_elem(SmallVec::new(), basic_blocks);
             for (bb, data) in basic_blocks.iter_enumerated() {
                 if let Some(term) = &data.terminator {
-                    for &succ in term.successors() {
+                    for succ in term.successors() {
                         preds[succ].push(bb);
                     }
                 }
@@ -54,14 +54,12 @@ impl PredecessorCache {
     }
 }
 
-impl<S: serialize::Encoder> serialize::Encodable<S> for PredecessorCache {
+impl<S: Encoder> Encodable<S> for PredecessorCache {
     #[inline]
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
-    }
+    fn encode(&self, _s: &mut S) {}
 }
 
-impl<D: serialize::Decoder> serialize::Decodable<D> for PredecessorCache {
+impl<D: Decoder> Decodable<D> for PredecessorCache {
     #[inline]
     fn decode(_: &mut D) -> Self {
         Self::new()

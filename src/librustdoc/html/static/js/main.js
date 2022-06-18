@@ -1,7 +1,8 @@
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass, searchState */
 /* global onEach, onEachLazy, removeClass */
-/* global switchTheme, useSystemTheme */
+
+"use strict";
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -11,7 +12,7 @@ if (!String.prototype.startsWith) {
 }
 if (!String.prototype.endsWith) {
     String.prototype.endsWith = function(suffix, length) {
-        var l = length || this.length;
+        const l = length || this.length;
         return this.indexOf(suffix, l - suffix.length) !== -1;
     };
 }
@@ -40,7 +41,7 @@ if (!DOMTokenList.prototype.remove) {
 // Get a value from the rustdoc-vars div, which is used to convey data from
 // Rust to the JS. If there is no such element, return null.
 function getVar(name) {
-    var el = document.getElementById("rustdoc-vars");
+    const el = document.getElementById("rustdoc-vars");
     if (el) {
         return el.attributes["data-" + name].value;
     } else {
@@ -54,12 +55,21 @@ function resourcePath(basename, extension) {
     return getVar("root-path") + basename + getVar("resource-suffix") + extension;
 }
 
-(function () {
+function hideMain() {
+    addClass(document.getElementById(MAIN_ID), "hidden");
+}
+
+function showMain() {
+    removeClass(document.getElementById(MAIN_ID), "hidden");
+}
+
+(function() {
     window.rootPath = getVar("root-path");
     window.currentCrate = getVar("current-crate");
     window.searchJS =  resourcePath("search", ".js");
     window.searchIndexJS = resourcePath("search-index", ".js");
-    var sidebarVars = document.getElementById("sidebar-vars");
+    window.settingsJS = resourcePath("settings", ".js");
+    const sidebarVars = document.getElementById("sidebar-vars");
     if (sidebarVars) {
         window.sidebarCurrent = {
             name: sidebarVars.attributes["data-name"].value,
@@ -68,8 +78,8 @@ function resourcePath(basename, extension) {
         };
         // FIXME: It would be nicer to generate this text content directly in HTML,
         // but with the current code it's hard to get the right information in the right place.
-        var mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
-        var locationTitle = document.querySelector(".sidebar h2.location");
+        const mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
+        const locationTitle = document.querySelector(".sidebar h2.location");
         if (mobileLocationTitle && locationTitle) {
             mobileLocationTitle.innerHTML = locationTitle.innerHTML;
         }
@@ -87,27 +97,24 @@ function resourcePath(basename, extension) {
 //
 // So I guess you could say things are getting pretty interoperable.
 function getVirtualKey(ev) {
-    if ("key" in ev && typeof ev.key != "undefined") {
+    if ("key" in ev && typeof ev.key !== "undefined") {
         return ev.key;
     }
 
-    var c = ev.charCode || ev.keyCode;
-    if (c == 27) {
+    const c = ev.charCode || ev.keyCode;
+    if (c === 27) {
         return "Escape";
     }
     return String.fromCharCode(c);
 }
 
-var THEME_PICKER_ELEMENT_ID = "theme-picker";
-var THEMES_ELEMENT_ID = "theme-choices";
-var MAIN_ID = "main-content";
+const MAIN_ID = "main-content";
+const SETTINGS_BUTTON_ID = "settings-menu";
+const ALTERNATIVE_DISPLAY_ID = "alternative-display";
+const NOT_DISPLAYED_ID = "not-displayed";
 
-function getThemesElement() {
-    return document.getElementById(THEMES_ELEMENT_ID);
-}
-
-function getThemePickerElement() {
-    return document.getElementById(THEME_PICKER_ELEMENT_ID);
+function getSettingsButton() {
+    return document.getElementById(SETTINGS_BUTTON_ID);
 }
 
 // Returns the current URL without any query parameter or hash.
@@ -115,78 +122,125 @@ function getNakedUrl() {
     return window.location.href.split("?")[0].split("#")[0];
 }
 
-function showThemeButtonState() {
-    var themePicker = getThemePickerElement();
-    var themeChoices = getThemesElement();
+window.hideSettings = () => {
+    // Does nothing by default.
+};
 
-    themeChoices.style.display = "block";
-    themePicker.style.borderBottomRightRadius = "0";
-    themePicker.style.borderBottomLeftRadius = "0";
+/**
+ * This function inserts `newNode` after `referenceNode`. It doesn't work if `referenceNode`
+ * doesn't have a parent node.
+ *
+ * @param {HTMLElement} newNode
+ * @param {HTMLElement} referenceNode
+ */
+function insertAfter(newNode, referenceNode) {
+    referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
 }
 
-function hideThemeButtonState() {
-    var themePicker = getThemePickerElement();
-    var themeChoices = getThemesElement();
+/**
+ * This function creates a new `<section>` with the given `id` and `classes` if it doesn't already
+ * exist.
+ *
+ * More information about this in `switchDisplayedElement` documentation.
+ *
+ * @param {string} id
+ * @param {string} classes
+ */
+function getOrCreateSection(id, classes) {
+    let el = document.getElementById(id);
 
-    themeChoices.style.display = "none";
-    themePicker.style.borderBottomRightRadius = "3px";
-    themePicker.style.borderBottomLeftRadius = "3px";
+    if (!el) {
+        el = document.createElement("section");
+        el.id = id;
+        el.className = classes;
+        insertAfter(el, document.getElementById(MAIN_ID));
+    }
+    return el;
 }
 
-// Set up the theme picker list.
-(function () {
-    if (!document.location.href.startsWith("file:///")) {
+/**
+ * Returns the `<section>` element which contains the displayed element.
+ *
+ * @return {HTMLElement}
+ */
+function getAlternativeDisplayElem() {
+    return getOrCreateSection(ALTERNATIVE_DISPLAY_ID, "content hidden");
+}
+
+/**
+ * Returns the `<section>` element which contains the not-displayed elements.
+ *
+ * @return {HTMLElement}
+ */
+function getNotDisplayedElem() {
+    return getOrCreateSection(NOT_DISPLAYED_ID, "hidden");
+}
+
+/**
+ * To nicely switch between displayed "extra" elements (such as search results or settings menu)
+ * and to alternate between the displayed and not displayed elements, we hold them in two different
+ * `<section>` elements. They work in pair: one holds the hidden elements while the other
+ * contains the displayed element (there can be only one at the same time!). So basically, we switch
+ * elements between the two `<section>` elements.
+ *
+ * @param {HTMLElement} elemToDisplay
+ */
+function switchDisplayedElement(elemToDisplay) {
+    const el = getAlternativeDisplayElem();
+
+    if (el.children.length > 0) {
+        getNotDisplayedElem().appendChild(el.firstElementChild);
+    }
+    if (elemToDisplay === null) {
+        addClass(el, "hidden");
+        showMain();
         return;
     }
-    var themeChoices = getThemesElement();
-    var themePicker = getThemePickerElement();
-    var availableThemes = getVar("themes").split(",");
+    el.appendChild(elemToDisplay);
+    hideMain();
+    removeClass(el, "hidden");
+}
 
-    removeClass(themeChoices.parentElement, "hidden");
+function browserSupportsHistoryApi() {
+    return window.history && typeof window.history.pushState === "function";
+}
 
-    function switchThemeButtonState() {
-        if (themeChoices.style.display === "block") {
-            hideThemeButtonState();
-        } else {
-            showThemeButtonState();
-        }
-    }
-
-    function handleThemeButtonsBlur(e) {
-        var active = document.activeElement;
-        var related = e.relatedTarget;
-
-        if (active.id !== THEME_PICKER_ELEMENT_ID &&
-            (!active.parentNode || active.parentNode.id !== THEMES_ELEMENT_ID) &&
-            (!related ||
-             (related.id !== THEME_PICKER_ELEMENT_ID &&
-              (!related.parentNode || related.parentNode.id !== THEMES_ELEMENT_ID)))) {
-            hideThemeButtonState();
-        }
-    }
-
-    themePicker.onclick = switchThemeButtonState;
-    themePicker.onblur = handleThemeButtonsBlur;
-    availableThemes.forEach(function(item) {
-        var but = document.createElement("button");
-        but.textContent = item;
-        but.onclick = function() {
-            switchTheme(window.currentTheme, window.mainTheme, item, true);
-            useSystemTheme(false);
-        };
-        but.onblur = handleThemeButtonsBlur;
-        themeChoices.appendChild(but);
-    });
-}());
+// eslint-disable-next-line no-unused-vars
+function loadCss(cssFileName) {
+    const link = document.createElement("link");
+    link.href = resourcePath(cssFileName, ".css");
+    link.type = "text/css";
+    link.rel = "stylesheet";
+    document.getElementsByTagName("head")[0].appendChild(link);
+}
 
 (function() {
-    "use strict";
+    function loadScript(url) {
+        const script = document.createElement("script");
+        script.src = url;
+        document.head.append(script);
+    }
+
+    getSettingsButton().onclick = event => {
+        addClass(getSettingsButton(), "rotate");
+        event.preventDefault();
+        // Sending request for the CSS and the JS files at the same time so it will
+        // hopefully be loaded when the JS will generate the settings content.
+        loadCss("settings");
+        loadScript(window.settingsJS);
+    };
 
     window.searchState = {
         loadingText: "Loading search results...",
         input: document.getElementsByClassName("search-input")[0],
-        outputElement: function() {
-            return document.getElementById("search");
+        outputElement: () => {
+            let el = document.getElementById("search");
+            if (!el) {
+                el = document.createElement("section");
+                el.id = "search";
+                getNotDisplayedElem().appendChild(el);
+            }
+            return el;
         },
         title: document.title,
         titleBeforeSearch: document.title,
@@ -199,67 +253,54 @@ function hideThemeButtonState() {
         currentTab: 0,
         // tab and back preserves the element that was focused.
         focusedByTab: [null, null, null],
-        clearInputTimeout: function() {
+        clearInputTimeout: () => {
             if (searchState.timeout !== null) {
                 clearTimeout(searchState.timeout);
                 searchState.timeout = null;
             }
         },
+        isDisplayed: () => searchState.outputElement().parentElement.id === ALTERNATIVE_DISPLAY_ID,
         // Sets the focus on the search bar at the top of the page
-        focus: function() {
+        focus: () => {
             searchState.input.focus();
         },
         // Removes the focus from the search bar.
-        defocus: function() {
+        defocus: () => {
             searchState.input.blur();
         },
-        showResults: function(search) {
-            if (search === null || typeof search === 'undefined') {
+        showResults: search => {
+            if (search === null || typeof search === "undefined") {
                 search = searchState.outputElement();
             }
-            addClass(main, "hidden");
-            removeClass(search, "hidden");
+            switchDisplayedElement(search);
             searchState.mouseMovedAfterSearch = false;
             document.title = searchState.title;
         },
-        hideResults: function(search) {
-            if (search === null || typeof search === 'undefined') {
-                search = searchState.outputElement();
-            }
-            addClass(search, "hidden");
-            removeClass(main, "hidden");
+        hideResults: () => {
+            switchDisplayedElement(null);
             document.title = searchState.titleBeforeSearch;
             // We also remove the query parameter from the URL.
-            if (searchState.browserSupportsHistoryApi()) {
+            if (browserSupportsHistoryApi()) {
                 history.replaceState(null, window.currentCrate + " - Rust",
                     getNakedUrl() + window.location.hash);
             }
         },
-        getQueryStringParams: function() {
-            var params = {};
+        getQueryStringParams: () => {
+            const params = {};
             window.location.search.substring(1).split("&").
-                map(function(s) {
-                    var pair = s.split("=");
+                map(s => {
+                    const pair = s.split("=");
                     params[decodeURIComponent(pair[0])] =
                         typeof pair[1] === "undefined" ? null : decodeURIComponent(pair[1]);
                 });
             return params;
         },
-        browserSupportsHistoryApi: function() {
-            return window.history && typeof window.history.pushState === "function";
-        },
-        setup: function() {
-            var search_input = searchState.input;
+        setup: () => {
+            const search_input = searchState.input;
             if (!searchState.input) {
                 return;
             }
-            function loadScript(url) {
-                var script = document.createElement('script');
-                script.src = url;
-                document.head.append(script);
-            }
-
-            var searchLoaded = false;
+            let searchLoaded = false;
             function loadSearch() {
                 if (!searchLoaded) {
                     searchLoaded = true;
@@ -268,19 +309,19 @@ function hideThemeButtonState() {
                 }
             }
 
-            search_input.addEventListener("focus", function() {
+            search_input.addEventListener("focus", () => {
                 search_input.origPlaceholder = search_input.placeholder;
                 search_input.placeholder = "Type your search here.";
                 loadSearch();
             });
 
-            if (search_input.value != '') {
+            if (search_input.value !== "") {
                 loadSearch();
             }
 
-            var params = searchState.getQueryStringParams();
+            const params = searchState.getQueryStringParams();
             if (params.search !== undefined) {
-                var search = searchState.outputElement();
+                const search = searchState.outputElement();
                 search.innerHTML = "<h3 class=\"search-loading\">" +
                     searchState.loadingText + "</h3>";
                 searchState.showResults(search);
@@ -291,7 +332,7 @@ function hideThemeButtonState() {
 
     function getPageId() {
         if (window.location.hash) {
-            var tmp = window.location.hash.replace(/^#/, "");
+            const tmp = window.location.hash.replace(/^#/, "");
             if (tmp.length > 0) {
                 return tmp;
             }
@@ -299,24 +340,21 @@ function hideThemeButtonState() {
         return null;
     }
 
-    var toggleAllDocsId = "toggle-all-docs";
-    var main = document.getElementById(MAIN_ID);
-    var savedHash = "";
+    const toggleAllDocsId = "toggle-all-docs";
+    let savedHash = "";
 
     function handleHashes(ev) {
-        var elem;
-        var search = searchState.outputElement();
-        if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
+        if (ev !== null && searchState.isDisplayed() && ev.newURL) {
             // This block occurs when clicking on an element in the navbar while
             // in a search.
-            searchState.hideResults(search);
-            var hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
-            if (searchState.browserSupportsHistoryApi()) {
+            switchDisplayedElement(null);
+            const hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
+            if (browserSupportsHistoryApi()) {
                 // `window.location.search`` contains all the query parameters, not just `search`.
                 history.replaceState(null, "",
                     getNakedUrl() + window.location.search + "#" + hash);
             }
-            elem = document.getElementById(hash);
+            const elem = document.getElementById(hash);
             if (elem) {
                 elem.scrollIntoView();
             }
@@ -333,7 +371,7 @@ function hideThemeButtonState() {
 
     function onHashChange(ev) {
         // If we're in mobile mode, we should hide the sidebar in any case.
-        var sidebar = document.getElementsByClassName("sidebar")[0];
+        const sidebar = document.getElementsByClassName("sidebar")[0];
         removeClass(sidebar, "shown");
         handleHashes(ev);
     }
@@ -386,20 +424,23 @@ function hideThemeButtonState() {
     }
 
     function handleEscape(ev) {
-        var help = getHelpElement(false);
-        var search = searchState.outputElement();
+        searchState.clearInputTimeout();
+        const help = getHelpElement(false);
         if (help && !hasClass(help, "hidden")) {
             displayHelp(false, ev, help);
-        } else if (search && !hasClass(search, "hidden")) {
-            searchState.clearInputTimeout();
+        } else {
+            switchDisplayedElement(null);
+            if (browserSupportsHistoryApi()) {
+                history.replaceState(null, window.currentCrate + " - Rust",
+                    getNakedUrl() + window.location.hash);
+            }
             ev.preventDefault();
-            searchState.hideResults(search);
         }
         searchState.defocus();
-        hideThemeButtonState();
+        window.hideSettings();
     }
 
-    var disableShortcuts = getSettingValue("disable-shortcuts") === "true";
+    const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
         if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts) {
@@ -435,100 +476,20 @@ function hideThemeButtonState() {
                 displayHelp(true, ev);
                 break;
 
-            case "t":
-            case "T":
-                displayHelp(false, ev);
-                ev.preventDefault();
-                var themePicker = getThemePickerElement();
-                themePicker.click();
-                themePicker.focus();
-                break;
-
             default:
-                if (getThemePickerElement().parentNode.contains(ev.target)) {
-                    handleThemeKeyDown(ev);
-                }
+                break;
             }
-        }
-    }
-
-    function handleThemeKeyDown(ev) {
-        var active = document.activeElement;
-        var themes = getThemesElement();
-        switch (getVirtualKey(ev)) {
-        case "ArrowUp":
-            ev.preventDefault();
-            if (active.previousElementSibling && ev.target.id !== THEME_PICKER_ELEMENT_ID) {
-                active.previousElementSibling.focus();
-            } else {
-                showThemeButtonState();
-                themes.lastElementChild.focus();
-            }
-            break;
-        case "ArrowDown":
-            ev.preventDefault();
-            if (active.nextElementSibling && ev.target.id !== THEME_PICKER_ELEMENT_ID) {
-                active.nextElementSibling.focus();
-            } else {
-                showThemeButtonState();
-                themes.firstElementChild.focus();
-            }
-            break;
-        case "Enter":
-        case "Return":
-        case "Space":
-            if (ev.target.id === THEME_PICKER_ELEMENT_ID && themes.style.display === "none") {
-                ev.preventDefault();
-                showThemeButtonState();
-                themes.firstElementChild.focus();
-            }
-            break;
-        case "Home":
-            ev.preventDefault();
-            themes.firstElementChild.focus();
-            break;
-        case "End":
-            ev.preventDefault();
-            themes.lastElementChild.focus();
-            break;
-        // The escape key is handled in handleEscape, not here,
-        // so that pressing escape will close the menu even if it isn't focused
         }
     }
 
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
 
-    (function() {
-        var x = document.getElementsByClassName("version-selector");
-        if (x.length > 0) {
-            x[0].onchange = function() {
-                var i, match,
-                    url = document.location.href,
-                    stripped = "",
-                    len = window.rootPath.match(/\.\.\//g).length + 1;
-
-                for (i = 0; i < len; ++i) {
-                    match = url.match(/\/[^/]*$/);
-                    if (i < len - 1) {
-                        stripped = match[0] + stripped;
-                    }
-                    url = url.substring(0, url.length - match[0].length);
-                }
-
-                var selectedVersion = document.getElementsByClassName("version-selector")[0].value;
-                url += "/" + selectedVersion + stripped;
-
-                document.location.href = url;
-            };
-        }
-    }());
-
     // delayed sidebar rendering.
-    window.initSidebarItems = function(items) {
-        var sidebar = document.getElementsByClassName("sidebar-elems")[0];
-        var others;
-        var current = window.sidebarCurrent;
+    window.initSidebarItems = items => {
+        const sidebar = document.getElementsByClassName("sidebar-elems")[0];
+        let others;
+        const current = window.sidebarCurrent;
 
         function addSidebarCrates(crates) {
             if (!hasClass(document.body, "crate")) {
@@ -536,23 +497,23 @@ function hideThemeButtonState() {
                 return;
             }
             // Draw a convenient sidebar of known crates if we have a listing
-            var div = document.createElement("div");
+            const div = document.createElement("div");
             div.className = "block crate";
             div.innerHTML = "<h3>Crates</h3>";
-            var ul = document.createElement("ul");
+            const ul = document.createElement("ul");
             div.appendChild(ul);
 
-            for (var i = 0; i < crates.length; ++i) {
-                var klass = "crate";
-                if (window.rootPath !== "./" && crates[i] === window.currentCrate) {
+            for (const crate of crates) {
+                let klass = "crate";
+                if (window.rootPath !== "./" && crate === window.currentCrate) {
                     klass += " current";
                 }
-                var link = document.createElement("a");
-                link.href = window.rootPath + crates[i] + "/index.html";
+                const link = document.createElement("a");
+                link.href = window.rootPath + crate + "/index.html";
                 link.className = klass;
-                link.textContent = crates[i];
+                link.textContent = crate;
 
-                var li = document.createElement("li");
+                const li = document.createElement("li");
                 li.appendChild(link);
                 ul.appendChild(li);
             }
@@ -568,39 +529,38 @@ function hideThemeButtonState() {
          *                          "Modules", or "Macros".
          */
         function block(shortty, id, longty) {
-            var filtered = items[shortty];
+            const filtered = items[shortty];
             if (!filtered) {
                 return;
             }
 
-            var div = document.createElement("div");
+            const div = document.createElement("div");
             div.className = "block " + shortty;
-            var h3 = document.createElement("h3");
+            const h3 = document.createElement("h3");
             h3.innerHTML = `<a href="index.html#${id}">${longty}</a>`;
             div.appendChild(h3);
-            var ul = document.createElement("ul");
+            const ul = document.createElement("ul");
 
-            for (var i = 0, len = filtered.length; i < len; ++i) {
-                var item = filtered[i];
-                var name = item[0];
-                var desc = item[1]; // can be null
+            for (const item of filtered) {
+                const name = item[0];
+                const desc = item[1]; // can be null
 
-                var klass = shortty;
+                let klass = shortty;
                 if (name === current.name && shortty === current.ty) {
                     klass += " current";
                 }
-                var path;
+                let path;
                 if (shortty === "mod") {
                     path = name + "/index.html";
                 } else {
                     path = shortty + "." + name + ".html";
                 }
-                var link = document.createElement("a");
+                const link = document.createElement("a");
                 link.href = current.relpath + path;
                 link.title = desc;
                 link.className = klass;
                 link.textContent = name;
-                var li = document.createElement("li");
+                const li = document.createElement("li");
                 li.appendChild(link);
                 ul.appendChild(li);
             }
@@ -613,7 +573,7 @@ function hideThemeButtonState() {
             others.className = "others";
             sidebar.appendChild(others);
 
-            var isModule = hasClass(document.body, "mod");
+            const isModule = hasClass(document.body, "mod");
             if (!isModule) {
                 block("primitive", "primitives", "Primitive Types");
                 block("mod", "modules", "Modules");
@@ -637,9 +597,10 @@ function hideThemeButtonState() {
         }
     };
 
-    window.register_implementors = function(imp) {
-        var implementors = document.getElementById("implementors-list");
-        var synthetic_implementors = document.getElementById("synthetic-implementors-list");
+    window.register_implementors = imp => {
+        const implementors = document.getElementById("implementors-list");
+        const synthetic_implementors = document.getElementById("synthetic-implementors-list");
+        const inlined_types = new Set();
 
         if (synthetic_implementors) {
             // This `inlined_types` variable is used to avoid having the same implementation
@@ -647,60 +608,65 @@ function hideThemeButtonState() {
             //
             // By the way, this is only used by and useful for traits implemented automatically
             // (like "Send" and "Sync").
-            var inlined_types = new Set();
-            onEachLazy(synthetic_implementors.getElementsByClassName("impl"), function(el) {
-                var aliases = el.getAttribute("data-aliases");
+            onEachLazy(synthetic_implementors.getElementsByClassName("impl"), el => {
+                const aliases = el.getAttribute("data-aliases");
                 if (!aliases) {
                     return;
                 }
-                aliases.split(",").forEach(function(alias) {
+                aliases.split(",").forEach(alias => {
                     inlined_types.add(alias);
                 });
             });
         }
 
-        var currentNbImpls = implementors.getElementsByClassName("impl").length;
-        var traitName = document.querySelector("h1.fqn > .in-band > .trait").textContent;
-        var baseIdName = "impl-" + traitName + "-";
-        var libs = Object.getOwnPropertyNames(imp);
-        for (var i = 0, llength = libs.length; i < llength; ++i) {
-            if (libs[i] === window.currentCrate) { continue; }
-            var structs = imp[libs[i]];
+        let currentNbImpls = implementors.getElementsByClassName("impl").length;
+        const traitName = document.querySelector("h1.fqn > .in-band > .trait").textContent;
+        const baseIdName = "impl-" + traitName + "-";
+        const libs = Object.getOwnPropertyNames(imp);
+        // We don't want to include impls from this JS file, when the HTML already has them.
+        // The current crate should always be ignored. Other crates that should also be
+        // ignored are included in the attribute `data-ignore-extern-crates`.
+        const ignoreExternCrates = document
+            .querySelector("script[data-ignore-extern-crates]")
+            .getAttribute("data-ignore-extern-crates");
+        for (const lib of libs) {
+            if (lib === window.currentCrate || ignoreExternCrates.indexOf(lib) !== -1) {
+                continue;
+            }
+            const structs = imp[lib];
 
             struct_loop:
-            for (var j = 0, slength = structs.length; j < slength; ++j) {
-                var struct = structs[j];
-
-                var list = struct.synthetic ? synthetic_implementors : implementors;
+            for (const struct of structs) {
+                const list = struct.synthetic ? synthetic_implementors : implementors;
 
                 if (struct.synthetic) {
-                    for (var k = 0, stlength = struct.types.length; k < stlength; k++) {
-                        if (inlined_types.has(struct.types[k])) {
+                    for (const struct_type of struct.types) {
+                        if (inlined_types.has(struct_type)) {
                             continue struct_loop;
                         }
-                        inlined_types.add(struct.types[k]);
+                        inlined_types.add(struct_type);
                     }
                 }
 
-                var code = document.createElement("h3");
+                const code = document.createElement("h3");
                 code.innerHTML = struct.text;
                 addClass(code, "code-header");
                 addClass(code, "in-band");
 
-                onEachLazy(code.getElementsByTagName("a"), function(elem) {
-                    var href = elem.getAttribute("href");
+                onEachLazy(code.getElementsByTagName("a"), elem => {
+                    const href = elem.getAttribute("href");
 
                     if (href && href.indexOf("http") !== 0) {
                         elem.setAttribute("href", window.rootPath + href);
                     }
                 });
 
-                var currentId = baseIdName + currentNbImpls;
-                var anchor = document.createElement("a");
+                const currentId = baseIdName + currentNbImpls;
+                const anchor = document.createElement("a");
                 anchor.href = "#" + currentId;
                 addClass(anchor, "anchor");
 
-                var display = document.createElement("div");
+                const display = document.createElement("div");
                 display.id = currentId;
                 addClass(display, "impl");
                 display.appendChild(anchor);
@@ -725,14 +691,14 @@ function hideThemeButtonState() {
     }
 
     function toggleAllDocs() {
-        var innerToggle = document.getElementById(toggleAllDocsId);
+        const innerToggle = document.getElementById(toggleAllDocsId);
         if (!innerToggle) {
             return;
         }
-        var sectionIsCollapsed = false;
+        let sectionIsCollapsed = false;
         if (hasClass(innerToggle, "will-expand")) {
             removeClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function(e) {
+            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
                 if (!hasClass(e, "type-contents-toggle")) {
                     e.open = true;
                 }
@@ -740,11 +706,11 @@ function hideThemeButtonState() {
             innerToggle.title = "collapse all docs";
         } else {
             addClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function(e) {
-                if (e.parentNode.id !== MAIN_ID ||
+            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
+                if (e.parentNode.id !== "implementations-list" ||
                     (!hasClass(e, "implementors-toggle") &&
-                     !hasClass(e, "type-contents-toggle")))
-                {
+                     !hasClass(e, "type-contents-toggle"))
+                ) {
                     e.open = false;
                 }
             });
@@ -754,24 +720,20 @@ function hideThemeButtonState() {
         innerToggle.children[0].innerText = labelForToggleButton(sectionIsCollapsed);
     }
 
-    function insertAfter(newNode, referenceNode) {
-        referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
-    }
-
     (function() {
-        var toggles = document.getElementById(toggleAllDocsId);
+        const toggles = document.getElementById(toggleAllDocsId);
         if (toggles) {
             toggles.onclick = toggleAllDocs;
         }
 
-        var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
-        var hideImplementations = getSettingValue("auto-hide-trait-implementations") === "true";
-        var hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
+        const hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
+        const hideImplementations = getSettingValue("auto-hide-trait-implementations") === "true";
+        const hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
 
         function setImplementorsTogglesOpen(id, open) {
-            var list = document.getElementById(id);
+            const list = document.getElementById(id);
             if (list !== null) {
-                onEachLazy(list.getElementsByClassName("implementors-toggle"), function(e) {
+                onEachLazy(list.getElementsByClassName("implementors-toggle"), e => {
                     e.open = open;
                 });
             }
@@ -782,7 +744,7 @@ function hideThemeButtonState() {
             setImplementorsTogglesOpen("blanket-implementations-list", false);
         }
 
-        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function (e) {
+        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
             if (!hideLargeItemContents && hasClass(e, "type-contents-toggle")) {
                 e.open = true;
             }
@@ -792,7 +754,7 @@ function hideThemeButtonState() {
 
         });
 
-        var pageId = getPageId();
+        const pageId = getPageId();
         if (pageId !== null) {
             expandSection(pageId);
         }
@@ -800,21 +762,21 @@ function hideThemeButtonState() {
 
     (function() {
         // To avoid checking on "rustdoc-line-numbers" value on every loop...
-        var lineNumbersFunc = function() {};
+        let lineNumbersFunc = () => {};
         if (getSettingValue("line-numbers") === "true") {
-            lineNumbersFunc = function(x) {
-                var count = x.textContent.split("\n").length;
-                var elems = [];
-                for (var i = 0; i < count; ++i) {
+            lineNumbersFunc = x => {
+                const count = x.textContent.split("\n").length;
+                const elems = [];
+                for (let i = 0; i < count; ++i) {
                     elems.push(i + 1);
                 }
-                var node = document.createElement("pre");
+                const node = document.createElement("pre");
                 addClass(node, "line-number");
                 node.innerHTML = elems.join("\n");
                 x.parentNode.insertBefore(node, x);
             };
         }
-        onEachLazy(document.getElementsByClassName("rust-example-rendered"), function(e) {
+        onEachLazy(document.getElementsByClassName("rust-example-rendered"), e => {
             if (hasClass(e, "compile_fail")) {
                 e.addEventListener("mouseover", function() {
                     this.parentElement.previousElementSibling.childNodes[0].style.color = "#f00";
@@ -835,54 +797,54 @@ function hideThemeButtonState() {
     }());
 
     function hideSidebar() {
-        var sidebar = document.getElementsByClassName("sidebar")[0];
+        const sidebar = document.getElementsByClassName("sidebar")[0];
         removeClass(sidebar, "shown");
     }
 
     function handleClick(id, f) {
-        var elem = document.getElementById(id);
+        const elem = document.getElementById(id);
         if (elem) {
             elem.addEventListener("click", f);
         }
     }
-    handleClick("help-button", function(ev) {
+    handleClick("help-button", ev => {
         displayHelp(true, ev);
     });
-    handleClick(MAIN_ID, function() {
+    handleClick(MAIN_ID, () => {
         hideSidebar();
     });
 
-    onEachLazy(document.getElementsByTagName("a"), function(el) {
+    onEachLazy(document.getElementsByTagName("a"), el => {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
         // jumping to *before* jumping there. We can't do this in onHashChange, because it changes
         // the height of the document so we wind up scrolled to the wrong place.
         if (el.hash) {
-            el.addEventListener("click", function() {
+            el.addEventListener("click", () => {
                 expandSection(el.hash.slice(1));
                 hideSidebar();
             });
         }
     });
 
-    onEachLazy(document.querySelectorAll(".rustdoc-toggle > summary:not(.hideme)"), function(el) {
-        el.addEventListener("click", function(e) {
-            if (e.target.tagName != "SUMMARY" && e.target.tagName != "A") {
+    onEachLazy(document.querySelectorAll(".rustdoc-toggle > summary:not(.hideme)"), el => {
+        el.addEventListener("click", e => {
+            if (e.target.tagName !== "SUMMARY" && e.target.tagName !== "A") {
                 e.preventDefault();
             }
         });
     });
 
-    onEachLazy(document.getElementsByClassName("notable-traits"), function(e) {
+    onEachLazy(document.getElementsByClassName("notable-traits"), e => {
         e.onclick = function() {
-            this.getElementsByClassName('notable-traits-tooltiptext')[0]
+            this.getElementsByClassName("notable-traits-tooltiptext")[0]
                 .classList.toggle("force-tooltip");
         };
     });
 
-    var sidebar_menu_toggle = document.getElementsByClassName("sidebar-menu-toggle")[0];
+    const sidebar_menu_toggle = document.getElementsByClassName("sidebar-menu-toggle")[0];
     if (sidebar_menu_toggle) {
-        sidebar_menu_toggle.addEventListener("click", function() {
-            var sidebar = document.getElementsByClassName("sidebar")[0];
+        sidebar_menu_toggle.addEventListener("click", () => {
+            const sidebar = document.getElementsByClassName("sidebar")[0];
             if (!hasClass(sidebar, "shown")) {
                 addClass(sidebar, "shown");
             } else {
@@ -891,47 +853,42 @@ function hideThemeButtonState() {
         });
     }
 
-    var buildHelperPopup = function() {
-        var popup = document.createElement("aside");
+    let buildHelperPopup = () => {
+        const popup = document.createElement("aside");
         addClass(popup, "hidden");
         popup.id = "help";
 
-        popup.addEventListener("click", function(ev) {
+        popup.addEventListener("click", ev => {
             if (ev.target === popup) {
                 // Clicked the blurred zone outside the help popup; dismiss help.
                 displayHelp(false, ev);
             }
         });
 
-        var book_info = document.createElement("span");
+        const book_info = document.createElement("span");
         book_info.className = "top";
         book_info.innerHTML = "You can find more information in \
             <a href=\"https://doc.rust-lang.org/rustdoc/\">the rustdoc book</a>.";
 
-        var container = document.createElement("div");
-        var shortcuts = [
+        const container = document.createElement("div");
+        const shortcuts = [
             ["?", "Show this help dialog"],
             ["S", "Focus the search field"],
-            ["T", "Focus the theme picker menu"],
             ["↑", "Move up in search results"],
             ["↓", "Move down in search results"],
             ["← / →", "Switch result tab (when results focused)"],
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
-        ].map(function(x) {
-            return "<dt>" +
-                x[0].split(" ")
-                    .map(function(y, index) {
-                        return (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " ";
-                    })
-                    .join("") + "</dt><dd>" + x[1] + "</dd>";
-        }).join("");
-        var div_shortcuts = document.createElement("div");
+        ].map(x => "<dt>" +
+            x[0].split(" ")
+                .map((y, index) => ((index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " "))
+                .join("") + "</dt><dd>" + x[1] + "</dd>").join("");
+        const div_shortcuts = document.createElement("div");
         addClass(div_shortcuts, "shortcuts");
         div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";
 
-        var infos = [
+        const infos = [
             "Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to \
              restrict the search to a given item kind.",
             "Accepted kinds are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
@@ -944,10 +901,8 @@ function hideThemeButtonState() {
             "You can look for items with an exact name by putting double quotes around \
              your request: <code>\"string\"</code>",
             "Look for items inside another one by searching for a path: <code>vec::Vec</code>",
-        ].map(function(x) {
-            return "<p>" + x + "</p>";
-        }).join("");
-        var div_infos = document.createElement("div");
+        ].map(x => "<p>" + x + "</p>").join("");
+        const div_infos = document.createElement("div");
         addClass(div_infos, "infos");
         div_infos.innerHTML = "<h2>Search Tricks</h2>" + infos;
 
@@ -955,9 +910,9 @@ function hideThemeButtonState() {
         container.appendChild(div_shortcuts);
         container.appendChild(div_infos);
 
-        var rustdoc_version = document.createElement("span");
+        const rustdoc_version = document.createElement("span");
         rustdoc_version.className = "bottom";
-        var rustdoc_version_code = document.createElement("code");
+        const rustdoc_version_code = document.createElement("code");
         rustdoc_version_code.innerText = "rustdoc " + getVar("rustdoc-version");
         rustdoc_version.appendChild(rustdoc_version_code);
 
@@ -966,7 +921,7 @@ function hideThemeButtonState() {
         popup.appendChild(container);
         insertAfter(popup, document.querySelector("main"));
         // So that it's only built once and then it'll do nothing when called!
-        buildHelperPopup = function() {};
+        buildHelperPopup = () => {};
     };
 
     onHashChange(null);
@@ -974,46 +929,46 @@ function hideThemeButtonState() {
     searchState.setup();
 }());
 
-(function () {
-    var reset_button_timeout = null;
+(function() {
+    let reset_button_timeout = null;
 
-    window.copy_path = function(but) {
-        var parent = but.parentElement;
-        var path = [];
+    window.copy_path = but => {
+        const parent = but.parentElement;
+        const path = [];
 
-        onEach(parent.childNodes, function(child) {
-            if (child.tagName === 'A') {
+        onEach(parent.childNodes, child => {
+            if (child.tagName === "A") {
                 path.push(child.textContent);
             }
         });
 
-        var el = document.createElement('textarea');
-        el.value = path.join('::');
-        el.setAttribute('readonly', '');
+        const el = document.createElement("textarea");
+        el.value = path.join("::");
+        el.setAttribute("readonly", "");
         // To not make it appear on the screen.
-        el.style.position = 'absolute';
-        el.style.left = '-9999px';
+        el.style.position = "absolute";
+        el.style.left = "-9999px";
 
         document.body.appendChild(el);
         el.select();
-        document.execCommand('copy');
+        document.execCommand("copy");
         document.body.removeChild(el);
 
         // There is always one children, but multiple childNodes.
-        but.children[0].style.display = 'none';
+        but.children[0].style.display = "none";
 
-        var tmp;
+        let tmp;
         if (but.childNodes.length < 2) {
-            tmp = document.createTextNode('✓');
+            tmp = document.createTextNode("✓");
             but.appendChild(tmp);
         } else {
-            onEachLazy(but.childNodes, function(e) {
+            onEachLazy(but.childNodes, e => {
                 if (e.nodeType === Node.TEXT_NODE) {
                     tmp = e;
                     return true;
                 }
             });
-            tmp.textContent = '✓';
+            tmp.textContent = "✓";
         }
 
         if (reset_button_timeout !== null) {
@@ -1021,7 +976,7 @@ function hideThemeButtonState() {
         }
 
         function reset_button() {
-            tmp.textContent = '';
+            tmp.textContent = "";
             reset_button_timeout = null;
             but.children[0].style.display = "";
         }

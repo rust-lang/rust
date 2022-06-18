@@ -11,14 +11,12 @@ use crate::maybe_whole;
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, TokenKind};
+use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::util::classify;
-use rustc_ast::{
-    AstLike, AttrStyle, AttrVec, Attribute, LocalKind, MacCall, MacCallStmt, MacStmtStyle,
-};
-use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt};
+use rustc_ast::{AttrStyle, AttrVec, Attribute, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
+use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorReported, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
 
@@ -38,7 +36,7 @@ impl<'a> Parser<'a> {
 
     /// If `force_capture` is true, forces collection of tokens regardless of whether
     /// or not we have attributes
-    crate fn parse_stmt_without_recovery(
+    pub(crate) fn parse_stmt_without_recovery(
         &mut self,
         capture_semi: bool,
         force_collect: ForceCollect,
@@ -54,7 +52,7 @@ impl<'a> Parser<'a> {
             stmt.visit_attrs(|stmt_attrs| {
                 attrs.prepend_to_nt_inner(stmt_attrs);
             });
-            return Ok(Some(stmt));
+            return Ok(Some(stmt.into_inner()));
         }
 
         Ok(Some(if self.token.is_keyword(kw::Let) {
@@ -92,7 +90,7 @@ impl<'a> Parser<'a> {
             // Do not attempt to parse an expression if we're done here.
             self.error_outer_attrs(&attrs.take_for_recovery());
             self.mk_stmt(lo, StmtKind::Empty)
-        } else if self.token != token::CloseDelim(token::Brace) {
+        } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts.
             let e = if force_collect == ForceCollect::Yes {
                 self.collect_tokens_no_attrs(|this| {
@@ -131,7 +129,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            let expr = if this.eat(&token::OpenDelim(token::Brace)) {
+            let expr = if this.eat(&token::OpenDelim(Delimiter::Brace)) {
                 this.parse_struct_expr(None, path, AttrVec::new(), true)?
             } else {
                 let hi = this.prev_token.span;
@@ -164,25 +162,29 @@ impl<'a> Parser<'a> {
         let delim = args.delim();
         let hi = self.prev_token.span;
 
-        let style =
-            if delim == token::Brace { MacStmtStyle::Braces } else { MacStmtStyle::NoBraces };
+        let style = match delim {
+            Some(Delimiter::Brace) => MacStmtStyle::Braces,
+            Some(_) => MacStmtStyle::NoBraces,
+            None => unreachable!(),
+        };
 
         let mac = MacCall { path, args, prior_type_ascription: self.last_type_ascription };
 
-        let kind =
-            if (delim == token::Brace && self.token != token::Dot && self.token != token::Question)
-                || self.token == token::Semi
-                || self.token == token::Eof
-            {
-                StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
-            } else {
-                // Since none of the above applied, this is an expression statement macro.
-                let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac), AttrVec::new());
-                let e = self.maybe_recover_from_bad_qpath(e, true)?;
-                let e = self.parse_dot_or_call_expr_with(e, lo, attrs.into())?;
-                let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
-                StmtKind::Expr(e)
-            };
+        let kind = if (style == MacStmtStyle::Braces
+            && self.token != token::Dot
+            && self.token != token::Question)
+            || self.token == token::Semi
+            || self.token == token::Eof
+        {
+            StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
+        } else {
+            // Since none of the above applied, this is an expression statement macro.
+            let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac), AttrVec::new());
+            let e = self.maybe_recover_from_bad_qpath(e)?;
+            let e = self.parse_dot_or_call_expr_with(e, lo, attrs.into())?;
+            let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
+            StmtKind::Expr(e)
+        };
         Ok(self.mk_stmt(lo.to(hi), kind))
     }
 
@@ -207,7 +209,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Stmt> {
         let stmt = self.recover_local_after_let(lo, attrs)?;
         self.struct_span_err(lo, "invalid variable declaration")
-            .span_suggestion(lo, msg, sugg.to_string(), Applicability::MachineApplicable)
+            .span_suggestion(lo, msg, sugg, Applicability::MachineApplicable)
             .emit();
         Ok(stmt)
     }
@@ -258,7 +260,10 @@ impl<'a> Parser<'a> {
                     if let Ok(snip) = self.span_to_snippet(pat.span) {
                         err.span_label(pat.span, format!("while parsing the type for `{}`", snip));
                     }
-                    let err = if self.check(&token::Eq) {
+                    // we use noexpect here because we don't actually expect Eq to be here
+                    // but we are still checking for it in order to be able to handle it if
+                    // it is there
+                    let err = if self.check_noexpect(&token::Eq) {
                         err.emit();
                         None
                     } else {
@@ -285,7 +290,7 @@ impl<'a> Parser<'a> {
                 err.span_suggestion_short(
                     colon_sp,
                     "use `=` if you meant to assign",
-                    " =".to_string(),
+                    " =",
                     Applicability::MachineApplicable,
                 );
                 err.emit();
@@ -389,7 +394,7 @@ impl<'a> Parser<'a> {
                 .span_suggestion_short(
                     self.token.span,
                     "initialize the variable",
-                    "=".to_string(),
+                    "=",
                     Applicability::MaybeIncorrect,
                 )
                 .help("if you meant to overwrite, remove the `let` binding")
@@ -415,7 +420,7 @@ impl<'a> Parser<'a> {
     fn error_block_no_opening_brace_msg(
         &mut self,
         msg: &str,
-    ) -> DiagnosticBuilder<'a, ErrorReported> {
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let sp = self.token.span;
         let mut e = self.struct_span_err(sp, msg);
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
@@ -427,10 +432,23 @@ impl<'a> Parser<'a> {
         //
         // which is valid in other languages, but not Rust.
         match self.parse_stmt_without_recovery(false, ForceCollect::No) {
-            // If the next token is an open brace (e.g., `if a b {`), the place-
-            // inside-a-block suggestion would be more likely wrong than right.
+            // If the next token is an open brace, e.g., we have:
+            //
+            //     if expr other_expr {
+            //        ^    ^          ^- lookahead(1) is a brace
+            //        |    |- current token is not "else"
+            //        |- (statement we just parsed)
+            //
+            // the place-inside-a-block suggestion would be more likely wrong than right.
+            //
+            // FIXME(compiler-errors): this should probably parse an arbitrary expr and not
+            // just lookahead one token, so we can see if there's a brace after _that_,
+            // since we want to protect against:
+            //     `if 1 1 + 1 {` being suggested as  `if { 1 } 1 + 1 {`
+            //                                            +   +
             Ok(Some(_))
-                if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
+                if (!self.token.is_keyword(kw::Else)
+                    && self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace)))
                     || do_not_suggest_help => {}
             // Do not suggest `if foo println!("") {;}` (as would be seen in test for #46836).
             Ok(Some(Stmt { kind: StmtKind::Empty, .. })) => {}
@@ -484,7 +502,7 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
         self.maybe_recover_unexpected_block_label();
-        if !self.eat(&token::OpenDelim(token::Brace)) {
+        if !self.eat(&token::OpenDelim(Delimiter::Brace)) {
             return self.error_block_no_opening_brace();
         }
 
@@ -498,14 +516,14 @@ impl<'a> Parser<'a> {
 
     /// Parses the rest of a block expression or function body.
     /// Precondition: already parsed the '{'.
-    crate fn parse_block_tail(
+    pub(crate) fn parse_block_tail(
         &mut self,
         lo: Span,
         s: BlockCheckMode,
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
-        while !self.eat(&token::CloseDelim(token::Brace)) {
+        while !self.eat(&token::CloseDelim(Delimiter::Brace)) {
             if self.token == token::Eof {
                 break;
             }
@@ -535,7 +553,7 @@ impl<'a> Parser<'a> {
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, Option<Stmt>> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
-        maybe_whole!(self, NtStmt, |x| Some(x));
+        maybe_whole!(self, NtStmt, |x| Some(x.into_inner()));
 
         let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No)? else {
             return Ok(None);
@@ -549,7 +567,7 @@ impl<'a> Parser<'a> {
             {
                 // Just check for errors and recover; do not eat semicolon yet.
                 if let Err(mut e) =
-                    self.expect_one_of(&[], &[token::Semi, token::CloseDelim(token::Brace)])
+                    self.expect_one_of(&[], &[token::Semi, token::CloseDelim(Delimiter::Brace)])
                 {
                     if let TokenKind::DocComment(..) = self.token.kind {
                         if let Ok(snippet) = self.span_to_snippet(self.token.span) {

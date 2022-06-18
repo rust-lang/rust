@@ -3,17 +3,18 @@
 #![allow(clippy::module_name_repetitions)]
 
 use rustc_ast::ast::Mutability;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, TyKind, Unsafety};
+use rustc_hir::{Expr, LangItem, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, AdtDef, Binder, FnSig, IntTy, Predicate, PredicateKind, Ty, TyCtxt, TypeFoldable, UintTy, VariantDiscr,
+    self, AdtDef, Binder, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, Ty, TyCtxt, TypeFoldable, UintTy,
+    VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -22,7 +23,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use std::iter;
 
-use crate::{match_def_path, must_use_attr, path_res};
+use crate::{match_def_path, path_res, paths};
 
 // Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -42,7 +43,7 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
 }
 
 /// Walks into `ty` and returns `true` if any inner type is the same as `other_ty`
-pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
+pub fn contains_ty<'tcx>(ty: Ty<'tcx>, other_ty: Ty<'tcx>) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => other_ty == inner_ty,
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
@@ -51,7 +52,7 @@ pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
 
 /// Walks into `ty` and returns `true` if any inner type is an instance of the given adt
 /// constructor.
-pub fn contains_adt_constructor(ty: Ty<'_>, adt: &AdtDef) -> bool {
+pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => inner_ty.ty_adt_def() == Some(adt),
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
@@ -77,10 +78,24 @@ pub fn get_associated_type<'tcx>(
     cx.tcx
         .associated_items(trait_id)
         .find_by_name_and_kind(cx.tcx, Ident::from_str(name), ty::AssocKind::Type, trait_id)
-        .map(|assoc| {
+        .and_then(|assoc| {
             let proj = cx.tcx.mk_projection(assoc.def_id, cx.tcx.mk_substs_trait(ty, &[]));
-            cx.tcx.normalize_erasing_regions(cx.param_env, proj)
+            cx.tcx.try_normalize_erasing_regions(cx.param_env, proj).ok()
         })
+}
+
+/// Get the diagnostic name of a type, e.g. `sym::HashMap`. To check if a type
+/// implements a trait marked with a diagnostic item use [`implements_trait`].
+///
+/// For a further exploitation what diagnostic items are see [diagnostic items] in
+/// rustc-dev-guide.
+///
+/// [Diagnostic Items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
+pub fn get_type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symbol> {
+    match ty.kind() {
+        ty::Adt(adt, _) => cx.tcx.get_diagnostic_name(adt.did()),
+        _ => None,
+    }
 }
 
 /// Returns true if ty has `iter` or `iter_mut` methods
@@ -112,7 +127,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
     let def_id = match ty_to_check.kind() {
         ty::Array(..) => return Some(sym::array),
         ty::Slice(..) => return Some(sym::slice),
-        ty::Adt(adt, _) => adt.did,
+        ty::Adt(adt, _) => adt.did(),
         _ => return None,
     };
 
@@ -138,17 +153,28 @@ pub fn implements_trait<'tcx>(
     trait_id: DefId,
     ty_params: &[GenericArg<'tcx>],
 ) -> bool {
+    implements_trait_with_env(cx.tcx, cx.param_env, ty, trait_id, ty_params)
+}
+
+/// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
+pub fn implements_trait_with_env<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    trait_id: DefId,
+    ty_params: &[GenericArg<'tcx>],
+) -> bool {
     // Clippy shouldn't have infer types
     assert!(!ty.needs_infer());
 
-    let ty = cx.tcx.erase_regions(ty);
+    let ty = tcx.erase_regions(ty);
     if ty.has_escaping_bound_vars() {
         return false;
     }
-    let ty_params = cx.tcx.mk_substs(ty_params.iter());
-    cx.tcx.infer_ctxt().enter(|infcx| {
+    let ty_params = tcx.mk_substs(ty_params.iter());
+    tcx.infer_ctxt().enter(|infcx| {
         infcx
-            .type_implements_trait(trait_id, ty, ty_params, cx.param_env)
+            .type_implements_trait(trait_id, ty, ty_params, param_env)
             .must_apply_modulo_regions()
     })
 }
@@ -164,18 +190,18 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 // Returns whether the type has #[must_use] attribute
 pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => must_use_attr(cx.tcx.get_attrs(adt.did)).is_some(),
-        ty::Foreign(ref did) => must_use_attr(cx.tcx.get_attrs(*did)).is_some(),
+        ty::Adt(adt, _) => cx.tcx.has_attr(adt.did(), sym::must_use),
+        ty::Foreign(did) => cx.tcx.has_attr(*did, sym::must_use),
         ty::Slice(ty) | ty::Array(ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => {
             // for the Array case we don't need to care for the len == 0 case
             // because we don't want to lint functions returning empty arrays
             is_must_use_ty(cx, *ty)
         },
         ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Opaque(ref def_id, _) => {
+        ty::Opaque(def_id, _) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
                 if let ty::PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
-                    if must_use_attr(cx.tcx.get_attrs(trait_predicate.trait_ref.def_id)).is_some() {
+                    if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
                         return true;
                     }
                 }
@@ -185,7 +211,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Dynamic(binder, _) => {
             for predicate in binder.iter() {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
-                    if must_use_attr(cx.tcx.get_attrs(trait_ref.def_id)).is_some() {
+                    if cx.tcx.has_attr(trait_ref.def_id, sym::must_use) {
                         return true;
                     }
                 }
@@ -220,7 +246,7 @@ fn is_normalizable_helper<'tcx>(
         let cause = rustc_middle::traits::ObligationCause::dummy();
         if infcx.at(&cause, param_env).normalize(ty).is_ok() {
             match ty.kind() {
-                ty::Adt(def, substs) => def.variants.iter().all(|variant| {
+                ty::Adt(def, substs) => def.variants().iter().all(|variant| {
                     variant
                         .fields
                         .iter()
@@ -264,7 +290,7 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
 pub fn is_type_ref_to_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
     match ty.kind() {
         ty::Ref(_, ref_ty, _) => match ref_ty.kind() {
-            ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
+            ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did()),
             _ => false,
         },
         _ => false,
@@ -284,7 +310,7 @@ pub fn is_type_ref_to_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_ite
 /// [Diagnostic Items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
 pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
+        ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did()),
         _ => false,
     }
 }
@@ -294,7 +320,11 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
 /// Returns `false` if the `LangItem` is not defined.
 pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => cx.tcx.lang_items().require(lang_item).map_or(false, |li| li == adt.did),
+        ty::Adt(adt, _) => cx
+            .tcx
+            .lang_items()
+            .require(lang_item)
+            .map_or(false, |li| li == adt.did()),
         _ => false,
     }
 }
@@ -310,9 +340,60 @@ pub fn is_isize_or_usize(typ: Ty<'_>) -> bool {
 /// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
 pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => match_def_path(cx, adt.did, path),
+        ty::Adt(adt, _) => match_def_path(cx, adt.did(), path),
         _ => false,
     }
+}
+
+/// Checks if the drop order for a type matters. Some std types implement drop solely to
+/// deallocate memory. For these types, and composites containing them, changing the drop order
+/// won't result in any observable side effects.
+pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    fn needs_ordered_drop_inner<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, seen: &mut FxHashSet<Ty<'tcx>>) -> bool {
+        if !seen.insert(ty) {
+            return false;
+        }
+        if !ty.has_significant_drop(cx.tcx, cx.param_env) {
+            false
+        }
+        // Check for std types which implement drop, but only for memory allocation.
+        else if is_type_lang_item(cx, ty, LangItem::OwnedBox)
+            || matches!(
+                get_type_diagnostic_name(cx, ty),
+                Some(sym::HashSet | sym::Rc | sym::Arc | sym::cstring_type)
+            )
+            || match_type(cx, ty, &paths::WEAK_RC)
+            || match_type(cx, ty, &paths::WEAK_ARC)
+        {
+            // Check all of the generic arguments.
+            if let ty::Adt(_, subs) = ty.kind() {
+                subs.types().any(|ty| needs_ordered_drop_inner(cx, ty, seen))
+            } else {
+                true
+            }
+        } else if !cx
+            .tcx
+            .lang_items()
+            .drop_trait()
+            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+        {
+            // This type doesn't implement drop, so no side effects here.
+            // Check if any component type has any.
+            match ty.kind() {
+                ty::Tuple(fields) => fields.iter().any(|ty| needs_ordered_drop_inner(cx, ty, seen)),
+                ty::Array(ty, _) => needs_ordered_drop_inner(cx, *ty, seen),
+                ty::Adt(adt, subs) => adt
+                    .all_fields()
+                    .map(|f| f.ty(cx.tcx, subs))
+                    .any(|ty| needs_ordered_drop_inner(cx, ty, seen)),
+                _ => true,
+            }
+        } else {
+            true
+        }
+    }
+
+    needs_ordered_drop_inner(cx, ty, &mut FxHashSet::default())
 }
 
 /// Peels off all references on the type. Returns the underlying type and the number of references
@@ -398,7 +479,7 @@ pub fn is_uninit_value_valid_for_ty(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     match *ty.kind() {
         ty::Array(component, _) => is_uninit_value_valid_for_ty(cx, component),
         ty::Tuple(types) => types.iter().all(|ty| is_uninit_value_valid_for_ty(cx, ty)),
-        ty::Adt(adt, _) => cx.tcx.lang_items().maybe_uninit() == Some(adt.did),
+        ty::Adt(adt, _) => cx.tcx.lang_items().maybe_uninit() == Some(adt.did()),
         _ => false,
     }
 }
@@ -451,7 +532,7 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
         let ty = cx.typeck_results().expr_ty_adjusted(expr).peel_refs();
         match *ty.kind() {
             ty::Closure(_, subs) => Some(ExprFnSig::Closure(subs.as_closure().sig())),
-            ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).subst(cx.tcx, subs))),
+            ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs))),
             ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig)),
             ty::Dynamic(bounds, _) => {
                 let lang_items = cx.tcx.lang_items();
@@ -534,7 +615,7 @@ impl core::ops::Add<u32> for EnumValue {
 }
 
 /// Attempts to read the given constant as though it were an an enum value.
-#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+#[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 pub fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue> {
     if let Ok(ConstValue::Scalar(Scalar::Int(value))) = tcx.const_eval_poly(id) {
         match tcx.type_of(id).kind() {
@@ -562,11 +643,11 @@ pub fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue>
 }
 
 /// Gets the value of the given variant.
-pub fn get_discriminant_value(tcx: TyCtxt<'_>, adt: &'_ AdtDef, i: VariantIdx) -> EnumValue {
-    let variant = &adt.variants[i];
+pub fn get_discriminant_value(tcx: TyCtxt<'_>, adt: AdtDef<'_>, i: VariantIdx) -> EnumValue {
+    let variant = &adt.variant(i);
     match variant.discr {
         VariantDiscr::Explicit(id) => read_explicit_enum_value(tcx, id).unwrap(),
-        VariantDiscr::Relative(x) => match adt.variants[(i.as_usize() - x as usize).into()].discr {
+        VariantDiscr::Relative(x) => match adt.variant((i.as_usize() - x as usize).into()).discr {
             VariantDiscr::Explicit(id) => read_explicit_enum_value(tcx, id).unwrap() + x,
             VariantDiscr::Relative(_) => EnumValue::Unsigned(x.into()),
         },
@@ -577,7 +658,7 @@ pub fn get_discriminant_value(tcx: TyCtxt<'_>, adt: &'_ AdtDef, i: VariantIdx) -
 /// platform specific `libc::<platform>::c_void` types in libc.
 pub fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     if let ty::Adt(adt, _) = ty.kind()
-        && let &[krate, .., name] = &*cx.get_def_path(adt.did)
+        && let &[krate, .., name] = &*cx.get_def_path(adt.did())
         && let sym::libc | sym::core | sym::std = krate
         && name.as_str() == "c_void"
     {

@@ -1,8 +1,8 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/bound_reduction2.rs:16:46
+  --> $DIR/bound_reduction2.rs:16:5
    |
-LL | fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
-   |                                              ^^^^^^^^^^^^^
+LL |     ()
+   |     ^^
    |
 note: used non-generic type `<T as TraitWithAssoc>::Assoc` for generic parameter
   --> $DIR/bound_reduction2.rs:9:10
@@ -10,11 +10,5 @@ note: used non-generic type `<T as TraitWithAssoc>::Assoc` for generic parameter
 LL | type Foo<V> = impl Trait<V>;
    |          ^
 
-error: could not find defining uses
-  --> $DIR/bound_reduction2.rs:9:15
-   |
-LL | type Foo<V> = impl Trait<V>;
-   |               ^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

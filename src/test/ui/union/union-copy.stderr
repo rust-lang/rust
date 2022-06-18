@@ -6,6 +6,12 @@ LL |     a: std::mem::ManuallyDrop<String>
 ...
 LL | impl Copy for W {}
    |      ^^^^
+   |
+note: the `Copy` impl for `ManuallyDrop<String>` requires that `String: Copy`
+  --> $DIR/union-copy.rs:8:8
+   |
+LL |     a: std::mem::ManuallyDrop<String>
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

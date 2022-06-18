@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_variables, non_camel_case_types, non_upper_case_globals)]
+#![allow(dead_code, unused_variables, unused_macro_rules, bad_style)]
 #![deny(keyword_idents)]
 
 // edition:2015

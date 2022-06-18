@@ -12,7 +12,7 @@ use crate::MirPass;
 /// that point.
 ///
 /// This is redundant with drop elaboration, but we need to do it prior to const-checking, and
-/// running const-checking after drop elaboration makes it opimization dependent, causing issues
+/// running const-checking after drop elaboration makes it optimization dependent, causing issues
 /// like [#90770].
 ///
 /// [#90770]: https://github.com/rust-lang/rust/issues/90770
@@ -124,7 +124,7 @@ fn is_needs_drop_and_init<'tcx>(
             //
             // If its projection *is* present in `MoveData`, then the field may have been moved
             // from separate from its parent. Recurse.
-            adt.variants.iter_enumerated().any(|(vid, variant)| {
+            adt.variants().iter_enumerated().any(|(vid, variant)| {
                 // Enums have multiple variants, which are discriminated with a `Downcast` projection.
                 // Structs have a single variant, and don't use a `Downcast` projection.
                 let mpi = if adt.is_enum() {

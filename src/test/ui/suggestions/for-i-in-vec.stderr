@@ -2,9 +2,17 @@ error[E0507]: cannot move out of `self.v` which is behind a shared reference
   --> $DIR/for-i-in-vec.rs:11:18
    |
 LL |         for _ in self.v {
-   |                  ^^^^^^ move occurs because `self.v` has type `Vec<u32>`, which does not implement the `Copy` trait
+   |                  ^^^^^^
+   |                  |
+   |                  `self.v` moved due to this implicit call to `.into_iter()`
+   |                  move occurs because `self.v` has type `Vec<u32>`, which does not implement the `Copy` trait
    |
-help: consider iterating over a slice of the `Vec<u32>`'s content
+note: this function takes ownership of the receiver `self`, which moves `self.v`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |                  ^^^^
+help: consider iterating over a slice of the `Vec<u32>`'s content to avoid moving into the `for` loop
    |
 LL |         for _ in &self.v {
    |                  +
@@ -13,9 +21,12 @@ error[E0507]: cannot move out of `self.h` which is behind a shared reference
   --> $DIR/for-i-in-vec.rs:13:18
    |
 LL |         for _ in self.h {
-   |                  ^^^^^^ move occurs because `self.h` has type `HashMap<i32, i32>`, which does not implement the `Copy` trait
+   |                  ^^^^^^
+   |                  |
+   |                  `self.h` moved due to this implicit call to `.into_iter()`
+   |                  move occurs because `self.h` has type `HashMap<i32, i32>`, which does not implement the `Copy` trait
    |
-help: consider iterating over a slice of the `HashMap<i32, i32>`'s content
+help: consider iterating over a slice of the `HashMap<i32, i32>`'s content to avoid moving into the `for` loop
    |
 LL |         for _ in &self.h {
    |                  +
@@ -24,9 +35,17 @@ error[E0507]: cannot move out of a shared reference
   --> $DIR/for-i-in-vec.rs:21:19
    |
 LL |     for loader in *LOADERS {
-   |                   ^^^^^^^^ move occurs because value has type `Vec<&u8>`, which does not implement the `Copy` trait
+   |                   ^^^^^^^^
+   |                   |
+   |                   value moved due to this implicit call to `.into_iter()`
+   |                   move occurs because value has type `Vec<&u8>`, which does not implement the `Copy` trait
    |
-help: consider iterating over a slice of the `Vec<&u8>`'s content
+note: this function takes ownership of the receiver `self`, which moves value
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |                  ^^^^
+help: consider iterating over a slice of the `Vec<&u8>`'s content to avoid moving into the `for` loop
    |
 LL |     for loader in &*LOADERS {
    |                   +

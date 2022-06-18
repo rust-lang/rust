@@ -1,32 +1,32 @@
 use crate::ImplTraitPosition;
 
-use super::{AnonymousLifetimeMode, ImplTraitContext, LoweringContext, ParamMode};
-use super::{GenericArgsCtor, ParenthesizedGenericArgs};
+use super::ResolverAstLoweringExt;
+use super::{GenericArgsCtor, LifetimeRes, ParenthesizedGenericArgs};
+use super::{ImplTraitContext, LoweringContext, ParamMode};
 
 use rustc_ast::{self as ast, *};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
-use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use smallvec::smallvec;
 use tracing::debug;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    crate fn lower_qpath(
+    #[instrument(level = "trace", skip(self))]
+    pub(crate) fn lower_qpath(
         &mut self,
         id: NodeId,
         qself: &Option<QSelf>,
         p: &Path,
         param_mode: ParamMode,
-        mut itctx: ImplTraitContext<'_, 'hir>,
+        itctx: ImplTraitContext,
     ) -> hir::QPath<'hir> {
-        debug!("lower_qpath(id: {:?}, qself: {:?}, p: {:?})", id, qself, p);
         let qself_position = qself.as_ref().map(|q| q.position);
-        let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx.reborrow()));
+        let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx));
 
         let partial_res =
             self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
@@ -47,30 +47,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         _ => param_mode,
                     };
 
-                    // Figure out if this is a type/trait segment,
-                    // which may need lifetime elision performed.
-                    let parent_def_id = |this: &mut Self, def_id: DefId| DefId {
-                        krate: def_id.krate,
-                        index: this.resolver.def_key(def_id).parent.expect("missing parent"),
-                    };
-                    let type_def_id = match partial_res.base_res() {
-                        Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
-                            Some(parent_def_id(self, def_id))
-                        }
-                        Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
-                            Some(parent_def_id(self, def_id))
-                        }
-                        Res::Def(DefKind::Struct, def_id)
-                        | Res::Def(DefKind::Union, def_id)
-                        | Res::Def(DefKind::Enum, def_id)
-                        | Res::Def(DefKind::TyAlias, def_id)
-                        | Res::Def(DefKind::Trait, def_id)
-                            if i + 1 == proj_start =>
-                        {
-                            Some(def_id)
-                        }
-                        _ => None,
-                    };
                     let parenthesized_generic_args = match partial_res.base_res() {
                         // `a::b::Trait(Args)`
                         Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
@@ -90,15 +66,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         _ => ParenthesizedGenericArgs::Err,
                     };
 
-                    let num_lifetimes = type_def_id
-                        .map_or(0, |def_id| self.resolver.item_generics_num_lifetimes(def_id));
                     self.lower_path_segment(
                         p.span,
                         segment,
                         param_mode,
-                        num_lifetimes,
                         parenthesized_generic_args,
-                        itctx.reborrow(),
+                        itctx,
                     )
                 },
             )),
@@ -143,9 +116,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 p.span,
                 segment,
                 param_mode,
-                0,
                 ParenthesizedGenericArgs::Err,
-                itctx.reborrow(),
+                itctx,
             ));
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);
 
@@ -171,7 +143,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
     }
 
-    crate fn lower_path_extra(
+    pub(crate) fn lower_path_extra(
         &mut self,
         res: Res,
         p: &Path,
@@ -184,7 +156,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     p.span,
                     segment,
                     param_mode,
-                    0,
                     ParenthesizedGenericArgs::Err,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 )
@@ -193,7 +164,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    crate fn lower_path(
+    pub(crate) fn lower_path(
         &mut self,
         id: NodeId,
         p: &Path,
@@ -204,19 +175,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.lower_path_extra(res, p, param_mode)
     }
 
-    crate fn lower_path_segment(
+    pub(crate) fn lower_path_segment(
         &mut self,
         path_span: Span,
         segment: &PathSegment,
         param_mode: ParamMode,
-        expected_lifetimes: usize,
         parenthesized_generic_args: ParenthesizedGenericArgs,
-        itctx: ImplTraitContext<'_, 'hir>,
+        itctx: ImplTraitContext,
     ) -> hir::PathSegment<'hir> {
-        debug!(
-            "path_span: {:?}, lower_path_segment(segment: {:?}, expected_lifetimes: {:?})",
-            path_span, segment, expected_lifetimes
-        );
+        debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment,);
         let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
             let msg = "parenthesized type parameters may only be used with a `Fn` trait";
             match **generic_args {
@@ -224,29 +191,38 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
                 }
                 GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
-                    ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
+                    ParenthesizedGenericArgs::Ok => {
+                        self.lower_parenthesized_parameter_data(segment.id, data)
+                    }
                     ParenthesizedGenericArgs::Err => {
                         let mut err = struct_span_err!(self.sess, data.span, E0214, "{}", msg);
                         err.span_label(data.span, "only `Fn` traits may use parentheses");
-                        if let Ok(snippet) = self.sess.source_map().span_to_snippet(data.span) {
-                            // Do not suggest going from `Trait()` to `Trait<>`
-                            if !data.inputs.is_empty() {
-                                // Suggest replacing `(` and `)` with `<` and `>`
-                                // The snippet may be missing the closing `)`, skip that case
-                                if snippet.ends_with(')') {
-                                    if let Some(split) = snippet.find('(') {
-                                        let trait_name = &snippet[0..split];
-                                        let args = &snippet[split + 1..snippet.len() - 1];
-                                        err.span_suggestion(
-                                            data.span,
-                                            "use angle brackets instead",
-                                            format!("{}<{}>", trait_name, args),
-                                            Applicability::MaybeIncorrect,
-                                        );
-                                    }
-                                }
-                            }
-                        };
+                        // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
+                        if !data.inputs.is_empty() {
+                            // Start of the span to the 1st character of 1st argument
+                            let open_param = data.inputs_span.shrink_to_lo().to(data
+                                .inputs
+                                .first()
+                                .unwrap()
+                                .span
+                                .shrink_to_lo());
+                            // Last character position of last argument to the end of the span
+                            let close_param = data
+                                .inputs
+                                .last()
+                                .unwrap()
+                                .span
+                                .shrink_to_hi()
+                                .to(data.inputs_span.shrink_to_hi());
+                            err.multipart_suggestion(
+                                &format!("use angle brackets instead",),
+                                vec![
+                                    (open_param, String::from("<")),
+                                    (close_param, String::from(">")),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
                         err.emit();
                         (
                             self.lower_angle_bracketed_parameter_data(
@@ -274,64 +250,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let has_lifetimes =
             generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));
-        if !generic_args.parenthesized && !has_lifetimes && expected_lifetimes > 0 {
-            // Note: these spans are used for diagnostics when they can't be inferred.
-            // See rustc_resolve::late::lifetimes::LifetimeContext::add_missing_lifetime_specifiers_label
-            let elided_lifetime_span = if generic_args.span.is_empty() {
-                // If there are no brackets, use the identifier span.
-                // HACK: we use find_ancestor_inside to properly suggest elided spans in paths
-                // originating from macros, since the segment's span might be from a macro arg.
-                segment.ident.span.find_ancestor_inside(path_span).unwrap_or(path_span)
-            } else if generic_args.is_empty() {
-                // If there are brackets, but not generic arguments, then use the opening bracket
-                generic_args.span.with_hi(generic_args.span.lo() + BytePos(1))
-            } else {
-                // Else use an empty span right after the opening bracket.
-                generic_args.span.with_lo(generic_args.span.lo() + BytePos(1)).shrink_to_lo()
-            };
-            generic_args.args = self
-                .elided_path_lifetimes(elided_lifetime_span, expected_lifetimes, param_mode)
-                .map(GenericArg::Lifetime)
-                .chain(generic_args.args.into_iter())
-                .collect();
-            // In create-parameter mode we error here because we don't want to support
-            // deprecated impl elision in new features like impl elision and `async fn`,
-            // both of which work using the `CreateParameter` mode:
-            //
-            //     impl Foo for std::cell::Ref<u32> // note lack of '_
-            //     async fn foo(_: std::cell::Ref<u32>) { ... }
-            if let (ParamMode::Explicit, AnonymousLifetimeMode::CreateParameter) =
-                (param_mode, self.anonymous_lifetime_mode)
-            {
-                let anon_lt_suggestion = vec!["'_"; expected_lifetimes].join(", ");
-                let no_non_lt_args = generic_args.args.len() == expected_lifetimes;
-                let no_bindings = generic_args.bindings.is_empty();
-                let (incl_angl_brckt, suggestion) = if no_non_lt_args && no_bindings {
-                    // If there are no generic args, our suggestion can include the angle brackets.
-                    (true, format!("<{}>", anon_lt_suggestion))
-                } else {
-                    // Otherwise we'll insert a `'_, ` right after the opening bracket.
-                    (false, format!("{}, ", anon_lt_suggestion))
-                };
-                let insertion_sp = elided_lifetime_span.shrink_to_hi();
-                let mut err = struct_span_err!(
-                    self.sess,
-                    path_span,
-                    E0726,
-                    "implicit elided lifetime not allowed here"
-                );
-                rustc_errors::add_elided_lifetime_in_path_suggestion(
-                    &self.sess.source_map(),
-                    &mut err,
-                    expected_lifetimes,
-                    path_span,
-                    incl_angl_brckt,
-                    insertion_sp,
-                    suggestion,
-                );
-                err.note("assuming a `'static` lifetime...");
-                err.emit();
-            }
+        if !generic_args.parenthesized && !has_lifetimes {
+            self.maybe_insert_elided_lifetimes_in_path(
+                path_span,
+                segment.id,
+                segment.ident.span,
+                &mut generic_args,
+            );
         }
 
         let res = self.expect_full_res(segment.id);
@@ -354,11 +279,54 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
+    fn maybe_insert_elided_lifetimes_in_path(
+        &mut self,
+        path_span: Span,
+        segment_id: NodeId,
+        segment_ident_span: Span,
+        generic_args: &mut GenericArgsCtor<'hir>,
+    ) {
+        let (start, end) = match self.resolver.get_lifetime_res(segment_id) {
+            Some(LifetimeRes::ElidedAnchor { start, end }) => (start, end),
+            None => return,
+            Some(_) => panic!(),
+        };
+        let expected_lifetimes = end.as_usize() - start.as_usize();
+        debug!(expected_lifetimes);
+
+        // Note: these spans are used for diagnostics when they can't be inferred.
+        // See rustc_resolve::late::lifetimes::LifetimeContext::add_missing_lifetime_specifiers_label
+        let elided_lifetime_span = if generic_args.span.is_empty() {
+            // If there are no brackets, use the identifier span.
+            // HACK: we use find_ancestor_inside to properly suggest elided spans in paths
+            // originating from macros, since the segment's span might be from a macro arg.
+            segment_ident_span.find_ancestor_inside(path_span).unwrap_or(path_span)
+        } else if generic_args.is_empty() {
+            // If there are brackets, but not generic arguments, then use the opening bracket
+            generic_args.span.with_hi(generic_args.span.lo() + BytePos(1))
+        } else {
+            // Else use an empty span right after the opening bracket.
+            generic_args.span.with_lo(generic_args.span.lo() + BytePos(1)).shrink_to_lo()
+        };
+
+        generic_args.args.insert_many(
+            0,
+            (start.as_u32()..end.as_u32()).map(|i| {
+                let id = NodeId::from_u32(i);
+                let l = self.lower_lifetime(&Lifetime {
+                    id,
+                    ident: Ident::new(kw::UnderscoreLifetime, elided_lifetime_span),
+                });
+                GenericArg::Lifetime(l)
+            }),
+        );
+    }
+
     pub(crate) fn lower_angle_bracketed_parameter_data(
         &mut self,
         data: &AngleBracketedArgs,
         param_mode: ParamMode,
-        mut itctx: ImplTraitContext<'_, 'hir>,
+        itctx: ImplTraitContext,
     ) -> (GenericArgsCtor<'hir>, bool) {
         let has_non_lt_args = data.args.iter().any(|arg| match arg {
             AngleBracketedArg::Arg(ast::GenericArg::Lifetime(_))
@@ -369,14 +337,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .args
             .iter()
             .filter_map(|arg| match arg {
-                AngleBracketedArg::Arg(arg) => Some(self.lower_generic_arg(arg, itctx.reborrow())),
+                AngleBracketedArg::Arg(arg) => Some(self.lower_generic_arg(arg, itctx)),
                 AngleBracketedArg::Constraint(_) => None,
             })
             .collect();
         let bindings = self.arena.alloc_from_iter(data.args.iter().filter_map(|arg| match arg {
-            AngleBracketedArg::Constraint(c) => {
-                Some(self.lower_assoc_ty_constraint(c, itctx.reborrow()))
-            }
+            AngleBracketedArg::Constraint(c) => Some(self.lower_assoc_ty_constraint(c, itctx)),
             AngleBracketedArg::Arg(_) => None,
         }));
         let ctor = GenericArgsCtor { args, bindings, parenthesized: false, span: data.span };
@@ -385,6 +351,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_parenthesized_parameter_data(
         &mut self,
+        id: NodeId,
         data: &ParenthesizedArgs,
     ) -> (GenericArgsCtor<'hir>, bool) {
         // Switch to `PassThrough` mode for anonymous lifetimes; this
@@ -392,7 +359,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // a hidden lifetime parameter. This is needed for backwards
         // compatibility, even in contexts like an impl header where
         // we generally don't permit such things (see #51008).
-        self.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
+        self.with_lifetime_binder(id, |this| {
             let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
             let inputs = this.arena.alloc_from_iter(inputs.iter().map(|ty| {
                 this.lower_ty_direct(
@@ -420,7 +387,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// An associated type binding `Output = $ty`.
-    crate fn output_ty_binding(
+    pub(crate) fn output_ty_binding(
         &mut self,
         span: Span,
         ty: &'hir hir::Ty<'hir>,

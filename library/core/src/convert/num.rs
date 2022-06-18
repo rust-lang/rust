@@ -25,7 +25,6 @@ macro_rules! impl_float_to_int {
         $(
             #[unstable(feature = "convert_float_to_int", issue = "67057")]
             impl FloatToInt<$Int> for $Float {
-                #[doc(hidden)]
                 #[inline]
                 unsafe fn to_int_unchecked(self) -> $Int {
                     // SAFETY: the safety contract must be upheld by the caller.

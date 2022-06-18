@@ -198,7 +198,7 @@ pub(crate) fn parse(file: &mut dyn io::Read, longnames: bool) -> Result<TermInfo
     let extended = match magic {
         0o0432 => false,
         0o01036 => true,
-        _ => return Err(format!("invalid magic number, found {:o}", magic)),
+        _ => return Err(format!("invalid magic number, found {magic:o}")),
     };
 
     // According to the spec, these fields must be >= -1 where -1 means that the feature is not

@@ -1,5 +1,6 @@
 #![feature(test)] // compiletest_rs requires this attribute
 #![feature(once_cell)]
+#![feature(is_sorted)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
@@ -34,6 +35,7 @@ static TEST_DEPENDENCIES: &[&str] = &[
     "syn",
     "tokio",
     "parking_lot",
+    "rustc_semver",
 ];
 
 // Test dependencies may need an `extern crate` here to ensure that they show up
@@ -52,6 +54,8 @@ extern crate itertools;
 extern crate parking_lot;
 #[allow(unused_extern_crates)]
 extern crate quote;
+#[allow(unused_extern_crates)]
+extern crate rustc_semver;
 #[allow(unused_extern_crates)]
 extern crate syn;
 #[allow(unused_extern_crates)]
@@ -106,8 +110,9 @@ static EXTERN_FLAGS: SyncLazy<String> = SyncLazy::new(|| {
         not_found.is_empty(),
         "dependencies not found in depinfo: {:?}\n\
         help: Make sure the `-Z binary-dep-depinfo` rust flag is enabled\n\
-        help: Try adding to dev-dependencies in Cargo.toml",
-        not_found
+        help: Try adding to dev-dependencies in Cargo.toml\n\
+        help: Be sure to also add `extern crate ...;` to tests/compile-test.rs",
+        not_found,
     );
     crates
         .into_iter()
@@ -159,15 +164,21 @@ fn base_config(test_dir: &str) -> compiletest::Config {
 }
 
 fn run_ui() {
-    let config = base_config("ui");
+    let mut config = base_config("ui");
+    config.rustfix_coverage = true;
     // use tests/clippy.toml
     let _g = VarGuard::set("CARGO_MANIFEST_DIR", fs::canonicalize("tests").unwrap());
     let _threads = VarGuard::set(
         "RUST_TEST_THREADS",
         // if RUST_TEST_THREADS is set, adhere to it, otherwise override it
-        env::var("RUST_TEST_THREADS").unwrap_or_else(|_| num_cpus::get().to_string()),
+        env::var("RUST_TEST_THREADS").unwrap_or_else(|_| {
+            std::thread::available_parallelism()
+                .map_or(1, std::num::NonZeroUsize::get)
+                .to_string()
+        }),
     );
     compiletest::run_tests(&config);
+    check_rustfix_coverage();
 }
 
 fn run_internal_tests() {
@@ -328,6 +339,88 @@ fn compile_test() {
     run_ui_toml();
     run_ui_cargo();
     run_internal_tests();
+}
+
+const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[
+    "assign_ops2.rs",
+    "borrow_deref_ref_unfixable.rs",
+    "cast_size_32bit.rs",
+    "char_lit_as_u8.rs",
+    "cmp_owned/without_suggestion.rs",
+    "dbg_macro.rs",
+    "deref_addrof_double_trigger.rs",
+    "doc/unbalanced_ticks.rs",
+    "eprint_with_newline.rs",
+    "explicit_counter_loop.rs",
+    "iter_skip_next_unfixable.rs",
+    "let_and_return.rs",
+    "literals.rs",
+    "map_flatten.rs",
+    "map_unwrap_or.rs",
+    "match_bool.rs",
+    "mem_replace_macro.rs",
+    "needless_arbitrary_self_type_unfixable.rs",
+    "needless_borrow_pat.rs",
+    "needless_for_each_unfixable.rs",
+    "nonminimal_bool.rs",
+    "print_literal.rs",
+    "print_with_newline.rs",
+    "redundant_static_lifetimes_multiple.rs",
+    "ref_binding_to_reference.rs",
+    "repl_uninit.rs",
+    "result_map_unit_fn_unfixable.rs",
+    "search_is_some.rs",
+    "single_component_path_imports_nested_first.rs",
+    "string_add.rs",
+    "toplevel_ref_arg_non_rustfix.rs",
+    "unit_arg.rs",
+    "unnecessary_clone.rs",
+    "unnecessary_lazy_eval_unfixable.rs",
+    "write_literal.rs",
+    "write_literal_2.rs",
+    "write_with_newline.rs",
+];
+
+fn check_rustfix_coverage() {
+    let missing_coverage_path = Path::new("target/debug/test/ui/rustfix_missing_coverage.txt");
+
+    if let Ok(missing_coverage_contents) = std::fs::read_to_string(missing_coverage_path) {
+        assert!(RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS.iter().is_sorted_by_key(Path::new));
+
+        for rs_path in missing_coverage_contents.lines() {
+            if Path::new(rs_path).starts_with("tests/ui/crashes") {
+                continue;
+            }
+            let filename = Path::new(rs_path).strip_prefix("tests/ui/").unwrap();
+            assert!(
+                RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS
+                    .binary_search_by_key(&filename, Path::new)
+                    .is_ok(),
+                "`{}` runs `MachineApplicable` diagnostics but is missing a `run-rustfix` annotation. \
+                Please either add `// run-rustfix` at the top of the file or add the file to \
+                `RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS` in `tests/compile-test.rs`.",
+                rs_path,
+            );
+        }
+    }
+}
+
+#[test]
+fn rustfix_coverage_known_exceptions_accuracy() {
+    for filename in RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS {
+        let rs_path = Path::new("tests/ui").join(filename);
+        assert!(
+            rs_path.exists(),
+            "`{}` does not exists",
+            rs_path.strip_prefix(env!("CARGO_MANIFEST_DIR")).unwrap().display()
+        );
+        let fixed_path = rs_path.with_extension("fixed");
+        assert!(
+            !fixed_path.exists(),
+            "`{}` exists",
+            fixed_path.strip_prefix(env!("CARGO_MANIFEST_DIR")).unwrap().display()
+        );
+    }
 }
 
 /// Restores an env var on drop

@@ -23,7 +23,7 @@ pub const BTREEMAP_ENTRY: [&str; 6] = ["alloc", "collections", "btree", "map", "
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
 pub const CLONE_TRAIT_METHOD: [&str; 4] = ["core", "clone", "Clone", "clone"];
 pub const COW: [&str; 3] = ["alloc", "borrow", "Cow"];
-pub const CSTRING_AS_C_STR: [&str; 5] = ["std", "ffi", "c_str", "CString", "as_c_str"];
+pub const CSTRING_AS_C_STR: [&str; 5] = ["alloc", "ffi", "c_str", "CString", "as_c_str"];
 pub const DEFAULT_TRAIT_METHOD: [&str; 4] = ["core", "default", "Default", "default"];
 pub const DEREF_MUT_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "DerefMut", "deref_mut"];
 /// Preferably use the diagnostic item `sym::deref_method` where possible
@@ -32,6 +32,8 @@ pub const DIR_BUILDER: [&str; 3] = ["std", "fs", "DirBuilder"];
 pub const DISPLAY_TRAIT: [&str; 3] = ["core", "fmt", "Display"];
 #[cfg(feature = "internal")]
 pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
+#[cfg(feature = "internal")]
+pub const EARLY_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "EarlyLintPass"];
 pub const EXIT: [&str; 3] = ["std", "process", "exit"];
 pub const F32_EPSILON: [&str; 4] = ["core", "f32", "<impl f32>", "EPSILON"];
 pub const F64_EPSILON: [&str; 4] = ["core", "f64", "<impl f64>", "EPSILON"];
@@ -41,9 +43,9 @@ pub const FROM_FROM: [&str; 4] = ["core", "convert", "From", "from"];
 pub const FROM_ITERATOR_METHOD: [&str; 6] = ["core", "iter", "traits", "collect", "FromIterator", "from_iter"];
 pub const FROM_STR_METHOD: [&str; 5] = ["core", "str", "traits", "FromStr", "from_str"];
 pub const FUTURE_FROM_GENERATOR: [&str; 3] = ["core", "future", "from_generator"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCREADEXT: [&str; 3] = ["futures_util", "io", "AsyncReadExt"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCWRITEEXT: [&str; 3] = ["futures_util", "io", "AsyncWriteExt"];
 pub const HASHMAP_CONTAINS_KEY: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "contains_key"];
 pub const HASHMAP_ENTRY: [&str; 5] = ["std", "collections", "hash", "map", "Entry"];
@@ -59,15 +61,19 @@ pub const IO_READ: [&str; 3] = ["std", "io", "Read"];
 pub const IO_WRITE: [&str; 3] = ["std", "io", "Write"];
 pub const IPADDR_V4: [&str; 5] = ["std", "net", "ip", "IpAddr", "V4"];
 pub const IPADDR_V6: [&str; 5] = ["std", "net", "ip", "IpAddr", "V6"];
+pub const ITER_COUNT: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "count"];
 pub const ITER_REPEAT: [&str; 5] = ["core", "iter", "sources", "repeat", "repeat"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
 #[cfg(feature = "internal")]
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 #[cfg(feature = "internal")]
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
 #[cfg(feature = "internal")]
+pub const LATE_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "LateLintPass"];
+#[cfg(feature = "internal")]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
+pub const MEM_SWAP: [&str; 3] = ["core", "mem", "swap"];
 pub const MUTEX_GUARD: [&str; 4] = ["std", "sync", "mutex", "MutexGuard"];
 pub const OPEN_OPTIONS: [&str; 3] = ["std", "fs", "OpenOptions"];
 /// Preferably use the diagnostic item `sym::Option` where possible
@@ -101,6 +107,8 @@ pub const PTR_READ_UNALIGNED: [&str; 3] = ["core", "ptr", "read_unaligned"];
 pub const PTR_READ_VOLATILE: [&str; 3] = ["core", "ptr", "read_volatile"];
 pub const PTR_REPLACE: [&str; 3] = ["core", "ptr", "replace"];
 pub const PTR_SWAP: [&str; 3] = ["core", "ptr", "swap"];
+pub const PTR_UNALIGNED_VOLATILE_LOAD: [&str; 3] = ["core", "intrinsics", "unaligned_volatile_load"];
+pub const PTR_UNALIGNED_VOLATILE_STORE: [&str; 3] = ["core", "intrinsics", "unaligned_volatile_store"];
 pub const PTR_WRITE: [&str; 3] = ["core", "ptr", "write"];
 pub const PTR_WRITE_BYTES: [&str; 3] = ["core", "intrinsics", "write_bytes"];
 pub const PTR_WRITE_UNALIGNED: [&str; 3] = ["core", "ptr", "write_unaligned"];
@@ -110,28 +118,31 @@ pub const RANGE_ARGUMENT_TRAIT: [&str; 3] = ["core", "ops", "RangeBounds"];
 pub const RC_PTR_EQ: [&str; 4] = ["alloc", "rc", "Rc", "ptr_eq"];
 pub const REFCELL_REF: [&str; 3] = ["core", "cell", "Ref"];
 pub const REFCELL_REFMUT: [&str; 3] = ["core", "cell", "RefMut"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BUILDER_NEW: [&str; 5] = ["regex", "re_builder", "unicode", "RegexBuilder", "new"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_BUILDER_NEW: [&str; 5] = ["regex", "re_builder", "bytes", "RegexBuilder", "new"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_NEW: [&str; 4] = ["regex", "re_bytes", "Regex", "new"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_BYTES_SET_NEW: [&str; 5] = ["regex", "re_set", "bytes", "RegexSet", "new"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_NEW: [&str; 4] = ["regex", "re_unicode", "Regex", "new"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const REGEX_SET_NEW: [&str; 5] = ["regex", "re_set", "unicode", "RegexSet", "new"];
 /// Preferably use the diagnostic item `sym::Result` where possible
 pub const RESULT: [&str; 3] = ["core", "result", "Result"];
 pub const RESULT_ERR: [&str; 4] = ["core", "result", "Result", "Err"];
 pub const RESULT_OK: [&str; 4] = ["core", "result", "Result", "Ok"];
+#[cfg(feature = "internal")]
+pub const RUSTC_VERSION: [&str; 2] = ["rustc_semver", "RustcVersion"];
 pub const RWLOCK_READ_GUARD: [&str; 4] = ["std", "sync", "rwlock", "RwLockReadGuard"];
 pub const RWLOCK_WRITE_GUARD: [&str; 4] = ["std", "sync", "rwlock", "RwLockWriteGuard"];
 pub const SERDE_DESERIALIZE: [&str; 3] = ["serde", "de", "Deserialize"];
 pub const SERDE_DE_VISITOR: [&str; 3] = ["serde", "de", "Visitor"];
 pub const SLICE_FROM_RAW_PARTS: [&str; 4] = ["core", "slice", "raw", "from_raw_parts"];
 pub const SLICE_FROM_RAW_PARTS_MUT: [&str; 4] = ["core", "slice", "raw", "from_raw_parts_mut"];
+pub const SLICE_GET: [&str; 4] = ["core", "slice", "<impl [T]>", "get"];
 pub const SLICE_INTO_VEC: [&str; 4] = ["alloc", "slice", "<impl [T]>", "into_vec"];
 pub const SLICE_ITER: [&str; 4] = ["core", "slice", "iter", "Iter"];
 pub const STDERR: [&str; 4] = ["std", "io", "stdio", "stderr"];
@@ -140,6 +151,8 @@ pub const CONVERT_IDENTITY: [&str; 3] = ["core", "convert", "identity"];
 pub const STD_FS_CREATE_DIR: [&str; 3] = ["std", "fs", "create_dir"];
 pub const STRING_AS_MUT_STR: [&str; 4] = ["alloc", "string", "String", "as_mut_str"];
 pub const STRING_AS_STR: [&str; 4] = ["alloc", "string", "String", "as_str"];
+pub const STRING_NEW: [&str; 4] = ["alloc", "string", "String", "new"];
+pub const STR_BYTES: [&str; 4] = ["core", "str", "<impl str>", "bytes"];
 pub const STR_ENDS_WITH: [&str; 4] = ["core", "str", "<impl str>", "ends_with"];
 pub const STR_FROM_UTF8: [&str; 4] = ["core", "str", "converts", "from_utf8"];
 pub const STR_LEN: [&str; 4] = ["core", "str", "<impl str>", "len"];
@@ -158,9 +171,9 @@ pub const SYM_MODULE: [&str; 3] = ["rustc_span", "symbol", "sym"];
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
 pub const TO_OWNED_METHOD: [&str; 4] = ["alloc", "borrow", "ToOwned", "to_owned"];
 pub const TO_STRING_METHOD: [&str; 4] = ["alloc", "string", "ToString", "to_string"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_IO_ASYNCREADEXT: [&str; 5] = ["tokio", "io", "util", "async_read_ext", "AsyncReadExt"];
-#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_IO_ASYNCWRITEEXT: [&str; 5] = ["tokio", "io", "util", "async_write_ext", "AsyncWriteExt"];
 pub const TRY_FROM: [&str; 4] = ["core", "convert", "TryFrom", "try_from"];
 pub const VEC_AS_MUT_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_mut_slice"];

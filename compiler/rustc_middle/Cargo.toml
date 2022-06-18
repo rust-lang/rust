@@ -12,8 +12,8 @@ bitflags = "1.2.1"
 either = "1.5.0"
 gsgdt = "0.1.2"
 tracing = "0.1"
-rustc-rayon = "0.3.2"
-rustc-rayon-core = "0.3.2"
+rustc-rayon = { version = "0.4.0", optional = true }
+rustc-rayon-core = { version = "0.4.0", optional = true }
 polonius-engine = "0.13.0"
 rustc_apfloat = { path = "../rustc_apfloat" }
 rustc_attr = { path = "../rustc_attr" }
@@ -29,9 +29,12 @@ rustc_index = { path = "../rustc_index" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
-chalk-ir = "0.76.0"
+chalk-ir = "0.80.0"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_session = { path = "../rustc_session" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 rand = "0.8.4"
 rand_xoshiro = "0.6.0"
+
+[features]
+rustc_use_parallel_compiler = ["rustc-rayon", "rustc-rayon-core"]

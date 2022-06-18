@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{Applicability, Diagnostic, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
@@ -8,10 +8,9 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
-use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
+use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeFoldable};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -47,7 +46,10 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         location: Location,
     ) -> bool {
         let ty = ccx.body.local_decls[local].ty;
-        if !NeedsDrop::in_any_value_of_ty(ccx, ty) {
+        // Peeking into opaque types causes cycles if the current function declares said opaque
+        // type. Thus we avoid short circuiting on the type and instead run the more expensive
+        // analysis that looks at the actual usage within this function
+        if !ty.has_opaque_types() && !NeedsDrop::in_any_value_of_ty(ccx, ty) {
             return false;
         }
 
@@ -101,7 +103,10 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         location: Location,
     ) -> bool {
         let ty = ccx.body.local_decls[local].ty;
-        if !HasMutInterior::in_any_value_of_ty(ccx, ty) {
+        // Peeking into opaque types causes cycles if the current function declares said opaque
+        // type. Thus we avoid short circuiting on the type and instead run the more expensive
+        // analysis that looks at the actual usage within this function
+        if !ty.has_opaque_types() && !HasMutInterior::in_any_value_of_ty(ccx, ty) {
             return false;
         }
 
@@ -121,7 +126,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     fn in_return_place(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
-        tainted_by_errors: Option<ErrorReported>,
+        tainted_by_errors: Option<ErrorGuaranteed>,
     ) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
@@ -148,7 +153,12 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
 
             // If we know that all values of the return type are structurally matchable, there's no
             // need to run dataflow.
-            _ if !CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()) => false,
+            // Opaque types do not participate in const generics or pattern matching, so we can safely count them out.
+            _ if ccx.body.return_ty().has_opaque_types()
+                || !CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()) =>
+            {
+                false
+            }
 
             hir::ConstContext::Const | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
@@ -181,7 +191,7 @@ pub struct Checker<'mir, 'tcx> {
     /// A set that stores for each local whether it has a `StorageDead` for it somewhere.
     local_has_storage_dead: Option<BitSet<Local>>,
 
-    error_emitted: Option<ErrorReported>,
+    error_emitted: Option<ErrorGuaranteed>,
     secondary_errors: Vec<Diagnostic>,
 }
 
@@ -211,27 +221,13 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
-        if is_async_fn(self.ccx) || body.generator.is_some() {
+        if self.ccx.is_async() || body.generator.is_some() {
             tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
 
         // The local type and predicate checks are not free and only relevant for `const fn`s.
         if self.const_kind() == hir::ConstContext::ConstFn {
-            // Prevent const trait methods from being annotated as `stable`.
-            // FIXME: Do this as part of stability checking.
-            if self.is_const_stable_const_fn() {
-                if crate::const_eval::is_parent_const_impl_raw(tcx, def_id) {
-                    self.ccx
-                        .tcx
-                        .sess
-                        .struct_span_err(self.span, "trait methods cannot be stable const fn")
-                        .emit();
-                }
-            }
-
-            self.check_item_predicates();
-
             for (idx, local) in body.local_decls.iter_enumerated() {
                 // Handle the return place below.
                 if idx == RETURN_PLACE || local.internal {
@@ -257,11 +253,11 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         // "secondary" errors if they occurred.
         let secondary_errors = mem::take(&mut self.secondary_errors);
         if self.error_emitted.is_none() {
-            for error in secondary_errors {
-                self.tcx.sess.diagnostic().emit_diagnostic(&error);
+            for mut error in secondary_errors {
+                self.tcx.sess.diagnostic().emit_diagnostic(&mut error);
             }
         } else {
-            assert!(self.tcx.sess.has_errors());
+            assert!(self.tcx.sess.has_errors().is_some());
         }
     }
 
@@ -303,11 +299,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
             Status::Unstable(gate) if self.tcx.features().enabled(gate) => {
                 let unstable_in_stable = self.ccx.is_const_stable_const_fn()
-                    && !super::rustc_allow_const_fn_unstable(
-                        self.tcx,
-                        self.def_id().to_def_id(),
-                        gate,
-                    );
+                    && !super::rustc_allow_const_fn_unstable(self.tcx, self.def_id(), gate);
                 if unstable_in_stable {
                     emit_unstable_in_stable_error(self.ccx, span, gate);
                 }
@@ -329,8 +321,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         match op.importance() {
             ops::DiagnosticImportance::Primary => {
-                self.error_emitted = Some(ErrorReported);
-                err.emit();
+                let reported = err.emit();
+                self.error_emitted = Some(reported);
             }
 
             ops::DiagnosticImportance::Secondary => err.buffer(&mut self.secondary_errors),
@@ -358,79 +350,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
             match *ty.kind() {
                 ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
-                ty::Opaque(..) => self.check_op(ops::ty::ImplTrait),
-                ty::FnPtr(..) => self.check_op(ops::ty::FnPtr(kind)),
-
-                ty::Dynamic(preds, _) => {
-                    for pred in preds.iter() {
-                        match pred.skip_binder() {
-                            ty::ExistentialPredicate::AutoTrait(_)
-                            | ty::ExistentialPredicate::Projection(_) => {
-                                self.check_op(ops::ty::DynTrait(kind))
-                            }
-                            ty::ExistentialPredicate::Trait(trait_ref) => {
-                                if Some(trait_ref.def_id) != self.tcx.lang_items().sized_trait() {
-                                    self.check_op(ops::ty::DynTrait(kind))
-                                }
-                            }
-                        }
-                    }
-                }
                 _ => {}
-            }
-        }
-    }
-
-    fn check_item_predicates(&mut self) {
-        let ConstCx { tcx, .. } = *self.ccx;
-
-        let mut current = self.def_id().to_def_id();
-        loop {
-            let predicates = tcx.predicates_of(current);
-            for (predicate, _) in predicates.predicates {
-                match predicate.kind().skip_binder() {
-                    ty::PredicateKind::RegionOutlives(_)
-                    | ty::PredicateKind::TypeOutlives(_)
-                    | ty::PredicateKind::WellFormed(_)
-                    | ty::PredicateKind::Projection(_)
-                    | ty::PredicateKind::ConstEvaluatable(..)
-                    | ty::PredicateKind::ConstEquate(..)
-                    | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
-                    ty::PredicateKind::ObjectSafe(_) => {
-                        bug!("object safe predicate on function: {:#?}", predicate)
-                    }
-                    ty::PredicateKind::ClosureKind(..) => {
-                        bug!("closure kind predicate on function: {:#?}", predicate)
-                    }
-                    ty::PredicateKind::Subtype(_) | ty::PredicateKind::Coerce(_) => {
-                        bug!("subtype/coerce predicate on function: {:#?}", predicate)
-                    }
-                    ty::PredicateKind::Trait(pred) => {
-                        if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
-                            continue;
-                        }
-                        match pred.self_ty().kind() {
-                            ty::Param(p) => {
-                                let generics = tcx.generics_of(current);
-                                let def = generics.type_param(p, tcx);
-                                let span = tcx.def_span(def.def_id);
-
-                                // These are part of the function signature, so treat them like
-                                // arguments when determining importance.
-                                let kind = LocalKind::Arg;
-
-                                self.check_op_spanned(ops::ty::TraitBound(kind), span);
-                            }
-                            // other kinds of bounds are either tautologies
-                            // or cause errors in other passes
-                            _ => continue,
-                        }
-                    }
-                }
-            }
-            match predicates.parent {
-                Some(parent) => current = parent,
-                None => break,
             }
         }
     }
@@ -600,35 +520,31 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Cast(
-                CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
-                _,
-                _,
-            ) => {}
-
-            Rvalue::Cast(
                 CastKind::Pointer(
-                    PointerCast::UnsafeFnPointer
+                    PointerCast::MutToConstPointer
+                    | PointerCast::ArrayToPointer
+                    | PointerCast::UnsafeFnPointer
                     | PointerCast::ClosureFnPointer(_)
                     | PointerCast::ReifyFnPointer,
                 ),
                 _,
                 _,
-            ) => self.check_op(ops::FnPtrCast),
+            ) => {
+                // These are all okay; they only change the type, not the data.
+            }
 
             Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
-                // Nothing to check here (`check_local_or_return_ty` ensures no trait objects occur
-                // in the type of any local, which also excludes casts).
+                // Unsizing is implemented for CTFE.
             }
 
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
-                let operand_ty = operand.ty(self.body, self.tcx);
-                let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-
-                if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
-                    self.check_op(ops::RawPtrToIntCast);
-                }
+            Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
+                self.check_op(ops::RawPtrToIntCast);
             }
+            Rvalue::Cast(CastKind::PointerFromExposedAddress, _, _) => {
+                // Since no pointer can ever get exposed (rejected above), this is easy to support.
+            }
+
+            Rvalue::Cast(CastKind::Misc, _, _) => {}
 
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
             Rvalue::ShallowInitBox(_, _) => {}
@@ -753,6 +669,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         match statement.kind {
             StatementKind::Assign(..)
             | StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(..)
             | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
@@ -766,14 +683,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        use rustc_target::spec::abi::Abi::RustIntrinsic;
-
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
             TerminatorKind::Call { func, args, fn_span, from_hir_call, .. } => {
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
-                let caller = self.def_id().to_def_id();
+                let caller = self.def_id();
 
                 let fn_ty = func.ty(body, tcx);
 
@@ -788,8 +703,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         span_bug!(terminator.source_info.span, "invalid callee of type {:?}", fn_ty)
                     }
                 };
-
-                let mut nonconst_call_permission = false;
 
                 // Attempting to call a trait method?
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
@@ -852,13 +765,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
                         }
                         _ if !tcx.is_const_fn_raw(callee) => {
-                            // At this point, it is only legal when the caller is marked with
-                            // #[default_method_body_is_const], and the callee is in the same
-                            // trait.
-                            let callee_trait = tcx.trait_of_item(callee);
-                            if callee_trait.is_some()
-                                && tcx.has_attr(caller, sym::default_method_body_is_const)
-                                && callee_trait == tcx.trait_of_item(caller)
+                            // At this point, it is only legal when the caller is in a trait
+                            // marked with #[const_trait], and the callee is in the same trait.
+                            let mut nonconst_call_permission = false;
+                            if let Some(callee_trait) = tcx.trait_of_item(callee)
+                                && tcx.has_attr(callee_trait, sym::const_trait)
+                                && Some(callee_trait) == tcx.trait_of_item(caller)
                                 // Can only call methods when it's `<Self as TheTrait>::f`.
                                 && tcx.types.self_param == substs.type_at(0)
                             {
@@ -949,19 +861,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
 
-                let is_intrinsic = tcx.fn_sig(callee).abi() == RustIntrinsic;
+                let is_intrinsic = tcx.is_intrinsic(callee);
 
                 if !tcx.is_const_fn_raw(callee) {
-                    if tcx.trait_of_item(callee).is_some() {
-                        if tcx.has_attr(callee, sym::default_method_body_is_const) {
-                            // To get to here we must have already found a const impl for the
-                            // trait, but for it to still be non-const can be that the impl is
-                            // using default method bodies.
-                            nonconst_call_permission = true;
-                        }
-                    }
-
-                    if !nonconst_call_permission {
+                    if !tcx.is_const_default_method(callee) {
+                        // To get to here we must have already found a const impl for the
+                        // trait, but for it to still be non-const can be that the impl is
+                        // using default method bodies.
                         self.check_op(ops::FnCallNonConst {
                             caller,
                             callee,
@@ -1010,11 +916,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // have no `rustc_const_stable` attributes to be const-unstable as well. This
                 // should be fixed later.
                 let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
-                    && tcx.lookup_stability(callee).map_or(false, |s| s.level.is_unstable());
+                    && tcx.lookup_stability(callee).map_or(false, |s| s.is_unstable());
                 if callee_is_unstable_unmarked {
                     trace!("callee_is_unstable_unmarked");
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
-                    // `extern` funtions, and these have no way to get marked `const`. So instead we
+                    // `extern` functions, and these have no way to get marked `const`. So instead we
                     // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
                     if self.ccx.is_const_stable_const_fn() || is_intrinsic {
                         self.check_op(ops::FnCallUnstable(callee, None));
@@ -1117,12 +1023,8 @@ fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
     ty.is_bool() || ty.is_integral() || ty.is_char()
 }
 
-fn is_async_fn(ccx: &ConstCx<'_, '_>) -> bool {
-    ccx.fn_sig().map_or(false, |sig| sig.header.asyncness == hir::IsAsync::Async)
-}
-
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
-    let attr_span = ccx.fn_sig().map_or(ccx.body.span, |sig| sig.span.shrink_to_lo());
+    let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
     ccx.tcx
         .sess
@@ -1133,7 +1035,7 @@ fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol
         .span_suggestion(
             attr_span,
             "if it is not part of the public API, make this function unstably const",
-            concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n').to_owned(),
+            concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n'),
             Applicability::HasPlaceholders,
         )
         .span_suggestion(

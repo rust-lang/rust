@@ -1,11 +1,11 @@
 use crate::check::coercion::{AsCoercionSite, CoerceMany};
 use crate::check::{Diverges, Expectation, FnCtxt, Needs};
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, ToPredicate, Ty};
-use rustc_span::{MultiSpan, Span};
+use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable};
+use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
@@ -56,6 +56,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut all_arms_diverge = Diverges::WarnedAlways;
 
         let expected = orig_expected.adjust_for_branches(self);
+        debug!(?expected);
 
         let mut coercion = {
             let coerce_first = match expected {
@@ -82,13 +83,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir::Guard::If(e) => {
                         self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {});
                     }
-                    hir::Guard::IfLet(pat, e) => {
-                        let scrutinee_ty = self.demand_scrutinee_type(
-                            e,
-                            pat.contains_explicit_ref_binding(),
-                            false,
-                        );
-                        self.check_pat_top(&pat, scrutinee_ty, None, true);
+                    hir::Guard::IfLet(l) => {
+                        self.check_expr_let(l);
                     }
                 };
             }
@@ -98,8 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
             all_arms_diverge &= self.diverges.get();
 
-            let opt_suggest_box_span =
-                self.opt_suggest_box_span(arm.body.span, arm_ty, orig_expected);
+            let opt_suggest_box_span = self.opt_suggest_box_span(arm_ty, orig_expected);
 
             let (arm_span, semi_span) =
                 self.get_appropriate_arm_semicolon_removal_span(&arms, i, prior_arm_ty, arm_ty);
@@ -133,6 +128,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(&arm.body),
                 arm_ty,
                 Some(&mut |err: &mut Diagnostic| {
+                    let Some(ret) = self.ret_type_span else {
+                        return;
+                    };
+                    let Expectation::IsLast(stmt) = orig_expected else {
+                        return
+                    };
                     let can_coerce_to_return_ty = match self.ret_coercion.as_ref() {
                         Some(ret_coercion) if self.in_tail_expr => {
                             let ret_ty = ret_coercion.borrow().expected_ty();
@@ -144,38 +145,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         _ => false,
                     };
-                    if let (Expectation::IsLast(stmt), Some(ret), true) =
-                        (orig_expected, self.ret_type_span, can_coerce_to_return_ty)
-                    {
-                        let semi_span = expr.span.shrink_to_hi().with_hi(stmt.hi());
-                        let mut ret_span: MultiSpan = semi_span.into();
-                        ret_span.push_span_label(
-                            expr.span,
-                            "this could be implicitly returned but it is a statement, not a \
-                                tail expression"
-                                .to_owned(),
-                        );
-                        ret_span.push_span_label(
-                            ret,
-                            "the `match` arms can conform to this return type".to_owned(),
-                        );
-                        ret_span.push_span_label(
-                            semi_span,
-                            "the `match` is a statement because of this semicolon, consider \
-                                removing it"
-                                .to_owned(),
-                        );
-                        err.span_note(
-                            ret_span,
-                            "you might have meant to return the `match` expression",
-                        );
-                        err.tool_only_span_suggestion(
-                            semi_span,
-                            "remove this semicolon",
-                            String::new(),
-                            Applicability::MaybeIncorrect,
-                        );
+                    if !can_coerce_to_return_ty {
+                        return;
                     }
+
+                    let semi_span = expr.span.shrink_to_hi().with_hi(stmt.hi());
+                    let mut ret_span: MultiSpan = semi_span.into();
+                    ret_span.push_span_label(
+                        expr.span,
+                        "this could be implicitly returned but it is a statement, not a \
+                            tail expression"
+                            .to_owned(),
+                    );
+                    ret_span.push_span_label(
+                        ret,
+                        "the `match` arms can conform to this return type".to_owned(),
+                    );
+                    ret_span.push_span_label(
+                        semi_span,
+                        "the `match` is a statement because of this semicolon, consider \
+                            removing it"
+                            .to_owned(),
+                    );
+                    err.span_note(
+                        ret_span,
+                        "you might have meant to return the `match` expression",
+                    );
+                    err.tool_only_span_suggestion(
+                        semi_span,
+                        "remove this semicolon",
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
                 }),
                 false,
             );
@@ -205,7 +206,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We won't diverge unless the scrutinee or all arms diverge.
         self.diverges.set(scrut_diverges | all_arms_diverge);
 
-        coercion.complete(self)
+        let match_ty = coercion.complete(self);
+        debug!(?match_ty);
+        match_ty
     }
 
     fn get_appropriate_arm_semicolon_removal_span(
@@ -261,10 +264,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &mut |err| {
                 if let Some((span, msg)) = &ret_reason {
                     err.span_label(*span, msg.as_str());
-                } else if let ExprKind::Block(block, _) = &then_expr.kind {
-                    if let Some(expr) = &block.expr {
-                        err.span_label(expr.span, "found here".to_string());
-                    }
+                } else if let ExprKind::Block(block, _) = &then_expr.kind
+                    && let Some(expr) = &block.expr
+                {
+                    err.span_label(expr.span, "found here".to_string());
                 }
                 err.note("`if` expressions without `else` evaluate to `()`");
                 err.help("consider adding an `else` block that evaluates to the expected type");
@@ -294,7 +297,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return self.get_fn_decl(hir_id).and_then(|(fn_decl, _)| {
                         let span = fn_decl.output.span();
                         let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok()?;
-                        Some((span, format!("expected `{}` because of this return type", snippet)))
+                        Some((span, format!("expected `{snippet}` because of this return type")))
                     });
                 }
             }
@@ -504,20 +507,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // provide a structured suggestion in that case.
     pub(crate) fn opt_suggest_box_span(
         &self,
-        span: Span,
         outer_ty: Ty<'tcx>,
         orig_expected: Expectation<'tcx>,
     ) -> Option<Span> {
-        match (orig_expected, self.ret_coercion_impl_trait.map(|ty| (self.body_id.owner, ty))) {
-            (Expectation::ExpectHasType(expected), Some((_id, ty)))
-                if self.in_tail_expr && self.can_coerce(outer_ty, expected) =>
+        match orig_expected {
+            Expectation::ExpectHasType(expected)
+                if self.in_tail_expr
+                    && self.ret_coercion.as_ref()?.borrow().merged_ty().has_opaque_types()
+                    && self.can_coerce(outer_ty, expected) =>
             {
-                let impl_trait_ret_ty =
-                    self.infcx.instantiate_opaque_types(self.body_id, self.param_env, ty, span);
-                assert!(
-                    impl_trait_ret_ty.obligations.is_empty(),
-                    "we should never get new obligations here"
-                );
                 let obligations = self.fulfillment_cx.borrow().pending_obligations();
                 let mut suggest_box = !obligations.is_empty();
                 for o in obligations {

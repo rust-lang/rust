@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/unstable-const-fn-in-libcore.rs:24:26
+  --> $DIR/unstable-const-fn-in-libcore.rs:22:26
    |
 LL |             Opt::None => f(),
    |                          ^^^
@@ -11,7 +11,7 @@ LL |     const fn unwrap_or_else<F: FnOnce() -> T + ~const std::ops::FnOnce<()>>
    |                                              +++++++++++++++++++++++++++++
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/unstable-const-fn-in-libcore.rs:19:53
+  --> $DIR/unstable-const-fn-in-libcore.rs:17:53
    |
 LL |     const fn unwrap_or_else<F: FnOnce() -> T>(self, f: F) -> T {
    |                                                     ^ constant functions cannot evaluate destructors
@@ -20,7 +20,7 @@ LL |     }
    |     - value is dropped here
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/unstable-const-fn-in-libcore.rs:19:47
+  --> $DIR/unstable-const-fn-in-libcore.rs:17:47
    |
 LL |     const fn unwrap_or_else<F: FnOnce() -> T>(self, f: F) -> T {
    |                                               ^^^^ constant functions cannot evaluate destructors

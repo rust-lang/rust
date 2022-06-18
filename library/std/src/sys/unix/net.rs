@@ -54,7 +54,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 
     Err(io::Error::new(
         io::ErrorKind::Uncategorized,
-        &format!("failed to lookup address information: {}", detail)[..],
+        &format!("failed to lookup address information: {detail}")[..],
     ))
 }
 
@@ -289,15 +289,7 @@ impl Socket {
         self.recv_from_with_flags(buf, 0)
     }
 
-    #[cfg(any(
-        target_os = "android",
-        target_os = "dragonfly",
-        target_os = "emscripten",
-        target_os = "freebsd",
-        target_os = "linux",
-        target_os = "netbsd",
-        target_os = "openbsd",
-    ))]
+    #[cfg(any(target_os = "android", target_os = "linux"))]
     pub fn recv_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
         let n = cvt(unsafe { libc::recvmsg(self.as_raw_fd(), msg, libc::MSG_CMSG_CLOEXEC) })?;
         Ok(n as usize)
@@ -320,15 +312,7 @@ impl Socket {
         self.0.is_write_vectored()
     }
 
-    #[cfg(any(
-        target_os = "android",
-        target_os = "dragonfly",
-        target_os = "emscripten",
-        target_os = "freebsd",
-        target_os = "linux",
-        target_os = "netbsd",
-        target_os = "openbsd",
-    ))]
+    #[cfg(any(target_os = "android", target_os = "linux"))]
     pub fn send_msg(&self, msg: &mut libc::msghdr) -> io::Result<usize> {
         let n = cvt(unsafe { libc::sendmsg(self.as_raw_fd(), msg, 0) })?;
         Ok(n as usize)
@@ -416,6 +400,17 @@ impl Socket {
     #[cfg(any(target_os = "android", target_os = "linux",))]
     pub fn passcred(&self) -> io::Result<bool> {
         let passcred: libc::c_int = getsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED)?;
+        Ok(passcred != 0)
+    }
+
+    #[cfg(target_os = "netbsd")]
+    pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
+        setsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS, passcred as libc::c_int)
+    }
+
+    #[cfg(target_os = "netbsd")]
+    pub fn passcred(&self) -> io::Result<bool> {
+        let passcred: libc::c_int = getsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS)?;
         Ok(passcred != 0)
     }
 

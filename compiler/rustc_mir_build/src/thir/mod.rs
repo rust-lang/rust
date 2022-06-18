@@ -4,10 +4,10 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-crate mod constant;
+pub(crate) mod constant;
 
-crate mod cx;
+pub(crate) mod cx;
 
-crate mod pattern;
+pub(crate) mod pattern;
 
 mod util;

@@ -457,7 +457,7 @@ impl From<ErrorKind> for Error {
     ///
     /// let not_found = ErrorKind::NotFound;
     /// let error = Error::from(not_found);
-    /// assert_eq!("entity not found", format!("{}", error));
+    /// assert_eq!("entity not found", format!("{error}"));
     /// ```
     #[inline]
     fn from(kind: ErrorKind) -> Error {
@@ -561,7 +561,7 @@ impl Error {
     /// use std::io::Error;
     ///
     /// let os_error = Error::last_os_error();
-    /// println!("last OS error: {:?}", os_error);
+    /// println!("last OS error: {os_error:?}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
@@ -618,7 +618,7 @@ impl Error {
     ///
     /// fn print_os_error(err: &Error) {
     ///     if let Some(raw_os_err) = err.raw_os_error() {
-    ///         println!("raw OS error: {:?}", raw_os_err);
+    ///         println!("raw OS error: {raw_os_err:?}");
     ///     } else {
     ///         println!("Not an OS error");
     ///     }
@@ -657,7 +657,7 @@ impl Error {
     ///
     /// fn print_error(err: &Error) {
     ///     if let Some(inner_err) = err.get_ref() {
-    ///         println!("Inner error: {:?}", inner_err);
+    ///         println!("Inner error: {inner_err:?}");
     ///     } else {
     ///         println!("No inner error");
     ///     }
@@ -731,7 +731,7 @@ impl Error {
     ///
     /// fn print_error(err: &Error) {
     ///     if let Some(inner_err) = err.get_ref() {
-    ///         println!("Inner error: {}", inner_err);
+    ///         println!("Inner error: {inner_err}");
     ///     } else {
     ///         println!("No inner error");
     ///     }
@@ -770,7 +770,7 @@ impl Error {
     ///
     /// fn print_error(err: Error) {
     ///     if let Some(inner_err) = err.into_inner() {
-    ///         println!("Inner error: {}", inner_err);
+    ///         println!("Inner error: {inner_err}");
     ///     } else {
     ///         println!("No inner error");
     ///     }
@@ -852,7 +852,7 @@ impl fmt::Display for Error {
         match self.repr.data() {
             ErrorData::Os(code) => {
                 let detail = sys::os::error_string(code);
-                write!(fmt, "{} (os error {})", detail, code)
+                write!(fmt, "{detail} (os error {code})")
             }
             ErrorData::Custom(ref c) => c.error.fmt(fmt),
             ErrorData::Simple(kind) => write!(fmt, "{}", kind.as_str()),

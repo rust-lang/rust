@@ -1,15 +1,15 @@
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![allow(warnings)]
 
 use std::fmt::Debug;
 
 fn no_region<'a, T>(x: Box<T>) -> impl Debug + 'a
-    //~^ ERROR the parameter type `T` may not live long enough [E0309]
 where
     T: Debug,
 {
     x
+    //~^ ERROR the parameter type `T` may not live long enough [E0309]
 }
 
 fn correct_region<'a, T>(x: Box<T>) -> impl Debug + 'a
@@ -20,11 +20,11 @@ where
 }
 
 fn wrong_region<'a, 'b, T>(x: Box<T>) -> impl Debug + 'a
-    //~^ ERROR the parameter type `T` may not live long enough [E0309]
 where
     T: 'b + Debug,
 {
     x
+    //~^ ERROR the parameter type `T` may not live long enough [E0309]
 }
 
 fn outlives_region<'a, 'b, T>(x: Box<T>) -> impl Debug + 'a

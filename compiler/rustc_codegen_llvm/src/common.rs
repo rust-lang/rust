@@ -11,7 +11,7 @@ use rustc_ast::Mutability;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{Allocation, GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::ScalarInt;
 use rustc_span::symbol::Symbol;
@@ -106,32 +106,6 @@ impl<'ll> CodegenCx<'ll, '_> {
         bytes_in_context(self.llcx, bytes)
     }
 
-    fn const_cstr(&self, s: Symbol, null_terminated: bool) -> &'ll Value {
-        unsafe {
-            if let Some(&llval) = self.const_cstr_cache.borrow().get(&s) {
-                return llval;
-            }
-
-            let s_str = s.as_str();
-            let sc = llvm::LLVMConstStringInContext(
-                self.llcx,
-                s_str.as_ptr() as *const c_char,
-                s_str.len() as c_uint,
-                !null_terminated as Bool,
-            );
-            let sym = self.generate_local_symbol_name("str");
-            let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
-                bug!("symbol `{}` is already defined", sym);
-            });
-            llvm::LLVMSetInitializer(g, sc);
-            llvm::LLVMSetGlobalConstant(g, True);
-            llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
-
-            self.const_cstr_cache.borrow_mut().insert(s, g);
-            g
-        }
-    }
-
     pub fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
         unsafe {
             assert_eq!(idx as c_uint as u64, idx);
@@ -173,6 +147,10 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.const_uint(self.type_i1(), val as u64)
     }
 
+    fn const_i16(&self, i: i16) -> &'ll Value {
+        self.const_int(self.type_i16(), i as i64)
+    }
+
     fn const_i32(&self, i: i32) -> &'ll Value {
         self.const_int(self.type_i32(), i as i64)
     }
@@ -204,9 +182,23 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_str(&self, s: Symbol) -> (&'ll Value, &'ll Value) {
-        let len = s.as_str().len();
+        let s_str = s.as_str();
+        let str_global = *self.const_str_cache.borrow_mut().entry(s).or_insert_with(|| {
+            let sc = self.const_bytes(s_str.as_bytes());
+            let sym = self.generate_local_symbol_name("str");
+            let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
+                bug!("symbol `{}` is already defined", sym);
+            });
+            unsafe {
+                llvm::LLVMSetInitializer(g, sc);
+                llvm::LLVMSetGlobalConstant(g, True);
+                llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
+            }
+            g
+        });
+        let len = s_str.len();
         let cs = consts::ptrcast(
-            self.const_cstr(s, false),
+            str_global,
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).llvm_type(self)),
         );
         (cs, self.const_usize(len as u64))
@@ -229,16 +221,16 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: &'ll Type) -> &'ll Value {
-        let bitsize = if layout.is_bool() { 1 } else { layout.value.size(self).bits() };
+        let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
             Scalar::Int(ScalarInt::ZST) => {
-                assert_eq!(0, layout.value.size(self).bytes());
+                assert_eq!(0, layout.size(self).bytes());
                 self.const_undef(self.type_ix(0))
             }
             Scalar::Int(int) => {
-                let data = int.assert_bits(layout.value.size(self));
+                let data = int.assert_bits(layout.size(self));
                 let llval = self.const_uint_big(self.type_ix(bitsize), data);
-                if layout.value == Pointer {
+                if layout.primitive() == Pointer {
                     unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                 } else {
                     self.const_bitcast(llval, llty)
@@ -249,6 +241,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let (base_addr, base_addr_space) = match self.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
                         let init = const_alloc_to_llvm(self, alloc);
+                        let alloc = alloc.inner();
                         let value = match alloc.mutability {
                             Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
                             _ => self.static_addr_of(init, alloc.align, None),
@@ -276,7 +269,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         1,
                     )
                 };
-                if layout.value != Pointer {
+                if layout.primitive() != Pointer {
                     unsafe { llvm::LLVMConstPtrToInt(llval, llty) }
                 } else {
                     self.const_bitcast(llval, llty)
@@ -285,24 +278,25 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn const_data_from_alloc(&self, alloc: &Allocation) -> Self::Value {
+    fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
         const_alloc_to_llvm(self, alloc)
     }
 
     fn from_const_alloc(
         &self,
         layout: TyAndLayout<'tcx>,
-        alloc: &Allocation,
+        alloc: ConstAllocation<'tcx>,
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
-        assert_eq!(alloc.align, layout.align.abi);
+        let alloc_align = alloc.inner().align;
+        assert_eq!(alloc_align, layout.align.abi);
         let llty = self.type_ptr_to(layout.llvm_type(self));
         let llval = if layout.size == Size::ZERO {
-            let llval = self.const_usize(alloc.align.bytes());
+            let llval = self.const_usize(alloc_align.bytes());
             unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
         } else {
             let init = const_alloc_to_llvm(self, alloc);
-            let base_addr = self.static_addr_of(init, alloc.align, None);
+            let base_addr = self.static_addr_of(init, alloc_align, None);
 
             let llval = unsafe {
                 llvm::LLVMRustConstInBoundsGEP2(

@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
 use rustc_middle::ty::TyCtxt;
 
@@ -8,7 +8,7 @@ use rustc_middle::ty::TyCtxt;
 
 /// Similar to `librustc_privacy::EmbargoVisitor`, but also takes
 /// specific rustdoc annotations into account (i.e., `doc(hidden)`)
-crate struct LibEmbargoVisitor<'a, 'tcx> {
+pub(crate) struct LibEmbargoVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     // Accessibility levels for reachable nodes
     access_levels: &'a mut AccessLevels<DefId>,
@@ -19,7 +19,7 @@ crate struct LibEmbargoVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
-    crate fn new(cx: &'a mut crate::core::DocContext<'tcx>) -> LibEmbargoVisitor<'a, 'tcx> {
+    pub(crate) fn new(cx: &'a mut crate::core::DocContext<'tcx>) -> LibEmbargoVisitor<'a, 'tcx> {
         LibEmbargoVisitor {
             tcx: cx.tcx,
             access_levels: &mut cx.cache.access_levels,
@@ -28,8 +28,8 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
         }
     }
 
-    crate fn visit_lib(&mut self, cnum: CrateNum) {
-        let did = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+    pub(crate) fn visit_lib(&mut self, cnum: CrateNum) {
+        let did = cnum.as_def_id();
         self.update(did, Some(AccessLevel::Public));
         self.visit_mod(did);
     }
@@ -48,7 +48,7 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
         }
     }
 
-    crate fn visit_mod(&mut self, def_id: DefId) {
+    pub(crate) fn visit_mod(&mut self, def_id: DefId) {
         if !self.visited_mods.insert(def_id) {
             return;
         }

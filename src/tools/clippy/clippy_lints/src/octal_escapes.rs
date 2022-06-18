@@ -25,7 +25,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// The actual meaning can be the intended one. `\x00` can be used in these
-    /// cases to be unambigious.
+    /// cases to be unambiguous.
     ///
     /// The lint does not trigger for format strings in `print!()`, `write!()`
     /// and friends since the string is already preprocessed when Clippy lints
@@ -33,15 +33,16 @@ declare_clippy_lint! {
     ///
     /// # Example
     /// ```rust
-    /// // Bad
     /// let one = "\033[1m Bold? \033[0m";  // \033 intended as escape
     /// let two = "\033\0";                 // \033 intended as null-3-3
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let one = "\x1b[1mWill this be bold?\x1b[0m";
     /// let two = "\x0033\x00";
     /// ```
-    #[clippy::version = "1.58.0"]
+    #[clippy::version = "1.59.0"]
     pub OCTAL_ESCAPES,
     suspicious,
     "string escape sequences looking like octal characters"

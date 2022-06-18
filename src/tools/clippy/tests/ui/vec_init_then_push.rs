@@ -29,6 +29,12 @@ fn main() {
         // no lint
         vec.push(1);
     }
+
+    let mut vec = Vec::with_capacity(5);
+    vec.push(1);
+    vec.push(2);
+    vec.push(3);
+    vec.push(4);
 }
 
 pub fn no_lint() -> Vec<i32> {
@@ -43,4 +49,58 @@ pub fn no_lint() -> Vec<i32> {
             },
         }
     }
+}
+
+fn _from_iter(items: impl Iterator<Item = u32>) -> Vec<u32> {
+    let mut v = Vec::new();
+    v.push(0);
+    v.push(1);
+    v.extend(items);
+    v
+}
+
+fn _cond_push(x: bool) -> Vec<u32> {
+    let mut v = Vec::new();
+    v.push(0);
+    if x {
+        v.push(1);
+    }
+    v.push(2);
+    v
+}
+
+fn _push_then_edit(x: u32) -> Vec<u32> {
+    let mut v = Vec::new();
+    v.push(x);
+    v.push(1);
+    v[0] = v[1] + 5;
+    v
+}
+
+fn _cond_push_with_large_start(x: bool) -> Vec<u32> {
+    let mut v = Vec::new();
+    v.push(0);
+    v.push(1);
+    v.push(0);
+    v.push(1);
+    v.push(0);
+    v.push(0);
+    v.push(1);
+    v.push(0);
+    if x {
+        v.push(1);
+    }
+
+    let mut v2 = Vec::new();
+    v2.push(0);
+    v2.push(1);
+    v2.push(0);
+    v2.push(1);
+    v2.push(0);
+    v2.push(0);
+    v2.push(1);
+    v2.push(0);
+    v2.extend(&v);
+
+    v2
 }

@@ -24,4 +24,10 @@ fn unix_misspell() {}
 #[cfg(unix)]
 fn unix() {}
 
+#[cfg(miri)]
+fn miri() {}
+
+#[cfg(doc)]
+fn doc() {}
+
 fn main() {}

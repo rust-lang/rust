@@ -10,12 +10,12 @@
 #![feature(array_windows)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
-#![feature(bool_to_option)]
 #![feature(control_flow_enum)]
 #![feature(core_intrinsics)]
 #![feature(extend_one)]
 #![feature(let_else)]
 #![feature(hash_raw_entry)]
+#![feature(hasher_prefixfree_extras)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
 #![feature(never_type)]
@@ -27,7 +27,6 @@
 #![feature(thread_id_value)]
 #![feature(vec_into_raw_parts)]
 #![allow(rustc::default_hash_types)]
-#![deny(unaligned_references)]
 #![allow(rustc::potential_query_instability)]
 
 #[macro_use]
@@ -80,6 +79,7 @@ pub mod obligation_forest;
 pub mod owning_ref;
 pub mod sip128;
 pub mod small_c_str;
+pub mod small_str;
 pub mod snapshot_map;
 pub mod stable_map;
 pub mod svh;

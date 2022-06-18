@@ -3,7 +3,7 @@ error: calls to `push` immediately after creation
    |
 LL | /     let mut def_err: Vec<u32> = Default::default();
 LL | |     def_err.push(0);
-   | |____________________^ help: consider using the `vec![]` macro: `let mut def_err: Vec<u32> = vec![..];`
+   | |____________________^ help: consider using the `vec![]` macro: `let def_err: Vec<u32> = vec![..];`
    |
    = note: `-D clippy::vec-init-then-push` implied by `-D warnings`
 
@@ -30,5 +30,37 @@ LL | /     new_err = Vec::new();
 LL | |     new_err.push(0);
    | |____________________^ help: consider using the `vec![]` macro: `new_err = vec![..];`
 
-error: aborting due to 4 previous errors
+error: calls to `push` immediately after creation
+  --> $DIR/vec_init_then_push.rs:73:5
+   |
+LL | /     let mut v = Vec::new();
+LL | |     v.push(x);
+LL | |     v.push(1);
+   | |______________^ help: consider using the `vec![]` macro: `let mut v = vec![..];`
+
+error: calls to `push` immediately after creation
+  --> $DIR/vec_init_then_push.rs:81:5
+   |
+LL | /     let mut v = Vec::new();
+LL | |     v.push(0);
+LL | |     v.push(1);
+LL | |     v.push(0);
+...  |
+LL | |     v.push(1);
+LL | |     v.push(0);
+   | |______________^ help: consider using the `vec![]` macro: `let mut v = vec![..];`
+
+error: calls to `push` immediately after creation
+  --> $DIR/vec_init_then_push.rs:94:5
+   |
+LL | /     let mut v2 = Vec::new();
+LL | |     v2.push(0);
+LL | |     v2.push(1);
+LL | |     v2.push(0);
+...  |
+LL | |     v2.push(1);
+LL | |     v2.push(0);
+   | |_______________^ help: consider using the `vec![]` macro: `let mut v2 = vec![..];`
+
+error: aborting due to 7 previous errors
 

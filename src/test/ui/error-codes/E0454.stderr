@@ -1,8 +1,8 @@
-error[E0454]: `#[link(name = "")]` given with empty name
-  --> $DIR/E0454.rs:1:1
+error[E0454]: link name must not be empty
+  --> $DIR/E0454.rs:1:15
    |
 LL | #[link(name = "")] extern "C" {}
-   | ^^^^^^^^^^^^^^^^^^ empty name given
+   |               ^^ empty link name
 
 error: aborting due to previous error
 

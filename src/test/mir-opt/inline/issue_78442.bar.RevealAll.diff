@@ -24,11 +24,13 @@
       bb1: {
           _3 = &_4;                        // scope 0 at $DIR/issue-78442.rs:11:5: 11:15
           StorageLive(_5);                 // scope 0 at $DIR/issue-78442.rs:11:5: 11:17
-          nop;                             // scope 0 at $DIR/issue-78442.rs:11:5: 11:17
-          _2 = <impl Fn() as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-78442.rs:11:5: 11:17
+          Deinit(_5);                      // scope 0 at $DIR/issue-78442.rs:11:5: 11:17
+-         _2 = <impl Fn() as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-78442.rs:11:5: 11:17
++         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-78442.rs:11:5: 11:17
                                            // mir::Constant
                                            // + span: $DIR/issue-78442.rs:11:5: 11:15
-                                           // + literal: Const { ty: for<'r> extern "rust-call" fn(&'r impl Fn(), ()) -> <impl Fn() as FnOnce<()>>::Output {<impl Fn() as Fn<()>>::call}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: for<'r> extern "rust-call" fn(&'r impl Fn(), ()) -> <impl Fn() as FnOnce<()>>::Output {<impl Fn() as Fn<()>>::call}, val: Value(Scalar(<ZST>)) }
++                                          // + literal: Const { ty: for<'r> extern "rust-call" fn(&'r fn() {foo}, ()) -> <fn() {foo} as FnOnce<()>>::Output {<fn() {foo} as Fn<()>>::call}, val: Value(Scalar(<ZST>)) }
       }
   
       bb2: {

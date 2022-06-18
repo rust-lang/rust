@@ -24,3 +24,4 @@ rustc_session = { path = "../rustc_session" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_span = { path = "../rustc_span" }
+rustc_type_ir = { path = "../rustc_type_ir" }

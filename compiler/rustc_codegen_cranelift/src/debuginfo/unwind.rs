@@ -81,6 +81,8 @@ impl UnwindContext {
 
     #[cfg(all(feature = "jit", not(windows)))]
     pub(crate) unsafe fn register_jit(self, jit_module: &cranelift_jit::JITModule) {
+        use std::mem::ManuallyDrop;
+
         let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(self.endian));
         self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
 
@@ -95,17 +97,16 @@ impl UnwindContext {
 
         // FIXME support unregistering unwind tables once cranelift-jit supports deallocating
         // individual functions
-        #[allow(unused_variables)]
-        let (eh_frame, eh_frame_len, _) = Vec::into_raw_parts(eh_frame);
+        let eh_frame = ManuallyDrop::new(eh_frame);
 
         // =======================================================================
-        // Everything after this line up to the end of the file is loosly based on
+        // Everything after this line up to the end of the file is loosely based on
         // https://github.com/bytecodealliance/wasmtime/blob/4471a82b0c540ff48960eca6757ccce5b1b5c3e4/crates/jit/src/unwind/systemv.rs
         #[cfg(target_os = "macos")]
         {
             // On macOS, `__register_frame` takes a pointer to a single FDE
-            let start = eh_frame;
-            let end = start.add(eh_frame_len);
+            let start = eh_frame.as_ptr();
+            let end = start.add(eh_frame.len());
             let mut current = start;
 
             // Walk all of the entries in the frame table and register them
@@ -124,7 +125,7 @@ impl UnwindContext {
         #[cfg(not(target_os = "macos"))]
         {
             // On other platforms, `__register_frame` will walk the FDEs until an entry of length 0
-            __register_frame(eh_frame);
+            __register_frame(eh_frame.as_ptr());
         }
     }
 }

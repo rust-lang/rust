@@ -5,7 +5,7 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::{ImplStripper, ImportStripper, Pass, Stripper};
 
-crate const STRIP_PRIVATE: Pass = Pass {
+pub(crate) const STRIP_PRIVATE: Pass = Pass {
     name: "strip-private",
     run: strip_private,
     description: "strips all private items from a crate which cannot be seen externally, \
@@ -14,7 +14,7 @@ crate const STRIP_PRIVATE: Pass = Pass {
 
 /// Strip private items from the point of view of a crate or externally from a
 /// crate, specified by the `xcrate` flag.
-crate fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
+pub(crate) fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
     // This stripper collects all *retained* nodes.
     let mut retained = ItemIdSet::default();
 

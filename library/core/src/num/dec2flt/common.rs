@@ -36,7 +36,7 @@ pub(crate) trait ByteSlice: AsRef<[u8]> {
     }
 
     /// Check if self starts with u with a case-insensitive comparison.
-    fn eq_ignore_case(&self, u: &[u8]) -> bool {
+    fn starts_with_ignore_case(&self, u: &[u8]) -> bool {
         debug_assert!(self.as_ref().len() >= u.len());
         let iter = self.as_ref().iter().zip(u.iter());
         let d = iter.fold(0, |i, (&x, &y)| i | (x ^ y));

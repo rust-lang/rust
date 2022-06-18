@@ -5,12 +5,18 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 
 use crate::emitter::{ColorConfig, HumanReadableErrorType};
 use crate::Handler;
-use rustc_serialize::json;
 use rustc_span::{BytePos, Span};
 
 use std::str;
 
-#[derive(Debug, PartialEq, Eq)]
+use serde::Deserialize;
+
+#[derive(Deserialize, Debug, PartialEq, Eq)]
+struct TestData {
+    spans: Vec<SpanTestData>,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Eq)]
 struct SpanTestData {
     pub byte_start: u32,
     pub byte_end: u32,
@@ -39,12 +45,16 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
     rustc_span::create_default_session_globals_then(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         sm.new_source_file(Path::new("test.rs").to_owned().into(), code.to_owned());
+        let fallback_bundle =
+            crate::fallback_fluent_bundle(rustc_error_messages::DEFAULT_LOCALE_RESOURCES, false);
 
         let output = Arc::new(Mutex::new(Vec::new()));
         let je = JsonEmitter::new(
             Box::new(Shared { data: output.clone() }),
             None,
             sm,
+            None,
+            fallback_bundle,
             true,
             HumanReadableErrorType::Short(ColorConfig::Never),
             None,
@@ -57,19 +67,11 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
 
         let bytes = output.lock().unwrap();
         let actual_output = str::from_utf8(&bytes).unwrap();
-        let actual_output = json::from_str(&actual_output).unwrap();
-        let spans = actual_output["spans"].as_array().unwrap();
+        let actual_output: TestData = serde_json::from_str(actual_output).unwrap();
+        let spans = actual_output.spans;
         assert_eq!(spans.len(), 1);
-        let obj = &spans[0];
-        let actual_output = SpanTestData {
-            byte_start: obj["byte_start"].as_u64().unwrap() as u32,
-            byte_end: obj["byte_end"].as_u64().unwrap() as u32,
-            line_start: obj["line_start"].as_u64().unwrap() as u32,
-            line_end: obj["line_end"].as_u64().unwrap() as u32,
-            column_start: obj["column_start"].as_u64().unwrap() as u32,
-            column_end: obj["column_end"].as_u64().unwrap() as u32,
-        };
-        assert_eq!(expected_output, actual_output);
+
+        assert_eq!(expected_output, spans[0])
     })
 }
 

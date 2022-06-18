@@ -4,9 +4,11 @@
 /// created from an iterator. This is common for types which describe a
 /// collection of some kind.
 ///
-/// [`FromIterator::from_iter()`] is rarely called explicitly, and is instead
-/// used through [`Iterator::collect()`] method. See [`Iterator::collect()`]'s
-/// documentation for more examples.
+/// If you want to create a collection from the contents of an iterator, the
+/// [`Iterator::collect()`] method is preferred. However, when you need to
+/// specify the container type, [`FromIterator::from_iter()`] can be more
+/// readable than using a turbofish (e.g. `::<Vec<_>>()`). See the
+/// [`Iterator::collect()`] documentation for more examples of its use.
 ///
 /// See also: [`IntoIterator`].
 ///
@@ -30,6 +32,17 @@
 /// let v: Vec<i32> = five_fives.collect();
 ///
 /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
+/// ```
+///
+/// Using [`FromIterator::from_iter()`] as a more readable alternative to
+/// [`Iterator::collect()`]:
+///
+/// ```
+/// use std::collections::VecDeque;
+/// let first = (0..10).collect::<VecDeque<i32>>();
+/// let second = VecDeque::from_iter(0..10);
+///
+/// assert_eq!(first, second);
 /// ```
 ///
 /// Implementing `FromIterator` for your type:
@@ -83,29 +96,23 @@
 #[rustc_on_unimplemented(
     on(
         _Self = "[{A}]",
-        message = "a value of type `{Self}` cannot be built since `{Self}` has no definite size",
+        message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
         label = "try explicitly collecting into a `Vec<{A}>`",
     ),
     on(
-        all(
-            A = "{integer}",
-            any(
-                _Self = "[i8]",
-                _Self = "[i16]",
-                _Self = "[i32]",
-                _Self = "[i64]",
-                _Self = "[i128]",
-                _Self = "[isize]",
-                _Self = "[u8]",
-                _Self = "[u16]",
-                _Self = "[u32]",
-                _Self = "[u64]",
-                _Self = "[u128]",
-                _Self = "[usize]"
-            )
-        ),
-        message = "a value of type `{Self}` cannot be built since `{Self}` has no definite size",
+        all(A = "{integer}", any(_Self = "[{integral}]",)),
+        message = "a slice of type `{Self}` cannot be built since `{Self}` has no definite size",
         label = "try explicitly collecting into a `Vec<{A}>`",
+    ),
+    on(
+        _Self = "[{A}; _]",
+        message = "an array of type `{Self}` cannot be built directly from an iterator",
+        label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
+    ),
+    on(
+        all(A = "{integer}", any(_Self = "[{integral}; _]",)),
+        message = "an array of type `{Self}` cannot be built directly from an iterator",
+        label = "try collecting into a `Vec<{A}>`, then using `.try_into()`",
     ),
     message = "a value of type `{Self}` cannot be built from an iterator \
                over elements of type `{A}`",
@@ -214,7 +221,7 @@ pub trait FromIterator<A>: Sized {
 /// {
 ///     collection
 ///         .into_iter()
-///         .map(|item| format!("{:?}", item))
+///         .map(|item| format!("{item:?}"))
 ///         .collect()
 /// }
 /// ```
@@ -254,8 +261,9 @@ pub trait IntoIterator {
     fn into_iter(self) -> Self::IntoIter;
 }
 
+#[rustc_const_unstable(feature = "const_intoiterator_identity", issue = "90603")]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator> IntoIterator for I {
+impl<I: ~const Iterator> const IntoIterator for I {
     type Item = I::Item;
     type IntoIter = I;
 
@@ -332,7 +340,7 @@ impl<I: Iterator> IntoIterator for I {
 /// c.extend(vec![1, 2, 3]);
 ///
 /// // we've added these elements onto the end
-/// assert_eq!("MyCollection([5, 6, 7, 1, 2, 3])", format!("{:?}", c));
+/// assert_eq!("MyCollection([5, 6, 7, 1, 2, 3])", format!("{c:?}"));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Extend<A> {

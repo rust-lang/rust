@@ -25,12 +25,13 @@ declare_clippy_lint! {
     ///
     /// ### Examples
     /// ```rust
-    ///
-    /// // Bad
     /// let foo = "foo";
     /// format!("{}", foo);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// let foo = "foo";
     /// foo.to_owned();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -72,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
             if_chain! {
                 if format_args.format_string_parts == [kw::Empty];
                 if match cx.typeck_results().expr_ty(value).peel_refs().kind() {
-                    ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(sym::String, adt.did),
+                    ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(sym::String, adt.did()),
                     ty::Str => true,
                     _ => false,
                 };

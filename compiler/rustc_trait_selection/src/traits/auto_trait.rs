@@ -5,7 +5,9 @@ use super::*;
 
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
-use rustc_middle::ty::fold::TypeFolder;
+use crate::traits::project::ProjectAndUnifyResult;
+use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{Region, RegionVid, Term};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -87,11 +89,29 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let trait_pred = ty::Binder::dummy(trait_ref);
 
         let bail_out = tcx.infer_ctxt().enter(|infcx| {
-            let mut selcx = SelectionContext::with_negative(&infcx, true);
+            let mut selcx = SelectionContext::new(&infcx);
             let result = selcx.select(&Obligation::new(
                 ObligationCause::dummy(),
                 orig_env,
                 trait_pred.to_poly_trait_predicate(),
+            ));
+
+            match result {
+                Ok(Some(ImplSource::UserDefined(_))) => {
+                    debug!(
+                        "find_auto_trait_generics({:?}): \
+                         manual impl found, bailing out",
+                        trait_ref
+                    );
+                    return true;
+                }
+                _ => {}
+            }
+
+            let result = selcx.select(&Obligation::new(
+                ObligationCause::dummy(),
+                orig_env,
+                trait_pred.to_poly_trait_predicate_negative_polarity(),
             ));
 
             match result {
@@ -236,9 +256,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// `FulfillmentContext` will drive `SelectionContext` to consider that impl before giving up.
     /// If we were to rely on `FulfillmentContext`s decision, we might end up synthesizing an impl
     /// like this:
-    ///
-    ///     impl<T> Send for Foo<T> where T: IntoIterator
-    ///
+    /// ```ignore (illustrative)
+    /// impl<T> Send for Foo<T> where T: IntoIterator
+    /// ```
     /// While it might be technically true that Foo implements Send where `T: IntoIterator`,
     /// the bound is overly restrictive - it's really only necessary that `T: Iterator`.
     ///
@@ -270,14 +290,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     ) -> Option<(ty::ParamEnv<'tcx>, ty::ParamEnv<'tcx>)> {
         let tcx = infcx.tcx;
 
-        // Don't try to proess any nested obligations involving predicates
+        // Don't try to process any nested obligations involving predicates
         // that are already in the `ParamEnv` (modulo regions): we already
         // know that they must hold.
         for predicate in param_env.caller_bounds() {
             fresh_preds.insert(self.clean_pred(infcx, predicate));
         }
 
-        let mut select = SelectionContext::with_negative(&infcx, true);
+        let mut select = SelectionContext::new(&infcx);
 
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();
@@ -401,10 +421,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// two trait predicates that differ only in their region parameters:
     /// one containing a HRTB lifetime parameter, and one containing a 'normal'
     /// lifetime parameter. For example:
-    ///
-    ///     T as MyTrait<'a>
-    ///     T as MyTrait<'static>
-    ///
+    /// ```ignore (illustrative)
+    /// T as MyTrait<'a>
+    /// T as MyTrait<'static>
+    /// ```
     /// If we put both of these predicates in our computed `ParamEnv`, we'll
     /// confuse `SelectionContext`, since it will (correctly) view both as being applicable.
     ///
@@ -665,12 +685,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         && is_new_pred
                     {
                         debug!(
-                            "evaluate_nested_obligations: adding projection predicate\
+                            "evaluate_nested_obligations: adding projection predicate \
                             to computed_preds: {:?}",
                             predicate
                         );
 
-                        // Under unusual circumstances, we can end up with a self-refeential
+                        // Under unusual circumstances, we can end up with a self-referential
                         // projection predicate. For example:
                         // <T as MyType>::Value == <T as MyType>::Value
                         // Not only is displaying this to the user pointless,
@@ -733,7 +753,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     debug!("Projecting and unifying projection predicate {:?}", predicate);
 
                     match project::poly_project_and_unify_type(select, &obligation.with(p)) {
-                        Err(e) => {
+                        ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                             debug!(
                                 "evaluate_nested_obligations: Unable to unify predicate \
                                  '{:?}' '{:?}', bailing out",
@@ -741,15 +761,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             );
                             return false;
                         }
-                        Ok(Err(project::InProgress)) => {
+                        ProjectAndUnifyResult::Recursive => {
                             debug!("evaluate_nested_obligations: recursive projection predicate");
                             return false;
                         }
-                        Ok(Ok(Some(v))) => {
+                        ProjectAndUnifyResult::Holds(v) => {
                             // We only care about sub-obligations
                             // when we started out trying to unify
                             // some inference variables. See the comment above
-                            // for more infomration
+                            // for more information
                             if p.term().skip_binder().has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
@@ -764,9 +784,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 }
                             }
                         }
-                        Ok(Ok(None)) => {
+                        ProjectAndUnifyResult::FailedNormalization => {
                             // It's ok not to make progress when have no inference variables -
-                            // in that case, we were only performing unifcation to check if an
+                            // in that case, we were only performing unification to check if an
                             // error occurred (which would indicate that it's impossible for our
                             // type to implement the auto trait).
                             // However, we should always make progress (either by generating
@@ -809,13 +829,22 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val() {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
                             match select.infcx().const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,
                                 Some(obligation.cause.span),
                             ) {
-                                Ok(val) => Ok(ty::Const::from_value(select.tcx(), val, c.ty())),
+                                Ok(Some(valtree)) => {
+                                    Ok(ty::Const::from_value(select.tcx(), valtree, c.ty()))
+                                }
+                                Ok(None) => {
+                                    let tcx = self.tcx;
+                                    let def_id = unevaluated.def.did;
+                                    let reported = tcx.sess.struct_span_err(tcx.def_span(def_id), &format!("unable to construct a constant value for the unevaluated constant {:?}", unevaluated)).emit();
+
+                                    Err(ErrorHandled::Reported(reported))
+                                }
                                 Err(err) => Err(err),
                             }
                         } else {

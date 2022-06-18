@@ -1,4 +1,6 @@
+use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::ty::is_copy;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::{is_lang_ctor, is_trait_method, path_to_local_id};
 use rustc_hir as hir;
@@ -9,17 +11,19 @@ use rustc_middle::ty;
 use rustc_span::sym;
 
 use super::UNNECESSARY_FILTER_MAP;
+use super::UNNECESSARY_FIND_MAP;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, name: &str) {
     if !is_trait_method(cx, expr, sym::Iterator) {
         return;
     }
 
-    if let hir::ExprKind::Closure(_, _, body_id, ..) = arg.kind {
-        let body = cx.tcx.hir().body(body_id);
+    if let hir::ExprKind::Closure { body, .. } = arg.kind {
+        let body = cx.tcx.hir().body(body);
         let arg_id = body.params[0].pat.hir_id;
         let mutates_arg =
             mutated_variables(&body.value, cx).map_or(true, |used_mutably| used_mutably.contains(&arg_id));
+        let (clone_or_copy_needed, _) = clone_or_copy_needed(cx, body.params[0].pat, &body.value);
 
         let (mut found_mapping, mut found_filtering) = check_expression(cx, arg_id, &body.value);
 
@@ -28,13 +32,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         found_mapping |= return_visitor.found_mapping;
         found_filtering |= return_visitor.found_filtering;
 
+        let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
         let sugg = if !found_filtering {
-            "map"
-        } else if !found_mapping && !mutates_arg {
-            let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
+            if name == "filter_map" { "map" } else { "map(..).next()" }
+        } else if !found_mapping && !mutates_arg && (!clone_or_copy_needed || is_copy(cx, in_ty)) {
             match cx.typeck_results().expr_ty(&body.value).kind() {
-                ty::Adt(adt, subst) if cx.tcx.is_diagnostic_item(sym::Option, adt.did) && in_ty == subst.type_at(0) => {
-                    "filter"
+                ty::Adt(adt, subst)
+                    if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) && in_ty == subst.type_at(0) =>
+                {
+                    if name == "filter_map" { "filter" } else { "find" }
                 },
                 _ => return,
             }
@@ -43,9 +49,13 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         };
         span_lint(
             cx,
-            UNNECESSARY_FILTER_MAP,
+            if name == "filter_map" {
+                UNNECESSARY_FILTER_MAP
+            } else {
+                UNNECESSARY_FIND_MAP
+            },
             expr.span,
-            &format!("this `.filter_map` can be written more simply using `.{}`", sugg),
+            &format!("this `.{}` can be written more simply using `.{}`", name, sugg),
         );
     }
 }

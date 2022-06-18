@@ -3,8 +3,7 @@
 // over time, but this test used to exhibit some pretty bogus messages
 // that were not remotely helpful.
 
-// error-pattern:the lifetime `'a`
-// error-pattern:the static lifetime
+// error-pattern:argument requires that `'a` must outlive `'static`
 
 struct Invariant<'a>(Option<&'a mut &'a mut ()>);
 
@@ -12,7 +11,7 @@ fn mk_static() -> Invariant<'static> { Invariant(None) }
 
 fn unify<'a>(x: Option<Invariant<'a>>, f: fn(Invariant<'a>)) {
     let bad = if x.is_some() {
-        x.unwrap()
+        x.unwrap() //~ ERROR borrowed data escapes outside of function [E0521]
     } else {
         mk_static()
     };

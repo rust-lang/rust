@@ -26,7 +26,7 @@ pub struct SearchPathFile {
     pub file_name_str: String,
 }
 
-#[derive(PartialEq, Clone, Copy, Debug, Hash, Eq, Encodable, Decodable)]
+#[derive(PartialEq, Clone, Copy, Debug, Hash, Eq, Encodable, Decodable, HashStable_Generic)]
 pub enum PathKind {
     Native,
     Crate,
@@ -35,8 +35,6 @@ pub enum PathKind {
     ExternFlag,
     All,
 }
-
-rustc_data_structures::impl_stable_hash_via_hash!(PathKind);
 
 impl PathKind {
     pub fn matches(&self, kind: PathKind) -> bool {

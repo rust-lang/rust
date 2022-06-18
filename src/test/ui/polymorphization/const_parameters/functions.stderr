@@ -11,7 +11,7 @@ error: item has unused generic parameters
   --> $DIR/functions.rs:15:8
    |
 LL | pub fn unused<const T: usize>() {
-   |        ^^^^^^       - generic parameter `T` is unused
+   |        ^^^^^^ -------------- generic parameter `T` is unused
 
 error: aborting due to previous error; 1 warning emitted
 

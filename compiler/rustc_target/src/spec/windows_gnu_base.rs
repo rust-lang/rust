@@ -1,5 +1,5 @@
 use crate::spec::crt_objects::{self, CrtObjectsFallback};
-use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, TargetOptions};
+use crate::spec::{cvs, LinkArgs, LinkerFlavor, LldFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
@@ -8,11 +8,11 @@ pub fn opts() -> TargetOptions {
         vec![
             // Tell GCC to avoid linker plugins, because we are not bundling
             // them with Windows installer, and Rust does its own LTO anyways.
-            "-fno-use-linker-plugin".to_string(),
+            "-fno-use-linker-plugin".into(),
             // Enable ASLR
-            "-Wl,--dynamicbase".to_string(),
+            "-Wl,--dynamicbase".into(),
             // ASLR will rebase it anyway so leaving that option enabled only leads to confusion
-            "-Wl,--disable-auto-image-base".to_string(),
+            "-Wl,--disable-auto-image-base".into(),
         ],
     );
 
@@ -22,10 +22,10 @@ pub fn opts() -> TargetOptions {
     // Order of `late_link_args*` was found through trial and error to work with various
     // mingw-w64 versions (not tested on the CI). It's expected to change from time to time.
     let mingw_libs = vec![
-        "-lmsvcrt".to_string(),
-        "-lmingwex".to_string(),
-        "-lmingw32".to_string(),
-        "-lgcc".to_string(), // alas, mingw* libraries above depend on libgcc
+        "-lmsvcrt".into(),
+        "-lmingwex".into(),
+        "-lmingw32".into(),
+        "-lgcc".into(), // alas, mingw* libraries above depend on libgcc
         // mingw's msvcrt is a weird hybrid import library and static library.
         // And it seems that the linker fails to use import symbols from msvcrt
         // that are required from functions in msvcrt in certain cases. For example
@@ -33,9 +33,9 @@ pub fn opts() -> TargetOptions {
         // The library is purposely listed twice to fix that.
         //
         // See https://github.com/rust-lang/rust/pull/47483 for some more details.
-        "-lmsvcrt".to_string(),
-        "-luser32".to_string(),
-        "-lkernel32".to_string(),
+        "-lmsvcrt".into(),
+        "-luser32".into(),
+        "-lkernel32".into(),
     ];
     late_link_args.insert(LinkerFlavor::Gcc, mingw_libs.clone());
     late_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), mingw_libs);
@@ -43,7 +43,7 @@ pub fn opts() -> TargetOptions {
         // If any of our crates are dynamically linked then we need to use
         // the shared libgcc_s-dw2-1.dll. This is required to support
         // unwinding across DLL boundaries.
-        "-lgcc_s".to_string(),
+        "-lgcc_s".into(),
     ];
     late_link_args_dynamic.insert(LinkerFlavor::Gcc, dynamic_unwind_libs.clone());
     late_link_args_dynamic.insert(LinkerFlavor::Lld(LldFlavor::Ld), dynamic_unwind_libs);
@@ -53,25 +53,25 @@ pub fn opts() -> TargetOptions {
         // binaries to be redistributed without the libgcc_s-dw2-1.dll
         // dependency, but unfortunately break unwinding across DLL
         // boundaries when unwinding across FFI boundaries.
-        "-lgcc_eh".to_string(),
-        "-l:libpthread.a".to_string(),
+        "-lgcc_eh".into(),
+        "-l:libpthread.a".into(),
     ];
     late_link_args_static.insert(LinkerFlavor::Gcc, static_unwind_libs.clone());
     late_link_args_static.insert(LinkerFlavor::Lld(LldFlavor::Ld), static_unwind_libs);
 
     TargetOptions {
-        os: "windows".to_string(),
-        env: "gnu".to_string(),
-        vendor: "pc".to_string(),
+        os: "windows".into(),
+        env: "gnu".into(),
+        vendor: "pc".into(),
         // FIXME(#13846) this should be enabled for windows
         function_sections: false,
-        linker: Some("gcc".to_string()),
+        linker: Some("gcc".into()),
         dynamic_linking: true,
         executables: true,
-        dll_prefix: String::new(),
-        dll_suffix: ".dll".to_string(),
-        exe_suffix: ".exe".to_string(),
-        families: vec!["windows".to_string()],
+        dll_prefix: "".into(),
+        dll_suffix: ".dll".into(),
+        exe_suffix: ".exe".into(),
+        families: cvs!["windows"],
         is_like_windows: true,
         allows_weak_linkage: false,
         pre_link_args,
@@ -87,7 +87,6 @@ pub fn opts() -> TargetOptions {
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,
         eh_frame_header: false,
-
         ..Default::default()
     }
 }

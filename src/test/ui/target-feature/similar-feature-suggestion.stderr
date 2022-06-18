@@ -1,0 +1,7 @@
+warning: unknown feature specified for `-Ctarget-feature`: `rdrnd`
+   |
+   = note: it is still passed through to the codegen backend
+   = help: you might have meant: `rdrand`
+
+warning: 1 warning emitted
+

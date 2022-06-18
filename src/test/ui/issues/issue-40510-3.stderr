@@ -3,7 +3,7 @@ error: captured variable cannot escape `FnMut` closure body
    |
 LL |       let mut x: Vec<()> = Vec::new();
    |           ----- variable defined here
-LL | 
+LL |
 LL |       || {
    |        - inferred to be a `FnMut` closure
 LL | /         || {

@@ -23,12 +23,11 @@ declare_clippy_lint! {
     ///
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// enum Test {}
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// #![feature(never_type)]
     ///
@@ -52,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for EmptyEnum {
         if let ItemKind::Enum(..) = item.kind {
             let ty = cx.tcx.type_of(item.def_id);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
-            if adt.variants.is_empty() {
+            if adt.variants().is_empty() {
                 span_lint_and_help(
                     cx,
                     EMPTY_ENUM,

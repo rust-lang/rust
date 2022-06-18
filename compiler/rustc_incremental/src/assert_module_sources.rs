@@ -5,6 +5,7 @@
 //! The user adds annotations to the crate of the following form:
 //!
 //! ```
+//! # #![feature(rustc_attrs)]
 //! #![rustc_partition_reused(module="spike", cfg="rpass2")]
 //! #![rustc_partition_codegened(module="spike-x", cfg="rpass2")]
 //! ```
@@ -22,12 +23,12 @@
 //! was re-used.
 
 use rustc_ast as ast;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::*;
 use rustc_span::symbol::{sym, Symbol};
-use std::collections::BTreeSet;
 
 #[allow(missing_docs)]
 pub fn assert_module_sources(tcx: TyCtxt<'_>) {
@@ -36,12 +37,8 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
             return;
         }
 
-        let available_cgus = tcx
-            .collect_and_partition_mono_items(())
-            .1
-            .iter()
-            .map(|cgu| cgu.name().to_string())
-            .collect::<BTreeSet<String>>();
+        let available_cgus =
+            tcx.collect_and_partition_mono_items(()).1.iter().map(|cgu| cgu.name()).collect();
 
         let ams = AssertModuleSource { tcx, available_cgus };
 
@@ -53,7 +50,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
 
 struct AssertModuleSource<'tcx> {
     tcx: TyCtxt<'tcx>,
-    available_cgus: BTreeSet<String>,
+    available_cgus: FxHashSet<Symbol>,
 }
 
 impl<'tcx> AssertModuleSource<'tcx> {
@@ -124,18 +121,17 @@ impl<'tcx> AssertModuleSource<'tcx> {
 
         debug!("mapping '{}' to cgu name '{}'", self.field(attr, sym::module), cgu_name);
 
-        if !self.available_cgus.contains(cgu_name.as_str()) {
+        if !self.available_cgus.contains(&cgu_name) {
+            let mut cgu_names: Vec<&str> =
+                self.available_cgus.iter().map(|cgu| cgu.as_str()).collect();
+            cgu_names.sort();
             self.tcx.sess.span_err(
                 attr.span,
                 &format!(
                     "no module named `{}` (mangled: {}). Available modules: {}",
                     user_path,
                     cgu_name,
-                    self.available_cgus
-                        .iter()
-                        .map(|cgu| cgu.to_string())
-                        .collect::<Vec<_>>()
-                        .join(", ")
+                    cgu_names.join(", ")
                 ),
             );
         }

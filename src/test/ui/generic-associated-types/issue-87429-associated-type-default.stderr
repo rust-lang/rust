@@ -10,6 +10,10 @@ note: required by a bound in `Family2::Member`
    |
 LL |     type Member<'a>: for<'b> PartialEq<Self::Member<'b>> = Foo;
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Family2::Member`
+help: consider annotating `Foo` with `#[derive(PartialEq)]`
+   |
+LL | #[derive(PartialEq)]
+   |
 
 error: aborting due to previous error
 

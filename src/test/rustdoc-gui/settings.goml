@@ -1,0 +1,133 @@
+// This test ensures that the settings menu display is working as expected.
+goto: file://|DOC_PATH|/test_docs/index.html
+show-text: true // needed when we check for colors below.
+// First, we check that the settings page doesn't exist.
+assert-false: "#settings"
+// We now click on the settings button.
+click: "#settings-menu"
+wait-for: "#settings"
+assert-css: ("#settings", {"display": "block"})
+// Let's close it by clicking on the same button.
+click: "#settings-menu"
+wait-for-css: ("#settings", {"display": "none"})
+
+// Let's check that pressing "ESCAPE" is closing it.
+click: "#settings-menu"
+wait-for-css: ("#settings", {"display": "block"})
+press-key: "Escape"
+wait-for-css: ("#settings", {"display": "none"})
+
+// Let's click on it when the search results are displayed.
+focus: ".search-input"
+write: "test"
+wait-for: "#alternative-display #search"
+click: "#settings-menu"
+wait-for-css: ("#settings", {"display": "block"})
+// Ensure that the search is still displayed.
+wait-for: "#alternative-display #search"
+assert: "#main-content.hidden"
+
+// Now let's check the content of the settings menu.
+local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+reload:
+click: "#settings-menu"
+wait-for: "#settings"
+
+// We check that the "Use system theme" is disabled.
+assert-property: ("#use-system-theme", {"checked": "false"})
+assert: "//*[@class='setting-line']//span[text()='Use system theme']"
+// Meaning that only the "theme" menu is showing up.
+assert: ".setting-line:not(.hidden) #theme"
+assert: ".setting-line.hidden #preferred-dark-theme"
+assert: ".setting-line.hidden #preferred-light-theme"
+
+// We check that the correct theme is selected.
+assert-property: ("#theme .choices #theme-dark", {"checked": "true"})
+
+// Some style checks...
+// First we check the "default" display.
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "rgb(221, 221, 221)",
+        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset",
+    },
+)
+assert-css: ("#theme-light", {"border-color": "rgb(221, 221, 221)", "box-shadow": "none"})
+// Let's start with the hover.
+move-cursor-to: "#theme-dark"
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "rgb(33, 150, 243)",
+        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset",
+    },
+)
+move-cursor-to: "#theme-light"
+assert-css: ("#theme-light", {"border-color": "rgb(33, 150, 243)", "box-shadow": "none"})
+move-cursor-to: "#theme-ayu"
+// Let's now check with the focus.
+focus: "#theme-dark"
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "rgb(221, 221, 221)",
+        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset, rgb(33, 150, 243) 0px 0px 2px 2px",
+    },
+)
+focus: "#theme-light"
+assert-css: (
+    "#theme-light",
+    {
+        "border-color": "rgb(221, 221, 221)",
+        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+    },
+)
+// Now we check we both focus and hover.
+move-cursor-to: "#theme-dark"
+focus: "#theme-dark"
+assert-css: (
+    "#theme-dark",
+    {
+        "border-color": "rgb(33, 150, 243)",
+        "box-shadow": "rgb(53, 53, 53) 0px 0px 0px 3px inset, rgb(33, 150, 243) 0px 0px 2px 2px",
+    },
+)
+move-cursor-to: "#theme-light"
+focus: "#theme-light"
+assert-css: (
+    "#theme-light",
+    {
+        "border-color": "rgb(33, 150, 243)",
+        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+    },
+)
+
+// We now switch the display.
+click: "#use-system-theme"
+// Wait for the hidden element to show up.
+wait-for: ".setting-line:not(.hidden) #preferred-dark-theme"
+assert: ".setting-line:not(.hidden) #preferred-light-theme"
+// Check that the theme picking is hidden.
+assert: ".setting-line.hidden #theme"
+
+// We check their text as well.
+assert-text: ("#preferred-dark-theme .setting-name", "Preferred dark theme")
+assert-text: ("#preferred-light-theme .setting-name", "Preferred light theme")
+
+// We now check that clicking on the "sliders"' text is like clicking on the slider.
+// To test it, we use the "Disable keyboard shortcuts".
+local-storage: {"rustdoc-disable-shortcuts": "false"}
+click: ".setting-line:last-child .toggle .label"
+assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
+
+// Now we go to the settings page to check that the CSS is loaded as expected.
+goto: file://|DOC_PATH|/settings.html
+wait-for: "#settings"
+assert-css: (".setting-line .toggle .slider", {"width": "45px", "margin-right": "20px"})
+
+// We now check the display with JS disabled.
+assert-false: "noscript section"
+javascript: false
+reload:
+assert-css: ("noscript section", {"display": "block"})

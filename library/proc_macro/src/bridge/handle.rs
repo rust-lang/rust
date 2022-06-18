@@ -1,13 +1,15 @@
 //! Server-side handles and storage for per-handle data.
 
 use std::collections::{BTreeMap, HashMap};
-use std::hash::Hash;
+use std::hash::{BuildHasher, Hash};
 use std::num::NonZeroU32;
 use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub(super) type Handle = NonZeroU32;
 
+/// A store that associates values of type `T` with numeric handles. A value can
+/// be looked up using its handle.
 pub(super) struct OwnedStore<T: 'static> {
     counter: &'static AtomicUsize,
     data: BTreeMap<Handle, T>,
@@ -49,14 +51,31 @@ impl<T> IndexMut<Handle> for OwnedStore<T> {
     }
 }
 
+// HACK(eddyb) deterministic `std::collections::hash_map::RandomState` replacement
+// that doesn't require adding any dependencies to `proc_macro` (like `rustc-hash`).
+#[derive(Clone)]
+struct NonRandomState;
+
+impl BuildHasher for NonRandomState {
+    type Hasher = std::collections::hash_map::DefaultHasher;
+    #[inline]
+    fn build_hasher(&self) -> Self::Hasher {
+        Self::Hasher::new()
+    }
+}
+
+/// Like `OwnedStore`, but avoids storing any value more than once.
 pub(super) struct InternedStore<T: 'static> {
     owned: OwnedStore<T>,
-    interner: HashMap<T, Handle>,
+    interner: HashMap<T, Handle, NonRandomState>,
 }
 
 impl<T: Copy + Eq + Hash> InternedStore<T> {
     pub(super) fn new(counter: &'static AtomicUsize) -> Self {
-        InternedStore { owned: OwnedStore::new(counter), interner: HashMap::new() }
+        InternedStore {
+            owned: OwnedStore::new(counter),
+            interner: HashMap::with_hasher(NonRandomState),
+        }
     }
 
     pub(super) fn alloc(&mut self, x: T) -> Handle {

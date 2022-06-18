@@ -22,7 +22,7 @@ impl<T> Foo for Number<T> {
     // }
     // ```
     // which it is :)
-    type Item where [T]: Sized = [T];
+    type Item = [T] where [T]: Sized;
 }
 
 struct OnlySized<T> where T: Sized { f: T }

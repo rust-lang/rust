@@ -4,8 +4,19 @@ error[E0004]: non-exhaustive patterns: type `UninhabitedEnum` is non-empty
 LL |     match x {}
    |           ^
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+note: `UninhabitedEnum` defined here
+  --> $DIR/auxiliary/uninhabited.rs:5:1
+   |
+LL | / pub enum UninhabitedEnum {
+LL | | }
+   | |_^
    = note: the matched value is of type `UninhabitedEnum`, which is marked as non-exhaustive
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     match x {
+LL +         _ => todo!(),
+LL ~     }
+   |
 
 error[E0004]: non-exhaustive patterns: type `UninhabitedStruct` is non-empty
   --> $DIR/match.rs:23:11
@@ -13,8 +24,20 @@ error[E0004]: non-exhaustive patterns: type `UninhabitedStruct` is non-empty
 LL |     match x {}
    |           ^
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+note: `UninhabitedStruct` defined here
+  --> $DIR/auxiliary/uninhabited.rs:9:1
+   |
+LL | / pub struct UninhabitedStruct {
+LL | |     _priv: !,
+LL | | }
+   | |_^
    = note: the matched value is of type `UninhabitedStruct`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     match x {
+LL +         _ => todo!(),
+LL ~     }
+   |
 
 error[E0004]: non-exhaustive patterns: type `UninhabitedTupleStruct` is non-empty
   --> $DIR/match.rs:27:11
@@ -22,8 +45,18 @@ error[E0004]: non-exhaustive patterns: type `UninhabitedTupleStruct` is non-empt
 LL |     match x {}
    |           ^
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+note: `UninhabitedTupleStruct` defined here
+  --> $DIR/auxiliary/uninhabited.rs:14:1
+   |
+LL | pub struct UninhabitedTupleStruct(!);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the matched value is of type `UninhabitedTupleStruct`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     match x {
+LL +         _ => todo!(),
+LL ~     }
+   |
 
 error[E0004]: non-exhaustive patterns: `Tuple(_)` and `Struct { .. }` not covered
   --> $DIR/match.rs:31:11
@@ -31,15 +64,23 @@ error[E0004]: non-exhaustive patterns: `Tuple(_)` and `Struct { .. }` not covere
 LL |     match x {}
    |           ^ patterns `Tuple(_)` and `Struct { .. }` not covered
    |
-  ::: $DIR/auxiliary/uninhabited.rs:17:23
+note: `UninhabitedVariants` defined here
+  --> $DIR/auxiliary/uninhabited.rs:17:23
    |
-LL |     #[non_exhaustive] Tuple(!),
-   |                       ----- not covered
-LL |     #[non_exhaustive] Struct { x: ! }
-   |                       ------ not covered
-   |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+LL | / pub enum UninhabitedVariants {
+LL | |     #[non_exhaustive] Tuple(!),
+   | |                       ^^^^^ not covered
+LL | |     #[non_exhaustive] Struct { x: ! }
+   | |                       ^^^^^^ not covered
+LL | | }
+   | |_-
    = note: the matched value is of type `UninhabitedVariants`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~     match x {
+LL +         Tuple(_) | Struct { .. } => todo!(),
+LL ~     }
+   |
 
 error: aborting due to 4 previous errors
 

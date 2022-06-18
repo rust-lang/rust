@@ -106,3 +106,54 @@ fn inline_config() {
             && contains("format_strings = true")
     );
 }
+
+#[test]
+fn rustfmt_usage_text() {
+    let args = ["--help"];
+    let (stdout, _) = rustfmt(&args);
+    assert!(stdout.contains("Format Rust code\n\nusage: rustfmt [options] <file>..."));
+}
+
+#[test]
+fn mod_resolution_error_multiple_candidate_files() {
+    // See also https://github.com/rust-lang/rustfmt/issues/5167
+    let default_path = Path::new("tests/mod-resolver/issue-5167/src/a.rs");
+    let secondary_path = Path::new("tests/mod-resolver/issue-5167/src/a/mod.rs");
+    let error_message = format!(
+        "file for module found at both {:?} and {:?}",
+        default_path.canonicalize().unwrap(),
+        secondary_path.canonicalize().unwrap(),
+    );
+
+    let args = ["tests/mod-resolver/issue-5167/src/lib.rs"];
+    let (_stdout, stderr) = rustfmt(&args);
+    assert!(stderr.contains(&error_message))
+}
+
+#[test]
+fn mod_resolution_error_sibling_module_not_found() {
+    let args = ["tests/mod-resolver/module-not-found/sibling_module/lib.rs"];
+    let (_stdout, stderr) = rustfmt(&args);
+    // Module resolution fails because we're unable to find `a.rs` in the same directory as lib.rs
+    assert!(stderr.contains("a.rs does not exist"))
+}
+
+#[test]
+fn mod_resolution_error_relative_module_not_found() {
+    let args = ["tests/mod-resolver/module-not-found/relative_module/lib.rs"];
+    let (_stdout, stderr) = rustfmt(&args);
+    // The file `./a.rs` and directory `./a` both exist.
+    // Module resolution fails because we're unable to find `./a/b.rs`
+    #[cfg(not(windows))]
+    assert!(stderr.contains("a/b.rs does not exist"));
+    #[cfg(windows)]
+    assert!(stderr.contains("a\\b.rs does not exist"));
+}
+
+#[test]
+fn mod_resolution_error_path_attribute_does_not_exist() {
+    let args = ["tests/mod-resolver/module-not-found/bad_path_attribute/lib.rs"];
+    let (_stdout, stderr) = rustfmt(&args);
+    // The path attribute points to a file that does not exist
+    assert!(stderr.contains("does_not_exist.rs does not exist"));
+}

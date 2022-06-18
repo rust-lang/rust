@@ -54,7 +54,10 @@ macro_rules! nonzero_integers {
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     // SAFETY: this is guaranteed to be safe by the caller.
-                    unsafe { Self(n) }
+                    unsafe {
+                        core::intrinsics::assert_unsafe_precondition!(n != 0);
+                        Self(n)
+                    }
                 }
 
                 /// Creates a non-zero if the given value is not zero.
@@ -74,7 +77,7 @@ macro_rules! nonzero_integers {
                 /// Returns the value as a primitive type.
                 #[$stability]
                 #[inline]
-                #[rustc_const_stable(feature = "nonzero", since = "1.34.0")]
+                #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
                 pub const fn get(self) -> $Int {
                     self.0
                 }
@@ -465,7 +468,7 @@ macro_rules! nonzero_unsigned_operations {
                               without modifying the original"]
                 #[inline]
                 pub const fn log2(self) -> u32 {
-                    <$Int>::BITS - 1 - self.leading_zeros()
+                    Self::BITS - 1 - self.leading_zeros()
                 }
 
                 /// Returns the base 10 logarithm of the number, rounded down.
@@ -989,3 +992,142 @@ macro_rules! nonzero_unsigned_is_power_of_two {
 }
 
 nonzero_unsigned_is_power_of_two! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize }
+
+macro_rules! nonzero_min_max_unsigned {
+    ( $( $Ty: ident($Int: ident); )+ ) => {
+        $(
+            impl $Ty {
+                /// The smallest value that can be represented by this non-zero
+                /// integer type, 1.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_min_max)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), 1", stringify!($Int), ");")]
+                /// ```
+                #[unstable(feature = "nonzero_min_max", issue = "89065")]
+                pub const MIN: Self = Self::new(1).unwrap();
+
+                /// The largest value that can be represented by this non-zero
+                /// integer type,
+                #[doc = concat!("equal to [`", stringify!($Int), "::MAX`].")]
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_min_max)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
+                /// ```
+                #[unstable(feature = "nonzero_min_max", issue = "89065")]
+                pub const MAX: Self = Self::new(<$Int>::MAX).unwrap();
+            }
+        )+
+    }
+}
+
+macro_rules! nonzero_min_max_signed {
+    ( $( $Ty: ident($Int: ident); )+ ) => {
+        $(
+            impl $Ty {
+                /// The smallest value that can be represented by this non-zero
+                /// integer type,
+                #[doc = concat!("equal to [`", stringify!($Int), "::MIN`].")]
+                ///
+                /// Note: While most integer types are defined for every whole
+                /// number between `MIN` and `MAX`, signed non-zero integers are
+                /// a special case. They have a "gap" at 0.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_min_max)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), ", stringify!($Int), "::MIN);")]
+                /// ```
+                #[unstable(feature = "nonzero_min_max", issue = "89065")]
+                pub const MIN: Self = Self::new(<$Int>::MIN).unwrap();
+
+                /// The largest value that can be represented by this non-zero
+                /// integer type,
+                #[doc = concat!("equal to [`", stringify!($Int), "::MAX`].")]
+                ///
+                /// Note: While most integer types are defined for every whole
+                /// number between `MIN` and `MAX`, signed non-zero integers are
+                /// a special case. They have a "gap" at 0.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_min_max)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
+                /// ```
+                #[unstable(feature = "nonzero_min_max", issue = "89065")]
+                pub const MAX: Self = Self::new(<$Int>::MAX).unwrap();
+            }
+        )+
+    }
+}
+
+nonzero_min_max_unsigned! {
+    NonZeroU8(u8);
+    NonZeroU16(u16);
+    NonZeroU32(u32);
+    NonZeroU64(u64);
+    NonZeroU128(u128);
+    NonZeroUsize(usize);
+}
+
+nonzero_min_max_signed! {
+    NonZeroI8(i8);
+    NonZeroI16(i16);
+    NonZeroI32(i32);
+    NonZeroI64(i64);
+    NonZeroI128(i128);
+    NonZeroIsize(isize);
+}
+
+macro_rules! nonzero_bits {
+    ( $( $Ty: ident($Int: ty); )+ ) => {
+        $(
+            impl $Ty {
+                /// The size of this non-zero integer type in bits.
+                ///
+                #[doc = concat!("This value is equal to [`", stringify!($Int), "::BITS`].")]
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_bits)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::BITS, ", stringify!($Int), "::BITS);")]
+                /// ```
+                #[unstable(feature = "nonzero_bits", issue = "94881")]
+                pub const BITS: u32 = <$Int>::BITS;
+            }
+        )+
+    }
+}
+
+nonzero_bits! {
+    NonZeroU8(u8);
+    NonZeroI8(i8);
+    NonZeroU16(u16);
+    NonZeroI16(i16);
+    NonZeroU32(u32);
+    NonZeroI32(i32);
+    NonZeroU64(u64);
+    NonZeroI64(i64);
+    NonZeroU128(u128);
+    NonZeroI128(i128);
+    NonZeroUsize(usize);
+    NonZeroIsize(isize);
+}

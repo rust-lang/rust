@@ -1,5 +1,6 @@
-struct Foo<'a, 'a> { //~ ERROR lifetime name `'a` declared twice
-    x: &'a isize
+struct Foo<'a, 'a> {
+    //~^ ERROR the name `'a` is already used for a generic parameter
+    x: &'a isize,
 }
 
 fn main() {}

@@ -7,14 +7,13 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::ObligationCauseCode;
 use rustc_data_structures::stable_set::FxHashSet;
-use rustc_errors::{Applicability, ErrorReported};
+use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::TypeVisitor;
-use rustc_span::MultiSpan;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
-    pub(super) fn try_report_mismatched_static_lifetime(&self) -> Option<ErrorReported> {
+    pub(super) fn try_report_mismatched_static_lifetime(&self) -> Option<ErrorGuaranteed> {
         let error = self.error.as_ref()?;
         debug!("try_report_mismatched_static_lifetime {:?}", error);
 
@@ -31,7 +30,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // about the original obligation only.
         let code = match cause.code() {
             ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => &*parent_code,
-            _ => cause.code(),
+            code => code,
         };
         let ObligationCauseCode::MatchImpl(parent, impl_def_id) = code else {
             return None;
@@ -42,8 +41,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let mut err = self.tcx().sess.struct_span_err(cause.span, "incompatible lifetime on type");
         // FIXME: we should point at the lifetime
         let mut multi_span: MultiSpan = vec![binding_span].into();
-        multi_span
-            .push_span_label(binding_span, "introduces a `'static` lifetime requirement".into());
+        multi_span.push_span_label(binding_span, "introduces a `'static` lifetime requirement");
         err.span_note(multi_span, "because this has an unmet lifetime requirement");
         note_and_explain_region(self.tcx(), &mut err, "", sup, "...", Some(binding_span));
         if let Some(impl_node) = self.tcx().hir().get_if_local(*impl_def_id) {
@@ -58,7 +56,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 bug!("Node not an impl.");
             };
 
-            // Next, let's figure out the set of trait objects with implict static bounds
+            // Next, let's figure out the set of trait objects with implicit static bounds
             let ty = self.tcx().type_of(*impl_def_id);
             let mut v = super::static_impl_trait::TraitObjectVisitor(FxHashSet::default());
             v.visit_ty(ty);
@@ -87,7 +85,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         span.shrink_to_hi(),
                         "consider relaxing the implicit `'static` requirement",
-                        " + '_".to_string(),
+                        " + '_",
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -98,7 +96,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             let impl_span = self.tcx().def_span(*impl_def_id);
             err.span_note(impl_span, "...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
         }
-        err.emit();
-        Some(ErrorReported)
+        let reported = err.emit();
+        Some(reported)
     }
 }

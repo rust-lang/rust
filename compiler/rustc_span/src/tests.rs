@@ -5,7 +5,7 @@ fn test_lookup_line() {
     let source = "abcdefghijklm\nabcdefghij\n...".to_owned();
     let sf =
         SourceFile::new(FileName::Anon(0), source, BytePos(3), SourceFileHashAlgorithm::Sha256);
-    assert_eq!(sf.lines.as_slice(), &[BytePos(3), BytePos(17), BytePos(28)]);
+    sf.lines(|lines| assert_eq!(lines, &[BytePos(3), BytePos(17), BytePos(28)]));
 
     assert_eq!(sf.lookup_line(BytePos(0)), None);
     assert_eq!(sf.lookup_line(BytePos(3)), Some(0));

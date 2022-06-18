@@ -1,11 +1,12 @@
-error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-both-are-structs.rs:6:12
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-both-are-structs.rs:6:5
    |
 LL | fn foo(mut x: Vec<Ref>, y: Ref) {
-   |                   ---      --- these two types are declared with different lifetimes...
+   |        -----            - has type `Ref<'1>`
+   |        |
+   |        has type `Vec<Ref<'2>>`
 LL |     x.push(y);
-   |            ^ ...but data from `y` flows into `x` here
+   |     ^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0623`.

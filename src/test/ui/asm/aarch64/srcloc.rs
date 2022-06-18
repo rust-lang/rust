@@ -1,5 +1,6 @@
 // only-aarch64
 // build-fail
+// needs-asm-support
 // compile-flags: -Ccodegen-units=1
 
 use std::arch::asm;

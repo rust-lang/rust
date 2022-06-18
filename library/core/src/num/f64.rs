@@ -31,7 +31,7 @@ use crate::num::FpCategory;
 /// let r = f64::RADIX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `RADIX` associated constant on `f64`")]
+#[deprecated(since = "TBD", note = "replaced by the `RADIX` associated constant on `f64`")]
 pub const RADIX: u32 = f64::RADIX;
 
 /// Number of significant digits in base 2.
@@ -48,9 +48,9 @@ pub const RADIX: u32 = f64::RADIX;
 /// let d = f64::MANTISSA_DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
+#[deprecated(
     since = "TBD",
-    reason = "replaced by the `MANTISSA_DIGITS` associated constant on `f64`"
+    note = "replaced by the `MANTISSA_DIGITS` associated constant on `f64`"
 )]
 pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
 
@@ -68,7 +68,7 @@ pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
 /// let d = f64::DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `DIGITS` associated constant on `f64`")]
+#[deprecated(since = "TBD", note = "replaced by the `DIGITS` associated constant on `f64`")]
 pub const DIGITS: u32 = f64::DIGITS;
 
 /// [Machine epsilon] value for `f64`.
@@ -89,10 +89,7 @@ pub const DIGITS: u32 = f64::DIGITS;
 /// let e = f64::EPSILON;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `EPSILON` associated constant on `f64`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `EPSILON` associated constant on `f64`")]
 pub const EPSILON: f64 = f64::EPSILON;
 
 /// Smallest finite `f64` value.
@@ -109,7 +106,7 @@ pub const EPSILON: f64 = f64::EPSILON;
 /// let min = f64::MIN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `MIN` associated constant on `f64`")]
+#[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on `f64`")]
 pub const MIN: f64 = f64::MIN;
 
 /// Smallest positive normal `f64` value.
@@ -126,10 +123,7 @@ pub const MIN: f64 = f64::MIN;
 /// let min = f64::MIN_POSITIVE;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MIN_POSITIVE` associated constant on `f64`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `MIN_POSITIVE` associated constant on `f64`")]
 pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
 
 /// Largest finite `f64` value.
@@ -146,7 +140,7 @@ pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
 /// let max = f64::MAX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `MAX` associated constant on `f64`")]
+#[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on `f64`")]
 pub const MAX: f64 = f64::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
@@ -163,10 +157,7 @@ pub const MAX: f64 = f64::MAX;
 /// let min = f64::MIN_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MIN_EXP` associated constant on `f64`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `MIN_EXP` associated constant on `f64`")]
 pub const MIN_EXP: i32 = f64::MIN_EXP;
 
 /// Maximum possible power of 2 exponent.
@@ -183,10 +174,7 @@ pub const MIN_EXP: i32 = f64::MIN_EXP;
 /// let max = f64::MAX_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MAX_EXP` associated constant on `f64`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `MAX_EXP` associated constant on `f64`")]
 pub const MAX_EXP: i32 = f64::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
@@ -203,10 +191,7 @@ pub const MAX_EXP: i32 = f64::MAX_EXP;
 /// let min = f64::MIN_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MIN_10_EXP` associated constant on `f64`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `MIN_10_EXP` associated constant on `f64`")]
 pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
 
 /// Maximum possible power of 10 exponent.
@@ -223,10 +208,7 @@ pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
 /// let max = f64::MAX_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `MAX_10_EXP` associated constant on `f64`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `MAX_10_EXP` associated constant on `f64`")]
 pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 
 /// Not a Number (NaN).
@@ -243,7 +225,7 @@ pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 /// let nan = f64::NAN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "TBD", reason = "replaced by the `NAN` associated constant on `f64`")]
+#[deprecated(since = "TBD", note = "replaced by the `NAN` associated constant on `f64`")]
 pub const NAN: f64 = f64::NAN;
 
 /// Infinity (∞).
@@ -260,10 +242,7 @@ pub const NAN: f64 = f64::NAN;
 /// let inf = f64::INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `INFINITY` associated constant on `f64`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `INFINITY` associated constant on `f64`")]
 pub const INFINITY: f64 = f64::INFINITY;
 
 /// Negative infinity (−∞).
@@ -280,10 +259,7 @@ pub const INFINITY: f64 = f64::INFINITY;
 /// let ninf = f64::NEG_INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "TBD",
-    reason = "replaced by the `NEG_INFINITY` associated constant on `f64`"
-)]
+#[deprecated(since = "TBD", note = "replaced by the `NEG_INFINITY` associated constant on `f64`")]
 pub const NEG_INFINITY: f64 = f64::NEG_INFINITY;
 
 /// Basic mathematical constants.
@@ -370,7 +346,6 @@ pub mod consts {
     pub const LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
-#[lang = "f64"]
 #[cfg(not(test))]
 impl f64 {
     /// The radix or base of the internal representation of `f64`.
@@ -417,6 +392,15 @@ impl f64 {
     pub const MAX_10_EXP: i32 = 308;
 
     /// Not a Number (NaN).
+    ///
+    /// Note that IEEE-745 doesn't define just a single NaN value;
+    /// a plethora of bit patterns are considered to be NaN.
+    /// Furthermore, the standard makes a difference
+    /// between a "signaling" and a "quiet" NaN,
+    /// and allows inspecting its "payload" (the unspecified bits in the bit pattern).
+    /// This constant isn't guaranteed to equal to any specific NaN bitpattern,
+    /// and the stability of its representation over Rust versions
+    /// and target platforms isn't guaranteed.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NAN: f64 = 0.0_f64 / 0.0_f64;
     /// Infinity (∞).
@@ -426,7 +410,7 @@ impl f64 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
 
-    /// Returns `true` if this value is `NaN`.
+    /// Returns `true` if this value is NaN.
     ///
     /// ```
     /// let nan = f64::NAN;
@@ -449,7 +433,10 @@ impl f64 {
     #[inline]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub(crate) const fn abs_private(self) -> f64 {
-        f64::from_bits(self.to_bits() & 0x7fff_ffff_ffff_ffff)
+        // SAFETY: This transmutation is fine. Probably. For the reasons std is using it.
+        unsafe {
+            mem::transmute::<u64, f64>(mem::transmute::<f64, u64>(self) & 0x7fff_ffff_ffff_ffff)
+        }
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity, and
@@ -472,10 +459,13 @@ impl f64 {
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
     pub const fn is_infinite(self) -> bool {
-        self.abs_private() == Self::INFINITY
+        // Getting clever with transmutation can result in incorrect answers on some FPUs
+        // FIXME: alter the Rust <-> Rust calling convention to prevent this problem.
+        // See https://github.com/rust-lang/rust/issues/72327
+        (self == f64::INFINITY) | (self == f64::NEG_INFINITY)
     }
 
-    /// Returns `true` if this number is neither infinite nor `NaN`.
+    /// Returns `true` if this number is neither infinite nor NaN.
     ///
     /// ```
     /// let f = 7.0f64;
@@ -526,7 +516,7 @@ impl f64 {
     }
 
     /// Returns `true` if the number is neither zero, infinite,
-    /// [subnormal], or `NaN`.
+    /// [subnormal], or NaN.
     ///
     /// ```
     /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308f64
@@ -568,21 +558,77 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn classify(self) -> FpCategory {
+        // A previous implementation tried to only use bitmask-based checks,
+        // using f64::to_bits to transmute the float to its bit repr and match on that.
+        // Unfortunately, floating point numbers can be much worse than that.
+        // This also needs to not result in recursive evaluations of f64::to_bits.
+        //
+        // On some processors, in some cases, LLVM will "helpfully" lower floating point ops,
+        // in spite of a request for them using f32 and f64, to things like x87 operations.
+        // These have an f64's mantissa, but can have a larger than normal exponent.
+        // FIXME(jubilee): Using x87 operations is never necessary in order to function
+        // on x86 processors for Rust-to-Rust calls, so this issue should not happen.
+        // Code generation should be adjusted to use non-C calling conventions, avoiding this.
+        //
+        // Thus, a value may compare unequal to infinity, despite having a "full" exponent mask.
+        // And it may not be NaN, as it can simply be an "overextended" finite value.
+        if self.is_nan() {
+            FpCategory::Nan
+        } else {
+            // However, std can't simply compare to zero to check for zero, either,
+            // as correctness requires avoiding equality tests that may be Subnormal == -0.0
+            // because it may be wrong under "denormals are zero" and "flush to zero" modes.
+            // Most of std's targets don't use those, but they are used for thumbv7neon.
+            // So, this does use bitpattern matching for the rest.
+
+            // SAFETY: f64 to u64 is fine. Usually.
+            // If control flow has gotten this far, the value is definitely in one of the categories
+            // that f64::partial_classify can correctly analyze.
+            unsafe { f64::partial_classify(self) }
+        }
+    }
+
+    // This doesn't actually return a right answer for NaN on purpose,
+    // seeing as how it cannot correctly discern between a floating point NaN,
+    // and some normal floating point numbers truncated from an x87 FPU.
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    const unsafe fn partial_classify(self) -> FpCategory {
         const EXP_MASK: u64 = 0x7ff0000000000000;
         const MAN_MASK: u64 = 0x000fffffffffffff;
 
-        let bits = self.to_bits();
-        match (bits & MAN_MASK, bits & EXP_MASK) {
+        // SAFETY: The caller is not asking questions for which this will tell lies.
+        let b = unsafe { mem::transmute::<f64, u64>(self) };
+        match (b & MAN_MASK, b & EXP_MASK) {
+            (0, EXP_MASK) => FpCategory::Infinite,
             (0, 0) => FpCategory::Zero,
             (_, 0) => FpCategory::Subnormal,
-            (0, EXP_MASK) => FpCategory::Infinite,
-            (_, EXP_MASK) => FpCategory::Nan,
             _ => FpCategory::Normal,
         }
     }
 
-    /// Returns `true` if `self` has a positive sign, including `+0.0`, `NaN`s with
-    /// positive sign bit and positive infinity.
+    // This operates on bits, and only bits, so it can ignore concerns about weird FPUs.
+    // FIXME(jubilee): In a just world, this would be the entire impl for classify,
+    // plus a transmute. We do not live in a just world, but we can make it more so.
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    const fn classify_bits(b: u64) -> FpCategory {
+        const EXP_MASK: u64 = 0x7ff0000000000000;
+        const MAN_MASK: u64 = 0x000fffffffffffff;
+
+        match (b & MAN_MASK, b & EXP_MASK) {
+            (0, EXP_MASK) => FpCategory::Infinite,
+            (_, EXP_MASK) => FpCategory::Nan,
+            (0, 0) => FpCategory::Zero,
+            (_, 0) => FpCategory::Subnormal,
+            _ => FpCategory::Normal,
+        }
+    }
+
+    /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
+    /// positive sign bit and positive infinity. Note that IEEE-745 doesn't assign any
+    /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
+    /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
+    /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
+    /// See [explanation of NaN as a special value](f32) for more info.
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -601,15 +647,19 @@ impl f64 {
 
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.0.0", reason = "renamed to is_sign_positive")]
+    #[deprecated(since = "1.0.0", note = "renamed to is_sign_positive")]
     #[inline]
     #[doc(hidden)]
     pub fn is_positive(self) -> bool {
         self.is_sign_positive()
     }
 
-    /// Returns `true` if `self` has a negative sign, including `-0.0`, `NaN`s with
-    /// negative sign bit and negative infinity.
+    /// Returns `true` if `self` has a negative sign, including `-0.0`, NaNs with
+    /// negative sign bit and negative infinity. Note that IEEE-745 doesn't assign any
+    /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
+    /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
+    /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
+    /// See [explanation of NaN as a special value](f32) for more info.
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -623,12 +673,15 @@ impl f64 {
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
     pub const fn is_sign_negative(self) -> bool {
-        self.to_bits() & 0x8000_0000_0000_0000 != 0
+        // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
+        // applies to zeros and NaNs as well.
+        // SAFETY: This is just transmuting to get the sign bit, it's fine.
+        unsafe { mem::transmute::<f64, u64>(self) & 0x8000_0000_0000_0000 != 0 }
     }
 
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.0.0", reason = "renamed to is_sign_negative")]
+    #[deprecated(since = "1.0.0", note = "renamed to is_sign_negative")]
     #[inline]
     #[doc(hidden)]
     pub fn is_negative(self) -> bool {
@@ -688,10 +741,12 @@ impl f64 {
         self * (value / 180.0)
     }
 
-    /// Returns the maximum of the two numbers.
+    /// Returns the maximum of the two numbers, ignoring NaN.
     ///
-    /// Follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs.
-    /// This matches the behavior of libm’s fmax.
+    /// If one of the arguments is NaN, then the other argument is returned.
+    /// This follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
+    /// This also matches the behavior of libm’s fmax.
     ///
     /// ```
     /// let x = 1.0_f64;
@@ -699,8 +754,6 @@ impl f64 {
     ///
     /// assert_eq!(x.max(y), y);
     /// ```
-    ///
-    /// If one of the arguments is NaN, then the other argument is returned.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -708,10 +761,12 @@ impl f64 {
         intrinsics::maxnumf64(self, other)
     }
 
-    /// Returns the minimum of the two numbers.
+    /// Returns the minimum of the two numbers, ignoring NaN.
     ///
-    /// Follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs.
-    /// This matches the behavior of libm’s fmin.
+    /// If one of the arguments is NaN, then the other argument is returned.
+    /// This follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
+    /// This also matches the behavior of libm’s fmin.
     ///
     /// ```
     /// let x = 1.0_f64;
@@ -719,8 +774,6 @@ impl f64 {
     ///
     /// assert_eq!(x.min(y), x);
     /// ```
-    ///
-    /// If one of the arguments is NaN, then the other argument is returned.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -728,7 +781,7 @@ impl f64 {
         intrinsics::minnumf64(self, other)
     }
 
-    /// Returns the maximum of the two numbers, propagating NaNs.
+    /// Returns the maximum of the two numbers, propagating NaN.
     ///
     /// This returns NaN when *either* argument is NaN, as opposed to
     /// [`f64::max`] which only returns NaN when *both* arguments are NaN.
@@ -745,6 +798,9 @@ impl f64 {
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
     /// Note that this follows the semantics specified in IEEE 754-2019.
+    ///
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
+    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
@@ -760,7 +816,7 @@ impl f64 {
         }
     }
 
-    /// Returns the minimum of the two numbers, propagating NaNs.
+    /// Returns the minimum of the two numbers, propagating NaN.
     ///
     /// This returns NaN when *either* argument is NaN, as opposed to
     /// [`f64::min`] which only returns NaN when *both* arguments are NaN.
@@ -777,6 +833,9 @@ impl f64 {
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
     /// Note that this follows the semantics specified in IEEE 754-2019.
+    ///
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
+    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
@@ -848,8 +907,31 @@ impl f64 {
     #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
     #[inline]
     pub const fn to_bits(self) -> u64 {
-        // SAFETY: `u64` is a plain old datatype so we can always transmute to it
-        unsafe { mem::transmute(self) }
+        // SAFETY: `u64` is a plain old datatype so we can always transmute to it.
+        // ...sorta.
+        //
+        // See the SAFETY comment in f64::from_bits for more.
+        #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+        const fn ct_f64_to_u64(ct: f64) -> u64 {
+            match ct.classify() {
+                FpCategory::Nan => {
+                    panic!("const-eval error: cannot use f64::to_bits on a NaN")
+                }
+                FpCategory::Subnormal => {
+                    panic!("const-eval error: cannot use f64::to_bits on a subnormal number")
+                }
+                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
+                    // SAFETY: We have a normal floating point number. Now we transmute, i.e. do a bitcopy.
+                    unsafe { mem::transmute::<f64, u64>(ct) }
+                }
+            }
+        }
+        // SAFETY: `u64` is a plain old datatype so we can always... uh...
+        // ...look, just pretend you forgot what you just read.
+        // Stability concerns.
+        let rt_f64_to_u64 = |rt| unsafe { mem::transmute::<f64, u64>(rt) };
+        // SAFETY: We use internal implementations that either always work or fail at compile time.
+        unsafe { intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f64_to_u64) }
     }
 
     /// Raw transmutation from `u64`.
@@ -893,13 +975,63 @@ impl f64 {
     #[must_use]
     #[inline]
     pub const fn from_bits(v: u64) -> Self {
-        // SAFETY: `u64` is a plain old datatype so we can always transmute from it
         // It turns out the safety issues with sNaN were overblown! Hooray!
-        unsafe { mem::transmute(v) }
+        // SAFETY: `u64` is a plain old datatype so we can always transmute from it
+        // ...sorta.
+        //
+        // It turns out that at runtime, it is possible for a floating point number
+        // to be subject to floating point modes that alter nonzero subnormal numbers
+        // to zero on reads and writes, aka "denormals are zero" and "flush to zero".
+        // This is not a problem usually, but at least one tier2 platform for Rust
+        // actually exhibits an FTZ behavior by default: thumbv7neon
+        // aka "the Neon FPU in AArch32 state"
+        //
+        // Even with this, not all instructions exhibit the FTZ behaviors on thumbv7neon,
+        // so this should load the same bits if LLVM emits the "correct" instructions,
+        // but LLVM sometimes makes interesting choices about float optimization,
+        // and other FPUs may do similar. Thus, it is wise to indulge luxuriously in caution.
+        //
+        // In addition, on x86 targets with SSE or SSE2 disabled and the x87 FPU enabled,
+        // i.e. not soft-float, the way Rust does parameter passing can actually alter
+        // a number that is "not infinity" to have the same exponent as infinity,
+        // in a slightly unpredictable manner.
+        //
+        // And, of course evaluating to a NaN value is fairly nondeterministic.
+        // More precisely: when NaN should be returned is knowable, but which NaN?
+        // So far that's defined by a combination of LLVM and the CPU, not Rust.
+        // This function, however, allows observing the bitstring of a NaN,
+        // thus introspection on CTFE.
+        //
+        // In order to preserve, at least for the moment, const-to-runtime equivalence,
+        // reject any of these possible situations from happening.
+        #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+        const fn ct_u64_to_f64(ct: u64) -> f64 {
+            match f64::classify_bits(ct) {
+                FpCategory::Subnormal => {
+                    panic!("const-eval error: cannot use f64::from_bits on a subnormal number")
+                }
+                FpCategory::Nan => {
+                    panic!("const-eval error: cannot use f64::from_bits on NaN")
+                }
+                FpCategory::Infinite | FpCategory::Normal | FpCategory::Zero => {
+                    // SAFETY: It's not a frumious number
+                    unsafe { mem::transmute::<u64, f64>(ct) }
+                }
+            }
+        }
+        // SAFETY: `u64` is a plain old datatype so we can always... uh...
+        // ...look, just pretend you forgot what you just read.
+        // Stability concerns.
+        let rt_u64_to_f64 = |rt| unsafe { mem::transmute::<u64, f64>(rt) };
+        // SAFETY: We use internal implementations that either always work or fail at compile time.
+        unsafe { intrinsics::const_eval_select((v,), ct_u64_to_f64, rt_u64_to_f64) }
     }
 
     /// Return the memory representation of this floating point number as a byte array in
     /// big-endian (network) byte order.
+    ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
     ///
     /// # Examples
     ///
@@ -918,6 +1050,9 @@ impl f64 {
 
     /// Return the memory representation of this floating point number as a byte array in
     /// little-endian byte order.
+    ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
     ///
     /// # Examples
     ///
@@ -943,6 +1078,9 @@ impl f64 {
     /// [`to_be_bytes`]: f64::to_be_bytes
     /// [`to_le_bytes`]: f64::to_le_bytes
     ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
+    ///
     /// # Examples
     ///
     /// ```
@@ -967,6 +1105,9 @@ impl f64 {
 
     /// Create a floating point value from its representation as a byte array in big endian.
     ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
+    ///
     /// # Examples
     ///
     /// ```
@@ -982,6 +1123,9 @@ impl f64 {
     }
 
     /// Create a floating point value from its representation as a byte array in little endian.
+    ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
     ///
     /// # Examples
     ///
@@ -1005,6 +1149,9 @@ impl f64 {
     ///
     /// [`from_be_bytes`]: f64::from_be_bytes
     /// [`from_le_bytes`]: f64::from_le_bytes
+    ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
     ///
     /// # Examples
     ///
@@ -1056,7 +1203,6 @@ impl f64 {
     /// # Example
     ///
     /// ```
-    /// #![feature(total_cmp)]
     /// struct GoodBoy {
     ///     name: String,
     ///     weight: f64,
@@ -1076,7 +1222,7 @@ impl f64 {
     /// #     .zip([-5.0, 0.1, 10.0, 99.0, f64::INFINITY, f64::NAN].iter())
     /// #     .all(|(a, b)| a.to_bits() == b.to_bits()))
     /// ```
-    #[unstable(feature = "total_cmp", issue = "72599")]
+    #[stable(feature = "total_cmp", since = "1.62.0")]
     #[must_use]
     #[inline]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {

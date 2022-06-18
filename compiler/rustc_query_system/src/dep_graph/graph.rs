@@ -784,8 +784,8 @@ impl<K: DepKind> DepGraph<K> {
 
             let handle = tcx.dep_context().sess().diagnostic();
 
-            for diagnostic in side_effects.diagnostics {
-                handle.emit_diagnostic(&diagnostic);
+            for mut diagnostic in side_effects.diagnostics {
+                handle.emit_diagnostic(&mut diagnostic);
             }
         }
     }
@@ -842,7 +842,7 @@ impl<K: DepKind> DepGraph<K> {
         if let Some(data) = &self.data {
             data.current.encoder.steal().finish(profiler)
         } else {
-            Ok(())
+            Ok(0)
         }
     }
 
@@ -887,7 +887,7 @@ impl<K: DepKind> DepGraph<K> {
 pub struct WorkProduct {
     pub cgu_name: String,
     /// Saved file associated with this CGU.
-    pub saved_file: Option<String>,
+    pub saved_file: String,
 }
 
 // Index type for `DepNodeData`'s edges.

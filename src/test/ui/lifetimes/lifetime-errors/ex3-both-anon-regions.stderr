@@ -1,12 +1,13 @@
-error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions.rs:2:12
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions.rs:2:5
    |
 LL | fn foo(x: &mut Vec<&u8>, y: &u8) {
-   |                    ---      --- these two types are declared with different lifetimes...
+   |                    -        - let's call the lifetime of this reference `'1`
+   |                    |
+   |                    let's call the lifetime of this reference `'2`
 LL |     x.push(y);
-   |            ^ ...but data from `y` flows into `x` here
+   |     ^^^^^^^^^ argument requires that `'1` must outlive `'2`
    |
-   = note: each elided lifetime in input position becomes a distinct lifetime
 help: consider introducing a named lifetime parameter
    |
 LL | fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) {
@@ -14,4 +15,3 @@ LL | fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0623`.

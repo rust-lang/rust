@@ -17,19 +17,20 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// This will always panic at runtime.
     ///
-    /// ### Known problems
-    /// Hopefully none.
-    ///
     /// ### Example
-    /// ```no_run
+    /// ```rust,no_run
     /// # #![allow(const_err)]
     /// let x = [1, 2, 3, 4];
     ///
-    /// // Bad
     /// x[9];
     /// &x[2..9];
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let x = [1, 2, 3, 4];
+    /// // Index within bounds
+    ///
     /// x[0];
     /// x[3];
     /// ```
@@ -49,42 +50,32 @@ declare_clippy_lint! {
     /// Indexing and slicing can panic at runtime and there are
     /// safe alternatives.
     ///
-    /// ### Known problems
-    /// Hopefully none.
-    ///
     /// ### Example
     /// ```rust,no_run
     /// // Vector
     /// let x = vec![0; 5];
     ///
-    /// // Bad
     /// x[2];
     /// &x[2..100];
-    /// &x[2..];
-    /// &x[..100];
-    ///
-    /// // Good
-    /// x.get(2);
-    /// x.get(2..100);
-    /// x.get(2..);
-    /// x.get(..100);
     ///
     /// // Array
     /// let y = [0, 1, 2, 3];
     ///
-    /// // Bad
     /// &y[10..100];
     /// &y[10..];
-    /// &y[..100];
+    /// ```
     ///
-    /// // Good
-    /// &y[2..];
-    /// &y[..2];
-    /// &y[0..3];
+    /// Use instead:
+    /// ```rust
+    /// # #![allow(unused)]
+    ///
+    /// # let x = vec![0; 5];
+    /// # let y = [0, 1, 2, 3];
+    /// x.get(2);
+    /// x.get(2..100);
+    ///
     /// y.get(10);
     /// y.get(10..100);
-    /// y.get(10..);
-    /// y.get(..100);
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub INDEXING_SLICING,
@@ -96,6 +87,10 @@ declare_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]
 
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+            return;
+        }
+
         if let ExprKind::Index(array, index) = &expr.kind {
             let ty = cx.typeck_results().expr_ty(array).peel_refs();
             if let Some(range) = higher::Range::hir(index) {
@@ -151,6 +146,10 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             } else {
                 // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.kind() {
+                    // Index is a const block.
+                    if let ExprKind::ConstBlock(..) = index.kind {
+                        return;
+                    }
                     // Index is a constant uint.
                     if let Some(..) = constant(cx, cx.typeck_results(), index) {
                         // Let rustc's `const_err` lint handle constant `usize` indexing on arrays.

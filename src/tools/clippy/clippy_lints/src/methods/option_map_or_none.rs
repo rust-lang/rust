@@ -14,10 +14,7 @@ use super::RESULT_MAP_OR_INTO_OPTION;
 
 // The expression inside a closure may or may not have surrounding braces
 // which causes problems when generating a suggestion.
-fn reduce_unit_expression<'a>(
-    cx: &LateContext<'_>,
-    expr: &'a hir::Expr<'_>,
-) -> Option<(&'a hir::Expr<'a>, &'a [hir::Expr<'a>])> {
+fn reduce_unit_expression<'a>(expr: &'a hir::Expr<'_>) -> Option<(&'a hir::Expr<'a>, &'a [hir::Expr<'a>])> {
     match expr.kind {
         hir::ExprKind::Call(func, arg_char) => Some((func, arg_char)),
         hir::ExprKind::Block(block, _) => {
@@ -25,7 +22,7 @@ fn reduce_unit_expression<'a>(
                 (&[], Some(inner_expr)) => {
                     // If block only contains an expression,
                     // reduce `|x| { x + 1 }` to `|x| x + 1`
-                    reduce_unit_expression(cx, inner_expr)
+                    reduce_unit_expression(inner_expr)
                 },
                 _ => None,
             }
@@ -74,33 +71,32 @@ pub(super) fn check<'tcx>(
     if is_option {
         let self_snippet = snippet(cx, recv.span, "..");
         if_chain! {
-        if let hir::ExprKind::Closure(_, _, id, span, _) = map_arg.kind;
-            let arg_snippet = snippet(cx, span, "..");
-            let body = cx.tcx.hir().body(id);
-                if let Some((func, [arg_char])) = reduce_unit_expression(cx, &body.value);
-                if let Some(id) = path_def_id(cx, func).and_then(|ctor_id| cx.tcx.parent(ctor_id));
-                if Some(id) == cx.tcx.lang_items().option_some_variant();
-                then {
-                    let func_snippet = snippet(cx, arg_char.span, "..");
-                    let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
-                       `map(..)` instead";
-                    return span_lint_and_sugg(
-                        cx,
-                        OPTION_MAP_OR_NONE,
-                        expr.span,
-                        msg,
-                        "try using `map` instead",
-                        format!("{0}.map({1} {2})", self_snippet, arg_snippet,func_snippet),
-                        Applicability::MachineApplicable,
-                    );
-                }
-
+            if let hir::ExprKind::Closure { body, fn_decl_span, .. } = map_arg.kind;
+            let arg_snippet = snippet(cx, fn_decl_span, "..");
+            let body = cx.tcx.hir().body(body);
+            if let Some((func, [arg_char])) = reduce_unit_expression(&body.value);
+            if let Some(id) = path_def_id(cx, func).map(|ctor_id| cx.tcx.parent(ctor_id));
+            if Some(id) == cx.tcx.lang_items().option_some_variant();
+            then {
+                let func_snippet = snippet(cx, arg_char.span, "..");
+                let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
+                   `map(..)` instead";
+                return span_lint_and_sugg(
+                    cx,
+                    OPTION_MAP_OR_NONE,
+                    expr.span,
+                    msg,
+                    "try using `map` instead",
+                    format!("{0}.map({1} {2})", self_snippet, arg_snippet,func_snippet),
+                    Applicability::MachineApplicable,
+                );
+            }
         }
 
         let func_snippet = snippet(cx, map_arg.span, "..");
         let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
                        `and_then(..)` instead";
-        return span_lint_and_sugg(
+        span_lint_and_sugg(
             cx,
             OPTION_MAP_OR_NONE,
             expr.span,
@@ -113,7 +109,7 @@ pub(super) fn check<'tcx>(
         let msg = "called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling \
                        `ok()` instead";
         let self_snippet = snippet(cx, recv.span, "..");
-        return span_lint_and_sugg(
+        span_lint_and_sugg(
             cx,
             RESULT_MAP_OR_INTO_OPTION,
             expr.span,

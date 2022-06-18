@@ -5,14 +5,14 @@
 //!
 //! For example, a type like:
 //!
-//! ```
+//! ```ignore (old code)
 //! #[derive(RustcEncodable, RustcDecodable)]
 //! struct Node { id: usize }
 //! ```
 //!
 //! would generate two implementations like:
 //!
-//! ```
+//! ```ignore (old code)
 //! # struct Node { id: usize }
 //! impl<S: Encoder<E>, E> Encodable<S, E> for Node {
 //!     fn encode(&self, s: &mut S) -> Result<(), E> {
@@ -40,7 +40,7 @@
 //! Other interesting scenarios are when the item has type parameters or
 //! references other non-built-in types. A type definition like:
 //!
-//! ```
+//! ```ignore (old code)
 //! # #[derive(RustcEncodable, RustcDecodable)]
 //! # struct Span;
 //! #[derive(RustcEncodable, RustcDecodable)]
@@ -49,7 +49,7 @@
 //!
 //! would yield functions like:
 //!
-//! ```
+//! ```ignore (old code)
 //! # #[derive(RustcEncodable, RustcDecodable)]
 //! # struct Span;
 //! # struct Spanned<T> { node: T, span: Span }

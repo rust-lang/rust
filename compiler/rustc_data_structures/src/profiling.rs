@@ -97,6 +97,7 @@ use std::time::{Duration, Instant};
 pub use measureme::EventId;
 use measureme::{EventIdBuilder, Profiler, SerializableString, StringId};
 use parking_lot::RwLock;
+use smallvec::SmallVec;
 
 bitflags::bitflags! {
     struct EventFilter: u32 {
@@ -183,11 +184,11 @@ impl SelfProfilerRef {
         }
     }
 
-    // This shim makes sure that calls only get executed if the filter mask
-    // lets them pass. It also contains some trickery to make sure that
-    // code is optimized for non-profiling compilation sessions, i.e. anything
-    // past the filter check is never inlined so it doesn't clutter the fast
-    // path.
+    /// This shim makes sure that calls only get executed if the filter mask
+    /// lets them pass. It also contains some trickery to make sure that
+    /// code is optimized for non-profiling compilation sessions, i.e. anything
+    /// past the filter check is never inlined so it doesn't clutter the fast
+    /// path.
     #[inline(always)]
     fn exec<F>(&self, event_filter: EventFilter, f: F) -> TimingGuard<'_>
     where
@@ -281,6 +282,66 @@ impl SelfProfilerRef {
             let event_id = if profiler.event_filter_mask.contains(EventFilter::FUNCTION_ARGS) {
                 let event_arg = profiler.get_or_alloc_cached_string(event_arg);
                 builder.from_label_and_arg(event_label, event_arg)
+            } else {
+                builder.from_label(event_label)
+            };
+            TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
+        })
+    }
+
+    /// Start profiling a generic activity, allowing costly arguments to be recorded. Profiling
+    /// continues until the `TimingGuard` returned from this call is dropped.
+    ///
+    /// If the arguments to a generic activity are cheap to create, use `generic_activity_with_arg`
+    /// or `generic_activity_with_args` for their simpler API. However, if they are costly or
+    /// require allocation in sufficiently hot contexts, then this allows for a closure to be called
+    /// only when arguments were asked to be recorded via `-Z self-profile-events=args`.
+    ///
+    /// In this case, the closure will be passed a `&mut EventArgRecorder`, to help with recording
+    /// one or many arguments within the generic activity being profiled, by calling its
+    /// `record_arg` method for example.
+    ///
+    /// This `EventArgRecorder` may implement more specific traits from other rustc crates, e.g. for
+    /// richer handling of rustc-specific argument types, while keeping this single entry-point API
+    /// for recording arguments.
+    ///
+    /// Note: recording at least one argument is *required* for the self-profiler to create the
+    /// `TimingGuard`. A panic will be triggered if that doesn't happen. This function exists
+    /// explicitly to record arguments, so it fails loudly when there are none to record.
+    ///
+    #[inline(always)]
+    pub fn generic_activity_with_arg_recorder<F>(
+        &self,
+        event_label: &'static str,
+        mut f: F,
+    ) -> TimingGuard<'_>
+    where
+        F: FnMut(&mut EventArgRecorder<'_>),
+    {
+        // Ensure this event will only be recorded when self-profiling is turned on.
+        self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
+            let builder = EventIdBuilder::new(&profiler.profiler);
+            let event_label = profiler.get_or_alloc_cached_string(event_label);
+
+            // Ensure the closure to create event arguments will only be called when argument
+            // recording is turned on.
+            let event_id = if profiler.event_filter_mask.contains(EventFilter::FUNCTION_ARGS) {
+                // Set up the builder and call the user-provided closure to record potentially
+                // costly event arguments.
+                let mut recorder = EventArgRecorder { profiler, args: SmallVec::new() };
+                f(&mut recorder);
+
+                // It is expected that the closure will record at least one argument. If that
+                // doesn't happen, it's a bug: we've been explicitly called in order to record
+                // arguments, so we fail loudly when there are none to record.
+                if recorder.args.is_empty() {
+                    panic!(
+                        "The closure passed to `generic_activity_with_arg_recorder` needs to \
+                         record at least one argument"
+                    );
+                }
+
+                builder.from_label_and_args(event_label, &recorder.args)
             } else {
                 builder.from_label(event_label)
             };
@@ -443,6 +504,33 @@ impl SelfProfilerRef {
     }
 }
 
+/// A helper for recording costly arguments to self-profiling events. Used with
+/// `SelfProfilerRef::generic_activity_with_arg_recorder`.
+pub struct EventArgRecorder<'p> {
+    /// The `SelfProfiler` used to intern the event arguments that users will ask to record.
+    profiler: &'p SelfProfiler,
+
+    /// The interned event arguments to be recorded in the generic activity event.
+    ///
+    /// The most common case, when actually recording event arguments, is to have one argument. Then
+    /// followed by recording two, in a couple places.
+    args: SmallVec<[StringId; 2]>,
+}
+
+impl EventArgRecorder<'_> {
+    /// Records a single argument within the current generic activity being profiled.
+    ///
+    /// Note: when self-profiling with costly event arguments, at least one argument
+    /// needs to be recorded. A panic will be triggered if that doesn't happen.
+    pub fn record_arg<A>(&mut self, event_arg: A)
+    where
+        A: Borrow<str> + Into<String>,
+    {
+        let event_arg = self.profiler.get_or_alloc_cached_string(event_arg);
+        self.args.push(event_arg);
+    }
+}
+
 pub struct SelfProfiler {
     profiler: Profiler,
     event_filter_mask: EventFilter,
@@ -462,14 +550,20 @@ impl SelfProfiler {
     pub fn new(
         output_directory: &Path,
         crate_name: Option<&str>,
-        event_filters: &Option<Vec<String>>,
+        event_filters: Option<&[String]>,
+        counter_name: &str,
     ) -> Result<SelfProfiler, Box<dyn Error + Send + Sync>> {
         fs::create_dir_all(output_directory)?;
 
         let crate_name = crate_name.unwrap_or("unknown-crate");
-        let filename = format!("{}-{}.rustc_profile", crate_name, process::id());
+        // HACK(eddyb) we need to pad the PID, strange as it may seem, as its
+        // length can behave as a source of entropy for heap addresses, when
+        // ASLR is disabled and the heap is otherwise determinic.
+        let pid: u32 = process::id();
+        let filename = format!("{}-{:07}.rustc_profile", crate_name, pid);
         let path = output_directory.join(&filename);
-        let profiler = Profiler::new(&path)?;
+        let profiler =
+            Profiler::with_counter(&path, measureme::counters::Counter::by_name(counter_name)?)?;
 
         let query_event_kind = profiler.alloc_string("Query");
         let generic_activity_event_kind = profiler.alloc_string("GenericActivity");
@@ -482,7 +576,7 @@ impl SelfProfiler {
 
         let mut event_filter_mask = EventFilter::empty();
 
-        if let Some(ref event_filters) = *event_filters {
+        if let Some(event_filters) = event_filters {
             let mut unknown_events = vec![];
             for item in event_filters {
                 if let Some(&(_, mask)) =
@@ -649,9 +743,28 @@ impl Drop for VerboseTimingGuard<'_> {
     fn drop(&mut self) {
         if let Some((start_time, start_rss, ref message)) = self.start_and_message {
             let end_rss = get_resident_set_size();
-            print_time_passes_entry(&message, start_time.elapsed(), start_rss, end_rss);
+            let dur = start_time.elapsed();
+
+            if should_print_passes(dur, start_rss, end_rss) {
+                print_time_passes_entry(&message, dur, start_rss, end_rss);
+            }
         }
     }
+}
+
+fn should_print_passes(dur: Duration, start_rss: Option<usize>, end_rss: Option<usize>) -> bool {
+    if dur.as_millis() > 5 {
+        return true;
+    }
+
+    if let (Some(start_rss), Some(end_rss)) = (start_rss, end_rss) {
+        let change_rss = end_rss.abs_diff(start_rss);
+        if change_rss > 0 {
+            return true;
+        }
+    }
+
+    false
 }
 
 pub fn print_time_passes_entry(

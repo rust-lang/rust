@@ -1,3 +1,4 @@
+#![feature(generic_associated_types)]
 #![crate_name = "foo"]
 
 pub trait MyTrait { fn dummy(&self) { } }
@@ -18,6 +19,18 @@ impl<D> Delta<D> where D: MyTrait {
 }
 
 pub struct Echo<E>(E);
+
+// @has 'foo/struct.Simd.html'
+// @snapshot SWhere_Simd_item-decl - '//div[@class="docblock item-decl"]'
+pub struct Simd<T>([T; 1])
+where
+    T: MyTrait;
+
+// @has 'foo/trait.TraitWhere.html'
+// @snapshot SWhere_TraitWhere_item-decl - '//div[@class="docblock item-decl"]'
+pub trait TraitWhere {
+    type Item<'a> where Self: 'a;
+}
 
 // @has foo/struct.Echo.html '//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
 //          "impl<E> MyTrait for Echo<E> where E: MyTrait"

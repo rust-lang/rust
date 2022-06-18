@@ -1,5 +1,4 @@
 // revisions: full generic_arg
-// compile-flags: -Zborrowck=mir
 // can't run rustfix because it doesn't handle multipart suggestions correctly
 // we need the above to avoid ast borrowck failure in recovered code
 #![cfg_attr(generic_arg, feature(generic_arg_infer))]

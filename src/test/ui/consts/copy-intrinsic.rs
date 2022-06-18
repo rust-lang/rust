@@ -2,14 +2,14 @@
 
 // ignore-tidy-linelength
 #![feature(intrinsics, staged_api)]
-#![feature(const_mut_refs, const_intrinsic_copy, const_ptr_offset)]
+#![feature(const_mut_refs)]
 use std::mem;
 
 extern "rust-intrinsic" {
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
     fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
-    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
     fn copy<T>(src: *const T, dst: *mut T, count: usize);
 }
 

@@ -2,7 +2,6 @@
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
@@ -10,9 +9,9 @@ use rustc_session::Session;
 use rustc_span::Span;
 
 use crate::base;
-use crate::traits::BuilderMethods;
 use crate::traits::*;
 
+#[derive(Copy, Clone)]
 pub enum IntPredicate {
     IntEQ,
     IntNE,
@@ -26,6 +25,7 @@ pub enum IntPredicate {
     IntSLE,
 }
 
+#[derive(Copy, Clone)]
 pub enum RealPredicate {
     RealPredicateFalse,
     RealOEQ,
@@ -45,6 +45,7 @@ pub enum RealPredicate {
     RealPredicateTrue,
 }
 
+#[derive(Copy, Clone)]
 pub enum AtomicRmwBinOp {
     AtomicXchg,
     AtomicAdd,
@@ -59,17 +60,17 @@ pub enum AtomicRmwBinOp {
     AtomicUMin,
 }
 
+#[derive(Copy, Clone)]
 pub enum AtomicOrdering {
-    NotAtomic,
     Unordered,
-    Monotonic,
-    // Consume,  // Not specified yet.
+    Relaxed,
     Acquire,
     Release,
     AcquireRelease,
     SequentiallyConsistent,
 }
 
+#[derive(Copy, Clone)]
 pub enum SynchronizationScope {
     SingleThread,
     CrossThread,
@@ -118,14 +119,15 @@ mod temp_stable_hash_impls {
     }
 }
 
-pub fn langcall(tcx: TyCtxt<'_>, span: Option<Span>, msg: &str, li: LangItem) -> DefId {
-    tcx.lang_items().require(li).unwrap_or_else(|s| {
-        let msg = format!("{} {}", msg, s);
-        match span {
-            Some(span) => tcx.sess.span_fatal(span, &msg),
-            None => tcx.sess.fatal(&msg),
-        }
-    })
+pub fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
+    span: Option<Span>,
+    li: LangItem,
+) -> (Bx::FnAbiOfResult, Bx::Value) {
+    let tcx = bx.tcx();
+    let def_id = tcx.require_lang_item(li, span);
+    let instance = ty::Instance::mono(tcx, def_id);
+    (bx.fn_abi_of_instance(instance, ty::List::empty()), bx.get_fn_addr(instance))
 }
 
 // To avoid UB from LLVM, these two functions mask RHS with an

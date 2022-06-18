@@ -10,7 +10,7 @@ reorder_imports = false
 ```
 
 Each configuration option is either stable or unstable.
-Stable options can be used directly, while unstable options are opt-in.
+Stable options can always be used, while unstable options are only available on a nightly toolchain and must be opted into.
 To enable unstable options, set `unstable_features = true` in `rustfmt.toml` or pass `--unstable-features` to rustfmt.
 
 # Configuration Options
@@ -930,6 +930,8 @@ fn add_one(x: i32) -> i32 {
 
 Format generated files. A file is considered generated
 if any of the first five lines contain a `@generated` comment marker.
+By default, generated files are reformatted, i. e. `@generated` marker is ignored.
+This option is currently ignored for stdin (`@generated` in stdin is ignored.)
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
@@ -1063,7 +1065,7 @@ See also: [`tab_spaces`](#tab_spaces).
 Control the case of the letters in hexadecimal literal values
 
 - **Default value**: `Preserve`
-- **Possible values**: `Upper`, `Lower`
+- **Possible values**: `Preserve`, `Upper`, `Lower`
 - **Stable**: No (tracking issue: [#5081](https://github.com/rust-lang/rustfmt/issues/5081))
 
 ## `hide_parse_errors`
@@ -1471,26 +1473,6 @@ use core::slice;
 #[cfg(feature = "alloc")] use core::slice;
 ```
 
-## `license_template_path`
-
-Check whether beginnings of files match a license template.
-
-- **Default value**: `""`
-- **Possible values**: path to a license template file
-- **Stable**: No (tracking issue: [#3352](https://github.com/rust-lang/rustfmt/issues/3352))
-
-A license template is a plain text file which is matched literally against the
-beginning of each source file, except for `{}`-delimited blocks, which are
-matched as regular expressions. The following license template therefore
-matches strings like `// Copyright 2017 The Rust Project Developers.`, `//
-Copyright 2018 The Rust Project Developers.`, etc.:
-
-```
-// Copyright {\d+} The Rust Project Developers.
-```
-
-`\{`, `\}` and `\\` match literal braces / backslashes.
-
 ## `match_arm_blocks`
 
 Controls whether arm bodies are wrapped in cases where the first line of the body cannot fit on the same line as the `=>` operator.
@@ -1702,6 +1684,8 @@ How imports should be grouped into `use` statements. Imports will be merged or s
 - **Default value**: `Preserve`
 - **Possible values**: `Preserve`, `Crate`, `Module`, `Item`, `One`
 - **Stable**: No (tracking issue: [#4991](https://github.com/rust-lang/rustfmt/issues/4991))
+
+Note that rustfmt will not modify the granularity of imports containing comments if doing so could potentially lose or misplace said comments.
 
 #### `Preserve` (default):
 
@@ -2059,11 +2043,15 @@ use sit;
 
 ## `group_imports`
 
-Controls the strategy for how imports are grouped together.
+Controls the strategy for how consecutive imports are grouped together.
+
+Controls the strategy for grouping sets of consecutive imports. Imports may contain newlines between imports and still be grouped together as a single set, but other statements between imports will result in different grouping sets.
 
 - **Default value**: `Preserve`
 - **Possible values**: `Preserve`, `StdExternalCrate`, `One`
 - **Stable**: No (tracking issue: [#5083](https://github.com/rust-lang/rustfmt/issues/5083))
+
+Each set of imports (one or more `use` statements, optionally separated by newlines) will be formatted independently. Other statements such as `mod ...` or `extern crate ...` will cause imports to not be grouped together.
 
 #### `Preserve` (default):
 
@@ -2160,35 +2148,6 @@ mod sit;
 **Note** `mod` with `#[macro_export]` will not be reordered since that could change the semantics
 of the original source code.
 
-## `report_fixme`
-
-Report `FIXME` items in comments.
-
-- **Default value**: `"Never"`
-- **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
-- **Stable**: No (tracking issue: [#3394](https://github.com/rust-lang/rustfmt/issues/3394))
-
-Warns about any comments containing `FIXME` in them when set to `"Always"`. If
-it contains a `#X` (with `X` being a number) in parentheses following the
-`FIXME`, `"Unnumbered"` will ignore it.
-
-See also [`report_todo`](#report_todo).
-
-
-## `report_todo`
-
-Report `TODO` items in comments.
-
-- **Default value**: `"Never"`
-- **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
-- **Stable**: No (tracking issue: [#3393](https://github.com/rust-lang/rustfmt/issues/3393))
-
-Warns about any comments containing `TODO` in them when set to `"Always"`. If
-it contains a `#X` (with `X` being a number) in parentheses following the
-`TODO`, `"Unnumbered"` will ignore it.
-
-See also [`report_fixme`](#report_fixme).
-
 ## `required_version`
 
 Require a specific version of rustfmt. If you want to make sure that the
@@ -2198,13 +2157,47 @@ specific version of rustfmt is used in your CI, use this option.
 - **Possible values**: any published version (e.g. `"0.3.8"`)
 - **Stable**: No (tracking issue: [#3386](https://github.com/rust-lang/rustfmt/issues/3386))
 
+## `short_array_element_width_threshold`
+
+The width threshold for an array element to be considered "short".
+
+The layout of an array is dependent on the length of each of its elements. 
+If the length of every element in an array is below this threshold (all elements are "short") then the array can be formatted in the mixed/compressed style, but if any one element has a length that exceeds this threshold then the array elements will have to be formatted vertically.
+
+- **Default value**: `10`
+- **Possible values**: any positive integer that is less than or equal to the value specified for [`max_width`](#max_width)
+- **Stable**: Yes
+
+#### `10` (default):
+```rust
+fn main() {
+    pub const FORMAT_TEST: [u64; 5] = [
+        0x0000000000000000,
+        0xaaaaaaaaaaaaaaaa,
+        0xbbbbbbbbbbbbbbbb,
+        0xcccccccccccccccc,
+        0xdddddddddddddddd,
+    ];
+}
+```
+#### `20`:
+```rust
+fn main() {
+    pub const FORMAT_TEST: [u64; 5] = [
+        0x0000000000000000, 0xaaaaaaaaaaaaaaaa, 0xbbbbbbbbbbbbbbbb, 0xcccccccccccccccc,
+        0xdddddddddddddddd,
+    ];
+}
+```
+See also [`max_width`](#max_width).
+
 ## `skip_children`
 
 Don't reformat out of line modules
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No (tracking issue: [#3389](https://github.com/rust-lang/rustfmt/issues/3386))
+- **Stable**: No (tracking issue: [#3389](https://github.com/rust-lang/rustfmt/issues/3389))
 
 ## `single_line_if_else_max_width`
 

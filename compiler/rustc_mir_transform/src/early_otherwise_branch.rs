@@ -95,7 +95,7 @@ pub struct EarlyOtherwiseBranch;
 
 impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+        sess.mir_opt_level() >= 3 && sess.opts.debugging_opts.unsound_mir_opts
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -226,10 +226,41 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
 
 /// Returns true if computing the discriminant of `place` may be hoisted out of the branch
 fn may_hoist<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, place: Place<'tcx>) -> bool {
+    // FIXME(JakobDegen): This is unsound. Someone could write code like this:
+    // ```rust
+    // let Q = val;
+    // if discriminant(P) == otherwise {
+    //     let ptr = &mut Q as *mut _ as *mut u8;
+    //     unsafe { *ptr = 10; } // Any invalid value for the type
+    // }
+    //
+    // match P {
+    //    A => match Q {
+    //        A => {
+    //            // code
+    //        }
+    //        _ => {
+    //            // don't use Q
+    //        }
+    //    }
+    //    _ => {
+    //        // don't use Q
+    //    }
+    // };
+    // ```
+    //
+    // Hoisting the `discriminant(Q)` out of the `A` arm causes us to compute the discriminant of an
+    // invalid value, which is UB.
+    //
+    // In order to fix this, we would either need to show that the discriminant computation of
+    // `place` is computed in all branches, including the `otherwise` branch, or we would need
+    // another analysis pass to determine that the place is fully initialized. It might even be best
+    // to have the hoisting be performed in a different pass and just do the CFG changing in this
+    // pass.
     for (place, proj) in place.iter_projections() {
         match proj {
             // Dereferencing in the computation of `place` might cause issues from one of two
-            // cateogires. First, the referrent might be invalid. We protect against this by
+            // categories. First, the referent might be invalid. We protect against this by
             // dereferencing references only (not pointers). Second, the use of a reference may
             // invalidate other references that are used later (for aliasing reasons). Consider
             // where such an invalidated reference may appear:
@@ -305,9 +336,7 @@ fn evaluate_candidate<'tcx>(
             Some(poss)
         }
     };
-    let Some((_, child)) = targets.iter().next() else {
-        return None
-    };
+    let (_, child) = targets.iter().next()?;
     let child_terminator = &bbs[child].terminator();
     let TerminatorKind::SwitchInt {
         switch_ty: child_ty,
@@ -359,7 +388,7 @@ fn verify_candidate_branch<'tcx>(
     if branch.statements.len() != 1 {
         return false;
     }
-    // ...assign the descriminant of `place` in that statement
+    // ...assign the discriminant of `place` in that statement
     let StatementKind::Assign(boxed) = &branch.statements[0].kind else {
         return false
     };

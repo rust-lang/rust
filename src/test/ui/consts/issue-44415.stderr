@@ -1,10 +1,10 @@
-error[E0391]: cycle detected when simplifying constant for the type system `Foo::bytes::{constant#0}`
+error[E0391]: cycle detected when evaluating type-level constant
   --> $DIR/issue-44415.rs:6:17
    |
 LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
    |                 ^^^^^^
    |
-note: ...which requires simplifying constant for the type system `Foo::bytes::{constant#0}`...
+note: ...which requires const-evaluating + checking `Foo::bytes::{constant#0}`...
   --> $DIR/issue-44415.rs:6:17
    |
 LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
@@ -17,7 +17,7 @@ LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
    = note: ...which requires computing layout of `Foo`...
    = note: ...which requires computing layout of `[u8; _]`...
    = note: ...which requires normalizing `[u8; _]`...
-   = note: ...which again requires simplifying constant for the type system `Foo::bytes::{constant#0}`, completing the cycle
+   = note: ...which again requires evaluating type-level constant, completing the cycle
 note: cycle used when checking that `Foo` is well-formed
   --> $DIR/issue-44415.rs:5:1
    |

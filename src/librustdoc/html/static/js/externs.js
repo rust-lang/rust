@@ -3,18 +3,42 @@
 // type checking. See README.md in this directory for more info.
 
 /* eslint-disable */
-var searchState;
+let searchState;
 function initSearch(searchIndex){}
 
 /**
  * @typedef {{
- *   raw: string,
- *   query: string,
- *   type: string,
- *   id: string,
+ *     name: string,
+ *     fullPath: Array<string>,
+ *     pathWithoutLast: Array<string>,
+ *     pathLast: string,
+ *     generics: Array<QueryElement>,
  * }}
  */
-var ParsedQuery;
+let QueryElement;
+
+/**
+ * @typedef {{
+ *      pos: number,
+ *      totalElems: number,
+ *      typeFilter: (null|string),
+ *      userQuery: string,
+ * }}
+ */
+let ParserState;
+
+/**
+ * @typedef {{
+ *     original: string,
+ *     userQuery: string,
+ *     typeFilter: number,
+ *     elems: Array<QueryElement>,
+ *     args: Array<QueryElement>,
+ *     returned: Array<QueryElement>,
+ *     foundElems: number,
+ * }}
+ */
+let ParsedQuery;
 
 /**
  * @typedef {{
@@ -29,4 +53,31 @@ var ParsedQuery;
  *    type: (Array<?>|null)
  * }}
  */
-var Row;
+let Row;
+
+/**
+ * @typedef {{
+ *    in_args: Array<Object>,
+ *    returned: Array<Object>,
+ *    others: Array<Object>,
+ *    query: ParsedQuery,
+ * }}
+ */
+let ResultsTable;
+
+/**
+ * @typedef {{
+ *     desc: string,
+ *     displayPath: string,
+ *     fullPath: string,
+ *     href: string,
+ *     id: number,
+ *     lev: number,
+ *     name: string,
+ *     normalizedName: string,
+ *     parent: (Object|undefined),
+ *     path: string,
+ *     ty: number,
+ * }}
+ */
+let Results;

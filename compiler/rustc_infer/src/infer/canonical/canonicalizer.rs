@@ -11,7 +11,7 @@ use crate::infer::canonical::{
 };
 use crate::infer::InferCtxt;
 use rustc_middle::ty::flags::FlagComputation;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags};
 use std::sync::atomic::Ordering;
@@ -87,9 +87,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ///
     /// with a mapping M that maps `'?0` to `'static`. But if we found that there
     /// exists only one possible impl of `Trait`, and it looks like
-    ///
-    ///     impl<T> Trait<'static> for T { .. }
-    ///
+    /// ```ignore (illustrative)
+    /// impl<T> Trait<'static> for T { .. }
+    /// ```
     /// then we would prepare a query result R that (among other
     /// things) includes a mapping to `'?0 := 'static`. When
     /// canonicalizing this query result R, we would leave this
@@ -476,7 +476,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        match ct.val() {
+        match ct.kind() {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 debug!("canonical: const var found with vid {:?}", vid);
                 match self.infcx.probe_const_var(vid) {
@@ -778,7 +778,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         } else {
             let var = self.canonical_var(info, const_var.into());
             self.tcx().mk_const(ty::ConstS {
-                val: ty::ConstKind::Bound(self.binder_index, var),
+                kind: ty::ConstKind::Bound(self.binder_index, var),
                 ty: self.fold_ty(const_var.ty()),
             })
         }

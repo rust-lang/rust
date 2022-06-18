@@ -4,7 +4,6 @@
 // ignore-wasm32
 
 #![feature(naked_functions)]
-#![feature(or_patterns)]
 #![feature(asm_const, asm_sym, asm_unwind)]
 #![crate_type = "lib"]
 
@@ -38,6 +37,7 @@ pub unsafe extern "C" fn inc(a: u32) -> u32 {
 }
 
 #[naked]
+#[allow(asm_sub_register)]
 pub unsafe extern "C" fn inc_asm(a: u32) -> u32 {
     asm!("/* {0} */", in(reg) a, options(noreturn));
     //~^ ERROR referencing function parameters is not allowed in naked functions
@@ -196,4 +196,23 @@ pub unsafe extern "C" fn inline_never() {
 //~^ ERROR naked functions cannot be inlined
 pub unsafe extern "C" fn inline_all() {
     asm!("", options(noreturn));
+}
+
+#[naked]
+pub unsafe extern "C" fn allow_compile_error(a: u32) -> u32 {
+    compile_error!("this is a user specified error")
+    //~^ ERROR this is a user specified error
+}
+
+#[naked]
+pub unsafe extern "C" fn allow_compile_error_and_asm(a: u32) -> u32 {
+    compile_error!("this is a user specified error");
+    //~^ ERROR this is a user specified error
+    asm!("", options(noreturn))
+}
+
+#[naked]
+pub unsafe extern "C" fn invalid_asm_syntax(a: u32) -> u32 {
+    asm!(invalid_syntax)
+    //~^ ERROR asm template must be a string literal
 }

@@ -4,7 +4,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -70,7 +70,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             // of this function. Is this intentional?
             if let Some(ty::Generator(gen_def_id, substs, _)) = ty.map(Ty::kind) {
                 let body = tcx.optimized_mir(*gen_def_id).generator_drop().unwrap();
-                let body = body.clone().subst(tcx, substs);
+                let body = EarlyBinder(body.clone()).subst(tcx, substs);
                 debug!("make_shim({:?}) = {:?}", instance, body);
                 return body;
             }
@@ -151,7 +151,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     } else {
         InternalSubsts::identity_for_item(tcx, def_id)
     };
-    let sig = tcx.fn_sig(def_id).subst(tcx, substs);
+    let sig = tcx.bound_fn_sig(def_id).subst(tcx, substs);
     let sig = tcx.erase_late_bound_regions(sig);
     let span = tcx.def_span(def_id);
 
@@ -343,7 +343,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         // otherwise going to be TySelf and we can't index
         // or access fields of a Place of type TySelf.
         let substs = tcx.mk_substs_trait(self_ty, &[]);
-        let sig = tcx.fn_sig(def_id).subst(tcx, substs);
+        let sig = tcx.bound_fn_sig(def_id).subst(tcx, substs);
         let sig = tcx.erase_late_bound_regions(sig);
         let span = tcx.def_span(def_id);
 
@@ -430,7 +430,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let func = Operand::Constant(Box::new(Constant {
             span: self.span,
             user_ty: None,
-            literal: ty::Const::zero_sized(tcx, func_ty).into(),
+            literal: ConstantKind::zero_sized(func_ty),
         }));
 
         let ref_loc = self.make_place(
@@ -450,7 +450,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             TerminatorKind::Call {
                 func,
                 args: vec![Operand::Move(ref_loc)],
-                destination: Some((dest, next)),
+                destination: dest,
+                target: Some(next),
                 cleanup: Some(cleanup),
                 from_hir_call: true,
                 fn_span: self.span,
@@ -541,7 +542,7 @@ fn build_call_shim<'tcx>(
 
     assert_eq!(sig_substs.is_some(), !instance.has_polymorphic_mir_body());
     if let Some(sig_substs) = sig_substs {
-        sig = sig.subst(tcx, sig_substs);
+        sig = EarlyBinder(sig).subst(tcx, sig_substs);
     }
 
     if let CallKind::Indirect(fnty) = call_kind {
@@ -629,7 +630,7 @@ fn build_call_shim<'tcx>(
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: ty::Const::zero_sized(tcx, ty).into(),
+                    literal: ConstantKind::zero_sized(ty),
                 })),
                 rcvr.into_iter().collect::<Vec<_>>(),
             )
@@ -676,7 +677,8 @@ fn build_call_shim<'tcx>(
         TerminatorKind::Call {
             func: callee,
             args,
-            destination: Some((Place::return_place(), BasicBlock::new(1))),
+            destination: Place::return_place(),
+            target: Some(BasicBlock::new(1)),
             cleanup: if let Some(Adjustment::RefMut) = rcvr_adjustment {
                 Some(BasicBlock::new(3))
             } else {
@@ -725,9 +727,6 @@ fn build_call_shim<'tcx>(
 pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     debug_assert!(tcx.is_constructor(ctor_id));
 
-    let span =
-        tcx.hir().span_if_local(ctor_id).unwrap_or_else(|| bug!("no span for ctor {:?}", ctor_id));
-
     let param_env = tcx.param_env(ctor_id);
 
     // Normalize the sig.
@@ -739,6 +738,8 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     };
 
     debug!("build_ctor: ctor_id={:?} sig={:?}", ctor_id, sig);
+
+    let span = tcx.def_span(ctor_id);
 
     let local_decls = local_decls_for_sig(&sig, span);
 
@@ -760,10 +761,10 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 
     let statements = expand_aggregate(
         Place::return_place(),
-        adt_def.variants[variant_index].fields.iter().enumerate().map(|(idx, field_def)| {
+        adt_def.variant(variant_index).fields.iter().enumerate().map(|(idx, field_def)| {
             (Operand::Move(Place::from(Local::new(idx + 1))), field_def.ty(tcx, substs))
         }),
-        AggregateKind::Adt(adt_def.did, variant_index, substs, None, None),
+        AggregateKind::Adt(adt_def.did(), variant_index, substs, None, None),
         source_info,
         tcx,
     )

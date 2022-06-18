@@ -1,31 +1,55 @@
-// run-rustfix
-
-#![warn(clippy::all, clippy::pedantic)]
-#![allow(clippy::let_underscore_drop)]
-#![allow(clippy::missing_docs_in_private_items)]
-#![allow(clippy::map_identity)]
-#![allow(clippy::redundant_closure)]
-#![allow(clippy::unnecessary_wraps)]
+#![warn(clippy::map_flatten)]
 #![feature(result_flattening)]
 
+// issue #8506, multi-line
+#[rustfmt::skip]
+fn long_span() {
+    let _: Option<i32> = Some(1)
+        .map(|x| {
+            if x <= 5 {
+                Some(x)
+            } else {
+                None
+            }
+        })
+        .flatten();
+
+    let _: Result<i32, i32> = Ok(1)
+        .map(|x| {
+            if x == 1 {
+                Ok(x)
+            } else {
+                Err(0)
+            }
+        })
+        .flatten();
+
+    let result: Result<i32, i32> = Ok(2);
+    fn do_something() { }
+    let _: Result<i32, i32> = result
+        .map(|res| {
+            if res > 0 {
+                do_something();
+                Ok(res)
+            } else {
+                Err(0)
+            }
+        })
+        .flatten();
+        
+    let _: Vec<_> = vec![5_i8; 6]
+        .into_iter()
+        .map(|some_value| {
+            if some_value > 3 {
+                Some(some_value)
+            } else {
+                None
+            }
+        })
+        .flatten()
+        .collect();
+}
+
 fn main() {
-    // mapping to Option on Iterator
-    fn option_id(x: i8) -> Option<i8> {
-        Some(x)
-    }
-    let option_id_ref: fn(i8) -> Option<i8> = option_id;
-    let option_id_closure = |x| Some(x);
-    let _: Vec<_> = vec![5_i8; 6].into_iter().map(option_id).flatten().collect();
-    let _: Vec<_> = vec![5_i8; 6].into_iter().map(option_id_ref).flatten().collect();
-    let _: Vec<_> = vec![5_i8; 6].into_iter().map(option_id_closure).flatten().collect();
-    let _: Vec<_> = vec![5_i8; 6].into_iter().map(|x| x.checked_add(1)).flatten().collect();
-
-    // mapping to Iterator on Iterator
-    let _: Vec<_> = vec![5_i8; 6].into_iter().map(|x| 0..x).flatten().collect();
-
-    // mapping to Option on Option
-    let _: Option<_> = (Some(Some(1))).map(|x| x).flatten();
-
-    // mapping to Result on Result
-    let _: Result<_, &str> = (Ok(Ok(1))).map(|x| x).flatten();
+    long_span();
 }

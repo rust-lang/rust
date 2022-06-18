@@ -143,7 +143,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
 /// A set of constraints that need to be satisfied in order for
 /// a type to be valid for destruction.
 #[derive(Clone, Debug, HashStable)]
-pub struct DtorckConstraint<'tcx> {
+pub struct DropckConstraint<'tcx> {
     /// Types that are required to be alive in order for this
     /// type to be valid for destruction.
     pub outlives: Vec<ty::subst::GenericArg<'tcx>>,
@@ -157,17 +157,17 @@ pub struct DtorckConstraint<'tcx> {
     pub overflows: Vec<Ty<'tcx>>,
 }
 
-impl<'tcx> DtorckConstraint<'tcx> {
-    pub fn empty() -> DtorckConstraint<'tcx> {
-        DtorckConstraint { outlives: vec![], dtorck_types: vec![], overflows: vec![] }
+impl<'tcx> DropckConstraint<'tcx> {
+    pub fn empty() -> DropckConstraint<'tcx> {
+        DropckConstraint { outlives: vec![], dtorck_types: vec![], overflows: vec![] }
     }
 }
 
-impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx> {
-    fn from_iter<I: IntoIterator<Item = DtorckConstraint<'tcx>>>(iter: I) -> Self {
+impl<'tcx> FromIterator<DropckConstraint<'tcx>> for DropckConstraint<'tcx> {
+    fn from_iter<I: IntoIterator<Item = DropckConstraint<'tcx>>>(iter: I) -> Self {
         let mut result = Self::empty();
 
-        for DtorckConstraint { outlives, dtorck_types, overflows } in iter {
+        for DropckConstraint { outlives, dtorck_types, overflows } in iter {
             result.outlives.extend(outlives);
             result.dtorck_types.extend(dtorck_types);
             result.overflows.extend(overflows);

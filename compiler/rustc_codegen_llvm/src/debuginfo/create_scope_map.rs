@@ -20,64 +20,66 @@ pub fn compute_mir_scopes<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
-    fn_dbg_scope: &'ll DIScope,
     debug_context: &mut FunctionDebugContext<&'ll DIScope, &'ll DILocation>,
 ) {
-    // Find all the scopes with variables defined in them.
-    let mut has_variables = BitSet::new_empty(mir.source_scopes.len());
-
-    // Only consider variables when they're going to be emitted.
-    // FIXME(eddyb) don't even allocate `has_variables` otherwise.
-    if cx.sess().opts.debuginfo == DebugInfo::Full {
+    // Find all scopes with variables defined in them.
+    let variables = if cx.sess().opts.debuginfo == DebugInfo::Full {
+        let mut vars = BitSet::new_empty(mir.source_scopes.len());
         // FIXME(eddyb) take into account that arguments always have debuginfo,
         // irrespective of their name (assuming full debuginfo is enabled).
         // NOTE(eddyb) actually, on second thought, those are always in the
         // function scope, which always exists.
         for var_debug_info in &mir.var_debug_info {
-            has_variables.insert(var_debug_info.source_info.scope);
+            vars.insert(var_debug_info.source_info.scope);
         }
-    }
-
+        Some(vars)
+    } else {
+        // Nothing to emit, of course.
+        None
+    };
+    let mut instantiated = BitSet::new_empty(mir.source_scopes.len());
     // Instantiate all scopes.
     for idx in 0..mir.source_scopes.len() {
         let scope = SourceScope::new(idx);
-        make_mir_scope(cx, instance, mir, fn_dbg_scope, &has_variables, debug_context, scope);
+        make_mir_scope(cx, instance, mir, &variables, debug_context, &mut instantiated, scope);
     }
+    assert!(instantiated.count() == mir.source_scopes.len());
 }
 
 fn make_mir_scope<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
-    fn_dbg_scope: &'ll DIScope,
-    has_variables: &BitSet<SourceScope>,
+    variables: &Option<BitSet<SourceScope>>,
     debug_context: &mut FunctionDebugContext<&'ll DIScope, &'ll DILocation>,
+    instantiated: &mut BitSet<SourceScope>,
     scope: SourceScope,
 ) {
-    if debug_context.scopes[scope].dbg_scope.is_some() {
+    if instantiated.contains(scope) {
         return;
     }
 
     let scope_data = &mir.source_scopes[scope];
     let parent_scope = if let Some(parent) = scope_data.parent_scope {
-        make_mir_scope(cx, instance, mir, fn_dbg_scope, has_variables, debug_context, parent);
+        make_mir_scope(cx, instance, mir, variables, debug_context, instantiated, parent);
         debug_context.scopes[parent]
     } else {
         // The root is the function itself.
         let loc = cx.lookup_debug_loc(mir.span.lo());
         debug_context.scopes[scope] = DebugScope {
-            dbg_scope: Some(fn_dbg_scope),
-            inlined_at: None,
             file_start_pos: loc.file.start_pos,
             file_end_pos: loc.file.end_pos,
+            ..debug_context.scopes[scope]
         };
+        instantiated.insert(scope);
         return;
     };
 
-    if !has_variables.contains(scope) && scope_data.inlined.is_none() {
+    if let Some(vars) = variables && !vars.contains(scope) && scope_data.inlined.is_none() {
         // Do not create a DIScope if there are no variables defined in this
         // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
         debug_context.scopes[scope] = parent_scope;
+        instantiated.insert(scope);
         return;
     }
 
@@ -99,7 +101,7 @@ fn make_mir_scope<'ll, 'tcx>(
         None => unsafe {
             llvm::LLVMRustDIBuilderCreateLexicalBlock(
                 DIB(cx),
-                parent_scope.dbg_scope.unwrap(),
+                parent_scope.dbg_scope,
                 file_metadata,
                 loc.line,
                 loc.col,
@@ -115,9 +117,10 @@ fn make_mir_scope<'ll, 'tcx>(
     });
 
     debug_context.scopes[scope] = DebugScope {
-        dbg_scope: Some(dbg_scope),
+        dbg_scope,
         inlined_at: inlined_at.or(parent_scope.inlined_at),
         file_start_pos: loc.file.start_pos,
         file_end_pos: loc.file.end_pos,
     };
+    instantiated.insert(scope);
 }

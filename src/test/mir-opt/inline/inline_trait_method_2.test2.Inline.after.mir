@@ -29,4 +29,8 @@ fn test2(_1: &dyn X) -> bool {
         StorageDead(_2);                 // scope 0 at $DIR/inline-trait-method_2.rs:5:11: 5:12
         return;                          // scope 0 at $DIR/inline-trait-method_2.rs:6:2: 6:2
     }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at $DIR/inline-trait-method_2.rs:4:1: 6:2
+    }
 }

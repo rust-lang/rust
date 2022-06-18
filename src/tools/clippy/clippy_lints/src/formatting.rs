@@ -36,12 +36,18 @@ declare_clippy_lint! {
     /// This is either a typo in the binary operator or confusing.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// if foo <- 30 { // this should be `foo < -30` but looks like a different operator
-    /// }
+    /// ```rust
+    /// # let foo = true;
+    /// # let bar = false;
+    /// // &&! looks like a different operator
+    /// if foo &&! bar {}
+    /// ```
     ///
-    /// if foo &&! bar { // this should be `foo && !bar` but looks like a different operator
-    /// }
+    /// Use instead:
+    /// ```rust
+    /// # let foo = true;
+    /// # let bar = false;
+    /// if foo && !bar {}
     /// ```
     #[clippy::version = "1.40.0"]
     pub SUSPICIOUS_UNARY_OP_FORMATTING,

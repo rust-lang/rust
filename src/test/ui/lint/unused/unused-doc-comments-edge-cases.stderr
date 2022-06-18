@@ -49,6 +49,32 @@ LL | fn doc_comment_on_generic<#[doc = "x"] T>(val: T) {}
    |
    = help: use `//` for a plain comment
 
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:33:5
+   |
+LL |       /// unused doc comment
+   |       ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | /     {
+LL | |         let x = 12;
+LL | |     }
+   | |_____- rustdoc does not generate documentation for expressions
+   |
+   = help: use `//` for a plain comment
+
+error: unused doc comment
+  --> $DIR/unused-doc-comments-edge-cases.rs:40:1
+   |
+LL |   /// unused doc comment
+   |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | / extern "C" {
+LL | |     fn foo();
+LL | | }
+   | |_- rustdoc does not generate documentation for extern block
+   |
+   = help: use `//` for a plain comment
+
 error[E0308]: mismatched types
   --> $DIR/unused-doc-comments-edge-cases.rs:14:9
    |
@@ -63,7 +89,7 @@ help: you might have meant to return this value
 LL |         return true;
    |         ++++++     +
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0308, E0658.
 For more information about an error, try `rustc --explain E0308`.

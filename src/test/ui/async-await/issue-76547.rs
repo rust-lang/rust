@@ -18,7 +18,7 @@ impl<'a> Future for ListFut<'a> {
 
 async fn fut(bufs: &mut [&mut [u8]]) {
     ListFut(bufs).await
-    //~^ ERROR lifetime mismatch
+    //~^ ERROR lifetime may not live long enough
 }
 
 pub struct ListFut2<'a>(&'a mut [&'a mut [u8]]);
@@ -32,7 +32,7 @@ impl<'a> Future for ListFut2<'a> {
 
 async fn fut2(bufs: &mut [&mut [u8]]) -> i32 {
     ListFut2(bufs).await
-    //~^ ERROR lifetime mismatch
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

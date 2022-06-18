@@ -187,12 +187,12 @@ pub enum RegionClassification {
     ///
     /// Consider this example:
     ///
-    /// ```
+    /// ```ignore (pseudo-rust)
     /// fn foo<'a, 'b>(a: &'a u32, b: &'b u32, c: &'static u32) {
     ///   let closure = for<'x> |x: &'x u32| { .. };
-    ///                 ^^^^^^^ pretend this were legal syntax
-    ///                         for declaring a late-bound region in
-    ///                         a closure signature
+    ///    //           ^^^^^^^ pretend this were legal syntax
+    ///    //                   for declaring a late-bound region in
+    ///    //                   a closure signature
     /// }
     /// ```
     ///
@@ -336,7 +336,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// that this region imposes on others. The methods in this file
     /// handle the part about dumping the inference context internal
     /// state.
-    crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
+    pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
         match self.defining_ty {
             DefiningTy::Closure(def_id, substs) => {
                 err.note(&format!(
@@ -477,8 +477,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     .infcx
                     .tcx
                     .mk_region(ty::ReVar(self.infcx.next_nll_region_var(FR).to_region_vid()));
-                let va_list_ty =
-                    self.infcx.tcx.type_of(va_list_did).subst(self.infcx.tcx, &[region.into()]);
+                let va_list_ty = self
+                    .infcx
+                    .tcx
+                    .bound_type_of(va_list_did)
+                    .subst(self.infcx.tcx, &[region.into()]);
 
                 unnormalized_input_tys = self.infcx.tcx.mk_type_list(
                     unnormalized_input_tys.iter().copied().chain(iter::once(va_list_ty)),
@@ -524,7 +527,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.did.to_def_id());
 
-        match tcx.hir().body_owner_kind(self.mir_hir_id) {
+        match tcx.hir().body_owner_kind(self.mir_def.did) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
                 let defining_ty = if self.mir_def.did.to_def_id() == typeck_root_def_id {
                     tcx.type_of(typeck_root_def_id)
@@ -725,6 +728,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         self.tcx.fold_regions(value, &mut false, |_region, _depth| self.next_nll_region_var(origin))
     }
 
+    #[instrument(level = "debug", skip(self, indices))]
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
         origin: NllRegionVariableOrigin,
@@ -735,22 +739,15 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        debug!(
-            "replace_bound_regions_with_nll_infer_vars(value={:?}, all_outlive_scope={:?})",
-            value, all_outlive_scope,
-        );
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
-            debug!("replace_bound_regions_with_nll_infer_vars: br={:?}", br);
+            debug!(?br);
             let liberated_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: all_outlive_scope.to_def_id(),
                 bound_region: br.kind,
             }));
             let region_vid = self.next_nll_region_var(origin);
             indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
-            debug!(
-                "replace_bound_regions_with_nll_infer_vars: liberated_region={:?} => {:?}",
-                liberated_region, region_vid
-            );
+            debug!(?liberated_region, ?region_vid);
             region_vid
         });
         value
@@ -765,6 +762,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     /// entries for them and store them in the indices map. This code iterates over the complete
     /// set of late-bound regions and checks for any that we have not yet seen, adding them to the
     /// inputs vector.
+    #[instrument(skip(self, indices))]
     fn replace_late_bound_regions_with_nll_infer_vars(
         &self,
         mir_def_id: LocalDefId,
@@ -776,6 +774,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
             debug!("replace_late_bound_regions_with_nll_infer_vars: r={:?}", r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = self.next_nll_region_var(FR);
+                debug!(?region_vid);
                 indices.insert_late_bound_region(r, region_vid.to_region_vid());
             }
         });
@@ -831,13 +830,11 @@ fn for_each_late_bound_region_defined_on<'tcx>(
     fn_def_id: DefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {
-    if let Some((owner, late_bounds)) = tcx.is_late_bound_map(fn_def_id.expect_local()) {
-        for &late_bound in late_bounds.iter() {
-            let hir_id = HirId { owner, local_id: late_bound };
-            let name = tcx.hir().name(hir_id);
-            let region_def_id = tcx.hir().local_def_id(hir_id);
+    if let Some(late_bounds) = tcx.is_late_bound_map(fn_def_id.expect_local()) {
+        for &region_def_id in late_bounds.iter() {
+            let name = tcx.item_name(region_def_id.to_def_id());
             let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                scope: owner.to_def_id(),
+                scope: fn_def_id,
                 bound_region: ty::BoundRegionKind::BrNamed(region_def_id.to_def_id(), name),
             }));
             f(liberated_region);

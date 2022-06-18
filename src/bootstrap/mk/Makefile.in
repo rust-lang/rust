@@ -45,8 +45,6 @@ check-aux:
 		src/tools/cargo \
 		src/tools/cargotest \
 		$(BOOTSTRAP_ARGS)
-check-bootstrap:
-	$(Q)$(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap_test.py
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 distcheck:

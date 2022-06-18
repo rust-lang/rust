@@ -50,6 +50,9 @@ macro_rules! impl_integer_intrinsic {
 }
 
 impl_integer_intrinsic! {
+    unsafe impl ToBitMask<BitMask=u8> for Mask<_, 1>
+    unsafe impl ToBitMask<BitMask=u8> for Mask<_, 2>
+    unsafe impl ToBitMask<BitMask=u8> for Mask<_, 4>
     unsafe impl ToBitMask<BitMask=u8> for Mask<_, 8>
     unsafe impl ToBitMask<BitMask=u16> for Mask<_, 16>
     unsafe impl ToBitMask<BitMask=u32> for Mask<_, 32>

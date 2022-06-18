@@ -27,12 +27,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let x = vec![1];
-    /// x.iter().zip(0..x.len());
+    /// let _ = x.iter().zip(0..x.len());
     /// ```
-    /// Could be written as
+    ///
+    /// Use instead:
     /// ```rust
     /// # let x = vec![1];
-    /// x.iter().enumerate();
+    /// let _ = x.iter().enumerate();
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub RANGE_ZIP_WITH_LEN,
@@ -65,12 +66,21 @@ declare_clippy_lint! {
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// for x..(y+1) { .. }
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..(y+1) {
+    ///     // ..
+    /// }
     /// ```
-    /// Could be written as
-    /// ```rust,ignore
-    /// for x..=y { .. }
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..=y {
+    ///     // ..
+    /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub RANGE_PLUS_ONE,
@@ -94,12 +104,21 @@ declare_clippy_lint! {
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// for x..=(y-1) { .. }
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..=(y-1) {
+    ///     // ..
+    /// }
     /// ```
-    /// Could be written as
-    /// ```rust,ignore
-    /// for x..y { .. }
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..y {
+    ///     // ..
+    /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub RANGE_MINUS_ONE,
@@ -193,8 +212,8 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
                 check_range_zip_with_len(cx, path, args, expr.span);
             },
             ExprKind::Binary(ref op, l, r) => {
-                if meets_msrv(self.msrv.as_ref(), &msrvs::RANGE_CONTAINS) {
-                    check_possible_range_contains(cx, op.node, l, r, expr);
+                if meets_msrv(self.msrv, msrvs::RANGE_CONTAINS) {
+                    check_possible_range_contains(cx, op.node, l, r, expr, expr.span);
                 }
             },
             _ => {},
@@ -207,33 +226,37 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
     extract_msrv_attr!(LateContext);
 }
 
-fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'_>, r: &Expr<'_>, expr: &Expr<'_>) {
+fn check_possible_range_contains(
+    cx: &LateContext<'_>,
+    op: BinOpKind,
+    left: &Expr<'_>,
+    right: &Expr<'_>,
+    expr: &Expr<'_>,
+    span: Span,
+) {
     if in_constant(cx, expr.hir_id) {
         return;
     }
 
-    let span = expr.span;
     let combine_and = match op {
         BinOpKind::And | BinOpKind::BitAnd => true,
         BinOpKind::Or | BinOpKind::BitOr => false,
         _ => return,
     };
     // value, name, order (higher/lower), inclusiveness
-    if let (Some((lval, lid, name_span, lval_span, lord, linc)), Some((rval, rid, _, rval_span, rord, rinc))) =
-        (check_range_bounds(cx, l), check_range_bounds(cx, r))
-    {
+    if let (Some(l), Some(r)) = (check_range_bounds(cx, left), check_range_bounds(cx, right)) {
         // we only lint comparisons on the same name and with different
         // direction
-        if lid != rid || lord == rord {
+        if l.id != r.id || l.ord == r.ord {
             return;
         }
-        let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(l), &lval, &rval);
-        if combine_and && ord == Some(rord) {
+        let ord = Constant::partial_cmp(cx.tcx, cx.typeck_results().expr_ty(l.expr), &l.val, &r.val);
+        if combine_and && ord == Some(r.ord) {
             // order lower bound and upper bound
-            let (l_span, u_span, l_inc, u_inc) = if rord == Ordering::Less {
-                (lval_span, rval_span, linc, rinc)
+            let (l_span, u_span, l_inc, u_inc) = if r.ord == Ordering::Less {
+                (l.val_span, r.val_span, l.inc, r.inc)
             } else {
-                (rval_span, lval_span, rinc, linc)
+                (r.val_span, l.val_span, r.inc, l.inc)
             };
             // we only lint inclusive lower bounds
             if !l_inc {
@@ -245,7 +268,7 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
                 ("Range", "..")
             };
             let mut applicability = Applicability::MachineApplicable;
-            let name = snippet_with_applicability(cx, name_span, "_", &mut applicability);
+            let name = snippet_with_applicability(cx, l.name_span, "_", &mut applicability);
             let lo = snippet_with_applicability(cx, l_span, "_", &mut applicability);
             let hi = snippet_with_applicability(cx, u_span, "_", &mut applicability);
             let space = if lo.ends_with('.') { " " } else { "" };
@@ -258,13 +281,13 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
                 format!("({}{}{}{}).contains(&{})", lo, space, range_op, hi, name),
                 applicability,
             );
-        } else if !combine_and && ord == Some(lord) {
+        } else if !combine_and && ord == Some(l.ord) {
             // `!_.contains(_)`
             // order lower bound and upper bound
-            let (l_span, u_span, l_inc, u_inc) = if lord == Ordering::Less {
-                (lval_span, rval_span, linc, rinc)
+            let (l_span, u_span, l_inc, u_inc) = if l.ord == Ordering::Less {
+                (l.val_span, r.val_span, l.inc, r.inc)
             } else {
-                (rval_span, lval_span, rinc, linc)
+                (r.val_span, l.val_span, r.inc, l.inc)
             };
             if l_inc {
                 return;
@@ -275,7 +298,7 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
                 ("RangeInclusive", "..=")
             };
             let mut applicability = Applicability::MachineApplicable;
-            let name = snippet_with_applicability(cx, name_span, "_", &mut applicability);
+            let name = snippet_with_applicability(cx, l.name_span, "_", &mut applicability);
             let lo = snippet_with_applicability(cx, l_span, "_", &mut applicability);
             let hi = snippet_with_applicability(cx, u_span, "_", &mut applicability);
             let space = if lo.ends_with('.') { " " } else { "" };
@@ -290,9 +313,36 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
             );
         }
     }
+
+    // If the LHS is the same operator, we have to recurse to get the "real" RHS, since they have
+    // the same operator precedence
+    if_chain! {
+        if let ExprKind::Binary(ref lhs_op, _left, new_lhs) = left.kind;
+        if op == lhs_op.node;
+        let new_span = Span::new(new_lhs.span.lo(), right.span.hi(), expr.span.ctxt(), expr.span.parent());
+        if let Some(snip) = &snippet_opt(cx, new_span);
+        // Do not continue if we have mismatched number of parens, otherwise the suggestion is wrong
+        if snip.matches('(').count() == snip.matches(')').count();
+        then {
+            check_possible_range_contains(cx, op, new_lhs, right, expr, new_span);
+        }
+    }
 }
 
-fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, HirId, Span, Span, Ordering, bool)> {
+struct RangeBounds<'a> {
+    val: Constant,
+    expr: &'a Expr<'a>,
+    id: HirId,
+    name_span: Span,
+    val_span: Span,
+    ord: Ordering,
+    inc: bool,
+}
+
+// Takes a binary expression such as x <= 2 as input
+// Breaks apart into various pieces, such as the value of the number,
+// hir id of the variable, and direction/inclusiveness of the operator
+fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<RangeBounds<'a>> {
     if let ExprKind::Binary(ref op, l, r) = ex.kind {
         let (inclusive, ordering) = match op.node {
             BinOpKind::Gt => (false, Ordering::Greater),
@@ -303,11 +353,27 @@ fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, 
         };
         if let Some(id) = path_to_local(l) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), r) {
-                return Some((c, id, l.span, r.span, ordering, inclusive));
+                return Some(RangeBounds {
+                    val: c,
+                    expr: r,
+                    id,
+                    name_span: l.span,
+                    val_span: r.span,
+                    ord: ordering,
+                    inc: inclusive,
+                });
             }
         } else if let Some(id) = path_to_local(r) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), l) {
-                return Some((c, id, r.span, l.span, ordering.reverse(), inclusive));
+                return Some(RangeBounds {
+                    val: c,
+                    expr: l,
+                    id,
+                    name_span: r.span,
+                    val_span: l.span,
+                    ord: ordering.reverse(),
+                    inc: inclusive,
+                });
             }
         }
     }

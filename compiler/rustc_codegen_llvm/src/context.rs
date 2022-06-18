@@ -14,6 +14,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
@@ -55,7 +56,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub vtables:
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
+    pub const_str_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     ///
@@ -95,7 +96,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub isize_ty: &'ll Type,
 
     pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
-    pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
+    pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
     eh_catch_typeinfo: Cell<Option<&'ll Value>>,
@@ -105,6 +106,12 @@ pub struct CodegenCx<'ll, 'tcx> {
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
+
+    /// `codegen_static` will sometimes create a second global variable with a
+    /// different type and clear the symbol name of the original global.
+    /// `global_asm!` needs to be able to find this new global so that it can
+    /// compute the correct mangled symbol name to insert into the asm.
+    pub renamed_statics: RefCell<FxHashMap<DefId, &'ll Value>>,
 }
 
 pub struct TypeLowering<'ll> {
@@ -134,7 +141,7 @@ pub unsafe fn create_module<'ll>(
     let mod_name = SmallCStr::new(mod_name);
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
-    let mut target_data_layout = sess.target.data_layout.clone();
+    let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
     if llvm_version < (13, 0, 0) {
         if sess.target.arch == "powerpc64" {
@@ -319,11 +326,20 @@ pub unsafe fn create_module<'ll>(
         )
     }
 
+    if sess.opts.debugging_opts.virtual_function_elimination {
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Error,
+            "Virtual Function Elim\0".as_ptr().cast(),
+            1,
+        );
+    }
+
     llmod
 }
 
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
-    crate fn new(
+    pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,
         llvm_module: &'ll crate::ModuleLlvm,
@@ -360,7 +376,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         //   feasible. The compiler may be able to get around this, but it may
         //   involve some invasive changes to deal with this.
         //
-        // The flipside of this situation is that whenever you link to a dll and
+        // The flip side of this situation is that whenever you link to a dll and
         // you import a function from it, the import should be tagged with
         // `dllimport`. At this time, however, the compiler does not emit
         // `dllimport` for any declarations other than constants (where it is
@@ -396,8 +412,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         };
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
-            let dctx = debuginfo::CrateDebugContext::new(llmod);
-            debuginfo::metadata::compile_unit_metadata(tcx, codegen_unit.name().as_str(), &dctx);
+            let dctx = debuginfo::CodegenUnitDebugContext::new(llmod);
+            debuginfo::metadata::build_compile_unit_di_node(
+                tcx,
+                codegen_unit.name().as_str(),
+                &dctx,
+            );
             Some(dctx)
         } else {
             None
@@ -415,7 +435,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             codegen_unit,
             instances: Default::default(),
             vtables: Default::default(),
-            const_cstr_cache: Default::default(),
+            const_str_cache: Default::default(),
             const_unsized: Default::default(),
             const_globals: Default::default(),
             statics_to_rauw: RefCell::new(Vec::new()),
@@ -432,10 +452,11 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             rust_try_fn: Cell::new(None),
             intrinsics: Default::default(),
             local_gen_sym_counter: Cell::new(0),
+            renamed_statics: Default::default(),
         }
     }
 
-    crate fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
+    pub(crate) fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
         &self.statics_to_rauw
     }
 
@@ -587,7 +608,7 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll> CodegenCx<'ll, '_> {
-    crate fn get_intrinsic(&self, key: &str) -> (&'ll Type, &'ll Value) {
+    pub(crate) fn get_intrinsic(&self, key: &str) -> (&'ll Type, &'ll Value) {
         if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
         }
@@ -644,6 +665,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let t_isize = self.type_isize();
         let t_f32 = self.type_f32();
         let t_f64 = self.type_f64();
+        let t_metadata = self.type_metadata();
 
         ifn!("llvm.wasm.trunc.unsigned.i32.f32", fn(t_f32) -> t_i32);
         ifn!("llvm.wasm.trunc.unsigned.i32.f64", fn(t_f64) -> t_i32);
@@ -855,7 +877,10 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         // This isn't an "LLVM intrinsic", but LLVM's optimization passes
         // recognize it like one and we assume it exists in `core::slice::cmp`
-        ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i32);
+        match self.sess().target.arch.as_ref() {
+            "avr" | "msp430" => ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i16),
+            _ => ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i32),
+        }
 
         // variadic intrinsics
         ifn!("llvm.va_start", fn(i8p) -> void);
@@ -866,16 +891,17 @@ impl<'ll> CodegenCx<'ll, '_> {
             ifn!("llvm.instrprof.increment", fn(i8p, t_i64, t_i32, t_i32) -> void);
         }
 
-        ifn!("llvm.type.test", fn(i8p, self.type_metadata()) -> i1);
+        ifn!("llvm.type.test", fn(i8p, t_metadata) -> i1);
+        ifn!("llvm.type.checked.load", fn(i8p, t_i32, t_metadata) -> mk_struct! {i8p, i1});
 
         if self.sess().opts.debuginfo != DebugInfo::None {
-            ifn!("llvm.dbg.declare", fn(self.type_metadata(), self.type_metadata()) -> void);
-            ifn!("llvm.dbg.value", fn(self.type_metadata(), t_i64, self.type_metadata()) -> void);
+            ifn!("llvm.dbg.declare", fn(t_metadata, t_metadata) -> void);
+            ifn!("llvm.dbg.value", fn(t_metadata, t_i64, t_metadata) -> void);
         }
         None
     }
 
-    crate fn eh_catch_typeinfo(&self) -> &'ll Value {
+    pub(crate) fn eh_catch_typeinfo(&self) -> &'ll Value {
         if let Some(eh_catch_typeinfo) = self.eh_catch_typeinfo.get() {
             return eh_catch_typeinfo;
         }

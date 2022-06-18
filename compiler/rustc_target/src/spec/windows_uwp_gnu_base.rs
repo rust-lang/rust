@@ -9,24 +9,24 @@ pub fn opts() -> TargetOptions {
     let late_link_args_dynamic = LinkArgs::new();
     let late_link_args_static = LinkArgs::new();
     let mingw_libs = vec![
-        //"-lwinstorecompat".to_string(),
-        //"-lmingwex".to_string(),
-        //"-lwinstorecompat".to_string(),
-        "-lwinstorecompat".to_string(),
-        "-lruntimeobject".to_string(),
-        "-lsynchronization".to_string(),
-        "-lvcruntime140_app".to_string(),
-        "-lucrt".to_string(),
-        "-lwindowsapp".to_string(),
-        "-lmingwex".to_string(),
-        "-lmingw32".to_string(),
+        //"-lwinstorecompat".into(),
+        //"-lmingwex".into(),
+        //"-lwinstorecompat".into(),
+        "-lwinstorecompat".into(),
+        "-lruntimeobject".into(),
+        "-lsynchronization".into(),
+        "-lvcruntime140_app".into(),
+        "-lucrt".into(),
+        "-lwindowsapp".into(),
+        "-lmingwex".into(),
+        "-lmingw32".into(),
     ];
     late_link_args.insert(LinkerFlavor::Gcc, mingw_libs.clone());
     late_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), mingw_libs);
 
     TargetOptions {
-        abi: "uwp".to_string(),
-        vendor: "uwp".to_string(),
+        abi: "uwp".into(),
+        vendor: "uwp".into(),
         executables: false,
         limit_rdylib_exports: false,
         late_link_args,

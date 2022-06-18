@@ -1,13 +1,16 @@
 use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Const, Ty};
+use rustc_span::Span;
 use rustc_trait_selection::traits::query::Fallible;
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
-use crate::type_check::{Locations, TypeChecker};
+use crate::type_check::{InstantiateOpaqueType, Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
@@ -25,7 +28,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         v: ty::Variance,
         b: Ty<'tcx>,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) -> Fallible<()> {
         TypeRelating::new(
             self.infcx,
@@ -44,7 +47,7 @@ struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     locations: Locations,
 
     /// What category do we assign the resulting `'a: 'b` relationships?
-    category: ConstraintCategory,
+    category: ConstraintCategory<'tcx>,
 
     /// Information so that error reporting knows what types we are relating
     /// when reporting a bound region error.
@@ -55,7 +58,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     fn new(
         type_checker: &'me mut TypeChecker<'bccx, 'tcx>,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         universe_info: UniverseInfo<'tcx>,
     ) -> Self {
         Self { type_checker, locations, category, universe_info }
@@ -63,6 +66,10 @@ impl<'me, 'bccx, 'tcx> NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
 }
 
 impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
+    fn span(&self) -> Span {
+        self.locations.span(self.type_checker.body)
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.type_checker.param_env
     }
@@ -109,6 +116,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
                 sup,
                 sub,
                 locations: self.locations,
+                span: self.locations.span(self.type_checker.body),
                 category: self.category,
                 variance_info: info,
             },
@@ -117,6 +125,9 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
 
     // We don't have to worry about the equality of consts during borrow checking
     // as consts always have a static lifetime.
+    // FIXME(oli-obk): is this really true? We can at least have HKL and with
+    // inline consts we may have further lifetimes that may be unsound to treat as
+    // 'static.
     fn const_equate(&mut self, _a: Const<'tcx>, _b: Const<'tcx>) {}
 
     fn normalization() -> NormalizationStrategy {
@@ -125,5 +136,35 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
 
     fn forbid_inference_vars() -> bool {
         true
+    }
+
+    fn register_opaque_type(
+        &mut self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        a_is_expected: bool,
+    ) -> Result<(), TypeError<'tcx>> {
+        let param_env = self.param_env();
+        let span = self.span();
+        let def_id = self.type_checker.body.source.def_id().expect_local();
+        let body_id = self.type_checker.tcx().hir().local_def_id_to_hir_id(def_id);
+        let cause = ObligationCause::misc(span, body_id);
+        self.type_checker
+            .fully_perform_op(
+                self.locations,
+                self.category,
+                InstantiateOpaqueType {
+                    obligations: self
+                        .type_checker
+                        .infcx
+                        .handle_opaque_type(a, b, a_is_expected, &cause, param_env)?
+                        .obligations,
+                    // These fields are filled in during execution of the operation
+                    base_universe: None,
+                    region_constraints: None,
+                },
+            )
+            .unwrap();
+        Ok(())
     }
 }

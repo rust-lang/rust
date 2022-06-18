@@ -1,5 +1,5 @@
 error: passing a unit value to a function
-  --> $DIR/unit_arg_empty_blocks.rs:15:5
+  --> $DIR/unit_arg_empty_blocks.rs:16:5
    |
 LL |     foo({});
    |     ^^^^--^
@@ -9,7 +9,7 @@ LL |     foo({});
    = note: `-D clippy::unit-arg` implied by `-D warnings`
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg_empty_blocks.rs:16:5
+  --> $DIR/unit_arg_empty_blocks.rs:17:5
    |
 LL |     foo3({}, 2, 2);
    |     ^^^^^--^^^^^^^
@@ -17,7 +17,7 @@ LL |     foo3({}, 2, 2);
    |          help: use a unit literal instead: `()`
 
 error: passing unit values to a function
-  --> $DIR/unit_arg_empty_blocks.rs:17:5
+  --> $DIR/unit_arg_empty_blocks.rs:18:5
    |
 LL |     taking_two_units({}, foo(0));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL ~     taking_two_units((), ());
    |
 
 error: passing unit values to a function
-  --> $DIR/unit_arg_empty_blocks.rs:18:5
+  --> $DIR/unit_arg_empty_blocks.rs:19:5
    |
 LL |     taking_three_units({}, foo(0), foo(1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

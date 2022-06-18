@@ -15,6 +15,7 @@ where
 fn unit_literals() {
     z(" ");
     //~^ ERROR: the trait bound `&str: X` is not satisfied
+    //~| ERROR: unconstrained generic constant
 }
 
 fn main() {}

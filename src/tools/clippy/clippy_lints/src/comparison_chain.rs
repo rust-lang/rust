@@ -34,8 +34,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// Could be written:
-    ///
+    /// Use instead:
     /// ```rust,ignore
     /// use std::cmp::Ordering;
     /// # fn a() {}

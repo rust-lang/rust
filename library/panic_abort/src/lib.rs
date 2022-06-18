@@ -9,7 +9,6 @@
 #![panic_runtime]
 #![allow(unused_features)]
 #![feature(core_intrinsics)]
-#![feature(nll)]
 #![feature(panic_runtime)]
 #![feature(std_internals)]
 #![feature(staged_api)]
@@ -30,7 +29,7 @@ pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Sen
 
 // "Leak" the payload and shim to the relevant abort on the platform in question.
 #[rustc_std_internal_symbol]
-pub unsafe extern "C-unwind" fn __rust_start_panic(_payload: *mut &mut dyn BoxMeUp) -> u32 {
+pub unsafe fn __rust_start_panic(_payload: *mut &mut dyn BoxMeUp) -> u32 {
     // Android has the ability to attach a message as part of the abort.
     #[cfg(target_os = "android")]
     android::android_set_abort_message(_payload);
@@ -65,6 +64,7 @@ pub unsafe extern "C-unwind" fn __rust_start_panic(_payload: *mut &mut dyn BoxMe
             //
             // Note: this is the same implementation as in libstd's `abort_internal`
             unsafe fn abort() -> ! {
+                #[allow(unused)]
                 const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
                 cfg_if::cfg_if! {
                     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {

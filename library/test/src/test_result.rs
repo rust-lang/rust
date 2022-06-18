@@ -89,7 +89,7 @@ pub fn get_result_from_exit_code(
     let result = match code {
         TR_OK => TestResult::TrOk,
         TR_FAILED => TestResult::TrFailed,
-        _ => TestResult::TrFailedMsg(format!("got unexpected return code {}", code)),
+        _ => TestResult::TrFailedMsg(format!("got unexpected return code {code}")),
     };
 
     // If test is already failed (or allowed to fail), do not change the result.

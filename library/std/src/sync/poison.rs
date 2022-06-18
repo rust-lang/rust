@@ -40,6 +40,11 @@ impl Flag {
     pub fn get(&self) -> bool {
         self.failed.load(Ordering::Relaxed)
     }
+
+    #[inline]
+    pub fn clear(&self) {
+        self.failed.store(false, Ordering::Relaxed)
+    }
 }
 
 pub struct Guard {
@@ -73,7 +78,7 @@ pub struct Guard {
 ///     Ok(_) => unreachable!(),
 ///     Err(p_err) => {
 ///         let data = p_err.get_ref();
-///         println!("recovered: {}", data);
+///         println!("recovered: {data}");
 ///     }
 /// };
 /// ```

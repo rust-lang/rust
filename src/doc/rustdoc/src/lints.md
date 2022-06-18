@@ -13,11 +13,11 @@ Note that, except for `missing_docs`, these lints are only available when runnin
 
 Here is the list of the lints provided by `rustdoc`:
 
-## broken_intra_doc_links
+## `broken_intra_doc_links`
 
 This lint **warns by default**. This lint detects when an [intra-doc link] fails to be resolved. For example:
 
-[intra-doc link]: linking-to-items-by-name.md
+[intra-doc link]: write-documentation/linking-to-items-by-name.md
 
 ```rust
 /// I want to link to [`Nonexistent`] but it doesn't exist!
@@ -64,7 +64,7 @@ help: to link to the function, add parentheses
 
 ```
 
-## private_intra_doc_links
+## `private_intra_doc_links`
 
 This lint **warns by default**. This lint detects when [intra-doc links] from public to private items.
 For example:
@@ -104,9 +104,9 @@ warning: public documentation for `public` links to private item `private`
   = note: this link resolves only because you passed `--document-private-items`, but will break without
 ```
 
-[intra-doc links]: linking-to-items-by-name.html
+[intra-doc links]: write-documentation/linking-to-items-by-name.md
 
-## missing_docs
+## `missing_docs`
 
 This lint is **allowed by default**. It detects items missing documentation.
 For example:
@@ -130,7 +130,7 @@ warning: missing documentation for a function
 
 Note that unlike other rustdoc lints, this lint is also available from `rustc` directly.
 
-## missing_crate_level_docs
+## `missing_crate_level_docs`
 
 This lint is **allowed by default**. It detects if there is no documentation
 at the crate root. For example:
@@ -154,7 +154,7 @@ warning in the future. This is intended as a means to introduce new users on
 get started, without providing overwhelming warnings like `missing_docs`
 might.
 
-## missing_doc_code_examples
+## `missing_doc_code_examples`
 
 This lint is **allowed by default** and is **nightly-only**. It detects when a documentation block
 is missing a code example. For example:
@@ -190,7 +190,7 @@ To fix the lint, you need to add a code example into the documentation block:
 pub fn no_code_example() {}
 ```
 
-## private_doc_tests
+## `private_doc_tests`
 
 This lint is **allowed by default**. It detects documentation tests when they
 are on a private item. For example:
@@ -223,7 +223,7 @@ warning: Documentation test in private item
    | |___________^
 ```
 
-## invalid_codeblock_attributes
+## `invalid_codeblock_attributes`
 
 This lint **warns by default**. It detects code block attributes in
 documentation examples that have potentially mis-typed values. For example:
@@ -259,7 +259,7 @@ warning: unknown attribute `should-panic`. Did you mean `should_panic`?
 In the example above, the correct form is `should_panic`. This helps detect
 typo mistakes for some common attributes.
 
-## invalid_html_tags
+## `invalid_html_tags`
 
 This lint is **allowed by default** and is **nightly-only**. It detects unclosed
 or invalid HTML tags. For example:
@@ -298,7 +298,7 @@ warning: unclosed HTML tag `h1`
 warning: 2 warnings emitted
 ```
 
-## invalid_rust_codeblocks
+## `invalid_rust_codeblocks`
 
 This lint **warns by default**. It detects Rust code blocks in documentation
 examples that are invalid (e.g. empty, not parsable as Rust). For example:
@@ -342,7 +342,7 @@ warning: could not parse code block as Rust code
    = note: error from rustc: unterminated character literal
 ```
 
-## bare_urls
+## `bare_urls`
 
 This lint is **warn-by-default**. It detects URLs which are not links.
 For example:

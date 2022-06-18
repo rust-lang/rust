@@ -18,6 +18,7 @@ use crate::check::FnCtxt;
 use hir::def_id::DefId;
 use hir::{Body, HirId, HirIdMap, Node};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
@@ -40,11 +41,12 @@ pub fn compute_drop_ranges<'a, 'tcx>(
     if fcx.sess().opts.debugging_opts.drop_tracking {
         let consumed_borrowed_places = find_consumed_and_borrowed(fcx, def_id, body);
 
+        let typeck_results = &fcx.typeck_results.borrow();
         let num_exprs = fcx.tcx.region_scope_tree(def_id).body_expr_count(body.id()).unwrap_or(0);
-        let mut drop_ranges = build_control_flow_graph(
+        let (mut drop_ranges, borrowed_temporaries) = build_control_flow_graph(
             fcx.tcx.hir(),
             fcx.tcx,
-            &fcx.typeck_results.borrow(),
+            typeck_results,
             consumed_borrowed_places,
             body,
             num_exprs,
@@ -52,11 +54,20 @@ pub fn compute_drop_ranges<'a, 'tcx>(
 
         drop_ranges.propagate_to_fixpoint();
 
-        DropRanges { tracked_value_map: drop_ranges.tracked_value_map, nodes: drop_ranges.nodes }
+        debug!("borrowed_temporaries = {borrowed_temporaries:?}");
+        DropRanges {
+            tracked_value_map: drop_ranges.tracked_value_map,
+            nodes: drop_ranges.nodes,
+            borrowed_temporaries: Some(borrowed_temporaries),
+        }
     } else {
         // If drop range tracking is not enabled, skip all the analysis and produce an
         // empty set of DropRanges.
-        DropRanges { tracked_value_map: FxHashMap::default(), nodes: IndexVec::new() }
+        DropRanges {
+            tracked_value_map: FxHashMap::default(),
+            nodes: IndexVec::new(),
+            borrowed_temporaries: None,
+        }
     }
 }
 
@@ -161,6 +172,7 @@ impl TryFrom<&PlaceWithHirId<'_>> for TrackedValue {
 pub struct DropRanges {
     tracked_value_map: FxHashMap<TrackedValue, TrackedValueIndex>,
     nodes: IndexVec<PostOrderId, NodeInfo>,
+    borrowed_temporaries: Option<FxHashSet<HirId>>,
 }
 
 impl DropRanges {
@@ -172,6 +184,10 @@ impl DropRanges {
             .map_or(false, |tracked_value_id| {
                 self.expect_node(location.into()).drop_state.contains(tracked_value_id)
             })
+    }
+
+    pub fn is_borrowed_temporary(&self, expr: &hir::Expr<'_>) -> bool {
+        if let Some(b) = &self.borrowed_temporaries { b.contains(&expr.hir_id) } else { true }
     }
 
     /// Returns a reference to the NodeInfo for a node, panicking if it does not exist
@@ -191,7 +207,7 @@ struct DropRangesBuilder {
     /// NodeInfo struct for more details, but this information includes things
     /// such as the set of control-flow successors, which variables are dropped
     /// or reinitialized, and whether each variable has been inferred to be
-    /// known-dropped or potentially reintiialized at each point.
+    /// known-dropped or potentially reinitialized at each point.
     nodes: IndexVec<PostOrderId, NodeInfo>,
     /// We refer to values whose drop state we are tracking by the HirId of
     /// where they are defined. Within a NodeInfo, however, we store the

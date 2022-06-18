@@ -14,15 +14,17 @@ use crate::infer::TyCtxtInferExt;
 use crate::traits::const_evaluatable::{self, AbstractConst};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
-use rustc_errors::FatalError;
+use rustc_errors::{FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, Subst};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{
+    self, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor,
+};
 use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
 use smallvec::SmallVec;
 
 use std::iter;
@@ -98,7 +100,7 @@ fn object_safety_violations_for_trait(
                 span,
             ) = violation
             {
-                lint_object_unsafe_trait(tcx, *span, trait_def_id, violation);
+                lint_object_unsafe_trait(tcx, *span, trait_def_id, &violation);
                 false
             } else {
                 true
@@ -131,16 +133,18 @@ fn object_safety_violations_for_trait(
             }),
     );
 
-    violations.extend(
-        tcx.associated_items(trait_def_id)
-            .in_definition_order()
-            .filter(|item| item.kind == ty::AssocKind::Type)
-            .filter(|item| !tcx.generics_of(item.def_id).params.is_empty())
-            .map(|item| {
-                let ident = item.ident(tcx);
-                ObjectSafetyViolation::GAT(ident.name, ident.span)
-            }),
-    );
+    if !tcx.features().generic_associated_types_extended {
+        violations.extend(
+            tcx.associated_items(trait_def_id)
+                .in_definition_order()
+                .filter(|item| item.kind == ty::AssocKind::Type)
+                .filter(|item| !tcx.generics_of(item.def_id).params.is_empty())
+                .map(|item| {
+                    let ident = item.ident(tcx);
+                    ObjectSafetyViolation::GAT(ident.name, ident.span)
+                }),
+        );
+    }
 
     debug!(
         "object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
@@ -167,10 +171,7 @@ fn lint_object_unsafe_trait(
         let node = tcx.hir().get_if_local(trait_def_id);
         let mut spans = MultiSpan::from_span(span);
         if let Some(hir::Node::Item(item)) = node {
-            spans.push_span_label(
-                item.ident.span,
-                "this trait cannot be made into an object...".into(),
-            );
+            spans.push_span_label(item.ident.span, "this trait cannot be made into an object...");
             spans.push_span_label(span, format!("...because {}", violation.error_msg()));
         } else {
             spans.push_span_label(
@@ -222,7 +223,6 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
                 ..
             }) => Some(
                 generics
-                    .where_clause
                     .predicates
                     .iter()
                     .filter_map(|pred| {
@@ -280,7 +280,7 @@ fn predicate_references_self<'tcx>(
     (predicate, sp): (ty::Predicate<'tcx>, Span),
 ) -> Option<Span> {
     let self_ty = tcx.types.self_param;
-    let has_self_ty = |arg: &GenericArg<'_>| arg.walk().any(|arg| arg == self_ty.into());
+    let has_self_ty = |arg: &GenericArg<'tcx>| arg.walk().any(|arg| arg == self_ty.into());
     match predicate.kind().skip_binder() {
         ty::PredicateKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.
@@ -400,8 +400,8 @@ fn virtual_call_violation_for_method<'tcx>(
         // We'll attempt to provide a structured suggestion for `Self: Sized`.
         let sugg =
             tcx.hir().get_if_local(method.def_id).as_ref().and_then(|node| node.generics()).map(
-                |generics| match generics.where_clause.predicates {
-                    [] => (" where Self: Sized", generics.where_clause.span),
+                |generics| match generics.predicates {
+                    [] => (" where Self: Sized", generics.where_clause_span),
                     [.., pred] => (", Self: Sized", pred.span().shrink_to_hi()),
                 },
             );
@@ -533,7 +533,7 @@ fn receiver_for_self_ty<'tcx>(
         if param.index == 0 { self_ty.into() } else { tcx.mk_param_from_def(param) }
     });
 
-    let result = receiver_ty.subst(tcx, substs);
+    let result = EarlyBinder(receiver_ty).subst(tcx, substs);
     debug!(
         "receiver_for_self_ty({:?}, {:?}, {:?}) = {:?}",
         receiver_ty, self_ty, method_def_id, result
@@ -597,7 +597,7 @@ fn object_ty_for_trait<'tcx>(
 /// - let `Receiver` be the type of the `self` argument, i.e `Self`, `&Self`, `Rc<Self>`,
 /// - require the following bound:
 ///
-///   ```
+///   ```ignore (not-rust)
 ///   Receiver[Self => T]: DispatchFromDyn<Receiver[Self => dyn Trait]>
 ///   ```
 ///
@@ -623,13 +623,13 @@ fn object_ty_for_trait<'tcx>(
 /// Instead, we fudge a little by introducing a new type parameter `U` such that
 /// `Self: Unsize<U>` and `U: Trait + ?Sized`, and use `U` in place of `dyn Trait`.
 /// Written as a chalk-style query:
-///
-///     forall (U: Trait + ?Sized) {
-///         if (Self: Unsize<U>) {
-///             Receiver: DispatchFromDyn<Receiver[Self => U]>
-///         }
+/// ```ignore (not-rust)
+/// forall (U: Trait + ?Sized) {
+///     if (Self: Unsize<U>) {
+///         Receiver: DispatchFromDyn<Receiver[Self => U]>
 ///     }
-///
+/// }
+/// ```
 /// for `self: &'a mut Self`, this means `&'a mut Self: DispatchFromDyn<&'a mut U>`
 /// for `self: Rc<Self>`, this means `Rc<Self>: DispatchFromDyn<Rc<U>>`
 /// for `self: Pin<Box<Self>>`, this means `Pin<Box<Self>>: DispatchFromDyn<Pin<Box<U>>>`
@@ -816,10 +816,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             }
         }
 
-        fn visit_unevaluated_const(
-            &mut self,
-            uv: ty::Unevaluated<'tcx>,
-        ) -> ControlFlow<Self::BreakTy> {
+        fn visit_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
             // Constants can only influence object safety if they reference `Self`.
             // This is only possible for unevaluated constants, so we walk these here.
             //

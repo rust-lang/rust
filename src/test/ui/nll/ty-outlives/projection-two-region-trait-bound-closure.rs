@@ -5,7 +5,7 @@
 // the trait bound, and hence we propagate it to the caller as a type
 // test.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

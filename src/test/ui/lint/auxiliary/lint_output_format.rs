@@ -4,7 +4,7 @@
 #![unstable(feature = "unstable_test_feature", issue = "none")]
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub fn foo() -> usize {
     20
 }

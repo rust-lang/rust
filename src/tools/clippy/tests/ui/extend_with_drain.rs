@@ -1,11 +1,11 @@
 // run-rustfix
 #![warn(clippy::extend_with_drain)]
+#![allow(clippy::iter_with_drain)]
 use std::collections::BinaryHeap;
 fn main() {
     //gets linted
     let mut vec1 = vec![0u8; 1024];
     let mut vec2: std::vec::Vec<u8> = Vec::new();
-
     vec2.extend(vec1.drain(..));
 
     let mut vec3 = vec![0u8; 1024];
@@ -17,7 +17,7 @@ fn main() {
 
     vec11.extend(return_vector().drain(..));
 
-    //won't get linted it dosen't move the entire content of a vec into another
+    //won't get linted it doesn't move the entire content of a vec into another
     let mut test1 = vec![0u8, 10];
     let mut test2: std::vec::Vec<u8> = Vec::new();
 

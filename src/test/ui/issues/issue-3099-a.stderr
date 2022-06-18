@@ -3,7 +3,7 @@ error[E0428]: the name `A` is defined multiple times
    |
 LL | enum A { B, C }
    | ------ previous definition of the type `A` here
-LL | 
+LL |
 LL | enum A { D, E }
    | ^^^^^^ `A` redefined here
    |

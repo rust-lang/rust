@@ -10,7 +10,8 @@ trait Get {
 fn get_min_from_max<'min, 'max, G>()
     where 'max : 'min, G : 'max, &'max G : Get
 {
-    impls_get::<&'min G>(); //~ ERROR mismatched types
+    impls_get::<&'min G>();
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn get_max_from_min<'min, 'max, G>()
@@ -19,7 +20,8 @@ fn get_max_from_min<'min, 'max, G>()
     // Previously OK, but now error because traits are invariant with
     // respect to all inputs.
 
-    impls_get::<&'max G>(); //~ ERROR mismatched types
+    impls_get::<&'max G>();
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn impls_get<G>() where G : Get { }

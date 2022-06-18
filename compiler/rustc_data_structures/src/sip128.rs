@@ -255,8 +255,9 @@ impl SipHasher128 {
         // elements from spill (at most LEN - 1 bytes could have overflowed
         // into the spill). The memcpy call is optimized away because the size
         // is known. And the whole copy is optimized away for LEN == 1.
+        let dst = self.buf.as_mut_ptr() as *mut u8;
         let src = self.buf.get_unchecked(BUFFER_SPILL_INDEX) as *const _ as *const u8;
-        ptr::copy_nonoverlapping(src, self.buf.as_mut_ptr() as *mut u8, LEN - 1);
+        ptr::copy_nonoverlapping(src, dst, LEN - 1);
 
         // This function should only be called when the write fills the buffer.
         // Therefore, when LEN == 1, the new `self.nbuf` must be zero.
@@ -460,6 +461,14 @@ impl Hasher for SipHasher128 {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.slice_write(msg);
+    }
+
+    #[inline]
+    fn write_str(&mut self, s: &str) {
+        // This hasher works byte-wise, and `0xFF` cannot show up in a `str`,
+        // so just hashing the one extra byte is enough to be prefix-free.
+        self.write(s.as_bytes());
+        self.write_u8(0xFF);
     }
 
     fn finish(&self) -> u64 {

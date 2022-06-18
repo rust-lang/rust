@@ -122,7 +122,13 @@ impl Thread {
         // pthread wrapper only appeared in glibc 2.12, so we use syscall
         // directly.
         unsafe {
-            libc::prctl(PR_SET_NAME, name.as_ptr() as libc::c_ulong, 0, 0, 0);
+            libc::prctl(
+                PR_SET_NAME,
+                name.as_ptr(),
+                0 as libc::c_ulong,
+                0 as libc::c_ulong,
+                0 as libc::c_ulong,
+            );
         }
     }
 
@@ -279,10 +285,15 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
         ))] {
             #[cfg(any(target_os = "android", target_os = "linux"))]
             {
+                let quota = cgroup2_quota().max(1);
                 let mut set: libc::cpu_set_t = unsafe { mem::zeroed() };
-                if unsafe { libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) } == 0 {
-                    let count = unsafe { libc::CPU_COUNT(&set) };
-                    return Ok(unsafe { NonZeroUsize::new_unchecked(count as usize) });
+                unsafe {
+                    if libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) == 0 {
+                        let count = libc::CPU_COUNT(&set) as usize;
+                        let count = count.min(quota);
+                        // SAFETY: affinity mask can't be empty and the quota gets clamped to a minimum of 1
+                        return Ok(NonZeroUsize::new_unchecked(count));
+                    }
                 }
             }
             match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
@@ -368,6 +379,85 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     }
 }
 
+/// Returns cgroup CPU quota in core-equivalents, rounded down, or usize::MAX if the quota cannot
+/// be determined or is not set.
+#[cfg(any(target_os = "android", target_os = "linux"))]
+fn cgroup2_quota() -> usize {
+    use crate::ffi::OsString;
+    use crate::fs::{try_exists, File};
+    use crate::io::Read;
+    use crate::os::unix::ffi::OsStringExt;
+    use crate::path::PathBuf;
+
+    let mut quota = usize::MAX;
+    if cfg!(miri) {
+        // Attempting to open a file fails under default flags due to isolation.
+        // And Miri does not have parallelism anyway.
+        return quota;
+    }
+
+    let _: Option<()> = try {
+        let mut buf = Vec::with_capacity(128);
+        // find our place in the cgroup hierarchy
+        File::open("/proc/self/cgroup").ok()?.read_to_end(&mut buf).ok()?;
+        let cgroup_path = buf
+            .split(|&c| c == b'\n')
+            .filter_map(|line| {
+                let mut fields = line.splitn(3, |&c| c == b':');
+                // expect cgroupv2 which has an empty 2nd field
+                if fields.nth(1) != Some(b"") {
+                    return None;
+                }
+                let path = fields.last()?;
+                // skip leading slash
+                Some(path[1..].to_owned())
+            })
+            .next()?;
+        let cgroup_path = PathBuf::from(OsString::from_vec(cgroup_path));
+
+        let mut path = PathBuf::with_capacity(128);
+        let mut read_buf = String::with_capacity(20);
+
+        let cgroup_mount = "/sys/fs/cgroup";
+
+        path.push(cgroup_mount);
+        path.push(&cgroup_path);
+
+        path.push("cgroup.controllers");
+
+        // skip if we're not looking at cgroup2
+        if matches!(try_exists(&path), Err(_) | Ok(false)) {
+            return usize::MAX;
+        };
+
+        path.pop();
+
+        while path.starts_with(cgroup_mount) {
+            path.push("cpu.max");
+
+            read_buf.clear();
+
+            if File::open(&path).and_then(|mut f| f.read_to_string(&mut read_buf)).is_ok() {
+                let raw_quota = read_buf.lines().next()?;
+                let mut raw_quota = raw_quota.split(' ');
+                let limit = raw_quota.next()?;
+                let period = raw_quota.next()?;
+                match (limit.parse::<usize>(), period.parse::<usize>()) {
+                    (Ok(limit), Ok(period)) => {
+                        quota = quota.min(limit / period);
+                    }
+                    _ => {}
+                }
+            }
+
+            path.pop(); // pop filename
+            path.pop(); // pop dir
+        }
+    };
+
+    quota
+}
+
 #[cfg(all(
     not(target_os = "linux"),
     not(target_os = "freebsd"),
@@ -421,9 +511,8 @@ pub mod guard {
     #[cfg(target_os = "macos")]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let th = libc::pthread_self();
-        let stackaddr =
-            libc::pthread_get_stackaddr_np(th) as usize - libc::pthread_get_stacksize_np(th);
-        Some(stackaddr as *mut libc::c_void)
+        let stackptr = libc::pthread_get_stackaddr_np(th);
+        Some(stackptr.map_addr(|addr| addr - libc::pthread_get_stacksize_np(th)))
     }
 
     #[cfg(target_os = "openbsd")]
@@ -431,14 +520,15 @@ pub mod guard {
         let mut current_stack: libc::stack_t = crate::mem::zeroed();
         assert_eq!(libc::pthread_stackseg_np(libc::pthread_self(), &mut current_stack), 0);
 
+        let stack_ptr = current_stack.ss_sp;
         let stackaddr = if libc::pthread_main_np() == 1 {
             // main thread
-            current_stack.ss_sp as usize - current_stack.ss_size + PAGE_SIZE.load(Ordering::Relaxed)
+            stack_ptr.addr() - current_stack.ss_size + PAGE_SIZE.load(Ordering::Relaxed)
         } else {
             // new thread
-            current_stack.ss_sp as usize - current_stack.ss_size
+            stack_ptr.addr() - current_stack.ss_size
         };
-        Some(stackaddr as *mut libc::c_void)
+        Some(stack_ptr.with_addr(stackaddr))
     }
 
     #[cfg(any(
@@ -473,7 +563,8 @@ pub mod guard {
     unsafe fn get_stack_start_aligned() -> Option<*mut libc::c_void> {
         let page_size = PAGE_SIZE.load(Ordering::Relaxed);
         assert!(page_size != 0);
-        let stackaddr = get_stack_start()?;
+        let stackptr = get_stack_start()?;
+        let stackaddr = stackptr.addr();
 
         // Ensure stackaddr is page aligned! A parent process might
         // have reset RLIMIT_STACK to be non-page aligned. The
@@ -481,11 +572,11 @@ pub mod guard {
         // stackaddr < stackaddr + stacksize, so if stackaddr is not
         // page-aligned, calculate the fix such that stackaddr <
         // new_page_aligned_stackaddr < stackaddr + stacksize
-        let remainder = (stackaddr as usize) % page_size;
+        let remainder = stackaddr % page_size;
         Some(if remainder == 0 {
-            stackaddr
+            stackptr
         } else {
-            ((stackaddr as usize) + page_size - remainder) as *mut libc::c_void
+            stackptr.with_addr(stackaddr + page_size - remainder)
         })
     }
 
@@ -504,8 +595,8 @@ pub mod guard {
             // Instead, we'll just note where we expect rlimit to start
             // faulting, so our handler can report "stack overflow", and
             // trust that the kernel's own stack guard will work.
-            let stackaddr = get_stack_start_aligned()?;
-            let stackaddr = stackaddr as usize;
+            let stackptr = get_stack_start_aligned()?;
+            let stackaddr = stackptr.addr();
             Some(stackaddr - page_size..stackaddr)
         } else if cfg!(all(target_os = "linux", target_env = "musl")) {
             // For the main thread, the musl's pthread_attr_getstack
@@ -518,8 +609,8 @@ pub mod guard {
             // at the bottom.  If we try to remap the bottom of the stack
             // ourselves, FreeBSD's guard page moves upwards.  So we'll just use
             // the builtin guard page.
-            let stackaddr = get_stack_start_aligned()?;
-            let guardaddr = stackaddr as usize;
+            let stackptr = get_stack_start_aligned()?;
+            let guardaddr = stackptr.addr();
             // Technically the number of guard pages is tunable and controlled
             // by the security.bsd.stack_guard_page sysctl, but there are
             // few reasons to change it from the default.  The default value has
@@ -536,25 +627,25 @@ pub mod guard {
             // than the initial mmap() used, so we mmap() here with
             // read/write permissions and only then mprotect() it to
             // no permissions at all. See issue #50313.
-            let stackaddr = get_stack_start_aligned()?;
+            let stackptr = get_stack_start_aligned()?;
             let result = mmap(
-                stackaddr,
+                stackptr,
                 page_size,
                 PROT_READ | PROT_WRITE,
                 MAP_PRIVATE | MAP_ANON | MAP_FIXED,
                 -1,
                 0,
             );
-            if result != stackaddr || result == MAP_FAILED {
+            if result != stackptr || result == MAP_FAILED {
                 panic!("failed to allocate a guard page: {}", io::Error::last_os_error());
             }
 
-            let result = mprotect(stackaddr, page_size, PROT_NONE);
+            let result = mprotect(stackptr, page_size, PROT_NONE);
             if result != 0 {
                 panic!("failed to protect the guard page: {}", io::Error::last_os_error());
             }
 
-            let guardaddr = stackaddr as usize;
+            let guardaddr = stackptr.addr();
 
             Some(guardaddr..guardaddr + page_size)
         }
@@ -562,7 +653,8 @@ pub mod guard {
 
     #[cfg(any(target_os = "macos", target_os = "openbsd", target_os = "solaris"))]
     pub unsafe fn current() -> Option<Guard> {
-        let stackaddr = get_stack_start()? as usize;
+        let stackptr = get_stack_start()?;
+        let stackaddr = stackptr.addr();
         Some(stackaddr - PAGE_SIZE.load(Ordering::Relaxed)..stackaddr)
     }
 
@@ -595,11 +687,11 @@ pub mod guard {
                     panic!("there is no guard page");
                 }
             }
-            let mut stackaddr = crate::ptr::null_mut();
+            let mut stackptr = crate::ptr::null_mut::<libc::c_void>();
             let mut size = 0;
-            assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr, &mut size), 0);
+            assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackptr, &mut size), 0);
 
-            let stackaddr = stackaddr as usize;
+            let stackaddr = stackptr.addr();
             ret = if cfg!(any(target_os = "freebsd", target_os = "netbsd")) {
                 Some(stackaddr - guardsize..stackaddr)
             } else if cfg!(all(target_os = "linux", target_env = "musl")) {

@@ -19,7 +19,7 @@ pub(super) fn check(
     if_chain! {
         if let Some(args) = method_chain_args(info.chain, chain_methods);
         if let hir::ExprKind::Call(fun, [arg_char]) = info.other.kind;
-        if let Some(id) = path_def_id(cx, fun).and_then(|ctor_id| cx.tcx.parent(ctor_id));
+        if let Some(id) = path_def_id(cx, fun).map(|ctor_id| cx.tcx.parent(ctor_id));
         if Some(id) == cx.tcx.lang_items().option_some_variant();
         then {
             let mut applicability = Applicability::MachineApplicable;

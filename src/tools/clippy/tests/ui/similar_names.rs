@@ -3,7 +3,8 @@
     unused,
     clippy::println_empty_string,
     clippy::empty_loop,
-    clippy::diverging_sub_expression
+    clippy::diverging_sub_expression,
+    clippy::let_unit_value
 )]
 
 struct Foo {

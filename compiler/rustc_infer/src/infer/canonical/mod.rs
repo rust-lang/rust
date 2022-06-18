@@ -49,7 +49,6 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// At the end of processing, the substitution S (once
     /// canonicalized) then represents the values that you computed
     /// for each of the canonical inputs to your query.
-
     pub fn instantiate_canonical_with_fresh_inference_vars<T>(
         &self,
         span: Span,
@@ -150,7 +149,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, name };
                 self.tcx
                     .mk_const(ty::ConstS {
-                        val: ty::ConstKind::Placeholder(placeholder_mapped),
+                        kind: ty::ConstKind::Placeholder(placeholder_mapped),
                         ty: name.ty,
                     })
                     .into()

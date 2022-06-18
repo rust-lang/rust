@@ -8,8 +8,8 @@ LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f
 LL |     ap
    |     ^^ function was supposed to return data with lifetime `'1` but it is returning data with lifetime `'f`
    |
-   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
-   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -22,8 +22,8 @@ LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f
 LL |     ap
    |     ^^ function was supposed to return data with lifetime `'f` but it is returning data with lifetime `'1`
    |
-   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
-   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -34,8 +34,8 @@ LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaListImpl<'stati
 LL |     ap
    |     ^^ returning this value requires that `'1` must outlive `'static`
    |
-   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
-   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -57,8 +57,8 @@ LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut
 LL |     *ap0 = ap1;
    |     ^^^^ assignment requires that `'1` must outlive `'2`
    |
-   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
-   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -71,8 +71,8 @@ LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut
 LL |     *ap0 = ap1;
    |     ^^^^ assignment requires that `'2` must outlive `'1`
    |
-   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
-   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -85,7 +85,7 @@ LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut
 LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
    |
-   = note: requirement occurs because of a mutable reference to VaListImpl<'_>
+   = note: requirement occurs because of a mutable reference to `VaListImpl<'_>`
    = note: mutable references are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
@@ -99,7 +99,7 @@ LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut
 LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'2` must outlive `'1`
    |
-   = note: requirement occurs because of a mutable reference to VaListImpl<'_>
+   = note: requirement occurs because of a mutable reference to `VaListImpl<'_>`
    = note: mutable references are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
@@ -127,8 +127,8 @@ LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut
 LL |     *ap0 = ap1.clone();
    |            ^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
    |
-   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
-   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -141,8 +141,8 @@ LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut
 LL |     *ap0 = ap1.clone();
    |            ^^^^^^^^^^^ argument requires that `'2` must outlive `'1`
    |
-   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
-   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = note: requirement occurs because of the type `VaListImpl<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `VaListImpl<'f>` is invariant over the parameter `'f`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to 11 previous errors

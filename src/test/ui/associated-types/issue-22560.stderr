@@ -5,7 +5,7 @@ LL | / trait Sub<Rhs=Self> {
 LL | |     type Output;
 LL | | }
    | |_- type parameter `Rhs` must be specified for this
-LL | 
+LL |
 LL |   type Test = dyn Add + Sub;
    |                         ^^^ help: set the type parameter to the desired type: `Sub<Rhs>`
    |

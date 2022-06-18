@@ -52,14 +52,14 @@ macro_rules! TrivialTypeFoldableImpls {
     (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
         $(
             impl<$tcx> $crate::ty::fold::TypeFoldable<$tcx> for $ty {
-                fn try_super_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
+                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
                     self,
                     _: &mut F
                 ) -> ::std::result::Result<$ty, F::Error> {
                     Ok(self)
                 }
 
-                fn super_visit_with<F: $crate::ty::fold::TypeVisitor<$tcx>>(
+                fn visit_with<F: $crate::ty::fold::TypeVisitor<$tcx>>(
                     &self,
                     _: &mut F)
                     -> ::std::ops::ControlFlow<F::BreakTy>
@@ -95,14 +95,14 @@ macro_rules! EnumTypeFoldableImpl {
         impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s
             $(where $($wc)*)*
         {
-            fn try_super_fold_with<V: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
+            fn try_fold_with<V: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
                 self,
                 folder: &mut V,
             ) -> ::std::result::Result<Self, V::Error> {
                 EnumTypeFoldableImpl!(@FoldVariants(self, folder) input($($variants)*) output())
             }
 
-            fn super_visit_with<V: $crate::ty::fold::TypeVisitor<$tcx>>(
+            fn visit_with<V: $crate::ty::fold::TypeVisitor<$tcx>>(
                 &self,
                 visitor: &mut V,
             ) -> ::std::ops::ControlFlow<V::BreakTy> {

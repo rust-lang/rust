@@ -104,8 +104,9 @@
 
 use super::{Custom, ErrorData, ErrorKind, SimpleMessage};
 use alloc::boxed::Box;
+use core::marker::PhantomData;
 use core::mem::{align_of, size_of};
-use core::ptr::NonNull;
+use core::ptr::{self, NonNull};
 
 // The 2 least-significant bits are used as tag.
 const TAG_MASK: usize = 0b11;
@@ -114,8 +115,17 @@ const TAG_CUSTOM: usize = 0b01;
 const TAG_OS: usize = 0b10;
 const TAG_SIMPLE: usize = 0b11;
 
+/// The internal representation.
+///
+/// See the module docs for more, this is just a way to hack in a check that we
+/// indeed are not unwind-safe.
+///
+/// ```compile_fail,E0277
+/// fn is_unwind_safe<T: core::panic::UnwindSafe>() {}
+/// is_unwind_safe::<std::io::Error>();
+/// ```
 #[repr(transparent)]
-pub(super) struct Repr(NonNull<()>);
+pub(super) struct Repr(NonNull<()>, PhantomData<ErrorData<Box<Custom>>>);
 
 // All the types `Repr` stores internally are Send + Sync, and so is it.
 unsafe impl Send for Repr {}
@@ -126,7 +136,7 @@ impl Repr {
         let p = Box::into_raw(b).cast::<u8>();
         // Should only be possible if an allocator handed out a pointer with
         // wrong alignment.
-        debug_assert_eq!((p as usize & TAG_MASK), 0);
+        debug_assert_eq!(p.addr() & TAG_MASK, 0);
         // Note: We know `TAG_CUSTOM <= size_of::<Custom>()` (static_assert at
         // end of file), and both the start and end of the expression must be
         // valid without address space wraparound due to `Box`'s semantics.
@@ -145,7 +155,7 @@ impl Repr {
         // box, and `TAG_CUSTOM` just... isn't zero -- it's `0b01`). Therefore,
         // `TAG_CUSTOM + p` isn't zero and so `tagged` can't be, and the
         // `new_unchecked` is safe.
-        let res = Self(unsafe { NonNull::new_unchecked(tagged) });
+        let res = Self(unsafe { NonNull::new_unchecked(tagged) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
         debug_assert!(matches!(res.data(), ErrorData::Custom(_)), "repr(custom) encoding failed");
@@ -156,13 +166,12 @@ impl Repr {
     pub(super) fn new_os(code: i32) -> Self {
         let utagged = ((code as usize) << 32) | TAG_OS;
         // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
-        let res = Self(unsafe { NonNull::new_unchecked(utagged as *mut ()) });
+        let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
         debug_assert!(
             matches!(res.data(), ErrorData::Os(c) if c == code),
-            "repr(os) encoding failed for {}",
-            code,
+            "repr(os) encoding failed for {code}"
         );
         res
     }
@@ -171,7 +180,7 @@ impl Repr {
     pub(super) fn new_simple(kind: ErrorKind) -> Self {
         let utagged = ((kind as usize) << 32) | TAG_SIMPLE;
         // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
-        let res = Self(unsafe { NonNull::new_unchecked(utagged as *mut ()) });
+        let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
         debug_assert!(
@@ -185,7 +194,7 @@ impl Repr {
     #[inline]
     pub(super) const fn new_simple_message(m: &'static SimpleMessage) -> Self {
         // Safety: References are never null.
-        Self(unsafe { NonNull::new_unchecked(m as *const _ as *mut ()) })
+        Self(unsafe { NonNull::new_unchecked(m as *const _ as *mut ()) }, PhantomData)
     }
 
     #[inline]
@@ -229,7 +238,7 @@ unsafe fn decode_repr<C, F>(ptr: NonNull<()>, make_custom: F) -> ErrorData<C>
 where
     F: FnOnce(*mut Custom) -> C,
 {
-    let bits = ptr.as_ptr() as usize;
+    let bits = ptr.as_ptr().addr();
     match bits & TAG_MASK {
         TAG_OS => {
             let code = ((bits as i64) >> 32) as i32;

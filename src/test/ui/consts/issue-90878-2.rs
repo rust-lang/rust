@@ -1,4 +1,4 @@
- #![l=|x|[b;x ]] //~ ERROR unexpected token: `|x| [b; x]`
+ #![l=|x|[b;x ]] //~ ERROR unexpected expression: `|x| [b; x]`
 //~^ ERROR cannot find attribute `l` in this scope
 
 // notice the space at the start,

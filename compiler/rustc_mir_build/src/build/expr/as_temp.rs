@@ -10,7 +10,7 @@ use rustc_middle::thir::*;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
-    crate fn as_temp(
+    pub(crate) fn as_temp(
         &mut self,
         block: BasicBlock,
         temp_lifetime: Option<region::Scope>,
@@ -70,7 +70,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     local_decl.local_info =
                         Some(Box::new(LocalInfo::StaticRef { def_id, is_thread_local: true }));
                 }
-                ExprKind::Literal { const_id: Some(def_id), .. } => {
+                ExprKind::NamedConst { def_id, .. } | ExprKind::ConstParam { def_id, .. } => {
                     local_decl.local_info = Some(Box::new(LocalInfo::ConstRef { def_id }));
                 }
                 _ => {}

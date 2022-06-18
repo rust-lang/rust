@@ -57,10 +57,10 @@ fn test_debug() {
     \n    { fn: \"std::rt::lang_start\", file: \"rust/rt.rs\", line: 400 },\
     \n]";
 
-    assert_eq!(format!("{:#?}", backtrace), expected);
+    assert_eq!(format!("{backtrace:#?}"), expected);
 
     // Format the backtrace a second time, just to make sure lazily resolved state is stable
-    assert_eq!(format!("{:#?}", backtrace), expected);
+    assert_eq!(format!("{backtrace:#?}"), expected);
 }
 
 #[test]
@@ -91,5 +91,5 @@ fn test_frames() {
 
     let mut iter = frames.iter().zip(expected.iter());
 
-    assert!(iter.all(|(f, e)| format!("{:#?}", f) == *e));
+    assert!(iter.all(|(f, e)| format!("{f:#?}") == *e));
 }

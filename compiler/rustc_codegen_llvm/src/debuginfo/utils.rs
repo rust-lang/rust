@@ -1,7 +1,7 @@
 // Utility Functions.
 
 use super::namespace::item_namespace;
-use super::CrateDebugContext;
+use super::CodegenUnitDebugContext;
 
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
@@ -35,7 +35,7 @@ pub fn create_DIArray<'ll>(
 #[inline]
 pub fn debug_context<'a, 'll, 'tcx>(
     cx: &'a CodegenCx<'ll, 'tcx>,
-) -> &'a CrateDebugContext<'ll, 'tcx> {
+) -> &'a CodegenUnitDebugContext<'ll, 'tcx> {
     cx.dbg_cx.as_ref().unwrap()
 }
 
@@ -46,7 +46,7 @@ pub fn DIB<'a, 'll>(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
 }
 
 pub fn get_namespace_for_item<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
-    item_namespace(cx, cx.tcx.parent(def_id).expect("get_namespace_for_item: missing parent?"))
+    item_namespace(cx, cx.tcx.parent(def_id))
 }
 
 #[derive(Debug, PartialEq, Eq)]

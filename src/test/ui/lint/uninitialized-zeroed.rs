@@ -81,6 +81,9 @@ fn main() {
         let _val: *const dyn Send = mem::zeroed(); //~ ERROR: does not permit zero-initialization
         let _val: *const dyn Send = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
+        let _val: [fn(); 2] = mem::zeroed(); //~ ERROR: does not permit zero-initialization
+        let _val: [fn(); 2] = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
         // Things that can be zero, but not uninit.
         let _val: bool = mem::zeroed();
         let _val: bool = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
@@ -93,6 +96,9 @@ fn main() {
 
         let _val: Fruit = mem::zeroed();
         let _val: Fruit = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
+        let _val: [bool; 2] = mem::zeroed();
+        let _val: [bool; 2] = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
         // Transmute-from-0
         let _val: &'static i32 = mem::transmute(0usize); //~ ERROR: does not permit zero-initialization
@@ -110,6 +116,8 @@ fn main() {
         let _val: MaybeUninit<&'static i32> = mem::zeroed();
         let _val: i32 = mem::zeroed();
         let _val: bool = MaybeUninit::zeroed().assume_init();
+        let _val: [bool; 0] = MaybeUninit::uninit().assume_init();
+        let _val: [!; 0] = MaybeUninit::zeroed().assume_init();
         // Some things that happen to work due to rustc implementation details,
         // but are not guaranteed to keep working.
         let _val: i32 = mem::uninitialized();

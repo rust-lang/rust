@@ -1,17 +1,16 @@
-error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/dyn-trait.rs:20:16
-   |
-LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
-   |                                 ------------------- this data with lifetime `'a`...
-LL |     static_val(x);
-   |                ^ ...is used here...
-   |
-note: ...and is required to live as long as `'static` here
+error[E0521]: borrowed data escapes outside of function
   --> $DIR/dyn-trait.rs:20:5
    |
+LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
+   |                          --  - `x` is a reference that is only valid in the function body
+   |                          |
+   |                          lifetime `'a` defined here
 LL |     static_val(x);
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^^^^
+   |     |
+   |     `x` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0759`.
+For more information about this error, try `rustc --explain E0521`.

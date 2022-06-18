@@ -16,6 +16,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
+use rustc_span::def_id::LOCAL_CRATE;
 
 use rustdoc_json_types as types;
 
@@ -25,11 +26,11 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
-use crate::json::conversions::{from_item_id, IntoWithTcx};
+use crate::json::conversions::{from_item_id, from_item_id_with_name, IntoWithTcx};
 use crate::{clean, try_err};
 
 #[derive(Clone)]
-crate struct JsonRenderer<'tcx> {
+pub(crate) struct JsonRenderer<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
@@ -54,7 +55,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                     .map(|i| {
                         let item = &i.impl_item;
                         self.item(item.clone()).unwrap();
-                        from_item_id(item.def_id)
+                        from_item_id_with_name(item.item_id, self.tcx, item.name)
                     })
                     .collect()
             })
@@ -84,9 +85,9 @@ impl<'tcx> JsonRenderer<'tcx> {
                             }
                         }
 
-                        if item.def_id.is_local() || is_primitive_impl {
+                        if item.item_id.is_local() || is_primitive_impl {
                             self.item(item.clone()).unwrap();
-                            Some(from_item_id(item.def_id))
+                            Some(from_item_id_with_name(item.item_id, self.tcx, item.name))
                         } else {
                             None
                         }
@@ -105,10 +106,11 @@ impl<'tcx> JsonRenderer<'tcx> {
                 if !id.is_local() {
                     let trait_item = &trait_item.trait_;
                     trait_item.items.clone().into_iter().for_each(|i| self.item(i).unwrap());
+                    let item_id = from_item_id(id.into(), self.tcx);
                     Some((
-                        from_item_id(id.into()),
+                        item_id.clone(),
                         types::Item {
-                            id: from_item_id(id.into()),
+                            id: item_id,
                             crate_id: id.krate.as_u32(),
                             name: self
                                 .cache
@@ -176,24 +178,61 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         // Flatten items that recursively store other items
         item.kind.inner_items().for_each(|i| self.item(i.clone()).unwrap());
 
-        let id = item.def_id;
+        let name = item.name;
+        let item_id = item.item_id;
         if let Some(mut new_item) = self.convert_item(item) {
-            if let types::ItemEnum::Trait(ref mut t) = new_item.inner {
-                t.implementors = self.get_trait_implementors(id.expect_def_id())
-            } else if let types::ItemEnum::Struct(ref mut s) = new_item.inner {
-                s.impls = self.get_impls(id.expect_def_id())
-            } else if let types::ItemEnum::Enum(ref mut e) = new_item.inner {
-                e.impls = self.get_impls(id.expect_def_id())
-            } else if let types::ItemEnum::Union(ref mut u) = new_item.inner {
-                u.impls = self.get_impls(id.expect_def_id())
-            }
-            let removed = self.index.borrow_mut().insert(from_item_id(id), new_item.clone());
+            let can_be_ignored = match new_item.inner {
+                types::ItemEnum::Trait(ref mut t) => {
+                    t.implementations = self.get_trait_implementors(item_id.expect_def_id());
+                    false
+                }
+                types::ItemEnum::Struct(ref mut s) => {
+                    s.impls = self.get_impls(item_id.expect_def_id());
+                    false
+                }
+                types::ItemEnum::Enum(ref mut e) => {
+                    e.impls = self.get_impls(item_id.expect_def_id());
+                    false
+                }
+                types::ItemEnum::Union(ref mut u) => {
+                    u.impls = self.get_impls(item_id.expect_def_id());
+                    false
+                }
+
+                types::ItemEnum::Method(_)
+                | types::ItemEnum::AssocConst { .. }
+                | types::ItemEnum::AssocType { .. }
+                | types::ItemEnum::PrimitiveType(_) => true,
+                types::ItemEnum::Module(_)
+                | types::ItemEnum::ExternCrate { .. }
+                | types::ItemEnum::Import(_)
+                | types::ItemEnum::StructField(_)
+                | types::ItemEnum::Variant(_)
+                | types::ItemEnum::Function(_)
+                | types::ItemEnum::TraitAlias(_)
+                | types::ItemEnum::Impl(_)
+                | types::ItemEnum::Typedef(_)
+                | types::ItemEnum::OpaqueTy(_)
+                | types::ItemEnum::Constant(_)
+                | types::ItemEnum::Static(_)
+                | types::ItemEnum::ForeignType
+                | types::ItemEnum::Macro(_)
+                | types::ItemEnum::ProcMacro(_) => false,
+            };
+            let removed = self
+                .index
+                .borrow_mut()
+                .insert(from_item_id_with_name(item_id, self.tcx, name), new_item.clone());
 
             // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
             // to make sure the items are unique. The main place this happens is when an item, is
             // reexported in more than one place. See `rustdoc-json/reexport/in_root_and_mod`
             if let Some(old_item) = removed {
-                assert_eq!(old_item, new_item);
+                // In case of generic implementations (like `impl<T> Trait for T {}`), all the
+                // inner items will be duplicated so we can ignore if they are slightly different.
+                if !can_be_ignored {
+                    assert_eq!(old_item, new_item);
+                }
             }
         }
 
@@ -211,13 +250,15 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             self.get_impls(*primitive);
         }
 
+        let e = ExternalCrate { crate_num: LOCAL_CRATE };
+
         let mut index = (*self.index).clone().into_inner();
         index.extend(self.get_trait_items());
         // This needs to be the default HashMap for compatibility with the public interface for
         // rustdoc-json-types
         #[allow(rustc::default_hash_types)]
         let output = types::Crate {
-            root: types::Id(String::from("0:0")),
+            root: types::Id(format!("0:0:{}", e.name(self.tcx).as_u32())),
             crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
             index: index.into_iter().collect(),
@@ -229,7 +270,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .chain(self.cache.external_paths.clone().into_iter())
                 .map(|(k, (path, kind))| {
                     (
-                        from_item_id(k.into()),
+                        from_item_id(k.into(), self.tcx),
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
                             path: path.iter().map(|s| s.to_string()).collect(),

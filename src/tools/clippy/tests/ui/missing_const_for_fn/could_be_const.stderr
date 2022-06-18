@@ -58,7 +58,15 @@ LL | | }
    | |_^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:67:9
+  --> $DIR/could_be_const.rs:52:1
+   |
+LL | / fn generic_arr<T: Copy>(t: [T; 1]) -> T {
+LL | |     t[0]
+LL | | }
+   | |_^
+
+error: this could be a `const fn`
+  --> $DIR/could_be_const.rs:65:9
    |
 LL | /         pub fn b(self, a: &A) -> B {
 LL | |             B
@@ -66,12 +74,12 @@ LL | |         }
    | |_________^
 
 error: this could be a `const fn`
-  --> $DIR/could_be_const.rs:77:5
+  --> $DIR/could_be_const.rs:75:5
    |
 LL | /     fn const_fn_stabilized_before_msrv(byte: u8) {
 LL | |         byte.is_ascii_digit();
 LL | |     }
    | |_____^
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 

@@ -117,6 +117,7 @@ static TARGETS: &[&str] = &[
     "powerpc64-unknown-linux-gnu",
     "powerpc64le-unknown-linux-gnu",
     "riscv32i-unknown-none-elf",
+    "riscv32im-unknown-none-elf",
     "riscv32imc-unknown-none-elf",
     "riscv32imac-unknown-none-elf",
     "riscv32gc-unknown-linux-gnu",
@@ -151,6 +152,7 @@ static TARGETS: &[&str] = &[
     "x86_64-unknown-linux-gnux32",
     "x86_64-unknown-linux-musl",
     "x86_64-unknown-netbsd",
+    "x86_64-unknown-none",
     "x86_64-unknown-redox",
     "x86_64-unknown-hermit",
 ];

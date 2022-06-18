@@ -2,20 +2,11 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
-use rustc_hir as hir;
-use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::{self, LangItem};
 use rustc_hir::weak_lang_items::WEAK_ITEMS_REFS;
 use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
-use rustc_span::symbol::Symbol;
-use rustc_span::Span;
-
-struct Context<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    items: &'a mut lang_items::LanguageItems,
-}
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the
 /// language items required by this crate, but not defined yet.
@@ -30,10 +21,28 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItem
         items.missing.push(LangItem::EhCatchTypeinfo);
     }
 
-    {
-        let mut cx = Context { tcx, items };
-        tcx.hir().visit_all_item_likes(&mut cx.as_deep_visitor());
+    let crate_items = tcx.hir_crate_items(());
+    for id in crate_items.foreign_items() {
+        let attrs = tcx.hir().attrs(id.hir_id());
+        if let Some((lang_item, _)) = lang_items::extract(attrs) {
+            if let Some(&item) = WEAK_ITEMS_REFS.get(&lang_item) {
+                if items.require(item).is_err() {
+                    items.missing.push(item);
+                }
+            } else {
+                let span = tcx.def_span(id.def_id);
+                struct_span_err!(
+                    tcx.sess,
+                    span,
+                    E0264,
+                    "unknown external lang item: `{}`",
+                    lang_item
+                )
+                .emit();
+            }
+        }
     }
+
     verify(tcx, items);
 }
 
@@ -78,28 +87,5 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
                     .emit();
             }
         }
-    }
-}
-
-impl<'a, 'tcx> Context<'a, 'tcx> {
-    fn register(&mut self, name: Symbol, span: Span) {
-        if let Some(&item) = WEAK_ITEMS_REFS.get(&name) {
-            if self.items.require(item).is_err() {
-                self.items.missing.push(item);
-            }
-        } else {
-            struct_span_err!(self.tcx.sess, span, E0264, "unknown external lang item: `{}`", name)
-                .emit();
-        }
-    }
-}
-
-impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
-    fn visit_foreign_item(&mut self, i: &hir::ForeignItem<'_>) {
-        let attrs = self.tcx.hir().attrs(i.hir_id());
-        if let Some((lang_item, _)) = lang_items::extract(attrs) {
-            self.register(lang_item, i.span);
-        }
-        intravisit::walk_foreign_item(self, i)
     }
 }

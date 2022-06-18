@@ -4,28 +4,27 @@ error[E0277]: the trait bound `Uwu<10_u32, 12_u32>: Trait` is not satisfied
 LL | fn rawr() -> impl Trait {
    |              ^^^^^^^^^^ the trait `Trait` is not implemented for `Uwu<10_u32, 12_u32>`
    |
-   = help: the following implementations were found:
-             <Uwu<N> as Trait>
+   = help: the trait `Trait` is implemented for `Uwu<N>`
 
-error[E0277]: the trait bound `u32: Traitor<N, N>` is not satisfied
+error[E0277]: the trait bound `u32: Traitor<N>` is not satisfied
   --> $DIR/rp_impl_trait_fail.rs:17:26
    |
 LL | fn uwu<const N: u8>() -> impl Traitor<N> {
-   |                          ^^^^^^^^^^^^^^^ the trait `Traitor<N, N>` is not implemented for `u32`
+   |                          ^^^^^^^^^^^^^^^ the trait `Traitor<N>` is not implemented for `u32`
    |
-   = help: the following implementations were found:
+   = help: the following other types implement trait `Traitor<N, M>`:
              <u32 as Traitor<N, 2_u8>>
              <u64 as Traitor<1_u8, 2_u8>>
 
-error[E0277]: the trait bound `u64: Traitor<1_u8, 1_u8>` is not satisfied
+error[E0277]: the trait bound `u64: Traitor` is not satisfied
   --> $DIR/rp_impl_trait_fail.rs:22:13
    |
 LL | fn owo() -> impl Traitor {
-   |             ^^^^^^^^^^^^ the trait `Traitor<1_u8, 1_u8>` is not implemented for `u64`
+   |             ^^^^^^^^^^^^ the trait `Traitor` is not implemented for `u64`
    |
-   = help: the following implementations were found:
-             <u64 as Traitor<1_u8, 2_u8>>
+   = help: the following other types implement trait `Traitor<N, M>`:
              <u32 as Traitor<N, 2_u8>>
+             <u64 as Traitor<1_u8, 2_u8>>
 
 error: aborting due to 3 previous errors
 

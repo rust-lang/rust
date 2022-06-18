@@ -60,7 +60,7 @@ fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     }
 
     if let ty::Adt(adt, substs) = ty.kind() {
-        match_def_path(cx, adt.did, &paths::COW) && substs.type_at(1).is_str()
+        match_def_path(cx, adt.did(), &paths::COW) && substs.type_at(1).is_str()
     } else {
         false
     }

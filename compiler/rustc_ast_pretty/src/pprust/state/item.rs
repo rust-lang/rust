@@ -19,7 +19,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
+    pub(crate) fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
         let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
@@ -36,12 +36,16 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::TyAlias(box ast::TyAlias {
                 defaultness,
                 generics,
+                where_clauses,
+                where_predicates_split,
                 bounds,
                 ty,
             }) => {
                 self.print_associated_type(
                     ident,
                     generics,
+                    *where_clauses,
+                    *where_predicates_split,
                     bounds,
                     ty.as_deref(),
                     vis,
@@ -95,11 +99,15 @@ impl<'a> State<'a> {
         &mut self,
         ident: Ident,
         generics: &ast::Generics,
+        where_clauses: (ast::TyAliasWhereClause, ast::TyAliasWhereClause),
+        where_predicates_split: usize,
         bounds: &ast::GenericBounds,
         ty: Option<&ast::Ty>,
         vis: &ast::Visibility,
         defaultness: ast::Defaultness,
     ) {
+        let (before_predicates, after_predicates) =
+            generics.where_clause.predicates.split_at(where_predicates_split);
         self.head("");
         self.print_visibility(vis);
         self.print_defaultness(defaultness);
@@ -107,19 +115,20 @@ impl<'a> State<'a> {
         self.print_ident(ident);
         self.print_generic_params(&generics.params);
         self.print_type_bounds(":", bounds);
-        self.print_where_clause(&generics.where_clause);
+        self.print_where_clause_parts(where_clauses.0.0, before_predicates);
         if let Some(ty) = ty {
             self.space();
             self.word_space("=");
             self.print_type(ty);
         }
+        self.print_where_clause_parts(where_clauses.1.0, after_predicates);
         self.word(";");
         self.end(); // end inner head-block
         self.end(); // end outer head-block
     }
 
     /// Pretty-prints an item.
-    crate fn print_item(&mut self, item: &ast::Item) {
+    pub(crate) fn print_item(&mut self, item: &ast::Item) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
@@ -211,6 +220,8 @@ impl<'a> State<'a> {
             ast::ItemKind::TyAlias(box ast::TyAlias {
                 defaultness,
                 ref generics,
+                where_clauses,
+                where_predicates_split,
                 ref bounds,
                 ref ty,
             }) => {
@@ -218,6 +229,8 @@ impl<'a> State<'a> {
                 self.print_associated_type(
                     item.ident,
                     generics,
+                    where_clauses,
+                    where_predicates_split,
                     bounds,
                     ty,
                     &item.vis,
@@ -387,16 +400,12 @@ impl<'a> State<'a> {
         self.bclose(span, empty)
     }
 
-    crate fn print_visibility(&mut self, vis: &ast::Visibility) {
+    pub(crate) fn print_visibility(&mut self, vis: &ast::Visibility) {
         match vis.kind {
             ast::VisibilityKind::Public => self.word_nbsp("pub"),
-            ast::VisibilityKind::Crate(sugar) => match sugar {
-                ast::CrateSugar::PubCrate => self.word_nbsp("pub(crate)"),
-                ast::CrateSugar::JustCrate => self.word_nbsp("crate"),
-            },
             ast::VisibilityKind::Restricted { ref path, .. } => {
                 let path = Self::to_string(|s| s.print_path(path, false, 0));
-                if path == "self" || path == "super" {
+                if path == "crate" || path == "self" || path == "super" {
                     self.word_nbsp(format!("pub({})", path))
                 } else {
                     self.word_nbsp(format!("pub(in {})", path))
@@ -471,7 +480,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_variant(&mut self, v: &ast::Variant) {
+    pub(crate) fn print_variant(&mut self, v: &ast::Variant) {
         self.head("");
         self.print_visibility(&v.vis);
         let generics = ast::Generics::default();
@@ -483,7 +492,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_assoc_item(&mut self, item: &ast::AssocItem) {
+    pub(crate) fn print_assoc_item(&mut self, item: &ast::AssocItem) {
         let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
@@ -496,10 +505,19 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Const(def, ty, body) => {
                 self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
             }
-            ast::AssocItemKind::TyAlias(box ast::TyAlias { defaultness, generics, bounds, ty }) => {
+            ast::AssocItemKind::TyAlias(box ast::TyAlias {
+                defaultness,
+                generics,
+                where_clauses,
+                where_predicates_split,
+                bounds,
+                ty,
+            }) => {
                 self.print_associated_type(
                     ident,
                     generics,
+                    *where_clauses,
+                    *where_predicates_split,
                     bounds,
                     ty.as_deref(),
                     vis,
@@ -540,7 +558,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_fn(
+    pub(crate) fn print_fn(
         &mut self,
         decl: &ast::FnDecl,
         header: ast::FnHeader,
@@ -557,7 +575,7 @@ impl<'a> State<'a> {
         self.print_where_clause(&generics.where_clause)
     }
 
-    crate fn print_fn_params_and_ret(&mut self, decl: &ast::FnDecl, is_closure: bool) {
+    pub(crate) fn print_fn_params_and_ret(&mut self, decl: &ast::FnDecl, is_closure: bool) {
         let (open, close) = if is_closure { ("|", "|") } else { ("(", ")") };
         self.word(open);
         self.commasep(Inconsistent, &decl.inputs, |s, param| s.print_param(param, is_closure));
@@ -566,14 +584,22 @@ impl<'a> State<'a> {
     }
 
     fn print_where_clause(&mut self, where_clause: &ast::WhereClause) {
-        if where_clause.predicates.is_empty() && !where_clause.has_where_token {
+        self.print_where_clause_parts(where_clause.has_where_token, &where_clause.predicates);
+    }
+
+    pub(crate) fn print_where_clause_parts(
+        &mut self,
+        has_where_token: bool,
+        predicates: &[ast::WherePredicate],
+    ) {
+        if predicates.is_empty() && !has_where_token {
             return;
         }
 
         self.space();
         self.word_space("where");
 
-        for (i, predicate) in where_clause.predicates.iter().enumerate() {
+        for (i, predicate) in predicates.iter().enumerate() {
             if i != 0 {
                 self.word_space(",");
             }

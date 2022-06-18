@@ -79,7 +79,7 @@ impl<T, const N: usize> IntoIterator for [T; N] {
 impl<T, const N: usize> IntoIter<T, N> {
     /// Creates a new iterator over the given `array`.
     #[stable(feature = "array_value_iter", since = "1.51.0")]
-    #[rustc_deprecated(since = "1.59.0", reason = "use `IntoIterator::into_iter` instead")]
+    #[deprecated(since = "1.59.0", note = "use `IntoIterator::into_iter` instead")]
     pub fn new(array: [T; N]) -> Self {
         IntoIterator::into_iter(array)
     }
@@ -266,7 +266,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         let data = &mut self.data;
-        self.alive.by_ref().fold(init, |acc, idx| {
+        iter::ByRefSized(&mut self.alive).fold(init, |acc, idx| {
             // SAFETY: idx is obtained by folding over the `alive` range, which implies the
             // value is currently considered alive but as the range is being consumed each value
             // we read here will only be read once and then considered dead.
@@ -320,6 +320,20 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
             // alive-zone, the alive zone is now `data[alive]` again, restoring
             // all invariants.
             unsafe { self.data.get_unchecked(idx).assume_init_read() }
+        })
+    }
+
+    #[inline]
+    fn rfold<Acc, Fold>(mut self, init: Acc, mut rfold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let data = &mut self.data;
+        iter::ByRefSized(&mut self.alive).rfold(init, |acc, idx| {
+            // SAFETY: idx is obtained by folding over the `alive` range, which implies the
+            // value is currently considered alive but as the range is being consumed each value
+            // we read here will only be read once and then considered dead.
+            rfold(acc, unsafe { data.get_unchecked(idx).assume_init_read() })
         })
     }
 

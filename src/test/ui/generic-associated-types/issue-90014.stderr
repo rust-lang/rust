@@ -5,9 +5,7 @@ LL |     type Fut<'a> where Self: 'a;
    |     ---------------------------- definition of `Fut` from trait
 ...
 LL |     type Fut<'a> = impl Future<Output = ()>;
-   |                 -  ^^^^^^^^^^^^^^^^^^^^^^^^
-   |                 |
-   |                 help: try copying this clause from the trait: `where Self: 'a`
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^- help: try copying this clause from the trait: `where Self: 'a`
    |
 note: type must outlive the lifetime `'a` as defined here
   --> $DIR/issue-90014.rs:14:14

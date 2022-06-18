@@ -5,7 +5,7 @@ LL | fn move_then_borrow<T: Not<Output=T> + Clone>(x: T) {
    |                                               - move occurs because `x` has type `T`, which does not implement the `Copy` trait
 LL |     !x;
    |     -- `x` moved due to usage in operator
-LL | 
+LL |
 LL |     x.clone();
    |     ^^^^^^^^^ value borrowed here after move
    |

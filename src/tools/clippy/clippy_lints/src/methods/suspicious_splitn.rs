@@ -12,13 +12,13 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, se
         if count <= 1;
         if let Some(call_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(call_id);
-        let lang_items = cx.tcx.lang_items();
-        if lang_items.slice_impl() == Some(impl_id) || lang_items.str_impl() == Some(impl_id);
+        if cx.tcx.impl_trait_ref(impl_id).is_none();
+        let self_ty = cx.tcx.type_of(impl_id);
+        if self_ty.is_slice() || self_ty.is_str();
         then {
             // Ignore empty slice and string literals when used with a literal count.
             if matches!(self_arg.kind, ExprKind::Array([]))
                 || matches!(self_arg.kind, ExprKind::Lit(Spanned { node: LitKind::Str(s, _), .. }) if s.is_empty())
-
             {
                 return;
             }
@@ -28,7 +28,7 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, se
                 "the resulting iterator will always return `None`")
             } else {
                 (format!("`{}` called with `1` split", method_name),
-                if lang_items.slice_impl() == Some(impl_id) {
+                if self_ty.is_slice() {
                     "the resulting iterator will always return the entire slice followed by `None`"
                 } else {
                     "the resulting iterator will always return the entire string followed by `None`"

@@ -19,9 +19,9 @@ pub struct CheaterDetectionMechanism {}
 impl fmt::Debug for CheaterDetectionMechanism {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         //~^ WARN hidden lifetime parameters in types are deprecated
-        //~| NOTE expected named lifetime parameter
+        //~| NOTE expected lifetime parameter
         //~| NOTE explicit anonymous lifetimes aid
-        //~| HELP consider using the `'_` lifetime
+        //~| HELP indicate the anonymous lifetime
         fmt.debug_struct("CheaterDetectionMechanism").finish()
     }
 }

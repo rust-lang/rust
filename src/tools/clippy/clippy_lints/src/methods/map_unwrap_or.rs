@@ -19,13 +19,13 @@ pub(super) fn check<'tcx>(
     recv: &'tcx hir::Expr<'_>,
     map_arg: &'tcx hir::Expr<'_>,
     unwrap_arg: &'tcx hir::Expr<'_>,
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) -> bool {
     // lint if the caller of `map()` is an `Option`
     let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option);
     let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
 
-    if is_result && !meets_msrv(msrv, &msrvs::RESULT_MAP_OR_ELSE) {
+    if is_result && !meets_msrv(msrv, msrvs::RESULT_MAP_OR_ELSE) {
         return false;
     }
 

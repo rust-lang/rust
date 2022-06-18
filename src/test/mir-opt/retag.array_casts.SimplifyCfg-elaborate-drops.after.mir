@@ -171,7 +171,7 @@ fn array_casts() -> () {
         Retag(_32);                      // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_34);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _34 = Option::<Arguments>::None; // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        core::panicking::assert_failed::<usize, usize>(move _29, move _30, move _32, move _34); // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _28 = core::panicking::assert_failed::<usize, usize>(move _29, move _30, move _32, move _34); // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r usize, &'s usize, Option<Arguments<'t0>>) -> ! {core::panicking::assert_failed::<usize, usize>}, val: Value(Scalar(<ZST>)) }

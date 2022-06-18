@@ -1,27 +1,18 @@
-struct Foo {
-}
+// run-rustfix
+// see also issue-38371-unfixable.rs
+#![allow(dead_code)]
 
-fn foo(&foo: Foo) { //~ ERROR mismatched types
-}
+#[derive(Copy, Clone)]
+struct Foo {}
 
-fn bar(foo: Foo) {
-}
+fn foo(&_a: Foo) {} //~ ERROR mismatched types
 
-fn qux(foo: &Foo) {
-}
+fn bar(_a: Foo) {}
 
-fn zar(&foo: &Foo) {
-}
+fn qux(_a: &Foo) {}
 
-// The somewhat unexpected help message in this case is courtesy of
-// match_default_bindings.
-fn agh(&&bar: &u32) { //~ ERROR mismatched types
-}
+fn zar(&_a: &Foo) {}
 
-fn bgh(&&bar: u32) { //~ ERROR mismatched types
-}
-
-fn ugh(&[bar]: &u32) { //~ ERROR expected an array or slice
-}
+fn agh(&&_a: &u32) {} //~ ERROR mismatched types
 
 fn main() {}

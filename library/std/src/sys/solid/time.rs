@@ -1,5 +1,5 @@
 use super::{abi, error::expect_success};
-use crate::{convert::TryInto, mem::MaybeUninit, time::Duration};
+use crate::{mem::MaybeUninit, time::Duration};
 
 pub use super::itron::time::Instant;
 

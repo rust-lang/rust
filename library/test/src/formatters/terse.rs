@@ -11,8 +11,9 @@ use crate::{
     types::TestDesc,
 };
 
-// insert a '\n' after 100 tests in quiet mode
-const QUIET_MODE_MAX_COLUMN: usize = 100;
+// We insert a '\n' when the output hits 100 columns in quiet mode. 88 test
+// result chars leaves 12 chars for a progress count like " 11704/12853".
+const QUIET_MODE_MAX_COLUMN: usize = 88;
 
 pub(crate) struct TerseFormatter<T> {
     out: OutputLocation<T>,
@@ -65,7 +66,7 @@ impl<T: Write> TerseFormatter<T> {
     ) -> io::Result<()> {
         self.write_pretty(result, color)?;
         if self.test_count % QUIET_MODE_MAX_COLUMN == QUIET_MODE_MAX_COLUMN - 1 {
-            // we insert a new line every 100 dots in order to flush the
+            // We insert a new line regularly in order to flush the
             // screen when dealing with line-buffered output (e.g., piping to
             // `stamp` in the rust CI).
             let out = format!(" {}/{}\n", self.test_count + 1, self.total_test_count);
@@ -122,7 +123,7 @@ impl<T: Write> TerseFormatter<T> {
         self.write_plain("\nsuccesses:\n")?;
         successes.sort();
         for name in &successes {
-            self.write_plain(&format!("    {}\n", name))?;
+            self.write_plain(&format!("    {name}\n"))?;
         }
         Ok(())
     }
@@ -148,7 +149,7 @@ impl<T: Write> TerseFormatter<T> {
         self.write_plain("\nfailures:\n")?;
         failures.sort();
         for name in &failures {
-            self.write_plain(&format!("    {}\n", name))?;
+            self.write_plain(&format!("    {name}\n"))?;
         }
         Ok(())
     }
@@ -156,9 +157,9 @@ impl<T: Write> TerseFormatter<T> {
     fn write_test_name(&mut self, desc: &TestDesc) -> io::Result<()> {
         let name = desc.padded_name(self.max_name_len, desc.name.padding());
         if let Some(test_mode) = desc.test_mode() {
-            self.write_plain(&format!("test {} - {} ... ", name, test_mode))?;
+            self.write_plain(&format!("test {name} - {test_mode} ... "))?;
         } else {
-            self.write_plain(&format!("test {} ... ", name))?;
+            self.write_plain(&format!("test {name} ... "))?;
         }
 
         Ok(())
@@ -170,11 +171,11 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
         self.total_test_count = test_count;
         let noun = if test_count != 1 { "tests" } else { "test" };
         let shuffle_seed_msg = if let Some(shuffle_seed) = shuffle_seed {
-            format!(" (shuffle seed: {})", shuffle_seed)
+            format!(" (shuffle seed: {shuffle_seed})")
         } else {
             String::new()
         };
-        self.write_plain(&format!("\nrunning {} {}{}\n", test_count, noun, shuffle_seed_msg))
+        self.write_plain(&format!("\nrunning {test_count} {noun}{shuffle_seed_msg}\n"))
     }
 
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
@@ -247,7 +248,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
         self.write_plain(&s)?;
 
         if let Some(ref exec_time) = state.exec_time {
-            let time_str = format!("; finished in {}", exec_time);
+            let time_str = format!("; finished in {exec_time}");
             self.write_plain(&time_str)?;
         }
 

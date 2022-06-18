@@ -23,7 +23,8 @@
 //! `computed` does not change accidentally (e.g. somebody might accidentally call
 //! `foo.computed.mutate()`). This is what `Frozen` is for. We can do the following:
 //!
-//! ```rust
+//! ```
+//! # struct Bar {}
 //! use rustc_data_structures::frozen::Frozen;
 //!
 //! struct Foo {

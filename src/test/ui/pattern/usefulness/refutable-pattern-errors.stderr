@@ -15,10 +15,10 @@ LL |     let (1, (Some(1), 2..=3)) = (1, (None, 2));
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
    = note: the matched value is of type `(i32, (Option<i32>, i32))`
-help: you might want to use `if let` to ignore the variant that isn't matched
+help: you might want to use `if let` to ignore the variants that aren't matched
    |
-LL |     if let (1, (Some(1), 2..=3)) = (1, (None, 2)) { /* */ }
-   |
+LL |     if let (1, (Some(1), 2..=3)) = (1, (None, 2)) { todo!() }
+   |     ++                                            ~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

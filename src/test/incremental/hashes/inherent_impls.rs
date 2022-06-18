@@ -7,7 +7,7 @@
 
 // build-pass (FIXME(62277): could be check-pass?)
 // revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
-// compile-flags: -Z query-dep-graph
+// compile-flags: -Z query-dep-graph -O
 // [cfail1]compile-flags: -Zincremental-ignore-spans
 // [cfail2]compile-flags: -Zincremental-ignore-spans
 // [cfail3]compile-flags: -Zincremental-ignore-spans
@@ -116,7 +116,7 @@ impl Foo {
 // Change Method Privacy -------------------------------------------------------
 #[cfg(any(cfail1,cfail4))]
 impl Foo {
-    //------------------------------------------------------------------------------
+    //----------------------------------------------------
     //--------------------------
     //------------------------------------------------------------------------------
     //--------------------------
@@ -129,9 +129,9 @@ impl Foo {
 #[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="associated_item,hir_owner,hir_owner_nodes")]
+    #[rustc_clean(cfg="cfail2", except="associated_item")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="associated_item,hir_owner,hir_owner_nodes")]
+    #[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,associated_item")]
     #[rustc_clean(cfg="cfail6")]
     fn     method_privacy() { }
 }

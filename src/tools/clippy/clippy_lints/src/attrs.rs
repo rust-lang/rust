@@ -89,13 +89,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// // Bad
     /// #[deny(dead_code)]
     /// extern crate foo;
     /// #[forbid(dead_code)]
     /// use foo::bar;
+    /// ```
     ///
-    /// // Ok
+    /// Use instead:
+    /// ```rust,ignore
     /// #[allow(unused_imports)]
     /// use foo::baz;
     /// #[allow(unused_imports)]
@@ -146,15 +147,19 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// #[allow(dead_code)]
+    ///
+    /// fn not_quite_good_code() { }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
     /// // Good (as inner attribute)
     /// #![allow(dead_code)]
     ///
     /// fn this_is_fine() { }
     ///
-    /// // Bad
-    /// #[allow(dead_code)]
-    ///
-    /// fn not_quite_good_code() { }
+    /// // or
     ///
     /// // Good (as outer attribute)
     /// #[allow(dead_code)]
@@ -175,12 +180,11 @@ declare_clippy_lint! {
     /// These lints should only be enabled on a lint-by-lint basis and with careful consideration.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// #![deny(clippy::restriction)]
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// #![deny(clippy::as_conversions)]
     /// ```
@@ -205,13 +209,12 @@ declare_clippy_lint! {
     /// [#3123](https://github.com/rust-lang/rust-clippy/pull/3123#issuecomment-422321765)
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// #[cfg_attr(rustfmt, rustfmt_skip)]
     /// fn main() { }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
     /// #[rustfmt::skip]
     /// fn main() { }
@@ -231,20 +234,20 @@ declare_clippy_lint! {
     /// by the conditional compilation engine.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust
     /// #[cfg(linux)]
     /// fn conditional() { }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust
+    /// # mod hidden {
     /// #[cfg(target_os = "linux")]
     /// fn conditional() { }
-    /// ```
+    /// # }
     ///
-    /// Or:
-    /// ```rust
+    /// // or
+    ///
     /// #[cfg(unix)]
     /// fn conditional() { }
     /// ```
@@ -255,7 +258,37 @@ declare_clippy_lint! {
     "usage of `cfg(operating_system)` instead of `cfg(target_os = \"operating_system\")`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for attributes that allow lints without a reason.
+    ///
+    /// (This requires the `lint_reasons` feature)
+    ///
+    /// ### Why is this bad?
+    /// Allowing a lint should always have a reason. This reason should be documented to
+    /// ensure that others understand the reasoning
+    ///
+    /// ### Example
+    /// ```rust
+    /// #![feature(lint_reasons)]
+    ///
+    /// #![allow(clippy::some_lint)]
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// #![feature(lint_reasons)]
+    ///
+    /// #![allow(clippy::some_lint, reason = "False positive rust-lang/rust-clippy#1002020")]
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub ALLOW_ATTRIBUTES_WITHOUT_REASON,
+    restriction,
+    "ensures that all `allow` and `expect` attributes have a reason"
+}
+
 declare_lint_pass!(Attributes => [
+    ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
     DEPRECATED_SEMVER,
     USELESS_ATTRIBUTE,
@@ -268,6 +301,9 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
             if let Some(ident) = attr.ident() {
                 if is_lint_level(ident.name) {
                     check_clippy_lint_names(cx, ident.name, items);
+                }
+                if matches!(ident.name, sym::allow | sym::expect) {
+                    check_lint_reason(cx, ident.name, items, attr);
                 }
                 if items.is_empty() || !attr.has_name(sym::deprecated) {
                     return;
@@ -301,26 +337,25 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                     }
                     if let Some(lint_list) = &attr.meta_item_list() {
                         if attr.ident().map_or(false, |ident| is_lint_level(ident.name)) {
-                            // permit `unused_imports`, `deprecated`, `unreachable_pub`,
-                            // `clippy::wildcard_imports`, and `clippy::enum_glob_use` for `use` items
-                            // and `unused_imports` for `extern crate` items with `macro_use`
                             for lint in lint_list {
                                 match item.kind {
                                     ItemKind::Use(..) => {
-                                        if is_word(lint, sym!(unused_imports))
+                                        if is_word(lint, sym::unused_imports)
                                             || is_word(lint, sym::deprecated)
                                             || is_word(lint, sym!(unreachable_pub))
                                             || is_word(lint, sym!(unused))
-                                            || extract_clippy_lint(lint)
-                                                .map_or(false, |s| s.as_str() == "wildcard_imports")
-                                            || extract_clippy_lint(lint)
-                                                .map_or(false, |s| s.as_str() == "enum_glob_use")
+                                            || extract_clippy_lint(lint).map_or(false, |s| {
+                                                matches!(
+                                                    s.as_str(),
+                                                    "wildcard_imports" | "enum_glob_use" | "redundant_pub_crate",
+                                                )
+                                            })
                                         {
                                             return;
                                         }
                                     },
                                     ItemKind::ExternCrate(..) => {
-                                        if is_word(lint, sym!(unused_imports)) && skip_unused_imports {
+                                        if is_word(lint, sym::unused_imports) && skip_unused_imports {
                                             return;
                                         }
                                         if is_word(lint, sym!(unused_extern_crates)) {
@@ -402,6 +437,30 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMe
             }
         }
     }
+}
+
+fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem], attr: &'_ Attribute) {
+    // Check for the feature
+    if !cx.tcx.sess.features_untracked().lint_reasons {
+        return;
+    }
+
+    // Check if the reason is present
+    if let Some(item) = items.last().and_then(NestedMetaItem::meta_item)
+        && let MetaItemKind::NameValue(_) = &item.kind
+        && item.path == sym::reason
+    {
+        return;
+    }
+
+    span_lint_and_help(
+        cx,
+        ALLOW_ATTRIBUTES_WITHOUT_REASON,
+        attr.span,
+        &format!("`{}` attribute without specifying a reason", name.as_str()),
+        None,
+        "try adding a reason at the end with `, reason = \"..\"`",
+    );
 }
 
 fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
@@ -528,22 +587,21 @@ impl EarlyLintPass for EarlyAttributes {
 }
 
 fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
-    for attr in &item.attrs {
-        let attr_item = if let AttrKind::Normal(ref attr, _) = attr.kind {
-            attr
-        } else {
-            return;
-        };
-
-        if attr.style == AttrStyle::Outer {
-            if attr_item.args.inner_tokens().is_empty() || !is_present_in_source(cx, attr.span) {
-                return;
-            }
-
+    let mut iter = item.attrs.iter().peekable();
+    while let Some(attr) = iter.next() {
+        if matches!(attr.kind, AttrKind::Normal(..))
+            && attr.style == AttrStyle::Outer
+            && is_present_in_source(cx, attr.span)
+        {
             let begin_of_attr_to_item = Span::new(attr.span.lo(), item.span.lo(), item.span.ctxt(), item.span.parent());
-            let end_of_attr_to_item = Span::new(attr.span.hi(), item.span.lo(), item.span.ctxt(), item.span.parent());
+            let end_of_attr_to_next_attr_or_item = Span::new(
+                attr.span.hi(),
+                iter.peek().map_or(item.span.lo(), |next_attr| next_attr.span.lo()),
+                item.span.ctxt(),
+                item.span.parent(),
+            );
 
-            if let Some(snippet) = snippet_opt(cx, end_of_attr_to_item) {
+            if let Some(snippet) = snippet_opt(cx, end_of_attr_to_next_attr_or_item) {
                 let lines = snippet.split('\n').collect::<Vec<_>>();
                 let lines = without_block_comments(lines);
 
@@ -563,7 +621,7 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
 
 fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: Option<RustcVersion>) {
     if_chain! {
-        if meets_msrv(msrv.as_ref(), &msrvs::TOOL_ATTRIBUTES);
+        if meets_msrv(msrv, msrvs::TOOL_ATTRIBUTES);
         // check cfg_attr
         if attr.has_name(sym::cfg_attr);
         if let Some(items) = attr.meta_item_list();
@@ -573,8 +631,15 @@ fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: Opti
         if feature_item.has_name(sym::rustfmt);
         // check for `rustfmt_skip` and `rustfmt::skip`
         if let Some(skip_item) = &items[1].meta_item();
-        if skip_item.has_name(sym!(rustfmt_skip)) ||
-            skip_item.path.segments.last().expect("empty path in attribute").ident.name == sym::skip;
+        if skip_item.has_name(sym!(rustfmt_skip))
+            || skip_item
+                .path
+                .segments
+                .last()
+                .expect("empty path in attribute")
+                .ident
+                .name
+                == sym::skip;
         // Only lint outer attributes, because custom inner attributes are unstable
         // Tracking issue: https://github.com/rust-lang/rust/issues/54726
         if attr.style == AttrStyle::Outer;
@@ -659,5 +724,5 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
 }
 
 fn is_lint_level(symbol: Symbol) -> bool {
-    matches!(symbol, sym::allow | sym::warn | sym::deny | sym::forbid)
+    matches!(symbol, sym::allow | sym::expect | sym::warn | sym::deny | sym::forbid)
 }

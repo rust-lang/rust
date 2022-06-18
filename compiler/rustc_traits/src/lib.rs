@@ -1,9 +1,7 @@
 //! New recursive solver modeled on Chalk's recursive solver. Most of
 //! the guts are broken up into modules; see the comments in those modules.
 
-#![feature(crate_visibility_modifier)]
 #![feature(let_else)]
-#![feature(nll)]
 #![recursion_limit = "256"]
 
 #[macro_use]

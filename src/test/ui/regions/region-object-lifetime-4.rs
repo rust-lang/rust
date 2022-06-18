@@ -9,7 +9,8 @@ trait Foo {
 // with the longer lifetime when (from the signature) we only know
 // that it lives as long as the shorter lifetime. Therefore, error.
 fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (dyn Foo + 'b)) -> &'b () {
-    x.borrowed() //~ ERROR cannot infer
+    x.borrowed()
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

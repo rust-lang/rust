@@ -1,0 +1,15 @@
+error[E0275]: overflow evaluating the requirement `P: Sized`
+  --> $DIR/issue-82830.rs:7:8
+   |
+LL |     t: MaybeBox<P>,
+   |        ^^^^^^^^^^^
+   |
+note: required because of the requirements on the impl of `A<P, Box<P>>` for `P`
+  --> $DIR/issue-82830.rs:10:12
+   |
+LL | impl<Y, N> A<Y, N> for P {
+   |            ^^^^^^^     ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.

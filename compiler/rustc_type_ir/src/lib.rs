@@ -1,4 +1,5 @@
 #![feature(min_specialization)]
+#![feature(rustc_attrs)]
 
 #[macro_use]
 extern crate bitflags;
@@ -7,8 +8,143 @@ extern crate rustc_macros;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
+use smallvec::SmallVec;
 use std::fmt;
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::mem::discriminant;
+
+pub mod codec;
+pub mod sty;
+
+pub use codec::*;
+pub use sty::*;
+
+pub trait Interner {
+    type AdtDef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type SubstsRef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type DefId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type Ty: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type Const: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type Region: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type TypeAndMut: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type Mutability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type Movability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type PolyFnSig: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type ListBinderExistentialPredicate: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type BinderListTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type ListTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type ProjectionTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type ParamTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type BoundTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type PlaceholderType: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type InferTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type DelaySpanBugEmitted: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type PredicateKind: Clone + Debug + Hash + PartialEq + Eq;
+    type AllocId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+}
+
+pub trait InternAs<T: ?Sized, R> {
+    type Output;
+    fn intern_with<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce(&T) -> R;
+}
+
+impl<I, T, R, E> InternAs<[T], R> for I
+where
+    E: InternIteratorElement<T, R>,
+    I: Iterator<Item = E>,
+{
+    type Output = E::Output;
+    fn intern_with<F>(self, f: F) -> Self::Output
+    where
+        F: FnOnce(&[T]) -> R,
+    {
+        E::intern_with(self, f)
+    }
+}
+
+pub trait InternIteratorElement<T, R>: Sized {
+    type Output;
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output;
+}
+
+impl<T, R> InternIteratorElement<T, R> for T {
+    type Output = R;
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(
+        mut iter: I,
+        f: F,
+    ) -> Self::Output {
+        // This code is hot enough that it's worth specializing for the most
+        // common length lists, to avoid the overhead of `SmallVec` creation.
+        // Lengths 0, 1, and 2 typically account for ~95% of cases. If
+        // `size_hint` is incorrect a panic will occur via an `unwrap` or an
+        // `assert`.
+        match iter.size_hint() {
+            (0, Some(0)) => {
+                assert!(iter.next().is_none());
+                f(&[])
+            }
+            (1, Some(1)) => {
+                let t0 = iter.next().unwrap();
+                assert!(iter.next().is_none());
+                f(&[t0])
+            }
+            (2, Some(2)) => {
+                let t0 = iter.next().unwrap();
+                let t1 = iter.next().unwrap();
+                assert!(iter.next().is_none());
+                f(&[t0, t1])
+            }
+            _ => f(&iter.collect::<SmallVec<[_; 8]>>()),
+        }
+    }
+}
+
+impl<'a, T, R> InternIteratorElement<T, R> for &'a T
+where
+    T: Clone + 'a,
+{
+    type Output = R;
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+        // This code isn't hot.
+        f(&iter.cloned().collect::<SmallVec<[_; 8]>>())
+    }
+}
+
+impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
+    type Output = Result<R, E>;
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(
+        mut iter: I,
+        f: F,
+    ) -> Self::Output {
+        // This code is hot enough that it's worth specializing for the most
+        // common length lists, to avoid the overhead of `SmallVec` creation.
+        // Lengths 0, 1, and 2 typically account for ~95% of cases. If
+        // `size_hint` is incorrect a panic will occur via an `unwrap` or an
+        // `assert`, unless a failure happens first, in which case the result
+        // will be an error anyway.
+        Ok(match iter.size_hint() {
+            (0, Some(0)) => {
+                assert!(iter.next().is_none());
+                f(&[])
+            }
+            (1, Some(1)) => {
+                let t0 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
+                f(&[t0])
+            }
+            (2, Some(2)) => {
+                let t0 = iter.next().unwrap()?;
+                let t1 = iter.next().unwrap()?;
+                assert!(iter.next().is_none());
+                f(&[t0, t1])
+            }
+            _ => f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?),
+        })
+    }
+}
 
 bitflags! {
     /// Flags that we track on types. These flags are propagated upwards
@@ -61,6 +197,14 @@ bitflags! {
                                           | TypeFlags::HAS_CT_INFER.bits
                                           | TypeFlags::HAS_TY_PLACEHOLDER.bits
                                           | TypeFlags::HAS_CT_PLACEHOLDER.bits
+                                          // The `evaluate_obligation` query does not return further
+                                          // obligations. If it evaluates an obligation with an opaque
+                                          // type, that opaque type may get compared to another type,
+                                          // constraining it. We would lose this information.
+                                          // FIXME: differentiate between crate-local opaque types
+                                          // and opaque types from other crates, as only opaque types
+                                          // from the local crate can possibly be a local name
+                                          | TypeFlags::HAS_TY_OPAQUE.bits
                                           // We consider 'freshened' types and constants
                                           // to depend on a particular fn.
                                           // The freshening process throws away information,
@@ -114,16 +258,16 @@ rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
     /// regions (and perhaps later types) in a higher-ranked setting. In
     /// particular, imagine a type like this:
-    ///
-    ///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
-    ///     ^          ^            |          |           |
-    ///     |          |            |          |           |
-    ///     |          +------------+ 0        |           |
-    ///     |                                  |           |
-    ///     +----------------------------------+ 1         |
-    ///     |                                              |
-    ///     +----------------------------------------------+ 0
-    ///
+    /// ```ignore (illustrative)
+    ///    for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
+    /// // ^          ^            |          |           |
+    /// // |          |            |          |           |
+    /// // |          +------------+ 0        |           |
+    /// // |                                  |           |
+    /// // +----------------------------------+ 1         |
+    /// // |                                              |
+    /// // +----------------------------------------------+ 0
+    /// ```
     /// In this type, there are two binders (the outer fn and the inner
     /// fn). We need to be able to determine, for any given region, which
     /// fn type it is bound by, the inner or the outer one. There are
@@ -195,7 +339,7 @@ impl DebruijnIndex {
     /// it will now be bound at INNERMOST. This is an appropriate thing to do
     /// when moving a region out from inside binders:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     ///             for<'a>   fn(for<'b>   for<'c>   fn(&'a u32), _)
     /// // Binder:  D3           D2        D1            ^^
     /// ```
@@ -463,9 +607,9 @@ impl Variance {
     /// variance with which the argument appears.
     ///
     /// Example 1:
-    ///
-    ///     *mut Vec<i32>
-    ///
+    /// ```ignore (illustrative)
+    /// *mut Vec<i32>
+    /// ```
     /// Here, the "ambient" variance starts as covariant. `*mut T` is
     /// invariant with respect to `T`, so the variance in which the
     /// `Vec<i32>` appears is `Covariant.xform(Invariant)`, which
@@ -475,9 +619,9 @@ impl Variance {
     /// (again) in `Invariant`.
     ///
     /// Example 2:
-    ///
-    ///     fn(*const Vec<i32>, *mut Vec<i32)
-    ///
+    /// ```ignore (illustrative)
+    /// fn(*const Vec<i32>, *mut Vec<i32)
+    /// ```
     /// The ambient variance is covariant. A `fn` type is
     /// contravariant with respect to its parameters, so the variance
     /// within which both pointer types appear is

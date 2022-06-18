@@ -19,17 +19,17 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// let a = 1.0;
+    /// let b = f64::NAN;
+    ///
+    /// let not_less_or_equal = !(a <= b);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
     /// use std::cmp::Ordering;
-    ///
-    /// // Bad
-    /// let a = 1.0;
-    /// let b = f64::NAN;
-    ///
-    /// let _not_less_or_equal = !(a <= b);
-    ///
-    /// // Good
-    /// let a = 1.0;
-    /// let b = f64::NAN;
+    /// # let a = 1.0;
+    /// # let b = f64::NAN;
     ///
     /// let _not_less_or_equal = match a.partial_cmp(&b) {
     ///     None | Some(Ordering::Greater) => true,

@@ -63,9 +63,11 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         StorageLive(_12);                // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageLive(_13);                // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         _13 = move _11;                  // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
+        Deinit(_12);                     // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         ((_12 as Err).0: i32) = move _13; // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         discriminant(_12) = 1;           // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_13);                // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
+        Deinit(_3);                      // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         ((_3 as Break).0: std::result::Result<std::convert::Infallible, i32>) = move _12; // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         discriminant(_3) = 1;            // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_12);                // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
@@ -83,6 +85,7 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         _16 = move _14;                  // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
         _15 = move _16;                  // scope 10 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
         StorageDead(_16);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
+        Deinit(_0);                      // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
         ((_0 as Err).0: i32) = move _15; // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
         discriminant(_0) = 1;            // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_15);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
@@ -103,6 +106,7 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         _9 = move ((_4 as Ok).0: i32);   // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageLive(_10);                // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
         _10 = move _9;                   // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
+        Deinit(_3);                      // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
         ((_3 as Continue).0: i32) = move _10; // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
         discriminant(_3) = 0;            // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_10);                // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
@@ -113,6 +117,7 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         _7 = ((_3 as Continue).0: i32);  // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
         _2 = _7;                         // scope 4 at $DIR/separate_const_switch.rs:29:8: 29:10
         StorageDead(_7);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
+        Deinit(_0);                      // scope 0 at $DIR/separate_const_switch.rs:29:5: 29:11
         ((_0 as Ok).0: i32) = move _2;   // scope 0 at $DIR/separate_const_switch.rs:29:5: 29:11
         discriminant(_0) = 0;            // scope 0 at $DIR/separate_const_switch.rs:29:5: 29:11
         StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:29:10: 29:11

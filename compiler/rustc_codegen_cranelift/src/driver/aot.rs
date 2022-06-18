@@ -66,11 +66,7 @@ fn emit_module(
     let work_product = if backend_config.disable_incr_cache {
         None
     } else {
-        rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
-            tcx.sess,
-            &name,
-            &Some(tmp_file.clone()),
-        )
+        rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(tcx.sess, &name, &tmp_file)
     };
 
     ModuleCodegenResult(
@@ -84,21 +80,16 @@ fn reuse_workproduct_for_cgu(
     cgu: &CodegenUnit<'_>,
     work_products: &mut FxHashMap<WorkProductId, WorkProduct>,
 ) -> CompiledModule {
-    let mut object = None;
-    let work_product = cgu.work_product(tcx);
-    if let Some(saved_file) = &work_product.saved_file {
-        let obj_out =
-            tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu.name().as_str()));
-        object = Some(obj_out.clone());
-        let source_file = rustc_incremental::in_incr_comp_dir_sess(&tcx.sess, &saved_file);
-        if let Err(err) = rustc_fs_util::link_or_copy(&source_file, &obj_out) {
-            tcx.sess.err(&format!(
-                "unable to copy {} to {}: {}",
-                source_file.display(),
-                obj_out.display(),
-                err
-            ));
-        }
+    let work_product = cgu.previous_work_product(tcx);
+    let obj_out = tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu.name().as_str()));
+    let source_file = rustc_incremental::in_incr_comp_dir_sess(&tcx.sess, &work_product.saved_file);
+    if let Err(err) = rustc_fs_util::link_or_copy(&source_file, &obj_out) {
+        tcx.sess.err(&format!(
+            "unable to copy {} to {}: {}",
+            source_file.display(),
+            obj_out.display(),
+            err
+        ));
     }
 
     work_products.insert(cgu.work_product_id(), work_product);
@@ -106,7 +97,7 @@ fn reuse_workproduct_for_cgu(
     CompiledModule {
         name: cgu.name().to_string(),
         kind: ModuleKind::Regular,
-        object,
+        object: Some(obj_out),
         dwarf_object: None,
         bytecode: None,
     }
@@ -304,8 +295,12 @@ pub(crate) fn run_aot(
     };
 
     // FIXME handle `-Ctarget-cpu=native`
-    let target_cpu =
-        tcx.sess.opts.cg.target_cpu.as_ref().unwrap_or(&tcx.sess.target.cpu).to_owned();
+    let target_cpu = match tcx.sess.opts.cg.target_cpu {
+        Some(ref name) => name,
+        None => tcx.sess.target.cpu.as_ref(),
+    }
+    .to_owned();
+
     Box::new((
         CodegenResults {
             modules,

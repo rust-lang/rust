@@ -7,8 +7,8 @@
       let mut _0: i32;                     // return place in scope 0 at $DIR/remove_fake_borrows.rs:6:46: 6:49
       let mut _3: isize;                   // in scope 0 at $DIR/remove_fake_borrows.rs:8:9: 8:16
       let mut _4: &std::option::Option<&&i32>; // in scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
-      let mut _5: &&&i32;                  // in scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
-      let mut _6: &&i32;                   // in scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
+      let mut _5: &&i32;                   // in scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
+      let mut _6: &&&i32;                  // in scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
       let mut _7: &i32;                    // in scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
       let mut _8: bool;                    // in scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
   
@@ -34,8 +34,8 @@
   
       bb4: {
 -         _4 = &shallow _1;                // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
--         _5 = &shallow ((_1 as Some).0: &&i32); // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
--         _6 = &shallow (*((_1 as Some).0: &&i32)); // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
+-         _5 = &shallow (*((_1 as Some).0: &&i32)); // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
+-         _6 = &shallow ((_1 as Some).0: &&i32); // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
 -         _7 = &shallow (*(*((_1 as Some).0: &&i32))); // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
 +         nop;                             // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
 +         nop;                             // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12

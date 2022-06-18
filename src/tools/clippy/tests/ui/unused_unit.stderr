@@ -1,8 +1,8 @@
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:19:28
+  --> $DIR/unused_unit.rs:19:58
    |
 LL |     pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) -> ()
-   |                            ^^^^^^ help: remove the `-> ()`
+   |                                                          ^^^^^^ help: remove the `-> ()`
    |
 note: the lint level is defined here
   --> $DIR/unused_unit.rs:12:9
@@ -11,16 +11,16 @@ LL | #![deny(clippy::unused_unit)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: unneeded unit return type
+  --> $DIR/unused_unit.rs:19:28
+   |
+LL |     pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) -> ()
+   |                            ^^^^^^ help: remove the `-> ()`
+
+error: unneeded unit return type
   --> $DIR/unused_unit.rs:20:18
    |
 LL |     where G: Fn() -> () {
    |                  ^^^^^^ help: remove the `-> ()`
-
-error: unneeded unit return type
-  --> $DIR/unused_unit.rs:19:58
-   |
-LL |     pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) -> ()
-   |                                                          ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
   --> $DIR/unused_unit.rs:21:26

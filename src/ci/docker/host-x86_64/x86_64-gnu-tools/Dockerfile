@@ -65,14 +65,20 @@ RUN /scripts/cmake.sh
 COPY host-x86_64/x86_64-gnu-tools/checktools.sh /tmp/
 
 RUN curl -sL https://nodejs.org/dist/v14.4.0/node-v14.4.0-linux-x64.tar.xz | tar -xJ
-ENV PATH="/node-v14.4.0-linux-x64/bin:${PATH}"
+ENV NODE_FOLDER=/node-v14.4.0-linux-x64/bin
+ENV PATH="$NODE_FOLDER:${PATH}"
+
+COPY host-x86_64/x86_64-gnu-tools/browser-ui-test.version /tmp/
 
 # For now, we need to use `--unsafe-perm=true` to go around an issue when npm tries
 # to create a new folder. For reference:
 # https://github.com/puppeteer/puppeteer/issues/375
 #
 # We also specify the version in case we need to update it to go around cache limitations.
-RUN npm install -g browser-ui-test@0.7.2 --unsafe-perm=true
+#
+# The `browser-ui-test.version` file is also used by bootstrap to emit warnings in case
+# the local version of the package is different than the one used by the CI.
+RUN npm install -g browser-ui-test@$(head -n 1 /tmp/browser-ui-test.version) --unsafe-perm=true
 
 ENV RUST_CONFIGURE_ARGS \
   --build=x86_64-unknown-linux-gnu \

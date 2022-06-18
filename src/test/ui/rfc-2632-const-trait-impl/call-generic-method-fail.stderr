@@ -1,17 +1,17 @@
 error[E0277]: can't compare `T` with `T` in const contexts
-  --> $DIR/call-generic-method-fail.rs:5:5
+  --> $DIR/call-generic-method-fail.rs:4:5
    |
 LL |     *t == *t
    |     ^^^^^^^^ no implementation for `T == T`
    |
 note: the trait `PartialEq` is implemented for `T`, but that implementation is not `const`
-  --> $DIR/call-generic-method-fail.rs:5:5
+  --> $DIR/call-generic-method-fail.rs:4:5
    |
 LL |     *t == *t
    |     ^^^^^^^^
 
 error[E0015]: cannot call non-const operator in constant functions
-  --> $DIR/call-generic-method-fail.rs:5:5
+  --> $DIR/call-generic-method-fail.rs:4:5
    |
 LL |     *t == *t
    |     ^^^^^^^^

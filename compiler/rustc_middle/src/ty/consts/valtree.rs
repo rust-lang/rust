@@ -1,5 +1,7 @@
 use super::ScalarInt;
-use rustc_macros::HashStable;
+use crate::mir::interpret::{AllocId, Scalar};
+use crate::ty::{self, Ty, TyCtxt};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 
 #[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq, Ord, PartialOrd)]
 #[derive(HashStable)]
@@ -20,6 +22,9 @@ pub enum ValTree<'tcx> {
     /// See the `ScalarInt` documentation for how `ScalarInt` guarantees that equal values
     /// of these types have the same representation.
     Leaf(ScalarInt),
+
+    //SliceOrStr(ValSlice<'tcx>),
+    // dont use SliceOrStr for now
     /// The fields of any kind of aggregate. Structs, tuples and arrays are represented by
     /// listing their fields' values in order.
     /// Enums are represented by storing their discriminant as a field, followed by all
@@ -30,5 +35,78 @@ pub enum ValTree<'tcx> {
 impl<'tcx> ValTree<'tcx> {
     pub fn zst() -> Self {
         Self::Branch(&[])
+    }
+
+    #[inline]
+    pub fn unwrap_leaf(self) -> ScalarInt {
+        match self {
+            Self::Leaf(s) => s,
+            _ => bug!("expected leaf, got {:?}", self),
+        }
+    }
+
+    #[inline]
+    pub fn unwrap_branch(self) -> &'tcx [Self] {
+        match self {
+            Self::Branch(branch) => branch,
+            _ => bug!("expected branch, got {:?}", self),
+        }
+    }
+
+    pub fn from_raw_bytes<'a>(tcx: TyCtxt<'tcx>, bytes: &'a [u8]) -> Self {
+        let branches = bytes.iter().map(|b| Self::Leaf(ScalarInt::from(*b)));
+        let interned = tcx.arena.alloc_from_iter(branches);
+
+        Self::Branch(interned)
+    }
+
+    pub fn from_scalar_int(i: ScalarInt) -> Self {
+        Self::Leaf(i)
+    }
+
+    pub fn try_to_scalar(self) -> Option<Scalar<AllocId>> {
+        self.try_to_scalar_int().map(Scalar::Int)
+    }
+
+    pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
+        match self {
+            Self::Leaf(s) => Some(s),
+            Self::Branch(_) => None,
+        }
+    }
+
+    pub fn try_to_machine_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_scalar_int().map(|s| s.try_to_machine_usize(tcx).ok()).flatten()
+    }
+
+    /// Get the values inside the ValTree as a slice of bytes. This only works for
+    /// constants with types &str and &[u8].
+    pub fn try_to_raw_bytes(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx [u8]> {
+        match ty.kind() {
+            ty::Ref(_, inner_ty, _) => match inner_ty.kind() {
+                ty::Str => {
+                    let leafs = self
+                        .unwrap_branch()
+                        .into_iter()
+                        .map(|v| v.unwrap_leaf().try_to_u8().unwrap())
+                        .collect::<Vec<_>>();
+
+                    return Some(tcx.arena.alloc_from_iter(leafs.into_iter()));
+                }
+                ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {
+                    let leafs = self
+                        .unwrap_branch()
+                        .into_iter()
+                        .map(|v| v.unwrap_leaf().try_to_u8().unwrap())
+                        .collect::<Vec<_>>();
+
+                    return Some(tcx.arena.alloc_from_iter(leafs.into_iter()));
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+
+        None
     }
 }

@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-67007-escaping-data.rs:17:21
+  --> $DIR/issue-67007-escaping-data.rs:15:21
    |
 LL | impl<'tcx> Consumer<'tcx> {
    |      ---- lifetime `'tcx` defined here

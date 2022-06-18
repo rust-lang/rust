@@ -178,6 +178,12 @@ pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
     pub region_constraints: QueryRegionConstraints<'tcx>,
     pub certainty: Certainty,
+    /// List of opaque types which we tried to compare to another type.
+    /// Inside the query we don't know yet whether the opaque type actually
+    /// should get its hidden type inferred. So we bubble the opaque type
+    /// and the type it was compared against upwards and let the query caller
+    /// handle it.
+    pub opaque_types: Vec<(Ty<'tcx>, Ty<'tcx>)>,
     pub value: R,
 }
 
@@ -214,7 +220,7 @@ pub enum Certainty {
     /// distinguish the two (e.g., due to our preference for where
     /// clauses over impls).
     ///
-    /// After some unifiations and things have been done, it makes
+    /// After some unification and things have been done, it makes
     /// sense to try and prove again -- of course, at that point, the
     /// canonical form will be different, making this a distinct
     /// query.
@@ -330,7 +336,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                     GenericArgKind::Const(ct) => tcx
                         .mk_const(ty::ConstS {
                             ty: ct.ty(),
-                            val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
+                            kind: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
                         })
                         .into(),
                 })

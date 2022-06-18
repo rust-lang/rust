@@ -6,7 +6,6 @@ use crate::iter;
 use crate::mem;
 use crate::ops;
 
-#[lang = "slice_u8"]
 #[cfg(not(test))]
 impl [u8] {
     /// Checks if all bytes in this slice are within the ASCII range.
@@ -172,6 +171,7 @@ impl_fn_for_zst! {
 /// documentation for more information.
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 #[derive(Clone)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct EscapeAscii<'a> {
     inner: iter::FlatMap<super::Iter<'a, u8>, ascii::EscapeDefault, EscapeByte>,
 }
@@ -235,7 +235,7 @@ impl<'a> fmt::Debug for EscapeAscii<'a> {
 /// from `../str/mod.rs`, which does something similar for utf8 validation.
 #[inline]
 fn contains_nonascii(v: usize) -> bool {
-    const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
+    const NONASCII_MASK: usize = usize::repeat_u8(0x80);
     (NONASCII_MASK & v) != 0
 }
 
@@ -293,7 +293,7 @@ fn is_ascii(s: &[u8]) -> bool {
     // Paranoia check about alignment, since we're about to do a bunch of
     // unaligned loads. In practice this should be impossible barring a bug in
     // `align_offset` though.
-    debug_assert_eq!((word_ptr as usize) % mem::align_of::<usize>(), 0);
+    debug_assert_eq!(word_ptr.addr() % mem::align_of::<usize>(), 0);
 
     // Read subsequent words until the last aligned word, excluding the last
     // aligned word by itself to be done in tail check later, to ensure that
@@ -301,9 +301,9 @@ fn is_ascii(s: &[u8]) -> bool {
     while byte_pos < len - USIZE_SIZE {
         debug_assert!(
             // Sanity check that the read is in bounds
-            (word_ptr as usize + USIZE_SIZE) <= (start.wrapping_add(len) as usize) &&
+            (word_ptr.addr() + USIZE_SIZE) <= start.addr().wrapping_add(len) &&
             // And that our assumptions about `byte_pos` hold.
-            (word_ptr as usize) - (start as usize) == byte_pos
+            (word_ptr.addr() - start.addr()) == byte_pos
         );
 
         // SAFETY: We know `word_ptr` is properly aligned (because of

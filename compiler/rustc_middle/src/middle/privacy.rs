@@ -5,7 +5,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
-use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
+use rustc_query_system::ich::StableHashingContext;
 use rustc_span::def_id::LocalDefId;
 use std::hash::Hash;
 
@@ -58,9 +58,7 @@ impl<Id> Default for AccessLevels<Id> {
 
 impl<'a> HashStable<StableHashingContext<'a>> for AccessLevels {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            let AccessLevels { ref map } = *self;
-            map.hash_stable(hcx, hasher);
-        });
+        let AccessLevels { ref map } = *self;
+        map.hash_stable(hcx, hasher);
     }
 }

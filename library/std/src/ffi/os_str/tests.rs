@@ -85,6 +85,20 @@ fn test_os_string_reserve_exact() {
 }
 
 #[test]
+fn test_os_string_join() {
+    let strings = [OsStr::new("hello"), OsStr::new("dear"), OsStr::new("world")];
+    assert_eq!("hello", strings[..1].join(OsStr::new(" ")));
+    assert_eq!("hello dear world", strings.join(OsStr::new(" ")));
+    assert_eq!("hellodearworld", strings.join(OsStr::new("")));
+    assert_eq!("hello.\n dear.\n world", strings.join(OsStr::new(".\n ")));
+
+    assert_eq!("dear world", strings[1..].join(&OsString::from(" ")));
+
+    let strings_abc = [OsString::from("a"), OsString::from("b"), OsString::from("c")];
+    assert_eq!("a b c", strings_abc.join(OsStr::new(" ")));
+}
+
+#[test]
 fn test_os_string_default() {
     let os_string: OsString = Default::default();
     assert_eq!("", &os_string);

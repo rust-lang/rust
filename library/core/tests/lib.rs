@@ -3,8 +3,6 @@
 #![feature(array_methods)]
 #![feature(array_windows)]
 #![feature(bench_black_box)]
-#![feature(bool_to_option)]
-#![feature(box_syntax)]
 #![feature(cell_update)]
 #![feature(const_assume)]
 #![feature(const_black_box)]
@@ -13,16 +11,15 @@
 #![feature(const_convert)]
 #![feature(const_heap)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
-#![feature(const_maybe_uninit_assume_init)]
 #![feature(const_maybe_uninit_assume_init_read)]
 #![feature(const_nonnull_new)]
 #![feature(const_num_from_num)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
-#![feature(const_ptr_offset)]
 #![feature(const_trait_impl)]
 #![feature(const_likely)]
+#![feature(core_ffi_c)]
 #![feature(core_intrinsics)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
@@ -37,7 +34,9 @@
 #![feature(float_minimum_maximum)]
 #![feature(future_join)]
 #![feature(future_poll_fn)]
-#![feature(array_from_fn)]
+#![feature(generic_assert_internals)]
+#![feature(array_try_from_fn)]
+#![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(try_find)]
 #![feature(inline_const)]
@@ -47,6 +46,7 @@
 #![feature(sort_internals)]
 #![feature(slice_take)]
 #![feature(slice_from_ptr_range)]
+#![feature(split_as_slice)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_write_slice)]
@@ -54,6 +54,7 @@
 #![feature(numfmt)]
 #![feature(step_trait)]
 #![feature(str_internals)]
+#![feature(std_internals)]
 #![feature(test)]
 #![feature(trusted_len)]
 #![feature(try_blocks)]
@@ -62,6 +63,7 @@
 #![feature(slice_partition_dedup)]
 #![feature(int_log)]
 #![feature(iter_advance_by)]
+#![feature(iter_collect_into)]
 #![feature(iter_partition_in_place)]
 #![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
@@ -86,12 +88,15 @@
 #![feature(int_roundings)]
 #![feature(slice_group_by)]
 #![feature(split_array)]
+#![feature(strict_provenance)]
 #![feature(trusted_random_access)]
 #![feature(unsize)]
 #![feature(unzip_option)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
 #![feature(waker_getters)]
+#![feature(slice_flatten)]
+#![feature(provide_any)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;
@@ -100,6 +105,7 @@ mod alloc;
 mod any;
 mod array;
 mod ascii;
+mod asserting;
 mod atomic;
 mod bool;
 mod cell;

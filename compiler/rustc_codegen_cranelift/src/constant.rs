@@ -1,10 +1,9 @@
 //! Handling of `static`s, `const`s and promoted allocations
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::ErrorReported;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
+    read_target_uint, AllocId, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
 use rustc_middle::ty::ConstKind;
 use rustc_span::DUMMY_SP;
@@ -46,7 +45,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
             ConstantKind::Ty(ct) => ct,
             ConstantKind::Val(..) => continue,
         };
-        match const_.val() {
+        match const_.kind() {
             ConstKind::Value(_) => {}
             ConstKind::Unevaluated(unevaluated) => {
                 if let Err(err) =
@@ -54,7 +53,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
                 {
                     all_constants_ok = false;
                     match err {
-                        ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
+                        ErrorHandled::Reported(_) | ErrorHandled::Linted => {
                             fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
                         }
                         ErrorHandled::TooGeneric => {
@@ -127,8 +126,8 @@ pub(crate) fn codegen_constant<'tcx>(
         ConstantKind::Ty(ct) => ct,
         ConstantKind::Val(val, ty) => return codegen_const_value(fx, val, ty),
     };
-    let const_val = match const_.val() {
-        ConstKind::Value(const_val) => const_val,
+    let const_val = match const_.kind() {
+        ConstKind::Value(valtree) => fx.tcx.valtree_to_const_val((const_.ty(), valtree)),
         ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
             if fx.tcx.is_static(def.did) =>
         {
@@ -202,7 +201,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                             &mut fx.constants_cx,
                             fx.module,
                             alloc_id,
-                            alloc.mutability,
+                            alloc.inner().mutability,
                         );
                         let local_data_id =
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
@@ -257,11 +256,15 @@ pub(crate) fn codegen_const_value<'tcx>(
 
 pub(crate) fn pointer_for_allocation<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    alloc: &'tcx Allocation,
+    alloc: ConstAllocation<'tcx>,
 ) -> crate::pointer::Pointer {
     let alloc_id = fx.tcx.create_memory_alloc(alloc);
-    let data_id =
-        data_id_for_alloc_id(&mut fx.constants_cx, &mut *fx.module, alloc_id, alloc.mutability);
+    let data_id = data_id_for_alloc_id(
+        &mut fx.constants_cx,
+        &mut *fx.module,
+        alloc_id,
+        alloc.inner().mutability,
+    );
 
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     if fx.clif_comments.enabled() {
@@ -361,7 +364,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 let data_id = *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
                     module
                         .declare_anonymous_data(
-                            alloc.mutability == rustc_hir::Mutability::Mut,
+                            alloc.inner().mutability == rustc_hir::Mutability::Mut,
                             false,
                         )
                         .unwrap()
@@ -386,6 +389,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         }
 
         let mut data_ctx = DataContext::new();
+        let alloc = alloc.inner();
         data_ctx.set_align(alloc.align.bytes());
 
         if let Some(section_name) = section_name {
@@ -429,7 +433,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     continue;
                 }
                 GlobalAlloc::Memory(target_alloc) => {
-                    data_id_for_alloc_id(cx, module, alloc_id, target_alloc.mutability)
+                    data_id_for_alloc_id(cx, module, alloc_id, target_alloc.inner().mutability)
                 }
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
@@ -464,9 +468,10 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
 ) -> Option<ConstValue<'tcx>> {
     match operand {
         Operand::Constant(const_) => match const_.literal {
-            ConstantKind::Ty(const_) => {
-                fx.monomorphize(const_).eval(fx.tcx, ParamEnv::reveal_all()).val().try_to_value()
-            }
+            ConstantKind::Ty(const_) => fx
+                .monomorphize(const_)
+                .eval_for_mir(fx.tcx, ParamEnv::reveal_all())
+                .try_to_value(fx.tcx),
             ConstantKind::Val(val, _) => Some(val),
         },
         // FIXME(rust-lang/rust#85105): Casts like `IMM8 as u32` result in the const being stored
@@ -514,6 +519,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         StatementKind::Assign(_)
                         | StatementKind::FakeRead(_)
                         | StatementKind::SetDiscriminant { .. }
+                        | StatementKind::Deinit(_)
                         | StatementKind::StorageLive(_)
                         | StatementKind::StorageDead(_)
                         | StatementKind::Retag(_, _)
@@ -537,8 +543,8 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     | TerminatorKind::FalseEdge { .. }
                     | TerminatorKind::FalseUnwind { .. } => unreachable!(),
                     TerminatorKind::InlineAsm { .. } => return None,
-                    TerminatorKind::Call { destination: Some((call_place, _)), .. }
-                        if call_place == place =>
+                    TerminatorKind::Call { destination, target: Some(_), .. }
+                        if destination == place =>
                     {
                         return None;
                     }

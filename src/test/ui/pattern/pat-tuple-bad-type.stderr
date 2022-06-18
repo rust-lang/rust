@@ -1,13 +1,14 @@
 error[E0282]: type annotations needed
-  --> $DIR/pat-tuple-bad-type.rs:5:9
+  --> $DIR/pat-tuple-bad-type.rs:2:9
    |
 LL |     let x;
-   |         - consider giving `x` a type
-...
-LL |         (..) => {}
-   |         ^^^^ cannot infer type
+   |         ^
    |
    = note: type must be known at this point
+help: consider giving `x` an explicit type
+   |
+LL |     let x: _;
+   |          +++
 
 error[E0308]: mismatched types
   --> $DIR/pat-tuple-bad-type.rs:10:9

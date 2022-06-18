@@ -381,9 +381,8 @@ pub enum AtomicOrdering {
 impl AtomicOrdering {
     pub fn from_generic(ao: rustc_codegen_ssa::common::AtomicOrdering) -> Self {
         match ao {
-            rustc_codegen_ssa::common::AtomicOrdering::NotAtomic => AtomicOrdering::NotAtomic,
             rustc_codegen_ssa::common::AtomicOrdering::Unordered => AtomicOrdering::Unordered,
-            rustc_codegen_ssa::common::AtomicOrdering::Monotonic => AtomicOrdering::Monotonic,
+            rustc_codegen_ssa::common::AtomicOrdering::Relaxed => AtomicOrdering::Monotonic,
             rustc_codegen_ssa::common::AtomicOrdering::Acquire => AtomicOrdering::Acquire,
             rustc_codegen_ssa::common::AtomicOrdering::Release => AtomicOrdering::Release,
             rustc_codegen_ssa::common::AtomicOrdering::AcquireRelease => {
@@ -441,7 +440,9 @@ pub enum MetadataType {
     MD_nontemporal = 9,
     MD_mem_parallel_loop_access = 10,
     MD_nonnull = 11,
+    MD_align = 17,
     MD_type = 19,
+    MD_vcall_visibility = 28,
     MD_noundef = 29,
 }
 
@@ -576,12 +577,12 @@ pub enum PassKind {
     Module,
 }
 
-/// LLVMRustThinLTOData
+// LLVMRustThinLTOData
 extern "C" {
     pub type ThinLTOData;
 }
 
-/// LLVMRustThinLTOBuffer
+// LLVMRustThinLTOBuffer
 extern "C" {
     pub type ThinLTOBuffer;
 }
@@ -774,7 +775,7 @@ pub mod coverageinfo {
     }
 
     impl CounterMappingRegion {
-        crate fn code_region(
+        pub(crate) fn code_region(
             counter: coverage_map::Counter,
             file_id: u32,
             start_line: u32,
@@ -798,7 +799,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn branch_region(
+        pub(crate) fn branch_region(
             counter: coverage_map::Counter,
             false_counter: coverage_map::Counter,
             file_id: u32,
@@ -823,7 +824,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn expansion_region(
+        pub(crate) fn expansion_region(
             file_id: u32,
             expanded_file_id: u32,
             start_line: u32,
@@ -847,7 +848,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn skipped_region(
+        pub(crate) fn skipped_region(
             file_id: u32,
             start_line: u32,
             start_col: u32,
@@ -870,7 +871,7 @@ pub mod coverageinfo {
         // This function might be used in the future; the LLVM API is still evolving, as is coverage
         // support.
         #[allow(dead_code)]
-        crate fn gap_region(
+        pub(crate) fn gap_region(
             counter: coverage_map::Counter,
             file_id: u32,
             start_line: u32,
@@ -1067,6 +1068,7 @@ extern "C" {
     pub fn LLVMReplaceAllUsesWith<'a>(OldVal: &'a Value, NewVal: &'a Value);
     pub fn LLVMSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Node: &'a Value);
     pub fn LLVMGlobalSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
+    pub fn LLVMRustGlobalAddMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
     pub fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
 
     // Operations on constants of any type
@@ -1080,6 +1082,11 @@ extern "C" {
         Vals: *const &'a Value,
         Count: c_uint,
     ) -> &'a Value;
+    pub fn LLVMMDNodeInContext2<'a>(
+        C: &'a Context,
+        Vals: *const &'a Metadata,
+        Count: size_t,
+    ) -> &'a Metadata;
     pub fn LLVMAddNamedMetadataOperand<'a>(M: &'a Module, Name: *const c_char, Val: &'a Value);
 
     // Operations on scalar constants
@@ -1175,11 +1182,12 @@ extern "C" {
 
     // Operations on attributes
     pub fn LLVMRustCreateAttrNoValue(C: &Context, attr: AttributeKind) -> &Attribute;
-    pub fn LLVMRustCreateAttrString(C: &Context, Name: *const c_char) -> &Attribute;
-    pub fn LLVMRustCreateAttrStringValue(
+    pub fn LLVMCreateStringAttribute(
         C: &Context,
         Name: *const c_char,
+        NameLen: c_uint,
         Value: *const c_char,
+        ValueLen: c_uint,
     ) -> &Attribute;
     pub fn LLVMRustCreateAlignmentAttr(C: &Context, bytes: u64) -> &Attribute;
     pub fn LLVMRustCreateDereferenceableAttr(C: &Context, bytes: u64) -> &Attribute;
@@ -1200,12 +1208,6 @@ extern "C" {
         Fn: &'a Value,
         index: c_uint,
         Attrs: *const &'a Attribute,
-        AttrsLen: size_t,
-    );
-    pub fn LLVMRustRemoveFunctionAttributes(
-        Fn: &Value,
-        index: c_uint,
-        Attrs: *const AttributeKind,
         AttrsLen: size_t,
     );
 
@@ -1829,24 +1831,22 @@ extern "C" {
 
     pub fn LLVMAddAnalysisPasses<'a>(T: &'a TargetMachine, PM: &PassManager<'a>);
 
-    pub fn LLVMPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
-    pub fn LLVMPassManagerBuilderDispose(PMB: &'static mut PassManagerBuilder);
-    pub fn LLVMPassManagerBuilderSetSizeLevel(PMB: &PassManagerBuilder, Value: Bool);
-    pub fn LLVMPassManagerBuilderSetDisableUnrollLoops(PMB: &PassManagerBuilder, Value: Bool);
-    pub fn LLVMPassManagerBuilderUseInlinerWithThreshold(
+    pub fn LLVMRustPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
+    pub fn LLVMRustPassManagerBuilderDispose(PMB: &'static mut PassManagerBuilder);
+    pub fn LLVMRustPassManagerBuilderUseInlinerWithThreshold(
         PMB: &PassManagerBuilder,
         threshold: c_uint,
     );
-    pub fn LLVMPassManagerBuilderPopulateModulePassManager(
+    pub fn LLVMRustPassManagerBuilderPopulateModulePassManager(
         PMB: &PassManagerBuilder,
         PM: &PassManager<'_>,
     );
 
-    pub fn LLVMPassManagerBuilderPopulateFunctionPassManager(
+    pub fn LLVMRustPassManagerBuilderPopulateFunctionPassManager(
         PMB: &PassManagerBuilder,
         PM: &PassManager<'_>,
     );
-    pub fn LLVMPassManagerBuilderPopulateLTOPassManager(
+    pub fn LLVMRustPassManagerBuilderPopulateLTOPassManager(
         PMB: &PassManagerBuilder,
         PM: &PassManager<'_>,
         Internalize: Bool,
@@ -1943,6 +1943,7 @@ extern "C" {
         name: *const c_char,
         value: u32,
     );
+    pub fn LLVMRustHasModuleFlag(M: &Module, name: *const c_char, len: size_t) -> bool;
 
     pub fn LLVMRustMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
 
@@ -2312,6 +2313,7 @@ extern "C" {
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
         PGOSampleUsePath: *const c_char,
+        SizeLevel: c_int,
     );
     pub fn LLVMRustAddLibraryInfo<'a>(
         PM: &PassManager<'a>,
@@ -2541,4 +2543,6 @@ extern "C" {
         remark_passes_len: usize,
     );
 
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
 }

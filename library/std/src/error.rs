@@ -1,4 +1,140 @@
-//! Traits for working with Errors.
+//! Interfaces for working with Errors.
+//!
+//! # Error Handling In Rust
+//!
+//! The Rust language provides two complementary systems for constructing /
+//! representing, reporting, propagating, reacting to, and discarding errors.
+//! These responsibilities are collectively known as "error handling." The
+//! components of the first system, the panic runtime and interfaces, are most
+//! commonly used to represent bugs that have been detected in your program. The
+//! components of the second system, `Result`, the error traits, and user
+//! defined types, are used to represent anticipated runtime failure modes of
+//! your program.
+//!
+//! ## The Panic Interfaces
+//!
+//! The following are the primary interfaces of the panic system and the
+//! responsibilities they cover:
+//!
+//! * [`panic!`] and [`panic_any`] (Constructing, Propagated automatically)
+//! * [`PanicInfo`] (Reporting)
+//! * [`set_hook`], [`take_hook`], and [`#[panic_handler]`][panic-handler] (Reporting)
+//! * [`catch_unwind`] and [`resume_unwind`] (Discarding, Propagating)
+//!
+//! The following are the primary interfaces of the error system and the
+//! responsibilities they cover:
+//!
+//! * [`Result`] (Propagating, Reacting)
+//! * The [`Error`] trait (Reporting)
+//! * User defined types (Constructing / Representing)
+//! * [`match`] and [`downcast`] (Reacting)
+//! * The question mark operator ([`?`]) (Propagating)
+//! * The partially stable [`Try`] traits (Propagating, Constructing)
+//! * [`Termination`] (Reporting)
+//!
+//! ## Converting Errors into Panics
+//!
+//! The panic and error systems are not entirely distinct. Often times errors
+//! that are anticipated runtime failures in an API might instead represent bugs
+//! to a caller. For these situations the standard library provides APIs for
+//! constructing panics with an `Error` as it's source.
+//!
+//! * [`Result::unwrap`]
+//! * [`Result::expect`]
+//!
+//! These functions are equivalent, they either return the inner value if the
+//! `Result` is `Ok` or panic if the `Result` is `Err` printing the inner error
+//! as the source. The only difference between them is that with `expect` you
+//! provide a panic error message to be printed alongside the source, whereas
+//! `unwrap` has a default message indicating only that you unwraped an `Err`.
+//!
+//! Of the two, `expect` is generally preferred since its `msg` field allows you
+//! to convey your intent and assumptions which makes tracking down the source
+//! of a panic easier. `unwrap` on the other hand can still be a good fit in
+//! situations where you can trivially show that a piece of code will never
+//! panic, such as `"127.0.0.1".parse::<std::net::IpAddr>().unwrap()` or early
+//! prototyping.
+//!
+//! # Common Message Styles
+//!
+//! There are two common styles for how people word `expect` messages. Using
+//! the message to present information to users encountering a panic
+//! ("expect as error message") or using the message to present information
+//! to developers debugging the panic ("expect as precondition").
+//!
+//! In the former case the expect message is used to describe the error that
+//! has occurred which is considered a bug. Consider the following example:
+//!
+//! ```should_panic
+//! // Read environment variable, panic if it is not present
+//! let path = std::env::var("IMPORTANT_PATH").unwrap();
+//! ```
+//!
+//! In the "expect as error message" style we would use expect to describe
+//! that the environment variable was not set when it should have been:
+//!
+//! ```should_panic
+//! let path = std::env::var("IMPORTANT_PATH")
+//!     .expect("env variable `IMPORTANT_PATH` is not set");
+//! ```
+//!
+//! In the "expect as precondition" style, we would instead describe the
+//! reason we _expect_ the `Result` should be `Ok`. With this style we would
+//! prefer to write:
+//!
+//! ```should_panic
+//! let path = std::env::var("IMPORTANT_PATH")
+//!     .expect("env variable `IMPORTANT_PATH` should be set by `wrapper_script.sh`");
+//! ```
+//!
+//! The "expect as error message" style does not work as well with the
+//! default output of the std panic hooks, and often ends up repeating
+//! information that is already communicated by the source error being
+//! unwrapped:
+//!
+//! ```text
+//! thread 'main' panicked at 'env variable `IMPORTANT_PATH` is not set: NotPresent', src/main.rs:4:6
+//! ```
+//!
+//! In this example we end up mentioning that an env variable is not set,
+//! followed by our source message that says the env is not present, the
+//! only additional information we're communicating is the name of the
+//! environment variable being checked.
+//!
+//! The "expect as precondition" style instead focuses on source code
+//! readability, making it easier to understand what must have gone wrong in
+//! situations where panics are being used to represent bugs exclusively.
+//! Also, by framing our expect in terms of what "SHOULD" have happened to
+//! prevent the source error, we end up introducing new information that is
+//! independent from our source error.
+//!
+//! ```text
+//! thread 'main' panicked at 'env variable `IMPORTANT_PATH` should be set by `wrapper_script.sh`: NotPresent', src/main.rs:4:6
+//! ```
+//!
+//! In this example we are communicating not only the name of the
+//! environment variable that should have been set, but also an explanation
+//! for why it should have been set, and we let the source error display as
+//! a clear contradiction to our expectation.
+//!
+//! **Hint**: If you're having trouble remembering how to phrase
+//! expect-as-precondition style error messages remember to focus on the word
+//! "should" as in "env variable should be set by blah" or "the given binary
+//! should be available and executable by the current user".
+//!
+//! [`panic_any`]: crate::panic::panic_any
+//! [`PanicInfo`]: crate::panic::PanicInfo
+//! [`catch_unwind`]: crate::panic::catch_unwind
+//! [`resume_unwind`]: crate::panic::resume_unwind
+//! [`downcast`]: crate::error::Error
+//! [`Termination`]: crate::process::Termination
+//! [`Try`]: crate::ops::Try
+//! [panic hook]: crate::panic::set_hook
+//! [`set_hook`]: crate::panic::set_hook
+//! [`take_hook`]: crate::panic::take_hook
+//! [panic-handler]: <https://doc.rust-lang.org/nomicon/panic-handler.html>
+//! [`match`]: ../../std/keyword.match.html
+//! [`?`]: ../../std/result/index.html#the-question-mark-operator-
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -26,6 +162,7 @@ use crate::borrow::Cow;
 use crate::cell;
 use crate::char;
 use crate::fmt::{self, Debug, Display, Write};
+use crate::io;
 use crate::mem::transmute;
 use crate::num;
 use crate::str;
@@ -52,6 +189,7 @@ use crate::time;
 /// high-level module to provide its own errors while also revealing some of the
 /// implementation for debugging via `source` chains.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Error")]
 pub trait Error: Debug + Display {
     /// The lower-level source of this error, if any.
     ///
@@ -96,7 +234,7 @@ pub trait Error: Debug + Display {
     /// fn main() {
     ///     match get_super_error() {
     ///         Err(e) => {
-    ///             println!("Error: {}", e);
+    ///             println!("Error: {e}");
     ///             println!("Caused by: {}", e.source().unwrap());
     ///         }
     ///         _ => println!("No error"),
@@ -139,19 +277,19 @@ pub trait Error: Debug + Display {
     /// ```
     /// if let Err(e) = "xc".parse::<u32>() {
     ///     // Print `e` itself, no need for description().
-    ///     eprintln!("Error: {}", e);
+    ///     eprintln!("Error: {e}");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.42.0", reason = "use the Display impl or to_string()")]
+    #[deprecated(since = "1.42.0", note = "use the Display impl or to_string()")]
     fn description(&self) -> &str {
         "description() is deprecated; use Display"
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.33.0",
-        reason = "replaced by Error::source, which can support downcasting"
+        note = "replaced by Error::source, which can support downcasting"
     )]
     #[allow(missing_docs)]
     fn cause(&self) -> Option<&dyn Error> {
@@ -516,6 +654,14 @@ impl<T: Error> Error for Box<T> {
     }
 }
 
+#[unstable(feature = "thin_box", issue = "92791")]
+impl<T: ?Sized + crate::error::Error> crate::error::Error for crate::boxed::ThinBox<T> {
+    fn source(&self) -> Option<&(dyn crate::error::Error + 'static)> {
+        use core::ops::Deref;
+        self.deref().source()
+    }
+}
+
 #[stable(feature = "error_by_ref", since = "1.51.0")]
 impl<'a, T: Error + ?Sized> Error for &'a T {
     #[allow(deprecated, deprecated_in_future)]
@@ -603,6 +749,48 @@ impl Error for alloc::collections::TryReserveError {}
 
 #[unstable(feature = "duration_checked_float", issue = "83400")]
 impl Error for time::FromFloatSecsError {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for alloc::ffi::NulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "nul byte found in data"
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<alloc::ffi::NulError> for io::Error {
+    /// Converts a [`alloc::ffi::NulError`] into a [`io::Error`].
+    fn from(_: alloc::ffi::NulError) -> io::Error {
+        io::const_io_error!(io::ErrorKind::InvalidInput, "data provided contains a nul byte")
+    }
+}
+
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl Error for core::ffi::FromBytesWithNulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
+#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+impl Error for core::ffi::FromBytesUntilNulError {}
+
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
+impl Error for alloc::ffi::FromVecWithNulError {}
+
+#[stable(feature = "cstring_into", since = "1.7.0")]
+impl Error for alloc::ffi::IntoStringError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "C string contained non-utf8 bytes"
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(self.__source())
+    }
+}
 
 // Copied from `any.rs`.
 impl dyn Error + 'static {
@@ -811,12 +999,12 @@ impl dyn Error + Send + Sync {
     }
 }
 
-/// An error reporter that print's an error and its sources.
+/// An error reporter that prints an error and its sources.
 ///
 /// Report also exposes configuration options for formatting the error chain, either entirely on a
 /// single line, or in multi-line format with each cause in the error chain on a new line.
 ///
-/// `Report` only requires that the wrapped error implements `Error`. It doesn't require that the
+/// `Report` only requires that the wrapped error implement `Error`. It doesn't require that the
 /// wrapped error be `Send`, `Sync`, or `'static`.
 ///
 /// # Examples
@@ -920,7 +1108,7 @@ impl dyn Error + Send + Sync {
 ///
 /// ## Return from `main`
 ///
-/// `Report` also implements `From` for all types that implement [`Error`], this when combined with
+/// `Report` also implements `From` for all types that implement [`Error`]; this when combined with
 /// the `Debug` output means `Report` is an ideal starting place for formatting errors returned
 /// from `main`.
 ///
@@ -968,7 +1156,7 @@ impl dyn Error + Send + Sync {
 /// ```
 ///
 /// **Note**: `Report`s constructed via `?` and `From` will be configured to use the single line
-/// output format, if you want to make sure your `Report`s are pretty printed and include backtrace
+/// output format. If you want to make sure your `Report`s are pretty printed and include backtrace
 /// you will need to manually convert and enable those flags.
 ///
 /// ```should_panic
@@ -1074,7 +1262,7 @@ impl<E> Report<E> {
     ///
     /// let error = SuperError { source: SuperErrorSideKick };
     /// let report = Report::new(error).pretty(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces the following output:
@@ -1135,7 +1323,7 @@ impl<E> Report<E> {
     /// let source = SuperErrorSideKick { source };
     /// let error = SuperError { source };
     /// let report = Report::new(error).pretty(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces the following output:
@@ -1210,7 +1398,7 @@ impl<E> Report<E> {
     /// let source = SuperErrorSideKick::new();
     /// let error = SuperError { source };
     /// let report = Report::new(error).pretty(true).show_backtrace(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces something similar to the following output:
@@ -1267,7 +1455,7 @@ where
         let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
 
         for cause in sources {
-            write!(f, ": {}", cause)?;
+            write!(f, ": {cause}")?;
         }
 
         Ok(())
@@ -1278,7 +1466,7 @@ where
     fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error = &self.error;
 
-        write!(f, "{}", error)?;
+        write!(f, "{error}")?;
 
         if let Some(cause) = error.source() {
             write!(f, "\n\nCaused by:")?;
@@ -1289,9 +1477,9 @@ where
                 writeln!(f)?;
                 let mut indented = Indented { inner: f };
                 if multiple {
-                    write!(indented, "{: >4}: {}", ind, error)?;
+                    write!(indented, "{ind: >4}: {error}")?;
                 } else {
-                    write!(indented, "      {}", error)?;
+                    write!(indented, "      {error}")?;
                 }
             }
         }
@@ -1333,7 +1521,7 @@ impl Report<Box<dyn Error>> {
         let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
 
         for cause in sources {
-            write!(f, ": {}", cause)?;
+            write!(f, ": {cause}")?;
         }
 
         Ok(())
@@ -1344,7 +1532,7 @@ impl Report<Box<dyn Error>> {
     fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error = &self.error;
 
-        write!(f, "{}", error)?;
+        write!(f, "{error}")?;
 
         if let Some(cause) = error.source() {
             write!(f, "\n\nCaused by:")?;
@@ -1355,9 +1543,9 @@ impl Report<Box<dyn Error>> {
                 writeln!(f)?;
                 let mut indented = Indented { inner: f };
                 if multiple {
-                    write!(indented, "{: >4}: {}", ind, error)?;
+                    write!(indented, "{ind: >4}: {error}")?;
                 } else {
-                    write!(indented, "      {}", error)?;
+                    write!(indented, "      {error}")?;
                 }
             }
         }

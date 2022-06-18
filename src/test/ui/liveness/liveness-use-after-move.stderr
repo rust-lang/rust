@@ -5,7 +5,7 @@ LL |     let x: Box<_> = 5.into();
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
 LL |     let y = x;
    |             - value moved here
-LL | 
+LL |
 LL |     println!("{}", *x);
    |                    ^^ value borrowed here after move
    |

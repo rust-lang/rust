@@ -45,6 +45,7 @@ fi
 
 if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.metrics"
 fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
@@ -140,8 +141,6 @@ fi
 $SRC/configure $RUST_CONFIGURE_ARGS
 
 retry make prepare
-
-make check-bootstrap
 
 # Display the CPU and memory information. This helps us know why the CI timing
 # is fluctuating.

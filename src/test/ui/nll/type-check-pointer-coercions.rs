@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 fn shared_to_const<'a, 'b>(x: &&'a i32) -> *const &'b i32 {
     x   //~ ERROR
 }

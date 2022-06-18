@@ -1,6 +1,6 @@
 use std::cell::{Cell, RefCell};
 
-use gccjit::{Block, CType, Context, Function, FunctionType, LValue, RValue, Struct, Type};
+use gccjit::{Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, RValue, Struct, Type};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::{
     BackendTypes,
@@ -18,7 +18,6 @@ use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDat
 use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
 
 use crate::callee::get_fn;
-use crate::declare::mangle_name;
 
 #[derive(Clone)]
 pub struct FuncSig<'gcc> {
@@ -31,12 +30,12 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
     pub context: &'gcc Context<'gcc>,
 
-    // TODO(antoyo): First set it to a dummy block to avoid using Option?
-    pub current_block: RefCell<Option<Block<'gcc>>>,
+    // TODO(bjorn3): Can this field be removed?
     pub current_func: RefCell<Option<Function<'gcc>>>,
     pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
 
     pub functions: RefCell<FxHashMap<String, Function<'gcc>>>,
+    pub intrinsics: RefCell<FxHashMap<String, Function<'gcc>>>,
 
     pub tls_model: gccjit::TlsModel,
 
@@ -55,12 +54,19 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub u128_type: Type<'gcc>,
     pub usize_type: Type<'gcc>,
 
+    pub char_type: Type<'gcc>,
+    pub uchar_type: Type<'gcc>,
+    pub short_type: Type<'gcc>,
+    pub ushort_type: Type<'gcc>,
     pub int_type: Type<'gcc>,
     pub uint_type: Type<'gcc>,
     pub long_type: Type<'gcc>,
     pub ulong_type: Type<'gcc>,
+    pub longlong_type: Type<'gcc>,
     pub ulonglong_type: Type<'gcc>,
     pub sizet_type: Type<'gcc>,
+
+    pub supports_128bit_integers: bool,
 
     pub float_type: Type<'gcc>,
     pub double_type: Type<'gcc>,
@@ -81,18 +87,27 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// Cache generated vtables
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
+    // TODO(antoyo): improve the SSA API to not require those.
+    // Mapping from function pointer type to indexes of on stack parameters.
+    pub on_stack_params: RefCell<FxHashMap<FunctionPtrType<'gcc>, FxHashSet<usize>>>,
+    // Mapping from function to indexes of on stack parameters.
+    pub on_stack_function_params: RefCell<FxHashMap<Function<'gcc>, FxHashSet<usize>>>,
+
     /// Cache of emitted const globals (value -> global)
     pub const_globals: RefCell<FxHashMap<RValue<'gcc>, RValue<'gcc>>>,
 
+    /// Map from the address of a global variable (rvalue) to the global variable itself (lvalue).
+    /// TODO(antoyo): remove when the rustc API is fixed.
+    pub global_lvalues: RefCell<FxHashMap<RValue<'gcc>, LValue<'gcc>>>,
+
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<Symbol, LValue<'gcc>>>,
+    pub const_str_cache: RefCell<FxHashMap<Symbol, LValue<'gcc>>>,
 
     /// Cache of globals.
     pub globals: RefCell<FxHashMap<String, RValue<'gcc>>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
-    pub global_gen_sym_counter: Cell<usize>,
 
     eh_personality: Cell<Option<RValue<'gcc>>>,
 
@@ -101,43 +116,60 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// NOTE: a hack is used because the rustc API is not suitable to libgccjit and as such,
     /// `const_undef()` returns struct as pointer so that they can later be assigned a value.
     /// As such, this set remembers which of these pointers were returned by this function so that
-    /// they can be deferenced later.
+    /// they can be dereferenced later.
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
     pub structs_as_pointer: RefCell<FxHashSet<RValue<'gcc>>>,
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    pub fn new(context: &'gcc Context<'gcc>, codegen_unit: &'tcx CodegenUnit<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+    pub fn new(context: &'gcc Context<'gcc>, codegen_unit: &'tcx CodegenUnit<'tcx>, tcx: TyCtxt<'tcx>, supports_128bit_integers: bool) -> Self {
         let check_overflow = tcx.sess.overflow_checks();
-        // TODO(antoyo): fix this mess. libgccjit seems to return random type when using new_int_type().
-        let isize_type = context.new_c_type(CType::LongLong);
-        let usize_type = context.new_c_type(CType::ULongLong);
-        let bool_type = context.new_type::<bool>();
-        let i8_type = context.new_type::<i8>();
-        let i16_type = context.new_type::<i16>();
-        let i32_type = context.new_type::<i32>();
-        let i64_type = context.new_c_type(CType::LongLong);
-        let i128_type = context.new_c_type(CType::Int128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?
-        let u8_type = context.new_type::<u8>();
-        let u16_type = context.new_type::<u16>();
-        let u32_type = context.new_type::<u32>();
-        let u64_type = context.new_c_type(CType::ULongLong);
-        let u128_type = context.new_c_type(CType::UInt128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?
+
+        let i8_type = context.new_c_type(CType::Int8t);
+        let i16_type = context.new_c_type(CType::Int16t);
+        let i32_type = context.new_c_type(CType::Int32t);
+        let i64_type = context.new_c_type(CType::Int64t);
+        let u8_type = context.new_c_type(CType::UInt8t);
+        let u16_type = context.new_c_type(CType::UInt16t);
+        let u32_type = context.new_c_type(CType::UInt32t);
+        let u64_type = context.new_c_type(CType::UInt64t);
+
+        let (i128_type, u128_type) =
+            if supports_128bit_integers {
+                let i128_type = context.new_c_type(CType::Int128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?;
+                let u128_type = context.new_c_type(CType::UInt128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?;
+                (i128_type, u128_type)
+            }
+            else {
+                let i128_type = context.new_array_type(None, i64_type, 2);
+                let u128_type = context.new_array_type(None, u64_type, 2);
+                (i128_type, u128_type)
+            };
 
         let tls_model = to_gcc_tls_mode(tcx.sess.tls_model());
 
         let float_type = context.new_type::<f32>();
         let double_type = context.new_type::<f64>();
 
+        let char_type = context.new_c_type(CType::Char);
+        let uchar_type = context.new_c_type(CType::UChar);
+        let short_type = context.new_c_type(CType::Short);
+        let ushort_type = context.new_c_type(CType::UShort);
         let int_type = context.new_c_type(CType::Int);
         let uint_type = context.new_c_type(CType::UInt);
         let long_type = context.new_c_type(CType::Long);
         let ulong_type = context.new_c_type(CType::ULong);
+        let longlong_type = context.new_c_type(CType::LongLong);
         let ulonglong_type = context.new_c_type(CType::ULongLong);
         let sizet_type = context.new_c_type(CType::SizeT);
 
-        assert_eq!(isize_type, i64_type);
-        assert_eq!(usize_type, u64_type);
+        let isize_type = context.new_c_type(CType::LongLong);
+        let usize_type = context.new_c_type(CType::ULongLong);
+        let bool_type = context.new_type::<bool>();
+
+        // TODO(antoyo): only have those assertions on x86_64.
+        assert_eq!(isize_type.get_size(), i64_type.get_size());
+        assert_eq!(usize_type.get_size(), u64_type.get_size());
 
         let mut functions = FxHashMap::default();
         let builtins = [
@@ -160,10 +192,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             check_overflow,
             codegen_unit,
             context,
-            current_block: RefCell::new(None),
             current_func: RefCell::new(None),
             normal_function_addresses: Default::default(),
             functions: RefCell::new(functions),
+            intrinsics: RefCell::new(FxHashMap::default()),
 
             tls_model,
 
@@ -180,12 +212,19 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             u32_type,
             u64_type,
             u128_type,
+            char_type,
+            uchar_type,
+            short_type,
+            ushort_type,
             int_type,
             uint_type,
             long_type,
             ulong_type,
+            longlong_type,
             ulonglong_type,
             sizet_type,
+
+            supports_128bit_integers,
 
             float_type,
             double_type,
@@ -193,9 +232,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             linkage: Cell::new(FunctionType::Internal),
             instances: Default::default(),
             function_instances: Default::default(),
+            on_stack_params: Default::default(),
+            on_stack_function_params: Default::default(),
             vtables: Default::default(),
             const_globals: Default::default(),
-            const_cstr_cache: Default::default(),
+            global_lvalues: Default::default(),
+            const_str_cache: Default::default(),
             globals: Default::default(),
             scalar_types: Default::default(),
             types: Default::default(),
@@ -203,7 +245,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             struct_types: Default::default(),
             types_with_fields_to_set: Default::default(),
             local_gen_sym_counter: Cell::new(0),
-            global_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
             pointee_infos: Default::default(),
             structs_as_pointer: Default::default(),
@@ -217,8 +258,52 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         function
     }
 
+    pub fn is_native_int_type(&self, typ: Type<'gcc>) -> bool {
+        let types = [
+            self.u8_type,
+            self.u16_type,
+            self.u32_type,
+            self.u64_type,
+            self.i8_type,
+            self.i16_type,
+            self.i32_type,
+            self.i64_type,
+        ];
+
+        for native_type in types {
+            if native_type.is_compatible_with(typ) {
+                return true;
+            }
+        }
+
+        self.supports_128bit_integers &&
+            (self.u128_type.is_compatible_with(typ) || self.i128_type.is_compatible_with(typ))
+    }
+
+    pub fn is_non_native_int_type(&self, typ: Type<'gcc>) -> bool {
+        !self.supports_128bit_integers &&
+            (self.u128_type.is_compatible_with(typ) || self.i128_type.is_compatible_with(typ))
+    }
+
+    pub fn is_native_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
+        self.is_native_int_type(typ) || typ.is_compatible_with(self.bool_type)
+    }
+
+    pub fn is_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
+        self.is_native_int_type(typ) || self.is_non_native_int_type(typ) || typ.is_compatible_with(self.bool_type)
+    }
+
     pub fn sess(&self) -> &Session {
         &self.tcx.sess
+    }
+
+    pub fn bitcast_if_needed(&self, value: RValue<'gcc>, expected_type: Type<'gcc>) -> RValue<'gcc> {
+        if value.get_type() != expected_type {
+            self.context.new_bitcast(None, value, expected_type)
+        }
+        else {
+            value
+        }
     }
 }
 
@@ -247,8 +332,16 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
-        let func = get_fn(self, instance);
-        let func = self.rvalue_as_function(func);
+        let func_name = self.tcx.symbol_name(instance).name;
+
+        let func =
+            if self.intrinsics.borrow().contains_key(func_name) {
+                self.intrinsics.borrow()[func_name].clone()
+            }
+            else {
+                let func = get_fn(self, instance);
+                self.rvalue_as_function(func)
+            };
         let ptr = func.get_address(None);
 
         // TODO(antoyo): don't do this twice: i.e. in declare_fn and here.
@@ -448,11 +541,6 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
         name
     }
-}
-
-pub fn unit_name<'tcx>(codegen_unit: &CodegenUnit<'tcx>) -> String {
-    let name = &codegen_unit.name().to_string();
-    mangle_name(&name.replace('-', "_"))
 }
 
 fn to_gcc_tls_mode(tls_model: TlsModel) -> gccjit::TlsModel {

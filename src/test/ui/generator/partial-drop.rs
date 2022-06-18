@@ -1,6 +1,4 @@
-// FIXME(eholk): temporarily disabled while drop range tracking is disabled
-// (see generator_interior.rs:27)
-// ignore-test
+// compile-flags: -Zdrop-tracking
 
 #![feature(negative_impls, generators)]
 

@@ -1,11 +1,10 @@
-use crate::sys::condvar as imp;
-use crate::sys::mutex as mutex_imp;
+use crate::sys::locks as imp;
 use crate::sys_common::mutex::MovableMutex;
 use crate::time::Duration;
 
 mod check;
 
-type CondvarCheck = <mutex_imp::MovableMutex as check::CondvarCheck>::Check;
+type CondvarCheck = <imp::MovableMutex as check::CondvarCheck>::Check;
 
 /// An OS-based condition variable.
 pub struct Condvar {
@@ -16,9 +15,7 @@ pub struct Condvar {
 impl Condvar {
     /// Creates a new condition variable for use.
     pub fn new() -> Self {
-        let mut c = imp::MovableCondvar::from(imp::Condvar::new());
-        unsafe { c.init() };
-        Self { inner: c, check: CondvarCheck::new() }
+        Self { inner: imp::MovableCondvar::new(), check: CondvarCheck::new() }
     }
 
     /// Signals one waiter on this condition variable to wake up.
@@ -54,11 +51,5 @@ impl Condvar {
     pub unsafe fn wait_timeout(&self, mutex: &MovableMutex, dur: Duration) -> bool {
         self.check.verify(mutex);
         self.inner.wait_timeout(mutex.raw(), dur)
-    }
-}
-
-impl Drop for Condvar {
-    fn drop(&mut self) {
-        unsafe { self.inner.destroy() };
     }
 }

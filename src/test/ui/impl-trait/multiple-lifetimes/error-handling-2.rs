@@ -8,7 +8,6 @@ impl<T: Copy> Copy for CopyIfEq<T, T> {}
 type E<'a, 'b> = impl Sized;
 
 fn foo<'a: 'b, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
-    //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
     let v = CopyIfEq::<*mut _, *mut _>(&mut { x }, &mut y);
 
     // This assignment requires that `x` and `y` have the same type due to the
@@ -21,6 +20,7 @@ fn foo<'a: 'b, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
         let _: &'b i32 = *u.0;
     }
     u.0
+    //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
 }
 
 fn main() {}

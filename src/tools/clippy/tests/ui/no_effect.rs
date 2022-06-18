@@ -78,7 +78,7 @@ impl FnOnce<(&str,)> for GreetStruct2 {
     }
 }
 
-struct GreetStruct3 {}
+struct GreetStruct3;
 
 impl FnOnce<(&str,)> for GreetStruct3 {
     type Output = ();

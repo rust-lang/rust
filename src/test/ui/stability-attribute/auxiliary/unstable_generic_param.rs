@@ -40,14 +40,14 @@ pub struct Struct3<A = isize, #[unstable(feature = "unstable_default", issue = "
     pub field2: B,
 }
 
-#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[deprecated(since = "1.1.0", note = "test")]
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub struct Struct4<A = usize> {
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
     pub field: A,
 }
 
-#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[deprecated(since = "1.1.0", note = "test")]
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub struct Struct5<#[unstable(feature = "unstable_default", issue = "none")] A = usize> {
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
@@ -99,7 +99,7 @@ pub enum Enum3<T = isize, #[unstable(feature = "unstable_default", issue = "none
     Err(#[stable(feature = "stable_test_feature", since = "1.0.0")] E),
 }
 
-#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[deprecated(since = "1.1.0", note = "test")]
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub enum Enum4<T = usize> {
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
@@ -108,7 +108,7 @@ pub enum Enum4<T = usize> {
     None,
 }
 
-#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[deprecated(since = "1.1.0", note = "test")]
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub enum Enum5<#[unstable(feature = "unstable_default", issue = "none")] T = usize> {
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
@@ -152,11 +152,11 @@ pub type Alias2<T = usize> = Option<T>;
 pub type Alias3<T = isize, #[unstable(feature = "unstable_default", issue = "none")] E = usize> =
     Result<T, E>;
 
-#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[deprecated(since = "1.1.0", note = "test")]
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub type Alias4<T = usize> = Option<T>;
 
-#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[deprecated(since = "1.1.0", note = "test")]
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub type Alias5<#[unstable(feature = "unstable_default", issue = "none")] T = usize> = Option<T>;
 

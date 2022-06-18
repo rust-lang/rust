@@ -17,7 +17,8 @@ fn static_val<T: StaticTrait>(_: T) {
 }
 
 fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
-    static_val(x); //~ ERROR E0759
+    static_val(x);
+    //~^ ERROR borrowed data escapes outside of function
 }
 
 fn not_static_val<T: NotStaticTrait>(_: T) {

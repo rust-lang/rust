@@ -23,7 +23,7 @@ pub fn boolean_call(x: bool, f: fn(bool) -> bool) -> bool {
   f(x)
 }
 
-// CHECK: align 4 i32* @borrow(i32* align 4 %x)
+// CHECK: align 4 {{i32\*|ptr}} @borrow({{i32\*|ptr}} align 4 %x)
 #[no_mangle]
 pub fn borrow(x: &i32) -> &i32 {
   x
@@ -32,11 +32,11 @@ pub fn borrow(x: &i32) -> &i32 {
 // CHECK-LABEL: @borrow_call
 #[no_mangle]
 pub fn borrow_call(x: &i32, f: fn(&i32) -> &i32) -> &i32 {
-  // CHECK: call align 4 i32* %f(i32* align 4 %x)
+  // CHECK: call align 4 {{i32\*|ptr}} %f({{i32\*|ptr}} align 4 %x)
   f(x)
 }
 
-// CHECK: void @struct_(%S* sret(%S){{( %0)?}}, %S* %x)
+// CHECK: void @struct_({{%S\*|ptr}} sret(%S){{( %0)?}}, {{%S\*|ptr}} %x)
 #[no_mangle]
 pub fn struct_(x: S) -> S {
   x
@@ -45,7 +45,7 @@ pub fn struct_(x: S) -> S {
 // CHECK-LABEL: @struct_call
 #[no_mangle]
 pub fn struct_call(x: S, f: fn(S) -> S) -> S {
-  // CHECK: call void %f(%S* sret(%S){{( %0)?}}, %S* %{{.+}})
+  // CHECK: call void %f({{%S\*|ptr}} sret(%S){{( %0)?}}, {{%S\*|ptr}} %{{.+}})
   f(x)
 }
 

@@ -1,12 +1,11 @@
-use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZeroI32;
-use crate::os::raw::NonZero_c_int;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
 use crate::sys_common::thread;
+use core::ffi::NonZero_c_int;
 use libc::RTP_ID;
 use libc::{self, c_char, c_int};
 
@@ -239,10 +238,10 @@ impl From<c_int> for ExitStatus {
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
-            write!(f, "exit code: {}", code)
+            write!(f, "exit code: {code}")
         } else {
             let signal = self.signal().unwrap();
-            write!(f, "signal: {}", signal)
+            write!(f, "signal: {signal}")
         }
     }
 }

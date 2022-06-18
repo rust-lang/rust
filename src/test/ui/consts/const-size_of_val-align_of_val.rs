@@ -2,8 +2,9 @@
 
 #![feature(const_size_of_val, const_align_of_val)]
 #![feature(const_size_of_val_raw, const_align_of_val_raw, layout_for_ptr)]
+#![feature(const_slice_from_raw_parts)]
 
-use std::mem;
+use std::{mem, ptr};
 
 struct Foo(u32);
 
@@ -34,6 +35,8 @@ const ALIGN_OF_UGH: usize = mem::align_of_val(&UGH);
 const SIZE_OF_SLICE: usize = mem::size_of_val("foobar".as_bytes());
 
 const SIZE_OF_DANGLING: usize = unsafe { mem::size_of_val_raw(0x100 as *const i32) };
+const SIZE_OF_BIG: usize =
+    unsafe { mem::size_of_val_raw(ptr::slice_from_raw_parts(0 as *const u8, isize::MAX as usize)) };
 const ALIGN_OF_DANGLING: usize = unsafe { mem::align_of_val_raw(0x100 as *const i16) };
 
 fn main() {
@@ -46,6 +49,7 @@ fn main() {
     assert_eq!(ALIGN_OF_UGH, mem::align_of::<Ugh>());
 
     assert_eq!(SIZE_OF_DANGLING, mem::size_of::<i32>());
+    assert_eq!(SIZE_OF_BIG, isize::MAX as usize);
     assert_eq!(ALIGN_OF_DANGLING, mem::align_of::<i16>());
 
     assert_eq!(SIZE_OF_SLICE, "foobar".len());

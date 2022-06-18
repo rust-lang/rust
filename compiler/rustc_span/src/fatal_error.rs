@@ -19,7 +19,7 @@ impl FatalError {
 
 impl std::fmt::Display for FatalError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "parser fatal error")
+        write!(f, "fatal error")
     }
 }
 

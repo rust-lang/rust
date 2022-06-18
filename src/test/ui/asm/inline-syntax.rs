@@ -8,6 +8,7 @@
 //[arm] compile-flags: --target armv7-unknown-linux-gnueabihf
 //[arm] build-fail
 //[arm] needs-llvm-components: arm
+// needs-asm-support
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]

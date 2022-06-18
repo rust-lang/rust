@@ -1,4 +1,4 @@
-use super::wasm_base;
+use super::{cvs, wasm_base};
 use super::{LinkArgs, LinkerFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -11,41 +11,32 @@ pub fn target() -> Target {
     // however it does have the side effect of automatically exporting a lot
     // of symbols, which approximates what people want when compiling for
     // wasm32-unknown-unknown expect, so use it for now.
-    clang_args.push("--export-dynamic".to_string());
+    clang_args.push("--export-dynamic".into());
 
     let mut post_link_args = LinkArgs::new();
     post_link_args.insert(
         LinkerFlavor::Em,
-        vec![
-            "-s".to_string(),
-            "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string(),
-            "-s".to_string(),
-            "ASSERTIONS=1".to_string(),
-            "-s".to_string(),
-            "ABORTING_MALLOC=0".to_string(),
-            "-Wl,--fatal-warnings".to_string(),
-        ],
+        vec!["-sABORTING_MALLOC=0".into(), "-Wl,--fatal-warnings".into()],
     );
 
     let opts = TargetOptions {
-        os: "emscripten".to_string(),
+        os: "emscripten".into(),
         linker_flavor: LinkerFlavor::Em,
         // emcc emits two files - a .js file to instantiate the wasm and supply platform
         // functionality, and a .wasm file.
-        exe_suffix: ".js".to_string(),
+        exe_suffix: ".js".into(),
         linker: None,
         is_like_emscripten: true,
         panic_strategy: PanicStrategy::Unwind,
         post_link_args,
-        families: vec!["unix".to_string(), "wasm".to_string()],
+        families: cvs!["unix", "wasm"],
         ..options
     };
     Target {
-        llvm_target: "wasm32-unknown-emscripten".to_string(),
+        llvm_target: "wasm32-unknown-emscripten".into(),
         pointer_width: 32,
-        data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-f128:64-n32:64-S128-ni:1:10:20"
-            .to_string(),
-        arch: "wasm32".to_string(),
+        data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-f128:64-n32:64-S128-ni:1:10:20".into(),
+        arch: "wasm32".into(),
         options: opts,
     }
 }

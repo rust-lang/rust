@@ -10,25 +10,13 @@ error[E0433]: failed to resolve: use of undeclared crate or module `foo`
 LL | fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
    |                                         ^^^ use of undeclared crate or module `foo`
 
-error[E0720]: cannot resolve opaque type
+error[E0282]: type annotations needed
   --> $DIR/issue-72911.rs:7:24
    |
 LL | pub fn gather_all() -> impl Iterator<Item = Lint> {
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive opaque type
-LL |
-LL |     lint_files().flat_map(|f| gather_from_file(&f))
-   |     -----------------------------------------------
-   |     |
-   |     returning here with type `FlatMap<impl Iterator<Item = [type error]>, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
-   |     returning here with type `FlatMap<impl Iterator<Item = [type error]>, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
-...
-LL | fn gather_from_file(dir_entry: &foo::MissingItem) -> impl Iterator<Item = Lint> {
-   |                                                      -------------------------- returning this opaque type `FlatMap<impl Iterator<Item = [type error]>, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
-...
-LL | fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
-   |                    -------------------------------------- returning this opaque type `FlatMap<impl Iterator<Item = [type error]>, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0433, E0720.
-For more information about an error, try `rustc --explain E0433`.
+Some errors have detailed explanations: E0282, E0433.
+For more information about an error, try `rustc --explain E0282`.

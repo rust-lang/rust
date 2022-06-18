@@ -1,7 +1,7 @@
 // edition:2018
 
 #![deny(unused_extern_crates)]
-#![feature(test, rustc_private, crate_visibility_modifier)]
+#![feature(test, rustc_private)]
 
 extern crate libc;
 //~^ ERROR unused extern crate
@@ -21,7 +21,7 @@ pub extern crate alloc;
 
 pub(crate) extern crate alloc as a;
 
-crate extern crate alloc as b;
+pub(crate) extern crate alloc as b;
 
 mod foo {
     pub(in crate::foo) extern crate alloc as c;

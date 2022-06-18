@@ -44,9 +44,12 @@ LL | |         // This function call requires that
 ...  |
 LL | |         require(value);
 LL | |     });
-   | |_____^
+   | |_____^ ...so that the type `T` will meet its required lifetime bounds
    |
-   = help: consider adding an explicit lifetime bound `T: 'a`...
+help: consider adding an explicit lifetime bound...
+   |
+LL |     T: Trait<'a> + 'a,
+   |                  ++++
 
 error: aborting due to previous error
 

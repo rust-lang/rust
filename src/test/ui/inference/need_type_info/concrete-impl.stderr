@@ -1,0 +1,33 @@
+error[E0282]: type annotations needed
+  --> $DIR/concrete-impl.rs:13:5
+   |
+LL |     <Struct as Ambiguous<_>>::method();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `Self` declared on the trait `Ambiguous`
+   |
+help: consider specifying the generic argument
+   |
+LL |     <Struct as Ambiguous::<_>>::method();
+   |                         ~~~~~
+
+error[E0283]: type annotations needed
+  --> $DIR/concrete-impl.rs:13:5
+   |
+LL |     <Struct as Ambiguous<_>>::method();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `Self` declared on the trait `Ambiguous`
+   |
+note: multiple `impl`s satisfying `Struct: Ambiguous<_>` found
+  --> $DIR/concrete-impl.rs:9:1
+   |
+LL | impl Ambiguous<One> for Struct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl Ambiguous<Two> for Struct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider specifying the generic argument
+   |
+LL |     <Struct as Ambiguous::<_>>::method();
+   |                         ~~~~~
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.

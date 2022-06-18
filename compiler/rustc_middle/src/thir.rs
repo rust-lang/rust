@@ -17,15 +17,12 @@ use rustc_index::newtype_index;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::middle::region;
-use rustc_middle::mir::{
-    BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp, UserTypeProjection,
-};
+use rustc_middle::mir::interpret::AllocId;
+use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp};
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtDef, Const, Ty, UpvarSubsts, UserType};
-use rustc_middle::ty::{
-    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-};
+use rustc_middle::ty::CanonicalUserTypeAnnotation;
+use rustc_middle::ty::{self, AdtDef, Ty, UpvarSubsts, UserType};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -65,7 +62,7 @@ macro_rules! thir_with_elements {
         /// A container for a THIR body.
         ///
         /// This can be indexed directly by any THIR index (e.g. [`ExprId`]).
-        #[derive(Debug, HashStable)]
+        #[derive(Debug, HashStable, Clone)]
         pub struct Thir<'tcx> {
             $(
                 pub $name: IndexVec<$id, $value>,
@@ -105,7 +102,7 @@ pub enum LintLevel {
     Explicit(hir::HirId),
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Block {
     /// Whether the block itself has a label. Used by `label: {}`
     /// and `try` blocks.
@@ -124,10 +121,10 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Adt<'tcx> {
     /// The ADT we're constructing.
-    pub adt_def: &'tcx AdtDef,
+    pub adt_def: AdtDef<'tcx>,
     /// The variant of the ADT.
     pub variant_index: VariantIdx,
     pub substs: SubstsRef<'tcx>,
@@ -150,13 +147,13 @@ pub enum BlockSafety {
     ExplicitUnsafe(hir::HirId),
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Stmt<'tcx> {
     pub kind: StmtKind<'tcx>,
     pub opt_destruction_scope: Option<region::Scope>,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub enum StmtKind<'tcx> {
     /// An expression with a trailing semicolon.
     Expr {
@@ -194,8 +191,22 @@ pub enum StmtKind<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Expr<'_>, 104);
 
+#[derive(
+    Clone,
+    Debug,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    HashStable,
+    TyEncodable,
+    TyDecodable,
+    TypeFoldable
+)]
+pub struct LocalVarId(pub hir::HirId);
+
 /// A THIR expression.
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Expr<'tcx> {
     /// The type of this expression
     pub ty: Ty<'tcx>,
@@ -211,7 +222,7 @@ pub struct Expr<'tcx> {
     pub kind: ExprKind<'tcx>,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub enum ExprKind<'tcx> {
     /// `Scope`s are used to explicitly mark destruction scopes,
     /// and to track the `HirId` of the expressions within the scope.
@@ -320,9 +331,11 @@ pub enum ExprKind<'tcx> {
         lhs: ExprId,
         rhs: ExprId,
     },
-    /// Access to a struct or tuple field.
+    /// Access to a field of a struct, a tuple, an union, or an enum.
     Field {
         lhs: ExprId,
+        /// Variant containing the field.
+        variant_index: VariantIdx,
         /// This can be a named (`.foo`) or unnamed (`.0`) field.
         name: Field,
     },
@@ -333,7 +346,7 @@ pub enum ExprKind<'tcx> {
     },
     /// A local variable.
     VarRef {
-        id: hir::HirId,
+        id: LocalVarId,
     },
     /// Used to represent upvars mentioned in a closure/generator
     UpvarRef {
@@ -341,7 +354,7 @@ pub enum ExprKind<'tcx> {
         closure_def_id: DefId,
 
         /// HirId of the root variable
-        var_hir_id: hir::HirId,
+        var_hir_id: LocalVarId,
     },
     /// A borrow, e.g. `&arg`.
     Borrow {
@@ -368,12 +381,13 @@ pub enum ExprKind<'tcx> {
     },
     /// An inline `const` block, e.g. `const {}`.
     ConstBlock {
-        value: Const<'tcx>,
+        did: DefId,
+        substs: SubstsRef<'tcx>,
     },
     /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
         value: ExprId,
-        count: Const<'tcx>,
+        count: ty::Const<'tcx>,
     },
     /// An array, e.g. `[a, b, c, d]`.
     Array {
@@ -407,19 +421,32 @@ pub enum ExprKind<'tcx> {
     },
     /// A literal.
     Literal {
-        literal: Const<'tcx>,
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
-        /// The `DefId` of the `const` item this literal
-        /// was produced from, if this is not a user-written
-        /// literal value.
-        const_id: Option<DefId>,
+        lit: &'tcx hir::Lit,
+        neg: bool,
     },
+    /// For literals that don't correspond to anything in the HIR
+    NonHirLiteral {
+        lit: ty::ScalarInt,
+        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+    },
+    /// Associated constants and named constants
+    NamedConst {
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+    },
+    ConstParam {
+        param: ty::ParamConst,
+        def_id: DefId,
+    },
+    // FIXME improve docs for `StaticRef` by distinguishing it from `NamedConst`
     /// A literal containing the address of a `static`.
     ///
     /// This is only distinguished from `Literal` so that we can register some
     /// info for diagnostics.
     StaticRef {
-        literal: Const<'tcx>,
+        alloc_id: AllocId,
+        ty: Ty<'tcx>,
         def_id: DefId,
     },
     /// Inline assembly, i.e. `asm!()`.
@@ -437,23 +464,29 @@ pub enum ExprKind<'tcx> {
     },
 }
 
+impl<'tcx> ExprKind<'tcx> {
+    pub fn zero_sized_literal(user_ty: Option<Canonical<'tcx, UserType<'tcx>>>) -> Self {
+        ExprKind::NonHirLiteral { lit: ty::ScalarInt::ZST, user_ty }
+    }
+}
+
 /// Represents the association of a field identifier and an expression.
 ///
 /// This is used in struct constructors.
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct FieldExpr {
     pub name: Field,
     pub expr: ExprId,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct FruInfo<'tcx> {
     pub base: ExprId,
     pub field_types: Box<[Ty<'tcx>]>,
 }
 
 /// A `match` arm.
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Arm<'tcx> {
     pub pattern: Pat<'tcx>,
     pub guard: Option<Guard<'tcx>>,
@@ -464,7 +497,7 @@ pub struct Arm<'tcx> {
 }
 
 /// A `match` guard.
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub enum Guard<'tcx> {
     If(ExprId),
     IfLet(Pat<'tcx>, ExprId),
@@ -478,7 +511,7 @@ pub enum LogicalOp {
     Or,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub enum InlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
@@ -501,11 +534,12 @@ pub enum InlineAsmOperand<'tcx> {
         out_expr: Option<ExprId>,
     },
     Const {
-        value: Const<'tcx>,
+        value: mir::ConstantKind<'tcx>,
         span: Span,
     },
     SymFn {
-        expr: ExprId,
+        value: mir::ConstantKind<'tcx>,
+        span: Span,
     },
     SymStatic {
         def_id: DefId,
@@ -518,13 +552,13 @@ pub enum BindingMode {
     ByRef(BorrowKind),
 }
 
-#[derive(Clone, Debug, PartialEq, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct FieldPat<'tcx> {
     pub field: Field,
     pub pattern: Pat<'tcx>,
 }
 
-#[derive(Clone, Debug, PartialEq, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Pat<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
@@ -537,37 +571,10 @@ impl<'tcx> Pat<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
-pub struct PatTyProj<'tcx> {
-    pub user_ty: CanonicalUserType<'tcx>,
-}
-
-impl<'tcx> PatTyProj<'tcx> {
-    pub fn from_user_type(user_annotation: CanonicalUserType<'tcx>) -> Self {
-        Self { user_ty: user_annotation }
-    }
-
-    pub fn user_ty(
-        self,
-        annotations: &mut CanonicalUserTypeAnnotations<'tcx>,
-        inferred_ty: Ty<'tcx>,
-        span: Span,
-    ) -> UserTypeProjection {
-        UserTypeProjection {
-            base: annotations.push(CanonicalUserTypeAnnotation {
-                span,
-                user_ty: self.user_ty,
-                inferred_ty,
-            }),
-            projs: Vec::new(),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub struct Ascription<'tcx> {
-    pub user_ty: PatTyProj<'tcx>,
-    /// Variance to use when relating the type `user_ty` to the **type of the value being
+    pub annotation: CanonicalUserTypeAnnotation<'tcx>,
+    /// Variance to use when relating the `user_ty` to the **type of the value being
     /// matched**. Typically, this is `Variance::Covariant`, since the value being matched must
     /// have a type that is some subtype of the ascribed type.
     ///
@@ -586,12 +593,11 @@ pub struct Ascription<'tcx> {
     /// probably be checking for a `PartialEq` impl instead, but this preserves the behavior
     /// of the old type-check for now. See #57280 for details.
     pub variance: ty::Variance,
-    pub user_ty_span: Span,
 }
 
-#[derive(Clone, Debug, PartialEq, HashStable)]
+#[derive(Clone, Debug, HashStable)]
 pub enum PatKind<'tcx> {
-    /// A wildward pattern: `_`.
+    /// A wildcard pattern: `_`.
     Wild,
 
     AscribeUserType {
@@ -604,7 +610,7 @@ pub enum PatKind<'tcx> {
         mutability: Mutability,
         name: Symbol,
         mode: BindingMode,
-        var: hir::HirId,
+        var: LocalVarId,
         ty: Ty<'tcx>,
         subpattern: Option<Pat<'tcx>>,
         /// Is this the leftmost occurrence of the binding, i.e., is `var` the
@@ -615,7 +621,7 @@ pub enum PatKind<'tcx> {
     /// `Foo(...)` or `Foo{...}` or `Foo`, where `Foo` is a variant name from an ADT with
     /// multiple variants.
     Variant {
-        adt_def: &'tcx AdtDef,
+        adt_def: AdtDef<'tcx>,
         substs: SubstsRef<'tcx>,
         variant_index: VariantIdx,
         subpatterns: Vec<FieldPat<'tcx>>,
@@ -635,12 +641,12 @@ pub enum PatKind<'tcx> {
     /// One of the following:
     /// * `&str`, which will be handled as a string pattern and thus exhaustiveness
     ///   checking will detect if you use the same string twice in different patterns.
-    /// * integer, bool, char or float, which will be handled by exhaustivenes to cover exactly
+    /// * integer, bool, char or float, which will be handled by exhaustiveness to cover exactly
     ///   its own value, similar to `&str`, but these values are much simpler.
     /// * Opaque constants, that must not be matched structurally. So anything that does not derive
     ///   `PartialEq` and `Eq`.
     Constant {
-        value: ty::Const<'tcx>,
+        value: mir::ConstantKind<'tcx>,
     },
 
     Range(PatRange<'tcx>),
@@ -670,8 +676,8 @@ pub enum PatKind<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub struct PatRange<'tcx> {
-    pub lo: ty::Const<'tcx>,
-    pub hi: ty::Const<'tcx>,
+    pub lo: mir::ConstantKind<'tcx>,
+    pub hi: mir::ConstantKind<'tcx>,
     pub end: RangeEnd,
 }
 
@@ -712,7 +718,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
             PatKind::Variant { ref subpatterns, .. } | PatKind::Leaf { ref subpatterns } => {
                 let variant = match *self.kind {
                     PatKind::Variant { adt_def, variant_index, .. } => {
-                        Some(&adt_def.variants[variant_index])
+                        Some(adt_def.variant(variant_index))
                     }
                     _ => self.ty.ty_adt_def().and_then(|adt| {
                         if !adt.is_enum() { Some(adt.non_enum_variant()) } else { None }

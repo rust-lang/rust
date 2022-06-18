@@ -3,7 +3,7 @@ error[E0412]: cannot find type `N` in this scope
    |
 LL | struct X<const N: u8>();
    | ------------------------ similarly named struct `X` defined here
-LL | 
+LL |
 LL | impl X<N> {}
    |        ^
    |
@@ -99,10 +99,10 @@ LL | impl X<{ N }> {}
    |        +   +
 
 error: defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/missing-type-parameter2.rs:6:15
+  --> $DIR/missing-type-parameter2.rs:6:9
    |
 LL | impl<T, const A: u8 = 2> X<N> {}
-   |               ^
+   |         ^^^^^^^^^^^^^^^
 
 error[E0747]: unresolved item provided when a constant was expected
   --> $DIR/missing-type-parameter2.rs:6:28

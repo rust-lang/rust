@@ -14,7 +14,7 @@ static CMP: () = {
 static PTR_INT_CAST: () = {
     let x = &0 as *const _ as usize;
     //~^ ERROR could not evaluate static initializer
-    //~| unable to turn pointer into raw bytes
+    //~| "exposing pointers" needs an rfc before being allowed inside constants
     let _v = x == x;
 };
 

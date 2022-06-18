@@ -5,7 +5,7 @@
 OUTPUT_FILE_DEFAULT := $(TMPDIR)/libtest-json-output-default.json
 OUTPUT_FILE_STDOUT_SUCCESS := $(TMPDIR)/libtest-json-output-stdout-success.json
 
-all:
+all: f.rs validate_json.py output-default.json output-stdout-success.json
 	$(RUSTC) --test f.rs
 	RUST_BACKTRACE=0 $(call RUN,f) -Z unstable-options --test-threads=1 --format=json > $(OUTPUT_FILE_DEFAULT) || true
 	RUST_BACKTRACE=0 $(call RUN,f) -Z unstable-options --test-threads=1 --format=json --show-output > $(OUTPUT_FILE_STDOUT_SUCCESS) || true

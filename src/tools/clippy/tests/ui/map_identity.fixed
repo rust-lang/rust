@@ -16,6 +16,8 @@ fn main() {
     let _: Result<i8, f32> = Err(2.3).map(|x: i8| {
         return x + 3;
     });
+    let _: Result<u32, u32> = Ok(1);
+    let _: Result<u32, u32> = Ok(1).map_err(|a: u32| a * 42);
 }
 
 fn not_identity(x: &u16) -> u16 {

@@ -57,10 +57,13 @@ error: expected `{`, found `macro_rules`
   --> $DIR/issue-62554.rs:6:23
    |
 LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
-   |                 --    ^^^^^^^^^^^ expected `{`
-   |                 |
-   |                 this `if` expression has a condition, but no block
+   |                       ^^^^^^^^^^^ expected `{`
    |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/issue-62554.rs:6:20
+   |
+LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
+   |                    ^^
 help: try placing this code inside a block
    |
 LL | fn foo(u: u8) { if u8 { macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 { }

@@ -49,7 +49,7 @@ struct Edge {
     target: Index,
 }
 
-impl<T: Eq + Hash> TransitiveRelation<T> {
+impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
     pub fn is_empty(&self) -> bool {
         self.edges.is_empty()
     }
@@ -58,8 +58,8 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
         self.elements.iter()
     }
 
-    fn index(&self, a: &T) -> Option<Index> {
-        self.elements.get_index_of(a).map(Index)
+    fn index(&self, a: T) -> Option<Index> {
+        self.elements.get_index_of(&a).map(Index)
     }
 
     fn add_index(&mut self, a: T) -> Index {
@@ -76,12 +76,12 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
     /// `None`.
     pub fn maybe_map<F, U>(&self, mut f: F) -> Option<TransitiveRelation<U>>
     where
-        F: FnMut(&T) -> Option<U>,
-        U: Clone + Debug + Eq + Hash + Clone,
+        F: FnMut(T) -> Option<U>,
+        U: Clone + Debug + Eq + Hash + Copy,
     {
         let mut result = TransitiveRelation::default();
         for edge in &self.edges {
-            result.add(f(&self.elements[edge.source.0])?, f(&self.elements[edge.target.0])?);
+            result.add(f(self.elements[edge.source.0])?, f(self.elements[edge.target.0])?);
         }
         Some(result)
     }
@@ -100,7 +100,7 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
     }
 
     /// Checks whether `a < target` (transitively)
-    pub fn contains(&self, a: &T, b: &T) -> bool {
+    pub fn contains(&self, a: T, b: T) -> bool {
         match (self.index(a), self.index(b)) {
             (Some(a), Some(b)) => self.with_closure(|closure| closure.contains(a.0, b.0)),
             (None, _) | (_, None) => false,
@@ -113,10 +113,10 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
     /// Really this probably ought to be `impl Iterator<Item = &T>`, but
     /// I'm too lazy to make that work, and -- given the caching
     /// strategy -- it'd be a touch tricky anyhow.
-    pub fn reachable_from(&self, a: &T) -> Vec<&T> {
+    pub fn reachable_from(&self, a: T) -> Vec<T> {
         match self.index(a) {
             Some(a) => {
-                self.with_closure(|closure| closure.iter(a.0).map(|i| &self.elements[i]).collect())
+                self.with_closure(|closure| closure.iter(a.0).map(|i| self.elements[i]).collect())
             }
             None => vec![],
         }
@@ -157,7 +157,7 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
     /// a -> a1
     /// b -> b1
     /// ```
-    pub fn postdom_upper_bound(&self, a: &T, b: &T) -> Option<&T> {
+    pub fn postdom_upper_bound(&self, a: T, b: T) -> Option<T> {
         let mubs = self.minimal_upper_bounds(a, b);
         self.mutual_immediate_postdominator(mubs)
     }
@@ -165,7 +165,7 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
     /// Viewing the relation as a graph, computes the "mutual
     /// immediate postdominator" of a set of points (if one
     /// exists). See `postdom_upper_bound` for details.
-    pub fn mutual_immediate_postdominator<'a>(&'a self, mut mubs: Vec<&'a T>) -> Option<&'a T> {
+    pub fn mutual_immediate_postdominator<'a>(&'a self, mut mubs: Vec<T>) -> Option<T> {
         loop {
             match mubs.len() {
                 0 => return None,
@@ -189,7 +189,7 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
     ///     internal indices).
     ///
     /// Note that this set can, in principle, have any size.
-    pub fn minimal_upper_bounds(&self, a: &T, b: &T) -> Vec<&T> {
+    pub fn minimal_upper_bounds(&self, a: T, b: T) -> Vec<T> {
         let (Some(mut a), Some(mut b)) = (self.index(a), self.index(b)) else {
             return vec![];
         };
@@ -267,7 +267,7 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
         lub_indices
             .into_iter()
             .rev() // (4)
-            .map(|i| &self.elements[i])
+            .map(|i| self.elements[i])
             .collect()
     }
 
@@ -282,7 +282,7 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
     /// (where the relation is encoding the `<=` relation for the lattice).
     /// So e.g., if the relation is `->` and we have
     ///
-    /// ```
+    /// ```text
     /// a -> b -> d -> f
     /// |              ^
     /// +--> c -> e ---+
@@ -290,7 +290,7 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
     ///
     /// then `parents(a)` returns `[b, c]`. The `postdom_parent` function
     /// would further reduce this to just `f`.
-    pub fn parents(&self, a: &T) -> Vec<&T> {
+    pub fn parents(&self, a: T) -> Vec<T> {
         let Some(a) = self.index(a) else {
             return vec![];
         };
@@ -314,7 +314,7 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
         ancestors
             .into_iter()
             .rev() // (4)
-            .map(|i| &self.elements[i])
+            .map(|i| self.elements[i])
             .collect()
     }
 
@@ -350,10 +350,10 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
 
     /// Lists all the base edges in the graph: the initial _non-transitive_ set of element
     /// relations, which will be later used as the basis for the transitive closure computation.
-    pub fn base_edges(&self) -> impl Iterator<Item = (&T, &T)> {
+    pub fn base_edges(&self) -> impl Iterator<Item = (T, T)> + '_ {
         self.edges
             .iter()
-            .map(move |edge| (&self.elements[edge.source.0], &self.elements[edge.target.0]))
+            .map(move |edge| (self.elements[edge.source.0], self.elements[edge.target.0]))
     }
 }
 

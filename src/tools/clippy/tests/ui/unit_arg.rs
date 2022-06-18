@@ -7,7 +7,8 @@
     clippy::unnecessary_wraps,
     clippy::or_fun_call,
     clippy::needless_question_mark,
-    clippy::self_named_constructors
+    clippy::self_named_constructors,
+    clippy::let_unit_value
 )]
 
 use std::fmt::Debug;

@@ -8,11 +8,11 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol, DUMMY_SP};
-use rustc_target::abi::Abi;
+use rustc_target::abi::{Abi, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
@@ -154,7 +154,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
                     let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
                     err.span_suggestion(
                         parent_expr.span,
-                        &"use an inclusive range instead",
+                        "use an inclusive range instead",
                         suggestion,
                         Applicability::MachineApplicable,
                     );
@@ -399,7 +399,7 @@ fn lint_uint_literal<'tcx>(
                             lint.build("only `u8` can be cast into `char`")
                                 .span_suggestion(
                                     par_e.span,
-                                    &"use a `char` literal instead",
+                                    "use a `char` literal instead",
                                     format!("'\\u{{{:X}}}'", lit_val),
                                     Applicability::MachineApplicable,
                                 )
@@ -441,7 +441,7 @@ fn lint_uint_literal<'tcx>(
                     min,
                     max,
                 ))
-                .emit()
+                .emit();
         });
     }
 }
@@ -502,7 +502,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
                     cx.struct_span_lint(UNUSED_COMPARISONS, e.span, |lint| {
-                        lint.build("comparison is useless due to type limits").emit()
+                        lint.build("comparison is useless due to type limits").emit();
                     });
                 }
             }
@@ -651,7 +651,7 @@ declare_lint! {
 declare_lint_pass!(ImproperCTypesDefinitions => [IMPROPER_CTYPES_DEFINITIONS]);
 
 #[derive(Clone, Copy)]
-crate enum CItemKind {
+pub(crate) enum CItemKind {
     Declaration,
     Definition,
 }
@@ -667,8 +667,11 @@ enum FfiResult<'tcx> {
     FfiUnsafe { ty: Ty<'tcx>, reason: String, help: Option<String> },
 }
 
-crate fn nonnull_optimization_guaranteed<'tcx>(tcx: TyCtxt<'tcx>, def: &ty::AdtDef) -> bool {
-    tcx.get_attrs(def.did).iter().any(|a| a.has_name(sym::rustc_nonnull_optimization_guaranteed))
+pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: ty::AdtDef<'tcx>,
+) -> bool {
+    tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed)
 }
 
 /// `repr(transparent)` structs can have a single non-ZST field, this function returns that
@@ -692,8 +695,8 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
         ty::FnPtr(_) => true,
         ty::Ref(..) => true,
         ty::Adt(def, _) if def.is_box() && matches!(mode, CItemKind::Definition) => true,
-        ty::Adt(def, substs) if def.repr.transparent() && !def.is_union() => {
-            let marked_non_null = nonnull_optimization_guaranteed(tcx, &def);
+        ty::Adt(def, substs) if def.repr().transparent() && !def.is_union() => {
+            let marked_non_null = nonnull_optimization_guaranteed(tcx, *def);
 
             if marked_non_null {
                 return true;
@@ -701,11 +704,11 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
 
             // Types with a `#[repr(no_niche)]` attribute have their niche hidden.
             // The attribute is used by the UnsafeCell for example (the only use so far).
-            if def.repr.hide_niche() {
+            if def.repr().hide_niche() {
                 return false;
             }
 
-            def.variants
+            def.variants()
                 .iter()
                 .filter_map(|variant| transparent_newtype_field(cx.tcx, variant))
                 .any(|field| ty_is_known_nonnull(cx, field.ty(tcx, substs), mode))
@@ -721,8 +724,10 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
     Some(match *ty.kind() {
         ty::Adt(field_def, field_substs) => {
             let inner_field_ty = {
-                let first_non_zst_ty =
-                    field_def.variants.iter().filter_map(|v| transparent_newtype_field(cx.tcx, v));
+                let first_non_zst_ty = field_def
+                    .variants()
+                    .iter()
+                    .filter_map(|v| transparent_newtype_field(cx.tcx, v));
                 debug_assert_eq!(
                     first_non_zst_ty.clone().count(),
                     1,
@@ -764,14 +769,14 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
 /// Currently restricted to function pointers, boxes, references, `core::num::NonZero*`,
 /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
 /// FIXME: This duplicates code in codegen.
-crate fn repr_nullable_ptr<'tcx>(
+pub(crate) fn repr_nullable_ptr<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
     ckind: CItemKind,
 ) -> Option<Ty<'tcx>> {
     debug!("is_repr_nullable_ptr(cx, ty = {:?})", ty);
     if let ty::Adt(ty_def, substs) = ty.kind() {
-        let field_ty = match &ty_def.variants.raw[..] {
+        let field_ty = match &ty_def.variants().raw[..] {
             [var_one, var_two] => match (&var_one.fields[..], &var_two.fields[..]) {
                 ([], [field]) | ([field], []) => field.ty(cx.tcx, substs),
                 _ => return None,
@@ -794,12 +799,18 @@ crate fn repr_nullable_ptr<'tcx>(
         // Return the nullable type this Option-like enum can be safely represented with.
         let field_ty_abi = &cx.layout_of(field_ty).unwrap().abi;
         if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
-            match (field_ty_scalar.valid_range.start, field_ty_scalar.valid_range.end) {
-                (0, _) => unreachable!("Non-null optimisation extended to a non-zero value."),
-                (1, _) => {
+            match field_ty_scalar.valid_range(cx) {
+                WrappingRange { start: 0, end }
+                    if end == field_ty_scalar.size(&cx.tcx).unsigned_int_max() - 1 =>
+                {
                     return Some(get_nullable_type(cx, field_ty).unwrap());
                 }
-                (start, end) => unreachable!("Unhandled start and end range: ({}, {})", start, end),
+                WrappingRange { start: 1, .. } => {
+                    return Some(get_nullable_type(cx, field_ty).unwrap());
+                }
+                WrappingRange { start, end } => {
+                    unreachable!("Unhandled start and end range: ({}, {})", start, end)
+                }
             };
         }
     }
@@ -843,13 +854,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         &self,
         cache: &mut FxHashSet<Ty<'tcx>>,
         ty: Ty<'tcx>,
-        def: &ty::AdtDef,
+        def: ty::AdtDef<'tcx>,
         variant: &ty::VariantDef,
         substs: SubstsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
-        if def.repr.transparent() {
+        if def.repr().transparent() {
             // Can assume that at most one field is not a ZST, so only check
             // that field's type for FFI-safety.
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
@@ -923,7 +934,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     AdtKind::Struct | AdtKind::Union => {
                         let kind = if def.is_struct() { "struct" } else { "union" };
 
-                        if !def.repr.c() && !def.repr.transparent() {
+                        if !def.repr().c() && !def.repr().transparent() {
                             return FfiUnsafe {
                                 ty,
                                 reason: format!("this {} has unspecified layout", kind),
@@ -937,7 +948,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                         let is_non_exhaustive =
                             def.non_enum_variant().is_field_list_non_exhaustive();
-                        if is_non_exhaustive && !def.did.is_local() {
+                        if is_non_exhaustive && !def.did().is_local() {
                             return FfiUnsafe {
                                 ty,
                                 reason: format!("this {} is non-exhaustive", kind),
@@ -956,14 +967,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         self.check_variant_for_ffi(cache, ty, def, def.non_enum_variant(), substs)
                     }
                     AdtKind::Enum => {
-                        if def.variants.is_empty() {
+                        if def.variants().is_empty() {
                             // Empty enums are okay... although sort of useless.
                             return FfiSafe;
                         }
 
                         // Check for a repr() attribute to specify the size of the
                         // discriminant.
-                        if !def.repr.c() && !def.repr.transparent() && def.repr.int.is_none() {
+                        if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
+                        {
                             // Special-case types like `Option<extern fn()>`.
                             if repr_nullable_ptr(self.cx, ty, self.mode).is_none() {
                                 return FfiUnsafe {
@@ -979,7 +991,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             }
                         }
 
-                        if def.is_variant_list_non_exhaustive() && !def.did.is_local() {
+                        if def.is_variant_list_non_exhaustive() && !def.did().is_local() {
                             return FfiUnsafe {
                                 ty,
                                 reason: "this enum is non-exhaustive".into(),
@@ -988,7 +1000,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         }
 
                         // Check the contained variants.
-                        for variant in &def.variants {
+                        for variant in def.variants() {
                             let is_non_exhaustive = variant.is_field_list_non_exhaustive();
                             if is_non_exhaustive && !variant.def_id.is_local() {
                                 return FfiUnsafe {
@@ -1159,7 +1171,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
             diag.note(note);
             if let ty::Adt(def, _) = ty.kind() {
-                if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did) {
+                if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did()) {
                     diag.span_note(sp, "the type is defined here");
                 }
             }
@@ -1337,7 +1349,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
                 return
             };
 
-            let tag_size = tag.value.size(&cx.tcx).bytes();
+            let tag_size = tag.size(&cx.tcx).bytes();
 
             debug!(
                 "enum `{}` is {} bytes large with layout:\n{:#?}",
@@ -1349,7 +1361,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
             let (largest, slargest, largest_index) = iter::zip(enum_definition.variants, variants)
                 .map(|(variant, variant_layout)| {
                     // Subtract the size of the enum tag.
-                    let bytes = variant_layout.size.bytes().saturating_sub(tag_size);
+                    let bytes = variant_layout.size().bytes().saturating_sub(tag_size);
 
                     debug!("- variant `{}` is {} bytes large", variant.ident, bytes);
                     bytes
@@ -1377,7 +1389,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
                                           larger ({} bytes) than the next largest",
                             largest
                         ))
-                        .emit()
+                        .emit();
                     },
                 );
             }
@@ -1462,9 +1474,9 @@ impl InvalidAtomicOrdering {
             && let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def()
             // skip extension traits, only lint functions from the standard library
             && cx.tcx.trait_id_of_impl(impl_did).is_none()
-            && let Some(parent) = cx.tcx.parent(adt.did)
+            && let parent = cx.tcx.parent(adt.did())
             && cx.tcx.is_diagnostic_item(sym::atomic_mod, parent)
-            && ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did))
+            && ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did()))
         {
             return Some((method_path.ident.name, args));
         }
@@ -1477,9 +1489,9 @@ impl InvalidAtomicOrdering {
         orderings.iter().any(|ordering| {
             tcx.item_name(did) == *ordering && {
                 let parent = tcx.parent(did);
-                parent == atomic_ordering
+                Some(parent) == atomic_ordering
                     // needed in case this is a ctor, not a variant
-                    || parent.map_or(false, |parent| tcx.parent(parent) == atomic_ordering)
+                    || tcx.opt_parent(parent) == atomic_ordering
             }
         })
     }

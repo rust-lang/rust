@@ -11,10 +11,10 @@ LL | pub static mut C: u32 = unsafe { C = 1; 0 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires const-evaluating + checking `C`...
-  --> $DIR/write-to-static-mut-in-static.rs:5:1
+  --> $DIR/write-to-static-mut-in-static.rs:5:34
    |
 LL | pub static mut C: u32 = unsafe { C = 1; 0 };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                  ^^^^^
    = note: ...which again requires const-evaluating + checking `C`, completing the cycle
    = note: cycle used when running analysis passes on this crate
 

@@ -1,26 +1,35 @@
-error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
-  --> $DIR/regions-addr-of-upvar-self.rs:8:41
-   |
-LL |             let p: &'static mut usize = &mut self.food;
-   |                                         ^^^^^^^^^^^^^^
-   |
-note: first, the lifetime cannot outlive the lifetime `'_` as defined here...
-  --> $DIR/regions-addr-of-upvar-self.rs:7:18
+error: lifetime may not live long enough
+  --> $DIR/regions-addr-of-upvar-self.rs:8:20
    |
 LL |         let _f = || {
-   |                  ^^
-note: ...so that closure can access `self`
-  --> $DIR/regions-addr-of-upvar-self.rs:8:41
-   |
+   |                  -- lifetime `'1` represents this closure's body
 LL |             let p: &'static mut usize = &mut self.food;
-   |                                         ^^^^^^^^^^^^^^
-   = note: but, the lifetime must be valid for the static lifetime...
-note: ...so that reference does not outlive borrowed content
-  --> $DIR/regions-addr-of-upvar-self.rs:8:41
+   |                    ^^^^^^^^^^^^^^^^^^ type annotation requires that `'1` must outlive `'static`
    |
+   = note: closure implements `FnMut`, so references to captured variables can't escape the closure
+
+error: lifetime may not live long enough
+  --> $DIR/regions-addr-of-upvar-self.rs:8:20
+   |
+LL |     pub fn chase_cat(&mut self) {
+   |                      - let's call the lifetime of this reference `'1`
+LL |         let _f = || {
 LL |             let p: &'static mut usize = &mut self.food;
-   |                                         ^^^^^^^^^^^^^^
+   |                    ^^^^^^^^^^^^^^^^^^ type annotation requires that `'1` must outlive `'static`
 
-error: aborting due to previous error
+error[E0597]: `self` does not live long enough
+  --> $DIR/regions-addr-of-upvar-self.rs:8:46
+   |
+LL |         let _f = || {
+   |                  -- value captured here
+LL |             let p: &'static mut usize = &mut self.food;
+   |                    ------------------        ^^^^^^^^^ borrowed value does not live long enough
+   |                    |
+   |                    type annotation requires that `self` is borrowed for `'static`
+...
+LL |     }
+   |      - `self` dropped here while still borrowed
 
-For more information about this error, try `rustc --explain E0495`.
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

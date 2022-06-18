@@ -191,13 +191,13 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_ident(&mut self, ident: Ident) {
         let interned_name = ident.name.as_str();
         if interned_name.chars().any(char::is_uppercase) {
             return;
         }
-        if interned_name.chars().all(|c| c.is_digit(10) || c == '_') {
+        if interned_name.chars().all(|c| c.is_ascii_digit() || c == '_') {
             span_lint(
                 self.0.cx,
                 JUST_UNDERSCORES_AND_DIGITS,

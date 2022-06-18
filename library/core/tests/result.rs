@@ -69,7 +69,7 @@ fn test_collect() {
 
     // test that it does not take more elements than it needs
     let mut functions: [Box<dyn Fn() -> Result<(), isize>>; 3] =
-        [box || Ok(()), box || Err(1), box || panic!()];
+        [Box::new(|| Ok(())), Box::new(|| Err(1)), Box::new(|| panic!())];
 
     let v: Result<Vec<()>, isize> = functions.iter_mut().map(|f| (*f)()).collect();
     assert!(v == Err(1));
@@ -80,9 +80,9 @@ fn test_fmt_default() {
     let ok: Result<isize, &'static str> = Ok(100);
     let err: Result<isize, &'static str> = Err("Err");
 
-    let s = format!("{:?}", ok);
+    let s = format!("{ok:?}");
     assert_eq!(s, "Ok(100)");
-    let s = format!("{:?}", err);
+    let s = format!("{err:?}");
     assert_eq!(s, "Err(\"Err\")");
 }
 

@@ -5,7 +5,7 @@ mod unused_self {
     use std::pin::Pin;
     use std::sync::{Arc, Mutex};
 
-    struct A {}
+    struct A;
 
     impl A {
         fn unused_self_move(self) {}
@@ -27,7 +27,7 @@ mod unused_self {
 }
 
 mod unused_self_allow {
-    struct A {}
+    struct A;
 
     impl A {
         // shouldn't trigger
@@ -35,7 +35,7 @@ mod unused_self_allow {
         fn unused_self_move(self) {}
     }
 
-    struct B {}
+    struct B;
 
     // shouldn't trigger
     #[allow(clippy::unused_self)]
@@ -43,7 +43,7 @@ mod unused_self_allow {
         fn unused_self_move(self) {}
     }
 
-    struct C {}
+    struct C;
 
     #[allow(clippy::unused_self)]
     impl C {
@@ -120,7 +120,7 @@ mod used_self {
 mod not_applicable {
     use std::fmt;
 
-    struct A {}
+    struct A;
 
     impl fmt::Debug for A {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

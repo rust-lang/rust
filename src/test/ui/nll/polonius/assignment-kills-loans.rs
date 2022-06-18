@@ -5,8 +5,7 @@
 // for code accepted by NLL. They are all variations from example code in the NLL RFC.
 
 // check-pass
-// compile-flags: -Z borrowck=mir -Z polonius
-// ignore-compare-mode-nll
+// compile-flags: -Z polonius
 
 struct List<T> {
     value: T,

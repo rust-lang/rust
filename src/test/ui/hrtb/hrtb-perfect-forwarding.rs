@@ -13,7 +13,7 @@ impl<'a, X, F> Foo<X> for &'a mut F where F: Foo<X> + Bar<X> {}
 
 impl<'a, X, F> Bar<X> for &'a mut F where F: Bar<X> {}
 
-fn no_hrtb<'b, T>(mut t: T)
+fn no_hrtb<'b, T>(mut t: T) //~ WARN function cannot return
 where
     T: Bar<&'b isize>,
 {
@@ -22,7 +22,7 @@ where
     no_hrtb(&mut t);
 }
 
-fn bar_hrtb<T>(mut t: T)
+fn bar_hrtb<T>(mut t: T) //~ WARN function cannot return
 where
     T: for<'b> Bar<&'b isize>,
 {
@@ -32,7 +32,7 @@ where
     bar_hrtb(&mut t);
 }
 
-fn foo_hrtb_bar_not<'b, T>(mut t: T)
+fn foo_hrtb_bar_not<'b, T>(mut t: T) //~ WARN function cannot return
 where
     T: for<'a> Foo<&'a isize> + Bar<&'b isize>,
 {
@@ -42,10 +42,10 @@ where
     // clause only specifies `T : Bar<&'b isize>`.
     foo_hrtb_bar_not(&mut t);
     //~^ ERROR implementation of `Bar` is not general enough
-    //~| ERROR implementation of `Bar` is not general enough
+    //~^^ ERROR lifetime may not live long enough
 }
 
-fn foo_hrtb_bar_hrtb<T>(mut t: T)
+fn foo_hrtb_bar_hrtb<T>(mut t: T) //~ WARN function cannot return
 where
     T: for<'a> Foo<&'a isize> + for<'b> Bar<&'b isize>,
 {

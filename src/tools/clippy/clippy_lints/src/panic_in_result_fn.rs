@@ -61,7 +61,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir
     expr_visitor_no_bodies(|expr| {
         let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return true };
         if matches!(
-            &*cx.tcx.item_name(macro_call.def_id).as_str(),
+            cx.tcx.item_name(macro_call.def_id).as_str(),
             "unimplemented" | "unreachable" | "panic" | "todo" | "assert" | "assert_eq" | "assert_ne"
         ) {
             panics.push(macro_call.span);

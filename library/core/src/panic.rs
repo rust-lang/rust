@@ -68,7 +68,7 @@ pub macro unreachable_2015 {
         $crate::panicking::panic("internal error: entered unreachable code")
     ),
     // Use of `unreachable_display` for non_fmt_panic lint.
-    // NOTE: the message ("internal error ...") is embeded directly in unreachable_display
+    // NOTE: the message ("internal error ...") is embedded directly in unreachable_display
     ($msg:expr $(,)?) => (
         $crate::panicking::unreachable_display(&$msg)
     ),

@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 use std::cmp::min;
+use std::collections::HashMap;
 
 use itertools::Itertools;
-use rustc_ast::token::{DelimToken, LitKind};
+use rustc_ast::token::{Delimiter, LitKind};
 use rustc_ast::{ast, ptr};
 use rustc_span::{BytePos, Span};
 
@@ -22,7 +23,7 @@ use crate::macros::{rewrite_macro, MacroPosition};
 use crate::matches::rewrite_match;
 use crate::overflow::{self, IntoOverflowableItem, OverflowableItem};
 use crate::pairs::{rewrite_all_pairs, rewrite_pair, PairParts};
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{QueryId, Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
@@ -49,6 +50,54 @@ pub(crate) enum ExprType {
 }
 
 pub(crate) fn format_expr(
+    expr: &ast::Expr,
+    expr_type: ExprType,
+    context: &RewriteContext<'_>,
+    shape: Shape,
+) -> Option<String> {
+    // when max_width is tight, we should check all possible formattings, in order to find
+    // if we can fit expression in the limit. Doing it recursively takes exponential time
+    // relative to input size, and people hit it with rustfmt takes minutes in #4476 #4867 #5128
+    // By memoization of format_expr function, we format each pair of expression and shape
+    // only once, so worst case execution time becomes O(n*max_width^3).
+    if context.inside_macro() || context.is_macro_def {
+        // span ids are not unique in macros, so we don't memoize result of them.
+        return format_expr_inner(expr, expr_type, context, shape);
+    }
+    let clean;
+    let query_id = QueryId {
+        shape,
+        span: expr.span,
+    };
+    if let Some(map) = context.memoize.take() {
+        if let Some(r) = map.get(&query_id) {
+            let r = r.clone();
+            context.memoize.set(Some(map)); // restore map in the memoize cell for other users
+            return r;
+        }
+        context.memoize.set(Some(map));
+        clean = false;
+    } else {
+        context.memoize.set(Some(HashMap::default()));
+        clean = true; // We got None, so we are the top level called function. When
+        // this function finishes, no one is interested in what is in the map, because
+        // all of them are sub expressions of this top level expression, and this is
+        // done. So we should clean up memoize map to save some memory.
+    }
+
+    let r = format_expr_inner(expr, expr_type, context, shape);
+    if clean {
+        context.memoize.set(None);
+    } else {
+        if let Some(mut map) = context.memoize.take() {
+            map.insert(query_id, r.clone()); // insert the result in the memoize map
+            context.memoize.set(Some(map)); // so it won't be computed again
+        }
+    }
+    r
+}
+
+fn format_expr_inner(
     expr: &ast::Expr,
     expr_type: ExprType,
     context: &RewriteContext<'_>,
@@ -224,6 +273,10 @@ pub(crate) fn format_expr(
         ast::ExprKind::Ret(None) => Some("return".to_owned()),
         ast::ExprKind::Ret(Some(ref expr)) => {
             rewrite_unary_prefix(context, "return ", &**expr, shape)
+        }
+        ast::ExprKind::Yeet(None) => Some("do yeet".to_owned()),
+        ast::ExprKind::Yeet(Some(ref expr)) => {
+            rewrite_unary_prefix(context, "do yeet ", &**expr, shape)
         }
         ast::ExprKind::Box(ref expr) => rewrite_unary_prefix(context, "box ", &**expr, shape),
         ast::ExprKind::AddrOf(borrow_kind, mutability, ref expr) => {
@@ -412,7 +465,7 @@ pub(crate) fn rewrite_array<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &'a RewriteContext<'_>,
     shape: Shape,
     force_separator_tactic: Option<SeparatorTactic>,
-    delim_token: Option<DelimToken>,
+    delim_token: Option<Delimiter>,
 ) -> Option<String> {
     overflow::rewrite_with_square_brackets(
         context,
@@ -1325,7 +1378,7 @@ pub(crate) fn can_be_overflowed_expr(
         }
         ast::ExprKind::MacCall(ref mac) => {
             match (
-                rustc_ast::ast::MacDelimiter::from_token(mac.args.delim()),
+                rustc_ast::ast::MacDelimiter::from_token(mac.args.delim().unwrap()),
                 context.config.overflow_delimited_expr(),
             ) {
                 (Some(ast::MacDelimiter::Bracket), true)

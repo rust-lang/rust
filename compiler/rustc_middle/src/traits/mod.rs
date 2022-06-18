@@ -47,7 +47,8 @@ pub enum Reveal {
     /// impl. Concretely, that means that the following example will
     /// fail to compile:
     ///
-    /// ```
+    /// ```compile_fail,E0308
+    /// #![feature(specialization)]
     /// trait Assoc {
     ///     type Output;
     /// }
@@ -57,9 +58,12 @@ pub enum Reveal {
     /// }
     ///
     /// fn main() {
-    ///     let <() as Assoc>::Output = true;
+    ///     let x: <() as Assoc>::Output = true;
     /// }
     /// ```
+    ///
+    /// We also do not reveal the hidden type of opaque types during
+    /// type-checking.
     UserFacing,
 
     /// At codegen time, all monomorphic projections will succeed.
@@ -96,9 +100,7 @@ pub struct ObligationCause<'tcx> {
     /// information.
     pub body_id: hir::HirId,
 
-    /// `None` for `MISC_OBLIGATION_CAUSE_CODE` (a common case, occurs ~60% of
-    /// the time). `Some` otherwise.
-    code: Option<Lrc<ObligationCauseCode<'tcx>>>,
+    code: InternedObligationCauseCode<'tcx>,
 }
 
 // This custom hash function speeds up hashing for `Obligation` deduplication
@@ -113,8 +115,6 @@ impl Hash for ObligationCause<'_> {
     }
 }
 
-const MISC_OBLIGATION_CAUSE_CODE: ObligationCauseCode<'static> = MiscObligation;
-
 impl<'tcx> ObligationCause<'tcx> {
     #[inline]
     pub fn new(
@@ -122,11 +122,7 @@ impl<'tcx> ObligationCause<'tcx> {
         body_id: hir::HirId,
         code: ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        ObligationCause {
-            span,
-            body_id,
-            code: if code == MISC_OBLIGATION_CAUSE_CODE { None } else { Some(Lrc::new(code)) },
-        }
+        ObligationCause { span, body_id, code: code.into() }
     }
 
     pub fn misc(span: Span, body_id: hir::HirId) -> ObligationCause<'tcx> {
@@ -135,15 +131,12 @@ impl<'tcx> ObligationCause<'tcx> {
 
     #[inline(always)]
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: None }
+        ObligationCause::dummy_with_span(DUMMY_SP)
     }
 
+    #[inline(always)]
     pub fn dummy_with_span(span: Span) -> ObligationCause<'tcx> {
-        ObligationCause { span, body_id: hir::CRATE_HIR_ID, code: None }
-    }
-
-    pub fn make_mut_code(&mut self) -> &mut ObligationCauseCode<'tcx> {
-        Lrc::make_mut(self.code.get_or_insert_with(|| Lrc::new(MISC_OBLIGATION_CAUSE_CODE)))
+        ObligationCause { span, body_id: hir::CRATE_HIR_ID, code: Default::default() }
     }
 
     pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
@@ -163,14 +156,37 @@ impl<'tcx> ObligationCause<'tcx> {
 
     #[inline]
     pub fn code(&self) -> &ObligationCauseCode<'tcx> {
-        self.code.as_deref().unwrap_or(&MISC_OBLIGATION_CAUSE_CODE)
+        &self.code
     }
 
-    pub fn clone_code(&self) -> Lrc<ObligationCauseCode<'tcx>> {
-        match &self.code {
-            Some(code) => code.clone(),
-            None => Lrc::new(MISC_OBLIGATION_CAUSE_CODE),
-        }
+    pub fn map_code(
+        &mut self,
+        f: impl FnOnce(InternedObligationCauseCode<'tcx>) -> ObligationCauseCode<'tcx>,
+    ) {
+        self.code = f(std::mem::take(&mut self.code)).into();
+    }
+
+    pub fn derived_cause(
+        mut self,
+        parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
+        variant: impl FnOnce(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
+    ) -> ObligationCause<'tcx> {
+        /*!
+         * Creates a cause for obligations that are derived from
+         * `obligation` by a recursive search (e.g., for a builtin
+         * bound, or eventually a `auto trait Foo`). If `obligation`
+         * is itself a derived obligation, this is just a clone, but
+         * otherwise we create a "derived obligation" cause so as to
+         * keep track of the original root obligation for error
+         * reporting.
+         */
+
+        // NOTE(flaper87): As of now, it keeps track of the whole error
+        // chain. Ideally, we should have a way to configure this either
+        // by using -Z verbose or just a CLI argument.
+        self.code =
+            variant(DerivedObligationCause { parent_trait_pred, parent_code: self.code }).into();
+        self
     }
 }
 
@@ -179,6 +195,34 @@ pub struct UnifyReceiverContext<'tcx> {
     pub assoc_item: ty::AssocItem,
     pub param_env: ty::ParamEnv<'tcx>,
     pub substs: SubstsRef<'tcx>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, Default)]
+pub struct InternedObligationCauseCode<'tcx> {
+    /// `None` for `ObligationCauseCode::MiscObligation` (a common case, occurs ~60% of
+    /// the time). `Some` otherwise.
+    code: Option<Lrc<ObligationCauseCode<'tcx>>>,
+}
+
+impl<'tcx> ObligationCauseCode<'tcx> {
+    #[inline(always)]
+    fn into(self) -> InternedObligationCauseCode<'tcx> {
+        InternedObligationCauseCode {
+            code: if let ObligationCauseCode::MiscObligation = self {
+                None
+            } else {
+                Some(Lrc::new(self))
+            },
+        }
+    }
+}
+
+impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
+    type Target = ObligationCauseCode<'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.code.as_deref().unwrap_or(&ObligationCauseCode::MiscObligation)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
@@ -236,11 +280,12 @@ pub enum ObligationCauseCode<'tcx> {
     SizedBoxType,
     /// Inline asm operand type must be `Sized`.
     InlineAsmSized,
-    /// `[T, ..n]` implies that `T` must be `Copy`.
-    /// If the function in the array repeat expression is a `const fn`,
-    /// display a help message suggesting to move the function call to a
-    /// new `const` item while saying that `T` doesn't implement `Copy`.
-    RepeatVec(bool),
+    /// `[expr; N]` requires `type_of(expr): Copy`.
+    RepeatElementCopy {
+        /// If element is a `const fn` we display a help message suggesting to move the
+        /// function call to a new `const` item while saying that `T` doesn't implement `Copy`.
+        is_const_fn: bool,
+    },
 
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
     FieldSized {
@@ -257,7 +302,7 @@ pub enum ObligationCauseCode<'tcx> {
 
     BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
 
-    ImplDerivedObligation(DerivedObligationCause<'tcx>),
+    ImplDerivedObligation(Box<ImplDerivedObligationCause<'tcx>>),
 
     DerivedObligation(DerivedObligationCause<'tcx>),
 
@@ -267,7 +312,7 @@ pub enum ObligationCauseCode<'tcx> {
         /// The node of the function call.
         call_hir_id: hir::HirId,
         /// The obligation introduced by this argument.
-        parent_code: Lrc<ObligationCauseCode<'tcx>>,
+        parent_code: InternedObligationCauseCode<'tcx>,
     },
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
@@ -275,24 +320,23 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplMethodObligation {
-        impl_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplTypeObligation {
-        impl_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl
     CheckAssociatedTypeBounds {
-        impl_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
 
-    /// Checking that this expression can be assigned where it needs to be
-    // FIXME(eddyb) #11161 is the original Expr required?
+    /// Checking that this expression can be assigned to its target.
     ExprAssignable,
 
     /// Computing common supertype in the arms of a match expression
@@ -396,18 +440,33 @@ pub enum WellFormedLoc {
     },
 }
 
-impl ObligationCauseCode<'_> {
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+pub struct ImplDerivedObligationCause<'tcx> {
+    pub derived: DerivedObligationCause<'tcx>,
+    pub impl_def_id: DefId,
+    pub span: Span,
+}
+
+impl<'tcx> ObligationCauseCode<'tcx> {
     // Return the base obligation, ignoring derived obligations.
     pub fn peel_derives(&self) -> &Self {
         let mut base_cause = self;
-        while let BuiltinDerivedObligation(DerivedObligationCause { parent_code, .. })
-        | ImplDerivedObligation(DerivedObligationCause { parent_code, .. })
-        | DerivedObligation(DerivedObligationCause { parent_code, .. })
-        | FunctionArgumentObligation { parent_code, .. } = base_cause
-        {
-            base_cause = &parent_code;
+        while let Some((parent_code, _)) = base_cause.parent() {
+            base_cause = parent_code;
         }
         base_cause
+    }
+
+    pub fn parent(&self) -> Option<(&Self, Option<ty::PolyTraitPredicate<'tcx>>)> {
+        match self {
+            FunctionArgumentObligation { parent_code, .. } => Some((parent_code, None)),
+            BuiltinDerivedObligation(derived)
+            | DerivedObligation(derived)
+            | ImplDerivedObligation(box ImplDerivedObligationCause { derived, .. }) => {
+                Some((&derived.parent_code, Some(derived.parent_trait_pred)))
+            }
+            _ => None,
+        }
     }
 }
 
@@ -458,7 +517,7 @@ pub struct DerivedObligationCause<'tcx> {
     pub parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
 
     /// The parent trait had this cause.
-    pub parent_code: Lrc<ObligationCauseCode<'tcx>>,
+    pub parent_code: InternedObligationCauseCode<'tcx>,
 }
 
 #[derive(Clone, Debug, TypeFoldable, Lift)]
@@ -478,7 +537,7 @@ pub enum SelectionError<'tcx> {
     /// A given constant couldn't be evaluated.
     NotConstEvaluatable(NotConstEvaluatable),
     /// Exceeded the recursion depth during type projection.
-    Overflow,
+    Overflow(OverflowError),
     /// Signaling that an error has already been emitted, to avoid
     /// multiple errors being shown.
     ErrorReporting,
@@ -502,7 +561,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// For example, the obligation may be satisfied by a specific impl (case A),
 /// or it may be relative to some bound that is in scope (case B).
 ///
-/// ```
+/// ```ignore (illustrative)
 /// impl<T:Clone> Clone<T> for Option<T> { ... } // Impl_1
 /// impl<T:Clone> Clone<T> for Box<T> { ... }    // Impl_2
 /// impl Clone for i32 { ... }                   // Impl_3
@@ -511,7 +570,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 ///     // Case A: ImplSource points at a specific impl. Only possible when
 ///     // type is concretely known. If the impl itself has bounded
 ///     // type parameters, ImplSource will carry resolutions for those as well:
-///     concrete.clone(); // ImpleSource(Impl_1, [ImplSource(Impl_2, [ImplSource(Impl_3)])])
+///     concrete.clone(); // ImplSource(Impl_1, [ImplSource(Impl_2, [ImplSource(Impl_3)])])
 ///
 ///     // Case A: ImplSource points at a specific impl. Only possible when
 ///     // type is concretely known. If the impl itself has bounded
@@ -577,7 +636,7 @@ pub enum ImplSource<'tcx, N> {
     TraitAlias(ImplSourceTraitAliasData<'tcx, N>),
 
     /// ImplSource for a `const Drop` implementation.
-    ConstDrop(ImplSourceConstDropData<N>),
+    ConstDestruct(ImplSourceConstDestructData<N>),
 }
 
 impl<'tcx, N> ImplSource<'tcx, N> {
@@ -595,7 +654,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             | ImplSource::Pointee(ImplSourcePointeeData) => Vec::new(),
             ImplSource::TraitAlias(d) => d.nested,
             ImplSource::TraitUpcasting(d) => d.nested,
-            ImplSource::ConstDrop(i) => i.nested,
+            ImplSource::ConstDestruct(i) => i.nested,
         }
     }
 
@@ -613,7 +672,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             | ImplSource::Pointee(ImplSourcePointeeData) => &[],
             ImplSource::TraitAlias(d) => &d.nested,
             ImplSource::TraitUpcasting(d) => &d.nested,
-            ImplSource::ConstDrop(i) => &i.nested,
+            ImplSource::ConstDestruct(i) => &i.nested,
         }
     }
 
@@ -672,9 +731,11 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                     nested: d.nested.into_iter().map(f).collect(),
                 })
             }
-            ImplSource::ConstDrop(i) => ImplSource::ConstDrop(ImplSourceConstDropData {
-                nested: i.nested.into_iter().map(f).collect(),
-            }),
+            ImplSource::ConstDestruct(i) => {
+                ImplSource::ConstDestruct(ImplSourceConstDestructData {
+                    nested: i.nested.into_iter().map(f).collect(),
+                })
+            }
         }
     }
 }
@@ -767,7 +828,7 @@ pub struct ImplSourceDiscriminantKindData;
 pub struct ImplSourcePointeeData;
 
 #[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
-pub struct ImplSourceConstDropData<N> {
+pub struct ImplSourceConstDestructData<N> {
     pub nested: Vec<N>,
 }
 
@@ -872,7 +933,7 @@ impl ObjectSafetyViolation {
                                  trait objects",
                                 name
                             ),
-                            sugg.to_string(),
+                            sugg,
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -896,7 +957,7 @@ impl ObjectSafetyViolation {
                         "consider changing method `{}`'s `self` parameter to be `&self`",
                         name
                     ),
-                    "&Self".to_string(),
+                    "&Self",
                     Applicability::MachineApplicable,
                 );
             }
@@ -946,4 +1007,22 @@ pub enum MethodViolationCode {
 
     /// the method's receiver (`self` argument) can't be dispatched on
     UndispatchableReceiver,
+}
+
+/// These are the error cases for `codegen_fulfill_obligation`.
+#[derive(Copy, Clone, Debug, Hash, HashStable, Encodable, Decodable)]
+pub enum CodegenObligationError {
+    /// Ambiguity can happen when monomorphizing during trans
+    /// expands to some humongous type that never occurred
+    /// statically -- this humongous type can then overflow,
+    /// leading to an ambiguous result. So report this as an
+    /// overflow bug, since I believe this is the only case
+    /// where ambiguity can result.
+    Ambiguity,
+    /// This can trigger when we probe for the source of a `'static` lifetime requirement
+    /// on a trait object: `impl Foo for dyn Trait {}` has an implicit `'static` bound.
+    /// This can also trigger when we have a global bound that is not actually satisfied,
+    /// but was included during typeck due to the trivial_bounds feature.
+    Unimplemented,
+    FulfillmentError,
 }

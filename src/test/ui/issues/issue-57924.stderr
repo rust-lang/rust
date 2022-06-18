@@ -1,8 +1,10 @@
-error[E0109]: type arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on self constructor
   --> $DIR/issue-57924.rs:5:16
    |
 LL |         Self::<E>(e)
-   |                ^ type argument not allowed
+   |         ----   ^ type argument not allowed
+   |         |
+   |         not allowed on this
 
 error: aborting due to previous error
 

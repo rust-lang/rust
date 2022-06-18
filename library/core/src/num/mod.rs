@@ -5,6 +5,7 @@
 use crate::ascii;
 use crate::intrinsics;
 use crate::mem;
+use crate::ops::{Add, Mul, Sub};
 use crate::str::FromStr;
 
 // Used because the `?` operator is not allowed in a const context.
@@ -193,26 +194,22 @@ macro_rules! widening_impl {
     };
 }
 
-#[lang = "i8"]
 impl i8 {
     int_impl! { i8, i8, u8, 8, 7, -128, 127, 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
     "[0x12]", "[0x12]", "", "" }
 }
 
-#[lang = "i16"]
 impl i16 {
     int_impl! { i16, i16, u16, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
     "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
-#[lang = "i32"]
 impl i32 {
     int_impl! { i32, i32, u32, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
-#[lang = "i64"]
 impl i64 {
     int_impl! { i64, i64, u64, 64, 63, -9223372036854775808, 9223372036854775807, 12,
     "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
@@ -220,7 +217,6 @@ impl i64 {
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "" }
 }
 
-#[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128, 127, -170141183460469231731687303715884105728,
     170141183460469231731687303715884105727, 16,
@@ -233,7 +229,6 @@ impl i128 {
 }
 
 #[cfg(target_pointer_width = "16")]
-#[lang = "isize"]
 impl isize {
     int_impl! { isize, i16, usize, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234",
     "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
@@ -241,7 +236,6 @@ impl isize {
 }
 
 #[cfg(target_pointer_width = "32")]
-#[lang = "isize"]
 impl isize {
     int_impl! { isize, i32, usize, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
@@ -250,7 +244,6 @@ impl isize {
 }
 
 #[cfg(target_pointer_width = "64")]
-#[lang = "isize"]
 impl isize {
     int_impl! { isize, i64, usize, 64, 63, -9223372036854775808, 9223372036854775807,
     12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
@@ -262,7 +255,6 @@ impl isize {
 /// If 6th bit set ascii is upper case.
 const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
-#[lang = "u8"]
 impl u8 {
     uint_impl! { u8, u8, i8, NonZeroU8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
     "[0x12]", "", "" }
@@ -281,7 +273,7 @@ impl u8 {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.43.0")]
+    #[rustc_const_stable(feature = "const_u8_is_ascii", since = "1.43.0")]
     #[inline]
     pub const fn is_ascii(&self) -> bool {
         *self & 128 == 0
@@ -308,8 +300,8 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
     pub const fn to_ascii_uppercase(&self) -> u8 {
-        // Unset the fifth bit if this is a lowercase letter
-        *self & !((self.is_ascii_lowercase() as u8) * ASCII_CASE_MASK)
+        // Toggle the fifth bit if this is a lowercase letter
+        *self ^ ((self.is_ascii_lowercase() as u8) * ASCII_CASE_MASK)
     }
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
@@ -809,27 +801,50 @@ impl u8 {
         ascii::escape_default(self)
     }
 
-    pub(crate) fn is_utf8_char_boundary(self) -> bool {
+    #[inline]
+    pub(crate) const fn is_utf8_char_boundary(self) -> bool {
         // This is bit magic equivalent to: b < 128 || b >= 192
         (self as i8) >= -0x40
     }
 }
 
-#[lang = "u16"]
 impl u16 {
     uint_impl! { u16, u16, i16, NonZeroU16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
     widening_impl! { u16, u32, 16, unsigned }
+
+    /// Checks if the value is a Unicode surrogate code point, which are disallowed values for [`char`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(utf16_extra)]
+    ///
+    /// let low_non_surrogate = 0xA000u16;
+    /// let low_surrogate = 0xD800u16;
+    /// let high_surrogate = 0xDC00u16;
+    /// let high_non_surrogate = 0xE000u16;
+    ///
+    /// assert!(!low_non_surrogate.is_utf16_surrogate());
+    /// assert!(low_surrogate.is_utf16_surrogate());
+    /// assert!(high_surrogate.is_utf16_surrogate());
+    /// assert!(!high_non_surrogate.is_utf16_surrogate());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "utf16_extra", issue = "94919")]
+    #[rustc_const_unstable(feature = "utf16_extra_const", issue = "94919")]
+    #[inline]
+    pub const fn is_utf16_surrogate(self) -> bool {
+        matches!(self, 0xD800..=0xDFFF)
+    }
 }
 
-#[lang = "u32"]
 impl u32 {
     uint_impl! { u32, u32, i32, NonZeroU32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
     widening_impl! { u32, u64, 32, unsigned }
 }
 
-#[lang = "u64"]
 impl u64 {
     uint_impl! { u64, u64, i64, NonZeroU64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
@@ -839,7 +854,6 @@ impl u64 {
     widening_impl! { u64, u128, 64, unsigned }
 }
 
-#[lang = "u128"]
 impl u128 {
     uint_impl! { u128, u128, i128, NonZeroU128, 128, 340282366920938463463374607431768211455, 16,
     "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
@@ -852,7 +866,6 @@ impl u128 {
 }
 
 #[cfg(target_pointer_width = "16")]
-#[lang = "usize"]
 impl usize {
     uint_impl! { usize, u16, isize, NonZeroUsize, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]",
@@ -860,7 +873,6 @@ impl usize {
     widening_impl! { usize, u32, 16, unsigned }
 }
 #[cfg(target_pointer_width = "32")]
-#[lang = "usize"]
 impl usize {
     uint_impl! { usize, u32, isize, NonZeroUsize, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
@@ -869,7 +881,6 @@ impl usize {
 }
 
 #[cfg(target_pointer_width = "64")]
-#[lang = "usize"]
 impl usize {
     uint_impl! { usize, u64, isize, NonZeroUsize, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
@@ -877,6 +888,27 @@ impl usize {
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
     widening_impl! { usize, u128, 64, unsigned }
+}
+
+impl usize {
+    /// Returns an `usize` where every byte is equal to `x`.
+    #[inline]
+    pub(crate) const fn repeat_u8(x: u8) -> usize {
+        usize::from_ne_bytes([x; mem::size_of::<usize>()])
+    }
+
+    /// Returns an `usize` where every byte pair is equal to `x`.
+    #[inline]
+    pub(crate) const fn repeat_u16(x: u16) -> usize {
+        let mut r = 0usize;
+        let mut i = 0;
+        while i < mem::size_of::<usize>() {
+            // Use `wrapping_shl` to make it work on targets with 16-bit `usize`
+            r = r.wrapping_shl(16) | (x as usize);
+            i += 2;
+        }
+        r
+    }
 }
 
 /// A classification of floating point numbers.
@@ -944,9 +976,10 @@ pub enum FpCategory {
 }
 
 #[doc(hidden)]
-trait FromStrRadixHelper: PartialOrd + Copy {
-    fn min_value() -> Self;
-    fn max_value() -> Self;
+trait FromStrRadixHelper:
+    PartialOrd + Copy + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self>
+{
+    const MIN: Self;
     fn from_u32(u: u32) -> Self;
     fn checked_mul(&self, other: u32) -> Option<Self>;
     fn checked_sub(&self, other: u32) -> Option<Self>;
@@ -966,12 +999,9 @@ macro_rules! from_str_radix_int_impl {
 }
 from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 
-macro_rules! doit {
+macro_rules! impl_helper_for {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
-        #[inline]
-        fn min_value() -> Self { Self::MIN }
-        #[inline]
-        fn max_value() -> Self { Self::MAX }
+        const MIN: Self = Self::MIN;
         #[inline]
         fn from_u32(u: u32) -> Self { u as Self }
         #[inline]
@@ -988,7 +1018,18 @@ macro_rules! doit {
         }
     })*)
 }
-doit! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
+impl_helper_for! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
+
+/// Determines if a string of text of that length of that radix could be guaranteed to be
+/// stored in the given type T.
+/// Note that if the radix is known to the compiler, it is just the check of digits.len that
+/// is done at runtime.
+#[doc(hidden)]
+#[inline(always)]
+#[unstable(issue = "none", feature = "std_internals")]
+pub fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
+    radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
+}
 
 fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
@@ -1004,7 +1045,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         return Err(PIE { kind: Empty });
     }
 
-    let is_signed_ty = T::from_u32(0) > T::min_value();
+    let is_signed_ty = T::from_u32(0) > T::MIN;
 
     // all valid digits are ascii, so we will just iterate over the utf8 bytes
     // and cast them to chars. .to_digit() will safely return None for anything
@@ -1022,38 +1063,56 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     };
 
     let mut result = T::from_u32(0);
-    if is_positive {
-        // The number is positive
-        for &c in digits {
-            let x = match (c as char).to_digit(radix) {
-                Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit }),
-            };
-            result = match result.checked_mul(radix) {
-                Some(result) => result,
-                None => return Err(PIE { kind: PosOverflow }),
-            };
-            result = match result.checked_add(x) {
-                Some(result) => result,
-                None => return Err(PIE { kind: PosOverflow }),
+
+    if can_not_overflow::<T>(radix, is_signed_ty, digits) {
+        // If the len of the str is short compared to the range of the type
+        // we are parsing into, then we can be certain that an overflow will not occur.
+        // This bound is when `radix.pow(digits.len()) - 1 <= T::MAX` but the condition
+        // above is a faster (conservative) approximation of this.
+        //
+        // Consider radix 16 as it has the highest information density per digit and will thus overflow the earliest:
+        // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
+        // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
+        macro_rules! run_unchecked_loop {
+            ($unchecked_additive_op:expr) => {
+                for &c in digits {
+                    result = result * T::from_u32(radix);
+                    let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
+                    result = $unchecked_additive_op(result, T::from_u32(x));
+                }
             };
         }
+        if is_positive {
+            run_unchecked_loop!(<T as core::ops::Add>::add)
+        } else {
+            run_unchecked_loop!(<T as core::ops::Sub>::sub)
+        };
     } else {
-        // The number is negative
-        for &c in digits {
-            let x = match (c as char).to_digit(radix) {
-                Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit }),
-            };
-            result = match result.checked_mul(radix) {
-                Some(result) => result,
-                None => return Err(PIE { kind: NegOverflow }),
-            };
-            result = match result.checked_sub(x) {
-                Some(result) => result,
-                None => return Err(PIE { kind: NegOverflow }),
+        macro_rules! run_checked_loop {
+            ($checked_additive_op:ident, $overflow_err:expr) => {
+                for &c in digits {
+                    // When `radix` is passed in as a literal, rather than doing a slow `imul`
+                    // the compiler can use shifts if `radix` can be expressed as a
+                    // sum of powers of 2 (x*10 can be written as x*8 + x*2).
+                    // When the compiler can't use these optimisations,
+                    // the latency of the multiplication can be hidden by issuing it
+                    // before the result is needed to improve performance on
+                    // modern out-of-order CPU as multiplication here is slower
+                    // than the other instructions, we can get the end result faster
+                    // doing multiplication first and let the CPU spends other cycles
+                    // doing other computation and get multiplication result later.
+                    let mul = result.checked_mul(radix);
+                    let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
+                    result = mul.ok_or_else($overflow_err)?;
+                    result = T::$checked_additive_op(&result, x).ok_or_else($overflow_err)?;
+                }
             };
         }
+        if is_positive {
+            run_checked_loop!(checked_add, || PIE { kind: PosOverflow })
+        } else {
+            run_checked_loop!(checked_sub, || PIE { kind: NegOverflow })
+        };
     }
     Ok(result)
 }

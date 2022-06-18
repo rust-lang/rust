@@ -1,7 +1,5 @@
 // edition:2018
 // check-pass
-// revisions: migrate mir
-//[mir]compile-flags: -Z borrowck=mir
 
 #![feature(type_alias_impl_trait)]
 trait Trait<'a, 'b> {}

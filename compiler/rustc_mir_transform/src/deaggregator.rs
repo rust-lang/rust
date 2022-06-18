@@ -6,6 +6,10 @@ use rustc_middle::ty::TyCtxt;
 pub struct Deaggregator;
 
 impl<'tcx> MirPass<'tcx> for Deaggregator {
+    fn phase_change(&self) -> Option<MirPhase> {
+        Some(MirPhase::Deaggregated)
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         let local_decls = &*local_decls;

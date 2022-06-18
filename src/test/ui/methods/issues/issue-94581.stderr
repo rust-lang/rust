@@ -1,0 +1,15 @@
+error[E0599]: `&'static [i32]` is not an iterator
+  --> $DIR/issue-94581.rs:6:29
+   |
+LL |     let sqsum = get_slice().map(|i| i * i).sum();
+   |                             ^^^ `&'static [i32]` is not an iterator; try calling `.iter()`
+   |
+   = note: the following trait bounds were not satisfied:
+           `&'static [i32]: Iterator`
+           which is required by `&mut &'static [i32]: Iterator`
+           `[i32]: Iterator`
+           which is required by `&mut [i32]: Iterator`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

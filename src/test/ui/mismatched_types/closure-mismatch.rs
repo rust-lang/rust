@@ -5,5 +5,7 @@ impl<T: Fn(&())> Foo for T {}
 fn baz<T: Foo>(_: T) {}
 
 fn main() {
-    baz(|_| ()); //~ ERROR mismatched types
+    baz(|_| ());
+    //~^ ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR mismatched types
 }

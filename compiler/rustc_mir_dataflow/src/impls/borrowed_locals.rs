@@ -85,13 +85,7 @@ where
         self.super_rvalue(rvalue, location);
 
         match rvalue {
-            mir::Rvalue::AddressOf(_mt, borrowed_place) => {
-                if !borrowed_place.is_indirect() {
-                    self.trans.gen(borrowed_place.local);
-                }
-            }
-
-            mir::Rvalue::Ref(_, _kind, borrowed_place) => {
+            mir::Rvalue::AddressOf(_, borrowed_place) | mir::Rvalue::Ref(_, _, borrowed_place) => {
                 if !borrowed_place.is_indirect() {
                     self.trans.gen(borrowed_place.local);
                 }
@@ -144,4 +138,24 @@ where
             | TerminatorKind::Yield { .. } => {}
         }
     }
+}
+
+/// The set of locals that are borrowed at some point in the MIR body.
+pub fn borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
+    struct Borrowed(BitSet<Local>);
+
+    impl GenKill<Local> for Borrowed {
+        #[inline]
+        fn gen(&mut self, elem: Local) {
+            self.0.gen(elem)
+        }
+        #[inline]
+        fn kill(&mut self, _: Local) {
+            // Ignore borrow invalidation.
+        }
+    }
+
+    let mut borrowed = Borrowed(BitSet::new_empty(body.local_decls.len()));
+    TransferFunction { trans: &mut borrowed }.visit_body(body);
+    borrowed.0
 }

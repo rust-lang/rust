@@ -2,29 +2,42 @@
 
 extern crate hidden;
 
-use hidden::Foo;
+use hidden::HiddenEnum;
+
+enum InCrate {
+    A,
+    B,
+    #[doc(hidden)]
+    C,
+}
 
 fn main() {
-    match Foo::A {
-        Foo::A => {}
-        Foo::B => {}
+    match HiddenEnum::A {
+        HiddenEnum::A => {}
+        HiddenEnum::B => {}
     }
     //~^^^^ non-exhaustive patterns: `_` not covered
 
-    match Foo::A {
-        Foo::A => {}
-        Foo::C => {}
+    match HiddenEnum::A {
+        HiddenEnum::A => {}
+        HiddenEnum::C => {}
     }
     //~^^^^ non-exhaustive patterns: `B` not covered
 
-    match Foo::A {
-        Foo::A => {}
+    match HiddenEnum::A {
+        HiddenEnum::A => {}
     }
     //~^^^ non-exhaustive patterns: `B` and `_` not covered
 
     match None {
         None => {}
-        Some(Foo::A) => {}
+        Some(HiddenEnum::A) => {}
     }
     //~^^^^ non-exhaustive patterns: `Some(B)` and `Some(_)` not covered
+
+    match InCrate::A {
+        InCrate::A => {}
+        InCrate::B => {}
+    }
+    //~^^^^ non-exhaustive patterns: `C` not covered
 }

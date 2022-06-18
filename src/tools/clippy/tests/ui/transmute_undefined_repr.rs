@@ -1,8 +1,9 @@
 #![warn(clippy::transmute_undefined_repr)]
-#![allow(clippy::unit_arg, clippy::transmute_ptr_to_ref)]
+#![allow(clippy::unit_arg, clippy::transmute_ptr_to_ref, clippy::useless_transmute)]
 
+use core::any::TypeId;
 use core::ffi::c_void;
-use core::mem::{size_of, transmute};
+use core::mem::{size_of, transmute, MaybeUninit};
 
 fn value<T>() -> T {
     unimplemented!()
@@ -87,5 +88,57 @@ fn main() {
 
         let _: *const [u8] = transmute(value::<Box<[u8]>>()); // Ok
         let _: Box<[u8]> = transmute(value::<*mut [u8]>()); // Ok
+
+        let _: Ty2<u32, u32> = transmute(value::<(Ty2<u32, u32>,)>()); // Ok
+        let _: (Ty2<u32, u32>,) = transmute(value::<Ty2<u32, u32>>()); // Ok
+
+        let _: Ty2<u32, u32> = transmute(value::<(Ty2<u32, u32>, ())>()); // Ok
+        let _: (Ty2<u32, u32>, ()) = transmute(value::<Ty2<u32, u32>>()); // Ok
+
+        let _: Ty2<u32, u32> = transmute(value::<((), Ty2<u32, u32>)>()); // Ok
+        let _: ((), Ty2<u32, u32>) = transmute(value::<Ty2<u32, u32>>()); // Ok
+
+        let _: (usize, usize) = transmute(value::<&[u8]>()); // Ok
+        let _: &[u8] = transmute(value::<(usize, usize)>()); // Ok
+
+        trait Trait {}
+        let _: (isize, isize) = transmute(value::<&dyn Trait>()); // Ok
+        let _: &dyn Trait = transmute(value::<(isize, isize)>()); // Ok
+
+        let _: MaybeUninit<Ty2<u32, u32>> = transmute(value::<Ty2<u32, u32>>()); // Ok
+        let _: Ty2<u32, u32> = transmute(value::<MaybeUninit<Ty2<u32, u32>>>()); // Ok
+
+        let _: Ty<&[u32]> = transmute::<&[u32], _>(value::<&Vec<u32>>()); // Ok
+    }
+}
+
+fn _with_generics<T: 'static, U: 'static>() {
+    if TypeId::of::<T>() != TypeId::of::<u32>() || TypeId::of::<T>() != TypeId::of::<U>() {
+        return;
+    }
+    unsafe {
+        let _: &u32 = transmute(value::<&T>()); // Ok
+        let _: &T = transmute(value::<&u32>()); // Ok
+
+        let _: Vec<U> = transmute(value::<Vec<T>>()); // Ok
+        let _: Vec<T> = transmute(value::<Vec<U>>()); // Ok
+
+        let _: Ty<&u32> = transmute(value::<&T>()); // Ok
+        let _: Ty<&T> = transmute(value::<&u32>()); // Ok
+
+        let _: Vec<u32> = transmute(value::<Vec<T>>()); // Ok
+        let _: Vec<T> = transmute(value::<Vec<u32>>()); // Ok
+
+        let _: &Ty2<u32, u32> = transmute(value::<&Ty2<T, U>>()); // Ok
+        let _: &Ty2<T, U> = transmute(value::<&Ty2<u32, u32>>()); // Ok
+
+        let _: Vec<Vec<u32>> = transmute(value::<Vec<Vec<T>>>()); // Ok
+        let _: Vec<Vec<T>> = transmute(value::<Vec<Vec<u32>>>()); // Ok
+
+        let _: Vec<Ty2<T, u32>> = transmute(value::<Vec<Ty2<U, i32>>>()); // Err
+        let _: Vec<Ty2<U, i32>> = transmute(value::<Vec<Ty2<T, u32>>>()); // Err
+
+        let _: *const u32 = transmute(value::<Box<T>>()); // Ok
+        let _: Box<T> = transmute(value::<*const u32>()); // Ok
     }
 }

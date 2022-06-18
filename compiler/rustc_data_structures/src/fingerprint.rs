@@ -1,5 +1,5 @@
 use crate::stable_hasher;
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 
@@ -142,15 +142,14 @@ impl stable_hasher::StableHasherResult for Fingerprint {
 
 impl_stable_hash_via_hash!(Fingerprint);
 
-impl<E: rustc_serialize::Encoder> Encodable<E> for Fingerprint {
+impl<E: Encoder> Encodable<E> for Fingerprint {
     #[inline]
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_raw_bytes(&self.to_le_bytes())?;
-        Ok(())
+    fn encode(&self, s: &mut E) {
+        s.emit_raw_bytes(&self.to_le_bytes());
     }
 }
 
-impl<D: rustc_serialize::Decoder> Decodable<D> for Fingerprint {
+impl<D: Decoder> Decodable<D> for Fingerprint {
     #[inline]
     fn decode(d: &mut D) -> Self {
         Fingerprint::from_le_bytes(d.read_raw_bytes(16).try_into().unwrap())
@@ -185,16 +184,16 @@ impl std::fmt::Display for PackedFingerprint {
     }
 }
 
-impl<E: rustc_serialize::Encoder> Encodable<E> for PackedFingerprint {
+impl<E: Encoder> Encodable<E> for PackedFingerprint {
     #[inline]
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, s: &mut E) {
         // Copy to avoid taking reference to packed field.
         let copy = self.0;
-        copy.encode(s)
+        copy.encode(s);
     }
 }
 
-impl<D: rustc_serialize::Decoder> Decodable<D> for PackedFingerprint {
+impl<D: Decoder> Decodable<D> for PackedFingerprint {
     #[inline]
     fn decode(d: &mut D) -> Self {
         Self(Fingerprint::decode(d))

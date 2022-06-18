@@ -94,6 +94,10 @@ There are a number of supported commands:
   in the specified file. The number of occurrences must match the given
   count.
 
+* `@count PATH XPATH TEXT COUNT` checks for the occurrence of the given XPath
+  with the given text in the specified file. The number of occurrences must
+  match the given count.
+
 * `@snapshot NAME PATH XPATH` creates a snapshot test named NAME.
   A snapshot test captures a subtree of the DOM, at the location
   determined by the XPath, and compares it to a pre-recorded value
@@ -285,6 +289,11 @@ def flatten(node):
     return ''.join(acc)
 
 
+def make_xml(text):
+    xml = ET.XML('<xml>%s</xml>' % text)
+    return xml
+
+
 def normalize_xpath(path):
     path = path.replace("{{channel}}", channel)
     if path.startswith('//'):
@@ -377,9 +386,10 @@ def check_tree_attr(tree, path, attr, pat, regexp):
     return ret
 
 
-def check_tree_text(tree, path, pat, regexp):
+# Returns the number of occurences matching the regex (`regexp`) and the text (`pat`).
+def check_tree_text(tree, path, pat, regexp, stop_at_first):
     path = normalize_xpath(path)
-    ret = False
+    match_count = 0
     try:
         for e in tree.findall(path):
             try:
@@ -387,13 +397,14 @@ def check_tree_text(tree, path, pat, regexp):
             except KeyError:
                 continue
             else:
-                ret = check_string(value, pat, regexp)
-                if ret:
-                    break
+                if check_string(value, pat, regexp):
+                    match_count += 1
+                    if stop_at_first:
+                        break
     except Exception:
         print('Failed to get path "{}"'.format(path))
         raise
-    return ret
+    return match_count
 
 
 def get_tree_count(tree, path):
@@ -401,7 +412,7 @@ def get_tree_count(tree, path):
     return len(tree.findall(path))
 
 
-def check_snapshot(snapshot_name, tree, normalize_to_text):
+def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
     assert rust_test_path.endswith('.rs')
     snapshot_path = '{}.{}.{}'.format(rust_test_path[:-3], snapshot_name, 'html')
     try:
@@ -414,11 +425,21 @@ def check_snapshot(snapshot_name, tree, normalize_to_text):
             raise FailedCheck('No saved snapshot value')
 
     if not normalize_to_text:
-        actual_str = ET.tostring(tree).decode('utf-8')
+        actual_str = ET.tostring(actual_tree).decode('utf-8')
     else:
-        actual_str = flatten(tree)
+        actual_str = flatten(actual_tree)
 
-    if expected_str != actual_str:
+    expected_str = expected_str.replace("{{channel}}", channel)
+
+    # Conditions:
+    #  1. Is --bless
+    #  2. Are actual and expected tree different
+    #  3. Are actual and expected text different
+    if not expected_str \
+        or (not normalize_to_text and \
+            not compare_tree(make_xml(actual_str), make_xml(expected_str), stderr)) \
+        or (normalize_to_text and actual_str != expected_str):
+
         if bless:
             with open(snapshot_path, 'w') as snapshot_file:
                 snapshot_file.write(actual_str)
@@ -429,6 +450,59 @@ def check_snapshot(snapshot_name, tree, normalize_to_text):
             print(actual_str)
             print()
             raise FailedCheck('Actual snapshot value is different than expected')
+
+
+# Adapted from https://github.com/formencode/formencode/blob/3a1ba9de2fdd494dd945510a4568a3afeddb0b2e/formencode/doctest_xml_compare.py#L72-L120
+def compare_tree(x1, x2, reporter=None):
+    if x1.tag != x2.tag:
+        if reporter:
+            reporter('Tags do not match: %s and %s' % (x1.tag, x2.tag))
+        return False
+    for name, value in x1.attrib.items():
+        if x2.attrib.get(name) != value:
+            if reporter:
+                reporter('Attributes do not match: %s=%r, %s=%r'
+                         % (name, value, name, x2.attrib.get(name)))
+            return False
+    for name in x2.attrib:
+        if name not in x1.attrib:
+            if reporter:
+                reporter('x2 has an attribute x1 is missing: %s'
+                         % name)
+            return False
+    if not text_compare(x1.text, x2.text):
+        if reporter:
+            reporter('text: %r != %r' % (x1.text, x2.text))
+        return False
+    if not text_compare(x1.tail, x2.tail):
+        if reporter:
+            reporter('tail: %r != %r' % (x1.tail, x2.tail))
+        return False
+    cl1 = list(x1)
+    cl2 = list(x2)
+    if len(cl1) != len(cl2):
+        if reporter:
+            reporter('children length differs, %i != %i'
+                     % (len(cl1), len(cl2)))
+        return False
+    i = 0
+    for c1, c2 in zip(cl1, cl2):
+        i += 1
+        if not compare_tree(c1, c2, reporter=reporter):
+            if reporter:
+                reporter('children %i do not match: %s'
+                         % (i, c1.tag))
+            return False
+    return True
+
+
+def text_compare(t1, t2):
+    if not t1 and not t2:
+        return True
+    if t1 == '*' or t2 == '*':
+        return True
+    return (t1 or '').strip() == (t2 or '').strip()
+
 
 def stderr(*args):
     if sys.version_info.major < 3:
@@ -448,6 +522,19 @@ def print_err(lineno, context, err, message=None):
 
     if context:
         stderr("\t{}".format(context))
+
+
+def get_nb_matching_elements(cache, c, regexp, stop_at_first):
+    tree = cache.get_tree(c.args[0])
+    pat, sep, attr = c.args[1].partition('/@')
+    if sep:  # attribute
+        tree = cache.get_tree(c.args[0])
+        return check_tree_attr(tree, pat, attr, c.args[2], False)
+    else:  # normalized text
+        pat = c.args[1]
+        if pat.endswith('/text()'):
+            pat = pat[:-7]
+        return check_tree_text(cache.get_tree(c.args[0]), pat, c.args[2], regexp, stop_at_first)
 
 
 ERR_COUNT = 0
@@ -470,16 +557,7 @@ def check_command(c, cache):
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
             elif len(c.args) == 3:  # @has/matches <path> <pat> <match> = XML tree test
                 cerr = "`XPATH PATTERN` did not match"
-                tree = cache.get_tree(c.args[0])
-                pat, sep, attr = c.args[1].partition('/@')
-                if sep:  # attribute
-                    tree = cache.get_tree(c.args[0])
-                    ret = check_tree_attr(tree, pat, attr, c.args[2], regexp)
-                else:  # normalized text
-                    pat = c.args[1]
-                    if pat.endswith('/text()'):
-                        pat = pat[:-7]
-                    ret = check_tree_text(cache.get_tree(c.args[0]), pat, c.args[2], regexp)
+                ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:
                 raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
 
@@ -489,6 +567,11 @@ def check_command(c, cache):
                 found = get_tree_count(cache.get_tree(c.args[0]), c.args[1])
                 cerr = "Expected {} occurrences but found {}".format(expected, found)
                 ret = expected == found
+            elif len(c.args) == 4:  # @count <path> <pat> <text> <count> = count test
+                expected = int(c.args[3])
+                found = get_nb_matching_elements(cache, c, False, False)
+                cerr = "Expected {} occurrences but found {}".format(expected, found)
+                ret = found == expected
             else:
                 raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
 

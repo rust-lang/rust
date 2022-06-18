@@ -1,6 +1,6 @@
 use super::{StringReader, UnmatchedBrace};
 
-use rustc_ast::token::{self, DelimToken, Token};
+use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{
     DelimSpan,
     Spacing::{self, *},
@@ -32,15 +32,15 @@ struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
     token: Token,
     /// Stack of open delimiters and their spans. Used for error message.
-    open_braces: Vec<(token::DelimToken, Span)>,
+    open_braces: Vec<(Delimiter, Span)>,
     unmatched_braces: Vec<UnmatchedBrace>,
     /// The type and spans for all braces
     ///
     /// Used only for error recovery when arriving to EOF with mismatched braces.
-    matching_delim_spans: Vec<(token::DelimToken, Span, Span)>,
+    matching_delim_spans: Vec<(Delimiter, Span, Span)>,
     last_unclosed_found_span: Option<Span>,
     /// Collect empty block spans that might have been auto-inserted by editors.
-    last_delim_empty_block_spans: FxHashMap<token::DelimToken, Span>,
+    last_delim_empty_block_spans: FxHashMap<Delimiter, Span>,
     /// Collect the spans of braces (Open, Close). Used only
     /// for detecting if blocks are empty and only braces.
     matching_block_spans: Vec<(Span, Span)>,
@@ -88,7 +88,7 @@ impl<'a> TokenTreesReader<'a> {
                 for &(_, sp) in &self.open_braces {
                     err.span_label(sp, "unclosed delimiter");
                     self.unmatched_braces.push(UnmatchedBrace {
-                        expected_delim: token::DelimToken::Brace,
+                        expected_delim: Delimiter::Brace,
                         found_delim: None,
                         found_span: self.token.span,
                         unclosed_span: Some(sp),
@@ -150,7 +150,7 @@ impl<'a> TokenTreesReader<'a> {
                         }
 
                         //only add braces
-                        if let (DelimToken::Brace, DelimToken::Brace) = (open_brace, delim) {
+                        if let (Delimiter::Brace, Delimiter::Brace) = (open_brace, delim) {
                             self.matching_block_spans.push((open_brace_span, close_brace_span));
                         }
 

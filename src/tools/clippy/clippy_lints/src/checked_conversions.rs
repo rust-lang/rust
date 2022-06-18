@@ -2,7 +2,7 @@
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{meets_msrv, msrvs, SpanlessEq};
+use clippy_utils::{in_constant, meets_msrv, msrvs, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -22,19 +22,14 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let foo: u32 = 5;
-    /// # let _ =
-    /// foo <= i32::MAX as u32
-    /// # ;
+    /// foo <= i32::MAX as u32;
     /// ```
     ///
-    /// Could be written:
-    ///
+    /// Use instead:
     /// ```rust
-    /// # use std::convert::TryFrom;
     /// # let foo = 1;
-    /// # let _ =
-    /// i32::try_from(foo).is_ok()
-    /// # ;
+    /// # #[allow(unused)]
+    /// i32::try_from(foo).is_ok();
     /// ```
     #[clippy::version = "1.37.0"]
     pub CHECKED_CONVERSIONS,
@@ -57,11 +52,12 @@ impl_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &msrvs::TRY_FROM) {
+        if !meets_msrv(self.msrv, msrvs::TRY_FROM) {
             return;
         }
 
         let result = if_chain! {
+            if !in_constant(cx, item.hir_id);
             if !in_external_macro(cx.sess(), item.span);
             if let ExprKind::Binary(op, left, right) = &item.kind;
 
@@ -123,7 +119,7 @@ struct Conversion<'a> {
 }
 
 /// The kind of conversion that is checked
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum ConversionType {
     SignedToUnsigned,
     SignedToSigned,
@@ -319,7 +315,7 @@ fn get_implementing_type<'a>(path: &QPath<'_>, candidates: &'a [&str], function:
         if let QPath::TypeRelative(ty, path) = &path;
         if path.ident.name.as_str() == function;
         if let TyKind::Path(QPath::Resolved(None, tp)) = &ty.kind;
-        if let [int] = &*tp.segments;
+        if let [int] = tp.segments;
         then {
             let name = int.ident.name.as_str();
             candidates.iter().find(|c| &name == *c).copied()
@@ -333,7 +329,7 @@ fn get_implementing_type<'a>(path: &QPath<'_>, candidates: &'a [&str], function:
 fn int_ty_to_sym<'tcx>(path: &QPath<'_>) -> Option<&'tcx str> {
     if_chain! {
         if let QPath::Resolved(_, path) = *path;
-        if let [ty] = &*path.segments;
+        if let [ty] = path.segments;
         then {
             let name = ty.ident.name.as_str();
             INTS.iter().find(|c| &name == *c).copied()

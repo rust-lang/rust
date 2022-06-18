@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         let substs = cx.typeck_results().node_substs(expr.hir_id);
         if substs.needs_subst() {
             // We can't resolve on types that require monomorphization, so we don't handle them if
-            // we need to perfom substitution.
+            // we need to perform substitution.
             return;
         }
         let param_env = cx.tcx.param_env(trait_id);
@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             let method = &call.ident.name;
             let message =
                 format!("call to `.{}()` on a reference in this situation does nothing", &method,);
-            lint.build(&message).span_label(span, "unnecessary method call").note(&note).emit()
+            lint.build(&message).span_label(span, "unnecessary method call").note(&note).emit();
         });
     }
 }

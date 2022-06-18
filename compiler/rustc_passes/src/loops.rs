@@ -31,9 +31,9 @@ struct CheckLoopVisitor<'a, 'hir> {
 }
 
 fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().visit_item_likes_in_module(
+    tcx.hir().deep_visit_item_likes_in_module(
         module_def_id,
-        &mut CheckLoopVisitor { sess: &tcx.sess, hir_map: tcx.hir(), cx: Normal }.as_deep_visitor(),
+        &mut CheckLoopVisitor { sess: &tcx.sess, hir_map: tcx.hir(), cx: Normal },
     );
 }
 
@@ -57,14 +57,14 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::Loop(ref b, _, source, _) => {
                 self.with_context(Loop(source), |v| v.visit_block(&b));
             }
-            hir::ExprKind::Closure(_, ref function_decl, b, span, movability) => {
+            hir::ExprKind::Closure { ref fn_decl, body, fn_decl_span, movability, .. } => {
                 let cx = if let Some(Movability::Static) = movability {
-                    AsyncClosure(span)
+                    AsyncClosure(fn_decl_span)
                 } else {
-                    Closure(span)
+                    Closure(fn_decl_span)
                 };
-                self.visit_fn_decl(&function_decl);
-                self.with_context(cx, |v| v.visit_nested_body(b));
+                self.visit_fn_decl(&fn_decl);
+                self.with_context(cx, |v| v.visit_nested_body(body));
             }
             hir::ExprKind::Block(ref b, Some(_label)) => {
                 self.with_context(LabeledBlock, |v| v.visit_block(&b));
@@ -166,7 +166,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                             break_expr.span,
                                             "alternatively, you might have meant to use the \
                                              available loop label",
-                                            label.ident.to_string(),
+                                            label.ident,
                                             Applicability::MaybeIncorrect,
                                         );
                                     }

@@ -77,6 +77,10 @@ impl<T> Visitor<'_> for TransferFunction<'_, T>
 where
     T: GenKill<Local>,
 {
+    // FIXME: Using `visit_local` here is a bug. For example, on `move _5.field` we mark `_5` as
+    // deinitialized, although clearly it is only partially deinitialized. This analysis is not
+    // actually used anywhere at the moment, so this is not critical, but this does need to be fixed
+    // before it starts being used again.
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
         use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, NonUseContext};
         match context {
@@ -86,6 +90,9 @@ where
                 | MutatingUseContext::AsmOutput
                 | MutatingUseContext::Yield,
             ) => {}
+
+            // If it's deinitialized, it's no longer init
+            PlaceContext::MutatingUse(MutatingUseContext::Deinit) => self.trans.kill(local),
 
             // Otherwise, when a place is mutated, we must consider it possibly initialized.
             PlaceContext::MutatingUse(_) => self.trans.gen(local),

@@ -4,7 +4,6 @@
 // compile-flags:-Zverbose
 
 #![allow(warnings)]
-#![feature(nll)]
 #![feature(rustc_attrs)]
 
 struct SomeStruct<T> { t: T }

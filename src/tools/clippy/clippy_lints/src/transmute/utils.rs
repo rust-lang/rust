@@ -1,10 +1,9 @@
 use clippy_utils::last_path_segment;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_normalizable;
 use if_chain::if_chain;
 use rustc_hir::{Expr, GenericArg, QPath, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, cast::CastKind, Ty};
+use rustc_middle::ty::{cast::CastKind, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_typeck::check::{cast::CastCheck, FnCtxt, Inherited};
 
@@ -34,15 +33,12 @@ pub(super) fn get_type_snippet(cx: &LateContext<'_>, path: &QPath<'_>, to_ref_ty
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment
 pub(super) fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx>, to: Ty<'tcx>) -> bool {
-    let empty_param_env = ty::ParamEnv::empty();
-    // check if `from` and `to` are normalizable to avoid ICE (#4968)
-    if !(is_normalizable(cx, empty_param_env, from) && is_normalizable(cx, empty_param_env, to)) {
-        return false;
-    }
-    let from_ty_layout = cx.tcx.layout_of(empty_param_env.and(from));
-    let to_ty_layout = cx.tcx.layout_of(empty_param_env.and(to));
-    if let (Ok(from_layout), Ok(to_layout)) = (from_ty_layout, to_ty_layout) {
-        from_layout.size != to_layout.size || from_layout.align != to_layout.align || from_layout.abi != to_layout.abi
+    if let Ok(from) = cx.tcx.try_normalize_erasing_regions(cx.param_env, from)
+        && let Ok(to) = cx.tcx.try_normalize_erasing_regions(cx.param_env, to)
+        && let Ok(from_layout) = cx.tcx.layout_of(cx.param_env.and(from))
+        && let Ok(to_layout) = cx.tcx.layout_of(cx.param_env.and(to))
+    {
+        from_layout.size != to_layout.size || from_layout.align.abi != to_layout.align.abi
     } else {
         // no idea about layout, so don't lint
         false
@@ -91,7 +87,7 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
             let res = check.do_check(&fn_ctxt);
 
             // do_check's documentation says that it might return Ok and create
-            // errors in the fcx instead of returing Err in some cases. Those cases
+            // errors in the fcx instead of returning Err in some cases. Those cases
             // should be filtered out before getting here.
             assert!(
                 !fn_ctxt.errors_reported_since_creation(),

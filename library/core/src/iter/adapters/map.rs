@@ -34,11 +34,11 @@ use crate::ops::Try;
 ///
 /// for pair in ['a', 'b', 'c'].into_iter()
 ///                                .map(|letter| { c += 1; (letter, c) }) {
-///     println!("{:?}", pair);
+///     println!("{pair:?}");
 /// }
 /// ```
 ///
-/// This will print "('a', 1), ('b', 2), ('c', 3)".
+/// This will print `('a', 1), ('b', 2), ('c', 3)`.
 ///
 /// Now consider this twist where we add a call to `rev`. This version will
 /// print `('c', 1), ('b', 2), ('a', 3)`. Note that the letters are reversed,
@@ -52,7 +52,7 @@ use crate::ops::Try;
 /// for pair in ['a', 'b', 'c'].into_iter()
 ///                                .map(|letter| { c += 1; (letter, c) })
 ///                                .rev() {
-///     println!("{:?}", pair);
+///     println!("{pair:?}");
 /// }
 /// ```
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -124,7 +124,7 @@ where
         self.iter.fold(init, map_fold(self.f, g))
     }
 
-    #[doc(hidden)]
+    #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> B
     where
         Self: TrustedRandomAccessNoCoerce,

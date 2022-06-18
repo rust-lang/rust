@@ -30,6 +30,9 @@ mod imp {
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
+        use crate::sync::atomic::{AtomicBool, Ordering};
+        use crate::sys::os::errno;
+
         // A weak symbol allows interposition, e.g. for perf measurements that want to
         // disable randomness for consistency. Otherwise, we'll try a raw syscall.
         // (`getrandom` was added in glibc 2.25, musl 1.1.20, android API level 28)
@@ -41,20 +44,42 @@ mod imp {
             ) -> libc::ssize_t
         }
 
+        // This provides the best quality random numbers available at the given moment
+        // without ever blocking, and is preferable to falling back to /dev/urandom.
+        static GRND_INSECURE_AVAILABLE: AtomicBool = AtomicBool::new(true);
+        if GRND_INSECURE_AVAILABLE.load(Ordering::Relaxed) {
+            let ret = unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_INSECURE) };
+            if ret == -1 && errno() as libc::c_int == libc::EINVAL {
+                GRND_INSECURE_AVAILABLE.store(false, Ordering::Relaxed);
+            } else {
+                return ret;
+            }
+        }
+
         unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_NONBLOCK) }
     }
 
-    #[cfg(target_os = "espidf")]
+    #[cfg(any(target_os = "espidf", target_os = "horizon"))]
     fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
         unsafe { libc::getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "espidf")))]
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "espidf",
+        target_os = "horizon"
+    )))]
     fn getrandom_fill_bytes(_buf: &mut [u8]) -> bool {
         false
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android", target_os = "espidf"))]
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "espidf",
+        target_os = "horizon"
+    ))]
     fn getrandom_fill_bytes(v: &mut [u8]) -> bool {
         use crate::sync::atomic::{AtomicBool, Ordering};
         use crate::sys::os::errno;
@@ -82,7 +107,7 @@ mod imp {
                 } else if err == libc::EAGAIN {
                     return false;
                 } else {
-                    panic!("unexpected getrandom error: {}", err);
+                    panic!("unexpected getrandom error: {err}");
                 }
             } else {
                 read += result as usize;

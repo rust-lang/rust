@@ -1,20 +1,8 @@
-error[E0277]: the trait bound `impl Future<Output = [async output]>: Copy` is not satisfied
-  --> $DIR/issue-55872-2.rs:13:20
-   |
-LL |     fn foo<T>() -> Self::E {
-   |                    ^^^^^^^ the trait `Copy` is not implemented for `impl Future<Output = [async output]>`
-
 error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-  --> $DIR/issue-55872-2.rs:13:28
+  --> $DIR/issue-55872-2.rs:14:9
    |
-LL |       fn foo<T>() -> Self::E {
-   |  ____________________________^
-LL | |
-LL | |
-LL | |         async {}
-LL | |     }
-   | |_____^
+LL |         async {}
+   |         ^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.

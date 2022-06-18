@@ -1,0 +1,11 @@
+error: expected one of `,` or `>`, found `:`
+  --> $DIR/single-colon-path-not-const-generics.rs:8:18
+   |
+LL |   a: Vec<foo::bar:A>,
+   |                  ^
+   |                  |
+   |                  expected one of `,` or `>`
+   |                  help: write a path separator here: `::`
+
+error: aborting due to previous error
+

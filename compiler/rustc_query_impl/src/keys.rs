@@ -141,6 +141,16 @@ impl Key for ty::WithOptConstParam<LocalDefId> {
     }
 }
 
+impl Key for SimplifiedType {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl Key for (DefId, DefId) {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
@@ -212,6 +222,16 @@ impl Key for (CrateNum, DefId) {
     }
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.1.default_span(tcx)
+    }
+}
+
+impl Key for (CrateNum, SimplifiedType) {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        self.0 == LOCAL_CRATE
+    }
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
     }
 }
 
@@ -415,6 +435,16 @@ impl Key for Symbol {
     }
 }
 
+impl Key for Option<Symbol> {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 /// Canonical query goals correspond to abstract trait operations that
 /// are not tied to any crate in particular.
 impl<'tcx, T> Key for Canonical<'tcx, T> {
@@ -480,5 +510,16 @@ impl<'tcx> Key for (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.0.default_span(tcx)
+    }
+}
+
+impl<'tcx> Key for (Ty<'tcx>, ty::ValTree<'tcx>) {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
     }
 }

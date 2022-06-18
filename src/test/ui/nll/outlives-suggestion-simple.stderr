@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-simple.rs:6:5
+  --> $DIR/outlives-suggestion-simple.rs:4:5
    |
 LL | fn foo1<'a, 'b>(x: &'a usize) -> &'b usize {
    |         --  -- lifetime `'b` defined here
@@ -11,7 +11,7 @@ LL |     x
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-simple.rs:10:5
+  --> $DIR/outlives-suggestion-simple.rs:8:5
    |
 LL | fn foo2<'a>(x: &'a usize) -> &'static usize {
    |         -- lifetime `'a` defined here
@@ -19,7 +19,7 @@ LL |     x
    |     ^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-simple.rs:14:5
+  --> $DIR/outlives-suggestion-simple.rs:12:5
    |
 LL | fn foo3<'a, 'b>(x: &'a usize, y: &'b usize) -> (&'b usize, &'a usize) {
    |         --  -- lifetime `'b` defined here
@@ -31,7 +31,7 @@ LL |     (x, y)
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-simple.rs:14:5
+  --> $DIR/outlives-suggestion-simple.rs:12:5
    |
 LL | fn foo3<'a, 'b>(x: &'a usize, y: &'b usize) -> (&'b usize, &'a usize) {
    |         --  -- lifetime `'b` defined here
@@ -45,7 +45,7 @@ LL |     (x, y)
 help: `'a` and `'b` must be the same: replace one with the other
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-simple.rs:22:5
+  --> $DIR/outlives-suggestion-simple.rs:20:5
    |
 LL | fn foo4<'a, 'b, 'c>(x: &'a usize) -> (&'b usize, &'c usize) {
    |         --  -- lifetime `'b` defined here
@@ -58,7 +58,7 @@ LL |     (x, x)
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-simple.rs:31:9
+  --> $DIR/outlives-suggestion-simple.rs:29:9
    |
 LL |     pub fn foo<'a>(x: &'a usize) -> Self {
    |                -- lifetime `'a` defined here
@@ -66,7 +66,7 @@ LL |         Foo { x }
    |         ^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-simple.rs:41:9
+  --> $DIR/outlives-suggestion-simple.rs:39:9
    |
 LL | impl<'a> Bar<'a> {
    |      -- lifetime `'a` defined here
@@ -78,7 +78,7 @@ LL |         self.x
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-simple.rs:52:9
+  --> $DIR/outlives-suggestion-simple.rs:50:9
    |
 LL | impl<'a> Baz<'a> {
    |      -- lifetime `'a` defined here
@@ -90,7 +90,7 @@ LL |         self.x
    = help: consider adding the following bound: `'b: 'a`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-simple.rs:73:9
+  --> $DIR/outlives-suggestion-simple.rs:71:9
    |
 LL | impl<'a> Foo2<'a> {
    |      -- lifetime `'a` defined here

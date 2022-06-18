@@ -11,7 +11,7 @@ use crate::traits::error_reporting::InferCtxtExt;
 
 #[derive(Clone)]
 pub enum CopyImplementationError<'tcx> {
-    InfrigingFields(Vec<&'tcx ty::FieldDef>),
+    InfrigingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>)>),
     NotAnAdt,
     HasDestructor,
 }
@@ -20,7 +20,7 @@ pub fn can_type_implement_copy<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
-    cause: ObligationCause<'tcx>,
+    parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), CopyImplementationError<'tcx>> {
     // FIXME: (@jroesch) float this code up
     tcx.infer_ctxt().enter(|infcx| {
@@ -43,7 +43,7 @@ pub fn can_type_implement_copy<'tcx>(
         };
 
         let mut infringing = Vec::new();
-        for variant in &adt.variants {
+        for variant in adt.variants() {
             for field in &variant.fields {
                 let ty = field.ty(tcx, substs);
                 if ty.references_error() {
@@ -56,10 +56,10 @@ pub fn can_type_implement_copy<'tcx>(
                 // If it does not, then this field probably doesn't normalize
                 // to begin with, and point to the bad field's span instead.
                 let cause = if field
-                    .ty(tcx, traits::InternalSubsts::identity_for_item(tcx, adt.did))
+                    .ty(tcx, traits::InternalSubsts::identity_for_item(tcx, adt.did()))
                     .has_param_types_or_consts()
                 {
-                    cause.clone()
+                    parent_cause.clone()
                 } else {
                     ObligationCause::dummy_with_span(span)
                 };
@@ -67,7 +67,7 @@ pub fn can_type_implement_copy<'tcx>(
                 match traits::fully_normalize(&infcx, ctx, cause, param_env, ty) {
                     Ok(ty) => {
                         if !infcx.type_is_copy_modulo_regions(param_env, ty, span) {
-                            infringing.push(field);
+                            infringing.push((field, ty));
                         }
                     }
                     Err(errors) => {

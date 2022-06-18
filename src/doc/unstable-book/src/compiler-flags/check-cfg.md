@@ -92,8 +92,6 @@ and `cfg!(name = "value")` call. It will check that the `"value"` specified is p
 list of expected values. If `"value"` is not in it, then `rustc` will report an `unexpected_cfgs`
 lint diagnostic. The default diagnostic level for this lint is `Warn`.
 
-The form `values()` is an error, because it does not specify a condition name.
-
 To enable checking of values, but to provide an empty set of valid values, use this form:
 
 ```bash
@@ -104,13 +102,17 @@ The `--check-cfg values(...)` option can be repeated, both for the same conditio
 different names. If it is repeated for the same condition name, then the sets of values for that
 condition are merged together.
 
+If `values()` is specified, then `rustc` will enable the checking of well-known values defined
+by itself. Note that it's necessary to specify the `values()` form to enable the checking of
+well known values, specifying the other forms doesn't implicitly enable it.
+
 ## Examples
 
 Consider this command line:
 
 ```bash
 rustc --check-cfg 'names(feature)' \
-      --check-cfg 'values(feature,"lion","zebra")' \
+      --check-cfg 'values(feature, "lion", "zebra")' \
       --cfg 'feature="lion"' -Z unstable-options \
       example.rs
 ```

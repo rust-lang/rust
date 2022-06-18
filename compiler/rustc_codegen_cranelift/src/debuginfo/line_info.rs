@@ -110,7 +110,6 @@ impl<'tcx> DebugContext<'tcx> {
 
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
         entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(loc.line as u64));
-        // FIXME: probably omit this
         entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(loc.col.to_usize() as u64));
     }
 

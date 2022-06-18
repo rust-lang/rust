@@ -1,11 +1,8 @@
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
+use rustc_hir::def_id::DefId;
 use rustc_hir::OpaqueTyOrigin;
-use rustc_infer::infer::opaque_types::OpaqueTypeDecl;
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
-use rustc_span::Span;
+use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, TyCtxt, TypeFoldable};
 use rustc_trait_selection::opaque_types::InferCtxtExt;
 
 use super::RegionInferenceContext;
@@ -54,60 +51,89 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
-        opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>,
-        span: Span,
-    ) -> VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>> {
-        opaque_ty_decls
-            .into_iter()
-            .filter_map(|(opaque_type_key, decl)| {
-                let substs = opaque_type_key.substs;
-                let concrete_type = decl.concrete_ty;
-                debug!(?concrete_type, ?substs);
+        opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
+    ) -> VecMap<DefId, OpaqueHiddenType<'tcx>> {
+        let mut result: VecMap<DefId, OpaqueHiddenType<'tcx>> = VecMap::new();
+        for (opaque_type_key, (concrete_type, origin)) in opaque_ty_decls {
+            let substs = opaque_type_key.substs;
+            debug!(?concrete_type, ?substs);
 
-                let mut subst_regions = vec![self.universal_regions.fr_static];
-                let universal_substs = infcx.tcx.fold_regions(substs, &mut false, |region, _| {
-                    let vid = self.universal_regions.to_region_vid(region);
-                    subst_regions.push(vid);
-                    self.definitions[vid].external_name.unwrap_or_else(|| {
-                        infcx
-                            .tcx
-                            .sess
-                            .delay_span_bug(span, "opaque type with non-universal region substs");
+            let mut subst_regions = vec![self.universal_regions.fr_static];
+            let universal_substs = infcx.tcx.fold_regions(substs, &mut false, |region, _| {
+                if let ty::RePlaceholder(..) = region.kind() {
+                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
+                    return region;
+                }
+                let vid = self.to_region_vid(region);
+                trace!(?vid);
+                let scc = self.constraint_sccs.scc(vid);
+                trace!(?scc);
+                match self.scc_values.universal_regions_outlived_by(scc).find_map(|lb| {
+                    self.eval_equal(vid, lb).then_some(self.definitions[lb].external_name?)
+                }) {
+                    Some(region) => {
+                        let vid = self.universal_regions.to_region_vid(region);
+                        subst_regions.push(vid);
+                        region
+                    }
+                    None => {
+                        subst_regions.push(vid);
+                        infcx.tcx.sess.delay_span_bug(
+                            concrete_type.span,
+                            "opaque type with non-universal region substs",
+                        );
                         infcx.tcx.lifetimes.re_static
-                    })
+                    }
+                }
+            });
+
+            subst_regions.sort();
+            subst_regions.dedup();
+
+            let universal_concrete_type =
+                infcx.tcx.fold_regions(concrete_type, &mut false, |region, _| match *region {
+                    ty::ReVar(vid) => subst_regions
+                        .iter()
+                        .find(|ur_vid| self.eval_equal(vid, **ur_vid))
+                        .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
+                        .unwrap_or(infcx.tcx.lifetimes.re_root_empty),
+                    _ => region,
                 });
 
-                subst_regions.sort();
-                subst_regions.dedup();
+            debug!(?universal_concrete_type, ?universal_substs);
 
-                let universal_concrete_type =
-                    infcx.tcx.fold_regions(concrete_type, &mut false, |region, _| match *region {
-                        ty::ReVar(vid) => subst_regions
-                            .iter()
-                            .find(|ur_vid| self.eval_equal(vid, **ur_vid))
-                            .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
-                            .unwrap_or(infcx.tcx.lifetimes.re_root_empty),
-                        _ => region,
-                    });
-
-                debug!(?universal_concrete_type, ?universal_substs);
-
-                let opaque_type_key =
-                    OpaqueTypeKey { def_id: opaque_type_key.def_id, substs: universal_substs };
-                let remapped_type = infcx.infer_opaque_definition_from_instantiation(
-                    opaque_type_key,
-                    universal_concrete_type,
-                    span,
+            let opaque_type_key =
+                OpaqueTypeKey { def_id: opaque_type_key.def_id, substs: universal_substs };
+            let ty = infcx.infer_opaque_definition_from_instantiation(
+                opaque_type_key,
+                universal_concrete_type,
+                origin,
+            );
+            // Sometimes two opaque types are the same only after we remap the generic parameters
+            // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
+            // and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we only know that
+            // once we convert the generic parameters to those of the opaque type.
+            if let Some(prev) = result.get_mut(&opaque_type_key.def_id) {
+                if prev.ty != ty {
+                    if !ty.references_error() {
+                        prev.report_mismatch(
+                            &OpaqueHiddenType { ty, span: concrete_type.span },
+                            infcx.tcx,
+                        );
+                    }
+                    prev.ty = infcx.tcx.ty_error();
+                }
+                // Pick a better span if there is one.
+                // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
+                prev.span = prev.span.substitute_dummy(concrete_type.span);
+            } else {
+                result.insert(
+                    opaque_type_key.def_id,
+                    OpaqueHiddenType { ty, span: concrete_type.span },
                 );
-
-                check_opaque_type_parameter_valid(
-                    infcx.tcx,
-                    opaque_type_key,
-                    OpaqueTypeDecl { concrete_ty: remapped_type, ..decl },
-                )
-                .then_some((opaque_type_key, remapped_type))
-            })
-            .collect()
+            }
+        }
+        result
     }
 
     /// Map the regions in the type to named regions. This is similar to what
@@ -144,96 +170,4 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             _ => region,
         })
     }
-}
-
-fn check_opaque_type_parameter_valid(
-    tcx: TyCtxt<'_>,
-    opaque_type_key: OpaqueTypeKey<'_>,
-    decl: OpaqueTypeDecl<'_>,
-) -> bool {
-    match decl.origin {
-        // No need to check return position impl trait (RPIT)
-        // because for type and const parameters they are correct
-        // by construction: we convert
-        //
-        // fn foo<P0..Pn>() -> impl Trait
-        //
-        // into
-        //
-        // type Foo<P0...Pn>
-        // fn foo<P0..Pn>() -> Foo<P0...Pn>.
-        //
-        // For lifetime parameters we convert
-        //
-        // fn foo<'l0..'ln>() -> impl Trait<'l0..'lm>
-        //
-        // into
-        //
-        // type foo::<'p0..'pn>::Foo<'q0..'qm>
-        // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
-        //
-        // which would error here on all of the `'static` args.
-        OpaqueTyOrigin::FnReturn(..) | OpaqueTyOrigin::AsyncFn(..) => return true,
-        // Check these
-        OpaqueTyOrigin::TyAlias => {}
-    }
-    let span = decl.definition_span;
-    let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
-    let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
-    for (i, arg) in opaque_type_key.substs.iter().enumerate() {
-        let arg_is_param = match arg.unpack() {
-            GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
-            GenericArgKind::Lifetime(lt) if lt.is_static() => {
-                tcx.sess
-                    .struct_span_err(span, "non-defining opaque type use in defining scope")
-                    .span_label(
-                        tcx.def_span(opaque_generics.param_at(i, tcx).def_id),
-                        "cannot use static lifetime; use a bound lifetime \
-                                    instead or remove the lifetime parameter from the \
-                                    opaque type",
-                    )
-                    .emit();
-                return false;
-            }
-            GenericArgKind::Lifetime(lt) => {
-                matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
-            }
-            GenericArgKind::Const(ct) => matches!(ct.val(), ty::ConstKind::Param(_)),
-        };
-
-        if arg_is_param {
-            seen_params.entry(arg).or_default().push(i);
-        } else {
-            // Prevent `fn foo() -> Foo<u32>` from being defining.
-            let opaque_param = opaque_generics.param_at(i, tcx);
-            tcx.sess
-                .struct_span_err(span, "non-defining opaque type use in defining scope")
-                .span_note(
-                    tcx.def_span(opaque_param.def_id),
-                    &format!(
-                        "used non-generic {} `{}` for generic parameter",
-                        opaque_param.kind.descr(),
-                        arg,
-                    ),
-                )
-                .emit();
-            return false;
-        }
-    }
-
-    for (_, indices) in seen_params {
-        if indices.len() > 1 {
-            let descr = opaque_generics.param_at(indices[0], tcx).kind.descr();
-            let spans: Vec<_> = indices
-                .into_iter()
-                .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
-                .collect();
-            tcx.sess
-                .struct_span_err(span, "non-defining opaque type use in defining scope")
-                .span_note(spans, &format!("{} used multiple times", descr))
-                .emit();
-            return false;
-        }
-    }
-    true
 }

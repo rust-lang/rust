@@ -7,6 +7,6 @@ fn foo() -> i32 {
 fn main() {
     let _x: i32 = {
         //~^ ERROR mismatched types
-        foo(); //~ HELP consider removing this semicolon
+        foo(); //~ HELP remove this semicolon
     };
 }

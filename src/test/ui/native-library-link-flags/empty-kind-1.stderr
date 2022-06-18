@@ -1,2 +1,2 @@
-error: unknown library kind ``, expected one of dylib, framework, or static
+error: unknown library kind ``, expected one of: static, dylib, framework
 

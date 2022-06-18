@@ -6,10 +6,10 @@
 macro_rules! arena_types {
     ($macro:path) => (
         $macro!([
-            [] layout: rustc_target::abi::Layout,
+            [] layout: rustc_target::abi::LayoutS<'tcx>,
             [] fn_abi: rustc_target::abi::call::FnAbi<'tcx, rustc_middle::ty::Ty<'tcx>>,
             // AdtDef are interned and compared by address
-            [decode] adt_def: rustc_middle::ty::AdtDef,
+            [decode] adt_def: rustc_middle::ty::AdtDefData,
             [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<'tcx>>,
             [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<'tcx>>,
             [decode] mir: rustc_middle::mir::Body<'tcx>,
@@ -31,9 +31,9 @@ macro_rules! arena_types {
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
             [decode] code_region: rustc_middle::mir::coverage::CodeRegion,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
+            [] region_scope_tree: rustc_middle::middle::region::ScopeTree,
             // Required for the incremental on-disk cache
             [] mir_keys: rustc_hir::def_id::DefIdSet,
-            [] region_scope_tree: rustc_middle::middle::region::ScopeTree,
             [] dropck_outlives:
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx,
@@ -52,7 +52,7 @@ macro_rules! arena_types {
                         Vec<rustc_middle::traits::query::OutlivesBound<'tcx>>
                     >
                 >,
-            [] dtorck_constraint: rustc_middle::traits::query::DtorckConstraint<'tcx>,
+            [] dtorck_constraint: rustc_middle::traits::query::DropckConstraint<'tcx>,
             [] candidate_step: rustc_middle::traits::query::CandidateStep<'tcx>,
             [] autoderef_bad_ty: rustc_middle::traits::query::MethodAutoderefBadTy<'tcx>,
             [] type_op_subtype:
@@ -82,12 +82,12 @@ macro_rules! arena_types {
             [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<'tcx>,
-            [] attribute: rustc_ast::Attribute,
+            [decode] attribute: rustc_ast::Attribute,
             [] name_set: rustc_data_structures::fx::FxHashSet<rustc_span::symbol::Symbol>,
             [] hir_id_set: rustc_hir::HirIdSet,
 
             // Interned types
-            [] tys: rustc_middle::ty::TyS<'tcx>,
+            [] tys: rustc_data_structures::intern::WithStableHash<rustc_middle::ty::TyS<'tcx>>,
             [] predicates: rustc_middle::ty::PredicateS<'tcx>,
             [] consts: rustc_middle::ty::ConstS<'tcx>,
 
@@ -95,9 +95,6 @@ macro_rules! arena_types {
             // since we need to allocate this type on both the `rustc_hir` arena
             // (during lowering) and the `librustc_middle` arena (for decoding MIR)
             [decode] asm_template: rustc_ast::InlineAsmTemplatePiece,
-
-            // This is used to decode the &'tcx [Span] for InlineAsm's line_spans.
-            [decode] span: rustc_span::Span,
             [decode] used_trait_imports: rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::LocalDefId>,
             [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 

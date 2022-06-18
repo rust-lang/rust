@@ -114,30 +114,5 @@ LL |         asm!("{:r}", inout(reg) main => val_u32);
    |
    = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
-error[E0013]: constants cannot refer to statics
-  --> $DIR/type-check-3.rs:84:25
-   |
-LL | global_asm!("{}", const S);
-   |                         ^
-   |
-   = help: consider extracting the value of the `static` to a `const`, and referring to that
+error: aborting due to 9 previous errors; 4 warnings emitted
 
-error[E0013]: constants cannot refer to statics
-  --> $DIR/type-check-3.rs:87:35
-   |
-LL | global_asm!("{}", const const_foo(S));
-   |                                   ^
-   |
-   = help: consider extracting the value of the `static` to a `const`, and referring to that
-
-error[E0013]: constants cannot refer to statics
-  --> $DIR/type-check-3.rs:90:35
-   |
-LL | global_asm!("{}", const const_bar(S));
-   |                                   ^
-   |
-   = help: consider extracting the value of the `static` to a `const`, and referring to that
-
-error: aborting due to 12 previous errors; 4 warnings emitted
-
-For more information about this error, try `rustc --explain E0013`.

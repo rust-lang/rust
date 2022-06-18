@@ -17,13 +17,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// async fn get_random_number() -> i64 {
     ///     4 // Chosen by fair dice roll. Guaranteed to be random.
     /// }
     /// let number_future = get_random_number();
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// fn get_random_number_improved() -> i64 {
     ///     4 // Chosen by fair dice roll. Guaranteed to be random.
     /// }
@@ -67,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         span: Span,
         hir_id: HirId,
     ) {
-        if let FnKind::ItemFn(_, _, FnHeader { asyncness, .. }, _) = &fn_kind {
+        if let FnKind::ItemFn(_, _, FnHeader { asyncness, .. }) = &fn_kind {
             if matches!(asyncness, IsAsync::Async) {
                 let mut visitor = AsyncFnVisitor { cx, found_await: false };
                 walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), span, hir_id);

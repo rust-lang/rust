@@ -290,7 +290,7 @@ fn ident_swap_sugg(
             // used instead, in these cases.
             *applicability = Applicability::MaybeIncorrect;
 
-            // We arbitraily choose one side to suggest changing,
+            // We arbitrarily choose one side to suggest changing,
             // since we don't have a better guess. If the user
             // ends up duplicating a clause, the `logic_bug` lint
             // should catch it.
@@ -374,19 +374,19 @@ fn strip_non_ident_wrappers(expr: &Expr) -> &Expr {
 }
 
 fn extract_related_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
-    append_opt_vecs(chained_binops(kind), if_statment_binops(kind))
+    append_opt_vecs(chained_binops(kind), if_statement_binops(kind))
 }
 
-fn if_statment_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
+fn if_statement_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
     match kind {
         ExprKind::If(ref condition, _, _) => chained_binops(&condition.kind),
-        ExprKind::Paren(ref e) => if_statment_binops(&e.kind),
+        ExprKind::Paren(ref e) => if_statement_binops(&e.kind),
         ExprKind::Block(ref block, _) => {
             let mut output = None;
             for stmt in &block.stmts {
                 match stmt.kind {
                     StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => {
-                        output = append_opt_vecs(output, if_statment_binops(&e.kind));
+                        output = append_opt_vecs(output, if_statement_binops(&e.kind));
                     },
                     _ => {},
                 }
@@ -399,9 +399,9 @@ fn if_statment_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
 
 fn append_opt_vecs<A>(target_opt: Option<Vec<A>>, source_opt: Option<Vec<A>>) -> Option<Vec<A>> {
     match (target_opt, source_opt) {
-        (Some(mut target), Some(mut source)) => {
+        (Some(mut target), Some(source)) => {
             target.reserve(source.len());
-            for op in source.drain(..) {
+            for op in source {
                 target.push(op);
             }
             Some(target)
@@ -436,9 +436,9 @@ fn chained_binops_helper<'expr>(left_outer: &'expr Expr, right_outer: &'expr Exp
             chained_binops_helper(left_left, left_right),
             chained_binops_helper(right_left, right_right),
         ) {
-            (Some(mut left_ops), Some(mut right_ops)) => {
+            (Some(mut left_ops), Some(right_ops)) => {
                 left_ops.reserve(right_ops.len());
-                for op in right_ops.drain(..) {
+                for op in right_ops {
                     left_ops.push(op);
                 }
                 Some(left_ops)
@@ -550,7 +550,7 @@ fn ident_difference_expr_with_base_location(
     // IdentIter, then the output of this function will be almost always be correct
     // in practice.
     //
-    // If it turns out that problematic cases are more prelavent than we assume,
+    // If it turns out that problematic cases are more prevalent than we assume,
     // then we should be able to change this function to do the correct traversal,
     // without needing to change the rest of the code.
 

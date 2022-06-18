@@ -8,7 +8,6 @@ use super::{
 };
 use crate::{
     cell::UnsafeCell,
-    convert::TryFrom,
     ffi::CStr,
     hint, io,
     mem::ManuallyDrop,

@@ -60,7 +60,6 @@ where
         self.it.map(T::clone).fold(init, f)
     }
 
-    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> T
     where
         Self: TrustedRandomAccessNoCoerce,

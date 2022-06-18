@@ -31,7 +31,7 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
-    fn create_vtable_metadata(&self, _ty: Ty<'tcx>, _trait_ref: Option<PolyExistentialTraitRef<'tcx>>, _vtable: Self::Value) {
+    fn create_vtable_debuginfo(&self, _ty: Ty<'tcx>, _trait_ref: Option<PolyExistentialTraitRef<'tcx>>, _vtable: Self::Value) {
         // TODO(antoyo)
     }
 

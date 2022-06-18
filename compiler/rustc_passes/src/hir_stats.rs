@@ -3,6 +3,7 @@
 // completely accurate (some things might be counted twice, others missed).
 
 use rustc_ast::visit as ast_visit;
+use rustc_ast::visit::BoundKind;
 use rustc_ast::{self as ast, AttrId, NodeId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -237,7 +238,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_assoc_type_binding(self, type_binding)
     }
 
-    fn visit_attribute(&mut self, _: hir::HirId, attr: &'v ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
         self.record("Attribute", Id::Attr(attr.id), attr);
     }
 }
@@ -302,7 +303,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_assoc_item(self, item, ctxt);
     }
 
-    fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound) {
+    fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound, _ctxt: BoundKind) {
         self.record("GenericBound", Id::None, bounds);
         ast_visit::walk_param_bound(self, bounds)
     }
@@ -317,7 +318,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_variant(self, v)
     }
 
-    fn visit_lifetime(&mut self, lifetime: &'v ast::Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'v ast::Lifetime, _: ast_visit::LifetimeCtxt) {
         self.record("Lifetime", Id::None, lifetime);
         ast_visit::walk_lifetime(self, lifetime)
     }

@@ -17,10 +17,10 @@ LL |     let mut r = R {c: Box::new(f)};
 LL |     f(&mut r, false)
    |     ^ value borrowed here after move
    |
-help: consider further restricting this bound
+help: consider mutably borrowing `f`
    |
-LL | fn conspirator<F>(mut f: F) where F: FnMut(&mut R, bool) + Copy {
-   |                                                          ++++++
+LL |     let mut r = R {c: Box::new(&mut f)};
+   |                                ++++
 
 error: aborting due to 2 previous errors
 

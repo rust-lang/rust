@@ -10,7 +10,7 @@ note: function defined here, with 2 generic parameters: `X`, `Y`
   --> $DIR/incorrect-number-of-const-args.rs:1:4
    |
 LL | fn foo<const X: usize, const Y: usize>() -> usize {
-   |    ^^^       -               -
+   |    ^^^ --------------  --------------
 help: add missing generic argument
    |
 LL |     foo::<0, Y>();
@@ -28,7 +28,7 @@ note: function defined here, with 2 generic parameters: `X`, `Y`
   --> $DIR/incorrect-number-of-const-args.rs:1:4
    |
 LL | fn foo<const X: usize, const Y: usize>() -> usize {
-   |    ^^^       -               -
+   |    ^^^ --------------  --------------
 
 error: aborting due to 2 previous errors
 

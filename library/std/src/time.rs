@@ -95,13 +95,15 @@ pub use core::time::FromFloatSecsError;
 /// use std::time::{Instant, Duration};
 ///
 /// let now = Instant::now();
-/// let max_nanoseconds = u64::MAX / 1_000_000_000;
-/// let duration = Duration::new(max_nanoseconds, 0);
+/// let max_seconds = u64::MAX / 1_000_000_000;
+/// let duration = Duration::new(max_seconds, 0);
 /// println!("{:?}", now + duration);
 /// ```
 ///
 /// # Underlying System calls
-/// Currently, the following system calls are being used to get the current time using `now()`:
+///
+/// The following system calls are [currently] being used by `now()` to find out
+/// the current time:
 ///
 /// |  Platform |               System call                                            |
 /// |-----------|----------------------------------------------------------------------|
@@ -113,6 +115,7 @@ pub use core::time::FromFloatSecsError;
 /// | WASI      | [__wasi_clock_time_get (Monotonic Clock)]                            |
 /// | Windows   | [QueryPerformanceCounter]                                            |
 ///
+/// [currently]: crate::io#platform-specific-behavior
 /// [QueryPerformanceCounter]: https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
 /// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
@@ -191,7 +194,7 @@ pub struct Instant(time::Instant);
 ///        }
 ///        Err(e) => {
 ///            // an error occurred!
-///            println!("Error: {:?}", e);
+///            println!("Error: {e:?}");
 ///        }
 ///    }
 /// }
@@ -203,7 +206,8 @@ pub struct Instant(time::Instant);
 /// For example, on Windows the time is represented in 100 nanosecond intervals whereas Linux
 /// can represent nanosecond intervals.
 ///
-/// Currently, the following system calls are being used to get the current time using `now()`:
+/// The following system calls are [currently] being used by `now()` to find out
+/// the current time:
 ///
 /// |  Platform |               System call                                            |
 /// |-----------|----------------------------------------------------------------------|
@@ -215,6 +219,7 @@ pub struct Instant(time::Instant);
 /// | WASI      | [__wasi_clock_time_get (Realtime Clock)]                             |
 /// | Windows   | [GetSystemTimePreciseAsFileTime] / [GetSystemTimeAsFileTime]         |
 ///
+/// [currently]: crate::io#platform-specific-behavior
 /// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
 /// [gettimeofday]: https://man7.org/linux/man-pages/man2/gettimeofday.2.html
@@ -513,7 +518,7 @@ impl SystemTime {
     /// let new_sys_time = SystemTime::now();
     /// let difference = new_sys_time.duration_since(sys_time)
     ///     .expect("Clock may have gone backwards");
-    /// println!("{:?}", difference);
+    /// println!("{difference:?}");
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn duration_since(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError> {

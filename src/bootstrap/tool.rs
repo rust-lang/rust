@@ -4,14 +4,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
 
-use build_helper::t;
-
 use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::channel::GitInfo;
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::toolstate::ToolState;
-use crate::util::{add_dylib_path, exe};
+use crate::util::{add_dylib_path, exe, t};
 use crate::Compiler;
 use crate::Mode;
 
@@ -154,43 +152,43 @@ impl Step for ToolBuild {
         });
 
         if is_expected && !duplicates.is_empty() {
-            println!(
+            eprintln!(
                 "duplicate artifacts found when compiling a tool, this \
                       typically means that something was recompiled because \
                       a transitive dependency has different features activated \
                       than in a previous build:\n"
             );
-            println!(
+            eprintln!(
                 "the following dependencies are duplicated although they \
                       have the same features enabled:"
             );
             let (same, different): (Vec<_>, Vec<_>) =
                 duplicates.into_iter().partition(|(_, cur, prev)| cur.2 == prev.2);
             for (id, cur, prev) in same {
-                println!("  {}", id);
+                eprintln!("  {}", id);
                 // same features
-                println!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
+                eprintln!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
             }
-            println!("the following dependencies have different features:");
+            eprintln!("the following dependencies have different features:");
             for (id, cur, prev) in different {
-                println!("  {}", id);
+                eprintln!("  {}", id);
                 let cur_features: HashSet<_> = cur.2.into_iter().collect();
                 let prev_features: HashSet<_> = prev.2.into_iter().collect();
-                println!(
+                eprintln!(
                     "    `{}` additionally enabled features {:?} at {:?}",
                     cur.0,
                     &cur_features - &prev_features,
                     cur.1
                 );
-                println!(
+                eprintln!(
                     "    `{}` additionally enabled features {:?} at {:?}",
                     prev.0,
                     &prev_features - &cur_features,
                     prev.1
                 );
             }
-            println!();
-            println!(
+            eprintln!();
+            eprintln!(
                 "to fix this you will probably want to edit the local \
                       src/tools/rustc-workspace-hack/Cargo.toml crate, as \
                       that will update the dependency graph to ensure that \
@@ -251,6 +249,10 @@ pub fn prepare_tool_cargo(
             features.push("rustc-workspace-hack/all-static".to_string());
         }
     }
+
+    // clippy tests need to know about the stage sysroot. Set them consistently while building to
+    // avoid rebuilding when running tests.
+    cargo.env("SYSROOT", builder.sysroot(compiler));
 
     // if tools are using lzma we want to force the build script to build its
     // own copy
@@ -381,22 +383,14 @@ pub struct ErrorIndex {
 
 impl ErrorIndex {
     pub fn command(builder: &Builder<'_>) -> Command {
-        // This uses stage-1 to match the behavior of building rustdoc.
-        // Error-index-generator links with the rustdoc library, so we want to
-        // use the same librustdoc to avoid building rustdoc twice (and to
-        // avoid building the compiler an extra time). This uses
-        // saturating_sub to deal with building with stage 0. (Using stage 0
-        // isn't recommended, since it will fail if any new error index tests
-        // use new syntax, but it should work otherwise.)
-        let compiler = builder.compiler(builder.top_stage.saturating_sub(1), builder.config.build);
+        // Error-index-generator links with the rustdoc library, so we need to add `rustc_lib_paths`
+        // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
+        let host = builder.config.build;
+        let compiler = builder.compiler_for(builder.top_stage, host, host);
         let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
-        add_dylib_path(
-            vec![
-                PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host)),
-                PathBuf::from(builder.rustc_libdir(compiler)),
-            ],
-            &mut cmd,
-        );
+        let mut dylib_paths = builder.rustc_lib_paths(compiler);
+        dylib_paths.push(PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host)));
+        add_dylib_path(dylib_paths, &mut cmd);
         cmd
     }
 }
@@ -522,7 +516,7 @@ impl Step for Rustdoc {
         builder.ensure(compile::Rustc { compiler: build_compiler, target: target_compiler.host });
         // NOTE: this implies that `download-rustc` is pretty useless when compiling with the stage0
         // compiler, since you do just as much work.
-        if !builder.config.dry_run && builder.config.download_rustc && build_compiler.stage == 0 {
+        if !builder.config.dry_run && builder.download_rustc() && build_compiler.stage == 0 {
             println!(
                 "warning: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
             );
@@ -662,7 +656,6 @@ impl Step for Cargo {
 pub struct LldWrapper {
     pub compiler: Compiler,
     pub target: TargetSelection,
-    pub flavor_feature: &'static str,
 }
 
 impl Step for LldWrapper {
@@ -682,7 +675,7 @@ impl Step for LldWrapper {
                 path: "src/tools/lld-wrapper",
                 is_optional_tool: false,
                 source_type: SourceType::InTree,
-                extra_features: vec![self.flavor_feature.to_owned()],
+                extra_features: Vec::new(),
             })
             .expect("expected to build -- essential tool");
 

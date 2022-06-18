@@ -7,8 +7,8 @@ edition = "2021"
 crate-type = ["dylib"]
 
 [dependencies]
-libc = "0.2"
 tracing = { version = "0.1.28" }
+serde_json = "1.0.59"
 rustc_log = { path = "../rustc_log" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
@@ -20,7 +20,6 @@ rustc_feature = { path = "../rustc_feature" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_metadata = { path = "../rustc_metadata" }
-rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_plugin_impl = { path = "../rustc_plugin_impl" }
 rustc_save_analysis = { path = "../rustc_save_analysis" }
@@ -28,10 +27,12 @@ rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_session = { path = "../rustc_session" }
 rustc_error_codes = { path = "../rustc_error_codes" }
 rustc_interface = { path = "../rustc_interface" }
-rustc_serialize = { path = "../rustc_serialize" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_typeck = { path = "../rustc_typeck" }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["consoleapi", "debugapi", "processenv"] }
@@ -39,3 +40,5 @@ winapi = { version = "0.3", features = ["consoleapi", "debugapi", "processenv"] 
 [features]
 llvm = ['rustc_interface/llvm']
 max_level_info = ['rustc_log/max_level_info']
+rustc_use_parallel_compiler = ['rustc_data_structures/rustc_use_parallel_compiler', 'rustc_interface/rustc_use_parallel_compiler',
+    'rustc_middle/rustc_use_parallel_compiler']

@@ -2,6 +2,7 @@
 #![feature(rustc_private)]
 #![deny(clippy::internal)]
 #![allow(
+    clippy::borrow_deref_ref,
     clippy::unnecessary_operation,
     unused_must_use,
     clippy::missing_clippy_version_attribute

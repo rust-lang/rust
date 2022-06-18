@@ -1,8 +1,10 @@
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/issue-68621.rs:14:19
    |
 LL |     type Future = impl Trait;
    |                   ^^^^^^^^^^
+   |
+   = note: `Future` must be used in combination with a concrete type within the same module
 
 error: aborting due to previous error
 

@@ -3,7 +3,7 @@ error[E0515]: cannot return value referencing local variable `s`
    |
 LL |     let b = &s[..];
    |              - `s` is borrowed here
-LL | 
+LL |
 LL |     Err(b)?;
    |     ^^^^^^^ returns a value referencing data owned by the current function
 

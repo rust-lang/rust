@@ -2,7 +2,11 @@ use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
+use clippy_utils::ty::{
+    contains_ty, get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs,
+};
+use clippy_utils::{meets_msrv, msrvs};
+
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind};
@@ -11,12 +15,19 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, PredicateKind, ProjectionPredicate, TraitPredicate, Ty};
+use rustc_semver::RustcVersion;
 use rustc_span::{sym, Symbol};
 use std::cmp::max;
 
 use super::UNNECESSARY_TO_OWNED;
 
-pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol, args: &'tcx [Expr<'tcx>]) {
+pub fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    method_name: Symbol,
+    args: &'tcx [Expr<'tcx>],
+    msrv: Option<RustcVersion>,
+) {
     if_chain! {
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let [receiver] = args;
@@ -31,7 +42,7 @@ pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: 
                 if check_addr_of_expr(cx, expr, method_name, method_def_id, receiver) {
                     return;
                 }
-                if check_into_iter_call_arg(cx, expr, method_name, receiver) {
+                if check_into_iter_call_arg(cx, expr, method_name, receiver, msrv) {
                     return;
                 }
                 check_other_call_arg(cx, expr, method_name, receiver);
@@ -54,13 +65,12 @@ fn check_addr_of_expr(
         if let Some(parent) = get_parent_expr(cx, expr);
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, _) = parent.kind;
         let adjustments = cx.typeck_results().expr_adjustments(parent).iter().collect::<Vec<_>>();
-        if let Some(target_ty) = match adjustments[..]
-        {
+        if let
             // For matching uses of `Cow::from`
             [
                 Adjustment {
                     kind: Adjust::Deref(None),
-                    ..
+                    target: referent_ty,
                 },
                 Adjustment {
                     kind: Adjust::Borrow(_),
@@ -71,7 +81,7 @@ fn check_addr_of_expr(
             | [
                 Adjustment {
                     kind: Adjust::Deref(None),
-                    ..
+                    target: referent_ty,
                 },
                 Adjustment {
                     kind: Adjust::Borrow(_),
@@ -86,7 +96,7 @@ fn check_addr_of_expr(
             | [
                 Adjustment {
                     kind: Adjust::Deref(None),
-                    ..
+                    target: referent_ty,
                 },
                 Adjustment {
                     kind: Adjust::Deref(Some(OverloadedDeref { .. })),
@@ -96,17 +106,24 @@ fn check_addr_of_expr(
                     kind: Adjust::Borrow(_),
                     target: target_ty,
                 },
-            ] => Some(target_ty),
-            _ => None,
-        };
+            ] = adjustments[..];
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
-        // Only flag cases where the receiver is copyable or the method is `Cow::into_owned`. This
-        // restriction is to ensure there is not overlap between `redundant_clone` and this lint.
-        if is_copy(cx, receiver_ty) || is_cow_into_owned(cx, method_name, method_def_id);
+        let (target_ty, n_target_refs) = peel_mid_ty_refs(*target_ty);
+        let (receiver_ty, n_receiver_refs) = peel_mid_ty_refs(receiver_ty);
+        // Only flag cases satisfying at least one of the following three conditions:
+        // * the referent and receiver types are distinct
+        // * the referent/receiver type is a copyable array
+        // * the method is `Cow::into_owned`
+        // This restriction is to ensure there is no overlap between `redundant_clone` and this
+        // lint. It also avoids the following false positive:
+        //  https://github.com/rust-lang/rust-clippy/issues/8759
+        //   Arrays are a bit of a corner case. Non-copyable arrays are handled by
+        // `redundant_clone`, but copyable arrays are not.
+        if *referent_ty != receiver_ty
+            || (matches!(referent_ty.kind(), ty::Array(..)) && is_copy(cx, *referent_ty))
+            || is_cow_into_owned(cx, method_name, method_def_id);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
-            let (target_ty, n_target_refs) = peel_mid_ty_refs(*target_ty);
-            let (receiver_ty, n_receiver_refs) = peel_mid_ty_refs(receiver_ty);
             if receiver_ty == target_ty && n_target_refs >= n_receiver_refs {
                 span_lint_and_sugg(
                     cx,
@@ -114,7 +131,12 @@ fn check_addr_of_expr(
                     parent.span,
                     &format!("unnecessary use of `{}`", method_name),
                     "use",
-                    format!("{:&>width$}{}", "", receiver_snippet, width = n_target_refs - n_receiver_refs),
+                    format!(
+                        "{:&>width$}{}",
+                        "",
+                        receiver_snippet,
+                        width = n_target_refs - n_receiver_refs
+                    ),
                     Applicability::MachineApplicable,
                 );
                 return true;
@@ -171,7 +193,13 @@ fn check_addr_of_expr(
 
 /// Checks whether `expr` is an argument in an `into_iter` call and, if so, determines whether its
 /// call of a `to_owned`-like function is unnecessary.
-fn check_into_iter_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, receiver: &Expr<'_>) -> bool {
+fn check_into_iter_call_arg(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    method_name: Symbol,
+    receiver: &Expr<'_>,
+    msrv: Option<RustcVersion>,
+) -> bool {
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
         if let Some(callee_def_id) = fn_def_id(cx, parent);
@@ -182,16 +210,10 @@ fn check_into_iter_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: 
         if let Some(item_ty) = get_iterator_item_ty(cx, parent_ty);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
-            if unnecessary_iter_cloned::check_for_loop_iter(
-                cx,
-                parent,
-                method_name,
-                receiver,
-                true,
-            ) {
+            if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
                 return true;
             }
-            let cloned_or_copied = if is_copy(cx, item_ty) {
+            let cloned_or_copied = if is_copy(cx, item_ty) && meets_msrv(msrv, msrvs::ITERATOR_COPIED) {
                 "copied"
             } else {
                 "cloned"
@@ -243,10 +265,11 @@ fn check_other_call_arg<'tcx>(
         if if trait_predicate.def_id() == deref_trait_id {
             if let [projection_predicate] = projection_predicates[..] {
                 let normalized_ty =
-                    cx.tcx.subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.term);
+                    cx.tcx
+                        .subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.term);
                 implements_trait(cx, receiver_ty, deref_trait_id, &[])
-                    && get_associated_type(cx, receiver_ty, deref_trait_id,
-                    "Target").map_or(false, |ty| ty::Term::Ty(ty) == normalized_ty)
+                    && get_associated_type(cx, receiver_ty, deref_trait_id, "Target")
+                        .map_or(false, |ty| ty::Term::Ty(ty) == normalized_ty)
             } else {
                 false
             }
@@ -254,7 +277,7 @@ fn check_other_call_arg<'tcx>(
             let composed_substs = compose_substs(
                 cx,
                 &trait_predicate.trait_ref.substs.iter().skip(1).collect::<Vec<_>>()[..],
-                call_substs
+                call_substs,
             );
             implements_trait(cx, receiver_ty, as_ref_trait_id, &composed_substs)
         } else {
@@ -264,6 +287,12 @@ fn check_other_call_arg<'tcx>(
         // `Target = T`.
         if n_refs > 0 || is_copy(cx, receiver_ty) || trait_predicate.def_id() != deref_trait_id;
         let n_refs = max(n_refs, if is_copy(cx, receiver_ty) { 0 } else { 1 });
+        // If the trait is `AsRef` and the input type variable `T` occurs in the output type, then
+        // `T` must not be instantiated with a reference
+        // (https://github.com/rust-lang/rust-clippy/issues/8507).
+        if (n_refs == 0 && !receiver_ty.is_ref())
+            || trait_predicate.def_id() != as_ref_trait_id
+            || !contains_ty(fn_sig.output(), input);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             span_lint_and_sugg(
@@ -339,11 +368,7 @@ fn get_input_traits_and_projections<'tcx>(
                 if let Some(arg) = substs.iter().next();
                 if let GenericArgKind::Type(arg_ty) = arg.unpack();
                 if arg_ty == input;
-                then {
-                    true
-                } else {
-                    false
-                }
+                then { true } else { false }
             }
         };
         match predicate.kind().skip_binder() {
@@ -390,7 +415,7 @@ fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_def_id:
 /// Returns true if the named method can be used to convert the receiver to its "owned"
 /// representation.
 fn is_to_owned_like(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
-    is_clone_like(cx, &*method_name.as_str(), method_def_id)
+    is_clone_like(cx, method_name.as_str(), method_def_id)
         || is_cow_into_owned(cx, method_name, method_def_id)
         || is_to_string(cx, method_name, method_def_id)
 }

@@ -1,7 +1,6 @@
 // check-pass
 
 #![feature(const_trait_impl)]
-#![feature(const_fn_trait_bound)]
 
 trait Foo {
     fn bar() where Self: ~const Foo;

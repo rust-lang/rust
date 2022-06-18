@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_opt};
-use clippy_utils::ty::implements_trait;
+use clippy_utils::ty::{implements_trait, is_copy};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -20,8 +20,8 @@ use rustc_span::symbol::sym;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    get_item_name, get_parent_expr, in_constant, is_diag_trait_item, is_integer_const, iter_input_pats,
-    last_path_segment, match_any_def_paths, path_def_id, paths, unsext, SpanlessEq,
+    get_item_name, get_parent_expr, in_constant, is_integer_const, iter_input_pats, last_path_segment,
+    match_any_def_paths, path_def_id, paths, unsext, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -45,16 +45,13 @@ declare_clippy_lint! {
     /// dereferences, e.g., changing `*x` to `x` within the function.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// // Bad
-    /// fn foo(ref x: u8) -> bool {
-    ///     true
-    /// }
+    /// ```rust
+    /// fn foo(ref _x: u8) {}
+    /// ```
     ///
-    /// // Good
-    /// fn foo(x: &u8) -> bool {
-    ///     true
-    /// }
+    /// Use instead:
+    /// ```rust
+    /// fn foo(_x: &u8) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub TOPLEVEL_REF_ARG,
@@ -73,11 +70,12 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let x = 1.0;
-    ///
-    /// // Bad
     /// if x == f32::NAN { }
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let x = 1.0f32;
     /// if x.is_nan() { }
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -103,11 +101,14 @@ declare_clippy_lint! {
     /// let x = 1.2331f64;
     /// let y = 1.2332f64;
     ///
-    /// // Bad
     /// if y == 1.23f64 { }
     /// if y != x {} // where both are floats
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let x = 1.2331f64;
+    /// # let y = 1.2332f64;
     /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
     /// // Or, if Rust <= 1.42, use `std::f64::EPSILON` constant instead.
     /// // let error_margin = std::f64::EPSILON;
@@ -136,7 +137,8 @@ declare_clippy_lint! {
     /// # let y = String::from("foo");
     /// if x.to_owned() == y {}
     /// ```
-    /// Could be written as
+    ///
+    /// Use instead:
     /// ```rust
     /// # let x = "foo";
     /// # let y = String::from("foo");
@@ -229,10 +231,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let a = 0 as *const u32;
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let a = std::ptr::null::<u32>();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -258,10 +261,13 @@ declare_clippy_lint! {
     /// let x: f64 = 1.0;
     /// const ONE: f64 = 1.00;
     ///
-    /// // Bad
     /// if x == ONE { } // where both are floats
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let x: f64 = 1.0;
+    /// # const ONE: f64 = 1.00;
     /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
     /// // Or, if Rust <= 1.42, use `std::f64::EPSILON` constant instead.
     /// // let error_margin = std::f64::EPSILON;
@@ -548,7 +554,7 @@ fn is_array(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     matches!(&cx.typeck_results().expr_ty(expr).peel_refs().kind(), ty::Array(_, _))
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool) {
     #[derive(Default)]
     struct EqImpl {
@@ -569,33 +575,34 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
         })
     }
 
-    let (arg_ty, snip) = match expr.kind {
-        ExprKind::MethodCall(.., args, _) if args.len() == 1 => {
-            if_chain!(
-                if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
-                if is_diag_trait_item(cx, expr_def_id, sym::ToString)
-                    || is_diag_trait_item(cx, expr_def_id, sym::ToOwned);
-                then {
-                    (cx.typeck_results().expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
-                } else {
-                    return;
-                }
-            )
+    let typeck = cx.typeck_results();
+    let (arg, arg_span) = match expr.kind {
+        ExprKind::MethodCall(.., [arg], _)
+            if typeck
+                .type_dependent_def_id(expr.hir_id)
+                .and_then(|id| cx.tcx.trait_of_item(id))
+                .map_or(false, |id| {
+                    matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ToString | sym::ToOwned))
+                }) =>
+        {
+            (arg, arg.span)
         },
-        ExprKind::Call(path, [arg]) => {
+        ExprKind::Call(path, [arg])
             if path_def_id(cx, path)
                 .and_then(|id| match_any_def_paths(cx, id, &[&paths::FROM_STR_METHOD, &paths::FROM_FROM]))
-                .is_some()
-            {
-                (cx.typeck_results().expr_ty(arg), snippet(cx, arg.span, ".."))
-            } else {
-                return;
-            }
+                .map_or(false, |idx| match idx {
+                    0 => true,
+                    1 => !is_copy(cx, typeck.expr_ty(expr)),
+                    _ => false,
+                }) =>
+        {
+            (arg, arg.span)
         },
         _ => return,
     };
 
-    let other_ty = cx.typeck_results().expr_ty(other);
+    let arg_ty = typeck.expr_ty(arg);
+    let other_ty = typeck.expr_ty(other);
 
     let without_deref = symmetric_partial_eq(cx, arg_ty, other_ty).unwrap_or_default();
     let with_deref = arg_ty
@@ -627,13 +634,14 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
                 return;
             }
 
+            let arg_snip = snippet(cx, arg_span, "..");
             let expr_snip;
             let eq_impl;
             if with_deref.is_implemented() {
-                expr_snip = format!("*{}", snip);
+                expr_snip = format!("*{}", arg_snip);
                 eq_impl = with_deref;
             } else {
-                expr_snip = snip.to_string();
+                expr_snip = arg_snip.to_string();
                 eq_impl = without_deref;
             };
 

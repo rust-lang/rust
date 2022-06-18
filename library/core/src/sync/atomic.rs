@@ -65,9 +65,10 @@
 //! For reference, the `std` library requires `AtomicBool`s and pointer-sized atomics, although
 //! `core` does not.
 //!
-//! Currently you'll need to use `#[cfg(target_arch)]` primarily to
-//! conditionally compile in code with atomics. There is an unstable
-//! `#[cfg(target_has_atomic)]` as well which may be stabilized in the future.
+//! The `#[cfg(target_has_atomic)]` attribute can be used to conditionally
+//! compile based on the target's supported bit widths. It is a key-value
+//! option set for each supported size, with values "8", "16", "32", "64",
+//! "128", and "ptr" for pointer-sized atomics.
 //!
 //! [lock-free]: https://en.wikipedia.org/wiki/Non-blocking_algorithm
 //!
@@ -94,7 +95,7 @@
 //!     }
 //!
 //!     if let Err(panic) = thread.join() {
-//!         println!("Thread had an error: {:?}", panic);
+//!         println!("Thread had an error: {panic:?}");
 //!     }
 //! }
 //! ```
@@ -161,6 +162,7 @@ unsafe impl Sync for AtomicBool {}
 /// loads and stores of pointers. Its size depends on the target pointer's size.
 #[cfg(target_has_atomic_load_store = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "AtomicPtr")]
 #[cfg_attr(target_pointer_width = "16", repr(C, align(2)))]
 #[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
 #[cfg_attr(target_pointer_width = "64", repr(C, align(8)))]
@@ -269,9 +271,9 @@ pub enum Ordering {
 /// An [`AtomicBool`] initialized to `false`.
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
+#[deprecated(
     since = "1.34.0",
-    reason = "the `new` function is now preferred",
+    note = "the `new` function is now preferred",
     suggestion = "AtomicBool::new(false)"
 )]
 pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
@@ -340,19 +342,53 @@ impl AtomicBool {
         unsafe { &mut *(v as *mut bool as *mut Self) }
     }
 
+    /// Get non-atomic access to a `&mut [AtomicBool]` slice.
+    ///
+    /// This is safe because the mutable reference guarantees that no other threads are
+    /// concurrently accessing the atomic data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_from_mut, inline_const)]
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    ///
+    /// let mut some_bools = [const { AtomicBool::new(false) }; 10];
+    ///
+    /// let view: &mut [bool] = AtomicBool::get_mut_slice(&mut some_bools);
+    /// assert_eq!(view, [false; 10]);
+    /// view[..5].copy_from_slice(&[true; 5]);
+    ///
+    /// std::thread::scope(|s| {
+    ///     for t in &some_bools[..5] {
+    ///         s.spawn(move || assert_eq!(t.load(Ordering::Relaxed), true));
+    ///     }
+    ///
+    ///     for f in &some_bools[5..] {
+    ///         s.spawn(move || assert_eq!(f.load(Ordering::Relaxed), false));
+    ///     }
+    /// });
+    /// ```
+    #[inline]
+    #[unstable(feature = "atomic_from_mut", issue = "76314")]
+    pub fn get_mut_slice(this: &mut [Self]) -> &mut [bool] {
+        // SAFETY: the mutable reference guarantees unique ownership.
+        unsafe { &mut *(this as *mut [Self] as *mut [bool]) }
+    }
+
     /// Get atomic access to a `&mut [bool]` slice.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_from_mut, scoped_threads)]
+    /// #![feature(atomic_from_mut)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let mut some_bools = [false; 10];
     /// let a = &*AtomicBool::from_mut_slice(&mut some_bools);
     /// std::thread::scope(|s| {
     ///     for i in 0..a.len() {
-    ///         s.spawn(move |_| a[i].store(true, Ordering::Relaxed));
+    ///         s.spawn(move || a[i].store(true, Ordering::Relaxed));
     ///     }
     /// });
     /// assert_eq!(some_bools, [true; 10]);
@@ -515,9 +551,9 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.50.0",
-        reason = "Use `compare_exchange` or `compare_exchange_weak` instead"
+        note = "Use `compare_exchange` or `compare_exchange_weak` instead"
     )]
     #[cfg(target_has_atomic = "8")]
     pub fn compare_and_swap(&self, current: bool, new: bool, order: Ordering) -> bool {
@@ -971,12 +1007,52 @@ impl<T> AtomicPtr<T> {
         unsafe { &mut *(v as *mut *mut T as *mut Self) }
     }
 
+    /// Get non-atomic access to a `&mut [AtomicPtr]` slice.
+    ///
+    /// This is safe because the mutable reference guarantees that no other threads are
+    /// concurrently accessing the atomic data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_from_mut, inline_const)]
+    /// use std::ptr::null_mut;
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let mut some_ptrs = [const { AtomicPtr::new(null_mut::<String>()) }; 10];
+    ///
+    /// let view: &mut [*mut String] = AtomicPtr::get_mut_slice(&mut some_ptrs);
+    /// assert_eq!(view, [null_mut::<String>(); 10]);
+    /// view
+    ///     .iter_mut()
+    ///     .enumerate()
+    ///     .for_each(|(i, ptr)| *ptr = Box::into_raw(Box::new(format!("iteration#{i}"))));
+    ///
+    /// std::thread::scope(|s| {
+    ///     for ptr in &some_ptrs {
+    ///         s.spawn(move || {
+    ///             let ptr = ptr.load(Ordering::Relaxed);
+    ///             assert!(!ptr.is_null());
+    ///
+    ///             let name = unsafe { Box::from_raw(ptr) };
+    ///             println!("Hello, {name}!");
+    ///         });
+    ///     }
+    /// });
+    /// ```
+    #[inline]
+    #[unstable(feature = "atomic_from_mut", issue = "76314")]
+    pub fn get_mut_slice(this: &mut [Self]) -> &mut [*mut T] {
+        // SAFETY: the mutable reference guarantees unique ownership.
+        unsafe { &mut *(this as *mut [Self] as *mut [*mut T]) }
+    }
+
     /// Get atomic access to a slice of pointers.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(atomic_from_mut, scoped_threads)]
+    /// #![feature(atomic_from_mut)]
     /// use std::ptr::null_mut;
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
@@ -984,7 +1060,7 @@ impl<T> AtomicPtr<T> {
     /// let a = &*AtomicPtr::from_mut_slice(&mut some_ptrs);
     /// std::thread::scope(|s| {
     ///     for i in 0..a.len() {
-    ///         s.spawn(move |_| {
+    ///         s.spawn(move || {
     ///             let name = Box::new(format!("thread{i}"));
     ///             a[i].store(Box::into_raw(name), Ordering::Relaxed);
     ///         });
@@ -1159,9 +1235,9 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.50.0",
-        reason = "Use `compare_exchange` or `compare_exchange_weak` instead"
+        note = "Use `compare_exchange` or `compare_exchange_weak` instead"
     )]
     #[cfg(target_has_atomic = "ptr")]
     pub fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
@@ -1345,7 +1421,7 @@ impl const From<bool> for AtomicBool {
     /// ```
     /// use std::sync::atomic::AtomicBool;
     /// let atomic_bool = AtomicBool::from(true);
-    /// assert_eq!(format!("{:?}", atomic_bool), "true")
+    /// assert_eq!(format!("{atomic_bool:?}"), "true")
     /// ```
     #[inline]
     fn from(b: bool) -> Self {
@@ -1383,6 +1459,7 @@ macro_rules! atomic_int {
      $stable_nand:meta,
      $const_stable:meta,
      $stable_init_const:meta,
+     $diagnostic_item:meta,
      $s_int_type:literal,
      $extra_feature:expr,
      $min_fn:ident, $max_fn:ident,
@@ -1405,6 +1482,7 @@ macro_rules! atomic_int {
         ///
         /// [module-level documentation]: crate::sync::atomic
         #[$stable]
+        #[$diagnostic_item]
         #[repr(C, align($align))]
         pub struct $atomic_type {
             v: UnsafeCell<$int_type>,
@@ -1412,9 +1490,9 @@ macro_rules! atomic_int {
 
         /// An atomic integer initialized to `0`.
         #[$stable_init_const]
-        #[rustc_deprecated(
+        #[deprecated(
             since = "1.34.0",
-            reason = "the `new` function is now preferred",
+            note = "the `new` function is now preferred",
             suggestion = $atomic_new,
         )]
         pub const $atomic_init: $atomic_type = $atomic_type::new(0);
@@ -1439,7 +1517,7 @@ macro_rules! atomic_int {
         #[$stable_debug]
         impl fmt::Debug for $atomic_type {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Debug::fmt(&self.load(Ordering::SeqCst), f)
+                fmt::Debug::fmt(&self.load(Ordering::Relaxed), f)
             }
         }
 
@@ -1521,19 +1599,55 @@ macro_rules! atomic_int {
                 unsafe { &mut *(v as *mut $int_type as *mut Self) }
             }
 
+            #[doc = concat!("Get non-atomic access to a `&mut [", stringify!($atomic_type), "]` slice")]
+            ///
+            /// This is safe because the mutable reference guarantees that no other threads are
+            /// concurrently accessing the atomic data.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// #![feature(atomic_from_mut, inline_const)]
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let mut some_ints = [const { ", stringify!($atomic_type), "::new(0) }; 10];")]
+            ///
+            #[doc = concat!("let view: &mut [", stringify!($int_type), "] = ", stringify!($atomic_type), "::get_mut_slice(&mut some_ints);")]
+            /// assert_eq!(view, [0; 10]);
+            /// view
+            ///     .iter_mut()
+            ///     .enumerate()
+            ///     .for_each(|(idx, int)| *int = idx as _);
+            ///
+            /// std::thread::scope(|s| {
+            ///     some_ints
+            ///         .iter()
+            ///         .enumerate()
+            ///         .for_each(|(idx, int)| {
+            ///             s.spawn(move || assert_eq!(int.load(Ordering::Relaxed), idx as _));
+            ///         })
+            /// });
+            /// ```
+            #[inline]
+            #[unstable(feature = "atomic_from_mut", issue = "76314")]
+            pub fn get_mut_slice(this: &mut [Self]) -> &mut [$int_type] {
+                // SAFETY: the mutable reference guarantees unique ownership.
+                unsafe { &mut *(this as *mut [Self] as *mut [$int_type]) }
+            }
+
             #[doc = concat!("Get atomic access to a `&mut [", stringify!($int_type), "]` slice.")]
             ///
             /// # Examples
             ///
             /// ```
-            /// #![feature(atomic_from_mut, scoped_threads)]
+            /// #![feature(atomic_from_mut)]
             #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
             ///
             /// let mut some_ints = [0; 10];
             #[doc = concat!("let a = &*", stringify!($atomic_type), "::from_mut_slice(&mut some_ints);")]
             /// std::thread::scope(|s| {
             ///     for i in 0..a.len() {
-            ///         s.spawn(move |_| a[i].store(i as _, Ordering::Relaxed));
+            ///         s.spawn(move || a[i].store(i as _, Ordering::Relaxed));
             ///     }
             /// });
             /// for (i, n) in some_ints.into_iter().enumerate() {
@@ -1698,9 +1812,9 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[$stable]
-            #[rustc_deprecated(
+            #[deprecated(
                 since = "1.50.0",
-                reason = "Use `compare_exchange` or `compare_exchange_weak` instead")
+                note = "Use `compare_exchange` or `compare_exchange_weak` instead")
             ]
             #[$cfg_cas]
             pub fn compare_and_swap(&self,
@@ -2195,6 +2309,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    cfg_attr(not(test), rustc_diagnostic_item = "AtomicI8"),
     "i8",
     "",
     atomic_min, atomic_max,
@@ -2214,6 +2329,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    cfg_attr(not(test), rustc_diagnostic_item = "AtomicU8"),
     "u8",
     "",
     atomic_umin, atomic_umax,
@@ -2233,6 +2349,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    cfg_attr(not(test), rustc_diagnostic_item = "AtomicI16"),
     "i16",
     "",
     atomic_min, atomic_max,
@@ -2252,6 +2369,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    cfg_attr(not(test), rustc_diagnostic_item = "AtomicU16"),
     "u16",
     "",
     atomic_umin, atomic_umax,
@@ -2271,6 +2389,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    cfg_attr(not(test), rustc_diagnostic_item = "AtomicI32"),
     "i32",
     "",
     atomic_min, atomic_max,
@@ -2290,6 +2409,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    cfg_attr(not(test), rustc_diagnostic_item = "AtomicU32"),
     "u32",
     "",
     atomic_umin, atomic_umax,
@@ -2309,6 +2429,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    cfg_attr(not(test), rustc_diagnostic_item = "AtomicI64"),
     "i64",
     "",
     atomic_min, atomic_max,
@@ -2328,6 +2449,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    cfg_attr(not(test), rustc_diagnostic_item = "AtomicU64"),
     "u64",
     "",
     atomic_umin, atomic_umax,
@@ -2347,6 +2469,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    cfg_attr(not(test), rustc_diagnostic_item = "AtomicI128"),
     "i128",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
@@ -2366,6 +2489,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    cfg_attr(not(test), rustc_diagnostic_item = "AtomicU128"),
     "u128",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
@@ -2387,8 +2511,9 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_access", since = "1.15.0"),
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
-            rustc_const_stable(feature = "const_integer_atomics", since = "1.24.0"),
+            rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
             stable(feature = "rust1", since = "1.0.0"),
+            cfg_attr(not(test), rustc_diagnostic_item = "AtomicIsize"),
             "isize",
             "",
             atomic_min, atomic_max,
@@ -2407,8 +2532,9 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_access", since = "1.15.0"),
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
-            rustc_const_stable(feature = "const_integer_atomics", since = "1.24.0"),
+            rustc_const_stable(feature = "const_ptr_sized_atomics", since = "1.24.0"),
             stable(feature = "rust1", since = "1.0.0"),
+            cfg_attr(not(test), rustc_diagnostic_item = "AtomicUsize"),
             "usize",
             "",
             atomic_umin, atomic_umax,
@@ -2704,7 +2830,7 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// A fence 'A' which has (at least) [`Release`] ordering semantics, synchronizes
 /// with a fence 'B' with (at least) [`Acquire`] semantics, if and only if there
 /// exist operations X and Y, both operating on some atomic object 'M' such
-/// that A is sequenced before X, Y is synchronized before B and Y observes
+/// that A is sequenced before X, Y is sequenced before B and Y observes
 /// the change to M. This provides a happens-before dependence between A and B.
 ///
 /// ```text
@@ -2870,7 +2996,7 @@ pub fn compiler_fence(order: Ordering) {
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl fmt::Debug for AtomicBool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.load(Ordering::SeqCst), f)
+        fmt::Debug::fmt(&self.load(Ordering::Relaxed), f)
     }
 }
 
@@ -2878,7 +3004,7 @@ impl fmt::Debug for AtomicBool {
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl<T> fmt::Debug for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.load(Ordering::SeqCst), f)
+        fmt::Debug::fmt(&self.load(Ordering::Relaxed), f)
     }
 }
 
@@ -2897,7 +3023,7 @@ impl<T> fmt::Pointer for AtomicPtr<T> {
 /// [`hint::spin_loop`]: crate::hint::spin_loop
 #[inline]
 #[stable(feature = "spin_loop_hint", since = "1.24.0")]
-#[rustc_deprecated(since = "1.51.0", reason = "use hint::spin_loop instead")]
+#[deprecated(since = "1.51.0", note = "use hint::spin_loop instead")]
 pub fn spin_loop_hint() {
     spin_loop()
 }

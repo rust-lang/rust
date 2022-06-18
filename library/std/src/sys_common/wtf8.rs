@@ -25,7 +25,7 @@ use crate::char;
 use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::iter::FromIterator;
+use crate::iter::FusedIterator;
 use crate::mem;
 use crate::ops;
 use crate::rc::Rc;
@@ -830,7 +830,7 @@ pub unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
 #[inline(never)]
 pub fn slice_error_fail(s: &Wtf8, begin: usize, end: usize) -> ! {
     assert!(begin <= end);
-    panic!("index {} and/or {} in `{:?}` do not lie on character boundary", begin, end, s);
+    panic!("index {begin} and/or {end} in `{s:?}` do not lie on character boundary");
 }
 
 /// Iterator for the code points of a WTF-8 string.
@@ -898,6 +898,9 @@ impl<'a> Iterator for EncodeWide<'a> {
         (low + ext, high.and_then(|n| n.checked_mul(2)).and_then(|n| n.checked_add(ext)))
     }
 }
+
+#[stable(feature = "encode_wide_fused_iterator", since = "1.62.0")]
+impl FusedIterator for EncodeWide<'_> {}
 
 impl Hash for CodePoint {
     #[inline]

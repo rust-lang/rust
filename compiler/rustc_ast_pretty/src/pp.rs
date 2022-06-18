@@ -68,20 +68,20 @@
 //! will be made to flow subsequent breaks together onto lines. Inconsistent
 //! is the opposite. Inconsistent breaking example would be, say:
 //!
-//! ```
+//! ```ignore (illustrative)
 //! foo(hello, there, good, friends)
 //! ```
 //!
 //! breaking inconsistently to become
 //!
-//! ```
+//! ```ignore (illustrative)
 //! foo(hello, there,
 //!     good, friends);
 //! ```
 //!
 //! whereas a consistent breaking would yield:
 //!
-//! ```
+//! ```ignore (illustrative)
 //! foo(hello,
 //!     there,
 //!     good,
@@ -153,14 +153,14 @@ enum IndentStyle {
     /// Vertically aligned under whatever column this block begins at.
     ///
     ///     fn demo(arg1: usize,
-    ///             arg2: usize);
+    ///             arg2: usize) {}
     Visual,
     /// Indented relative to the indentation level of the previous line.
     ///
     ///     fn demo(
     ///         arg1: usize,
     ///         arg2: usize,
-    ///     );
+    ///     ) {}
     Block { offset: isize },
 }
 

@@ -7,6 +7,7 @@
 trait Sized { }
 #[lang="copy"]
 trait Copy { }
+impl Copy for u32 {}
 
 #[no_mangle]
 #[cmse_nonsecure_entry]

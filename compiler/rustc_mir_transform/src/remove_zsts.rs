@@ -21,7 +21,9 @@ impl<'tcx> MirPass<'tcx> for RemoveZsts {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for block in basic_blocks.iter_mut() {
             for statement in block.statements.iter_mut() {
-                if let StatementKind::Assign(box (place, _)) = statement.kind {
+                if let StatementKind::Assign(box (place, _)) | StatementKind::Deinit(box place) =
+                    statement.kind
+                {
                     let place_ty = place.ty(local_decls, tcx).ty;
                     if !maybe_zst(place_ty) {
                         continue;

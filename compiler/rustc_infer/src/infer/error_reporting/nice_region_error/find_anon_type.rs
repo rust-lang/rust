@@ -14,32 +14,27 @@ use rustc_middle::ty::{self, Region, TyCtxt};
 /// br - the bound region corresponding to the above region which is of type `BrAnon(_)`
 ///
 /// # Example
-/// ```
+/// ```compile_fail,E0623
 /// fn foo(x: &mut Vec<&u8>, y: &u8)
 ///    { x.push(y); }
 /// ```
 /// The function returns the nested type corresponding to the anonymous region
 /// for e.g., `&u8` and `Vec<&u8>`.
-pub(crate) fn find_anon_type<'tcx>(
+pub fn find_anon_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     region: Region<'tcx>,
     br: &ty::BoundRegionKind,
 ) -> Option<(&'tcx hir::Ty<'tcx>, &'tcx hir::FnSig<'tcx>)> {
-    if let Some(anon_reg) = tcx.is_suitable_region(region) {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(anon_reg.def_id);
-        let Some(fn_sig) = tcx.hir().get(hir_id).fn_sig() else {
-            return None
-        };
+    let anon_reg = tcx.is_suitable_region(region)?;
+    let hir_id = tcx.hir().local_def_id_to_hir_id(anon_reg.def_id);
+    let fn_sig = tcx.hir().get(hir_id).fn_sig()?;
 
-        fn_sig
-            .decl
-            .inputs
-            .iter()
-            .find_map(|arg| find_component_for_bound_region(tcx, arg, br))
-            .map(|ty| (ty, fn_sig))
-    } else {
-        None
-    }
+    fn_sig
+        .decl
+        .inputs
+        .iter()
+        .find_map(|arg| find_component_for_bound_region(tcx, arg, br))
+        .map(|ty| (ty, fn_sig))
 }
 
 // This method creates a FindNestedTypeVisitor which returns the type corresponding

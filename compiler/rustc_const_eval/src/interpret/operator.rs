@@ -127,29 +127,41 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Shift ops can have an RHS with a different numeric type.
         if bin_op == Shl || bin_op == Shr {
-            let signed = left_layout.abi.is_signed();
             let size = u128::from(left_layout.size.bits());
+            // Even if `r` is signed, we treat it as if it was unsigned (i.e., we use its
+            // zero-extended form). This matches the codegen backend:
+            // <https://github.com/rust-lang/rust/blob/c274e4969f058b1c644243181ece9f829efa7594/compiler/rustc_codegen_ssa/src/base.rs#L315-L317>.
+            // The overflow check is also ignorant to the sign:
+            // <https://github.com/rust-lang/rust/blob/c274e4969f058b1c644243181ece9f829efa7594/compiler/rustc_codegen_ssa/src/mir/rvalue.rs#L728>.
+            // This would behave rather strangely if we had integer types of size 256: a shift by
+            // -1i8 would actually shift by 255, but that would *not* be considered overflowing. A
+            // shift by -1i16 though would be considered overflowing. If we had integers of size
+            // 512, then a shift by -1i8 would even produce a different result than one by -1i16:
+            // the first shifts by 255, the latter by u16::MAX % 512 = 511. Lucky enough, our
+            // integers are maximally 128bits wide, so negative shifts *always* overflow and we have
+            // consistent results for the same value represented at different bit widths.
+            assert!(size <= 128);
             let overflow = r >= size;
             // The shift offset is implicitly masked to the type size, to make sure this operation
             // is always defined. This is the one MIR operator that does *not* directly map to a
             // single LLVM operation. See
-            // <https://github.com/rust-lang/rust/blob/a3b9405ae7bb6ab4e8103b414e75c44598a10fd2/compiler/rustc_codegen_ssa/src/common.rs#L131-L158>
+            // <https://github.com/rust-lang/rust/blob/c274e4969f058b1c644243181ece9f829efa7594/compiler/rustc_codegen_ssa/src/common.rs#L131-L158>
             // for the corresponding truncation in our codegen backends.
             let r = r % size;
             let r = u32::try_from(r).unwrap(); // we masked so this will always fit
-            let result = if signed {
+            let result = if left_layout.abi.is_signed() {
                 let l = self.sign_extend(l, left_layout) as i128;
                 let result = match bin_op {
                     Shl => l.checked_shl(r).unwrap(),
                     Shr => l.checked_shr(r).unwrap(),
-                    _ => bug!("it has already been checked that this is a shift op"),
+                    _ => bug!(),
                 };
                 result as u128
             } else {
                 match bin_op {
                     Shl => l.checked_shl(r).unwrap(),
                     Shr => l.checked_shr(r).unwrap(),
-                    _ => bug!("it has already been checked that this is a shift op"),
+                    _ => bug!(),
                 }
             };
             let truncated = self.truncate(result, left_layout);
@@ -196,16 +208,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 _ => None,
             };
             if let Some(op) = op {
+                let l = self.sign_extend(l, left_layout) as i128;
                 let r = self.sign_extend(r, right_layout) as i128;
-                // We need a special check for overflowing remainder:
-                // "int_min % -1" overflows and returns 0, but after casting things to a larger int
-                // type it does *not* overflow nor give an unrepresentable result!
-                if bin_op == Rem {
-                    if r == -1 && l == (1 << (size.bits() - 1)) {
-                        return Ok((Scalar::from_int(0, size), true, left_layout.ty));
+
+                // We need a special check for overflowing Rem and Div since they are *UB*
+                // on overflow, which can happen with "int_min $OP -1".
+                if matches!(bin_op, Rem | Div) {
+                    if l == size.signed_int_min() && r == -1 {
+                        if bin_op == Rem {
+                            throw_ub!(RemainderOverflow)
+                        } else {
+                            throw_ub!(DivisionOverflow)
+                        }
                     }
                 }
-                let l = self.sign_extend(l, left_layout) as i128;
 
                 let (result, oflo) = op(l, r);
                 // This may be out-of-bounds for the result type, so we have to truncate ourselves.

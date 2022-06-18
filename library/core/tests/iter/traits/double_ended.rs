@@ -78,7 +78,8 @@ fn test_rev_rposition() {
 #[test]
 #[should_panic]
 fn test_rposition_panic() {
-    let v: [(Box<_>, Box<_>); 4] = [(box 0, box 0), (box 0, box 0), (box 0, box 0), (box 0, box 0)];
+    let u = (Box::new(0), Box::new(0));
+    let v: [(Box<_>, Box<_>); 4] = [u.clone(), u.clone(), u.clone(), u];
     let mut i = 0;
     v.iter().rposition(|_elt| {
         if i == 2 {

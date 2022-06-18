@@ -1,38 +1,27 @@
-error: not sure whether the path is accessible or not
-  --> $DIR/cfg_accessible.rs:12:18
+error[E0425]: cannot find value `ExistingPrivate` in this scope
+  --> $DIR/cfg_accessible.rs:52:5
    |
-LL | #[cfg_accessible(m::ExistingPrivate)]
-   |                  ^^^^^^^^^^^^^^^^^^
+LL |     ExistingPrivate;
+   |     ^^^^^^^^^^^^^^^ not found in this scope
    |
-note: `cfg_accessible` is not fully implemented
-  --> $DIR/cfg_accessible.rs:12:18
+note: unit struct `m::ExistingPrivate` exists but is inaccessible
+  --> $DIR/cfg_accessible.rs:5:5
    |
-LL | #[cfg_accessible(m::ExistingPrivate)]
-   |                  ^^^^^^^^^^^^^^^^^^
+LL |     struct ExistingPrivate;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
 
-error: not sure whether the path is accessible or not
-  --> $DIR/cfg_accessible.rs:16:18
+error[E0425]: cannot find value `NonExistingPrivate` in this scope
+  --> $DIR/cfg_accessible.rs:53:5
    |
-LL | #[cfg_accessible(m::NonExistent)]
-   |                  ^^^^^^^^^^^^^^
-   |
-note: `cfg_accessible` is not fully implemented
-  --> $DIR/cfg_accessible.rs:16:18
-   |
-LL | #[cfg_accessible(m::NonExistent)]
-   |                  ^^^^^^^^^^^^^^
+LL |     NonExistingPrivate;
+   |     ^^^^^^^^^^^^^^^^^^ not found in this scope
 
-error: not sure whether the path is accessible or not
-  --> $DIR/cfg_accessible.rs:37:18
+error[E0425]: cannot find value `NonExistingTraitAlias` in this scope
+  --> $DIR/cfg_accessible.rs:54:5
    |
-LL | #[cfg_accessible(S::field)]
-   |                  ^^^^^^^^
-   |
-note: `cfg_accessible` is not fully implemented
-  --> $DIR/cfg_accessible.rs:37:18
-   |
-LL | #[cfg_accessible(S::field)]
-   |                  ^^^^^^^^
+LL |     NonExistingTraitAlias;
+   |     ^^^^^^^^^^^^^^^^^^^^^ not found in this scope
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0425`.

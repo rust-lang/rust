@@ -1,5 +1,3 @@
-#![feature(pub_restricted)]
-
 struct Bar(pub(()));
 
 struct Foo {

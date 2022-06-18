@@ -73,7 +73,7 @@ fn fn_eagerness<'tcx>(
         // than marker traits.
         // Due to the limited operations on these types functions should be fairly cheap.
         if def
-            .variants
+            .variants()
             .iter()
             .flat_map(|v| v.fields.iter())
             .any(|x| matches!(cx.tcx.type_of(x.did).peel_refs().kind(), ty::Param(_)))
@@ -96,7 +96,7 @@ fn fn_eagerness<'tcx>(
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessSuggestion {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
@@ -198,7 +198,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::Let(..)
                 | ExprKind::If(..)
                 | ExprKind::Match(..)
-                | ExprKind::Closure(..)
+                | ExprKind::Closure { .. }
                 | ExprKind::Field(..)
                 | ExprKind::Path(_)
                 | ExprKind::AddrOf(..)

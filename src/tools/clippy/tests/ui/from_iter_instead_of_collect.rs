@@ -4,7 +4,6 @@
 #![allow(unused_imports)]
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-use std::iter::FromIterator;
 
 struct Foo(Vec<bool>);
 

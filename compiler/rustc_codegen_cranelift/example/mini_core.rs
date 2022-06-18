@@ -1,13 +1,23 @@
 #![feature(
-    no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types,
-    untagged_unions, decl_macro, rustc_attrs, transparent_unions, auto_traits,
-    thread_local,
+    no_core,
+    lang_items,
+    intrinsics,
+    unboxed_closures,
+    extern_types,
+    decl_macro,
+    rustc_attrs,
+    transparent_unions,
+    auto_traits,
+    thread_local
 )]
 #![no_core]
 #![allow(dead_code)]
 
 #[lang = "sized"]
 pub trait Sized {}
+
+#[lang = "destruct"]
+pub trait Destruct {}
 
 #[lang = "unsize"]
 pub trait Unsize<T: ?Sized> {}
@@ -55,6 +65,7 @@ unsafe impl Copy for i16 {}
 unsafe impl Copy for i32 {}
 unsafe impl Copy for isize {}
 unsafe impl Copy for f32 {}
+unsafe impl Copy for f64 {}
 unsafe impl Copy for char {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
 unsafe impl<T: ?Sized> Copy for *const T {}
@@ -483,8 +494,24 @@ pub trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(1)]
+#[rustc_nonnull_optimization_guaranteed]
+pub struct NonNull<T: ?Sized>(pub *mut T);
+
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+
+pub struct Unique<T: ?Sized> {
+    pub pointer: NonNull<T>,
+    pub _marker: PhantomData<T>,
+}
+
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> {}
+
 #[lang = "owned_box"]
-pub struct Box<T: ?Sized>(*mut T);
+pub struct Box<T: ?Sized>(Unique<T>, ());
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
@@ -508,8 +535,8 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 }
 
 #[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
-    libc::free(ptr as *mut u8);
+unsafe fn box_free<T: ?Sized>(ptr: Unique<T>, alloc: ()) {
+    libc::free(ptr.pointer.0 as *mut u8);
 }
 
 #[lang = "drop"]
@@ -540,7 +567,7 @@ pub mod intrinsics {
         pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
         pub fn transmute<T, U>(e: T) -> U;
         pub fn ctlz_nonzero<T>(x: T) -> T;
-        pub fn needs_drop<T>() -> bool;
+        pub fn needs_drop<T: ?::Sized>() -> bool;
         pub fn bitreverse<T>(x: T) -> T;
         pub fn bswap<T>(x: T) -> T;
         pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);

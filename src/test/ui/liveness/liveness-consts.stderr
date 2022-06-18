@@ -18,11 +18,6 @@ warning: value assigned to `b` is never read
 LL |     b += 1;
    |     ^
    |
-note: the lint level is defined here
-  --> $DIR/liveness-consts.rs:2:9
-   |
-LL | #![warn(unused)]
-   |         ^^^^^^
    = note: `#[warn(unused_assignments)]` implied by `#[warn(unused)]`
    = help: maybe it is overwritten before being read?
 

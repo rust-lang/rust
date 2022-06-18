@@ -3,6 +3,11 @@ error[E0516]: `typeof` is a reserved keyword but unimplemented
    |
 LL |     let x: typeof(92) = 92;
    |            ^^^^^^^^^^ reserved keyword
+   |
+help: consider replacing `typeof(...)` with an actual type
+   |
+LL |     let x: i32 = 92;
+   |            ~~~
 
 error: aborting due to previous error
 

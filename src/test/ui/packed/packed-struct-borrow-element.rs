@@ -20,6 +20,7 @@ struct Foo4C {
     baz: usize
 }
 
+#[warn(unaligned_references)]
 pub fn main() {
     let foo = Foo1 { bar: 1, baz: 2 };
     let brw = &foo.baz; //~WARN reference to packed field is unaligned

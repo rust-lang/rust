@@ -297,7 +297,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // for a "<" in `self_ty_name`.
             if !self_ty_name.contains('<') {
                 if let Adt(def, _) = self_ty.kind() {
-                    let generics = self.tcx.generics_of(def.did);
+                    let generics = self.tcx.generics_of(def.did());
                     if !generics.params.is_empty() {
                         let counts = generics.own_counts();
                         self_ty_name += &format!(
@@ -379,7 +379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Creates a string version of the `expr` that includes explicit adjustments.
-    /// Returns the string and also a bool indicating whther this is a *precise*
+    /// Returns the string and also a bool indicating whether this is a *precise*
     /// suggestion.
     fn adjust_expr(
         &self,

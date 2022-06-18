@@ -1,5 +1,5 @@
-error[E0158]: const parameters cannot be referenced in patterns
-  --> $DIR/const-match-pat-generic.rs:9:9
+error: constant pattern depends on a generic parameter
+  --> $DIR/const-match-pat-generic.rs:8:9
    |
 LL |         const { V } => {},
    |         ^^^^^^^^^^^
@@ -11,11 +11,16 @@ LL |         const { f(V) } => {},
    |         ^^^^^^^^^^^^^^
 
 error: constant pattern depends on a generic parameter
+  --> $DIR/const-match-pat-generic.rs:8:9
+   |
+LL |         const { V } => {},
+   |         ^^^^^^^^^^^
+
+error: constant pattern depends on a generic parameter
   --> $DIR/const-match-pat-generic.rs:21:9
    |
 LL |         const { f(V) } => {},
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0158`.

@@ -1,4 +1,4 @@
-#![feature(raw_dylib, native_link_modifiers, native_link_modifiers_verbatim)]
+#![feature(raw_dylib, native_link_modifiers_verbatim)]
 
 #[link(name = "extern_1.dll", kind = "raw-dylib", modifiers = "+verbatim")]
 extern {

@@ -3,12 +3,16 @@ error[E0433]: failed to resolve: maybe a missing crate `nonexistant`?
    |
 LL |     fn global_inner(_: ::nonexistant::Foo) {
    |                          ^^^^^^^^^^^ maybe a missing crate `nonexistant`?
+   |
+   = help: consider adding `extern crate nonexistant` to use the `nonexistant` crate
 
 error[E0433]: failed to resolve: maybe a missing crate `nonexistant`?
   --> $DIR/editions-crate-root-2015.rs:7:30
    |
 LL |     fn crate_inner(_: crate::nonexistant::Foo) {
    |                              ^^^^^^^^^^^ maybe a missing crate `nonexistant`?
+   |
+   = help: consider adding `extern crate nonexistant` to use the `nonexistant` crate
 
 error[E0412]: cannot find type `nonexistant` in the crate root
   --> $DIR/editions-crate-root-2015.rs:11:25

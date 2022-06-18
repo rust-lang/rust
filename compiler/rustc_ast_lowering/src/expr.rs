@@ -1,6 +1,6 @@
-use crate::{FnDeclKind, ImplTraitPosition};
-
+use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
+use crate::{FnDeclKind, ImplTraitPosition};
 
 use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
@@ -11,7 +11,6 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
-use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::DUMMY_SP;
@@ -41,7 +40,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Tup(ref elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
                 ExprKind::Call(ref f, ref args) => {
-                    if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
+                    if e.attrs.get(0).map_or(false, |a| a.has_name(sym::rustc_box)) {
+                        if let [inner] = &args[..] && e.attrs.len() == 1 {
+                            let kind = hir::ExprKind::Box(self.lower_expr(&inner));
+                            let hir_id = self.lower_node_id(e.id);
+                            return hir::Expr { hir_id, kind, span: self.lower_span(e.span) };
+                        } else {
+                            self.sess
+                                .struct_span_err(
+                                    e.span,
+                                    "#[rustc_box] requires precisely one argument \
+                                    and no other attributes are allowed",
+                                )
+                                .emit();
+                            hir::ExprKind::Err
+                        }
+                    } else if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
                         self.lower_legacy_const_generics((**f).clone(), args.clone(), &legacy_args)
                     } else {
                         let f = self.lower_expr(f);
@@ -53,7 +67,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         e.span,
                         seg,
                         ParamMode::Optional,
-                        0,
                         ParenthesizedGenericArgs::Err,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     ));
@@ -222,6 +235,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let e = e.as_ref().map(|x| self.lower_expr(x));
                     hir::ExprKind::Ret(e)
                 }
+                ExprKind::Yeet(ref sub_expr) => self.lower_expr_yeet(e.span, sub_expr.as_deref()),
                 ExprKind::InlineAsm(ref asm) => {
                     hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
                 }
@@ -340,16 +354,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let parent_def_id = self.current_hir_id_owner;
-                let node_id = self.resolver.next_node_id();
+                let node_id = self.next_node_id();
 
                 // Add a definition for the in-band const def.
-                self.resolver.create_def(
-                    parent_def_id,
-                    node_id,
-                    DefPathData::AnonConst,
-                    ExpnId::root(),
-                    arg.span,
-                );
+                self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
 
                 let anon_const = AnonConst { id: node_id, value: arg };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
@@ -505,8 +513,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         let pat = self.lower_pat(&arm.pat);
         let guard = arm.guard.as_ref().map(|cond| {
-            if let ExprKind::Let(ref pat, ref scrutinee, _) = cond.kind {
-                hir::Guard::IfLet(self.lower_pat(pat), self.lower_expr(scrutinee))
+            if let ExprKind::Let(ref pat, ref scrutinee, span) = cond.kind {
+                hir::Guard::IfLet(self.arena.alloc(hir::Let {
+                    hir_id: self.next_id(),
+                    span: self.lower_span(span),
+                    pat: self.lower_pat(pat),
+                    ty: None,
+                    init: self.lower_expr(scrutinee),
+                }))
             } else {
                 hir::Guard::If(self.lower_expr(cond))
             }
@@ -556,7 +570,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         // The closure/generator `FnDecl` takes a single (resume) argument of type `input_ty`.
-        let decl = self.arena.alloc(hir::FnDecl {
+        let fn_decl = self.arena.alloc(hir::FnDecl {
             inputs: arena_vec![self; input_ty],
             output,
             c_variadic: false,
@@ -577,7 +591,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let params = arena_vec![self; param];
 
-        let body_id = self.lower_body(move |this| {
+        let body = self.lower_body(move |this| {
             this.generator_kind = Some(hir::GeneratorKind::Async(async_gen_kind));
 
             let old_ctx = this.task_context;
@@ -588,13 +602,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         // `static |_task_context| -> <ret_ty> { body }`:
-        let generator_kind = hir::ExprKind::Closure(
+        let generator_kind = hir::ExprKind::Closure {
             capture_clause,
-            decl,
-            body_id,
-            self.lower_span(span),
-            Some(hir::Movability::Static),
-        );
+            fn_decl,
+            body,
+            fn_decl_span: self.lower_span(span),
+            movability: Some(hir::Movability::Static),
+        };
         let generator = hir::Expr {
             hir_id: self.lower_node_id(closure_node_id),
             kind: generator_kind,
@@ -616,11 +630,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Desugar `<expr>.await` into:
-    /// ```rust
+    /// ```ignore (pseudo-rust)
     /// match ::std::future::IntoFuture::into_future(<expr>) {
-    ///     mut pinned => loop {
+    ///     mut __awaitee => loop {
     ///         match unsafe { ::std::future::Future::poll(
-    ///             <::std::pin::Pin>::new_unchecked(&mut pinned),
+    ///             <::std::pin::Pin>::new_unchecked(&mut __awaitee),
     ///             ::std::future::get_context(task_context),
     ///         ) } {
     ///             ::std::task::Poll::Ready(result) => break result,
@@ -657,21 +671,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let expr = self.lower_expr_mut(expr);
         let expr_hir_id = expr.hir_id;
 
-        let pinned_ident = Ident::with_dummy_span(sym::pinned);
-        let (pinned_pat, pinned_pat_hid) =
-            self.pat_ident_binding_mode(span, pinned_ident, hir::BindingAnnotation::Mutable);
+        // Note that the name of this binding must not be changed to something else because
+        // debuggers and debugger extensions expect it to be called `__awaitee`. They use
+        // this name to identify what is being awaited by a suspended async functions.
+        let awaitee_ident = Ident::with_dummy_span(sym::__awaitee);
+        let (awaitee_pat, awaitee_pat_hid) =
+            self.pat_ident_binding_mode(span, awaitee_ident, hir::BindingAnnotation::Mutable);
 
         let task_context_ident = Ident::with_dummy_span(sym::_task_context);
 
         // unsafe {
         //     ::std::future::Future::poll(
-        //         ::std::pin::Pin::new_unchecked(&mut pinned),
+        //         ::std::pin::Pin::new_unchecked(&mut __awaitee),
         //         ::std::future::get_context(task_context),
         //     )
         // }
         let poll_expr = {
-            let pinned = self.expr_ident(span, pinned_ident, pinned_pat_hid);
-            let ref_mut_pinned = self.expr_mut_addr_of(span, pinned);
+            let awaitee = self.expr_ident(span, awaitee_ident, awaitee_pat_hid);
+            let ref_mut_awaitee = self.expr_mut_addr_of(span, awaitee);
             let task_context = if let Some(task_context_hid) = self.task_context {
                 self.expr_ident_mut(span, task_context_ident, task_context_hid)
             } else {
@@ -681,7 +698,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let new_unchecked = self.expr_call_lang_item_fn_mut(
                 span,
                 hir::LangItem::PinNewUnchecked,
-                arena_vec![self; ref_mut_pinned],
+                arena_vec![self; ref_mut_awaitee],
                 Some(expr_hir_id),
             );
             let get_context = self.expr_call_lang_item_fn_mut(
@@ -700,7 +717,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         // `::std::task::Poll::Ready(result) => break result`
-        let loop_node_id = self.resolver.next_node_id();
+        let loop_node_id = self.next_node_id();
         let loop_hir_id = self.lower_node_id(loop_node_id);
         let ready_arm = {
             let x_ident = Ident::with_dummy_span(sym::result);
@@ -782,8 +799,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: self.lower_span(span),
         });
 
-        // mut pinned => loop { ... }
-        let pinned_arm = self.arm(pinned_pat, loop_expr);
+        // mut __awaitee => loop { ... }
+        let awaitee_arm = self.arm(awaitee_pat, loop_expr);
 
         // `match ::std::future::IntoFuture::into_future(<expr>) { ... }`
         let into_future_span = self.mark_span_with_reason(
@@ -799,11 +816,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         // match <into_future_expr> {
-        //     mut pinned => loop { .. }
+        //     mut __awaitee => loop { .. }
         // }
         hir::ExprKind::Match(
             into_future_expr,
-            arena_vec![self; pinned_arm],
+            arena_vec![self; awaitee_arm],
             hir::MatchSource::AwaitDesugar,
         )
     }
@@ -816,7 +833,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
-        let (body_id, generator_option) = self.with_new_scopes(move |this| {
+        let (body, generator_option) = self.with_new_scopes(move |this| {
             let prev = this.current_item;
             this.current_item = Some(fn_decl_span);
             let mut generator_kind = None;
@@ -834,13 +851,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Lower outside new scope to preserve `is_in_loop_condition`.
         let fn_decl = self.lower_fn_decl(decl, None, FnDeclKind::Closure, None);
 
-        hir::ExprKind::Closure(
+        hir::ExprKind::Closure {
             capture_clause,
             fn_decl,
-            body_id,
-            self.lower_span(fn_decl_span),
-            generator_option,
-        )
+            body,
+            fn_decl_span: self.lower_span(fn_decl_span),
+            movability: generator_option,
+        }
     }
 
     fn generator_movability_for_fn(
@@ -887,7 +904,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let outer_decl =
             FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
 
-        let body_id = self.with_new_scopes(|this| {
+        let body = self.with_new_scopes(|this| {
             // FIXME(cramertj): allow `async` non-`move` closures with arguments.
             if capture_clause == CaptureBy::Ref && !decl.inputs.is_empty() {
                 struct_span_err!(
@@ -926,13 +943,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // closure argument types.
         let fn_decl = self.lower_fn_decl(&outer_decl, None, FnDeclKind::Closure, None);
 
-        hir::ExprKind::Closure(
+        hir::ExprKind::Closure {
             capture_clause,
             fn_decl,
-            body_id,
-            self.lower_span(fn_decl_span),
-            None,
-        )
+            body,
+            fn_decl_span: self.lower_span(fn_decl_span),
+            movability: None,
+        }
     }
 
     /// Destructure the LHS of complex assignments.
@@ -1017,6 +1034,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
         None
     }
 
+    /// If the given expression is a path to a unit struct, returns that path.
+    /// It is not a complete check, but just tries to reject most paths early
+    /// if they are not unit structs.
+    /// Type checking will take care of the full validation later.
+    fn extract_unit_struct_path<'a>(
+        &mut self,
+        expr: &'a Expr,
+    ) -> Option<(&'a Option<QSelf>, &'a Path)> {
+        if let ExprKind::Path(qself, path) = &expr.kind {
+            // Does the path resolve to something disallowed in a unit struct/variant pattern?
+            if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
+                if partial_res.unresolved_segments() == 0
+                    && !partial_res.base_res().expected_in_unit_struct_pat()
+                {
+                    return None;
+                }
+            }
+            return Some((qself, path));
+        }
+        None
+    }
+
     /// Convert the LHS of a destructuring assignment to a pattern.
     /// Each sub-assignment is recorded in `assignments`.
     fn destructure_assign(
@@ -1077,6 +1116,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     return self.pat_without_dbm(lhs.span, tuple_struct_pat);
                 }
             }
+            // Unit structs and enum variants.
+            ExprKind::Path(..) => {
+                if let Some((qself, path)) = self.extract_unit_struct_path(lhs) {
+                    let qpath = self.lower_qpath(
+                        lhs.id,
+                        qself,
+                        path,
+                        ParamMode::Optional,
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    );
+                    // Destructure like a unit struct.
+                    let unit_struct_pat = hir::PatKind::Path(qpath);
+                    return self.pat_without_dbm(lhs.span, unit_struct_pat);
+                }
+            }
             // Structs.
             ExprKind::Struct(se) => {
                 let field_pats = self.arena.alloc_from_iter(se.fields.iter().map(|f| {
@@ -1107,7 +1161,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             .span_suggestion(
                                 e.span,
                                 "consider removing the trailing pattern",
-                                String::new(),
+                                "",
                                 rustc_errors::Applicability::MachineApplicable,
                             )
                             .emit();
@@ -1323,7 +1377,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Desugar `ExprForLoop` from: `[opt_ident]: for <pat> in <head> <body>` into:
-    /// ```rust
+    /// ```ignore (pseudo-rust)
     /// {
     ///     let result = match IntoIterator::into_iter(<head>) {
     ///         mut iter => {
@@ -1434,7 +1488,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Desugar `ExprKind::Try` from: `<expr>?` into:
-    /// ```rust
+    /// ```ignore (pseudo-rust)
     /// match Try::branch(<expr>) {
     ///     ControlFlow::Continue(val) => #[allow(unreachable_code)] val,,
     ///     ControlFlow::Break(residual) =>
@@ -1539,6 +1593,44 @@ impl<'hir> LoweringContext<'_, 'hir> {
             arena_vec![self; break_arm, continue_arm],
             hir::MatchSource::TryDesugar,
         )
+    }
+
+    /// Desugar `ExprKind::Yeet` from: `do yeet <expr>` into:
+    /// ```rust
+    /// // If there is an enclosing `try {...}`:
+    /// break 'catch_target FromResidual::from_residual(Yeet(residual)),
+    /// // Otherwise:
+    /// return FromResidual::from_residual(Yeet(residual)),
+    /// ```
+    /// But to simplify this, there's a `from_yeet` lang item function which
+    /// handles the combined `FromResidual::from_residual(Yeet(residual))`.
+    fn lower_expr_yeet(&mut self, span: Span, sub_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
+        // The expression (if present) or `()` otherwise.
+        let (yeeted_span, yeeted_expr) = if let Some(sub_expr) = sub_expr {
+            (sub_expr.span, self.lower_expr(sub_expr))
+        } else {
+            (self.mark_span_with_reason(DesugaringKind::YeetExpr, span, None), self.expr_unit(span))
+        };
+
+        let unstable_span = self.mark_span_with_reason(
+            DesugaringKind::YeetExpr,
+            span,
+            self.allow_try_trait.clone(),
+        );
+
+        let from_yeet_expr = self.wrap_in_try_constructor(
+            hir::LangItem::TryTraitFromYeet,
+            unstable_span,
+            yeeted_expr,
+            yeeted_span,
+        );
+
+        if let Some(catch_node) = self.catch_scope {
+            let target_id = Ok(self.lower_node_id(catch_node));
+            hir::ExprKind::Break(hir::Destination { label: None, target_id }, Some(from_yeet_expr))
+        } else {
+            hir::ExprKind::Ret(Some(from_yeet_expr))
+        }
     }
 
     // =========================================================================

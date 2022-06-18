@@ -12,7 +12,6 @@ use rustc_query_system::query::{QueryContext, QueryJobId, QueryMap, QuerySideEff
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, Handler};
-use rustc_serialize::opaque;
 
 use std::any::Any;
 use std::num::NonZeroU64;
@@ -129,7 +128,7 @@ impl<'tcx> QueryCtxt<'tcx> {
         QueryCtxt { tcx, queries }
     }
 
-    crate fn on_disk_cache(self) -> Option<&'tcx on_disk_cache::OnDiskCache<'tcx>> {
+    pub(crate) fn on_disk_cache(self) -> Option<&'tcx on_disk_cache::OnDiskCache<'tcx>> {
         self.queries.on_disk_cache.as_ref()
     }
 
@@ -140,9 +139,9 @@ impl<'tcx> QueryCtxt<'tcx> {
 
     pub(super) fn encode_query_results(
         self,
-        encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx, opaque::FileEncoder>,
+        encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx>,
         query_result_index: &mut on_disk_cache::EncodedDepNodeIndex,
-    ) -> opaque::FileEncodeResult {
+    ) {
         macro_rules! encode_queries {
             ($($query:ident,)*) => {
                 $(
@@ -150,14 +149,12 @@ impl<'tcx> QueryCtxt<'tcx> {
                         self,
                         encoder,
                         query_result_index
-                    )?;
+                    );
                 )*
             }
         }
 
         rustc_cached_queries!(encode_queries!);
-
-        Ok(())
     }
 
     pub fn try_print_query_stack(
@@ -435,6 +432,8 @@ macro_rules! define_queries {
 
                 fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: DepNode) -> bool {
                     if let Some(key) = recover(tcx, dep_node) {
+                        #[cfg(debug_assertions)]
+                        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
                         let tcx = QueryCtxt::from_tcx(tcx);
                         force_query::<queries::$name<'_>, _>(tcx, key, dep_node);
                         true
@@ -532,6 +531,7 @@ macro_rules! define_queries_struct {
 
             $($(#[$attr])*
             #[inline(always)]
+            #[tracing::instrument(level = "trace", skip(self, tcx))]
             fn $name(
                 &'tcx self,
                 tcx: TyCtxt<$tcx>,

@@ -1,4 +1,4 @@
-// check-pass
+//check-pass
 
 #![feature(generic_associated_types)]
 
@@ -9,10 +9,9 @@ trait Foo<T> {
 }
 
 impl<T> Foo<T> for () {
-    type Type<'a>
+    type Type<'a> = ()
     where
-        T: 'a,
-    = ();
+        T: 'a;
 }
 
 fn foo<T>() {

@@ -9,6 +9,10 @@ fn main() {
     let x = &&Baz;
     let y = &Baz;
     y.to_owned() == **x;
+
+    let x = 0u32;
+    let y = U32Wrapper(x);
+    let _ = U32Wrapper::from(x) == y;
 }
 
 struct Foo;
@@ -26,7 +30,7 @@ impl ToOwned for Foo {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 struct Baz;
 
 impl ToOwned for Baz {
@@ -36,7 +40,7 @@ impl ToOwned for Baz {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 struct Bar;
 
 impl PartialEq<Foo> for Bar {
@@ -49,5 +53,23 @@ impl std::borrow::Borrow<Foo> for Bar {
     fn borrow(&self) -> &Foo {
         static FOO: Foo = Foo;
         &FOO
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct U32Wrapper(u32);
+impl From<u32> for U32Wrapper {
+    fn from(x: u32) -> Self {
+        Self(x)
+    }
+}
+impl PartialEq<u32> for U32Wrapper {
+    fn eq(&self, other: &u32) -> bool {
+        self.0 == *other
+    }
+}
+impl PartialEq<U32Wrapper> for u32 {
+    fn eq(&self, other: &U32Wrapper) -> bool {
+        *self == other.0
     }
 }

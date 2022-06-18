@@ -5,7 +5,7 @@ use std::mem::{drop, forget};
 use std::vec::Vec;
 
 #[derive(Copy, Clone)]
-struct SomeStruct {}
+struct SomeStruct;
 
 struct AnotherStruct {
     x: u8,

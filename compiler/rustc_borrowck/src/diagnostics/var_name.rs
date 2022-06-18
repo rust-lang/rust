@@ -7,7 +7,7 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
-    crate fn get_var_name_and_span_for_region(
+    pub(crate) fn get_var_name_and_span_for_region(
         &self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
@@ -34,7 +34,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Search the upvars (if any) to find one that references fr. Return its index.
-    crate fn get_upvar_index_for_region(&self, tcx: TyCtxt<'tcx>, fr: RegionVid) -> Option<usize> {
+    pub(crate) fn get_upvar_index_for_region(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        fr: RegionVid,
+    ) -> Option<usize> {
         let upvar_index =
             self.universal_regions().defining_ty.upvar_tys().position(|upvar_ty| {
                 debug!("get_upvar_index_for_region: upvar_ty={:?}", upvar_ty);
@@ -57,7 +61,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Given the index of an upvar, finds its name and the span from where it was
     /// declared.
-    crate fn get_upvar_name_and_span_for_region(
+    pub(crate) fn get_upvar_name_and_span_for_region(
         &self,
         tcx: TyCtxt<'tcx>,
         upvars: &[Upvar<'tcx>],
@@ -81,7 +85,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// N.B., in the case of a closure, the index is indexing into the signature as seen by the
     /// user - in particular, index 0 is not the implicit self parameter.
-    crate fn get_argument_index_for_region(
+    pub(crate) fn get_argument_index_for_region(
         &self,
         tcx: TyCtxt<'tcx>,
         fr: RegionVid,
@@ -107,7 +111,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Given the index of an argument, finds its name (if any) and the span from where it was
     /// declared.
-    crate fn get_argument_name_and_span_for_region(
+    pub(crate) fn get_argument_name_and_span_for_region(
         &self,
         body: &Body<'tcx>,
         local_names: &IndexVec<Local, Option<Symbol>>,

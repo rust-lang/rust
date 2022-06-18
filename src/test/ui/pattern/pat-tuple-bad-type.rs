@@ -1,8 +1,8 @@
 fn main() {
-    let x;
+    let x; //~ ERROR type annotations needed
 
     match x {
-        (..) => {} //~ ERROR type annotations needed
+        (..) => {}
         _ => {}
     }
 

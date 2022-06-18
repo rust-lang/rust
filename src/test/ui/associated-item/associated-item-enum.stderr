@@ -17,7 +17,10 @@ LL | enum Enum { Variant }
    | --------- variant or associated item `mispellable_trait` not found here
 ...
 LL |     Enum::mispellable_trait();
-   |           ^^^^^^^^^^^^^^^^^ variant or associated item not found in `Enum`
+   |           ^^^^^^^^^^^^^^^^^
+   |           |
+   |           variant or associated item not found in `Enum`
+   |           help: there is an associated function with a similar name: `misspellable`
 
 error[E0599]: no variant or associated item named `MISPELLABLE` found for enum `Enum` in the current scope
   --> $DIR/associated-item-enum.rs:19:11

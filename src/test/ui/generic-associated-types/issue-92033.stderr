@@ -7,9 +7,7 @@ LL | |         Self: 'a;
    | |_________________- definition of `TextureIter` from trait
 ...
 LL |       type TextureIter<'a> = std::option::IntoIter<&'a Texture>;
-   |                           -  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                           |
-   |                           help: try copying this clause from the trait: `where Self: 'a`
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- help: try copying this clause from the trait: `where Self: 'a`
    |
 note: type must outlive the lifetime `'a` as defined here
   --> $DIR/issue-92033.rs:22:22

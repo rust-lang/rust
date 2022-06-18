@@ -1,4 +1,4 @@
-#![feature(generators, nll)]
+#![feature(generators)]
 
 // Test for issue #47189. Here, both `s` and `t` are live for the
 // generator's lifetime, but within the generator they have distinct

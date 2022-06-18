@@ -24,6 +24,30 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             I128 => self.type_u128(),
         }
     }
+
+    #[cfg(feature="master")]
+    pub fn type_int_from_ty(&self, t: ty::IntTy) -> Type<'gcc> {
+        match t {
+            ty::IntTy::Isize => self.type_isize(),
+            ty::IntTy::I8 => self.type_i8(),
+            ty::IntTy::I16 => self.type_i16(),
+            ty::IntTy::I32 => self.type_i32(),
+            ty::IntTy::I64 => self.type_i64(),
+            ty::IntTy::I128 => self.type_i128(),
+        }
+    }
+
+    #[cfg(feature="master")]
+    pub fn type_uint_from_ty(&self, t: ty::UintTy) -> Type<'gcc> {
+        match t {
+            ty::UintTy::Usize => self.type_isize(),
+            ty::UintTy::U8 => self.type_i8(),
+            ty::UintTy::U16 => self.type_i16(),
+            ty::UintTy::U32 => self.type_i32(),
+            ty::UintTy::U64 => self.type_i64(),
+            ty::UintTy::U128 => self.type_i128(),
+        }
+    }
 }
 
 pub fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout<'tcx>, defer: &mut Option<(Struct<'gcc>, TyAndLayout<'tcx>)>) -> Type<'gcc> {
@@ -56,8 +80,8 @@ pub fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLa
             if let (&ty::Adt(def, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
             {
-                if def.is_enum() && !def.variants.is_empty() {
-                    write!(&mut name, "::{}", def.variants[index].name).unwrap();
+                if def.is_enum() && !def.variants().is_empty() {
+                    write!(&mut name, "::{}", def.variant(index).name).unwrap();
                 }
             }
             if let (&ty::Generator(_, _, _), &Variants::Single { index }) =
@@ -224,7 +248,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     }
 
     fn scalar_gcc_type_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, scalar: &abi::Scalar, offset: Size) -> Type<'gcc> {
-        match scalar.value {
+        match scalar.primitive() {
             Int(i, true) => cx.type_from_integer(i),
             Int(i, false) => cx.type_from_unsigned_integer(i),
             F32 => cx.type_f32(),
@@ -251,7 +275,9 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             ty::Ref(..) | ty::RawPtr(_) => {
                 return self.field(cx, index).gcc_type(cx, true);
             }
-            ty::Adt(def, _) if def.is_box() => {
+            // only wide pointer boxes are handled as pointers
+            // thin pointer boxes with scalar allocators are handled by the general logic below
+            ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
                 let ptr_ty = cx.tcx.mk_mut_ptr(self.ty.boxed_ty());
                 return cx.layout_of(ptr_ty).scalar_pair_element_gcc_type(cx, index, immediate);
             }
@@ -280,7 +306,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
                 Size::ZERO
             }
             else {
-                a.value.size(cx).align_to(b.value.align(cx).abi)
+                a.size(cx).align_to(b.align(cx).abi)
             };
         self.scalar_gcc_type_at(cx, scalar, offset)
     }

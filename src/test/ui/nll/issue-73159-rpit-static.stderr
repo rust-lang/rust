@@ -1,10 +1,11 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/issue-73159-rpit-static.rs:9:26
+  --> $DIR/issue-73159-rpit-static.rs:8:9
    |
 LL | impl<'a> Foo<'a> {
    |      -- hidden type `Copied<std::slice::Iter<'a, u8>>` captures the lifetime `'a` as defined here
 LL |     fn make_it(&self) -> impl Iterator<Item = u8> {
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         self.0.iter().copied()
+   |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

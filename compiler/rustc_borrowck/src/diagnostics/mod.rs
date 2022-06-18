@@ -1,11 +1,13 @@
 //! Borrow checker diagnostics.
 
-use rustc_const_eval::util::call_kind;
-use rustc_errors::Diagnostic;
+use itertools::Itertools;
+use rustc_const_eval::util::{call_kind, CallDesugaringKind};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_hir::GeneratorKind;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::{
     AggregateKind, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location, Operand,
     Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
@@ -13,8 +15,9 @@ use rustc_middle::mir::{
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
+use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -32,12 +35,13 @@ mod move_errors;
 mod mutability_errors;
 mod region_errors;
 
-crate use bound_region_errors::{ToUniverseInfo, UniverseInfo};
-crate use mutability_errors::AccessKind;
-crate use outlives_suggestion::OutlivesSuggestionBuilder;
-crate use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
-crate use region_name::{RegionName, RegionNameSource};
-crate use rustc_const_eval::util::CallKind;
+pub(crate) use bound_region_errors::{ToUniverseInfo, UniverseInfo};
+pub(crate) use mutability_errors::AccessKind;
+pub(crate) use outlives_suggestion::OutlivesSuggestionBuilder;
+pub(crate) use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
+pub(crate) use region_name::{RegionName, RegionNameSource};
+pub(crate) use rustc_const_eval::util::CallKind;
+use rustc_middle::mir::tcx::PlaceTy;
 
 pub(super) struct IncludingDowncast(pub(super) bool);
 
@@ -87,7 +91,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         {
             if let ty::FnDef(id, _) = *literal.ty().kind() {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
-                if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
+                if Some(self.infcx.tcx.parent(id)) == self.infcx.tcx.lang_items().fn_once_trait() {
                     let closure = match args.first() {
                         Some(Operand::Copy(ref place)) | Some(Operand::Move(ref place))
                             if target == place.local_or_deref_local() =>
@@ -158,158 +162,103 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// End-user visible description of `place` if one can be found.
-    /// If the place is a temporary for instance, None will be returned.
+    /// If the place is a temporary for instance, `None` will be returned.
     pub(super) fn describe_place(&self, place_ref: PlaceRef<'tcx>) -> Option<String> {
         self.describe_place_with_options(place_ref, IncludingDowncast(false))
     }
 
-    /// End-user visible description of `place` if one can be found. If the
-    /// place is a temporary for instance, None will be returned.
-    /// `IncludingDowncast` parameter makes the function return `Err` if `ProjectionElem` is
+    /// End-user visible description of `place` if one can be found. If the place is a temporary
+    /// for instance, `None` will be returned.
+    /// `IncludingDowncast` parameter makes the function return `None` if `ProjectionElem` is
     /// `Downcast` and `IncludingDowncast` is true
     pub(super) fn describe_place_with_options(
         &self,
         place: PlaceRef<'tcx>,
         including_downcast: IncludingDowncast,
     ) -> Option<String> {
+        let local = place.local;
+        let mut autoderef_index = None;
         let mut buf = String::new();
-        match self.append_place_to_string(place, &mut buf, false, &including_downcast) {
-            Ok(()) => Some(buf),
-            Err(()) => None,
-        }
-    }
+        let mut ok = self.append_local_to_string(local, &mut buf);
 
-    /// Appends end-user visible description of `place` to `buf`.
-    fn append_place_to_string(
-        &self,
-        place: PlaceRef<'tcx>,
-        buf: &mut String,
-        mut autoderef: bool,
-        including_downcast: &IncludingDowncast,
-    ) -> Result<(), ()> {
-        match place {
-            PlaceRef { local, projection: [] } => {
-                self.append_local_to_string(local, buf)?;
-            }
-            PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[local].is_ref_for_guard() =>
-            {
-                self.append_place_to_string(
-                    PlaceRef { local, projection: &[] },
-                    buf,
-                    autoderef,
-                    &including_downcast,
-                )?;
-            }
-            PlaceRef { local, projection: [ProjectionElem::Deref] }
-                if self.body.local_decls[local].is_ref_to_static() =>
-            {
-                let local_info = &self.body.local_decls[local].local_info;
-                if let Some(box LocalInfo::StaticRef { def_id, .. }) = *local_info {
-                    buf.push_str(self.infcx.tcx.item_name(def_id).as_str());
-                } else {
-                    unreachable!();
+        for (index, elem) in place.projection.into_iter().enumerate() {
+            match elem {
+                ProjectionElem::Deref => {
+                    if index == 0 {
+                        if self.body.local_decls[local].is_ref_for_guard() {
+                            continue;
+                        }
+                        if let Some(box LocalInfo::StaticRef { def_id, .. }) =
+                            &self.body.local_decls[local].local_info
+                        {
+                            buf.push_str(self.infcx.tcx.item_name(*def_id).as_str());
+                            ok = Ok(());
+                            continue;
+                        }
+                    }
+                    if let Some(field) = self.is_upvar_field_projection(PlaceRef {
+                        local,
+                        projection: place.projection.split_at(index + 1).0,
+                    }) {
+                        let var_index = field.index();
+                        buf = self.upvars[var_index].place.to_string(self.infcx.tcx);
+                        ok = Ok(());
+                        if !self.upvars[var_index].by_ref {
+                            buf.insert(0, '*');
+                        }
+                    } else {
+                        if autoderef_index.is_none() {
+                            autoderef_index =
+                                match place.projection.into_iter().rev().find_position(|elem| {
+                                    !matches!(
+                                        elem,
+                                        ProjectionElem::Deref | ProjectionElem::Downcast(..)
+                                    )
+                                }) {
+                                    Some((index, _)) => Some(place.projection.len() - index),
+                                    None => Some(0),
+                                };
+                        }
+                        if index >= autoderef_index.unwrap() {
+                            buf.insert(0, '*');
+                        }
+                    }
+                }
+                ProjectionElem::Downcast(..) if including_downcast.0 => return None,
+                ProjectionElem::Downcast(..) => (),
+                ProjectionElem::Field(field, _ty) => {
+                    // FIXME(project-rfc_2229#36): print capture precisely here.
+                    if let Some(field) = self.is_upvar_field_projection(PlaceRef {
+                        local,
+                        projection: place.projection.split_at(index + 1).0,
+                    }) {
+                        buf = self.upvars[field.index()].place.to_string(self.infcx.tcx);
+                        ok = Ok(());
+                    } else {
+                        let field_name = self.describe_field(
+                            PlaceRef { local, projection: place.projection.split_at(index).0 },
+                            *field,
+                        );
+                        buf.push('.');
+                        buf.push_str(&field_name);
+                    }
+                }
+                ProjectionElem::Index(index) => {
+                    buf.push('[');
+                    if self.append_local_to_string(*index, &mut buf).is_err() {
+                        buf.push('_');
+                    }
+                    buf.push(']');
+                }
+                ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
+                    // Since it isn't possible to borrow an element on a particular index and
+                    // then use another while the borrow is held, don't output indices details
+                    // to avoid confusing the end-user
+                    buf.push_str("[..]");
                 }
             }
-            PlaceRef { local, projection: [proj_base @ .., elem] } => {
-                match elem {
-                    ProjectionElem::Deref => {
-                        let upvar_field_projection = self.is_upvar_field_projection(place);
-                        if let Some(field) = upvar_field_projection {
-                            let var_index = field.index();
-                            let name = self.upvars[var_index].place.to_string(self.infcx.tcx);
-                            if self.upvars[var_index].by_ref {
-                                buf.push_str(&name);
-                            } else {
-                                buf.push('*');
-                                buf.push_str(&name);
-                            }
-                        } else {
-                            if autoderef {
-                                // FIXME turn this recursion into iteration
-                                self.append_place_to_string(
-                                    PlaceRef { local, projection: proj_base },
-                                    buf,
-                                    autoderef,
-                                    &including_downcast,
-                                )?;
-                            } else {
-                                buf.push('*');
-                                self.append_place_to_string(
-                                    PlaceRef { local, projection: proj_base },
-                                    buf,
-                                    autoderef,
-                                    &including_downcast,
-                                )?;
-                            }
-                        }
-                    }
-                    ProjectionElem::Downcast(..) => {
-                        self.append_place_to_string(
-                            PlaceRef { local, projection: proj_base },
-                            buf,
-                            autoderef,
-                            &including_downcast,
-                        )?;
-                        if including_downcast.0 {
-                            return Err(());
-                        }
-                    }
-                    ProjectionElem::Field(field, _ty) => {
-                        autoderef = true;
-
-                        // FIXME(project-rfc_2229#36): print capture precisely here.
-                        let upvar_field_projection = self.is_upvar_field_projection(place);
-                        if let Some(field) = upvar_field_projection {
-                            let var_index = field.index();
-                            let name = self.upvars[var_index].place.to_string(self.infcx.tcx);
-                            buf.push_str(&name);
-                        } else {
-                            let field_name = self
-                                .describe_field(PlaceRef { local, projection: proj_base }, *field);
-                            self.append_place_to_string(
-                                PlaceRef { local, projection: proj_base },
-                                buf,
-                                autoderef,
-                                &including_downcast,
-                            )?;
-                            buf.push('.');
-                            buf.push_str(&field_name);
-                        }
-                    }
-                    ProjectionElem::Index(index) => {
-                        autoderef = true;
-
-                        self.append_place_to_string(
-                            PlaceRef { local, projection: proj_base },
-                            buf,
-                            autoderef,
-                            &including_downcast,
-                        )?;
-                        buf.push('[');
-                        if self.append_local_to_string(*index, buf).is_err() {
-                            buf.push('_');
-                        }
-                        buf.push(']');
-                    }
-                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
-                        autoderef = true;
-                        // Since it isn't possible to borrow an element on a particular index and
-                        // then use another while the borrow is held, don't output indices details
-                        // to avoid confusing the end-user
-                        self.append_place_to_string(
-                            PlaceRef { local, projection: proj_base },
-                            buf,
-                            autoderef,
-                            &including_downcast,
-                        )?;
-                        buf.push_str("[..]");
-                    }
-                };
-            }
         }
-
-        Ok(())
+        ok.ok().map(|_| buf)
     }
 
     /// Appends end-user visible description of the `local` place to `buf`. If `local` doesn't have
@@ -327,30 +276,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// End-user visible description of the `field`nth field of `base`
     fn describe_field(&self, place: PlaceRef<'tcx>, field: Field) -> String {
-        // FIXME Place2 Make this work iteratively
-        match place {
-            PlaceRef { local, projection: [] } => {
-                let local = &self.body.local_decls[local];
-                self.describe_field_from_ty(local.ty, field, None)
-            }
+        let place_ty = match place {
+            PlaceRef { local, projection: [] } => PlaceTy::from_ty(self.body.local_decls[local].ty),
             PlaceRef { local, projection: [proj_base @ .., elem] } => match elem {
-                ProjectionElem::Deref => {
-                    self.describe_field(PlaceRef { local, projection: proj_base }, field)
-                }
-                ProjectionElem::Downcast(_, variant_index) => {
-                    let base_ty = place.ty(self.body, self.infcx.tcx).ty;
-                    self.describe_field_from_ty(base_ty, field, Some(*variant_index))
-                }
-                ProjectionElem::Field(_, field_type) => {
-                    self.describe_field_from_ty(*field_type, field, None)
-                }
-                ProjectionElem::Index(..)
+                ProjectionElem::Deref
+                | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {
-                    self.describe_field(PlaceRef { local, projection: proj_base }, field)
+                    PlaceRef { local, projection: proj_base }.ty(self.body, self.infcx.tcx)
                 }
+                ProjectionElem::Downcast(..) => place.ty(self.body, self.infcx.tcx),
+                ProjectionElem::Field(_, field_type) => PlaceTy::from_ty(*field_type),
             },
-        }
+        };
+        self.describe_field_from_ty(place_ty.ty, field, place_ty.variant_index)
     }
 
     /// End-user visible description of the `field_index`nth field of `ty`
@@ -368,7 +307,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ty::Adt(def, _) => {
                     let variant = if let Some(idx) = variant_index {
                         assert!(def.is_enum());
-                        &def.variants[idx]
+                        &def.variant(idx)
                     } else {
                         def.non_enum_variant()
                     };
@@ -482,9 +421,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             BorrowedContentSource::DerefSharedRef
         }
     }
-}
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Return the name of the provided `Ty` (that must be a reference) with a synthesized lifetime
     /// name where required.
     pub(super) fn get_name_for_ty(&self, ty: Ty<'tcx>, counter: usize) -> String {
@@ -701,7 +638,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
             BorrowedContentSource::DerefMutableRef => "a mutable reference".to_string(),
             BorrowedContentSource::OverloadedDeref(ty) => ty
                 .ty_adt_def()
-                .and_then(|adt| match tcx.get_diagnostic_name(adt.did)? {
+                .and_then(|adt| match tcx.get_diagnostic_name(adt.did())? {
                     name @ (sym::Rc | sym::Arc) => Some(format!("an `{}`", name)),
                     _ => None,
                 })
@@ -731,7 +668,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
             }
             BorrowedContentSource::OverloadedDeref(ty) => ty
                 .ty_adt_def()
-                .and_then(|adt| match tcx.get_diagnostic_name(adt.did)? {
+                .and_then(|adt| match tcx.get_diagnostic_name(adt.did())? {
                     name @ (sym::Rc | sym::Arc) => Some(format!("an `{}`", name)),
                     _ => None,
                 })
@@ -959,7 +896,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(local_did);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
-        if let hir::ExprKind::Closure(.., body_id, args_span, _) = expr {
+        if let hir::ExprKind::Closure { body, fn_decl_span, .. } = expr {
             for (captured_place, place) in self
                 .infcx
                 .tcx
@@ -972,11 +909,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if target_place == place.as_ref() =>
                     {
                         debug!("closure_span: found captured local {:?}", place);
-                        let body = self.infcx.tcx.hir().body(*body_id);
+                        let body = self.infcx.tcx.hir().body(*body);
                         let generator_kind = body.generator_kind();
 
                         return Some((
-                            *args_span,
+                            *fn_decl_span,
                             generator_kind,
                             captured_place.get_capture_kind_span(self.infcx.tcx),
                             captured_place.get_path_span(self.infcx.tcx),
@@ -994,5 +931,174 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(super) fn retrieve_borrow_spans(&self, borrow: &BorrowData<'_>) -> UseSpans<'tcx> {
         let span = self.body.source_info(borrow.reserve_location).span;
         self.borrow_spans(span, borrow.reserve_location)
+    }
+
+    fn explain_captures(
+        &mut self,
+        err: &mut Diagnostic,
+        span: Span,
+        move_span: Span,
+        move_spans: UseSpans<'tcx>,
+        moved_place: Place<'tcx>,
+        used_place: Option<PlaceRef<'tcx>>,
+        partially_str: &str,
+        loop_message: &str,
+        move_msg: &str,
+        is_loop_move: bool,
+        maybe_reinitialized_locations_is_empty: bool,
+    ) {
+        if let UseSpans::FnSelfUse { var_span, fn_call_span, fn_span, kind } = move_spans {
+            let place_name = self
+                .describe_place(moved_place.as_ref())
+                .map(|n| format!("`{}`", n))
+                .unwrap_or_else(|| "value".to_owned());
+            match kind {
+                CallKind::FnCall { fn_trait_id, .. }
+                    if Some(fn_trait_id) == self.infcx.tcx.lang_items().fn_once_trait() =>
+                {
+                    err.span_label(
+                        fn_call_span,
+                        &format!(
+                            "{} {}moved due to this call{}",
+                            place_name, partially_str, loop_message
+                        ),
+                    );
+                    err.span_note(
+                        var_span,
+                        "this value implements `FnOnce`, which causes it to be moved when called",
+                    );
+                }
+                CallKind::Operator { self_arg, .. } => {
+                    let self_arg = self_arg.unwrap();
+                    err.span_label(
+                        fn_call_span,
+                        &format!(
+                            "{} {}moved due to usage in operator{}",
+                            place_name, partially_str, loop_message
+                        ),
+                    );
+                    if self.fn_self_span_reported.insert(fn_span) {
+                        err.span_note(
+                            // Check whether the source is accessible
+                            if self
+                                .infcx
+                                .tcx
+                                .sess
+                                .source_map()
+                                .span_to_snippet(self_arg.span)
+                                .is_ok()
+                            {
+                                self_arg.span
+                            } else {
+                                fn_call_span
+                            },
+                            "calling this operator moves the left-hand side",
+                        );
+                    }
+                }
+                CallKind::Normal { self_arg, desugaring, is_option_or_result } => {
+                    let self_arg = self_arg.unwrap();
+                    if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
+                        let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
+                        let suggest = match self.infcx.tcx.get_diagnostic_item(sym::IntoIterator) {
+                            Some(def_id) => self.infcx.tcx.infer_ctxt().enter(|infcx| {
+                                type_known_to_meet_bound_modulo_regions(
+                                    &infcx,
+                                    self.param_env,
+                                    infcx.tcx.mk_imm_ref(
+                                        infcx.tcx.lifetimes.re_erased,
+                                        infcx.tcx.erase_regions(ty),
+                                    ),
+                                    def_id,
+                                    DUMMY_SP,
+                                )
+                            }),
+                            _ => false,
+                        };
+                        if suggest {
+                            err.span_suggestion_verbose(
+                                move_span.shrink_to_lo(),
+                                &format!(
+                                    "consider iterating over a slice of the `{}`'s content to \
+                                     avoid moving into the `for` loop",
+                                    ty,
+                                ),
+                                "&",
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+
+                        err.span_label(
+                            fn_call_span,
+                            &format!(
+                                "{} {}moved due to this implicit call to `.into_iter()`{}",
+                                place_name, partially_str, loop_message
+                            ),
+                        );
+                        // If we have a `&mut` ref, we need to reborrow.
+                        if let Some(ty::Ref(_, _, hir::Mutability::Mut)) = used_place
+                            .map(|used_place| used_place.ty(self.body, self.infcx.tcx).ty.kind())
+                        {
+                            // If we are in a loop this will be suggested later.
+                            if !is_loop_move {
+                                err.span_suggestion_verbose(
+                                    move_span.shrink_to_lo(),
+                                    &format!(
+                                        "consider creating a fresh reborrow of {} here",
+                                        self.describe_place(moved_place.as_ref())
+                                            .map(|n| format!("`{}`", n))
+                                            .unwrap_or_else(|| "the mutable reference".to_string()),
+                                    ),
+                                    "&mut *",
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                        }
+                    } else {
+                        err.span_label(
+                            fn_call_span,
+                            &format!(
+                                "{} {}moved due to this method call{}",
+                                place_name, partially_str, loop_message
+                            ),
+                        );
+                    }
+                    if is_option_or_result && maybe_reinitialized_locations_is_empty {
+                        err.span_suggestion_verbose(
+                            fn_call_span.shrink_to_lo(),
+                            "consider calling `.as_ref()` to borrow the type's contents",
+                            "as_ref().",
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    // Avoid pointing to the same function in multiple different
+                    // error messages.
+                    if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span) {
+                        err.span_note(
+                            self_arg.span,
+                            &format!("this function takes ownership of the receiver `self`, which moves {}", place_name)
+                        );
+                    }
+                }
+                // Other desugarings takes &self, which cannot cause a move
+                _ => {}
+            }
+        } else {
+            if move_span != span || !loop_message.is_empty() {
+                err.span_label(
+                    move_span,
+                    format!("value {}moved{} here{}", partially_str, move_msg, loop_message),
+                );
+            }
+            // If the move error occurs due to a loop, don't show
+            // another message for the same span
+            if loop_message.is_empty() {
+                move_spans.var_span_label(
+                    err,
+                    format!("variable {}moved due to use{}", partially_str, move_spans.describe()),
+                    "moved",
+                );
+            }
+        }
     }
 }

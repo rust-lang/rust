@@ -19,7 +19,7 @@ use std::mem;
 
 /// Checks for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
@@ -59,7 +59,7 @@ pub(super) fn check<'tcx>(
                 if let Some(indexed_extent) = indexed_extent {
                     let parent_def_id = cx.tcx.hir().get_parent_item(expr.hir_id);
                     let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
-                    let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id);
+                    let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id).unwrap();
                     if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
                         return;
                     }
@@ -117,7 +117,9 @@ pub(super) fn check<'tcx>(
                                 let take_expr = sugg::Sugg::hir(cx, take_expr, "<count>");
                                 format!(".take({})", take_expr + sugg::ONE)
                             },
-                            ast::RangeLimits::HalfOpen => format!(".take({})", snippet(cx, take_expr.span, "..")),
+                            ast::RangeLimits::HalfOpen => {
+                                format!(".take({})", snippet(cx, take_expr.span, ".."))
+                            },
                         }
                     }
                 } else {
@@ -262,7 +264,11 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                 match res {
                     Res::Local(hir_id) => {
                         let parent_def_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
-                        let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
+                        let extent = self.cx
+                            .tcx
+                            .region_scope_tree(parent_def_id)
+                            .var_scope(hir_id.local_id)
+                            .unwrap();
                         if index_used_directly {
                             self.indexed_directly.insert(
                                 seqvar.segments[0].ident.name,
@@ -273,7 +279,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                         }
                         return false;  // no need to walk further *on the variable*
                     }
-                    Res::Def(DefKind::Static | DefKind::Const, ..) => {
+                    Res::Def(DefKind::Static (_)| DefKind::Const, ..) => {
                         if index_used_directly {
                             self.indexed_directly.insert(
                                 seqvar.segments[0].ident.name,
@@ -363,8 +369,8 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     self.visit_expr(expr);
                 }
             },
-            ExprKind::Closure(_, _, body_id, ..) => {
-                let body = self.cx.tcx.hir().body(body_id);
+            ExprKind::Closure { body, .. } => {
+                let body = self.cx.tcx.hir().body(body);
                 self.visit_expr(&body.value);
             },
             _ => walk_expr(self, expr),

@@ -575,7 +575,7 @@ where
 pub(crate) fn extract_pre_comment(pre_snippet: &str) -> (Option<String>, ListItemCommentStyle) {
     let trimmed_pre_snippet = pre_snippet.trim();
     // Both start and end are checked to support keeping a block comment inline with
-    // the item, even if there are preceeding line comments, while still supporting
+    // the item, even if there are preceding line comments, while still supporting
     // a snippet that starts with a block comment but also contains one or more
     // trailing single line comments.
     // https://github.com/rust-lang/rustfmt/issues/3025
@@ -611,15 +611,30 @@ pub(crate) fn extract_post_comment(
     post_snippet: &str,
     comment_end: usize,
     separator: &str,
+    is_last: bool,
 ) -> Option<String> {
     let white_space: &[_] = &[' ', '\t'];
 
     // Cleanup post-comment: strip separators and whitespace.
     let post_snippet = post_snippet[..comment_end].trim();
+
+    let last_inline_comment_ends_with_separator = if is_last {
+        if let Some(line) = post_snippet.lines().last() {
+            line.ends_with(separator) && line.trim().starts_with("//")
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
     let post_snippet_trimmed = if post_snippet.starts_with(|c| c == ',' || c == ':') {
         post_snippet[1..].trim_matches(white_space)
     } else if let Some(stripped) = post_snippet.strip_prefix(separator) {
         stripped.trim_matches(white_space)
+    } else if last_inline_comment_ends_with_separator {
+        // since we're on the last item it's fine to keep any trailing separators in comments
+        post_snippet.trim_matches(white_space)
     }
     // not comment or over two lines
     else if post_snippet.ends_with(',')
@@ -748,14 +763,12 @@ where
                 .snippet_provider
                 .span_to_snippet(mk_sp((self.get_hi)(&item), next_start))
                 .unwrap_or("");
-            let comment_end = get_comment_end(
-                post_snippet,
-                self.separator,
-                self.terminator,
-                self.inner.peek().is_none(),
-            );
+            let is_last = self.inner.peek().is_none();
+            let comment_end =
+                get_comment_end(post_snippet, self.separator, self.terminator, is_last);
             let new_lines = has_extra_newline(post_snippet, comment_end);
-            let post_comment = extract_post_comment(post_snippet, comment_end, self.separator);
+            let post_comment =
+                extract_post_comment(post_snippet, comment_end, self.separator, is_last);
 
             self.prev_span_end = (self.get_hi)(&item) + BytePos(comment_end as u32);
 

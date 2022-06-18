@@ -1,0 +1,41 @@
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive_enum.rs:4:1
+   |
+LL |   enum E {
+   |   ^-----
+   |   |
+   |  _help: add the attribute: `#[non_exhaustive] enum E`
+   | |
+LL | |     A,
+LL | |     B,
+LL | |     #[doc(hidden)]
+LL | |     _C,
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
+help: remove this variant
+  --> $DIR/manual_non_exhaustive_enum.rs:8:5
+   |
+LL |     _C,
+   |     ^^
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive_enum.rs:13:1
+   |
+LL | / enum Ep {
+LL | |     A,
+LL | |     B,
+LL | |     #[doc(hidden)]
+LL | |     _C,
+LL | | }
+   | |_^
+   |
+help: remove this variant
+  --> $DIR/manual_non_exhaustive_enum.rs:17:5
+   |
+LL |     _C,
+   |     ^^
+
+error: aborting due to 2 previous errors
+

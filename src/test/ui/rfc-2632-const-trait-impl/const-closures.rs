@@ -1,7 +1,6 @@
 // run-pass
 
 #![feature(const_trait_impl)]
-#![feature(const_fn_trait_bound)]
 
 const fn answer_p1<F>(f: &F) -> u8
     where

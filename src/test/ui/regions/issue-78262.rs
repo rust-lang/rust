@@ -1,8 +1,6 @@
-// revisions: default nll polonius
-// ignore-compare-mode-nll
+// revisions: base polonius
 // ignore-compare-mode-polonius
-// [nll] compile-flags: -Z borrowck=mir
-// [polonius] compile-flags: -Z borrowck=mir -Z polonius
+// [polonius] compile-flags: -Z polonius
 
 trait TT {}
 
@@ -11,7 +9,7 @@ impl dyn TT {
 }
 
 fn main() {
-    let f = |x: &dyn TT| x.func(); //[default]~ ERROR: mismatched types
-    //[nll]~^ ERROR: borrowed data escapes outside of closure
+    let f = |x: &dyn TT| x.func();
+    //[base]~^ ERROR: borrowed data escapes outside of closure
     //[polonius]~^^ ERROR: borrowed data escapes outside of closure
 }

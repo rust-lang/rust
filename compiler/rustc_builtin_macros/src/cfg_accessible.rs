@@ -7,7 +7,7 @@ use rustc_parse::validate_attr;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
-crate struct Expander;
+pub(crate) struct Expander;
 
 fn validate_input<'a>(ecx: &mut ExtCtxt<'_>, mi: &'a ast::MetaItem) -> Option<&'a ast::Path> {
     match mi.meta_item_list() {

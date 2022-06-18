@@ -1,8 +1,10 @@
-error[E0109]: type arguments are not allowed for this type
+error[E0109]: type arguments are not allowed on module `Mod`
   --> $DIR/mod-subitem-as-enum-variant.rs:7:11
    |
 LL |     Mod::<i32>::FakeVariant(0);
-   |           ^^^ type argument not allowed
+   |     ---   ^^^ type argument not allowed
+   |     |
+   |     not allowed on this
 
 error: aborting due to previous error
 

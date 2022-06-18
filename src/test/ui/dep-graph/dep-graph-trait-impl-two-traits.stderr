@@ -1,4 +1,4 @@
-error: no path from `x::<impl Foo for char>` to `typeck`
+error: OK
   --> $DIR/dep-graph-trait-impl-two-traits.rs:32:5
    |
 LL |     #[rustc_then_this_would_need(typeck)]

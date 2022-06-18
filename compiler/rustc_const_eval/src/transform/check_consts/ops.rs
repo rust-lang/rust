@@ -1,6 +1,7 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
+use hir::def_id::LocalDefId;
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -51,7 +52,7 @@ pub trait NonConstOp<'tcx>: std::fmt::Debug {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported>;
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 }
 
 #[derive(Debug)]
@@ -69,7 +70,7 @@ impl<'tcx> NonConstOp<'tcx> for FloatingPointOp {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_fn_floating_point_arithmetic,
@@ -87,15 +88,18 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
-        ccx.tcx.sess.struct_span_err(span, "function pointers are not allowed in const fn")
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+        ccx.tcx.sess.struct_span_err(
+            span,
+            &format!("function pointer calls are not allowed in {}s", ccx.const_kind()),
+        )
     }
 }
 
 /// A function call where the callee is not marked as `const`.
 #[derive(Debug, Clone, Copy)]
 pub struct FnCallNonConst<'tcx> {
-    pub caller: DefId,
+    pub caller: LocalDefId,
     pub callee: DefId,
     pub substs: SubstsRef<'tcx>,
     pub span: Span,
@@ -107,7 +111,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         _: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let FnCallNonConst { caller, callee, substs, span, from_hir_call } = *self;
         let ConstCx { tcx, param_env, .. } = *ccx;
 
@@ -117,13 +121,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             match self_ty.kind() {
                 Param(param_ty) => {
                     debug!(?param_ty);
-                    if let Some(generics) = caller
-                        .as_local()
-                        .map(|id| tcx.hir().local_def_id_to_hir_id(id))
-                        .map(|id| tcx.hir().get(id))
-                        .as_ref()
-                        .and_then(|node| node.generics())
-                    {
+                    let caller_hir_id = tcx.hir().local_def_id_to_hir_id(caller);
+                    if let Some(generics) = tcx.hir().get(caller_hir_id).generics() {
                         let constraint = with_no_trimmed_paths!(format!(
                             "~const {}",
                             trait_ref.print_only_trait_path()
@@ -332,7 +331,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let FnCallUnstable(def_id, feature) = *self;
 
         let mut err = ccx.tcx.sess.struct_span_err(
@@ -356,31 +355,6 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
 }
 
 #[derive(Debug)]
-pub struct FnPtrCast;
-impl<'tcx> NonConstOp<'tcx> for FnPtrCast {
-    fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
-        if ccx.const_kind() != hir::ConstContext::ConstFn {
-            Status::Allowed
-        } else {
-            Status::Unstable(sym::const_fn_fn_ptr_basics)
-        }
-    }
-
-    fn build_error(
-        &self,
-        ccx: &ConstCx<'_, 'tcx>,
-        span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_fn_fn_ptr_basics,
-            span,
-            &format!("function pointer casts are not allowed in {}s", ccx.const_kind()),
-        )
-    }
-}
-
-#[derive(Debug)]
 pub struct Generator(pub hir::GeneratorKind);
 impl<'tcx> NonConstOp<'tcx> for Generator {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
@@ -395,7 +369,7 @@ impl<'tcx> NonConstOp<'tcx> for Generator {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let msg = format!("{}s are not allowed in {}s", self.0, ccx.const_kind());
         if let hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) = self.0 {
             feature_err(&ccx.tcx.sess.parse_sess, sym::const_async_blocks, span, &msg)
@@ -412,7 +386,7 @@ impl<'tcx> NonConstOp<'tcx> for HeapAllocation {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -440,7 +414,7 @@ impl<'tcx> NonConstOp<'tcx> for InlineAsm {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -460,7 +434,7 @@ impl<'tcx> NonConstOp<'tcx> for LiveDrop {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -492,7 +466,7 @@ impl<'tcx> NonConstOp<'tcx> for TransientCellBorrow {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_refs_to_cell,
@@ -512,7 +486,7 @@ impl<'tcx> NonConstOp<'tcx> for CellBorrow {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -563,7 +537,7 @@ impl<'tcx> NonConstOp<'tcx> for MutBorrow {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let raw = match self.0 {
             hir::BorrowKind::Raw => "raw ",
             hir::BorrowKind::Ref => "",
@@ -606,7 +580,7 @@ impl<'tcx> NonConstOp<'tcx> for TransientMutBorrow {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let raw = match self.0 {
             hir::BorrowKind::Raw => "raw ",
             hir::BorrowKind::Ref => "",
@@ -637,7 +611,7 @@ impl<'tcx> NonConstOp<'tcx> for MutDeref {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_mut_refs,
@@ -655,7 +629,7 @@ impl<'tcx> NonConstOp<'tcx> for PanicNonStr {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         ccx.tcx.sess.struct_span_err(
             span,
             "argument to `panic!()` in a const context must have type `&str`",
@@ -673,7 +647,7 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrComparison {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = ccx
             .tcx
             .sess
@@ -697,7 +671,7 @@ impl<'tcx> NonConstOp<'tcx> for RawMutPtrDeref {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_mut_refs,
@@ -717,7 +691,7 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrToIntCast {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = ccx
             .tcx
             .sess
@@ -746,7 +720,7 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -776,7 +750,7 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -811,175 +785,12 @@ pub mod ty {
             &self,
             ccx: &ConstCx<'_, 'tcx>,
             span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+        ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
             feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_mut_refs,
                 span,
                 &format!("mutable references are not allowed in {}s", ccx.const_kind()),
-            )
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct FnPtr(pub mir::LocalKind);
-    impl<'tcx> NonConstOp<'tcx> for FnPtr {
-        fn importance(&self) -> DiagnosticImportance {
-            match self.0 {
-                mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
-                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
-                    DiagnosticImportance::Primary
-                }
-            }
-        }
-
-        fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
-            if ccx.const_kind() != hir::ConstContext::ConstFn {
-                Status::Allowed
-            } else {
-                Status::Unstable(sym::const_fn_fn_ptr_basics)
-            }
-        }
-
-        fn build_error(
-            &self,
-            ccx: &ConstCx<'_, 'tcx>,
-            span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
-            feature_err(
-                &ccx.tcx.sess.parse_sess,
-                sym::const_fn_fn_ptr_basics,
-                span,
-                &format!("function pointers cannot appear in {}s", ccx.const_kind()),
-            )
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct ImplTrait;
-    impl<'tcx> NonConstOp<'tcx> for ImplTrait {
-        fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
-            Status::Unstable(sym::const_impl_trait)
-        }
-
-        fn build_error(
-            &self,
-            ccx: &ConstCx<'_, 'tcx>,
-            span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
-            feature_err(
-                &ccx.tcx.sess.parse_sess,
-                sym::const_impl_trait,
-                span,
-                &format!("`impl Trait` is not allowed in {}s", ccx.const_kind()),
-            )
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct TraitBound(pub mir::LocalKind);
-    impl<'tcx> NonConstOp<'tcx> for TraitBound {
-        fn importance(&self) -> DiagnosticImportance {
-            match self.0 {
-                mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
-                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
-                    DiagnosticImportance::Primary
-                }
-            }
-        }
-
-        fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
-            if ccx.const_kind() != hir::ConstContext::ConstFn {
-                Status::Allowed
-            } else {
-                Status::Unstable(sym::const_fn_trait_bound)
-            }
-        }
-
-        fn build_error(
-            &self,
-            ccx: &ConstCx<'_, 'tcx>,
-            span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
-            let mut err = feature_err(
-                &ccx.tcx.sess.parse_sess,
-                sym::const_fn_trait_bound,
-                span,
-                "trait bounds other than `Sized` on const fn parameters are unstable",
-            );
-
-            match ccx.fn_sig() {
-                Some(fn_sig) if !fn_sig.span.contains(span) => {
-                    err.span_label(fn_sig.span, "function declared as const here");
-                }
-                _ => {}
-            }
-
-            err
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct DynTrait(pub mir::LocalKind);
-    impl<'tcx> NonConstOp<'tcx> for DynTrait {
-        fn importance(&self) -> DiagnosticImportance {
-            match self.0 {
-                mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
-                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
-                    DiagnosticImportance::Primary
-                }
-            }
-        }
-
-        fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
-            if ccx.const_kind() != hir::ConstContext::ConstFn {
-                Status::Allowed
-            } else {
-                Status::Unstable(sym::const_fn_trait_bound)
-            }
-        }
-
-        fn build_error(
-            &self,
-            ccx: &ConstCx<'_, 'tcx>,
-            span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
-            let mut err = feature_err(
-                &ccx.tcx.sess.parse_sess,
-                sym::const_fn_trait_bound,
-                span,
-                "trait objects in const fn are unstable",
-            );
-
-            match ccx.fn_sig() {
-                Some(fn_sig) if !fn_sig.span.contains(span) => {
-                    err.span_label(fn_sig.span, "function declared as const here");
-                }
-                _ => {}
-            }
-
-            err
-        }
-    }
-
-    /// A trait bound with the `?const Trait` opt-out
-    #[derive(Debug)]
-    pub struct TraitBoundNotConst;
-    impl<'tcx> NonConstOp<'tcx> for TraitBoundNotConst {
-        fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
-            Status::Unstable(sym::const_trait_bound_opt_out)
-        }
-
-        fn build_error(
-            &self,
-            ccx: &ConstCx<'_, 'tcx>,
-            span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
-            feature_err(
-                &ccx.tcx.sess.parse_sess,
-                sym::const_trait_bound_opt_out,
-                span,
-                "`?const Trait` syntax is unstable",
             )
         }
     }

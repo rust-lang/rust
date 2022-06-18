@@ -24,16 +24,17 @@ declare_clippy_lint! {
     /// #     z: i32,
     /// # }
     /// # let zero_point = Point { x: 0, y: 0, z: 0 };
-    ///
-    /// // Bad
     /// Point {
     ///     x: 1,
     ///     y: 1,
     ///     z: 1,
     ///     ..zero_point
     /// };
+    /// ```
     ///
-    /// // Ok
+    /// Use instead:
+    /// ```rust,ignore
+    /// // Missing field `z`
     /// Point {
     ///     x: 1,
     ///     y: 1,
@@ -54,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessUpdate {
             let ty = cx.typeck_results().expr_ty(expr);
             if let ty::Adt(def, _) = ty.kind() {
                 if fields.len() == def.non_enum_variant().fields.len()
-                    && !def.variants[0_usize.into()].is_field_list_non_exhaustive()
+                    && !def.variant(0_usize.into()).is_field_list_non_exhaustive()
                 {
                     span_lint(
                         cx,

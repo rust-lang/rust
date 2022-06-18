@@ -1,5 +1,4 @@
 use crate::cmp;
-use crate::convert::TryFrom;
 use crate::io::{Error as IoError, ErrorKind, IoSlice, IoSliceMut, Result as IoResult};
 use crate::sys::rand::rdrand64;
 use crate::time::{Duration, Instant};
@@ -83,7 +82,7 @@ pub fn close(fd: Fd) {
 
 fn string_from_bytebuffer(buf: &alloc::UserRef<ByteBuffer>, usercall: &str, arg: &str) -> String {
     String::from_utf8(buf.copy_user_buffer())
-        .unwrap_or_else(|_| rtabort!("Usercall {}: expected {} to be valid UTF-8", usercall, arg))
+        .unwrap_or_else(|_| rtabort!("Usercall {usercall}: expected {arg} to be valid UTF-8"))
 }
 
 /// Usercall `bind_stream`. See the ABI documentation for more information.
@@ -287,7 +286,7 @@ fn check_os_error(err: Result) -> i32 {
     {
         err
     } else {
-        rtabort!("Usercall: returned invalid error value {}", err)
+        rtabort!("Usercall: returned invalid error value {err}")
     }
 }
 

@@ -18,6 +18,17 @@ fn test_display_literal() {
         Literal::f64_unsuffixed(1e100).to_string(),
         "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0",
     );
+
+    assert_eq!(
+        Literal::string("a \t ❤ ' \" \u{1}").to_string(),
+        "\"a \\t ❤ ' \\\" \\u{1}\"",
+    );
+    assert_eq!(Literal::character('a').to_string(), "'a'");
+    assert_eq!(Literal::character('\t').to_string(), "'\\t'");
+    assert_eq!(Literal::character('❤').to_string(), "'❤'");
+    assert_eq!(Literal::character('\'').to_string(), "'\\''");
+    assert_eq!(Literal::character('"').to_string(), "'\"'");
+    assert_eq!(Literal::character('\u{1}').to_string(), "'\\u{1}'");
 }
 
 fn test_parse_literal() {

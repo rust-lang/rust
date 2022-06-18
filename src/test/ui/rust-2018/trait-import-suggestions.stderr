@@ -45,6 +45,10 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
    |
 LL | use std::str::FromStr;
    |
+help: there is an associated function with a similar name
+   |
+LL |     let y = u32::from_str_radix("33");
+   |                  ~~~~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

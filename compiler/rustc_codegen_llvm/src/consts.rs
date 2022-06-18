@@ -12,7 +12,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    read_target_uint, Allocation, ErrorHandled, GlobalAlloc, InitChunk, Pointer,
+    read_target_uint, Allocation, ConstAllocation, ErrorHandled, GlobalAlloc, InitChunk, Pointer,
     Scalar as InterpScalar,
 };
 use rustc_middle::mir::mono::MonoItem;
@@ -25,7 +25,8 @@ use rustc_target::abi::{
 use std::ops::Range;
 use tracing::debug;
 
-pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
+pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<'_>) -> &'ll Value {
+    let alloc = alloc.inner();
     let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
@@ -108,7 +109,10 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> 
                 Pointer::new(alloc_id, Size::from_bytes(ptr_offset)),
                 &cx.tcx,
             ),
-            Scalar { value: Primitive::Pointer, valid_range: WrappingRange { start: 0, end: !0 } },
+            Scalar::Initialized {
+                value: Primitive::Pointer,
+                valid_range: WrappingRange::full(dl.pointer_size),
+            },
             cx.type_i8p_ext(address_space),
         ));
         next_offset = offset + pointer_size;
@@ -127,7 +131,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> 
 pub fn codegen_static_initializer<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     def_id: DefId,
-) -> Result<(&'ll Value, &'tcx Allocation), ErrorHandled> {
+) -> Result<(&'ll Value, ConstAllocation<'tcx>), ErrorHandled> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
@@ -208,11 +212,11 @@ pub fn ptrcast<'ll>(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
 }
 
 impl<'ll> CodegenCx<'ll, '_> {
-    crate fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+    pub(crate) fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMConstBitCast(val, ty) }
     }
 
-    crate fn static_addr_of_mut(
+    pub(crate) fn static_addr_of_mut(
         &self,
         cv: &'ll Value,
         align: Align,
@@ -237,7 +241,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
     }
 
-    crate fn get_static(&self, def_id: DefId) -> &'ll Value {
+    pub(crate) fn get_static(&self, def_id: DefId) -> &'ll Value {
         let instance = Instance::mono(self.tcx, def_id);
         if let Some(&g) = self.instances.borrow().get(&instance) {
             return g;
@@ -370,6 +374,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 // Error has already been reported
                 return;
             };
+            let alloc = alloc.inner();
 
             let g = self.get_static(def_id);
 
@@ -407,6 +412,13 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 llvm::LLVMRustSetLinkage(new_g, linkage);
                 llvm::LLVMRustSetVisibility(new_g, visibility);
 
+                // The old global has had its name removed but is returned by
+                // get_static since it is in the instance cache. Provide an
+                // alternative lookup that points to the new global so that
+                // global_asm! can compute the correct mangled symbol name
+                // for the global.
+                self.renamed_statics.borrow_mut().insert(def_id, new_g);
+
                 // To avoid breaking any invariants, we leave around the old
                 // global for the moment; we'll replace all references to it
                 // with the new global later. (See base::codegen_backend.)
@@ -426,7 +438,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 llvm::LLVMSetGlobalConstant(g, llvm::True);
             }
 
-            debuginfo::create_global_var_metadata(self, def_id, g);
+            debuginfo::build_global_var_di_node(self, def_id, g);
 
             if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
                 llvm::set_thread_local_mode(g, self.tls_model);

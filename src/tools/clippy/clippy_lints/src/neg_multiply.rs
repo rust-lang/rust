@@ -19,12 +19,13 @@ declare_clippy_lint! {
     /// This only catches integers (for now).
     ///
     /// ### Example
-    /// ```ignore
-    /// // Bad
+    /// ```rust,ignore
     /// let a = x * -1;
+    /// ```
     ///
-    /// // Good
-    /// let b = -x;
+    /// Use instead:
+    /// ```rust,ignore
+    /// let a = -x;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NEG_MULTIPLY,
@@ -34,7 +35,6 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NegMultiply => [NEG_MULTIPLY]);
 
-#[allow(clippy::match_same_arms)]
 impl<'tcx> LateLintPass<'tcx> for NegMultiply {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref op, left, right) = e.kind {
@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for NegMultiply {
 fn check_mul(cx: &LateContext<'_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
     if_chain! {
         if let ExprKind::Lit(ref l) = lit.kind;
-        if consts::lit_to_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)) == Constant::Int(1);
+        if consts::lit_to_mir_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)) == Constant::Int(1);
         if cx.typeck_results().expr_ty(exp).is_integral();
 
         then {

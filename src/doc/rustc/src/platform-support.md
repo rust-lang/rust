@@ -31,17 +31,19 @@ All tier 1 targets with host tools support the full standard library.
 target | notes
 -------|-------
 `aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.2, glibc 2.17+) [^missing-stack-probes]
-`i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+)
-`i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+)
+`i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+) [^windows-support]
+`i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+) [^windows-support]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 2.6.32+, glibc 2.11+)
 `x86_64-apple-darwin` | 64-bit macOS (10.7+, Lion+)
-`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 7+)
-`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 7+)
+`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 7+) [^windows-support]
+`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 7+) [^windows-support]
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 2.6.32+, glibc 2.11+)
 
 [^missing-stack-probes]: Stack probes support is missing on
   `aarch64-unknown-linux-gnu`, but it's planned to be implemented in the near
   future. The implementation is tracked on [issue #77071][77071].
+
+[^windows-support]: Only Windows 10 currently undergoes automated testing. Earlier versions of Windows rely on testing and support from the community.
 
 [77071]: https://github.com/rust-lang/rust/issues/77071
 
@@ -73,7 +75,8 @@ Tier Policy.
 
 All tier 2 targets with host tools support the full standard library.
 
-**NOTE:** Tier 2 targets currently do not build the `rust-docs` component.
+**NOTE:** The `rust-docs` component is not usually built for tier 2 targets,
+so Rustup may install the documentation for a similar tier 1 target instead.
 
 target | notes
 -------|-------
@@ -114,7 +117,8 @@ The `std` column in the table below has the following meanings:
 
 [`no_std`]: https://rust-embedded.github.io/book/intro/no-std.html
 
-**NOTE:** Tier 2 targets currently do not build the `rust-docs` component.
+**NOTE:** The `rust-docs` component is not usually built for tier 2 targets,
+so Rustup may install the documentation for a similar tier 1 target instead.
 
 target | std | notes
 -------|:---:|-------
@@ -139,7 +143,7 @@ target | std | notes
 `armv7r-none-eabi` | * | Bare ARMv7-R
 `armv7r-none-eabihf` | * | Bare ARMv7-R, hardfloat
 `asmjs-unknown-emscripten` | ✓ | asm.js via Emscripten
-`i586-pc-windows-msvc` | ✓ | 32-bit Windows w/o SSE
+`i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 4.4, glibc 2.23)
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL
 `i686-linux-android` | ✓ | 32-bit x86 Android
@@ -175,6 +179,7 @@ target | std | notes
 `x86_64-linux-android` | ✓ | 64-bit x86 Android
 `x86_64-pc-solaris` | ✓ | 64-bit Solaris 10/11, illumos
 `x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
+[`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
 `x86_64-unknown-redox` | ✓ | Redox OS
 
 [Fortanix ABI]: https://edp.fortanix.com/
@@ -202,10 +207,11 @@ target | std | host | notes
 -------|:---:|:----:|-------
 `aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
+[`aarch64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | ARM64 Apple WatchOS Simulator
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
+[`aarch64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ✓ |  | ARM64 HermitCore
-[`aarch64-unknown-none-hermitkernel`](platform-support/aarch64-unknown-none-hermitkernel.md) | * |  | ARM64 HermitCore kernel
 `aarch64-unknown-uefi` | * |  | ARM64 UEFI
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 `aarch64-unknown-netbsd` | ✓ | ✓ |
@@ -215,11 +221,12 @@ target | std | host | notes
 `aarch64-wrs-vxworks` | ? |  |
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
+[`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ | | ARM Apple WatchOS 64-bit with 32-bit pointers
 `armv4t-unknown-linux-gnueabi` | ? |  |
 `armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
 `armv6-unknown-netbsd-eabihf` | ? |  |
-`armv6k-nintendo-3ds` | * |  | ARMv6K Nintendo 3DS, Horizon (Requires devkitARM toolchain)
+[`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | ARMv6K Nintendo 3DS, Horizon (Requires devkitARM toolchain)
 `armv7-apple-ios` | ✓ |  | ARMv7 iOS, Cortex-a8
 [`armv7-unknown-linux-uclibceabi`](platform-support/armv7-unknown-linux-uclibceabi.md) | ✓ | ✓ | ARMv7 Linux with uClibc, softfloat
 [`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | ARMv7 Linux with uClibc, hardfloat
@@ -229,6 +236,7 @@ target | std | host | notes
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
 `armv7a-none-eabihf` | * | | ARM Cortex-A, hardfloat
+[`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ | | ARM Apple WatchOS
 `armv7s-apple-ios` | ✓ |  |
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
@@ -236,7 +244,7 @@ target | std | host | notes
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
-`i686-pc-windows-msvc` | ✓ |  | 32-bit Windows XP support
+`i686-pc-windows-msvc` | * |  | 32-bit Windows XP support
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
 `i686-unknown-netbsd` | ✓ | ✓ | NetBSD/i386 with SSE2
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD
@@ -244,9 +252,9 @@ target | std | host | notes
 `i686-uwp-windows-gnu` | ? |  |
 `i686-uwp-windows-msvc` | ? |  |
 `i686-wrs-vxworks` | ? |  |
-`m68k-unknown-linux-gnu` | ? |  | Motorola 680x0 Linux
+[`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 `mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
-`mips64-openwrt-linux-musl` | ? |  | MIPS64 for OpenWrt Linux MUSL
+[`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux MUSL
 `mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
 `mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc
 `mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat
@@ -269,6 +277,8 @@ target | std | host | notes
 `powerpc64le-unknown-linux-musl` | ? |  |
 `riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
 `riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl + RISCV32 support patches)
+`riscv32im-unknown-none-elf` | * |  | Bare RISC-V (RV32IM ISA)
+[`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
 `riscv32imc-esp-espidf` | ✓ |  | RISC-V ESP-IDF
 `riscv64gc-unknown-freebsd` |   |   | RISC-V FreeBSD
 `riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.0)
@@ -283,14 +293,14 @@ target | std | host | notes
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
 `x86_64-apple-tvos` | * | | x86 64-bit tvOS
-`x86_64-pc-windows-msvc` | ✓ |  | 64-bit Windows XP support
+[`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ | | x86 64-bit Apple WatchOS simulator
+[`x86_64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
+`x86_64-pc-windows-msvc` | * |  | 64-bit Windows XP support
 `x86_64-sun-solaris` | ? |  | Deprecated target for 64-bit Solaris 10/11, illumos
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
 `x86_64-unknown-hermit` | ✓ |  | HermitCore
 `x86_64-unknown-l4re-uclibc` | ? |  |
-[`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * |  | Freestanding/bare-metal x86_64, softfloat
-`x86_64-unknown-none-hermitkernel` | * |  | HermitCore kernel
 `x86_64-unknown-none-linuxkernel` | * |  | Linux kernel modules
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
 `x86_64-unknown-uefi` | * |  | 64-bit UEFI

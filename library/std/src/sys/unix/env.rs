@@ -119,6 +119,17 @@ pub mod os {
     pub const EXE_EXTENSION: &str = "";
 }
 
+#[cfg(target_os = "horizon")]
+pub mod os {
+    pub const FAMILY: &str = "unix";
+    pub const OS: &str = "horizon";
+    pub const DLL_PREFIX: &str = "lib";
+    pub const DLL_SUFFIX: &str = ".so";
+    pub const DLL_EXTENSION: &str = "so";
+    pub const EXE_SUFFIX: &str = ".elf";
+    pub const EXE_EXTENSION: &str = "elf";
+}
+
 #[cfg(all(target_os = "emscripten", target_arch = "asmjs"))]
 pub mod os {
     pub const FAMILY: &str = "unix";

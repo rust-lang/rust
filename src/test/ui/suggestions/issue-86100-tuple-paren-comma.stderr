@@ -17,10 +17,17 @@ error[E0308]: mismatched types
   --> $DIR/issue-86100-tuple-paren-comma.rs:13:9
    |
 LL |     foo((Some(3)));
-   |         ^^^^^^^^^ expected tuple, found enum `Option`
+   |     --- ^^^^^^^^^ expected tuple, found enum `Option`
+   |     |
+   |     arguments to this function are incorrect
    |
    = note: expected tuple `(_,)`
                found enum `Option<{integer}>`
+note: function defined here
+  --> $DIR/issue-86100-tuple-paren-comma.rs:5:4
+   |
+LL | fn foo<T>(_t: (T,)) {}
+   |    ^^^    --------
 help: use a trailing comma to create a tuple with one element
    |
 LL |     foo((Some(3),));

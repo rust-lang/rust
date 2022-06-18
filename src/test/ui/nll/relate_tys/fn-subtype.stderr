@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/fn-subtype.rs:9:33
+  --> $DIR/fn-subtype.rs:7:33
    |
 LL |     let y: for<'a> fn(&'a ()) = x;
    |                                 ^ one type is more general than the other

@@ -1,21 +1,19 @@
-error[E0271]: type mismatch resolving `<impl Future<Output = [async output]> as Future>::Output == impl Stream<Item = Repr>`
-  --> $DIR/issue-89008.rs:39:43
+error[E0271]: type mismatch resolving `<Empty<_> as Stream>::Item == Repr`
+  --> $DIR/issue-89008.rs:40:9
    |
-LL |     type LineStream<'a, Repr> = impl Stream<Item = Repr>;
-   |                                 ------------------------ the expected opaque type
-...
 LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {
-   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected opaque type, found struct `Empty`
+   |                        ---- this type parameter
+LL |         async {empty()}
+   |         ^^^^^^^^^^^^^^^ type mismatch resolving `<Empty<_> as Stream>::Item == Repr`
    |
-   = note: expected opaque type `impl Stream<Item = Repr>`
-                   found struct `Empty<_>`
-
-error: could not find defining uses
-  --> $DIR/issue-89008.rs:35:33
+note: expected this to be `()`
+  --> $DIR/issue-89008.rs:18:17
    |
-LL |     type LineStream<'a, Repr> = impl Stream<Item = Repr>;
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     type Item = ();
+   |                 ^^
+   = note:   expected unit type `()`
+           found type parameter `Repr`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0271`.

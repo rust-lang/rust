@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Cache cargo installed crates
       uses: actions/cache@v2
@@ -34,7 +34,7 @@ jobs:
         sed -i 's/cranelift-jit = { version = "\w*.\w*.\w*", optional = true }/cranelift-jit = { git = "https:\/\/github.com\/bytecodealliance\/wasmtime.git", optional = true }/' Cargo.toml
         sed -i 's/cranelift-object = "\w*.\w*.\w*"/cranelift-object = { git = "https:\/\/github.com\/bytecodealliance\/wasmtime.git" }/' Cargo.toml
 
-        sed -i 's/gimli = { version = "0.25.0", default-features = false, features = \["write"\]}/gimli = { version = "0.26.1", default-features = false, features = ["write"] }/' Cargo.toml
+        sed -i 's/object = { version = "0.27.0"/object = { version = "0.28.0"/' Cargo.toml
 
         cat Cargo.toml
 

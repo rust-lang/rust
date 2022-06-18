@@ -11,12 +11,12 @@ use rustc_graphviz as dot;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out the region constraint graph.
-    crate fn dump_graphviz_raw_constraints(&self, mut w: &mut dyn Write) -> io::Result<()> {
+    pub(crate) fn dump_graphviz_raw_constraints(&self, mut w: &mut dyn Write) -> io::Result<()> {
         dot::render(&RawConstraints { regioncx: self }, &mut w)
     }
 
     /// Write out the region constraint graph.
-    crate fn dump_graphviz_scc_constraints(&self, mut w: &mut dyn Write) -> io::Result<()> {
+    pub(crate) fn dump_graphviz_scc_constraints(&self, mut w: &mut dyn Write) -> io::Result<()> {
         let mut nodes_per_scc: IndexVec<ConstraintSccIndex, _> =
             self.constraint_sccs.all_sccs().map(|_| Vec::new()).collect();
 

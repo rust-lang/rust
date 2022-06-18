@@ -1,7 +1,7 @@
 use crate::base::ModuleData;
 use rustc_ast::ptr::P;
-use rustc_ast::{token, Attribute, Inline, Item};
-use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorReported};
+use rustc_ast::{token, Attribute, Inline, Item, ModSpans};
+use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_parse::new_parser_from_file;
 use rustc_parse::validate_attr;
 use rustc_session::parse::ParseSess;
@@ -26,9 +26,9 @@ pub struct ModulePathSuccess {
     pub dir_ownership: DirOwnership,
 }
 
-crate struct ParsedExternalMod {
+pub(crate) struct ParsedExternalMod {
     pub items: Vec<P<Item>>,
-    pub inner_span: Span,
+    pub spans: ModSpans,
     pub file_path: PathBuf,
     pub dir_path: PathBuf,
     pub dir_ownership: DirOwnership,
@@ -39,10 +39,10 @@ pub enum ModError<'a> {
     ModInBlock(Option<Ident>),
     FileNotFound(Ident, PathBuf, PathBuf),
     MultipleCandidates(Ident, PathBuf, PathBuf),
-    ParserError(DiagnosticBuilder<'a, ErrorReported>),
+    ParserError(DiagnosticBuilder<'a, ErrorGuaranteed>),
 }
 
-crate fn parse_external_mod(
+pub(crate) fn parse_external_mod(
     sess: &Session,
     ident: Ident,
     span: Span, // The span to blame on errors.
@@ -69,16 +69,16 @@ crate fn parse_external_mod(
         (items, inner_span, mp.file_path)
     };
     // (1) ...instead, we return a dummy module.
-    let (items, inner_span, file_path) =
+    let (items, spans, file_path) =
         result.map_err(|err| err.report(sess, span)).unwrap_or_default();
 
     // Extract the directory path for submodules of the module.
     let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
 
-    ParsedExternalMod { items, inner_span, file_path, dir_path, dir_ownership }
+    ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership }
 }
 
-crate fn mod_dir_path(
+pub(crate) fn mod_dir_path(
     sess: &Session,
     ident: Ident,
     attrs: &[Attribute],
@@ -242,7 +242,7 @@ pub fn default_submod_path<'a>(
 }
 
 impl ModError<'_> {
-    fn report(self, sess: &Session, span: Span) -> ErrorReported {
+    fn report(self, sess: &Session, span: Span) -> ErrorGuaranteed {
         let diag = &sess.parse_sess.span_diagnostic;
         match self {
             ModError::CircularInclusion(file_paths) => {

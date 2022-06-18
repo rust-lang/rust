@@ -134,7 +134,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::va_arg => {
                 match fn_abi.ret.layout.abi {
                     abi::Abi::Scalar(scalar) => {
-                        match scalar.value {
+                        match scalar.primitive() {
                             Primitive::Int(..) => {
                                 if self.cx().size_of(ret_ty).bytes() < 4 {
                                     // `va_arg` should not be called on an integer type
@@ -300,36 +300,39 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 use abi::Abi::*;
                 let tp_ty = substs.type_at(0);
                 let layout = self.layout_of(tp_ty).layout;
-                let use_integer_compare = match layout.abi {
+                let use_integer_compare = match layout.abi() {
                     Scalar(_) | ScalarPair(_, _) => true,
                     Uninhabited | Vector { .. } => false,
                     Aggregate { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
                         // so we re-use that same threshold here.
-                        layout.size <= self.data_layout().pointer_size * 2
+                        layout.size() <= self.data_layout().pointer_size * 2
                     }
                 };
 
                 let a = args[0].immediate();
                 let b = args[1].immediate();
-                if layout.size.bytes() == 0 {
+                if layout.size().bytes() == 0 {
                     self.const_bool(true)
                 } else if use_integer_compare {
-                    let integer_ty = self.type_ix(layout.size.bits());
+                    let integer_ty = self.type_ix(layout.size().bits());
                     let ptr_ty = self.type_ptr_to(integer_ty);
                     let a_ptr = self.bitcast(a, ptr_ty);
-                    let a_val = self.load(integer_ty, a_ptr, layout.align.abi);
+                    let a_val = self.load(integer_ty, a_ptr, layout.align().abi);
                     let b_ptr = self.bitcast(b, ptr_ty);
-                    let b_val = self.load(integer_ty, b_ptr, layout.align.abi);
+                    let b_val = self.load(integer_ty, b_ptr, layout.align().abi);
                     self.icmp(IntPredicate::IntEQ, a_val, b_val)
                 } else {
                     let i8p_ty = self.type_i8p();
                     let a_ptr = self.bitcast(a, i8p_ty);
                     let b_ptr = self.bitcast(b, i8p_ty);
-                    let n = self.const_usize(layout.size.bytes());
+                    let n = self.const_usize(layout.size().bytes());
                     let cmp = self.call_intrinsic("memcmp", &[a_ptr, b_ptr, n]);
-                    self.icmp(IntPredicate::IntEQ, cmp, self.const_i32(0))
+                    match self.cx.sess().target.arch.as_ref() {
+                        "avr" | "msp430" => self.icmp(IntPredicate::IntEQ, cmp, self.const_i16(0)),
+                        _ => self.icmp(IntPredicate::IntEQ, cmp, self.const_i32(0)),
+                    }
                 }
             }
 
@@ -401,6 +404,16 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let i8p_ty = self.type_i8p();
         let bitcast = self.bitcast(pointer, i8p_ty);
         self.call_intrinsic("llvm.type.test", &[bitcast, typeid])
+    }
+
+    fn type_checked_load(
+        &mut self,
+        llvtable: &'ll Value,
+        vtable_byte_offset: u64,
+        typeid: &'ll Value,
+    ) -> Self::Value {
+        let vtable_byte_offset = self.const_i32(vtable_byte_offset as i32);
+        self.call_intrinsic("llvm.type.checked.load", &[llvtable, vtable_byte_offset, typeid])
     }
 
     fn va_start(&mut self, va_list: &'ll Value) -> &'ll Value {
@@ -813,6 +826,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     span: Span,
 ) -> Result<&'ll Value, ()> {
     // macros for error handling:
+    #[allow(unused_macro_rules)]
     macro_rules! emit_error {
         ($msg: tt) => {
             emit_error!($msg, )
@@ -1113,7 +1127,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                     && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
                         == Some(expected_bytes) =>
             {
-                // Zero-extend iN to the array lengh:
+                // Zero-extend iN to the array length:
                 let ze = bx.zext(i_, bx.type_ix(expected_bytes * 8));
 
                 // Convert the integer to a byte array
@@ -1141,6 +1155,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         span: Span,
         args: &[OperandRef<'tcx, &'ll Value>],
     ) -> Result<&'ll Value, ()> {
+        #[allow(unused_macro_rules)]
         macro_rules! emit_error {
             ($msg: tt) => {
                 emit_error!($msg, )
@@ -1834,6 +1849,27 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
     }
     arith_unary! {
         simd_neg: Int => neg, Float => fneg;
+    }
+
+    if name == sym::simd_arith_offset {
+        // This also checks that the first operand is a ptr type.
+        let pointee = in_elem.builtin_deref(true).unwrap_or_else(|| {
+            span_bug!(span, "must be called with a vector of pointer types as first argument")
+        });
+        let layout = bx.layout_of(pointee.ty);
+        let ptrs = args[0].immediate();
+        // The second argument must be a ptr-sized integer.
+        // (We don't care about the signedness, this is wrapping anyway.)
+        let (_offsets_len, offsets_elem) = arg_tys[1].simd_size_and_type(bx.tcx());
+        if !matches!(offsets_elem.kind(), ty::Int(ty::IntTy::Isize) | ty::Uint(ty::UintTy::Usize)) {
+            span_bug!(
+                span,
+                "must be called with a vector of pointer-sized integers as second argument"
+            );
+        }
+        let offsets = args[1].immediate();
+
+        return Ok(bx.gep(bx.backend_type(layout), ptrs, &[offsets]));
     }
 
     if name == sym::simd_saturating_add || name == sym::simd_saturating_sub {

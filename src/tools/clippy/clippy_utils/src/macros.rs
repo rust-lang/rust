@@ -367,7 +367,7 @@ impl<'tcx> FormatArgsExpn<'tcx> {
         expr_visitor_no_bodies(|e| {
             // if we're still inside of the macro definition...
             if e.span.ctxt() == expr.span.ctxt() {
-                // ArgumnetV1::new_<format_trait>(<value>)
+                // ArgumentV1::new_<format_trait>(<value>)
                 if_chain! {
                     if let ExprKind::Call(callee, [val]) = e.kind;
                     if let ExprKind::Path(QPath::TypeRelative(ty, seg)) = callee.kind;

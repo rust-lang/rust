@@ -1,5 +1,3 @@
-// compile-flags: -Zborrowck=mir
-
 #![allow(dead_code)]
 
 fn bar<'a>(input: &'a u32, f: fn(&'a u32) -> &'a u32) -> &'static u32 {

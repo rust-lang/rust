@@ -22,7 +22,7 @@ As detailed in [the chapter on documentation tests][doctest-attributes], you can
 nightly, you can optionally add an error number to state that a doctest should emit a specific error
 number:
 
-[doctest-attributes]: documentation-tests.html#attributes
+[doctest-attributes]: write-documentation/documentation-tests.html#attributes
 
 ``````markdown
 ```compile_fail,E0044
@@ -44,6 +44,8 @@ These features operate by extending the `#[doc]` attribute, and thus can be caug
 and enabled with a `#![feature(...)]` attribute in your crate.
 
 ### `#[doc(cfg)]`: Recording what platforms or features are required for code to be present
+
+ * Tracking issue: [#43781](https://github.com/rust-lang/rust/issues/43781)
 
 You can use `#[doc(cfg(...))]` to tell Rustdoc exactly which platform items appear on.
 This has two effects:
@@ -86,6 +88,8 @@ Book][unstable-doc-cfg] and [its tracking issue][issue-doc-cfg].
 
 ### `doc_auto_cfg`: Automatically generate `#[doc(cfg)]`
 
+ * Tracking issue: [#43781](https://github.com/rust-lang/rust/issues/43781)
+
 `doc_auto_cfg` is an extension to the `#[doc(cfg)]` feature. With it, you don't need to add
 `#[doc(cfg(...)]` anymore unless you want to override the default behaviour. So if we take the
 previous source code:
@@ -123,6 +127,8 @@ And `doc` won't show up anymore!
 
 ### Adding your trait to the "Notable traits" dialog
 
+ * Tracking issue: [#45040](https://github.com/rust-lang/rust/issues/45040)
+
 Rustdoc keeps a list of a few traits that are believed to be "fundamental" to
 types that implement them. These traits are intended to be the primary interface
 for their implementers, and are often most of the API available to be documented
@@ -146,6 +152,8 @@ and [its tracking issue][issue-notable_trait].
 
 ### Exclude certain dependencies from documentation
 
+ * Tracking issue: [#44027](https://github.com/rust-lang/rust/issues/44027)
+
 The standard library uses several dependencies which, in turn, use several types and traits from the
 standard library. In addition, there are several compiler-internal crates that are not considered to
 be part of the official standard library, and thus would be a distraction to include in
@@ -164,8 +172,7 @@ Book][unstable-masked] and [its tracking issue][issue-masked].
 [unstable-masked]: ../unstable-book/language-features/doc-masked.html
 [issue-masked]: https://github.com/rust-lang/rust/issues/44027
 
-
-## Document primitives
+### Document primitives
 
 This is for Rust compiler internal use only.
 
@@ -174,7 +181,7 @@ attributes. The `#[doc(primitive)]` attribute is used by the standard library to
 to generate documentation for primitive types, and requires `#![feature(rustdoc_internals)]` to
 enable.
 
-## Document keywords
+### Document keywords
 
 This is for Rust compiler internal use only.
 
@@ -198,6 +205,8 @@ the flag in question to Rustdoc on the command-line. To do this from Cargo, you 
 `RUSTDOCFLAGS` environment variable or the `cargo rustdoc` command.
 
 ### `--markdown-before-content`: include rendered Markdown before the content
+
+ * Tracking issue: [#44027](https://github.com/rust-lang/rust/issues/44027)
 
 Using this flag looks like this:
 
@@ -241,7 +250,7 @@ attribute][doc-playground]. Please be aware that the official Rust Playground at
 https://play.rust-lang.org does not have every crate available, so if your examples require your
 crate, make sure the playground you provide has your crate available.
 
-[doc-playground]: the-doc-attribute.html#html_playground_url
+[doc-playground]: write-documentation/the-doc-attribute.html#html_playground_url
 
 If both `--playground-url` and `--markdown-playground-url` are present when rendering a standalone
 Markdown file, the URL given to `--markdown-playground-url` will take precedence. If both
@@ -278,6 +287,8 @@ Note that most layout information is **completely unstable** and may even differ
 between compilations.
 
 ### `--resource-suffix`: modifying the name of CSS/JavaScript in crate docs
+
+ * Tracking issue: [#54765](https://github.com/rust-lang/rust/issues/54765)
 
 Using this flag looks like this:
 
@@ -331,6 +342,24 @@ Using `index-page` option enables `enable-index-page` option as well.
 
 This feature allows the generation of a default index-page which lists the generated crates.
 
+### `--nocapture`: disable output capture for test
+
+When this flag is used with `--test`, the output (stdout and stderr) of your tests won't be
+captured by rustdoc. Instead, the output will be directed to your terminal,
+as if you had run the test executable manually. This is especially useful
+for debugging your tests!
+
+### `--check`: only checks the documentation
+
+When this flag is supplied, rustdoc will type check and lint your code, but will not generate any
+documentation or run your doctests.
+
+Using this flag looks like:
+
+```bash
+rustdoc -Z unstable-options --check src/lib.rs
+```
+
 ### `--static-root-path`: control how static files are loaded in HTML output
 
 Using this flag looks like this:
@@ -348,6 +377,8 @@ renamed with `--resource-suffix` will load from the given path.
 
 ### `--persist-doctests`: persist doctest executables after running
 
+ * Tracking issue: [#56925](https://github.com/rust-lang/rust/issues/56925)
+
 Using this flag looks like this:
 
 ```bash
@@ -359,6 +390,8 @@ Usually, rustdoc will immediately discard a compiled doctest after it's been tes
 with this option, you can keep those binaries around for farther testing.
 
 ### `--show-coverage`: calculate the percentage of items with documentation
+
+ * Tracking issue: [#58154](https://github.com/rust-lang/rust/issues/58154)
 
 Using this flag looks like this:
 
@@ -438,6 +471,8 @@ information.
 
 ### `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
 
+ * Tracking issue: [#64245](https://github.com/rust-lang/rust/issues/64245)
+
 Using this flag looks like this:
 
 ```bash
@@ -471,6 +506,8 @@ override `ignore`.
 
 ### `--runtool`, `--runtool-arg`: program to run tests with; args to pass to it
 
+ * Tracking issue: [#64245](https://github.com/rust-lang/rust/issues/64245)
+
 Using these options looks like this:
 
 ```bash
@@ -487,6 +524,8 @@ $ rustdoc src/lib.rs -Z unstable-options --runtool valgrind
 Another use case would be to run a test inside an emulator, or through a Virtual Machine.
 
 ### `--with-examples`: include examples of uses of items as documentation
+
+ * Tracking issue: [#88791](https://github.com/rust-lang/rust/issues/88791)
 
 This option, combined with `--scrape-examples-target-crate` and
 `--scrape-examples-output-path`, is used to implement the functionality in [RFC
@@ -515,6 +554,8 @@ add the `--scrape-tests` flag.
 
 ### `--check-cfg`: check configuration flags
 
+ * Tracking issue: [#82450](https://github.com/rust-lang/rust/issues/82450)
+
 This flag accepts the same values as `rustc --check-cfg`, and uses it to check configuration flags.
 
 Using this flag looks like this:
@@ -526,3 +567,10 @@ $ rustdoc src/lib.rs -Z unstable-options \
 
 The example above check every well known names (`target_os`, `doc`, `test`, ... via `names()`)
 and check the values of `feature`: `foo` and `bar`.
+
+### `--generate-link-to-definition`: Generate links on types in source code
+
+ * Tracking issue: [#89095](https://github.com/rust-lang/rust/issues/89095)
+
+This flag enables the generation of links in the source code pages which allow the reader
+to jump to a type definition.

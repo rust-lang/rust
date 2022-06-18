@@ -15,28 +15,6 @@ impl<'a> Hash for Bytes<'a> {
     }
 }
 
-macro_rules! u8to64_le {
-    ($buf:expr, $i:expr) => {
-        $buf[0 + $i] as u64
-            | ($buf[1 + $i] as u64) << 8
-            | ($buf[2 + $i] as u64) << 16
-            | ($buf[3 + $i] as u64) << 24
-            | ($buf[4 + $i] as u64) << 32
-            | ($buf[5 + $i] as u64) << 40
-            | ($buf[6 + $i] as u64) << 48
-            | ($buf[7 + $i] as u64) << 56
-    };
-    ($buf:expr, $i:expr, $len:expr) => {{
-        let mut t = 0;
-        let mut out = 0;
-        while t < $len {
-            out |= ($buf[t + $i] as u64) << t * 8;
-            t += 1;
-        }
-        out
-    }};
-}
-
 fn hash_with<H: Hasher, T: Hash>(mut st: H, x: &T) -> u64 {
     x.hash(&mut st);
     st.finish()
@@ -123,7 +101,7 @@ fn test_siphash_1_3() {
     let mut state_inc = SipHasher13::new_with_keys(k0, k1);
 
     while t < 64 {
-        let vec = u8to64_le!(vecs[t], 0);
+        let vec = u64::from_le_bytes(vecs[t]);
         let out = hash_with(SipHasher13::new_with_keys(k0, k1), &Bytes(&buf));
         assert_eq!(vec, out);
 
@@ -217,7 +195,7 @@ fn test_siphash_2_4() {
     let mut state_inc = SipHasher::new_with_keys(k0, k1);
 
     while t < 64 {
-        let vec = u8to64_le!(vecs[t], 0);
+        let vec = u64::from_le_bytes(vecs[t]);
         let out = hash_with(SipHasher::new_with_keys(k0, k1), &Bytes(&buf));
         assert_eq!(vec, out);
 

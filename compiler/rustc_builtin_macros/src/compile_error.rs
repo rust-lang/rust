@@ -13,7 +13,7 @@ pub fn expand_compile_error<'cx>(
         return DummyResult::any(sp);
     };
 
-    cx.span_err(sp, &var);
+    cx.span_err(sp, var.as_str());
 
     DummyResult::any(sp)
 }

@@ -6,7 +6,7 @@
 #[allow(clippy::short_circuit_statement)]
 #[allow(clippy::unnecessary_operation)]
 fn main() {
-    let x = 9_u32;
+    let x = 9_i32;
 
     // order shouldn't matter
     x >= 8 && x < 12;
@@ -43,6 +43,19 @@ fn main() {
     let y = 3.;
     y >= 0. && y < 1.;
     y < 0. || y > 1.;
+
+    // handle negatives #8721
+    x >= -10 && x <= 10;
+    x >= 10 && x <= -10;
+    y >= -3. && y <= 3.;
+    y >= 3. && y <= -3.;
+
+    // Fix #8745
+    let z = 42;
+    (x >= 0) && (x <= 10) && (z >= 0) && (z <= 10);
+    (x < 0) || (x >= 10) || (z < 0) || (z >= 10);
+    // Make sure operators in parens don't give a breaking suggestion
+    ((x % 2 == 0) || (x < 0)) || (x >= 10);
 }
 
 // Fix #6373

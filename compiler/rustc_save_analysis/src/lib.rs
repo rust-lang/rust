@@ -1,6 +1,5 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(if_let_guard)]
-#![feature(nll)]
 #![feature(let_else)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
@@ -27,7 +26,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, Input, OutputType};
 use rustc_session::cstore::ExternCrate;
 use rustc_session::output::{filename_for_metadata, out_filename};
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
 use rustc_span::*;
 
@@ -165,7 +163,6 @@ impl<'tcx> SaveContext<'tcx> {
                         },
                         Some(item.ident.name),
                         generics,
-                        &item.vis,
                         arg_names,
                         None,
                     ),
@@ -221,7 +218,6 @@ impl<'tcx> SaveContext<'tcx> {
                         sig.header,
                         Some(item.ident.name),
                         generics,
-                        &item.vis,
                         &[],
                         None,
                     ),
@@ -282,7 +278,7 @@ impl<'tcx> SaveContext<'tcx> {
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
 
                 let sm = self.tcx.sess.source_map();
-                let filename = sm.span_to_filename(m.inner);
+                let filename = sm.span_to_filename(m.spans.inner_span);
 
                 filter!(self.span_utils, item.ident.span);
 
@@ -310,7 +306,7 @@ impl<'tcx> SaveContext<'tcx> {
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
                 filter!(self.span_utils, item.ident.span);
                 let value =
-                    enum_def_to_string(def, generics, item.ident.name, item.span, &item.vis);
+                    enum_def_to_string(def, generics, item.ident.name, item.span);
                 Some(Data::DefData(Def {
                     kind: DefKind::Enum,
                     id: id_from_def_id(def_id),
@@ -554,7 +550,7 @@ impl<'tcx> SaveContext<'tcx> {
                     Some(Data::RefData(Ref {
                         kind: RefKind::Type,
                         span,
-                        ref_id: id_from_def_id(def.did),
+                        ref_id: id_from_def_id(def.did()),
                     }))
                 }
                 _ => {
@@ -595,11 +591,6 @@ impl<'tcx> SaveContext<'tcx> {
             Node::TraitRef(tr) => tr.path.res,
 
             Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => path.res,
-            Node::Visibility(&Spanned {
-                node: hir::VisibilityKind::Restricted { ref path, .. },
-                ..
-            }) => path.res,
-
             Node::PathSegment(seg) => match seg.res {
                 Some(res) if res != Res::Err => res,
                 _ => {
@@ -698,10 +689,10 @@ impl<'tcx> SaveContext<'tcx> {
                 // This is a reference to a tuple struct or an enum variant where the def_id points
                 // to an invisible constructor function. That is not a very useful
                 // def, so adjust to point to the tuple struct or enum variant itself.
-                let parent_def_id = self.tcx.parent(def_id).unwrap();
+                let parent_def_id = self.tcx.parent(def_id);
                 Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(parent_def_id) })
             }
-            Res::Def(HirDefKind::Static | HirDefKind::Const | HirDefKind::AssocConst, _) => {
+            Res::Def(HirDefKind::Static(_) | HirDefKind::Const | HirDefKind::AssocConst, _) => {
                 Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(res.def_id()) })
             }
             Res::Def(HirDefKind::AssocFn, decl_id) => {

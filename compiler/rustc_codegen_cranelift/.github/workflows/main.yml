@@ -10,7 +10,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Install rustfmt
       run: |
@@ -39,7 +39,7 @@ jobs:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Cache cargo installed crates
       uses: actions/cache@v2
@@ -127,7 +127,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     #- name: Cache cargo installed crates
     #  uses: actions/cache@v2

@@ -1,14 +1,14 @@
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-nullary-enums.rs:33:41
    |
-LL |         SomeEnum::SomeVariant(Cell::new(&c)),
-   |                               ----------^^-
-   |                               |         |
-   |                               |         borrowed value does not live long enough
-   |                               argument requires that `c` is borrowed for `'static`
-...
-LL | }
-   | - `c` dropped here while still borrowed
+LL | /     combine(
+LL | |         SomeEnum::SomeVariant(Cell::new(&c)),
+   | |                                         ^^ borrowed value does not live long enough
+LL | |         SomeEnum::SomeOtherVariant::<Cell<&'static u32>>,
+LL | |     );
+   | |_____- argument requires that `c` is borrowed for `'static`
+LL |   }
+   |   - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-nullary-enums.rs:41:41

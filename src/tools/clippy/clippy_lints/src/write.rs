@@ -7,13 +7,13 @@ use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use rustc_ast::ast::{Expr, ExprKind, Impl, Item, ItemKind, MacCall, Path, StrLit, StrStyle};
 use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_lexer::unescape::{self, EscapeError};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_parse::parser;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{sym, BytePos, Span, DUMMY_SP};
+use rustc_span::{sym, BytePos, InnerSpan, Span, DUMMY_SP};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -25,10 +25,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// println!("");
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// println!();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -177,10 +178,13 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
-    /// // Bad
     /// writeln!(buf, "");
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # use std::fmt::Write;
+    /// # let mut buf = String::new();
     /// writeln!(buf);
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -204,10 +208,14 @@ declare_clippy_lint! {
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
     /// # let name = "World";
-    /// // Bad
     /// write!(buf, "Hello {}!\n", name);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # use std::fmt::Write;
+    /// # let mut buf = String::new();
+    /// # let name = "World";
     /// writeln!(buf, "Hello {}!", name);
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -233,10 +241,13 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
-    /// // Bad
     /// writeln!(buf, "{}", "foo");
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # use std::fmt::Write;
+    /// # let mut buf = String::new();
     /// writeln!(buf, "foo");
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -342,8 +353,6 @@ impl EarlyLintPass for Write {
             if let (Some(fmt_str), expr) = self.check_tts(cx, mac.args.inner_tokens(), true) {
                 if fmt_str.symbol == kw::Empty {
                     let mut applicability = Applicability::MachineApplicable;
-                    // FIXME: remove this `#[allow(...)]` once the issue #5822 gets fixed
-                    #[allow(clippy::option_if_let_else)]
                     let suggestion = if let Some(e) = expr {
                         snippet_with_applicability(cx, e.span, "v", &mut applicability)
                     } else {
@@ -454,6 +463,7 @@ impl SimpleFormatArgs {
                 }
             },
             ArgumentNamed(n, _) => {
+                let n = Symbol::intern(n);
                 if let Some(x) = self.named.iter_mut().find(|x| x.0 == n) {
                     match x.1.as_slice() {
                         // A non-empty format string has been seen already.
@@ -495,7 +505,7 @@ impl Write {
             let span = parser
                 .arg_places
                 .last()
-                .map_or(DUMMY_SP, |&x| str_lit.span.from_inner(x));
+                .map_or(DUMMY_SP, |&x| str_lit.span.from_inner(InnerSpan::new(x.start, x.end)));
 
             if !self.in_debug_impl && arg.format.ty == "?" {
                 // FIXME: modify rustc's fmt string parser to give us the current span
@@ -527,14 +537,13 @@ impl Write {
     /// ```rust,ignore
     /// (Some("string to write: {}"), Some(buf))
     /// ```
-    #[allow(clippy::too_many_lines)]
     fn check_tts<'a>(&self, cx: &EarlyContext<'a>, tts: TokenStream, is_write: bool) -> (Option<StrLit>, Option<Expr>) {
         let mut parser = parser::Parser::new(&cx.sess().parse_sess, tts, false, None);
         let expr = if is_write {
             match parser
                 .parse_expr()
                 .map(rustc_ast::ptr::P::into_inner)
-                .map_err(|e| e.cancel())
+                .map_err(DiagnosticBuilder::cancel)
             {
                 // write!(e, ...)
                 Ok(p) if parser.eat(&token::Comma) => Some(p),
@@ -563,7 +572,7 @@ impl Write {
             }
 
             let comma_span = parser.prev_token.span;
-            let token_expr = if let Ok(expr) = parser.parse_expr().map_err(|err| err.cancel()) {
+            let token_expr = if let Ok(expr) = parser.parse_expr().map_err(DiagnosticBuilder::cancel) {
                 expr
             } else {
                 return (Some(fmtstr), None);
@@ -581,14 +590,19 @@ impl Write {
             };
 
             let replacement: String = match lit.token.kind {
-                LitKind::Integer | LitKind::Float | LitKind::Err => continue,
                 LitKind::StrRaw(_) | LitKind::ByteStrRaw(_) if matches!(fmtstr.style, StrStyle::Raw(_)) => {
                     lit.token.symbol.as_str().replace('{', "{{").replace('}', "}}")
                 },
                 LitKind::Str | LitKind::ByteStr if matches!(fmtstr.style, StrStyle::Cooked) => {
                     lit.token.symbol.as_str().replace('{', "{{").replace('}', "}}")
                 },
-                LitKind::StrRaw(_) | LitKind::Str | LitKind::ByteStrRaw(_) | LitKind::ByteStr => continue,
+                LitKind::StrRaw(_)
+                | LitKind::Str
+                | LitKind::ByteStrRaw(_)
+                | LitKind::ByteStr
+                | LitKind::Integer
+                | LitKind::Float
+                | LitKind::Err => continue,
                 LitKind::Byte | LitKind::Char => match lit.token.symbol.as_str() {
                     "\"" if matches!(fmtstr.style, StrStyle::Cooked) => "\\\"",
                     "\"" if matches!(fmtstr.style, StrStyle::Raw(0)) => continue,

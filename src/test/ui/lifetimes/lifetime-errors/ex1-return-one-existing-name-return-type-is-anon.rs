@@ -5,7 +5,8 @@ struct Foo {
 impl Foo {
   fn foo<'a>(&self, x: &'a i32) -> &i32 {
 
-    x //~ ERROR lifetime mismatch
+    x
+    //~^ ERROR lifetime may not live long enough
 
   }
 

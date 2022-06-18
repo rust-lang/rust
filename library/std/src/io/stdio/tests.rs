@@ -50,17 +50,17 @@ fn panic_doesnt_poison() {
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn test_lock_stderr() {
-    test_lock(stderr, stderr_locked);
+    test_lock(stderr, || stderr().lock());
 }
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn test_lock_stdin() {
-    test_lock(stdin, stdin_locked);
+    test_lock(stdin, || stdin().lock());
 }
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn test_lock_stdout() {
-    test_lock(stdout, stdout_locked);
+    test_lock(stdout, || stdout().lock());
 }
 
 // Helper trait to make lock testing function generic.

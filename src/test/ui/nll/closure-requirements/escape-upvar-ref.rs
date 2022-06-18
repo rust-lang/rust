@@ -9,7 +9,7 @@
 // `'b`.  This relationship is propagated to the closure creator,
 // which reports an error.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![feature(rustc_attrs)]
 

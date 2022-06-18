@@ -9,16 +9,16 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::fold::TypeFolder;
-use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
 use rustc_middle::ty::{
-    self, suggest_constraining_type_param, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitor,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::suggestions::InferCtxtExt as _;
 use rustc_trait_selection::traits::{FulfillmentError, TraitEngine, TraitEngineExt};
+use rustc_type_ir::sty::TyKind::*;
 
 use std::ops::ControlFlow;
 
@@ -42,7 +42,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return_ty
             };
 
-        self.check_lhs_assignable(lhs, "E0067", op.span);
+        self.check_lhs_assignable(lhs, "E0067", op.span, |err| {
+            if let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
+                if self
+                    .lookup_op_method(
+                        lhs_deref_ty,
+                        Some(rhs_ty),
+                        Some(rhs),
+                        Op::Binary(op, IsAssign::Yes),
+                    )
+                    .is_ok()
+                {
+                    // Suppress this error, since we already emitted
+                    // a deref suggestion in check_overloaded_binop
+                    err.delay_as_bug();
+                }
+            }
+        });
 
         ty
     }
@@ -266,7 +282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => self.tcx.ty_error(),
             Err(errors) => {
                 let source_map = self.tcx.sess.source_map();
-                let (mut err, missing_trait, use_output) = match is_assign {
+                let (mut err, missing_trait, _use_output) = match is_assign {
                     IsAssign::Yes => {
                         let mut err = struct_span_err!(
                             self.tcx.sess,
@@ -299,52 +315,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     IsAssign::No => {
                         let (message, missing_trait, use_output) = match op.node {
                             hir::BinOpKind::Add => (
-                                format!("cannot add `{}` to `{}`", rhs_ty, lhs_ty),
+                                format!("cannot add `{rhs_ty}` to `{lhs_ty}`"),
                                 Some("std::ops::Add"),
                                 true,
                             ),
                             hir::BinOpKind::Sub => (
-                                format!("cannot subtract `{}` from `{}`", rhs_ty, lhs_ty),
+                                format!("cannot subtract `{rhs_ty}` from `{lhs_ty}`"),
                                 Some("std::ops::Sub"),
                                 true,
                             ),
                             hir::BinOpKind::Mul => (
-                                format!("cannot multiply `{}` by `{}`", lhs_ty, rhs_ty),
+                                format!("cannot multiply `{lhs_ty}` by `{rhs_ty}`"),
                                 Some("std::ops::Mul"),
                                 true,
                             ),
                             hir::BinOpKind::Div => (
-                                format!("cannot divide `{}` by `{}`", lhs_ty, rhs_ty),
+                                format!("cannot divide `{lhs_ty}` by `{rhs_ty}`"),
                                 Some("std::ops::Div"),
                                 true,
                             ),
                             hir::BinOpKind::Rem => (
-                                format!("cannot mod `{}` by `{}`", lhs_ty, rhs_ty),
+                                format!("cannot mod `{lhs_ty}` by `{rhs_ty}`"),
                                 Some("std::ops::Rem"),
                                 true,
                             ),
                             hir::BinOpKind::BitAnd => (
-                                format!("no implementation for `{} & {}`", lhs_ty, rhs_ty),
+                                format!("no implementation for `{lhs_ty} & {rhs_ty}`"),
                                 Some("std::ops::BitAnd"),
                                 true,
                             ),
                             hir::BinOpKind::BitXor => (
-                                format!("no implementation for `{} ^ {}`", lhs_ty, rhs_ty),
+                                format!("no implementation for `{lhs_ty} ^ {rhs_ty}`"),
                                 Some("std::ops::BitXor"),
                                 true,
                             ),
                             hir::BinOpKind::BitOr => (
-                                format!("no implementation for `{} | {}`", lhs_ty, rhs_ty),
+                                format!("no implementation for `{lhs_ty} | {rhs_ty}`"),
                                 Some("std::ops::BitOr"),
                                 true,
                             ),
                             hir::BinOpKind::Shl => (
-                                format!("no implementation for `{} << {}`", lhs_ty, rhs_ty),
+                                format!("no implementation for `{lhs_ty} << {rhs_ty}`"),
                                 Some("std::ops::Shl"),
                                 true,
                             ),
                             hir::BinOpKind::Shr => (
-                                format!("no implementation for `{} >> {}`", lhs_ty, rhs_ty),
+                                format!("no implementation for `{lhs_ty} >> {rhs_ty}`"),
                                 Some("std::ops::Shr"),
                                 true,
                             ),
@@ -405,16 +421,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (err, missing_trait, use_output)
                     }
                 };
-                if let Ref(_, rty, _) = lhs_ty.kind() {
-                    if self.infcx.type_is_copy_modulo_regions(self.param_env, *rty, lhs_expr.span)
-                        && self
-                            .lookup_op_method(
-                                *rty,
-                                Some(rhs_ty),
-                                Some(rhs_expr),
-                                Op::Binary(op, is_assign),
-                            )
-                            .is_ok()
+
+                let mut suggest_deref_binop = |lhs_deref_ty: Ty<'tcx>| {
+                    if self
+                        .lookup_op_method(
+                            lhs_deref_ty,
+                            Some(rhs_ty),
+                            Some(rhs_expr),
+                            Op::Binary(op, is_assign),
+                        )
+                        .is_ok()
                     {
                         if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
                             let msg = &format!(
@@ -424,16 +440,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     IsAssign::Yes => "=",
                                     IsAssign::No => "",
                                 },
-                                rty.peel_refs(),
+                                lhs_deref_ty.peel_refs(),
                                 lstring,
                             );
                             err.span_suggestion_verbose(
                                 lhs_expr.span.shrink_to_lo(),
                                 msg,
-                                "*".to_string(),
+                                "*",
                                 rustc_errors::Applicability::MachineApplicable,
                             );
                         }
+                    }
+                };
+
+                // We should suggest `a + b` => `*a + b` if `a` is copy, and suggest
+                // `a += b` => `*a += b` if a is a mut ref.
+                if is_assign == IsAssign::Yes
+                    && let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
+                        suggest_deref_binop(lhs_deref_ty);
+                } else if is_assign == IsAssign::No
+                    && let Ref(_, lhs_deref_ty, _) = lhs_ty.kind() {
+                    if self.infcx.type_is_copy_modulo_regions(self.param_env, *lhs_deref_ty, lhs_expr.span) {
+                        suggest_deref_binop(*lhs_deref_ty);
                     }
                 }
                 if let Some(missing_trait) = missing_trait {
@@ -449,40 +477,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // concatenation (e.g., "Hello " + "World!"). This means
                         // we don't want the note in the else clause to be emitted
                     } else if let [ty] = &visitor.0[..] {
-                        if let ty::Param(p) = *ty.kind() {
-                            // Check if the method would be found if the type param wasn't
-                            // involved. If so, it means that adding a trait bound to the param is
-                            // enough. Otherwise we do not give the suggestion.
-                            let mut eraser = TypeParamEraser(self, expr.span);
-                            let needs_bound = self
-                                .lookup_op_method(
-                                    eraser.fold_ty(lhs_ty),
-                                    Some(eraser.fold_ty(rhs_ty)),
-                                    Some(rhs_expr),
-                                    Op::Binary(op, is_assign),
-                                )
-                                .is_ok();
-                            if needs_bound {
-                                suggest_constraining_param(
-                                    self.tcx,
-                                    self.body_id,
+                        // Look for a TraitPredicate in the Fulfillment errors,
+                        // and use it to generate a suggestion.
+                        //
+                        // Note that lookup_op_method must be called again but
+                        // with a specific rhs_ty instead of a placeholder so
+                        // the resulting predicate generates a more specific
+                        // suggestion for the user.
+                        let errors = self
+                            .lookup_op_method(
+                                lhs_ty,
+                                Some(rhs_ty),
+                                Some(rhs_expr),
+                                Op::Binary(op, is_assign),
+                            )
+                            .unwrap_err();
+                        let predicates = errors
+                            .into_iter()
+                            .filter_map(|error| error.obligation.predicate.to_opt_poly_trait_pred())
+                            .collect::<Vec<_>>();
+                        if !predicates.is_empty() {
+                            for pred in predicates {
+                                self.infcx.suggest_restricting_param_bound(
                                     &mut err,
-                                    *ty,
-                                    rhs_ty,
-                                    missing_trait,
-                                    p,
-                                    use_output,
+                                    pred,
+                                    self.body_id,
                                 );
-                            } else if *ty != lhs_ty {
-                                // When we know that a missing bound is responsible, we don't show
-                                // this note as it is redundant.
-                                err.note(&format!(
-                                    "the trait `{}` is not implemented for `{}`",
-                                    missing_trait, lhs_ty
-                                ));
                             }
-                        } else {
-                            bug!("type param visitor stored a non type param: {:?}", ty.kind());
+                        } else if *ty != lhs_ty {
+                            // When we know that a missing bound is responsible, we don't show
+                            // this note as it is redundant.
+                            err.note(&format!(
+                                "the trait `{missing_trait}` is not implemented for `{lhs_ty}`"
+                            ));
                         }
                     }
                 }
@@ -576,7 +603,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let string_type = self.tcx.get_diagnostic_item(sym::String);
         let is_std_string = |ty: Ty<'tcx>| match ty.ty_adt_def() {
-            Some(ty_def) => Some(ty_def.did) == string_type,
+            Some(ty_def) => Some(ty_def.did()) == string_type,
             None => false,
         };
 
@@ -594,14 +621,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_suggestion_verbose(
                             lhs_expr.span.until(lhs_inner_expr.span),
                             rm_borrow_msg,
-                            "".to_owned(),
+                            "",
                             Applicability::MachineApplicable
                         );
                     } else {
                         err.span_suggestion_verbose(
                             lhs_expr.span.shrink_to_hi(),
                             to_owned_msg,
-                            ".to_owned()".to_owned(),
+                            ".to_owned()",
                             Applicability::MachineApplicable
                         );
                     }
@@ -673,6 +700,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!("cannot apply unary operator `{}`", op.as_str()),
                     );
 
+                    let mut visitor = TypeParamVisitor(vec![]);
+                    visitor.visit_ty(operand_ty);
+                    if let [_] = &visitor.0[..] && let ty::Param(_) = *operand_ty.kind() {
+                        let predicates = errors
+                            .iter()
+                            .filter_map(|error| {
+                                error.obligation.predicate.to_opt_poly_trait_pred()
+                            });
+                        for pred in predicates {
+                            self.infcx.suggest_restricting_param_bound(
+                                &mut err,
+                                pred,
+                                self.body_id,
+                            );
+                        }
+                    }
+
                     let sp = self.tcx.sess.source_map().start_point(ex.span);
                     if let Some(sp) =
                         self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
@@ -701,10 +745,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     err.span_suggestion(
                                         ex.span,
                                         &format!(
-                                            "you may have meant the maximum value of `{}`",
-                                            actual
+                                            "you may have meant the maximum value of `{actual}`",
                                         ),
-                                        format!("{}::MAX", actual),
+                                        format!("{actual}::MAX"),
                                         Applicability::MaybeIncorrect,
                                     );
                                 }
@@ -835,7 +878,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 // Binary operator categories. These categories summarize the behavior
-// with respect to the builtin operationrs supported.
+// with respect to the builtin operations supported.
 enum BinOpCategory {
     /// &&, || -- cannot be overridden
     Shortcircuit,
@@ -953,46 +996,6 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
         BinOpCategory::Comparison => {
             lhs.references_error() || rhs.references_error() || lhs.is_scalar() && rhs.is_scalar()
         }
-    }
-}
-
-fn suggest_constraining_param(
-    tcx: TyCtxt<'_>,
-    body_id: hir::HirId,
-    mut err: &mut Diagnostic,
-    lhs_ty: Ty<'_>,
-    rhs_ty: Ty<'_>,
-    missing_trait: &str,
-    p: ty::ParamTy,
-    set_output: bool,
-) {
-    let hir = tcx.hir();
-    let msg = &format!("`{}` might need a bound for `{}`", lhs_ty, missing_trait);
-    // Try to find the def-id and details for the parameter p. We have only the index,
-    // so we have to find the enclosing function's def-id, then look through its declared
-    // generic parameters to get the declaration.
-    let def_id = hir.body_owner_def_id(hir::BodyId { hir_id: body_id });
-    let generics = tcx.generics_of(def_id);
-    let param_def_id = generics.type_param(&p, tcx).def_id;
-    if let Some(generics) = param_def_id
-        .as_local()
-        .map(|id| hir.local_def_id_to_hir_id(id))
-        .and_then(|id| hir.find_by_def_id(hir.get_parent_item(id)))
-        .as_ref()
-        .and_then(|node| node.generics())
-    {
-        let output = if set_output { format!("<Output = {}>", rhs_ty) } else { String::new() };
-        suggest_constraining_type_param(
-            tcx,
-            generics,
-            &mut err,
-            &format!("{}", lhs_ty),
-            &format!("{}{}", missing_trait, output),
-            None,
-        );
-    } else {
-        let span = tcx.def_span(param_def_id);
-        err.span_label(span, msg);
     }
 }
 

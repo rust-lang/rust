@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `*a` because it is borrowed
    |
 LL |     let b = &a;
    |             -- borrow of `a` occurs here
-LL | 
+LL |
 LL |     let z = *a;
    |             ^^ move out of `*a` occurs here
 LL |     b.use_ref();

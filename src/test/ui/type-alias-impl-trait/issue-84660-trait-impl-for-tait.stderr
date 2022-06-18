@@ -1,0 +1,14 @@
+error: cannot implement trait on type alias impl trait
+  --> $DIR/issue-84660-trait-impl-for-tait.rs:15:15
+   |
+LL | impl TraitArg<Bar> for () {
+   |               ^^^
+   |
+note: type alias impl trait defined here
+  --> $DIR/issue-84660-trait-impl-for-tait.rs:8:12
+   |
+LL | type Bar = impl Foo;
+   |            ^^^^^^^^
+
+error: aborting due to previous error
+

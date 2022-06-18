@@ -58,8 +58,21 @@ struct PostExpansionVisitor<'a> {
 }
 
 impl<'a> PostExpansionVisitor<'a> {
-    fn check_abi(&self, abi: ast::StrLit) {
+    fn check_abi(&self, abi: ast::StrLit, constness: ast::Const) {
         let ast::StrLit { symbol_unescaped, span, .. } = abi;
+
+        if let ast::Const::Yes(_) = constness {
+            match symbol_unescaped.as_str() {
+                // Stable
+                "Rust" | "C" => {}
+                abi => gate_feature_post!(
+                    &self,
+                    const_extern_fn,
+                    span,
+                    &format!("`{}` as a `const fn` ABI is unstable", abi)
+                ),
+            }
+        }
 
         match symbol_unescaped.as_str() {
             // Stable
@@ -98,6 +111,14 @@ impl<'a> PostExpansionVisitor<'a> {
                     unboxed_closures,
                     span,
                     "rust-call ABI is subject to change"
+                );
+            }
+            "rust-cold" => {
+                gate_feature_post!(
+                    &self,
+                    rust_cold_cc,
+                    span,
+                    "rust-cold is experimental and subject to change"
                 );
             }
             "ptx-kernel" => {
@@ -252,17 +273,18 @@ impl<'a> PostExpansionVisitor<'a> {
                     "wasm ABI is experimental and subject to change"
                 );
             }
-            abi => self
-                .sess
-                .parse_sess
-                .span_diagnostic
-                .delay_span_bug(span, &format!("unrecognized ABI not caught in lowering: {}", abi)),
+            abi => {
+                self.sess.parse_sess.span_diagnostic.delay_span_bug(
+                    span,
+                    &format!("unrecognized ABI not caught in lowering: {}", abi),
+                );
+            }
         }
     }
 
-    fn check_extern(&self, ext: ast::Extern) {
+    fn check_extern(&self, ext: ast::Extern, constness: ast::Const) {
         if let ast::Extern::Explicit(abi) = ext {
-            self.check_abi(abi);
+            self.check_abi(abi, constness);
         }
     }
 
@@ -379,45 +401,28 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     let msg = "`#[doc(keyword)]` is meant for internal use only";
                     gate_feature_post!(self, rustdoc_internals, attr.span, msg);
                 }
+
+                if nested_meta.has_name(sym::tuple_variadic) {
+                    let msg = "`#[doc(tuple_variadic)]` is meant for internal use only";
+                    gate_feature_post!(self, rustdoc_internals, attr.span, msg);
+                }
             }
         }
 
-        // Check for unstable modifiers on `#[link(..)]` attribute
-        if attr.has_name(sym::link) {
-            for nested_meta in attr.meta_item_list().unwrap_or_default() {
-                if nested_meta.has_name(sym::modifiers) {
-                    gate_feature_post!(
-                        self,
-                        native_link_modifiers,
-                        nested_meta.span(),
-                        "native link modifiers are experimental"
-                    );
-
-                    if let Some(modifiers) = nested_meta.value_str() {
-                        for modifier in modifiers.as_str().split(',') {
-                            if let Some(modifier) = modifier.strip_prefix(&['+', '-']) {
-                                macro_rules! gate_modifier { ($($name:literal => $feature:ident)*) => {
-                                    $(if modifier == $name {
-                                        let msg = concat!("`#[link(modifiers=\"", $name, "\")]` is unstable");
-                                        gate_feature_post!(
-                                            self,
-                                            $feature,
-                                            nested_meta.name_value_literal_span().unwrap(),
-                                            msg
-                                        );
-                                    })*
-                                }}
-
-                                gate_modifier!(
-                                    "bundle" => native_link_modifiers_bundle
-                                    "verbatim" => native_link_modifiers_verbatim
-                                    "whole-archive" => native_link_modifiers_whole_archive
-                                    "as-needed" => native_link_modifiers_as_needed
-                                );
-                            }
-                        }
-                    }
-                }
+        // Emit errors for non-staged-api crates.
+        if !self.features.staged_api {
+            if attr.has_name(sym::unstable)
+                || attr.has_name(sym::stable)
+                || attr.has_name(sym::rustc_const_unstable)
+                || attr.has_name(sym::rustc_const_stable)
+            {
+                struct_span_err!(
+                    self.sess,
+                    attr.span,
+                    E0734,
+                    "stability attributes may not be used outside of the standard library",
+                )
+                .emit();
             }
         }
     }
@@ -426,7 +431,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match i.kind {
             ast::ItemKind::ForeignMod(ref foreign_module) => {
                 if let Some(abi) = foreign_module.abi {
-                    self.check_abi(abi);
+                    self.check_abi(abi, ast::Const::No);
                 }
             }
 
@@ -549,7 +554,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
         match ty.kind {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
-                self.check_extern(bare_fn_ty.ext);
+                // Function pointers cannot be `const`
+                self.check_extern(bare_fn_ty.ext, ast::Const::No);
             }
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span, "the `!` type is experimental");
@@ -649,18 +655,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
         if let Some(header) = fn_kind.header() {
             // Stability of const fn methods are covered in `visit_assoc_item` below.
-            self.check_extern(header.ext);
-
-            if let (ast::Const::Yes(_), ast::Extern::Implicit)
-            | (ast::Const::Yes(_), ast::Extern::Explicit(_)) = (header.constness, header.ext)
-            {
-                gate_feature_post!(
-                    &self,
-                    const_extern_fn,
-                    span,
-                    "`const extern fn` definitions are unstable"
-                );
-            }
+            self.check_extern(header.ext, header.constness);
         }
 
         if fn_kind.ctxt() != Some(FnCtxt::Foreign) && fn_kind.decl().c_variadic() {
@@ -714,18 +709,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
         visit::walk_assoc_item(self, i, ctxt)
     }
-
-    fn visit_vis(&mut self, vis: &'a ast::Visibility) {
-        if let ast::VisibilityKind::Crate(ast::CrateSugar::JustCrate) = vis.kind {
-            gate_feature_post!(
-                &self,
-                crate_visibility_modifier,
-                vis.span,
-                "`crate` visibility modifier is experimental"
-            );
-        }
-        visit::walk_vis(self, vis)
-    }
 }
 
 pub fn check_crate(krate: &ast::Crate, sess: &Session) {
@@ -769,6 +752,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(inline_const, "inline-const is experimental");
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
     gate_all!(associated_const_equality, "associated const equality is incomplete");
+    gate_all!(yeet_expr, "`do yeet` expression is experimental");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).
@@ -786,7 +770,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
 
     gate_all!(trait_alias, "trait aliases are experimental");
     gate_all!(associated_type_bounds, "associated type bounds are unstable");
-    gate_all!(crate_visibility_modifier, "`crate` visibility modifier is experimental");
     gate_all!(decl_macro, "`macro` is experimental");
     gate_all!(box_patterns, "box pattern syntax is experimental");
     gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
@@ -844,7 +827,7 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
                 err.span_suggestion(
                     attr.span,
                     "remove the attribute",
-                    String::new(),
+                    "",
                     Applicability::MachineApplicable,
                 );
             }

@@ -1,5 +1,5 @@
 // build-fail
- //~^ overflow evaluating
+//~^ ERROR overflow evaluating the requirement
 
 fn main() {
     let mut iter = 0u8..1;

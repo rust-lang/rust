@@ -13,5 +13,5 @@ extern crate real_gimli;
 // @!has foo/trait.Deref.html '//*[@id="impl-Deref-for-EndianSlice"]//h3[@class="code-header in-band"]' 'impl Deref for EndianSlice'
 pub use realcore::Deref;
 
-// @has foo/trait.Join.html '//*[@id="impl-Join-for-Foo"]//h3[@class="code-header in-band"]' 'impl Join for Foo'
+// @has foo/trait.Join.html '//*[@id="impl-Join"]//h3[@class="code-header in-band"]' 'impl Join for Foo'
 pub use realcore::Join;

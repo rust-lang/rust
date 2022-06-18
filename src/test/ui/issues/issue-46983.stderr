@@ -1,11 +1,10 @@
-error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+error: lifetime may not live long enough
   --> $DIR/issue-46983.rs:2:5
    |
 LL | fn foo(x: &u32) -> &'static u32 {
-   |           ---- this data with an anonymous lifetime `'_`...
+   |           - let's call the lifetime of this reference `'1`
 LL |     &*x
-   |     ^^^ ...is used and required to live as long as `'static` here
+   |     ^^^ returning this value requires that `'1` must outlive `'static`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0759`.

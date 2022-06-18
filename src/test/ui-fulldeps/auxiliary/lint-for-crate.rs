@@ -30,7 +30,7 @@ impl<'tcx> LateLintPass<'tcx> for Pass {
         let span = cx.tcx.def_span(CRATE_DEF_ID);
         if !cx.sess().contains_name(attrs, Symbol::intern("crate_okay")) {
             cx.lint(CRATE_NOT_OKAY, |lint| {
-                lint.build("crate is not marked with #![crate_okay]").set_span(span).emit()
+                lint.build("crate is not marked with #![crate_okay]").set_span(span).emit();
             });
         }
     }

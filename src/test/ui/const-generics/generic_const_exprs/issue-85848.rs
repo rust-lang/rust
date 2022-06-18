@@ -1,4 +1,4 @@
-#![feature(const_fn_trait_bound, generic_const_exprs)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 trait _Contains<T> {
@@ -24,6 +24,7 @@ fn writes_to_path<C>(cap: &C) {
     writes_to_specific_path(&cap);
     //~^ ERROR: the trait bound `(): _Contains<&C>` is not satisfied [E0277]
     //~| ERROR: unconstrained generic constant
+    //~| ERROR: mismatched types [E0308]
 }
 
 fn writes_to_specific_path<C: Delegates<()>>(cap: &C) {}

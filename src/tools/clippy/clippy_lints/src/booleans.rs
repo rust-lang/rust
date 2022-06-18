@@ -27,8 +27,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// if a && true  // should be: if a
-    /// if !(a == b)  // should be: if a != b
+    /// if a && true {}
+    /// if !(a == b) {}
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// if a {}
+    /// if a != b {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NONMINIMAL_BOOL,
@@ -48,10 +54,15 @@ declare_clippy_lint! {
     /// Ignores short circuiting behavior.
     ///
     /// ### Example
-    /// ```ignore
+    /// ```rust,ignore
+    /// // The `b` is unnecessary, the expression is equivalent to `if a`.
     /// if a && b || a { ... }
     /// ```
-    /// The `b` is unnecessary, the expression is equivalent to `if a`.
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// if a {}
+    /// ```
     #[clippy::version = "pre 1.29.0"]
     pub LOGIC_BUG,
     correctness,
@@ -137,7 +148,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         }
         for (n, expr) in self.terminals.iter().enumerate() {
             if eq_expr_value(self.cx, e, expr) {
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(clippy::cast_possible_truncation)]
                 return Ok(Bool::Term(n as u8));
             }
 
@@ -149,7 +160,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 if eq_expr_value(self.cx, e_lhs, expr_lhs);
                 if eq_expr_value(self.cx, e_rhs, expr_rhs);
                 then {
-                    #[allow(clippy::cast_possible_truncation)]
+                    #[expect(clippy::cast_possible_truncation)]
                     return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
                 }
             }
@@ -157,7 +168,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         let n = self.terminals.len();
         self.terminals.push(e);
         if n < 32 {
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(clippy::cast_possible_truncation)]
             Ok(Bool::Term(n as u8))
         } else {
             Err("too many literals".to_owned())

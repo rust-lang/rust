@@ -4,10 +4,7 @@ error[E0382]: borrow of moved value: `bad_letters`
 LL |     let mut bad_letters = vec!['e', 't', 'o', 'i'];
    |         --------------- move occurs because `bad_letters` has type `Vec<char>`, which does not implement the `Copy` trait
 LL |     for l in bad_letters {
-   |              -----------
-   |              |
-   |              `bad_letters` moved due to this implicit call to `.into_iter()`
-   |              help: consider borrowing to avoid moving into the for loop: `&bad_letters`
+   |              ----------- `bad_letters` moved due to this implicit call to `.into_iter()`
 ...
 LL |     bad_letters.push('s');
    |     ^^^^^^^^^^^^^^^^^^^^^ value borrowed here after move
@@ -17,6 +14,10 @@ note: this function takes ownership of the receiver `self`, which moves `bad_let
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^
+help: consider iterating over a slice of the `Vec<char>`'s content to avoid moving into the `for` loop
+   |
+LL |     for l in &bad_letters {
+   |              +
 
 error: aborting due to previous error
 

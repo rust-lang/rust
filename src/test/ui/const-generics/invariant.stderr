@@ -18,8 +18,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ one type is more general than the other
    |
-   = note: expected reference `&'static Foo<fn(&'static ())>`
-              found reference `&'static Foo<for<'a> fn(&'a ())>`
+   = note: expected reference `&Foo<fn(&())>`
+              found reference `&Foo<for<'a> fn(&'a ())>`
 
 error: aborting due to previous error; 1 warning emitted
 

@@ -2,10 +2,9 @@
 //!
 //! This crate also contains the match exhaustiveness and usefulness checking.
 #![allow(rustc::potential_query_instability)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
-#![feature(crate_visibility_modifier)]
+#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
@@ -27,6 +26,7 @@ use rustc_middle::ty::query::Providers;
 pub fn provide(providers: &mut Providers) {
     providers.check_match = thir::pattern::check_match;
     providers.lit_to_const = thir::constant::lit_to_const;
+    providers.lit_to_mir_constant = build::lit_to_mir_constant;
     providers.mir_built = build::mir_built;
     providers.thir_check_unsafety = check_unsafety::thir_check_unsafety;
     providers.thir_check_unsafety_for_const_arg = check_unsafety::thir_check_unsafety_for_const_arg;

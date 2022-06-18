@@ -14,7 +14,8 @@ fn use_<'b>(c: Invariant<'b>) {
     // Since 'b <= 'static, this would be true if Invariant were covariant
     // with respect to its parameter 'a.
 
-    let _: Invariant<'static> = c; //~ ERROR mismatched types
+    let _: Invariant<'static> = c;
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() { }

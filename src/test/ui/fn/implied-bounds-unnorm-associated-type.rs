@@ -11,7 +11,8 @@ impl<T> Trait for T {
 }
 
 fn f<'a, 'b>(s: &'b str, _: <&'a &'b () as Trait>::Type) -> &'a str {
-    s //~ ERROR lifetime mismatch [E0623]
+    s
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {

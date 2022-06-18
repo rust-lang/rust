@@ -4,6 +4,7 @@
 use crate::prelude::*;
 
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
+use rustc_session::config::OomStrategy;
 
 /// Returns whether an allocator shim was created
 pub(crate) fn codegen(
@@ -18,7 +19,13 @@ pub(crate) fn codegen(
     if any_dynamic_crate {
         false
     } else if let Some(kind) = tcx.allocator_kind(()) {
-        codegen_inner(module, unwind_context, kind, tcx.lang_items().oom().is_some());
+        codegen_inner(
+            module,
+            unwind_context,
+            kind,
+            tcx.lang_items().oom().is_some(),
+            tcx.sess.opts.debugging_opts.oom,
+        );
         true
     } else {
         false
@@ -30,6 +37,7 @@ fn codegen_inner(
     unwind_context: &mut UnwindContext,
     kind: AllocatorKind,
     has_alloc_error_handler: bool,
+    oom_strategy: OomStrategy,
 ) {
     let usize_ty = module.target_config().pointer_type();
 
@@ -129,4 +137,11 @@ fn codegen_inner(
     }
     module.define_function(func_id, &mut ctx).unwrap();
     unwind_context.add_function(func_id, &ctx, module.isa());
+
+    let data_id = module.declare_data(OomStrategy::SYMBOL, Linkage::Export, false, false).unwrap();
+    let mut data_ctx = DataContext::new();
+    data_ctx.set_align(1);
+    let val = oom_strategy.should_panic();
+    data_ctx.define(Box::new([val]));
+    module.define_data(data_id, &data_ctx).unwrap();
 }

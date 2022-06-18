@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// if x == y || x < y {}
     /// ```
     ///
-    /// Could be written as:
+    /// Use instead:
     ///
     /// ```rust
     /// # let x = 1;
@@ -40,7 +40,7 @@ declare_clippy_lint! {
 declare_lint_pass!(DoubleComparisons => [DOUBLE_COMPARISONS]);
 
 impl<'tcx> DoubleComparisons {
-    #[allow(clippy::similar_names)]
+    #[expect(clippy::similar_names)]
     fn check_binop(cx: &LateContext<'tcx>, op: BinOpKind, lhs: &'tcx Expr<'_>, rhs: &'tcx Expr<'_>, span: Span) {
         let (lkind, llhs, lrhs, rkind, rlhs, rrhs) = match (&lhs.kind, &rhs.kind) {
             (ExprKind::Binary(lb, llhs, lrhs), ExprKind::Binary(rb, rlhs, rrhs)) => {

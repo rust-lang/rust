@@ -1,7 +1,13 @@
 // run-rustfix
 
 #![warn(clippy::manual_bits)]
-#![allow(clippy::no_effect, path_statements, unused_must_use, clippy::unnecessary_operation)]
+#![allow(
+    clippy::no_effect,
+    clippy::useless_conversion,
+    path_statements,
+    unused_must_use,
+    clippy::unnecessary_operation
+)]
 
 use std::mem::{size_of, size_of_val};
 
@@ -45,4 +51,9 @@ fn main() {
     size_of::<Word>() * 8;
     type Bool = bool;
     size_of::<Bool>() * 8;
+
+    let _: u32 = (size_of::<u128>() * 8) as u32;
+    let _: u32 = (size_of::<u128>() * 8).try_into().unwrap();
+    let _ = (size_of::<u128>() * 8).pow(5);
+    let _ = &(size_of::<u128>() * 8);
 }

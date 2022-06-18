@@ -12,7 +12,6 @@ macro_rules! quote_tt {
     ({$($t:tt)*}) => { Group::new(Delimiter::Brace, quote!($($t)*)) };
     (,) => { Punct::new(',', Spacing::Alone) };
     (.) => { Punct::new('.', Spacing::Alone) };
-    (:) => { Punct::new(':', Spacing::Alone) };
     (;) => { Punct::new(';', Spacing::Alone) };
     (!) => { Punct::new('!', Spacing::Alone) };
     (<) => { Punct::new('<', Spacing::Alone) };

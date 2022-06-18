@@ -1,4 +1,5 @@
 // revisions: x86_64 aarch64
+// needs-asm-support
 //[x86_64] only-x86_64
 //[aarch64] only-aarch64
 #![deny(unused)]

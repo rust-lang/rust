@@ -3,7 +3,7 @@
 
 trait Foo {}
 
-struct Bar {}
+struct Bar;
 
 struct Baz<'a> {
     bar: &'a Bar,

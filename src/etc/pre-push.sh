@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Call `tidy --bless` before each commit
+# Call `tidy --bless` before git push
 # Copy this script to .git/hooks to activate,
 # and remove it from .git/hooks to deactivate.
 #
@@ -14,6 +14,8 @@ COMMAND="$ROOT_DIR/x.py test tidy --bless"
 
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
   COMMAND="python $COMMAND"
+elif ! command -v python &> /dev/null; then
+  COMMAND="python3 $COMMAND"
 fi
 
 echo "Running pre-push script '$COMMAND'"

@@ -31,14 +31,12 @@ pub use iter::IntoIter;
 /// # Example
 ///
 /// ```rust
-/// #![feature(array_from_fn)]
-///
 /// let array = core::array::from_fn(|i| i);
 /// assert_eq!(array, [0, 1, 2, 3, 4]);
 /// ```
 #[inline]
-#[unstable(feature = "array_from_fn", issue = "89379")]
-pub fn from_fn<F, T, const N: usize>(mut cb: F) -> [T; N]
+#[stable(feature = "array_from_fn", since = "1.63.0")]
+pub fn from_fn<T, const N: usize, F>(mut cb: F) -> [T; N]
 where
     F: FnMut(usize) -> T,
 {
@@ -65,7 +63,7 @@ where
 /// # Example
 ///
 /// ```rust
-/// #![feature(array_from_fn)]
+/// #![feature(array_try_from_fn)]
 ///
 /// let array: Result<[u8; 5], _> = std::array::try_from_fn(|i| i.try_into());
 /// assert_eq!(array, Ok([0, 1, 2, 3, 4]));
@@ -80,8 +78,8 @@ where
 /// assert_eq!(array, None);
 /// ```
 #[inline]
-#[unstable(feature = "array_from_fn", issue = "89379")]
-pub fn try_from_fn<F, R, const N: usize>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
+#[unstable(feature = "array_try_from_fn", issue = "89379")]
+pub fn try_from_fn<R, const N: usize, F>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
 where
     F: FnMut(usize) -> R,
     R: Try,
@@ -94,7 +92,7 @@ where
 
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).
 #[stable(feature = "array_from_ref", since = "1.53.0")]
-#[rustc_const_unstable(feature = "const_array_from_ref", issue = "90206")]
+#[rustc_const_stable(feature = "const_array_from_ref_shared", since = "1.63.0")]
 pub const fn from_ref<T>(s: &T) -> &[T; 1] {
     // SAFETY: Converting `&T` to `&[T; 1]` is sound.
     unsafe { &*(s as *const T).cast::<[T; 1]>() }
@@ -276,9 +274,10 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N] {
 }
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
-impl<T, I, const N: usize> Index<I> for [T; N]
+#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
+impl<T, I, const N: usize> const Index<I> for [T; N]
 where
-    [T]: Index<I>,
+    [T]: ~const Index<I>,
 {
     type Output = <[T] as Index<I>>::Output;
 
@@ -289,9 +288,10 @@ where
 }
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
-impl<T, I, const N: usize> IndexMut<I> for [T; N]
+#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
+impl<T, I, const N: usize> const IndexMut<I> for [T; N]
 where
-    [T]: IndexMut<I>,
+    [T]: ~const IndexMut<I>,
 {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
@@ -393,7 +393,6 @@ macro_rules! array_impl_default {
 
 array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
 
-#[lang = "array"]
 impl<T, const N: usize> [T; N] {
     /// Returns an array of the same size as `self`, with function `f` applied to each element
     /// in order.

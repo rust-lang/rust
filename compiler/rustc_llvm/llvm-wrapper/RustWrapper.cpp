@@ -6,9 +6,11 @@
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/Mangler.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/COFFImportFile.h"
 #include "llvm/Object/ObjectFile.h"
+#include "llvm/Pass.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/ADT/Optional.h"
@@ -250,36 +252,10 @@ template<typename T> static inline void AddAttributes(T *t, unsigned Index,
   t->setAttributes(PALNew);
 }
 
-template<typename T> static inline void RemoveAttributes(T *t, unsigned Index,
-                                                         LLVMRustAttribute *RustAttrs,
-                                                         size_t RustAttrsLen) {
-  AttributeList PAL = t->getAttributes();
-  AttributeList PALNew;
-#if LLVM_VERSION_LT(14, 0)
-  AttrBuilder B;
-  for (LLVMRustAttribute RustAttr : makeArrayRef(RustAttrs, RustAttrsLen))
-    B.addAttribute(fromRust(RustAttr));
-  PALNew = PAL.removeAttributes(t->getContext(), Index, B);
-#else
-  AttributeMask Mask;
-  for (LLVMRustAttribute RustAttr : makeArrayRef(RustAttrs, RustAttrsLen))
-    Mask.addAttribute(fromRust(RustAttr));
-  PALNew = PAL.removeAttributesAtIndex(t->getContext(), Index, Mask);
-#endif
-  t->setAttributes(PALNew);
-}
-
 extern "C" void LLVMRustAddFunctionAttributes(LLVMValueRef Fn, unsigned Index,
                                               LLVMAttributeRef *Attrs, size_t AttrsLen) {
   Function *F = unwrap<Function>(Fn);
   AddAttributes(F, Index, Attrs, AttrsLen);
-}
-
-extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn, unsigned Index,
-                                                 LLVMRustAttribute *RustAttrs,
-                                                 size_t RustAttrsLen) {
-  Function *F = unwrap<Function>(Fn);
-  RemoveAttributes(F, Index, RustAttrs, RustAttrsLen);
 }
 
 extern "C" void LLVMRustAddCallSiteAttributes(LLVMValueRef Instr, unsigned Index,
@@ -291,12 +267,6 @@ extern "C" void LLVMRustAddCallSiteAttributes(LLVMValueRef Instr, unsigned Index
 extern "C" LLVMAttributeRef LLVMRustCreateAttrNoValue(LLVMContextRef C,
                                                       LLVMRustAttribute RustAttr) {
   return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));
-}
-
-extern "C" LLVMAttributeRef LLVMRustCreateAttrStringValue(LLVMContextRef C,
-                                                          const char *Name,
-                                                          const char *Value) {
-  return wrap(Attribute::get(*unwrap(C), StringRef(Name), StringRef(Value)));
 }
 
 extern "C" LLVMAttributeRef LLVMRustCreateAlignmentAttr(LLVMContextRef C,
@@ -702,8 +672,18 @@ extern "C" void LLVMRustAddModuleFlag(
   unwrap(M)->addModuleFlag(MergeBehavior, Name, Value);
 }
 
+extern "C" bool LLVMRustHasModuleFlag(LLVMModuleRef M, const char *Name,
+                                      size_t Len) {
+  return unwrap(M)->getModuleFlag(StringRef(Name, Len)) != nullptr;
+}
+
 extern "C" LLVMValueRef LLVMRustMetadataAsValue(LLVMContextRef C, LLVMMetadataRef MD) {
   return wrap(MetadataAsValue::get(*unwrap(C), unwrap(MD)));
+}
+
+extern "C" void LLVMRustGlobalAddMetadata(
+    LLVMValueRef Global, unsigned Kind, LLVMMetadataRef MD) {
+  unwrap<GlobalObject>(Global)->addMetadata(Kind, *unwrap<MDNode>(MD));
 }
 
 extern "C" LLVMRustDIBuilderRef LLVMRustDIBuilderCreate(LLVMModuleRef M) {
@@ -1247,6 +1227,11 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMBFloatTypeKind;
   case Type::X86_AMXTyID:
     return LLVMX86_AMXTypeKind;
+#if LLVM_VERSION_GE(15, 0)
+  case Type::DXILPointerTyID:
+    report_fatal_error("Rust does not support DirectX typed pointers.");
+    break;
+#endif
   }
   report_fatal_error("Unhandled TypeID.");
 }
@@ -1567,11 +1552,19 @@ extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext, uint64_t *hig
     auto C = unwrap<llvm::ConstantInt>(CV);
     if (C->getBitWidth() > 128) { return false; }
     APInt AP;
+#if LLVM_VERSION_GE(15, 0)
+    if (sext) {
+        AP = C->getValue().sext(128);
+    } else {
+        AP = C->getValue().zext(128);
+    }
+#else
     if (sext) {
         AP = C->getValue().sextOrSelf(128);
     } else {
         AP = C->getValue().zextOrSelf(128);
     }
+#endif
     *low = AP.getLoBits(64).getZExtValue();
     *high = AP.getHiBits(64).getZExtValue();
     return true;
@@ -1865,4 +1858,10 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
 
   unwrap(C)->setDiagnosticHandler(std::make_unique<RustDiagnosticHandler>(
       DiagnosticHandlerCallback, DiagnosticHandlerContext, RemarkAllPasses, Passes));
+}
+
+extern "C" void LLVMRustGetMangledName(LLVMValueRef V, RustStringRef Str) {
+  RawRustStringOstream OS(Str);
+  GlobalValue *GV = unwrap<GlobalValue>(V);
+  Mangler().getNameWithPrefix(OS, GV, true);
 }

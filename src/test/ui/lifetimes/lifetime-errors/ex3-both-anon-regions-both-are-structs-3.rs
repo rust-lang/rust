@@ -4,7 +4,8 @@ struct Ref<'a, 'b> {
 }
 
 fn foo(mut x: Ref) {
-    x.a = x.b; //~ ERROR lifetime mismatch
+    x.a = x.b;
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

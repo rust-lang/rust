@@ -105,16 +105,20 @@ pub fn expand_test_or_bench(
 
     // Note: non-associated fn items are already handled by `expand_test_or_bench`
     if !matches!(item.kind, ast::ItemKind::Fn(_)) {
-        cx.sess
-            .parse_sess
-            .span_diagnostic
-            .struct_span_err(
-                attr_sp,
-                "the `#[test]` attribute may only be used on a non-associated function",
-            )
-            .note("the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions")
+        let diag = &cx.sess.parse_sess.span_diagnostic;
+        let msg = "the `#[test]` attribute may only be used on a non-associated function";
+        let mut err = match item.kind {
+            // These were a warning before #92959 and need to continue being that to avoid breaking
+            // stable user code (#94508).
+            ast::ItemKind::MacCall(_) => diag.struct_span_warn(attr_sp, msg),
+            // `.forget_guarantee()` needed to get these two arms to match types. Because of how
+            // locally close the `.emit()` call is I'm comfortable with it, but if it can be
+            // reworked in the future to not need it, it'd be nice.
+            _ => diag.struct_span_err(attr_sp, msg).forget_guarantee(),
+        };
+        err.span_label(attr_sp, "the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions")
             .span_label(item.span, format!("expected a non-associated function, found {} {}", item.kind.article(), item.kind.descr()))
-            .span_suggestion(attr_sp, "replace with conditional compilation to make the item only exist when tests are being run", String::from("#[cfg(test)]"), Applicability::MaybeIncorrect)
+            .span_suggestion(attr_sp, "replace with conditional compilation to make the item only exist when tests are being run", "#[cfg(test)]", Applicability::MaybeIncorrect)
             .emit();
 
         return vec![Annotatable::Item(item)];

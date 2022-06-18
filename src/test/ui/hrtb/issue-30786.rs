@@ -6,15 +6,6 @@
 // This tests double-checks that we do not allow such behavior to leak
 // through again.
 
-// revisions: migrate nll
-//[nll]compile-flags: -Z borrowck=mir
-
-// Since we are testing nll (and migration) explicitly as a separate
-// revisions, don't worry about the --compare-mode=nll on this test.
-
-// ignore-compare-mode-nll
-// ignore-compare-mode-polonius
-
 pub trait Stream {
     type Item;
     fn next(self) -> Option<Self::Item>;
@@ -125,8 +116,7 @@ fn variant1() {
     // guess.
     let map = source.mapx(|x: &_| x);
     let filter = map.filterx(|x: &_| true);
-    //[migrate]~^ ERROR the method
-    //[nll]~^^ ERROR the method
+    //~^ ERROR the method
 }
 
 fn variant2() {
@@ -138,8 +128,7 @@ fn variant2() {
     let map = source.mapx(identity);
     let filter = map.filterx(|x: &_| true);
     let count = filter.countx();
-    //[migrate]~^ ERROR the method
-    //[nll]~^^ ERROR the method
+    //~^ ERROR the method
 }
 
 fn main() {}

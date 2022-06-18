@@ -2,7 +2,12 @@ error[E0282]: type annotations needed for `Expr<'_, VAR>`
   --> $DIR/issue-23046.rs:17:15
    |
 LL |     let ex = |x| {
-   |               ^ consider giving this closure parameter the explicit type `Expr<'_, VAR>`, where the type parameter `VAR` is specified
+   |               ^
+   |
+help: consider giving this closure parameter an explicit type, where the type for type parameter `VAR` is specified
+   |
+LL |     let ex = |x: Expr<'_, VAR>| {
+   |                +++++++++++++++
 
 error: aborting due to previous error
 

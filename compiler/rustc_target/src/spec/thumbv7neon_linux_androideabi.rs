@@ -10,15 +10,15 @@ use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::android_base::opts();
-    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-march=armv7-a".to_string());
+    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-march=armv7-a".into());
     Target {
-        llvm_target: "armv7-none-linux-android".to_string(),
+        llvm_target: "armv7-none-linux-android".into(),
         pointer_width: 32,
-        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
-        arch: "arm".to_string(),
+        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
+        arch: "arm".into(),
         options: TargetOptions {
-            abi: "eabi".to_string(),
-            features: "+v7,+thumb-mode,+thumb2,+vfp3,+neon".to_string(),
+            abi: "eabi".into(),
+            features: "+v7,+thumb-mode,+thumb2,+vfp3,+neon".into(),
             max_atomic_width: Some(64),
             ..base
         },

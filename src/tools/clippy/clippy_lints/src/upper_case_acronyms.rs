@@ -114,7 +114,7 @@ impl LateLintPass<'_> for UpperCaseAcronyms {
                 check_ident(cx, &it.ident, self.upper_case_acronyms_aggressive);
             },
             ItemKind::Enum(ref enumdef, _) => {
-                // check enum variants seperately because again we only want to lint on private enums and
+                // check enum variants separately because again we only want to lint on private enums and
                 // the fn check_variant does not know about the vis of the enum of its variants
                 enumdef
                     .variants

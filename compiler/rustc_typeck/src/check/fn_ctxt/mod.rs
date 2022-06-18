@@ -1,9 +1,9 @@
 mod _impl;
+mod arg_matrix;
 mod checks;
 mod suggestions;
 
 pub use _impl::*;
-pub use checks::*;
 pub use suggestions::*;
 
 use crate::astconv::AstConv;
@@ -14,7 +14,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
@@ -56,8 +56,6 @@ pub struct FnCtxt<'a, 'tcx> {
     /// like `expected_ty` to access the declared return type (if
     /// any).
     pub(super) ret_coercion: Option<RefCell<DynamicCoerceMany<'tcx>>>,
-
-    pub(super) ret_coercion_impl_trait: Option<Ty<'tcx>>,
 
     pub(super) ret_type_span: Option<Span>,
 
@@ -130,7 +128,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
-            ret_coercion_impl_trait: None,
             ret_type_span: None,
             in_tail_expr: false,
             ret_coercion_span: Cell::new(None),
@@ -187,8 +184,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         _: Ident,
     ) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        let item_def_id = tcx.hir().ty_param_owner(hir_id);
+        let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id];
         ty::GenericPredicates {
@@ -260,7 +256,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         item_segment: &hir::PathSegment<'_>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
-        let (trait_ref, _) = self.replace_bound_vars_with_fresh_vars(
+        let trait_ref = self.replace_bound_vars_with_fresh_vars(
             span,
             infer::LateBoundRegionConversionTime::AssocTypeProjection(item_def_id),
             poly_trait_ref,

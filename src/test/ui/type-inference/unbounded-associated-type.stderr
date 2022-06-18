@@ -1,14 +1,13 @@
 error[E0282]: type annotations needed
-  --> $DIR/unbounded-associated-type.rs:15:5
+  --> $DIR/unbounded-associated-type.rs:15:7
    |
-LL |     type A;
-   |     ------- `<Self as T>::A` defined here
-...
 LL |     S(std::marker::PhantomData).foo();
-   |     ^--------------------------------
-   |     |
-   |     this method call resolves to `<Self as T>::A`
-   |     cannot infer type for type parameter `X` declared on the struct `S`
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `PhantomData`
+   |
+help: consider specifying the generic argument
+   |
+LL |     S(std::marker::PhantomData::<T>).foo();
+   |                               +++++
 
 error: aborting due to previous error
 

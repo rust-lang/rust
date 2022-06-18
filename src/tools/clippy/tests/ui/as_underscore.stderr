@@ -1,0 +1,20 @@
+error: using `as _` conversion
+  --> $DIR/as_underscore.rs:9:9
+   |
+LL |     foo(n as _);
+   |         ^^^^^-
+   |              |
+   |              help: consider giving the type explicitly: `usize`
+   |
+   = note: `-D clippy::as-underscore` implied by `-D warnings`
+
+error: using `as _` conversion
+  --> $DIR/as_underscore.rs:12:18
+   |
+LL |     let _n: u8 = n as _;
+   |                  ^^^^^-
+   |                       |
+   |                       help: consider giving the type explicitly: `u8`
+
+error: aborting due to 2 previous errors
+

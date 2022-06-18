@@ -16,7 +16,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Setup Node.js
       uses: actions/setup-node@v1.4.4
@@ -26,9 +26,18 @@ jobs:
     - name: Install remark
       run: npm install remark-cli remark-lint remark-lint-maximum-line-length remark-preset-lint-recommended remark-gfm
 
+    - name: Install mdbook
+      run: |
+        mkdir mdbook
+        curl -Lf https://github.com/rust-lang/mdBook/releases/download/v0.4.18/mdbook-v0.4.18-x86_64-unknown-linux-gnu.tar.gz | tar -xz --directory=./mdbook
+        echo `pwd`/mdbook >> $GITHUB_PATH
+
     # Run
     - name: Check *.md files
       run: git ls-files -z '*.md' | xargs -0 -n 1 -I {} ./node_modules/.bin/remark {} -u lint -f > /dev/null
+
+    - name: Build mdbook
+      run: mdbook build book
 
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a

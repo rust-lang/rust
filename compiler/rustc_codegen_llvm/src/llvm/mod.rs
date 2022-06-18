@@ -37,12 +37,6 @@ pub fn AddFunctionAttributes<'ll>(llfn: &'ll Value, idx: AttributePlace, attrs: 
     }
 }
 
-pub fn RemoveFunctionAttributes(llfn: &Value, idx: AttributePlace, attrs: &[AttributeKind]) {
-    unsafe {
-        LLVMRustRemoveFunctionAttributes(llfn, idx.as_uint(), attrs.as_ptr(), attrs.len());
-    }
-}
-
 pub fn AddCallSiteAttributes<'ll>(
     callsite: &'ll Value,
     idx: AttributePlace,
@@ -53,12 +47,28 @@ pub fn AddCallSiteAttributes<'ll>(
     }
 }
 
-pub fn CreateAttrStringValue<'ll>(llcx: &'ll Context, attr: &CStr, value: &CStr) -> &'ll Attribute {
-    unsafe { LLVMRustCreateAttrStringValue(llcx, attr.as_ptr(), value.as_ptr()) }
+pub fn CreateAttrStringValue<'ll>(llcx: &'ll Context, attr: &str, value: &str) -> &'ll Attribute {
+    unsafe {
+        LLVMCreateStringAttribute(
+            llcx,
+            attr.as_ptr().cast(),
+            attr.len().try_into().unwrap(),
+            value.as_ptr().cast(),
+            value.len().try_into().unwrap(),
+        )
+    }
 }
 
-pub fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &CStr) -> &'ll Attribute {
-    unsafe { LLVMRustCreateAttrStringValue(llcx, attr.as_ptr(), std::ptr::null()) }
+pub fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &str) -> &'ll Attribute {
+    unsafe {
+        LLVMCreateStringAttribute(
+            llcx,
+            attr.as_ptr().cast(),
+            attr.len().try_into().unwrap(),
+            std::ptr::null(),
+            0,
+        )
+    }
 }
 
 pub fn CreateAlignmentAttr(llcx: &Context, bytes: u64) -> &Attribute {

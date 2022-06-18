@@ -21,8 +21,8 @@ pub fn expand_option_env<'cx>(
     };
 
     let sp = cx.with_def_site_ctxt(sp);
-    let value = env::var(&var.as_str()).ok().as_deref().map(Symbol::intern);
-    cx.sess.parse_sess.env_depinfo.borrow_mut().insert((Symbol::intern(&var), value));
+    let value = env::var(var.as_str()).ok().as_deref().map(Symbol::intern);
+    cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
             let lt = cx.lifetime(sp, Ident::new(kw::StaticLifetime, sp));

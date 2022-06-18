@@ -54,9 +54,12 @@ all:
 	# Check that a Rust dylib does not export generics if -Zshare-generics=no
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -v __imp_ | grep -c public_generic_function_from_rlib)" -eq "0" ]
 
+# FIXME(nbdd0121): This is broken in MinGW, see https://github.com/rust-lang/rust/pull/95604#issuecomment-1101564032
+ifndef IS_WINDOWS
 	# Check that an executable does not export any dynamic symbols
 	[ "$$($(NM) $(TMPDIR)/$(EXE_NAME) | grep -v __imp_ | grep -c public_c_function_from_rlib)" -eq "0" ]
 	[ "$$($(NM) $(TMPDIR)/$(EXE_NAME) | grep -v __imp_ | grep -c public_rust_function_from_exe)" -eq "0" ]
+endif
 
 
 	# Check the combined case, where we generate a cdylib and an rlib in the same
@@ -91,6 +94,8 @@ all:
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -v __imp_ | grep -c public_rust_function_from_rlib)" -eq "1" ]
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -v __imp_ | grep -c public_generic_function_from_rlib)" -eq "1" ]
 
+ifndef IS_WINDOWS
 	# Check that an executable does not export any dynamic symbols
 	[ "$$($(NM) $(TMPDIR)/$(EXE_NAME) | grep -v __imp_ | grep -c public_c_function_from_rlib)" -eq "0" ]
 	[ "$$($(NM) $(TMPDIR)/$(EXE_NAME) | grep -v __imp_ | grep -c public_rust_function_from_exe)" -eq "0" ]
+endif

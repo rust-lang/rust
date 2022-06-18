@@ -2,9 +2,9 @@
 
 enum E { A, B, c }
 
-mod m {
+pub mod m {
     const CONST1: usize = 10;
-    const Const2: usize = 20;
+    pub const Const2: usize = 20;
 }
 
 fn main() {
@@ -22,15 +22,14 @@ fn main() {
         //~| ERROR variable `B` is bound inconsistently
         //~| ERROR mismatched types
         //~| ERROR variable `c` is not bound in all patterns
-        //~| HELP consider making the path in the pattern qualified: `?::A`
+        //~| HELP if you meant to match on unit variant `E::A`, use the full path in the pattern
     }
 
     let z = (10, 20);
     match z {
         (CONST1, _) | (_, Const2) => ()
         //~^ ERROR variable `CONST1` is not bound in all patterns
-        //~| HELP consider making the path in the pattern qualified: `?::CONST1`
         //~| ERROR variable `Const2` is not bound in all patterns
-        //~| HELP consider making the path in the pattern qualified: `?::Const2`
+        //~| HELP if you meant to match on constant `m::Const2`, use the full path in the pattern
     }
 }

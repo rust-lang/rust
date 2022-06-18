@@ -25,12 +25,6 @@ LL |     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
    |                          ^^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `below`
 
 error: redundant closure
-  --> $DIR/eta.rs:40:27
-   |
-LL |     let e = Some(1u8).map(|a| divergent(a));
-   |                           ^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `divergent`
-
-error: redundant closure
   --> $DIR/eta.rs:41:27
    |
 LL |     let e = Some(1u8).map(|a| generic(a));
@@ -117,10 +111,10 @@ LL |         Some(1).map(|n| closure(n));
    |                     ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `&mut closure`
 
 error: redundant closure
-  --> $DIR/eta.rs:232:21
+  --> $DIR/eta.rs:217:21
    |
-LL |     map_str_to_path(|s| s.as_ref());
-   |                     ^^^^^^^^^^^^^^ help: replace the closure with the method itself: `std::convert::AsRef::as_ref`
+LL |         Some(1).map(|n| in_loop(n));
+   |                     ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `in_loop`
 
-error: aborting due to 20 previous errors
+error: aborting due to 19 previous errors
 

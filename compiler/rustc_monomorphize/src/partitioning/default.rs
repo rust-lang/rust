@@ -2,10 +2,10 @@ use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::middle::exported_symbols::SymbolExportLevel;
+use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visibility};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::print::characteristic_def_id_of_type;
@@ -335,10 +335,10 @@ fn compute_codegen_unit_name(
     let mut cgu_def_id = None;
     // Walk backwards from the item we want to find the module for.
     loop {
-        if current_def_id.index == CRATE_DEF_INDEX {
+        if current_def_id.is_crate_root() {
             if cgu_def_id.is_none() {
                 // If we have not found a module yet, take the crate root.
-                cgu_def_id = Some(DefId { krate: def_id.krate, index: CRATE_DEF_INDEX });
+                cgu_def_id = Some(def_id.krate.as_def_id());
             }
             break;
         } else if tcx.def_kind(current_def_id) == DefKind::Mod {
@@ -352,7 +352,7 @@ fn compute_codegen_unit_name(
             cgu_def_id = None;
         }
 
-        current_def_id = tcx.parent(current_def_id).unwrap();
+        current_def_id = tcx.parent(current_def_id);
     }
 
     let cgu_def_id = cgu_def_id.unwrap();
@@ -501,7 +501,7 @@ fn mono_item_visibility<'tcx>(
         // * First is weak lang items. These are basically mechanisms for
         //   libcore to forward-reference symbols defined later in crates like
         //   the standard library or `#[panic_handler]` definitions. The
-        //   definition of these weak lang items needs to be referenceable by
+        //   definition of these weak lang items needs to be referencable by
         //   libcore, so we're no longer a candidate for internalization.
         //   Removal of these functions can't be done by LLVM but rather must be
         //   done by the linker as it's a non-local decision.
@@ -554,7 +554,7 @@ fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibilit
     // C-export level items remain at `Default`, all other internal
     // items become `Hidden`.
     match tcx.reachable_non_generics(id.krate).get(&id) {
-        Some(SymbolExportLevel::C) => Visibility::Default,
+        Some(SymbolExportInfo { level: SymbolExportLevel::C, .. }) => Visibility::Default,
         _ => Visibility::Hidden,
     }
 }

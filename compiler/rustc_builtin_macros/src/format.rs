@@ -7,11 +7,11 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{token, BlockCheckMode, UnsafeSource};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, Applicability, PResult};
+use rustc_errors::{pluralize, Applicability, MultiSpan, PResult};
 use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{InnerSpan, MultiSpan, Span};
+use rustc_span::{InnerSpan, Span};
 use smallvec::SmallVec;
 
 use std::borrow::Cow;
@@ -242,7 +242,7 @@ impl<'a, 'b> Context<'a, 'b> {
     fn resolve_name_inplace(&self, p: &mut parse::Piece<'_>) {
         // NOTE: the `unwrap_or` branch is needed in case of invalid format
         // arguments, e.g., `format_args!("{foo}")`.
-        let lookup = |s: Symbol| *self.names.get(&s).unwrap_or(&0);
+        let lookup = |s: &str| *self.names.get(&Symbol::intern(s)).unwrap_or(&0);
 
         match *p {
             parse::String(_) => {}
@@ -276,7 +276,9 @@ impl<'a, 'b> Context<'a, 'b> {
                 // it's written second, so it should come after width/precision.
                 let pos = match arg.position {
                     parse::ArgumentIs(i) | parse::ArgumentImplicitlyIs(i) => Exact(i),
-                    parse::ArgumentNamed(s, span) => Named(s, span),
+                    parse::ArgumentNamed(s, span) => {
+                        Named(Symbol::intern(s), InnerSpan::new(span.start, span.end))
+                    }
                 };
 
                 let ty = Placeholder(match arg.format.ty {
@@ -291,7 +293,10 @@ impl<'a, 'b> Context<'a, 'b> {
                     "X" => "UpperHex",
                     _ => {
                         let fmtsp = self.fmtsp;
-                        let sp = arg.format.ty_span.map(|sp| fmtsp.from_inner(sp));
+                        let sp = arg
+                            .format
+                            .ty_span
+                            .map(|sp| fmtsp.from_inner(InnerSpan::new(sp.start, sp.end)));
                         let mut err = self.ecx.struct_span_err(
                             sp.unwrap_or(fmtsp),
                             &format!("unknown format trait `{}`", arg.format.ty),
@@ -325,7 +330,7 @@ impl<'a, 'b> Context<'a, 'b> {
                                 err.tool_only_span_suggestion(
                                     sp,
                                     &format!("use the `{}` trait", name),
-                                    (*fmt).to_string(),
+                                    *fmt,
                                     Applicability::MaybeIncorrect,
                                 );
                             }
@@ -340,14 +345,17 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    fn verify_count(&mut self, c: parse::Count) {
+    fn verify_count(&mut self, c: parse::Count<'_>) {
         match c {
             parse::CountImplied | parse::CountIs(..) => {}
             parse::CountIsParam(i) => {
                 self.verify_arg_type(Exact(i), Count);
             }
             parse::CountIsName(s, span) => {
-                self.verify_arg_type(Named(s, span), Count);
+                self.verify_arg_type(
+                    Named(Symbol::intern(s), InnerSpan::new(span.start, span.end)),
+                    Count,
+                );
             }
         }
     }
@@ -425,7 +433,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         for fmt in &self.arg_with_formatting {
             if let Some(span) = fmt.precision_span {
-                let span = self.fmtsp.from_inner(span);
+                let span = self.fmtsp.from_inner(InnerSpan::new(span.start, span.end));
                 match fmt.precision {
                     parse::CountIsParam(pos) if pos > self.num_args() => {
                         e.span_label(
@@ -446,7 +454,9 @@ impl<'a, 'b> Context<'a, 'b> {
                                 .iter()
                                 .filter(|fmt| fmt.precision_span.is_some())
                                 .count();
-                        e.span_label(span, &format!(
+                        e.span_label(
+                            span,
+                            &format!(
                             "this precision flag adds an extra required argument at position {}, \
                              which is why there {} expected",
                             pos,
@@ -455,7 +465,8 @@ impl<'a, 'b> Context<'a, 'b> {
                             } else {
                                 format!("are {} arguments", count)
                             },
-                        ));
+                        ),
+                        );
                         if let Some(arg) = self.args.get(pos) {
                             e.span_label(
                                 arg.span,
@@ -468,7 +479,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 }
             }
             if let Some(span) = fmt.width_span {
-                let span = self.fmtsp.from_inner(span);
+                let span = self.fmtsp.from_inner(InnerSpan::new(span.start, span.end));
                 match fmt.width {
                     parse::CountIsParam(pos) if pos > self.num_args() => {
                         e.span_label(
@@ -607,7 +618,7 @@ impl<'a, 'b> Context<'a, 'b> {
         ecx.std_path(&[sym::fmt, sym::rt, sym::v1, s])
     }
 
-    fn build_count(&self, c: parse::Count) -> P<ast::Expr> {
+    fn build_count(&self, c: parse::Count<'_>) -> P<ast::Expr> {
         let sp = self.macsp;
         let count = |c, arg| {
             let mut path = Context::rtpath(self.ecx, sym::Count);
@@ -1030,7 +1041,7 @@ pub fn expand_preparsed_format_args(
     if !parser.errors.is_empty() {
         let err = parser.errors.remove(0);
         let sp = if efmt_kind_is_lit {
-            fmt_span.from_inner(err.span)
+            fmt_span.from_inner(InnerSpan::new(err.span.start, err.span.end))
         } else {
             // The format string could be another macro invocation, e.g.:
             //     format!(concat!("abc", "{}"), 4);
@@ -1049,14 +1060,18 @@ pub fn expand_preparsed_format_args(
         }
         if let Some((label, span)) = err.secondary_label {
             if efmt_kind_is_lit {
-                e.span_label(fmt_span.from_inner(span), label);
+                e.span_label(fmt_span.from_inner(InnerSpan::new(span.start, span.end)), label);
             }
         }
         e.emit();
         return DummyResult::raw_expr(sp, true);
     }
 
-    let arg_spans = parser.arg_places.iter().map(|span| fmt_span.from_inner(*span)).collect();
+    let arg_spans = parser
+        .arg_places
+        .iter()
+        .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
+        .collect();
 
     let named_pos: FxHashSet<usize> = names.values().cloned().collect();
 

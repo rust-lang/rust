@@ -43,7 +43,7 @@ impl CoverageCounters {
     pub fn make_bcb_counters(
         &mut self,
         basic_coverage_blocks: &mut CoverageGraph,
-        coverage_spans: &Vec<CoverageSpan>,
+        coverage_spans: &[CoverageSpan],
     ) -> Result<Vec<CoverageKind>, Error> {
         let mut bcb_counters = BcbCounters::new(self, basic_coverage_blocks);
         bcb_counters.make_bcb_counters(coverage_spans)
@@ -349,7 +349,7 @@ impl<'a> BcbCounters<'a> {
         // counters and/or expressions of its incoming edges. This will recursively get or create
         // counters for those incoming edges first, then call `make_expression()` to sum them up,
         // with additional intermediate expressions as needed.
-        let mut predecessors = self.bcb_predecessors(bcb).clone().into_iter();
+        let mut predecessors = self.bcb_predecessors(bcb).to_owned().into_iter();
         debug!(
             "{}{:?} has multiple incoming edges and will get an expression that sums them up...",
             NESTED_INDENT.repeat(debug_indent_level),
@@ -571,12 +571,12 @@ impl<'a> BcbCounters<'a> {
     }
 
     #[inline]
-    fn bcb_predecessors(&self, bcb: BasicCoverageBlock) -> &Vec<BasicCoverageBlock> {
+    fn bcb_predecessors(&self, bcb: BasicCoverageBlock) -> &[BasicCoverageBlock] {
         &self.basic_coverage_blocks.predecessors[bcb]
     }
 
     #[inline]
-    fn bcb_successors(&self, bcb: BasicCoverageBlock) -> &Vec<BasicCoverageBlock> {
+    fn bcb_successors(&self, bcb: BasicCoverageBlock) -> &[BasicCoverageBlock] {
         &self.basic_coverage_blocks.successors[bcb]
     }
 

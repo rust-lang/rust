@@ -296,10 +296,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             StatementKind::StorageDead(local) => {
                 self.gather_move(Place::from(*local));
             }
-            StatementKind::SetDiscriminant { .. } => {
+            StatementKind::SetDiscriminant { .. } | StatementKind::Deinit(..) => {
                 span_bug!(
                     stmt.source_info.span,
-                    "SetDiscriminant should not exist during borrowck"
+                    "SetDiscriminant/Deinit should not exist during borrowck"
                 );
             }
             StatementKind::Retag { .. }
@@ -376,7 +376,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             TerminatorKind::Call {
                 ref func,
                 ref args,
-                ref destination,
+                destination,
+                target,
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
@@ -385,7 +386,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 for arg in args {
                     self.gather_operand(arg);
                 }
-                if let Some((destination, _bb)) = *destination {
+                if let Some(_bb) = target {
                     self.create_move_path(destination);
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
                 }

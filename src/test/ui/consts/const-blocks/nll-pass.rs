@@ -1,5 +1,4 @@
 // check-pass
-// ignore-compare-mode-nll
 #![allow(warnings)]
 
 // Some type that is not copyable.

@@ -1,6 +1,6 @@
 //! Private implementation details of public gather/scatter APIs.
+use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Simd, SupportedLaneCount};
-use core::mem;
 
 /// A vector of *const T.
 #[derive(Debug, Copy, Clone)]
@@ -21,12 +21,8 @@ where
     #[inline]
     #[must_use]
     pub fn wrapping_add(self, addend: Simd<usize, LANES>) -> Self {
-        // Safety: converting pointers to usize and vice-versa is safe
-        // (even if using that pointer is not)
-        unsafe {
-            let x: Simd<usize, LANES> = mem::transmute_copy(&self);
-            mem::transmute_copy(&{ x + (addend * Simd::splat(mem::size_of::<T>())) })
-        }
+        // Safety: this intrinsic doesn't have a precondition
+        unsafe { intrinsics::simd_arith_offset(self, addend) }
     }
 }
 
@@ -49,11 +45,7 @@ where
     #[inline]
     #[must_use]
     pub fn wrapping_add(self, addend: Simd<usize, LANES>) -> Self {
-        // Safety: converting pointers to usize and vice-versa is safe
-        // (even if using that pointer is not)
-        unsafe {
-            let x: Simd<usize, LANES> = mem::transmute_copy(&self);
-            mem::transmute_copy(&{ x + (addend * Simd::splat(mem::size_of::<T>())) })
-        }
+        // Safety: this intrinsic doesn't have a precondition
+        unsafe { intrinsics::simd_arith_offset(self, addend) }
     }
 }

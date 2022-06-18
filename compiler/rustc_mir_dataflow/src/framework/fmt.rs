@@ -93,43 +93,7 @@ where
             };
         }
 
-        let mut first = true;
-        for idx in set_in_self.iter() {
-            let delim = if first {
-                "\u{001f}+"
-            } else if f.alternate() {
-                "\n\u{001f}+"
-            } else {
-                ", "
-            };
-
-            write!(f, "{}", delim)?;
-            idx.fmt_with(ctxt, f)?;
-            first = false;
-        }
-
-        if !f.alternate() {
-            first = true;
-            if !set_in_self.is_empty() && !cleared_in_self.is_empty() {
-                write!(f, "\t")?;
-            }
-        }
-
-        for idx in cleared_in_self.iter() {
-            let delim = if first {
-                "\u{001f}-"
-            } else if f.alternate() {
-                "\n\u{001f}-"
-            } else {
-                ", "
-            };
-
-            write!(f, "{}", delim)?;
-            idx.fmt_with(ctxt, f)?;
-            first = false;
-        }
-
-        Ok(())
+        fmt_diff(&set_in_self, &cleared_in_self, ctxt, f)
     }
 }
 
@@ -137,13 +101,75 @@ impl<T, C> DebugWithContext<C> for ChunkedBitSet<T>
 where
     T: Idx + DebugWithContext<C>,
 {
-    fn fmt_with(&self, _ctxt: &C, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        unimplemented!("implement when/if needed");
+    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_set().entries(self.iter().map(|i| DebugWithAdapter { this: i, ctxt })).finish()
     }
 
-    fn fmt_diff_with(&self, _old: &Self, _ctxt: &C, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        unimplemented!("implement when/if needed");
+    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let size = self.domain_size();
+        assert_eq!(size, old.domain_size());
+
+        let mut set_in_self = HybridBitSet::new_empty(size);
+        let mut cleared_in_self = HybridBitSet::new_empty(size);
+
+        for i in (0..size).map(T::new) {
+            match (self.contains(i), old.contains(i)) {
+                (true, false) => set_in_self.insert(i),
+                (false, true) => cleared_in_self.insert(i),
+                _ => continue,
+            };
+        }
+
+        fmt_diff(&set_in_self, &cleared_in_self, ctxt, f)
     }
+}
+
+fn fmt_diff<T, C>(
+    inserted: &HybridBitSet<T>,
+    removed: &HybridBitSet<T>,
+    ctxt: &C,
+    f: &mut fmt::Formatter<'_>,
+) -> fmt::Result
+where
+    T: Idx + DebugWithContext<C>,
+{
+    let mut first = true;
+    for idx in inserted.iter() {
+        let delim = if first {
+            "\u{001f}+"
+        } else if f.alternate() {
+            "\n\u{001f}+"
+        } else {
+            ", "
+        };
+
+        write!(f, "{}", delim)?;
+        idx.fmt_with(ctxt, f)?;
+        first = false;
+    }
+
+    if !f.alternate() {
+        first = true;
+        if !inserted.is_empty() && !removed.is_empty() {
+            write!(f, "\t")?;
+        }
+    }
+
+    for idx in removed.iter() {
+        let delim = if first {
+            "\u{001f}-"
+        } else if f.alternate() {
+            "\n\u{001f}-"
+        } else {
+            ", "
+        };
+
+        write!(f, "{}", delim)?;
+        idx.fmt_with(ctxt, f)?;
+        first = false;
+    }
+
+    Ok(())
 }
 
 impl<T, C> DebugWithContext<C> for &'_ T

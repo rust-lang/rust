@@ -25,14 +25,16 @@ pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
         "(none)"
     } else {
         let s: &'a str = maybestr.as_ref().unwrap();
-        s  //~ ERROR E0312
+        s
+        //~^ ERROR lifetime may not live long enough
     }
 }
 
 pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
     if maybestr.is_some() {
         let s: &'a str = maybestr.as_ref().unwrap();
-        s  //~ ERROR E0312
+        s
+        //~^ ERROR lifetime may not live long enough
     } else {
         "(none)"
     }

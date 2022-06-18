@@ -69,8 +69,7 @@ fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
     // which fails to type check.
 
     ss
-        //~^ ERROR cannot infer
-        //~| ERROR cannot infer
+        //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {

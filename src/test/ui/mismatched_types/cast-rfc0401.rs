@@ -48,7 +48,7 @@ fn main()
     let _ = E::A as *const u8; //~ ERROR is invalid
     let _ = 'a' as *const u8; //~ ERROR is invalid
 
-    let _ = 42usize as *const [u8]; //~ ERROR is invalid
+    let _ = 42usize as *const [u8]; //~ ERROR cannot cast `usize` to a pointer that is wide
     let _ = v as *const [u8]; //~ ERROR cannot cast
     let _ = fat_v as *const dyn Foo; //~ ERROR the size for values of type
     let _ = foo as *const str; //~ ERROR is invalid

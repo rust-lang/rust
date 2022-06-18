@@ -3,8 +3,8 @@
 use crate::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::{
-    BinOp, Body, Constant, LocalDecls, Operand, Place, ProjectionElem, Rvalue, SourceInfo,
-    StatementKind, UnOp,
+    BinOp, Body, Constant, ConstantKind, LocalDecls, Operand, Place, ProjectionElem, Rvalue,
+    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
 };
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -29,6 +29,11 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
                     _ => {}
                 }
             }
+
+            ctx.combine_primitive_clone(
+                &mut block.terminator.as_mut().unwrap(),
+                &mut block.statements,
+            );
         }
     }
 }
@@ -77,10 +82,8 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
                     _ => None,
                 };
 
-                if let Some(new) = new {
-                    if self.should_combine(source_info, rvalue) {
-                        *rvalue = new;
-                    }
+                if let Some(new) = new && self.should_combine(source_info, rvalue) {
+                    *rvalue = new;
                 }
             }
 
@@ -126,10 +129,76 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
                     return;
                 }
 
-                let constant =
-                    Constant { span: source_info.span, literal: len.into(), user_ty: None };
+                let literal = ConstantKind::from_const(len, self.tcx);
+                let constant = Constant { span: source_info.span, literal, user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
             }
         }
+    }
+
+    fn combine_primitive_clone(
+        &self,
+        terminator: &mut Terminator<'tcx>,
+        statements: &mut Vec<Statement<'tcx>>,
+    ) {
+        let TerminatorKind::Call { func, args, destination, target, .. } = &mut terminator.kind
+        else { return };
+
+        // It's definitely not a clone if there are multiple arguments
+        if args.len() != 1 {
+            return;
+        }
+
+        let Some(destination_block) = *target
+        else { return };
+
+        // Only bother looking more if it's easy to know what we're calling
+        let Some((fn_def_id, fn_substs)) = func.const_fn_def()
+        else { return };
+
+        // Clone needs one subst, so we can cheaply rule out other stuff
+        if fn_substs.len() != 1 {
+            return;
+        }
+
+        // These types are easily available from locals, so check that before
+        // doing DefId lookups to figure out what we're actually calling.
+        let arg_ty = args[0].ty(self.local_decls, self.tcx);
+
+        let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind()
+        else { return };
+
+        if !inner_ty.is_trivially_pure_clone_copy() {
+            return;
+        }
+
+        let trait_def_id = self.tcx.trait_of_item(fn_def_id);
+        if trait_def_id.is_none() || trait_def_id != self.tcx.lang_items().clone_trait() {
+            return;
+        }
+
+        if !self.tcx.consider_optimizing(|| {
+            format!(
+                "InstCombine - Call: {:?} SourceInfo: {:?}",
+                (fn_def_id, fn_substs),
+                terminator.source_info
+            )
+        }) {
+            return;
+        }
+
+        let Some(arg_place) = args.pop().unwrap().place()
+        else { return };
+
+        statements.push(Statement {
+            source_info: terminator.source_info,
+            kind: StatementKind::Assign(Box::new((
+                *destination,
+                Rvalue::Use(Operand::Copy(
+                    arg_place.project_deeper(&[ProjectionElem::Deref], self.tcx),
+                )),
+            ))),
+        });
+        terminator.kind = TerminatorKind::Goto { target: destination_block };
     }
 }

@@ -23,15 +23,15 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
 use crate::ptr::P;
-use crate::token::{self, CommentKind, DelimToken, Token};
-use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
+use crate::token::{self, CommentKind, Delimiter};
+use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{self, Decoder, Encoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -40,9 +40,6 @@ use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
-
-#[cfg(test)]
-mod tests;
 
 /// A "Label" is an identifier of some point in sources,
 /// e.g. in the following code:
@@ -107,11 +104,11 @@ impl PartialEq<Symbol> for Path {
     }
 }
 
-impl<CTX> HashStable<CTX> for Path {
+impl<CTX: rustc_span::HashStableContext> HashStable<CTX> for Path {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
-            segment.ident.name.hash_stable(hcx, hasher);
+            segment.ident.hash_stable(hcx, hasher);
         }
     }
 }
@@ -397,6 +394,7 @@ pub struct GenericParam {
     pub bounds: GenericBounds,
     pub is_placeholder: bool,
     pub kind: GenericParamKind,
+    pub colon_span: Option<Span>,
 }
 
 impl GenericParam {
@@ -443,8 +441,7 @@ impl Default for Generics {
 pub struct WhereClause {
     /// `true` if we ate a `where` token: this can happen
     /// if we parsed no predicates (e.g. `struct Foo where {}`).
-    /// This allows us to accurately pretty-print
-    /// in `nt_to_tokenstream`
+    /// This allows us to pretty-print accurately.
     pub has_where_token: bool,
     pub predicates: Vec<WherePredicate>,
     pub span: Span,
@@ -510,7 +507,7 @@ pub struct WhereEqPredicate {
 pub struct Crate {
     pub attrs: Vec<Attribute>,
     pub items: Vec<P<Item>>,
-    pub span: Span,
+    pub spans: ModSpans,
     /// Must be equal to `CRATE_NODE_ID` after the crate root is expanded, but may hold
     /// expansion placeholders or an unassigned value (`DUMMY_NODE_ID`) before that.
     pub id: NodeId,
@@ -572,7 +569,7 @@ pub struct Block {
     pub span: Span,
     pub tokens: Option<LazyTokenStream>,
     /// The following *isn't* a parse error, but will cause multiple errors in following stages.
-    /// ```
+    /// ```compile_fail
     /// let x = {
     ///     foo: var
     /// };
@@ -928,16 +925,6 @@ pub struct Stmt {
 }
 
 impl Stmt {
-    pub fn tokens(&self) -> Option<&LazyTokenStream> {
-        match self.kind {
-            StmtKind::Local(ref local) => local.tokens.as_ref(),
-            StmtKind::Item(ref item) => item.tokens.as_ref(),
-            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.tokens.as_ref(),
-            StmtKind::Empty => None,
-            StmtKind::MacCall(ref mac) => mac.tokens.as_ref(),
-        }
-    }
-
     pub fn has_trailing_semicolon(&self) -> bool {
         match &self.kind {
             StmtKind::Semi(_) => true,
@@ -1274,6 +1261,7 @@ impl Expr {
             ExprKind::Paren(..) => ExprPrecedence::Paren,
             ExprKind::Try(..) => ExprPrecedence::Try,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
+            ExprKind::Yeet(..) => ExprPrecedence::Yeet,
             ExprKind::Err => ExprPrecedence::Err,
         }
     }
@@ -1289,6 +1277,22 @@ impl Expr {
                 tokens: None,
             },
         )
+    }
+
+    // To a first-order approximation, is this a pattern
+    pub fn is_approximately_pattern(&self) -> bool {
+        match &self.peel_parens().kind {
+            ExprKind::Box(_)
+            | ExprKind::Array(_)
+            | ExprKind::Call(_, _)
+            | ExprKind::Tup(_)
+            | ExprKind::Lit(_)
+            | ExprKind::Range(_, _, _)
+            | ExprKind::Underscore
+            | ExprKind::Path(_, _)
+            | ExprKind::Struct(_) => true,
+            _ => false,
+        }
     }
 }
 
@@ -1461,6 +1465,10 @@ pub enum ExprKind {
     /// A `yield`, with an optional value to be yielded.
     Yield(Option<P<Expr>>),
 
+    /// A `do yeet` (aka `throw`/`fail`/`bail`/`raise`/whatever),
+    /// with an optional value to be returned.
+    Yeet(Option<P<Expr>>),
+
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err,
 }
@@ -1526,7 +1534,7 @@ impl MacCall {
 }
 
 /// Arguments passed to an attribute or a function-like macro.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum MacArgs {
     /// No arguments - `#[attr]`.
     Empty,
@@ -1536,16 +1544,25 @@ pub enum MacArgs {
     Eq(
         /// Span of the `=` token.
         Span,
-        /// "value" as a nonterminal token.
-        Token,
+        /// The "value".
+        MacArgsEq,
     ),
 }
 
+// The RHS of a `MacArgs::Eq` starts out as an expression. Once macro expansion
+// is completed, all cases end up either as a literal, which is the form used
+// after lowering to HIR, or as an error.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum MacArgsEq {
+    Ast(P<Expr>),
+    Hir(Lit),
+}
+
 impl MacArgs {
-    pub fn delim(&self) -> DelimToken {
+    pub fn delim(&self) -> Option<Delimiter> {
         match self {
-            MacArgs::Delimited(_, delim, _) => delim.to_token(),
-            MacArgs::Empty | MacArgs::Eq(..) => token::NoDelim,
+            MacArgs::Delimited(_, delim, _) => Some(delim.to_token()),
+            MacArgs::Empty | MacArgs::Eq(..) => None,
         }
     }
 
@@ -1553,7 +1570,10 @@ impl MacArgs {
         match self {
             MacArgs::Empty => None,
             MacArgs::Delimited(dspan, ..) => Some(dspan.entire()),
-            MacArgs::Eq(eq_span, token) => Some(eq_span.to(token.span)),
+            MacArgs::Eq(eq_span, MacArgsEq::Ast(expr)) => Some(eq_span.to(expr.span)),
+            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+                unreachable!("in literal form when getting span: {:?}", lit);
+            }
         }
     }
 
@@ -1563,7 +1583,10 @@ impl MacArgs {
         match self {
             MacArgs::Empty => TokenStream::default(),
             MacArgs::Delimited(.., tokens) => tokens.clone(),
-            MacArgs::Eq(.., token) => TokenTree::Token(token.clone()).into(),
+            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => TokenStream::from_ast(expr),
+            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+                unreachable!("in literal form when getting inner tokens: {:?}", lit)
+            }
         }
     }
 
@@ -1571,6 +1594,30 @@ impl MacArgs {
     /// when used as a standalone item or statement.
     pub fn need_semicolon(&self) -> bool {
         !matches!(self, MacArgs::Delimited(_, MacDelimiter::Brace, _))
+    }
+}
+
+impl<CTX> HashStable<CTX> for MacArgs
+where
+    CTX: crate::HashStableContext,
+{
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        mem::discriminant(self).hash_stable(ctx, hasher);
+        match self {
+            MacArgs::Empty => {}
+            MacArgs::Delimited(dspan, delim, tokens) => {
+                dspan.hash_stable(ctx, hasher);
+                delim.hash_stable(ctx, hasher);
+                tokens.hash_stable(ctx, hasher);
+            }
+            MacArgs::Eq(_eq_span, MacArgsEq::Ast(expr)) => {
+                unreachable!("hash_stable {:?}", expr);
+            }
+            MacArgs::Eq(eq_span, MacArgsEq::Hir(lit)) => {
+                eq_span.hash_stable(ctx, hasher);
+                lit.hash_stable(ctx, hasher);
+            }
+        }
     }
 }
 
@@ -1582,20 +1629,20 @@ pub enum MacDelimiter {
 }
 
 impl MacDelimiter {
-    pub fn to_token(self) -> DelimToken {
+    pub fn to_token(self) -> Delimiter {
         match self {
-            MacDelimiter::Parenthesis => DelimToken::Paren,
-            MacDelimiter::Bracket => DelimToken::Bracket,
-            MacDelimiter::Brace => DelimToken::Brace,
+            MacDelimiter::Parenthesis => Delimiter::Parenthesis,
+            MacDelimiter::Bracket => Delimiter::Bracket,
+            MacDelimiter::Brace => Delimiter::Brace,
         }
     }
 
-    pub fn from_token(delim: DelimToken) -> Option<MacDelimiter> {
+    pub fn from_token(delim: Delimiter) -> Option<MacDelimiter> {
         match delim {
-            token::Paren => Some(MacDelimiter::Parenthesis),
-            token::Bracket => Some(MacDelimiter::Bracket),
-            token::Brace => Some(MacDelimiter::Brace),
-            token::NoDelim => None,
+            Delimiter::Parenthesis => Some(MacDelimiter::Parenthesis),
+            Delimiter::Bracket => Some(MacDelimiter::Bracket),
+            Delimiter::Brace => Some(MacDelimiter::Brace),
+            Delimiter::Invisible => None,
         }
     }
 }
@@ -1616,7 +1663,7 @@ pub enum StrStyle {
     /// A raw string, like `r##"foo"##`.
     ///
     /// The value is the number of `#` symbols used.
-    Raw(u16),
+    Raw(u8),
 }
 
 /// An AST literal.
@@ -1928,6 +1975,8 @@ pub struct BareFnTy {
     pub ext: Extern,
     pub generic_params: Vec<GenericParam>,
     pub decl: P<FnDecl>,
+    /// Span of the `fn(...) -> ...` part.
+    pub decl_span: Span,
 }
 
 /// The various kinds of type recognized by the compiler.
@@ -2061,6 +2110,20 @@ impl InlineAsmTemplatePiece {
     }
 }
 
+/// Inline assembly symbol operands get their own AST node that is somewhat
+/// similar to `AnonConst`.
+///
+/// The main difference is that we specifically don't assign it `DefId` in
+/// `DefCollector`. Instead this is deferred until AST lowering where we
+/// lower it to an `AnonConst` (for functions) or a `Path` (for statics)
+/// depending on what the path resolves to.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct InlineAsmSym {
+    pub id: NodeId,
+    pub qself: Option<QSelf>,
+    pub path: Path,
+}
+
 /// Inline assembly operand.
 ///
 /// E.g., `out("eax") result` as in `asm!("mov eax, 2", out("eax") result)`.
@@ -2090,7 +2153,7 @@ pub enum InlineAsmOperand {
         anon_const: AnonConst,
     },
     Sym {
-        expr: P<Expr>,
+        sym: InlineAsmSym,
     },
 }
 
@@ -2317,9 +2380,23 @@ pub enum ModKind {
     /// or with definition outlined to a separate file `mod foo;` and already loaded from it.
     /// The inner span is from the first token past `{` to the last token until `}`,
     /// or from the first to the last token in the loaded file.
-    Loaded(Vec<P<Item>>, Inline, Span),
+    Loaded(Vec<P<Item>>, Inline, ModSpans),
     /// Module with definition outlined to a separate file `mod foo;` but not yet loaded from it.
     Unloaded,
+}
+
+#[derive(Copy, Clone, Encodable, Decodable, Debug)]
+pub struct ModSpans {
+    /// `inner_span` covers the body of the module; for a file module, its the whole file.
+    /// For an inline module, its the span inside the `{ ... }`, not including the curly braces.
+    pub inner_span: Span,
+    pub inject_use_span: Span,
+}
+
+impl Default for ModSpans {
+    fn default() -> ModSpans {
+        ModSpans { inner_span: Default::default(), inject_use_span: Default::default() }
+    }
 }
 
 /// Foreign module declaration.
@@ -2411,13 +2488,11 @@ rustc_index::newtype_index! {
     }
 }
 
-impl<S: Encoder> rustc_serialize::Encodable<S> for AttrId {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_unit()
-    }
+impl<S: Encoder> Encodable<S> for AttrId {
+    fn encode(&self, _s: &mut S) {}
 }
 
-impl<D: Decoder> rustc_serialize::Decodable<D> for AttrId {
+impl<D: Decoder> Decodable<D> for AttrId {
     fn decode(_: &mut D) -> AttrId {
         crate::attr::mk_attr_id()
     }
@@ -2469,7 +2544,7 @@ pub struct TraitRef {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct PolyTraitRef {
-    /// The `'a` in `<'a> Foo<&'a T>`.
+    /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: Vec<GenericParam>,
 
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`.
@@ -2488,15 +2563,6 @@ impl PolyTraitRef {
     }
 }
 
-#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub enum CrateSugar {
-    /// Source is `pub(crate)`.
-    PubCrate,
-
-    /// Source is (just) `crate`.
-    JustCrate,
-}
-
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Visibility {
     pub kind: VisibilityKind,
@@ -2507,7 +2573,6 @@ pub struct Visibility {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum VisibilityKind {
     Public,
-    Crate(CrateSugar),
     Restricted { path: P<Path>, id: NodeId },
     Inherited,
 }
@@ -2598,13 +2663,6 @@ impl Item {
     }
 }
 
-impl<K: Into<ItemKind>> Item<K> {
-    pub fn into_item(self) -> Item {
-        let Item { attrs, id, span, vis, ident, kind, tokens } = self;
-        Item { attrs, id, span, vis, ident, kind: kind.into(), tokens }
-    }
-}
-
 /// `extern` qualifier on a function item or function type.
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub enum Extern {
@@ -2662,10 +2720,37 @@ pub struct Trait {
     pub items: Vec<P<AssocItem>>,
 }
 
+/// The location of a where clause on a `TyAlias` (`Span`) and whether there was
+/// a `where` keyword (`bool`). This is split out from `WhereClause`, since there
+/// are two locations for where clause on type aliases, but their predicates
+/// are concatenated together.
+///
+/// Take this example:
+/// ```ignore (only-for-syntax-highlight)
+/// trait Foo {
+///   type Assoc<'a, 'b> where Self: 'a, Self: 'b;
+/// }
+/// impl Foo for () {
+///   type Assoc<'a, 'b> where Self: 'a = () where Self: 'b;
+///   //                 ^^^^^^^^^^^^^^ first where clause
+///   //                                     ^^^^^^^^^^^^^^ second where clause
+/// }
+/// ```
+///
+/// If there is no where clause, then this is `false` with `DUMMY_SP`.
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Default)]
+pub struct TyAliasWhereClause(pub bool, pub Span);
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct TyAlias {
     pub defaultness: Defaultness,
     pub generics: Generics,
+    /// The span information for the two where clauses (before equals, after equals)
+    pub where_clauses: (TyAliasWhereClause, TyAliasWhereClause),
+    /// The index in `generics.where_clause.predicates` that would split into
+    /// predicates from the where clause before the equals and the predicates
+    /// from the where clause after the equals
+    pub where_predicates_split: usize,
     pub bounds: GenericBounds,
     pub ty: Option<P<Ty>>,
 }

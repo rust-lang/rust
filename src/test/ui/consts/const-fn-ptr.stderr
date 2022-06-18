@@ -1,0 +1,20 @@
+error: function pointer calls are not allowed in statics
+  --> $DIR/const-fn-ptr.rs:5:19
+   |
+LL | static STAT: () = make_fn_ptr()();
+   |                   ^^^^^^^^^^^^^^^
+
+error: function pointer calls are not allowed in constants
+  --> $DIR/const-fn-ptr.rs:8:19
+   |
+LL | const CONST: () = make_fn_ptr()();
+   |                   ^^^^^^^^^^^^^^^
+
+error: function pointer calls are not allowed in constant functions
+  --> $DIR/const-fn-ptr.rs:12:5
+   |
+LL |     make_fn_ptr()();
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

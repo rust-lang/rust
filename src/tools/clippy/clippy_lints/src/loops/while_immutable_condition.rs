@@ -104,7 +104,7 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
                     Res::Local(hir_id) => {
                         self.ids.insert(hir_id);
                     },
-                    Res::Def(DefKind::Static, def_id) => {
+                    Res::Def(DefKind::Static(_), def_id) => {
                         let mutable = self.cx.tcx.is_mutable_static(def_id);
                         self.def_ids.insert(def_id, mutable);
                     },

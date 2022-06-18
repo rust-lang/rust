@@ -7,10 +7,6 @@ extern crate mini_core;
 use mini_core::*;
 use mini_core::libc::*;
 
-unsafe extern "C" fn my_puts(s: *const i8) {
-    puts(s);
-}
-
 macro_rules! assert {
     ($e:expr) => {
         if !$e {
@@ -59,6 +55,11 @@ struct NoisyDrop {
     inner: NoisyDropInner,
 }
 
+struct NoisyDropUnsized {
+    inner: NoisyDropInner,
+    text: str,
+}
+
 struct NoisyDropInner;
 
 impl Drop for NoisyDrop {
@@ -105,12 +106,6 @@ fn start<T: Termination + 'static>(
 static mut NUM: u8 = 6 * 7;
 static NUM_REF: &'static u8 = unsafe { &NUM };
 
-struct Unique<T: ?Sized> {
-    pointer: *const T,
-    _marker: PhantomData<T>,
-}
-
-impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
 unsafe fn zeroed<T>() -> T {
     let mut uninit = MaybeUninit { uninit: () };
@@ -132,7 +127,7 @@ fn call_return_u128_pair() {
 #[allow(unreachable_code)] // FIXME false positive
 fn main() {
     take_unique(Unique {
-        pointer: 0 as *const (),
+        pointer: unsafe { NonNull(1 as *mut ()) },
         _marker: PhantomData,
     });
     take_f32(0.1);
@@ -180,10 +175,12 @@ fn main() {
         assert_eq!(intrinsics::min_align_of_val(&a) as u8, intrinsics::min_align_of::<&str>() as u8);
 
         assert!(!intrinsics::needs_drop::<u8>());
+        assert!(!intrinsics::needs_drop::<[u8]>());
         assert!(intrinsics::needs_drop::<NoisyDrop>());
+        assert!(intrinsics::needs_drop::<NoisyDropUnsized>());
 
         Unique {
-            pointer: 0 as *const &str,
+            pointer: NonNull(1 as *mut &str),
             _marker: PhantomData,
         } as Unique<dyn SomeTrait>;
 

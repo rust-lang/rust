@@ -15,6 +15,10 @@ fn main() {
     let libdir = env::var_os("RUSTDOC_LIBDIR").expect("RUSTDOC_LIBDIR was not set");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
 
+    // Detect whether or not we're a build script depending on whether --target
+    // is passed (a bit janky...)
+    let target = args.windows(2).find(|w| &*w[0] == "--target").and_then(|w| w[1].to_str());
+
     use std::str::FromStr;
 
     let verbose = match env::var("RUSTC_VERBOSE") {
@@ -26,10 +30,20 @@ fn main() {
     dylib_path.insert(0, PathBuf::from(libdir.clone()));
 
     let mut cmd = Command::new(rustdoc);
-    cmd.args(&args)
-        .arg("--sysroot")
-        .arg(&sysroot)
-        .env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+
+    // cfg(bootstrap)
+    // NOTE: the `--test` special-casing can be removed when https://github.com/rust-lang/cargo/pull/10594 lands on beta.
+    if target.is_some() || args.iter().any(|x| x == "--test") {
+        // The stage0 compiler has a special sysroot distinct from what we
+        // actually downloaded, so we just always pass the `--sysroot` option,
+        // unless one is already set.
+        if !args.iter().any(|arg| arg == "--sysroot") {
+            cmd.arg("--sysroot").arg(&sysroot);
+        }
+    }
+
+    cmd.args(&args);
+    cmd.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)
     // allow the `rustc_private` feature to link to other unstable crates
@@ -49,13 +63,6 @@ fn main() {
         } else {
             cmd.arg("-Clink-arg=-Wl,--threads=1");
         }
-    }
-
-    // Needed to be able to run all rustdoc tests.
-    if let Some(ref x) = env::var_os("RUSTDOC_RESOURCE_SUFFIX") {
-        // This "unstable-options" can be removed when `--resource-suffix` is stabilized
-        cmd.arg("-Z").arg("unstable-options");
-        cmd.arg("--resource-suffix").arg(x);
     }
 
     if verbose > 1 {

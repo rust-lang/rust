@@ -40,63 +40,6 @@ note: required by a bound in `map`
 LL |         F: FnMut(Self::Item) -> B,
    |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
 
-error[E0308]: mismatched types
-  --> $DIR/closure-arg-type-mismatch.rs:10:5
-   |
-LL |     baz(f);
-   |     ^^^ lifetime mismatch
-   |
-   = note: expected type `for<'r> Fn<(*mut &'r u32,)>`
-              found type `Fn<(*mut &'a u32,)>`
-note: the required lifetime does not necessarily outlive the lifetime `'a` as defined here
-  --> $DIR/closure-arg-type-mismatch.rs:9:10
-   |
-LL | fn _test<'a>(f: fn(*mut &'a u32)) {
-   |          ^^
-note: the lifetime requirement is introduced here
-  --> $DIR/closure-arg-type-mismatch.rs:8:11
-   |
-LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
-   |           ^^^^^^^^^^^^^
+error: aborting due to 3 previous errors
 
-error: implementation of `FnOnce` is not general enough
-  --> $DIR/closure-arg-type-mismatch.rs:10:5
-   |
-LL |     baz(f);
-   |     ^^^ implementation of `FnOnce` is not general enough
-   |
-   = note: `fn(*mut &'a u32)` must implement `FnOnce<(*mut &'0 u32,)>`, for any lifetime `'0`...
-   = note: ...but it actually implements `FnOnce<(*mut &'a u32,)>`
-
-error[E0308]: mismatched types
-  --> $DIR/closure-arg-type-mismatch.rs:10:5
-   |
-LL |     baz(f);
-   |     ^^^ lifetime mismatch
-   |
-   = note: expected type `for<'r> Fn<(*mut &'r u32,)>`
-              found type `Fn<(*mut &'a u32,)>`
-note: the lifetime `'a` as defined here doesn't meet the lifetime requirements
-  --> $DIR/closure-arg-type-mismatch.rs:9:10
-   |
-LL | fn _test<'a>(f: fn(*mut &'a u32)) {
-   |          ^^
-note: the lifetime requirement is introduced here
-  --> $DIR/closure-arg-type-mismatch.rs:8:11
-   |
-LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
-   |           ^^^^^^^^^^^^^
-
-error: implementation of `FnOnce` is not general enough
-  --> $DIR/closure-arg-type-mismatch.rs:10:5
-   |
-LL |     baz(f);
-   |     ^^^ implementation of `FnOnce` is not general enough
-   |
-   = note: `fn(*mut &'a u32)` must implement `FnOnce<(*mut &'0 u32,)>`, for any lifetime `'0`...
-   = note: ...but it actually implements `FnOnce<(*mut &'a u32,)>`
-
-error: aborting due to 7 previous errors
-
-Some errors have detailed explanations: E0308, E0631.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0631`.

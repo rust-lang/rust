@@ -147,7 +147,7 @@ where
         let mut entry_sets = IndexVec::from_elem(bottom_value.clone(), body.basic_blocks());
         analysis.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
 
-        if A::Direction::is_backward() && entry_sets[mir::START_BLOCK] != bottom_value {
+        if A::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != bottom_value {
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
@@ -200,7 +200,7 @@ where
         let mut dirty_queue: WorkQueue<BasicBlock> =
             WorkQueue::with_none(body.basic_blocks().len());
 
-        if A::Direction::is_forward() {
+        if A::Direction::IS_FORWARD {
             for (bb, _) in traversal::reverse_postorder(body) {
                 dirty_queue.insert(bb);
             }
@@ -333,14 +333,11 @@ struct RustcMirAttrs {
 
 impl RustcMirAttrs {
     fn parse(tcx: TyCtxt<'_>, def_id: DefId) -> Result<Self, ()> {
-        let attrs = tcx.get_attrs(def_id);
-
         let mut result = Ok(());
         let mut ret = RustcMirAttrs::default();
 
-        let rustc_mir_attrs = attrs
-            .iter()
-            .filter(|attr| attr.has_name(sym::rustc_mir))
+        let rustc_mir_attrs = tcx
+            .get_attrs(def_id, sym::rustc_mir)
             .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
 
         for attr in rustc_mir_attrs {

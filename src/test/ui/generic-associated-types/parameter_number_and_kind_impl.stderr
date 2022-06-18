@@ -8,7 +8,7 @@ LL |     type A = u32;
    |           ^ lifetimes do not match type in trait
 
 error[E0049]: type `B` has 1 type parameter but its trait declaration has 0 type parameters
-  --> $DIR/parameter_number_and_kind_impl.rs:17:12
+  --> $DIR/parameter_number_and_kind_impl.rs:17:16
    |
 LL |     type B<'a, 'b>;
    |            --  --
@@ -16,9 +16,7 @@ LL |     type B<'a, 'b>;
    |            expected 0 type parameters
 ...
 LL |     type B<'a, T> = Vec<T>;
-   |            ^^  ^
-   |            |
-   |            found 1 type parameter
+   |                ^ found 1 type parameter
 
 error[E0195]: lifetime parameters or bounds on type `C` do not match the trait declaration
   --> $DIR/parameter_number_and_kind_impl.rs:19:11

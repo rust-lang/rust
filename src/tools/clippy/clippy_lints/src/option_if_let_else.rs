@@ -78,7 +78,7 @@ fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
 
 /// A struct containing information about occurrences of the
 /// `if let Some(..) = .. else` construct that this lint detects.
-struct OptionIfLetElseOccurence {
+struct OptionIfLetElseOccurrence {
     option: String,
     method_sugg: String,
     some_expr: String,
@@ -100,9 +100,9 @@ fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: boo
 }
 
 /// If this expression is the option if let/else construct we're detecting, then
-/// this function returns an `OptionIfLetElseOccurence` struct with details if
+/// this function returns an `OptionIfLetElseOccurrence` struct with details if
 /// this construct is found, or None if this construct is not found.
-fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionIfLetElseOccurence> {
+fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<OptionIfLetElseOccurrence> {
     if_chain! {
         if !expr.span.from_expansion(); // Don't lint macros, because it behaves weirdly
         if !in_constant(cx, expr.hir_id);
@@ -154,7 +154,7 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
                     }
                 }
             }
-            Some(OptionIfLetElseOccurence {
+            Some(OptionIfLetElseOccurrence {
                 option: format_option_in_sugg(cx, cond_expr, as_ref, as_mut),
                 method_sugg: method_sugg.to_string(),
                 some_expr: format!("|{}{}| {}", capture_mut, capture_name, Sugg::hir_with_macro_callsite(cx, some_body, "..")),

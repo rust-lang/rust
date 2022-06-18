@@ -7,7 +7,7 @@ use crate::borrow::Borrow;
 use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{BuildHasher, Hash};
-use crate::iter::{Chain, FromIterator, FusedIterator};
+use crate::iter::{Chain, FusedIterator};
 use crate::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use super::map::{map_try_reserve_error, RandomState};
@@ -33,13 +33,14 @@ use super::map::{map_try_reserve_error, RandomState};
 /// In other words, if two keys are equal, their hashes must be equal.
 ///
 ///
-/// It is a logic error for an item to be modified in such a way that the
-/// item's hash, as determined by the [`Hash`] trait, or its equality, as
-/// determined by the [`Eq`] trait, changes while it is in the set. This is
-/// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or
-/// unsafe code. The behavior resulting from such a logic error is not
-/// specified (it could include panics, incorrect results, aborts, memory
-/// leaks, or non-termination) but will not be undefined behavior.
+/// It is a logic error for a key to be modified in such a way that the key's
+/// hash, as determined by the [`Hash`] trait, or its equality, as determined by
+/// the [`Eq`] trait, changes while it is in the map. This is normally only
+/// possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
+/// The behavior resulting from such a logic error is not specified, but will
+/// be encapsulated to the `HashSet` that observed the logic error and not
+/// result in undefined behavior. This could include panics, incorrect results,
+/// aborts, memory leaks, and non-termination.
 ///
 /// # Examples
 ///
@@ -66,7 +67,7 @@ use super::map::{map_try_reserve_error, RandomState};
 ///
 /// // Iterate over everything.
 /// for book in &books {
-///     println!("{}", book);
+///     println!("{book}");
 /// }
 /// ```
 ///
@@ -91,7 +92,7 @@ use super::map::{map_try_reserve_error, RandomState};
 ///
 /// // Use derived implementation to print the vikings.
 /// for x in &vikings {
-///     println!("{:?}", x);
+///     println!("{x:?}");
 /// }
 /// ```
 ///
@@ -181,9 +182,14 @@ impl<T, S> HashSet<T, S> {
     ///
     /// // Will print in an arbitrary order.
     /// for x in set.iter() {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, iterating over set takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
     #[inline]
     #[rustc_lint_query_instability]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -244,7 +250,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// // print 1, 2, 3 in an arbitrary order
     /// for i in set.drain() {
-    ///     println!("{}", i);
+    ///     println!("{i}");
     /// }
     ///
     /// assert!(set.is_empty());
@@ -300,7 +306,7 @@ impl<T, S> HashSet<T, S> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
+    /// In other words, remove all elements `e` for which `f(&e)` returns `false`.
     /// The elements are visited in unsorted (and unspecified) order.
     ///
     /// # Examples
@@ -312,6 +318,11 @@ impl<T, S> HashSet<T, S> {
     /// set.retain(|&k| k % 2 == 0);
     /// assert_eq!(set.len(), 3);
     /// ```
+    ///
+    /// # Performance
+    ///
+    /// In the current implementation, this operation takes O(capacity) time
+    /// instead of O(len) because it internally visits empty buckets too.
     #[rustc_lint_query_instability]
     #[stable(feature = "retain_hash_collection", since = "1.18.0")]
     pub fn retain<F>(&mut self, f: F)
@@ -525,7 +536,7 @@ where
     ///
     /// // Can be seen as `a - b`.
     /// for x in a.difference(&b) {
-    ///     println!("{}", x); // Print 1
+    ///     println!("{x}"); // Print 1
     /// }
     ///
     /// let diff: HashSet<_> = a.difference(&b).collect();
@@ -555,7 +566,7 @@ where
     ///
     /// // Print 1, 4 in arbitrary order.
     /// for x in a.symmetric_difference(&b) {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// let diff1: HashSet<_> = a.symmetric_difference(&b).collect();
@@ -577,6 +588,12 @@ where
     /// Visits the values representing the intersection,
     /// i.e., the values that are both in `self` and `other`.
     ///
+    /// When an equal element is present in `self` and `other`
+    /// then the resulting `Intersection` may yield references to
+    /// one or the other. This can be relevant if `T` contains fields which
+    /// are not compared by its `Eq` implementation, and may hold different
+    /// value between the two equal copies of `T` in the two sets.
+    ///
     /// # Examples
     ///
     /// ```
@@ -586,7 +603,7 @@ where
     ///
     /// // Print 2, 3 in arbitrary order.
     /// for x in a.intersection(&b) {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// let intersection: HashSet<_> = a.intersection(&b).collect();
@@ -615,7 +632,7 @@ where
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order.
     /// for x in a.union(&b) {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// let union: HashSet<_> = a.union(&b).collect();
@@ -847,9 +864,10 @@ where
 
     /// Adds a value to the set.
     ///
-    /// If the set did not have this value present, `true` is returned.
+    /// Returns whether the value was newly inserted. That is:
     ///
-    /// If the set did have this value present, `false` is returned.
+    /// - If the set did not previously contain this value, `true` is returned.
+    /// - If the set already contained this value, `false` is returned.
     ///
     /// # Examples
     ///
@@ -1451,7 +1469,7 @@ impl<T, S> IntoIterator for HashSet<T, S> {
     ///
     /// // Will print in an arbitrary order.
     /// for x in &v {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[inline]

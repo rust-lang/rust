@@ -1,7 +1,7 @@
 use super::*;
 
-// Verify that the byte pattern libunwind uses to initialize an RWLock is
-// equivalent to the value of RWLock::new(). If the value changes,
+// Verify that the byte pattern libunwind uses to initialize an RwLock is
+// equivalent to the value of RwLock::new(). If the value changes,
 // `src/UnwindRustSgx.h` in libunwind needs to be changed too.
 #[test]
 fn test_c_rwlock_initializer() {
@@ -18,9 +18,9 @@ fn test_c_rwlock_initializer() {
         /* 0x80 */ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
     ];
 
-    // For the test to work, we need the padding/unused bytes in RWLock to be
+    // For the test to work, we need the padding/unused bytes in RwLock to be
     // initialized as 0. In practice, this is the case with statics.
-    static RUST_RWLOCK_INIT: RWLock = RWLock::new();
+    static RUST_RWLOCK_INIT: RwLock = RwLock::new();
 
     unsafe {
         // If the assertion fails, that not necessarily an issue with the value

@@ -21,7 +21,7 @@ pub fn insert_outlives_predicate<'tcx>(
 ) {
     // If the `'a` region is bound within the field type itself, we
     // don't want to propagate this constraint to the header.
-    if !is_free_region(tcx, outlived_region) {
+    if !is_free_region(outlived_region) {
         return;
     }
 
@@ -119,7 +119,7 @@ pub fn insert_outlives_predicate<'tcx>(
         }
 
         GenericArgKind::Lifetime(r) => {
-            if !is_free_region(tcx, r) {
+            if !is_free_region(r) {
                 return;
             }
             required_predicates.entry(ty::OutlivesPredicate(kind, outlived_region)).or_insert(span);
@@ -131,7 +131,7 @@ pub fn insert_outlives_predicate<'tcx>(
     }
 }
 
-fn is_free_region(tcx: TyCtxt<'_>, region: Region<'_>) -> bool {
+fn is_free_region(region: Region<'_>) -> bool {
     // First, screen for regions that might appear in a type header.
     match *region {
         // These correspond to `T: 'a` relationships:
@@ -144,13 +144,12 @@ fn is_free_region(tcx: TyCtxt<'_>, region: Region<'_>) -> bool {
         ty::ReEarlyBound(_) => true,
 
         // These correspond to `T: 'static` relationships which can be
-        // rather surprising. We are therefore putting this behind a
-        // feature flag:
+        // rather surprising.
         //
         //     struct Foo<'a, T> {
         //         field: &'static T, // this would generate a ReStatic
         //     }
-        ty::ReStatic => tcx.sess.features_untracked().infer_static_outlives_requirements,
+        ty::ReStatic => false,
 
         // Late-bound regions can appear in `fn` types:
         //

@@ -2,7 +2,7 @@ error[E0599]: the method `as_deref_mut` exists for enum `Option<{integer}>`, but
   --> $DIR/option-as_deref_mut.rs:2:33
    |
 LL |     let _result = &mut Some(42).as_deref_mut();
-   |                                 ^^^^^^^^^^^^ method cannot be called on `Option<{integer}>` due to unsatisfied trait bounds
+   |                                 ^^^^^^^^^^^^
    |
    = note: the following trait bounds were not satisfied:
            `{integer}: Deref`

@@ -8,7 +8,7 @@ use rustc_hir::intravisit::nested_filter::NestedFilter;
 /// constant arguments of types, e.g. in `let _: [(); /* HERE */];`.
 ///
 /// **This is the most common choice.** A very common pattern is
-/// to use `visit_all_item_likes()` as an outer loop,
+/// to use `deep_visit_all_item_likes()` as an outer loop,
 /// and to have the visitor that visits the contents of each item
 /// using this setting.
 pub struct OnlyBodies(());

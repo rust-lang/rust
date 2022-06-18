@@ -25,6 +25,67 @@ use std::ops::Range;
 
 fn main() {}
 
+fn _if() {
+    if (let 0 = 1) {}
+    //~^ ERROR `let` expressions are not supported here
+
+    if (((let 0 = 1))) {}
+    //~^ ERROR `let` expressions are not supported here
+
+    if (let 0 = 1) && true {}
+    //~^ ERROR `let` expressions are not supported here
+
+    if true && (let 0 = 1) {}
+    //~^ ERROR `let` expressions are not supported here
+
+    if (let 0 = 1) && (let 0 = 1) {}
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
+
+    if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
+}
+
+fn _while() {
+    while (let 0 = 1) {}
+    //~^ ERROR `let` expressions are not supported here
+
+    while (((let 0 = 1))) {}
+    //~^ ERROR `let` expressions are not supported here
+
+    while (let 0 = 1) && true {}
+    //~^ ERROR `let` expressions are not supported here
+
+    while true && (let 0 = 1) {}
+    //~^ ERROR `let` expressions are not supported here
+
+    while (let 0 = 1) && (let 0 = 1) {}
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
+
+    while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
+}
+
+fn _macros() {
+    macro_rules! use_expr {
+        ($e:expr) => {
+            if $e {}
+            while $e {}
+        }
+    }
+    use_expr!((let 0 = 1 && 0 == 0));
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
+    use_expr!((let 0 = 1));
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
+}
+
 fn nested_within_if_expr() {
     if &let 0 = 0 {} //~ ERROR `let` expressions are not supported here
     //~^ ERROR mismatched types
@@ -233,4 +294,45 @@ fn inside_const_generic_arguments() {
         //~^ ERROR `let` expressions are not supported here
         //~| ERROR  expressions must be enclosed in braces
     >::O == 5 {}
+}
+
+fn with_parenthesis() {
+    let opt = Some(Some(1i32));
+
+    if (let Some(a) = opt && true) {
+    //~^ ERROR `let` expressions are not supported here
+    }
+
+    if (let Some(a) = opt) && true {
+    //~^ ERROR `let` expressions are not supported here
+    }
+    if (let Some(a) = opt) && (let Some(b) = a) {
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
+    }
+    if let Some(a) = opt && (true && true) {
+    }
+
+    if (let Some(a) = opt && (let Some(b) = a)) && b == 1 {
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
+    }
+    if (let Some(a) = opt && (let Some(b) = a)) && true {
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR `let` expressions are not supported here
+    }
+    if (let Some(a) = opt && (true)) && true {
+    //~^ ERROR `let` expressions are not supported here
+    }
+
+    if (true && (true)) && let Some(a) = opt {
+    }
+    if (true) && let Some(a) = opt {
+    }
+    if true && let Some(a) = opt {
+    }
+
+    let fun = || true;
+    if let true = (true && fun()) && (true) {
+    }
 }

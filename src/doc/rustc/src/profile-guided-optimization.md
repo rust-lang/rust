@@ -1,4 +1,4 @@
-# Profile Guided Optimization
+# Profile-guided Optimization
 
 `rustc` supports doing profile-guided optimization (PGO).
 This chapter describes what PGO is, what it is good for, and how it can be used.

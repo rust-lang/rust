@@ -19,9 +19,9 @@ pub(super) fn check<'tcx>(
     as_ref_recv: &hir::Expr<'_>,
     map_arg: &hir::Expr<'_>,
     is_mut: bool,
-    msrv: Option<&RustcVersion>,
+    msrv: Option<RustcVersion>,
 ) {
-    if !meets_msrv(msrv, &msrvs::OPTION_AS_DEREF) {
+    if !meets_msrv(msrv, msrvs::OPTION_AS_DEREF) {
         return;
     }
 
@@ -51,8 +51,8 @@ pub(super) fn check<'tcx>(
             .map_or(false, |fun_def_id| {
                 deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
             }),
-        hir::ExprKind::Closure(_, _, body_id, _, _) => {
-            let closure_body = cx.tcx.hir().body(body_id);
+        hir::ExprKind::Closure { body, .. } => {
+            let closure_body = cx.tcx.hir().body(body);
             let closure_expr = peel_blocks(&closure_body.value);
 
             match &closure_expr.kind {

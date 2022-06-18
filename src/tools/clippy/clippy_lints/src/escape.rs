@@ -31,12 +31,14 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # fn foo(bar: usize) {}
-    /// // Bad
     /// let x = Box::new(1);
     /// foo(*x);
     /// println!("{}", *x);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # fn foo(bar: usize) {}
     /// let x = 1;
     /// foo(x);
     /// println!("{}", x);
@@ -187,7 +189,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
 
-    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(&mut self, _: &rustc_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {

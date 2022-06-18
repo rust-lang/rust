@@ -70,7 +70,7 @@ macro_rules! bind {
     };
 }
 
-/// Transforms the given `Option<T>` varibles into `OptionPat<Binding<T>>`.
+/// Transforms the given `Option<T>` variables into `OptionPat<Binding<T>>`.
 /// This displays as `Some($name)` or `None` when printed. The name of the inner binding
 /// is set to the name of the variable passed to the macro.
 macro_rules! opt_bind {
@@ -315,11 +315,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 out!("if let Some(Guard::If({expr})) = {arm}.guard;");
                 self.expr(expr);
             },
-            Some(hir::Guard::IfLet(pat, expr)) => {
-                bind!(self, pat, expr);
-                out!("if let Some(Guard::IfLet({pat}, {expr}) = {arm}.guard;");
-                self.pat(pat);
-                self.expr(expr);
+            Some(hir::Guard::IfLet(let_expr)) => {
+                bind!(self, let_expr);
+                out!("if let Some(Guard::IfLet({let_expr}) = {arm}.guard;");
+                self.pat(field!(let_expr.pat));
+                self.expr(field!(let_expr.init));
             },
         }
         self.expr(field!(arm.body));
@@ -466,7 +466,13 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.expr(scrutinee);
                 self.slice(arms, |arm| self.arm(arm));
             },
-            ExprKind::Closure(capture_by, fn_decl, body_id, _, movability) => {
+            ExprKind::Closure {
+                capture_clause,
+                fn_decl,
+                body: body_id,
+                movability,
+                ..
+            } => {
                 let movability = OptionPat::new(movability.map(|m| format!("Movability::{m:?}")));
 
                 let ret_ty = match fn_decl.output {
@@ -475,7 +481,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 };
 
                 bind!(self, fn_decl, body_id);
-                kind!("Closure(CaptureBy::{capture_by:?}, {fn_decl}, {body_id}, _, {movability})");
+                kind!("Closure(CaptureBy::{capture_clause:?}, {fn_decl}, {body_id}, _, {movability})");
                 out!("if let {ret_ty} = {fn_decl}.output;");
                 self.body(body_id);
             },

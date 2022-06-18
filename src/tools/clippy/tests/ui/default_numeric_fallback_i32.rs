@@ -1,12 +1,16 @@
 // run-rustfix
 // aux-build:macro_rules.rs
 
+#![feature(lint_reasons)]
 #![warn(clippy::default_numeric_fallback)]
-#![allow(unused)]
-#![allow(clippy::never_loop)]
-#![allow(clippy::no_effect)]
-#![allow(clippy::unnecessary_operation)]
-#![allow(clippy::branches_sharing_code)]
+#![allow(
+    unused,
+    clippy::never_loop,
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::branches_sharing_code,
+    clippy::let_unit_value
+)]
 
 #[macro_use]
 extern crate macro_rules;
@@ -133,7 +137,7 @@ mod enum_ctor {
 }
 
 mod method_calls {
-    struct StructForMethodCallTest {}
+    struct StructForMethodCallTest;
 
     impl StructForMethodCallTest {
         fn concrete_arg(&self, x: i32) {}
@@ -168,6 +172,11 @@ mod in_macro {
     fn external() {
         default_numeric_fallback!();
     }
+}
+
+fn check_expect_suppression() {
+    #[expect(clippy::default_numeric_fallback)]
+    let x = 21;
 }
 
 fn main() {}

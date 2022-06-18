@@ -6,7 +6,7 @@ pub use self::{
     missing_cast_for_variadic_arg::*, sized_unsized_cast::*, wrong_number_of_generic_args::*,
 };
 
-use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorReported};
+use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
 use rustc_session::Session;
 
 pub trait StructuredDiagnostic<'tcx> {
@@ -14,7 +14,7 @@ pub trait StructuredDiagnostic<'tcx> {
 
     fn code(&self) -> DiagnosticId;
 
-    fn diagnostic(&self) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    fn diagnostic(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let err = self.diagnostic_common();
 
         if self.session().teach(&self.code()) {
@@ -24,19 +24,19 @@ pub trait StructuredDiagnostic<'tcx> {
         }
     }
 
-    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorReported>;
+    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     fn diagnostic_regular(
         &self,
-        err: DiagnosticBuilder<'tcx, ErrorReported>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+        err: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         err
     }
 
     fn diagnostic_extended(
         &self,
-        err: DiagnosticBuilder<'tcx, ErrorReported>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+        err: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         err
     }
 }

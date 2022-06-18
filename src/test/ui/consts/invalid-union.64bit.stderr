@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-union.rs:41:1
+  --> $DIR/invalid-union.rs:40:1
    |
 LL | fn main() {
    | ^^^^^^^^^ type validation failed at .<deref>.y.<enum-variant(B)>.0: encountered `UnsafeCell` in a `const`
@@ -10,7 +10,7 @@ LL | fn main() {
            }
 
 error: erroneous constant used
-  --> $DIR/invalid-union.rs:42:25
+  --> $DIR/invalid-union.rs:41:25
    |
 LL |     let _: &'static _ = &C;
    |                         ^^ referenced constant has errors

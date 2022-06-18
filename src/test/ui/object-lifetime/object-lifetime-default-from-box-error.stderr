@@ -1,35 +1,33 @@
-error[E0759]: `ss` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+error: lifetime may not live long enough
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
-   |             --------------- this data with an anonymous lifetime `'_`...
+   |         -- has type `&mut SomeStruct<'1>`
 ...
 LL |     ss.r
-   |     ^^^^ ...is used and required to live as long as `'static` here
+   |     ^^^^ returning this value requires that `'1` must outlive `'static`
    |
-note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/object-lifetime-default-from-box-error.rs:14:37
-   |
-LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
-   |                                     ^^^^^^^^^^^^^ `'static` requirement introduced here
-...
-LL |     ss.r
-   |     ---- because of this returned expression
 help: to declare that the trait object captures data from argument `ss`, you can add an explicit `'_` lifetime bound
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait + '_> {
    |                                                   ++++
 
+error[E0507]: cannot move out of `ss.r` which is behind a mutable reference
+  --> $DIR/object-lifetime-default-from-box-error.rs:18:5
+   |
+LL |     ss.r
+   |     ^^^^ move occurs because `ss.r` has type `Box<dyn SomeTrait>`, which does not implement the `Copy` trait
+
 error[E0621]: explicit lifetime required in the type of `ss`
-  --> $DIR/object-lifetime-default-from-box-error.rs:31:12
+  --> $DIR/object-lifetime-default-from-box-error.rs:33:5
    |
 LL | fn store1<'b>(ss: &mut SomeStruct, b: Box<dyn SomeTrait+'b>) {
    |                   --------------- help: add explicit lifetime `'b` to the type of `ss`: `&mut SomeStruct<'b>`
 ...
 LL |     ss.r = b;
-   |            ^ lifetime `'b` required
+   |     ^^^^ lifetime `'b` required
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0621, E0759.
-For more information about an error, try `rustc --explain E0621`.
+Some errors have detailed explanations: E0507, E0621.
+For more information about an error, try `rustc --explain E0507`.

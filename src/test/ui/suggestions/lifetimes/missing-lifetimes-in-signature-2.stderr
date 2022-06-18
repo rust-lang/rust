@@ -1,26 +1,29 @@
 error[E0311]: the parameter type `T` may not live long enough
-  --> $DIR/missing-lifetimes-in-signature-2.rs:20:9
+  --> $DIR/missing-lifetimes-in-signature-2.rs:20:5
    |
-LL | fn func<T: Test>(foo: &Foo, t: T) {
-   |         -- help: consider adding an explicit lifetime bound...: `T: 'a +`
-LL |     foo.bar(move |_| {
-   |         ^^^
+LL | /     foo.bar(move |_| {
+LL | |
+LL | |         t.test();
+LL | |     });
+   | |______^
    |
 note: the parameter type `T` must be valid for the anonymous lifetime defined here...
   --> $DIR/missing-lifetimes-in-signature-2.rs:19:24
    |
 LL | fn func<T: Test>(foo: &Foo, t: T) {
    |                        ^^^
-note: ...so that the type `[closure@$DIR/missing-lifetimes-in-signature-2.rs:20:13: 23:6]` will meet its required lifetime bounds...
-  --> $DIR/missing-lifetimes-in-signature-2.rs:20:9
+note: ...so that the type `T` will meet its required lifetime bounds
+  --> $DIR/missing-lifetimes-in-signature-2.rs:20:5
    |
-LL |     foo.bar(move |_| {
-   |         ^^^
-note: ...that is required by this bound
-  --> $DIR/missing-lifetimes-in-signature-2.rs:11:12
+LL | /     foo.bar(move |_| {
+LL | |
+LL | |         t.test();
+LL | |     });
+   | |______^
+help: consider adding an explicit lifetime bound...
    |
-LL |         F: 'a,
-   |            ^^
+LL | fn func<T: Test + 'a>(foo: &Foo, t: T) {
+   |                 ++++
 
 error: aborting due to previous error
 

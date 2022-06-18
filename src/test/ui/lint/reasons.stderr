@@ -2,7 +2,9 @@ warning: hidden lifetime parameters in types are deprecated
   --> $DIR/reasons.rs:20:34
    |
 LL |     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-   |                                  ^^^^^^^^^ expected named lifetime parameter
+   |                             -----^^^^^^^^^
+   |                             |
+   |                             expected lifetime parameter
    |
    = note: explicit anonymous lifetimes aid reasoning about ownership
 note: the lint level is defined here
@@ -10,10 +12,10 @@ note: the lint level is defined here
    |
 LL | #![warn(elided_lifetimes_in_paths,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider using the `'_` lifetime
+help: indicate the anonymous lifetime
    |
 LL |     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-   |                                  ~~~~~~~~~~~~~
+   |                                           ++++
 
 warning: variable `Social_exchange_psychology` should have a snake case name
   --> $DIR/reasons.rs:30:9

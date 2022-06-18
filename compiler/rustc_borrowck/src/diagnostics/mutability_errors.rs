@@ -55,7 +55,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
                     let name = self.local_names[local].expect("immutable unnamed local");
-                    reason = format!(", as `{}` is not declared as mutable", name);
+                    reason = format!(", as `{name}` is not declared as mutable");
                 }
             }
 
@@ -88,7 +88,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         reason = ", as it is not declared as mutable".to_string();
                     } else {
                         let name = self.upvars[upvar_index.index()].place.to_string(self.infcx.tcx);
-                        reason = format!(", as `{}` is not declared as mutable", name);
+                        reason = format!(", as `{name}` is not declared as mutable");
                     }
                 }
             }
@@ -103,14 +103,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if self.body.local_decls[local].is_ref_to_static() =>
             {
                 if access_place.projection.len() == 1 {
-                    item_msg = format!("immutable static item {}", access_place_desc);
+                    item_msg = format!("immutable static item {access_place_desc}");
                     reason = String::new();
                 } else {
                     item_msg = access_place_desc;
                     let local_info = &self.body.local_decls[local].local_info;
                     if let Some(box LocalInfo::StaticRef { def_id, .. }) = *local_info {
                         let static_name = &self.infcx.tcx.item_name(def_id);
-                        reason = format!(", as `{}` is an immutable static item", static_name);
+                        reason = format!(", as `{static_name}` is an immutable static item");
                     } else {
                         bug!("is_ref_to_static return true, but not ref to static?");
                     }
@@ -148,15 +148,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let pointer_type = source.describe_for_immutable_place(self.infcx.tcx);
                     opt_source = Some(source);
                     if let Some(desc) = self.describe_place(access_place.as_ref()) {
-                        item_msg = format!("`{}`", desc);
+                        item_msg = format!("`{desc}`");
                         reason = match error_access {
-                            AccessKind::Mutate => format!(", which is behind {}", pointer_type),
+                            AccessKind::Mutate => format!(", which is behind {pointer_type}"),
                             AccessKind::MutableBorrow => {
-                                format!(", as it is behind {}", pointer_type)
+                                format!(", as it is behind {pointer_type}")
                             }
                         }
                     } else {
-                        item_msg = format!("data in {}", pointer_type);
+                        item_msg = format!("data in {pointer_type}");
                         reason = String::new();
                     }
                 }
@@ -220,8 +220,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 local,
                 projection:
-                    [
-                        proj_base @ ..,
+                    &[
+                        ref proj_base @ ..,
                         ProjectionElem::Deref,
                         ProjectionElem::Field(field, _),
                         ProjectionElem::Deref,
@@ -237,7 +237,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         span,
                         "consider changing this to be mutable",
-                        " mut ".into(),
+                        " mut ",
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -295,7 +295,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             err.span_suggestion_verbose(
                                 source_info.span.with_hi(source_info.span.lo() + BytePos(5)),
                                 "try removing `&mut` here",
-                                String::new(),
+                                "",
                                 Applicability::MachineApplicable,
                             );
                         } else {
@@ -316,7 +316,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         decl.source_info.span.shrink_to_lo(),
                         "consider making the binding mutable",
-                        "mut ".to_string(),
+                        "mut ",
                         Applicability::MachineApplicable,
                     );
                 }
@@ -342,7 +342,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Applicability::MachineApplicable,
                 );
                 let tcx = self.infcx.tcx;
-                if let ty::Closure(id, _) = the_place_err.ty(self.body, tcx).ty.kind() {
+                if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
                     self.show_mutating_upvar(tcx, id, the_place_err, &mut err);
                 }
             }
@@ -362,29 +362,27 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let upvar_hir_id = captured_place.get_root_variable();
 
-                if let Some(Node::Binding(pat)) = self.infcx.tcx.hir().find(upvar_hir_id) {
-                    if let hir::PatKind::Binding(
+                if let Some(Node::Binding(pat)) = self.infcx.tcx.hir().find(upvar_hir_id)
+                    && let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated,
                         _,
                         upvar_ident,
                         _,
                     ) = pat.kind
-                    {
-                        err.span_suggestion(
-                            upvar_ident.span,
-                            "consider changing this to be mutable",
-                            format!("mut {}", upvar_ident.name),
-                            Applicability::MachineApplicable,
-                        );
-                    }
+                {
+                    err.span_suggestion(
+                        upvar_ident.span,
+                        "consider changing this to be mutable",
+                        format!("mut {}", upvar_ident.name),
+                        Applicability::MachineApplicable,
+                    );
                 }
 
                 let tcx = self.infcx.tcx;
                 if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
+                    && let ty::Closure(id, _) = *ty.kind()
                 {
-                    if let ty::Closure(id, _) = ty.kind() {
-                        self.show_mutating_upvar(tcx, id, the_place_err, &mut err);
-                    }
+                    self.show_mutating_upvar(tcx, id, the_place_err, &mut err);
                 }
             }
 
@@ -404,7 +402,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 err.span_suggestion(
                     span,
                     "try removing `&mut` here",
-                    String::new(),
+                    "",
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -544,8 +542,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     err.span_suggestion(
                                         err_help_span,
                                         &format!(
-                                            "consider changing this to be a mutable {}",
-                                            pointer_desc
+                                            "consider changing this to be a mutable {pointer_desc}"
                                         ),
                                         suggested_code,
                                         Applicability::MachineApplicable,
@@ -554,8 +551,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     err.span_suggestion(
                                         x,
                                         &format!(
-                                            "consider changing that to be a mutable {}",
-                                            pointer_desc
+                                            "consider changing that to be a mutable {pointer_desc}"
                                         ),
                                         suggested_code,
                                         Applicability::MachineApplicable,
@@ -606,15 +602,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Some(BorrowedContentSource::OverloadedDeref(ty)) => {
                         err.help(&format!(
                             "trait `DerefMut` is required to modify through a dereference, \
-                                but it is not implemented for `{}`",
-                            ty,
+                                but it is not implemented for `{ty}`",
                         ));
                     }
                     Some(BorrowedContentSource::OverloadedIndex(ty)) => {
                         err.help(&format!(
                             "trait `IndexMut` is required to modify indexed content, \
-                                but it is not implemented for `{}`",
-                            ty,
+                                but it is not implemented for `{ty}`",
                         ));
                     }
                     _ => (),
@@ -687,7 +681,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn show_mutating_upvar(
         &self,
         tcx: TyCtxt<'_>,
-        id: &hir::def_id::DefId,
+        id: hir::def_id::DefId,
         the_place_err: PlaceRef<'tcx>,
         err: &mut Diagnostic,
     ) {
@@ -701,7 +695,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let upvar = ty::place_to_string_for_capture(tcx, closure_kind_origin);
                 let root_hir_id = upvar_id.var_path.hir_id;
                 // we have an origin for this closure kind starting at this root variable so it's safe to unwrap here
-                let captured_places = tables.closure_min_captures[id].get(&root_hir_id).unwrap();
+                let captured_places = tables.closure_min_captures[&id].get(&root_hir_id).unwrap();
 
                 let origin_projection = closure_kind_origin
                     .projections
@@ -724,18 +718,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             ty::UpvarCapture::ByRef(
                                 ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
                             ) => {
-                                capture_reason = format!("mutable borrow of `{}`", upvar);
+                                capture_reason = format!("mutable borrow of `{upvar}`");
                             }
                             ty::UpvarCapture::ByValue => {
-                                capture_reason = format!("possible mutation of `{}`", upvar);
+                                capture_reason = format!("possible mutation of `{upvar}`");
                             }
-                            _ => bug!("upvar `{}` borrowed, but not mutably", upvar),
+                            _ => bug!("upvar `{upvar}` borrowed, but not mutably"),
                         }
                         break;
                     }
                 }
                 if capture_reason.is_empty() {
-                    bug!("upvar `{}` borrowed, but cannot find reason", upvar);
+                    bug!("upvar `{upvar}` borrowed, but cannot find reason");
                 }
                 capture_reason
             } else {
@@ -787,7 +781,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                                         _,
                                                         [
                                                             Expr {
-                                                                kind: MethodCall(path_segment, ..),
+                                                                kind:
+                                                                    MethodCall(
+                                                                        path_segment,
+                                                                        _args,
+                                                                        span,
+                                                                    ),
                                                                 hir_id,
                                                                 ..
                                                             },
@@ -824,19 +823,19 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                         .as_str()
                                         .starts_with(&original_method_ident.name.to_string())
                             })
-                            .map(|ident| format!("{}()", ident))
+                            .map(|ident| format!("{ident}()"))
                             .peekable()
                     });
 
-                if let Some(mut suggestions) = opt_suggestions {
-                    if suggestions.peek().is_some() {
-                        err.span_suggestions(
-                            path_segment.ident.span,
-                            "use mutable method",
-                            suggestions,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+                if let Some(mut suggestions) = opt_suggestions
+                    && suggestions.peek().is_some()
+                {
+                    err.span_suggestions(
+                        *span,
+                        "use mutable method",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             }
         };
@@ -844,7 +843,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
     fn expected_fn_found_fn_mut_call(&self, err: &mut Diagnostic, sp: Span, act: &str) {
-        err.span_label(sp, format!("cannot {}", act));
+        err.span_label(sp, format!("cannot {act}"));
 
         let hir = self.infcx.tcx.hir();
         let closure_id = self.mir_hir_id();
@@ -1006,35 +1005,35 @@ fn suggest_ampmut<'tcx>(
     opt_assignment_rhs_span: Option<Span>,
     opt_ty_info: Option<Span>,
 ) -> (Span, String) {
-    if let Some(assignment_rhs_span) = opt_assignment_rhs_span {
-        if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
-            let is_mutbl = |ty: &str| -> bool {
-                if let Some(rest) = ty.strip_prefix("mut") {
-                    match rest.chars().next() {
-                        // e.g. `&mut x`
-                        Some(c) if c.is_whitespace() => true,
-                        // e.g. `&mut(x)`
-                        Some('(') => true,
-                        // e.g. `&mut{x}`
-                        Some('{') => true,
-                        // e.g. `&mutablevar`
-                        _ => false,
-                    }
-                } else {
-                    false
+    if let Some(assignment_rhs_span) = opt_assignment_rhs_span
+        && let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span)
+    {
+        let is_mutbl = |ty: &str| -> bool {
+            if let Some(rest) = ty.strip_prefix("mut") {
+                match rest.chars().next() {
+                    // e.g. `&mut x`
+                    Some(c) if c.is_whitespace() => true,
+                    // e.g. `&mut(x)`
+                    Some('(') => true,
+                    // e.g. `&mut{x}`
+                    Some('{') => true,
+                    // e.g. `&mutablevar`
+                    _ => false,
                 }
-            };
-            if let (true, Some(ws_pos)) = (src.starts_with("&'"), src.find(char::is_whitespace)) {
-                let lt_name = &src[1..ws_pos];
-                let ty = src[ws_pos..].trim_start();
-                if !is_mutbl(ty) {
-                    return (assignment_rhs_span, format!("&{} mut {}", lt_name, ty));
-                }
-            } else if let Some(stripped) = src.strip_prefix('&') {
-                let stripped = stripped.trim_start();
-                if !is_mutbl(stripped) {
-                    return (assignment_rhs_span, format!("&mut {}", stripped));
-                }
+            } else {
+                false
+            }
+        };
+        if let (true, Some(ws_pos)) = (src.starts_with("&'"), src.find(char::is_whitespace)) {
+            let lt_name = &src[1..ws_pos];
+            let ty = src[ws_pos..].trim_start();
+            if !is_mutbl(ty) {
+                return (assignment_rhs_span, format!("&{lt_name} mut {ty}"));
+            }
+        } else if let Some(stripped) = src.strip_prefix('&') {
+            let stripped = stripped.trim_start();
+            if !is_mutbl(stripped) {
+                return (assignment_rhs_span, format!("&mut {stripped}"));
             }
         }
     }
@@ -1049,12 +1048,12 @@ fn suggest_ampmut<'tcx>(
         None => local_decl.source_info.span,
     };
 
-    if let Ok(src) = tcx.sess.source_map().span_to_snippet(highlight_span) {
-        if let (true, Some(ws_pos)) = (src.starts_with("&'"), src.find(char::is_whitespace)) {
-            let lt_name = &src[1..ws_pos];
-            let ty = &src[ws_pos..];
-            return (highlight_span, format!("&{} mut{}", lt_name, ty));
-        }
+    if let Ok(src) = tcx.sess.source_map().span_to_snippet(highlight_span)
+        && let (true, Some(ws_pos)) = (src.starts_with("&'"), src.find(char::is_whitespace))
+    {
+        let lt_name = &src[1..ws_pos];
+        let ty = &src[ws_pos..];
+        return (highlight_span, format!("&{} mut{}", lt_name, ty));
     }
 
     let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
@@ -1083,7 +1082,7 @@ fn is_closure_or_generator(ty: Ty<'_>) -> bool {
 fn get_mut_span_in_struct_field<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    field: &mir::Field,
+    field: mir::Field,
 ) -> Option<Span> {
     // Expect our local to be a reference to a struct of some kind.
     if let ty::Ref(_, ty, _) = ty.kind()

@@ -60,13 +60,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // Replace the bound items in the fn sig with fresh
                     // variables, so that they represent the view from
                     // "inside" the closure.
-                    self.infcx
-                        .replace_bound_vars_with_fresh_vars(
-                            body.span,
-                            LateBoundRegionConversionTime::FnCall,
-                            poly_sig,
-                        )
-                        .0
+                    self.infcx.replace_bound_vars_with_fresh_vars(
+                        body.span,
+                        LateBoundRegionConversionTime::FnCall,
+                        poly_sig,
+                    )
                 },
             );
         }
@@ -147,9 +145,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Return types are a bit more complex. They may contain opaque `impl Trait` types.
         let mir_output_ty = body.local_decls[RETURN_PLACE].ty;
         let output_span = body.local_decls[RETURN_PLACE].source_info.span;
-        if let Err(terr) = self.eq_opaque_type_and_type(
-            mir_output_ty,
+        if let Err(terr) = self.eq_types(
             normalized_output_ty,
+            mir_output_ty,
             Locations::All(output_span),
             ConstraintCategory::BoringNoLocation,
         ) {
@@ -169,9 +167,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let user_provided_output_ty = user_provided_sig.output();
             let user_provided_output_ty =
                 self.normalize(user_provided_output_ty, Locations::All(output_span));
-            if let Err(err) = self.eq_opaque_type_and_type(
-                mir_output_ty,
+            if let Err(err) = self.eq_types(
                 user_provided_output_ty,
+                mir_output_ty,
                 Locations::All(output_span),
                 ConstraintCategory::BoringNoLocation,
             ) {
@@ -235,6 +233,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 Some(self.implicit_region_bound),
                 self.param_env,
                 Locations::All(DUMMY_SP),
+                DUMMY_SP,
                 ConstraintCategory::Internal,
                 &mut self.borrowck_context.constraints,
             )

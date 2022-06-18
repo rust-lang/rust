@@ -1,4 +1,4 @@
-# Codegen options
+# Codegen Options
 
 All of these options are passed to `rustc` via the `-C` flag, short for "codegen." You can see
 a version of this list for your exact compiler by running `rustc -C help`.
@@ -549,6 +549,21 @@ Supported values for this option are:
   or separate files.
 - `symbols` - same as `debuginfo`, but the rest of the symbol table section is
   stripped as well if the linker supports it.
+
+## symbol-mangling-version
+
+This option controls the [name mangling] format for encoding Rust item names
+for the purpose of generating object code and linking.
+
+Supported values for this option are:
+
+* `v0` — The "v0" mangling scheme. The specific format is not specified at
+  this time.
+
+The default if not specified will use a compiler-chosen default which may
+change in the future.
+
+[name mangling]: https://en.wikipedia.org/wiki/Name_mangling
 
 ## target-cpu
 

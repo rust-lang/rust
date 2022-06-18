@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-54124.rs:4:22
+  --> $DIR/issue-54124.rs:2:22
    |
 LL | fn test<'a>() {
    |         -- lifetime `'a` defined here
@@ -9,7 +9,7 @@ LL |     let _:fn(&()) = |_:&'a ()| {};
    |                      requires that `'1` must outlive `'a`
 
 error: lifetime may not live long enough
-  --> $DIR/issue-54124.rs:4:22
+  --> $DIR/issue-54124.rs:2:22
    |
 LL | fn test<'a>() {
    |         -- lifetime `'a` defined here

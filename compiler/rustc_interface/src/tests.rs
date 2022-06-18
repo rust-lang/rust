@@ -9,8 +9,8 @@ use rustc_session::config::{
     rustc_optgroups, ErrorOutputType, ExternLocation, LocationDetail, Options, Passes,
 };
 use rustc_session::config::{
-    BranchProtection, Externs, OutputType, OutputTypes, PAuthKey, PacRet, SymbolManglingVersion,
-    WasiExecModel,
+    BranchProtection, Externs, OomStrategy, OutputType, OutputTypes, PAuthKey, PacRet,
+    SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::lint::Level;
@@ -44,6 +44,7 @@ fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
     let sess = build_session(
         sessopts,
         None,
+        None,
         registry,
         DiagnosticOutput::Default,
         Default::default(),
@@ -65,6 +66,7 @@ where
         location: ExternLocation::ExactPaths(locations),
         is_private_dep: false,
         add_prelude: true,
+        nounused_dep: false,
     }
 }
 
@@ -642,9 +644,6 @@ fn test_debugging_options_tracking_hash() {
     // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
     // This list is in alphabetical order.
     untracked!(assert_incr_state, Some(String::from("loaded")));
-    untracked!(ast_json, true);
-    untracked!(ast_json_noexpand, true);
-    untracked!(borrowck, String::from("other"));
     untracked!(deduplicate_diagnostics, false);
     untracked!(dep_tasks, true);
     untracked!(dlltool, Some(PathBuf::from("custom_dlltool.exe")));
@@ -750,6 +749,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(location_detail, LocationDetail { file: true, line: false, column: false });
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(mir_emit_retag, true);
+    tracked!(mir_enable_passes, vec![("DestProp".to_string(), false)]);
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
     tracked!(mutable_noalias, Some(true));
@@ -758,6 +758,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(no_link, true);
     tracked!(no_unique_section_names, true);
     tracked!(no_profiler_runtime, true);
+    tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
     tracked!(panic_abort_tests, true);
     tracked!(panic_in_drop, PanicStrategy::Abort);
@@ -788,6 +789,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(thinlto, Some(true));
     tracked!(thir_unsafeck, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
+    tracked!(translate_remapped_path_to_local_path, false);
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZeroUsize::new(1));
     tracked!(tune_cpu, Some(String::from("abc")));
@@ -795,6 +797,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(unleash_the_miri_inside_of_you, true);
     tracked!(use_ctors_section, Some(true));
     tracked!(verify_llvm_ir, true);
+    tracked!(virtual_function_elimination, true);
     tracked!(wasi_exec_model, Some(WasiExecModel::Reactor));
 
     macro_rules! tracked_no_crate_hash {

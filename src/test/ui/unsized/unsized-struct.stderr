@@ -22,7 +22,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
 LL + fn foo2<T>() { not_sized::<Foo<T>>() }
-   | 
+   |
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/unsized-struct.rs:13:24
@@ -46,7 +46,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn bar2<T: ?Sized>() { is_sized::<Bar<T>>() }
 LL + fn bar2<T>() { is_sized::<Bar<T>>() }
-   | 
+   |
 
 error: aborting due to 2 previous errors
 

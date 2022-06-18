@@ -2,7 +2,7 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_span::symbol::sym;
 
@@ -31,12 +31,12 @@ pub struct Graph {
     pub children: DefIdMap<Children>,
 
     /// Whether an error was emitted while constructing the graph.
-    pub has_errored: bool,
+    pub has_errored: Option<ErrorGuaranteed>,
 }
 
 impl Graph {
     pub fn new() -> Graph {
-        Graph { parent: Default::default(), children: Default::default(), has_errored: false }
+        Graph { parent: Default::default(), children: Default::default(), has_errored: None }
     }
 
     /// The parent of a given impl, which is the `DefId` of the trait when the
@@ -180,6 +180,7 @@ pub struct LeafDef {
     /// Example:
     ///
     /// ```
+    /// #![feature(specialization)]
     /// trait Tr {
     ///     fn assoc(&self);
     /// }
@@ -243,11 +244,13 @@ pub fn ancestors<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     start_from_impl: DefId,
-) -> Result<Ancestors<'tcx>, ErrorReported> {
+) -> Result<Ancestors<'tcx>, ErrorGuaranteed> {
     let specialization_graph = tcx.specialization_graph_of(trait_def_id);
 
-    if specialization_graph.has_errored || tcx.type_of(start_from_impl).references_error() {
-        Err(ErrorReported)
+    if let Some(reported) = specialization_graph.has_errored {
+        Err(reported)
+    } else if let Some(reported) = tcx.type_of(start_from_impl).error_reported() {
+        Err(reported)
     } else {
         Ok(Ancestors {
             trait_def_id,

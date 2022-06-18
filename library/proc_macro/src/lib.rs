@@ -17,20 +17,17 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
+// This library is copied into rust-analyzer to allow loading rustc compiled proc macros.
+// Please avoid unstable features where possible to minimize the amount of changes necessary
+// to make it compile with rust-analyzer on stable.
 #![feature(rustc_allow_const_fn_unstable)]
-#![feature(nll)]
 #![feature(staged_api)]
-#![feature(const_fn_trait_bound)]
-#![feature(const_fn_fn_ptr_basics)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
-#![feature(extern_types)]
 #![feature(negative_impls)]
-#![feature(auto_traits)]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
-#![feature(panic_update_hook)]
 #![recursion_limit = "256"]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
@@ -46,7 +43,7 @@ use std::cmp::Ordering;
 use std::ops::RangeBounds;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::{error, fmt, iter, mem};
+use std::{error, fmt, iter};
 
 /// Determines whether proc_macro has been made accessible to the currently
 /// running program.
@@ -75,7 +72,7 @@ pub fn is_available() -> bool {
 /// and `#[proc_macro_derive]` definitions.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 #[derive(Clone)]
-pub struct TokenStream(bridge::client::TokenStream);
+pub struct TokenStream(Option<bridge::client::TokenStream>);
 
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Send for TokenStream {}
@@ -129,13 +126,13 @@ impl TokenStream {
     /// Returns an empty `TokenStream` containing no token trees.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new() -> TokenStream {
-        TokenStream(bridge::client::TokenStream::new())
+        TokenStream(None)
     }
 
     /// Checks if this `TokenStream` is empty.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.0.as_ref().map(|h| h.is_empty()).unwrap_or(true)
     }
 
     /// Parses this `TokenStream` as an expression and attempts to expand any
@@ -150,8 +147,9 @@ impl TokenStream {
     /// considered errors, is unspecified and may change in the future.
     #[unstable(feature = "proc_macro_expand", issue = "90765")]
     pub fn expand_expr(&self) -> Result<TokenStream, ExpandError> {
-        match bridge::client::TokenStream::expand_expr(&self.0) {
-            Ok(stream) => Ok(TokenStream(stream)),
+        let stream = self.0.as_ref().ok_or(ExpandError)?;
+        match bridge::client::TokenStream::expand_expr(stream) {
+            Ok(stream) => Ok(TokenStream(Some(stream))),
             Err(_) => Err(ExpandError),
         }
     }
@@ -169,7 +167,7 @@ impl FromStr for TokenStream {
     type Err = LexError;
 
     fn from_str(src: &str) -> Result<TokenStream, LexError> {
-        Ok(TokenStream(bridge::client::TokenStream::from_str(src)))
+        Ok(TokenStream(Some(bridge::client::TokenStream::from_str(src))))
     }
 }
 
@@ -178,7 +176,7 @@ impl FromStr for TokenStream {
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenStream {
     fn to_string(&self) -> String {
-        self.0.to_string()
+        self.0.as_ref().map(|t| t.to_string()).unwrap_or_default()
     }
 }
 
@@ -211,16 +209,103 @@ impl Default for TokenStream {
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 pub use quote::{quote, quote_span};
 
+fn tree_to_bridge_tree(
+    tree: TokenTree,
+) -> bridge::TokenTree<
+    bridge::client::Group,
+    bridge::client::Punct,
+    bridge::client::Ident,
+    bridge::client::Literal,
+> {
+    match tree {
+        TokenTree::Group(tt) => bridge::TokenTree::Group(tt.0),
+        TokenTree::Punct(tt) => bridge::TokenTree::Punct(tt.0),
+        TokenTree::Ident(tt) => bridge::TokenTree::Ident(tt.0),
+        TokenTree::Literal(tt) => bridge::TokenTree::Literal(tt.0),
+    }
+}
+
 /// Creates a token stream containing a single token tree.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<TokenTree> for TokenStream {
     fn from(tree: TokenTree) -> TokenStream {
-        TokenStream(bridge::client::TokenStream::from_token_tree(match tree {
-            TokenTree::Group(tt) => bridge::TokenTree::Group(tt.0),
-            TokenTree::Punct(tt) => bridge::TokenTree::Punct(tt.0),
-            TokenTree::Ident(tt) => bridge::TokenTree::Ident(tt.0),
-            TokenTree::Literal(tt) => bridge::TokenTree::Literal(tt.0),
-        }))
+        TokenStream(Some(bridge::client::TokenStream::from_token_tree(tree_to_bridge_tree(tree))))
+    }
+}
+
+/// Non-generic helper for implementing `FromIterator<TokenTree>` and
+/// `Extend<TokenTree>` with less monomorphization in calling crates.
+struct ConcatTreesHelper {
+    trees: Vec<
+        bridge::TokenTree<
+            bridge::client::Group,
+            bridge::client::Punct,
+            bridge::client::Ident,
+            bridge::client::Literal,
+        >,
+    >,
+}
+
+impl ConcatTreesHelper {
+    fn new(capacity: usize) -> Self {
+        ConcatTreesHelper { trees: Vec::with_capacity(capacity) }
+    }
+
+    fn push(&mut self, tree: TokenTree) {
+        self.trees.push(tree_to_bridge_tree(tree));
+    }
+
+    fn build(self) -> TokenStream {
+        if self.trees.is_empty() {
+            TokenStream(None)
+        } else {
+            TokenStream(Some(bridge::client::TokenStream::concat_trees(None, self.trees)))
+        }
+    }
+
+    fn append_to(self, stream: &mut TokenStream) {
+        if self.trees.is_empty() {
+            return;
+        }
+        stream.0 = Some(bridge::client::TokenStream::concat_trees(stream.0.take(), self.trees))
+    }
+}
+
+/// Non-generic helper for implementing `FromIterator<TokenStream>` and
+/// `Extend<TokenStream>` with less monomorphization in calling crates.
+struct ConcatStreamsHelper {
+    streams: Vec<bridge::client::TokenStream>,
+}
+
+impl ConcatStreamsHelper {
+    fn new(capacity: usize) -> Self {
+        ConcatStreamsHelper { streams: Vec::with_capacity(capacity) }
+    }
+
+    fn push(&mut self, stream: TokenStream) {
+        if let Some(stream) = stream.0 {
+            self.streams.push(stream);
+        }
+    }
+
+    fn build(mut self) -> TokenStream {
+        if self.streams.len() <= 1 {
+            TokenStream(self.streams.pop())
+        } else {
+            TokenStream(Some(bridge::client::TokenStream::concat_streams(None, self.streams)))
+        }
+    }
+
+    fn append_to(mut self, stream: &mut TokenStream) {
+        if self.streams.is_empty() {
+            return;
+        }
+        let base = stream.0.take();
+        if base.is_none() && self.streams.len() == 1 {
+            stream.0 = self.streams.pop();
+        } else {
+            stream.0 = Some(bridge::client::TokenStream::concat_streams(base, self.streams));
+        }
     }
 }
 
@@ -228,7 +313,10 @@ impl From<TokenTree> for TokenStream {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl iter::FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
-        trees.into_iter().map(TokenStream::from).collect()
+        let iter = trees.into_iter();
+        let mut builder = ConcatTreesHelper::new(iter.size_hint().0);
+        iter.for_each(|tree| builder.push(tree));
+        builder.build()
     }
 }
 
@@ -237,24 +325,30 @@ impl iter::FromIterator<TokenTree> for TokenStream {
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl iter::FromIterator<TokenStream> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
-        let mut builder = bridge::client::TokenStreamBuilder::new();
-        streams.into_iter().for_each(|stream| builder.push(stream.0));
-        TokenStream(builder.build())
+        let iter = streams.into_iter();
+        let mut builder = ConcatStreamsHelper::new(iter.size_hint().0);
+        iter.for_each(|stream| builder.push(stream));
+        builder.build()
     }
 }
 
 #[stable(feature = "token_stream_extend", since = "1.30.0")]
 impl Extend<TokenTree> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, trees: I) {
-        self.extend(trees.into_iter().map(TokenStream::from));
+        let iter = trees.into_iter();
+        let mut builder = ConcatTreesHelper::new(iter.size_hint().0);
+        iter.for_each(|tree| builder.push(tree));
+        builder.append_to(self);
     }
 }
 
 #[stable(feature = "token_stream_extend", since = "1.30.0")]
 impl Extend<TokenStream> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) {
-        // FIXME(eddyb) Use an optimized implementation if/when possible.
-        *self = iter::once(mem::replace(self, Self::new())).chain(streams).collect();
+        let iter = streams.into_iter();
+        let mut builder = ConcatStreamsHelper::new(iter.size_hint().0);
+        iter.for_each(|stream| builder.push(stream));
+        builder.append_to(self);
     }
 }
 
@@ -268,7 +362,16 @@ pub mod token_stream {
     /// and returns whole groups as token trees.
     #[derive(Clone)]
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-    pub struct IntoIter(bridge::client::TokenStreamIter);
+    pub struct IntoIter(
+        std::vec::IntoIter<
+            bridge::TokenTree<
+                bridge::client::Group,
+                bridge::client::Punct,
+                bridge::client::Ident,
+                bridge::client::Literal,
+            >,
+        >,
+    );
 
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     impl Iterator for IntoIter {
@@ -290,7 +393,7 @@ pub mod token_stream {
         type IntoIter = IntoIter;
 
         fn into_iter(self) -> IntoIter {
-            IntoIter(self.0.into_iter())
+            IntoIter(self.0.map(|v| v.into_trees()).unwrap_or_default().into_iter())
         }
     }
 }
@@ -706,10 +809,10 @@ pub enum Delimiter {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Bracket,
     /// `Ø ... Ø`
-    /// An implicit delimiter, that may, for example, appear around tokens coming from a
+    /// An invisible delimiter, that may, for example, appear around tokens coming from a
     /// "macro variable" `$var`. It is important to preserve operator priorities in cases like
     /// `$var * 3` where `$var` is `1 + 2`.
-    /// Implicit delimiters might not survive roundtrip of a token stream through a string.
+    /// Invisible delimiters might not survive roundtrip of a token stream through a string.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     None,
 }
@@ -737,7 +840,7 @@ impl Group {
     /// returned above.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn stream(&self) -> TokenStream {
-        TokenStream(self.0.stream())
+        TokenStream(Some(self.0.stream()))
     }
 
     /// Returns the span for the delimiters of this token stream, spanning the
@@ -1106,7 +1209,7 @@ impl Literal {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn f32_unsuffixed(n: f32) -> Literal {
         if !n.is_finite() {
-            panic!("Invalid float literal {}", n);
+            panic!("Invalid float literal {n}");
         }
         let mut repr = n.to_string();
         if !repr.contains('.') {
@@ -1131,7 +1234,7 @@ impl Literal {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn f32_suffixed(n: f32) -> Literal {
         if !n.is_finite() {
-            panic!("Invalid float literal {}", n);
+            panic!("Invalid float literal {n}");
         }
         Literal(bridge::client::Literal::f32(&n.to_string()))
     }
@@ -1151,7 +1254,7 @@ impl Literal {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn f64_unsuffixed(n: f64) -> Literal {
         if !n.is_finite() {
-            panic!("Invalid float literal {}", n);
+            panic!("Invalid float literal {n}");
         }
         let mut repr = n.to_string();
         if !repr.contains('.') {
@@ -1176,7 +1279,7 @@ impl Literal {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn f64_suffixed(n: f64) -> Literal {
         if !n.is_finite() {
-            panic!("Invalid float literal {}", n);
+            panic!("Invalid float literal {n}");
         }
         Literal(bridge::client::Literal::f64(&n.to_string()))
     }

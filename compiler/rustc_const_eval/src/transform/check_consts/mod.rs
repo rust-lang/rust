@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{sym, Symbol};
+use rustc_span::Symbol;
 
 pub use self::qualifs::Qualif;
 
@@ -61,19 +61,17 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
             && is_const_stable_const_fn(self.tcx, self.def_id().to_def_id())
     }
 
-    /// Returns the function signature of the item being const-checked if it is a `fn` or `const fn`.
-    pub fn fn_sig(&self) -> Option<&'tcx hir::FnSig<'tcx>> {
-        // Get this from the HIR map instead of a query to avoid cycle errors.
-        //
-        // FIXME: Is this still an issue?
-        let hir_map = self.tcx.hir();
-        let hir_id = hir_map.local_def_id_to_hir_id(self.def_id());
-        hir_map.fn_sig_by_hir_id(hir_id)
+    fn is_async(&self) -> bool {
+        self.tcx.asyncness(self.def_id()) == hir::IsAsync::Async
     }
 }
 
-pub fn rustc_allow_const_fn_unstable(tcx: TyCtxt<'_>, def_id: DefId, feature_gate: Symbol) -> bool {
-    let attrs = tcx.get_attrs(def_id);
+pub fn rustc_allow_const_fn_unstable(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+    feature_gate: Symbol,
+) -> bool {
+    let attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(def_id));
     attr::rustc_allow_const_fn_unstable(&tcx.sess, attrs).any(|name| name == feature_gate)
 }
 
@@ -86,34 +84,49 @@ pub fn rustc_allow_const_fn_unstable(tcx: TyCtxt<'_>, def_id: DefId, feature_gat
 // functions are subject to more stringent restrictions than "const-unstable" functions: They
 // cannot use unstable features and can only call other "const-stable" functions.
 pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    use attr::{ConstStability, Stability, StabilityLevel};
-
-    // A default body marked const is not const-stable because const
+    // A default body in a `#[const_trait]` is not const-stable because const
     // trait fns currently cannot be const-stable. We shouldn't
     // restrict default bodies to only call const-stable functions.
-    if tcx.has_attr(def_id, sym::default_method_body_is_const) {
+    if tcx.is_const_default_method(def_id) {
         return false;
     }
 
     // Const-stability is only relevant for `const fn`.
     assert!(tcx.is_const_fn_raw(def_id));
 
-    // Functions with `#[rustc_const_unstable]` are const-unstable.
+    // A function is only const-stable if it has `#[rustc_const_stable]` or it the trait it belongs
+    // to is const-stable.
     match tcx.lookup_const_stability(def_id) {
-        Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. }) => return false,
-        Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => return true,
-        None => {}
+        Some(stab) => stab.is_const_stable(),
+        None if is_parent_const_stable_trait(tcx, def_id) => {
+            // Remove this when `#![feature(const_trait_impl)]` is stabilized,
+            // returning `true` unconditionally.
+            tcx.sess.delay_span_bug(
+                tcx.def_span(def_id),
+                "trait implementations cannot be const stable yet",
+            );
+            true
+        }
+        None => false, // By default, items are not const stable.
     }
+}
 
-    // Functions with `#[unstable]` are const-unstable.
-    //
-    // FIXME(ecstaticmorse): We should keep const-stability attributes wholly separate from normal stability
-    // attributes. `#[unstable]` should be irrelevant.
-    if let Some(Stability { level: StabilityLevel::Unstable { .. }, .. }) =
-        tcx.lookup_stability(def_id)
-    {
+fn is_parent_const_stable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    let local_def_id = def_id.expect_local();
+    let hir_id = tcx.local_def_id_to_hir_id(local_def_id);
+
+    let Some(parent) = tcx.hir().find_parent_node(hir_id) else { return false };
+    let parent_def = tcx.hir().get(parent);
+
+    if !matches!(
+        parent_def,
+        hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Impl(hir::Impl { constness: hir::Constness::Const, .. }),
+            ..
+        })
+    ) {
         return false;
     }
 
-    true
+    tcx.lookup_const_stability(parent.owner).map_or(false, |stab| stab.is_const_stable())
 }

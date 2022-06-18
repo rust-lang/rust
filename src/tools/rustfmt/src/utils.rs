@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_ast::ast::{
-    self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
+    self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
     VisibilityKind,
 };
 use rustc_ast::ptr;
@@ -44,15 +44,7 @@ pub(crate) fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
             VisibilityKind::Restricted { path: q, .. },
         ) => pprust::path_to_string(p) == pprust::path_to_string(q),
         (VisibilityKind::Public, VisibilityKind::Public)
-        | (VisibilityKind::Inherited, VisibilityKind::Inherited)
-        | (
-            VisibilityKind::Crate(CrateSugar::PubCrate),
-            VisibilityKind::Crate(CrateSugar::PubCrate),
-        )
-        | (
-            VisibilityKind::Crate(CrateSugar::JustCrate),
-            VisibilityKind::Crate(CrateSugar::JustCrate),
-        ) => true,
+        | (VisibilityKind::Inherited, VisibilityKind::Inherited) => true,
         _ => false,
     }
 }
@@ -65,8 +57,6 @@ pub(crate) fn format_visibility(
     match vis.kind {
         VisibilityKind::Public => Cow::from("pub "),
         VisibilityKind::Inherited => Cow::from(""),
-        VisibilityKind::Crate(CrateSugar::PubCrate) => Cow::from("pub(crate) "),
-        VisibilityKind::Crate(CrateSugar::JustCrate) => Cow::from("crate "),
         VisibilityKind::Restricted { ref path, .. } => {
             let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
@@ -75,7 +65,7 @@ pub(crate) fn format_visibility(
                     .next()
                     .expect("Non-global path in pub(restricted)?");
             }
-            let is_keyword = |s: &str| s == "self" || s == "super";
+            let is_keyword = |s: &str| s == "crate" || s == "self" || s == "super";
             let path = segments_iter.collect::<Vec<_>>().join("::");
             let in_str = if is_keyword(&path) { "" } else { "in " };
 
@@ -512,6 +502,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Range(..)
         | ast::ExprKind::Repeat(..)
         | ast::ExprKind::Ret(..)
+        | ast::ExprKind::Yeet(..)
         | ast::ExprKind::Tup(..)
         | ast::ExprKind::Type(..)
         | ast::ExprKind::Yield(None)
@@ -646,9 +637,22 @@ pub(crate) fn trim_left_preserve_layout(
 }
 
 /// Based on the given line, determine if the next line can be indented or not.
-/// This allows to preserve the indentation of multi-line literals.
-pub(crate) fn indent_next_line(kind: FullCodeCharKind, _line: &str, config: &Config) -> bool {
-    !(kind.is_string() || (config.version() == Version::Two && kind.is_commented_string()))
+/// This allows to preserve the indentation of multi-line literals when
+/// re-inserted a code block that has been formatted separately from the rest
+/// of the code, such as code in macro defs or code blocks doc comments.
+pub(crate) fn indent_next_line(kind: FullCodeCharKind, line: &str, config: &Config) -> bool {
+    if kind.is_string() {
+        // If the string ends with '\', the string has been wrapped over
+        // multiple lines. If `format_strings = true`, then the indentation of
+        // strings wrapped over multiple lines will have been adjusted while
+        // formatting the code block, therefore the string's indentation needs
+        // to be adjusted for the code surrounding the code block.
+        config.format_strings() && line.ends_with('\\')
+    } else if config.version() == Version::Two {
+        !kind.is_commented_string()
+    } else {
+        true
+    }
 }
 
 pub(crate) fn is_empty_line(s: &str) -> bool {

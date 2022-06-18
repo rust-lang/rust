@@ -5,14 +5,14 @@
 #![feature(rustc_private)]
 #![feature(array_methods)]
 #![feature(assert_matches)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(box_syntax)]
+#![feature(drain_filter)]
+#![feature(let_chains)]
 #![feature(let_else)]
-#![feature(nll)]
+#![cfg_attr(bootstrap, feature(nll))]
 #![feature(test)]
-#![feature(crate_visibility_modifier)]
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(type_ascription)]
@@ -36,7 +36,6 @@ extern crate tracing;
 // Dependencies listed in Cargo.toml do not need `extern crate`.
 
 extern crate rustc_ast;
-extern crate rustc_ast_lowering;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
 extern crate rustc_const_eval;
@@ -70,9 +69,7 @@ extern crate test;
 // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
 // about jemalloc.
 #[cfg(feature = "jemalloc")]
-extern crate tikv_jemalloc_sys;
-#[cfg(feature = "jemalloc")]
-use tikv_jemalloc_sys as jemalloc_sys;
+extern crate jemalloc_sys;
 
 use std::default::Default;
 use std::env::{self, VarError};
@@ -80,7 +77,7 @@ use std::io;
 use std::process;
 
 use rustc_driver::{abort_on_err, describe_lints};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
@@ -94,7 +91,7 @@ use crate::passes::collect_intra_doc_links;
 ///
 /// Example:
 ///
-/// ```
+/// ```ignore(cannot-test-this-because-non-exported-macro)
 /// let letters = map!{"a" => "b", "c" => "d"};
 /// ```
 ///
@@ -120,7 +117,7 @@ mod formats;
 // used by the error-index generator, so it needs to be public
 pub mod html;
 mod json;
-crate mod lint;
+pub(crate) mod lint;
 mod markdown;
 mod passes;
 mod scrape_examples;
@@ -178,7 +175,7 @@ pub fn main() {
 
     let exit_code = rustc_driver::catch_with_exit_code(|| match get_args() {
         Some(args) => main_args(&args),
-        _ => Err(ErrorReported),
+        _ => Err(ErrorGuaranteed::unchecked_claim_error_was_emitted()),
     });
     process::exit(exit_code);
 }
@@ -671,7 +668,7 @@ fn usage(argv0: &str) {
 }
 
 /// A result type used by several functions under `main()`.
-type MainResult = Result<(), ErrorReported>;
+type MainResult = Result<(), ErrorGuaranteed>;
 
 fn main_args(at_args: &[String]) -> MainResult {
     let args = rustc_driver::args::arg_expand_all(at_args);
@@ -691,7 +688,13 @@ fn main_args(at_args: &[String]) -> MainResult {
     // codes from `from_matches` here.
     let options = match config::Options::from_matches(&matches) {
         Ok(opts) => opts,
-        Err(code) => return if code == 0 { Ok(()) } else { Err(ErrorReported) },
+        Err(code) => {
+            return if code == 0 {
+                Ok(())
+            } else {
+                Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+            };
+        }
     };
     rustc_interface::util::run_in_thread_pool_with_globals(
         options.edition,
@@ -704,8 +707,8 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainRes
     match res {
         Ok(()) => Ok(()),
         Err(err) => {
-            diag.struct_err(&err).emit();
-            Err(ErrorReported)
+            let reported = diag.struct_err(&err).emit();
+            Err(reported)
         }
     }
 }
@@ -764,6 +767,7 @@ fn main_options(options: config::Options) -> MainResult {
     let externs = options.externs.clone();
     let render_options = options.render_options.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
+    let document_private = options.render_options.document_private;
     let config = core::create_config(options);
 
     interface::create_compiler_and_run(config, |compiler| {
@@ -784,12 +788,18 @@ fn main_options(options: config::Options) -> MainResult {
             let (resolver, resolver_caches) = {
                 let (krate, resolver, _) = &*abort_on_err(queries.expansion(), sess).peek();
                 let resolver_caches = resolver.borrow_mut().access(|resolver| {
-                    collect_intra_doc_links::early_resolve_intra_doc_links(resolver, krate, externs)
+                    collect_intra_doc_links::early_resolve_intra_doc_links(
+                        resolver,
+                        sess,
+                        krate,
+                        externs,
+                        document_private,
+                    )
                 });
                 (resolver.clone(), resolver_caches)
             };
 
-            if sess.diagnostic().has_errors_or_lint_errors() {
+            if sess.diagnostic().has_errors_or_lint_errors().is_some() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 

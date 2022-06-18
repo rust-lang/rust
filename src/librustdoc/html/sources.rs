@@ -6,17 +6,20 @@ use crate::html::highlight;
 use crate::html::layout;
 use crate::html::render::{Context, BASIC_KEYWORDS};
 use crate::visit::DocVisitor;
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::FileName;
+
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::rc::Rc;
 
-crate fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
+pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
     info!("emitting source files");
 
     let dst = cx.dst.join("src").join(krate.name(cx.tcx()).as_str());
@@ -27,7 +30,7 @@ crate fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error>
     Ok(())
 }
 
-crate fn collect_local_sources<'tcx>(
+pub(crate) fn collect_local_sources<'tcx>(
     tcx: TyCtxt<'tcx>,
     src_root: &Path,
     krate: &clean::Crate,
@@ -174,15 +177,16 @@ impl SourceCollector<'_, '_> {
         // Remove the utf-8 BOM if any
         let contents = contents.strip_prefix('\u{feff}').unwrap_or(&contents);
 
+        let shared = Rc::clone(&self.cx.shared);
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = String::from("../../");
-        clean_path(&self.cx.shared.src_root, &p, false, |component| {
+        clean_path(&shared.src_root, &p, false, |component| {
             cur.push(component);
             root_path.push_str("../");
         });
 
-        self.cx.shared.ensure_dir(&cur)?;
+        shared.ensure_dir(&cur)?;
 
         let src_fname = p.file_name().expect("source has no filename").to_os_string();
         let mut fname = src_fname.clone();
@@ -195,32 +199,33 @@ impl SourceCollector<'_, '_> {
             title: &title,
             css_class: "source",
             root_path: &root_path,
-            static_root_path: self.cx.shared.static_root_path.as_deref(),
+            static_root_path: shared.static_root_path.as_deref(),
             description: &desc,
             keywords: BASIC_KEYWORDS,
-            resource_suffix: &self.cx.shared.resource_suffix,
-            extra_scripts: &[&format!("source-files{}", self.cx.shared.resource_suffix)],
-            static_extra_scripts: &[&format!("source-script{}", self.cx.shared.resource_suffix)],
+            resource_suffix: &shared.resource_suffix,
+            extra_scripts: &[&format!("source-files{}", shared.resource_suffix)],
+            static_extra_scripts: &[&format!("source-script{}", shared.resource_suffix)],
         };
         let v = layout::render(
-            &self.cx.shared.layout,
+            &shared.layout,
             &page,
             "",
             |buf: &mut _| {
+                let cx = &mut self.cx;
                 print_src(
                     buf,
                     contents,
-                    self.cx.shared.edition(),
+                    cx.shared.edition(),
                     file_span,
-                    self.cx,
+                    cx,
                     &root_path,
                     None,
                     SourceContext::Standalone,
                 )
             },
-            &self.cx.shared.style_files,
+            &shared.style_files,
         );
-        self.cx.shared.fs.write(cur, v)?;
+        shared.fs.write(cur, v)?;
         self.emitted_local_sources.insert(p);
         Ok(())
     }
@@ -231,7 +236,7 @@ impl SourceCollector<'_, '_> {
 /// static HTML tree. Each component in the cleaned path will be passed as an
 /// argument to `f`. The very last component of the path (ie the file name) will
 /// be passed to `f` if `keep_filename` is true, and ignored otherwise.
-crate fn clean_path<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
+pub(crate) fn clean_path<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
 where
     F: FnMut(&OsStr),
 {
@@ -253,14 +258,14 @@ where
     }
 }
 
-crate enum SourceContext {
+pub(crate) enum SourceContext {
     Standalone,
     Embedded { offset: usize },
 }
 
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-crate fn print_src(
+pub(crate) fn print_src(
     buf: &mut Buffer,
     s: &str,
     edition: Edition,
@@ -272,22 +277,16 @@ crate fn print_src(
 ) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
-    let mut cols = 0;
-    let mut tmp = lines;
-    while tmp > 0 {
-        cols += 1;
-        tmp /= 10;
-    }
     line_numbers.write_str("<pre class=\"line-numbers\">");
     match source_context {
         SourceContext::Standalone => {
             for line in 1..=lines {
-                writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", line, cols)
+                writeln!(line_numbers, "<span id=\"{0}\">{0}</span>", line)
             }
         }
         SourceContext::Embedded { offset } => {
             for line in 1..=lines {
-                writeln!(line_numbers, "<span>{0:1$}</span>", line + offset, cols)
+                writeln!(line_numbers, "<span>{0}</span>", line + offset)
             }
         }
     }

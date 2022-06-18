@@ -106,12 +106,12 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::{base_n, flock};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_fs_util::{link_or_copy, LinkOrCopy};
 use rustc_session::{Session, StableCrateId};
 
 use std::fs as std_fs;
-use std::io;
+use std::io::{self, ErrorKind};
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -204,7 +204,7 @@ pub fn prepare_session_directory(
     sess: &Session,
     crate_name: &str,
     stable_crate_id: StableCrateId,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     if sess.opts.incremental.is_none() {
         return Ok(());
     }
@@ -225,12 +225,12 @@ pub fn prepare_session_directory(
     let crate_dir = match crate_dir.canonicalize() {
         Ok(v) => v,
         Err(err) => {
-            sess.err(&format!(
+            let reported = sess.err(&format!(
                 "incremental compilation: error canonicalizing path `{}`: {}",
                 crate_dir.display(),
                 err
             ));
-            return Err(ErrorReported);
+            return Err(reported);
         }
     };
 
@@ -371,7 +371,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
     let new_path = incr_comp_session_dir.parent().unwrap().join(new_sub_dir_name);
     debug!("finalize_session_directory() - new path: {}", new_path.display());
 
-    match std_fs::rename(&*incr_comp_session_dir, &new_path) {
+    match rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3) {
         Ok(_) => {
             debug!("finalize_session_directory() - directory renamed successfully");
 
@@ -482,21 +482,21 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     directory_path
 }
 
-fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorReported> {
+fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorGuaranteed> {
     match std_fs::create_dir_all(path) {
         Ok(()) => {
             debug!("{} directory created successfully", dir_tag);
             Ok(())
         }
         Err(err) => {
-            sess.err(&format!(
+            let reported = sess.err(&format!(
                 "Could not create incremental compilation {} \
                                directory `{}`: {}",
                 dir_tag,
                 path.display(),
                 err
             ));
-            Err(ErrorReported)
+            Err(reported)
         }
     }
 }
@@ -505,7 +505,7 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorRep
 fn lock_directory(
     sess: &Session,
     session_dir: &Path,
-) -> Result<(flock::Lock, PathBuf), ErrorReported> {
+) -> Result<(flock::Lock, PathBuf), ErrorGuaranteed> {
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
@@ -545,8 +545,7 @@ fn lock_directory(
                     );
                 }
             }
-            err.emit();
-            Err(ErrorReported)
+            Err(err.emit())
         }
     }
 }
@@ -960,5 +959,26 @@ fn safe_remove_file(p: &Path) -> io::Result<()> {
     match std_fs::remove_file(canonicalized) {
         Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
         result => result,
+    }
+}
+
+// On Windows the compiler would sometimes fail to rename the session directory because
+// the OS thought something was still being accessed in it. So we retry a few times to give
+// the OS time to catch up.
+// See https://github.com/rust-lang/rust/issues/86929.
+fn rename_path_with_retry(from: &Path, to: &Path, mut retries_left: usize) -> std::io::Result<()> {
+    loop {
+        match std_fs::rename(from, to) {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                if retries_left > 0 && e.kind() == ErrorKind::PermissionDenied {
+                    // Try again after a short waiting period.
+                    std::thread::sleep(Duration::from_millis(50));
+                    retries_left -= 1;
+                } else {
+                    return Err(e);
+                }
+            }
+        }
     }
 }

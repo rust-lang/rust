@@ -28,6 +28,7 @@ const fn read_field3() -> Field3 {
     const FIELD3: Field3 = unsafe { UNION.field3 };
     //~^ ERROR it is undefined behavior to use this value
     FIELD3
+    //~^ ERROR erroneous constant used [E0080]
 }
 
 fn main() {

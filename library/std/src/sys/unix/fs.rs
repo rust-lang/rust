@@ -113,10 +113,19 @@ cfg_has_statx! {{
         // This is needed to check if btime is supported by the filesystem.
         stx_mask: u32,
         stx_btime: libc::statx_timestamp,
+        // With statx, we can overcome 32-bit `time_t` too.
+        #[cfg(target_pointer_width = "32")]
+        stx_atime: libc::statx_timestamp,
+        #[cfg(target_pointer_width = "32")]
+        stx_ctime: libc::statx_timestamp,
+        #[cfg(target_pointer_width = "32")]
+        stx_mtime: libc::statx_timestamp,
+
     }
 
-    // We prefer `statx` on Linux if available, which contains file creation time.
-    // Default `stat64` contains no creation time.
+    // We prefer `statx` on Linux if available, which contains file creation time,
+    // as well as 64-bit timestamps of all kinds.
+    // Default `stat64` contains no creation time and may have 32-bit `time_t`.
     unsafe fn try_statx(
         fd: c_int,
         path: *const c_char,
@@ -192,6 +201,13 @@ cfg_has_statx! {{
         let extra = StatxExtraFields {
             stx_mask: buf.stx_mask,
             stx_btime: buf.stx_btime,
+            // Store full times to avoid 32-bit `time_t` truncation.
+            #[cfg(target_pointer_width = "32")]
+            stx_atime: buf.stx_atime,
+            #[cfg(target_pointer_width = "32")]
+            stx_ctime: buf.stx_ctime,
+            #[cfg(target_pointer_width = "32")]
+            stx_mtime: buf.stx_mtime,
         };
 
         Some(Ok(FileAttr { stat, statx_extra_fields: Some(extra) }))
@@ -228,21 +244,52 @@ struct Dir(*mut libc::DIR);
 unsafe impl Send for Dir {}
 unsafe impl Sync for Dir {}
 
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "solaris",
+    target_os = "illumos",
+    target_os = "fuchsia",
+    target_os = "redox"
+))]
 pub struct DirEntry {
-    entry: dirent64,
     dir: Arc<InnerReadDir>,
+    entry: dirent64_min,
     // We need to store an owned copy of the entry name on platforms that use
     // readdir() (not readdir_r()), because a) struct dirent may use a flexible
     // array to store the name, b) it lives only until the next readdir() call.
-    #[cfg(any(
-        target_os = "android",
-        target_os = "linux",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "fuchsia",
-        target_os = "redox"
-    ))]
     name: CString,
+}
+
+// Define a minimal subset of fields we need from `dirent64`, especially since
+// we're not using the immediate `d_name` on these targets. Keeping this as an
+// `entry` field in `DirEntry` helps reduce the `cfg` boilerplate elsewhere.
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "solaris",
+    target_os = "illumos",
+    target_os = "fuchsia",
+    target_os = "redox"
+))]
+struct dirent64_min {
+    d_ino: u64,
+    #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+    d_type: u8,
+}
+
+#[cfg(not(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "solaris",
+    target_os = "illumos",
+    target_os = "fuchsia",
+    target_os = "redox"
+)))]
+pub struct DirEntry {
+    dir: Arc<InnerReadDir>,
+    // The full entry includes a fixed-length `d_name`.
+    entry: dirent64,
 }
 
 #[derive(Clone, Debug)]
@@ -279,6 +326,36 @@ cfg_has_statx! {{
         fn from_stat64(stat: stat64) -> Self {
             Self { stat, statx_extra_fields: None }
         }
+
+        #[cfg(target_pointer_width = "32")]
+        pub fn stx_mtime(&self) -> Option<&libc::statx_timestamp> {
+            if let Some(ext) = &self.statx_extra_fields {
+                if (ext.stx_mask & libc::STATX_MTIME) != 0 {
+                    return Some(&ext.stx_mtime);
+                }
+            }
+            None
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        pub fn stx_atime(&self) -> Option<&libc::statx_timestamp> {
+            if let Some(ext) = &self.statx_extra_fields {
+                if (ext.stx_mask & libc::STATX_ATIME) != 0 {
+                    return Some(&ext.stx_atime);
+                }
+            }
+            None
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        pub fn stx_ctime(&self) -> Option<&libc::statx_timestamp> {
+            if let Some(ext) = &self.statx_extra_fields {
+                if (ext.stx_mask & libc::STATX_CTIME) != 0 {
+                    return Some(&ext.stx_ctime);
+                }
+            }
+            None
+        }
     }
 } else {
     impl FileAttr {
@@ -304,59 +381,62 @@ impl FileAttr {
 #[cfg(target_os = "netbsd")]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_mtime as libc::time_t,
-            tv_nsec: self.stat.st_mtimensec as libc::c_long,
-        }))
+        Ok(SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtimensec as i64))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_atime as libc::time_t,
-            tv_nsec: self.stat.st_atimensec as libc::c_long,
-        }))
+        Ok(SystemTime::new(self.stat.st_atime as i64, self.stat.st_atimensec as i64))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_birthtime as libc::time_t,
-            tv_nsec: self.stat.st_birthtimensec as libc::c_long,
-        }))
+        Ok(SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtimensec as i64))
     }
 }
 
 #[cfg(not(target_os = "netbsd"))]
 impl FileAttr {
-    #[cfg(all(not(target_os = "vxworks"), not(target_os = "espidf")))]
+    #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_mtime as libc::time_t,
-            tv_nsec: self.stat.st_mtime_nsec as _,
-        }))
+        #[cfg(target_pointer_width = "32")]
+        cfg_has_statx! {
+            if let Some(mtime) = self.stx_mtime() {
+                return Ok(SystemTime::new(mtime.tv_sec, mtime.tv_nsec as i64));
+            }
+        }
+
+        Ok(SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtime_nsec as i64))
     }
 
     #[cfg(any(target_os = "vxworks", target_os = "espidf"))]
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_mtime as libc::time_t,
-            tv_nsec: 0,
-        }))
+        Ok(SystemTime::new(self.stat.st_mtime as i64, 0))
     }
 
-    #[cfg(all(not(target_os = "vxworks"), not(target_os = "espidf")))]
+    #[cfg(target_os = "horizon")]
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(self.stat.st_mtim))
+    }
+
+    #[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_atime as libc::time_t,
-            tv_nsec: self.stat.st_atime_nsec as _,
-        }))
+        #[cfg(target_pointer_width = "32")]
+        cfg_has_statx! {
+            if let Some(atime) = self.stx_atime() {
+                return Ok(SystemTime::new(atime.tv_sec, atime.tv_nsec as i64));
+            }
+        }
+
+        Ok(SystemTime::new(self.stat.st_atime as i64, self.stat.st_atime_nsec as i64))
     }
 
     #[cfg(any(target_os = "vxworks", target_os = "espidf"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_atime as libc::time_t,
-            tv_nsec: 0,
-        }))
+        Ok(SystemTime::new(self.stat.st_atime as i64, 0))
+    }
+
+    #[cfg(target_os = "horizon")]
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(self.stat.st_atim))
     }
 
     #[cfg(any(
@@ -366,10 +446,7 @@ impl FileAttr {
         target_os = "ios"
     ))]
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_birthtime as libc::time_t,
-            tv_nsec: self.stat.st_birthtime_nsec as libc::c_long,
-        }))
+        Ok(SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtime_nsec as i64))
     }
 
     #[cfg(not(any(
@@ -382,10 +459,7 @@ impl FileAttr {
         cfg_has_statx! {
             if let Some(ext) = &self.statx_extra_fields {
                 return if (ext.stx_mask & libc::STATX_BTIME) != 0 {
-                    Ok(SystemTime::from(libc::timespec {
-                        tv_sec: ext.stx_btime.tv_sec as libc::time_t,
-                        tv_nsec: ext.stx_btime.tv_nsec as _,
-                    }))
+                    Ok(SystemTime::new(ext.stx_btime.tv_sec, ext.stx_btime.tv_nsec as i64))
                 } else {
                     Err(io::const_io_error!(
                         io::ErrorKind::Uncategorized,
@@ -491,11 +565,21 @@ impl Iterator for ReadDir {
 
                 // Only d_reclen bytes of *entry_ptr are valid, so we can't just copy the
                 // whole thing (#93384).  Instead, copy everything except the name.
+                let mut copy: dirent64 = mem::zeroed();
+                // Can't dereference entry_ptr, so use the local entry to get
+                // offsetof(struct dirent, d_name)
+                let copy_bytes = &mut copy as *mut _ as *mut u8;
+                let copy_name = &mut copy.d_name as *mut _ as *mut u8;
+                let name_offset = copy_name.offset_from(copy_bytes) as usize;
                 let entry_bytes = entry_ptr as *const u8;
-                let entry_name = ptr::addr_of!((*entry_ptr).d_name) as *const u8;
-                let name_offset = entry_name.offset_from(entry_bytes) as usize;
-                let mut entry: dirent64 = mem::zeroed();
-                ptr::copy_nonoverlapping(entry_bytes, &mut entry as *mut _ as *mut u8, name_offset);
+                let entry_name = entry_bytes.add(name_offset);
+                ptr::copy_nonoverlapping(entry_bytes, copy_bytes, name_offset);
+
+                let entry = dirent64_min {
+                    d_ino: copy.d_ino as u64,
+                    #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+                    d_type: copy.d_type as u8,
+                };
 
                 let ret = DirEntry {
                     entry,
@@ -633,7 +717,8 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox",
         target_os = "vxworks",
-        target_os = "espidf"
+        target_os = "espidf",
+        target_os = "horizon"
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
@@ -869,7 +954,6 @@ impl File {
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
-        use crate::convert::TryInto;
         let size: off64_t =
             size.try_into().map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
         cvt_r(|| unsafe { ftruncate64(self.as_raw_fd(), size) }).map(drop)
@@ -925,7 +1009,7 @@ impl File {
             SeekFrom::End(off) => (libc::SEEK_END, off),
             SeekFrom::Current(off) => (libc::SEEK_CUR, off),
         };
-        let n = cvt(unsafe { lseek64(self.as_raw_fd(), pos, whence) })?;
+        let n = cvt(unsafe { lseek64(self.as_raw_fd(), pos as off64_t, whence) })?;
         Ok(n as u64)
     }
 
@@ -1178,7 +1262,7 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     let original = cstr(original)?;
     let link = cstr(link)?;
     cfg_if::cfg_if! {
-        if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf"))] {
+        if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon"))] {
             // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead. POSIX leaves
             // it implementation-defined whether `link` follows symlinks, so rely on the
             // `symlink_hard_link` test in library/std/src/fs/tests.rs to check the behavior.
@@ -1476,136 +1560,14 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
 
 pub use remove_dir_impl::remove_dir_all;
 
-// Fallback for REDOX and ESP-IDF
-#[cfg(any(target_os = "redox", target_os = "espidf"))]
+// Fallback for REDOX, ESP-ID, Horizon, and Miri
+#[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", miri))]
 mod remove_dir_impl {
     pub use crate::sys_common::fs::remove_dir_all;
 }
 
-// Dynamically choose implementation Macos x86-64: modern for 10.10+, fallback for older versions
-#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-mod remove_dir_impl {
-    use super::{cstr, lstat, Dir, InnerReadDir, ReadDir};
-    use crate::ffi::CStr;
-    use crate::io;
-    use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
-    use crate::os::unix::prelude::{OwnedFd, RawFd};
-    use crate::path::{Path, PathBuf};
-    use crate::sync::Arc;
-    use crate::sys::weak::weak;
-    use crate::sys::{cvt, cvt_r};
-    use libc::{c_char, c_int, DIR};
-
-    pub fn openat_nofollow_dironly(parent_fd: Option<RawFd>, p: &CStr) -> io::Result<OwnedFd> {
-        weak!(fn openat(c_int, *const c_char, c_int) -> c_int);
-        let fd = cvt_r(|| unsafe {
-            openat.get().unwrap()(
-                parent_fd.unwrap_or(libc::AT_FDCWD),
-                p.as_ptr(),
-                libc::O_CLOEXEC | libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_DIRECTORY,
-            )
-        })?;
-        Ok(unsafe { OwnedFd::from_raw_fd(fd) })
-    }
-
-    fn fdreaddir(dir_fd: OwnedFd) -> io::Result<(ReadDir, RawFd)> {
-        weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64");
-        let ptr = unsafe { fdopendir.get().unwrap()(dir_fd.as_raw_fd()) };
-        if ptr.is_null() {
-            return Err(io::Error::last_os_error());
-        }
-        let dirp = Dir(ptr);
-        // file descriptor is automatically closed by libc::closedir() now, so give up ownership
-        let new_parent_fd = dir_fd.into_raw_fd();
-        // a valid root is not needed because we do not call any functions involving the full path
-        // of the DirEntrys.
-        let dummy_root = PathBuf::new();
-        Ok((
-            ReadDir {
-                inner: Arc::new(InnerReadDir { dirp, root: dummy_root }),
-                end_of_stream: false,
-            },
-            new_parent_fd,
-        ))
-    }
-
-    fn remove_dir_all_recursive(parent_fd: Option<RawFd>, p: &Path) -> io::Result<()> {
-        weak!(fn unlinkat(c_int, *const c_char, c_int) -> c_int);
-
-        let pcstr = cstr(p)?;
-
-        // entry is expected to be a directory, open as such
-        let fd = openat_nofollow_dironly(parent_fd, &pcstr)?;
-
-        // open the directory passing ownership of the fd
-        let (dir, fd) = fdreaddir(fd)?;
-        for child in dir {
-            let child = child?;
-            match child.entry.d_type {
-                libc::DT_DIR => {
-                    remove_dir_all_recursive(Some(fd), Path::new(&child.file_name()))?;
-                }
-                libc::DT_UNKNOWN => {
-                    match cvt(unsafe { unlinkat.get().unwrap()(fd, child.name_cstr().as_ptr(), 0) })
-                    {
-                        // type unknown - try to unlink
-                        Err(err) if err.raw_os_error() == Some(libc::EPERM) => {
-                            // if the file is a directory unlink fails with EPERM
-                            remove_dir_all_recursive(Some(fd), Path::new(&child.file_name()))?;
-                        }
-                        result => {
-                            result?;
-                        }
-                    }
-                }
-                _ => {
-                    // not a directory -> unlink
-                    cvt(unsafe { unlinkat.get().unwrap()(fd, child.name_cstr().as_ptr(), 0) })?;
-                }
-            }
-        }
-
-        // unlink the directory after removing its contents
-        cvt(unsafe {
-            unlinkat.get().unwrap()(
-                parent_fd.unwrap_or(libc::AT_FDCWD),
-                pcstr.as_ptr(),
-                libc::AT_REMOVEDIR,
-            )
-        })?;
-        Ok(())
-    }
-
-    fn remove_dir_all_modern(p: &Path) -> io::Result<()> {
-        // We cannot just call remove_dir_all_recursive() here because that would not delete a passed
-        // symlink. No need to worry about races, because remove_dir_all_recursive() does not recurse
-        // into symlinks.
-        let attr = lstat(p)?;
-        if attr.file_type().is_symlink() {
-            crate::fs::remove_file(p)
-        } else {
-            remove_dir_all_recursive(None, p)
-        }
-    }
-
-    pub fn remove_dir_all(p: &Path) -> io::Result<()> {
-        weak!(fn openat(c_int, *const c_char, c_int) -> c_int);
-        if openat.get().is_some() {
-            // openat() is available with macOS 10.10+, just like unlinkat() and fdopendir()
-            remove_dir_all_modern(p)
-        } else {
-            // fall back to classic implementation
-            crate::sys_common::fs::remove_dir_all(p)
-        }
-    }
-}
-
 // Modern implementation using openat(), unlinkat() and fdopendir()
-#[cfg(not(any(
-    all(target_os = "macos", target_arch = "x86_64"),
-    target_os = "redox",
-    target_os = "espidf"
-)))]
+#[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon", miri)))]
 mod remove_dir_impl {
     use super::{cstr, lstat, Dir, DirEntry, InnerReadDir, ReadDir};
     use crate::ffi::CStr;
@@ -1615,7 +1577,52 @@ mod remove_dir_impl {
     use crate::path::{Path, PathBuf};
     use crate::sync::Arc;
     use crate::sys::{cvt, cvt_r};
+
+    #[cfg(not(all(target_os = "macos", not(target_arch = "aarch64")),))]
     use libc::{fdopendir, openat, unlinkat};
+    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
+    use macos_weak::{fdopendir, openat, unlinkat};
+
+    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
+    mod macos_weak {
+        use crate::sys::weak::weak;
+        use libc::{c_char, c_int, DIR};
+
+        fn get_openat_fn() -> Option<unsafe extern "C" fn(c_int, *const c_char, c_int) -> c_int> {
+            weak!(fn openat(c_int, *const c_char, c_int) -> c_int);
+            openat.get()
+        }
+
+        pub fn has_openat() -> bool {
+            get_openat_fn().is_some()
+        }
+
+        pub unsafe fn openat(dirfd: c_int, pathname: *const c_char, flags: c_int) -> c_int {
+            get_openat_fn().map(|openat| openat(dirfd, pathname, flags)).unwrap_or_else(|| {
+                crate::sys::unix::os::set_errno(libc::ENOSYS);
+                -1
+            })
+        }
+
+        pub unsafe fn fdopendir(fd: c_int) -> *mut DIR {
+            #[cfg(all(target_os = "macos", target_arch = "x86"))]
+            weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64$UNIX2003");
+            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+            weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64");
+            fdopendir.get().map(|fdopendir| fdopendir(fd)).unwrap_or_else(|| {
+                crate::sys::unix::os::set_errno(libc::ENOSYS);
+                crate::ptr::null_mut()
+            })
+        }
+
+        pub unsafe fn unlinkat(dirfd: c_int, pathname: *const c_char, flags: c_int) -> c_int {
+            weak!(fn unlinkat(c_int, *const c_char, c_int) -> c_int);
+            unlinkat.get().map(|unlinkat| unlinkat(dirfd, pathname, flags)).unwrap_or_else(|| {
+                crate::sys::unix::os::set_errno(libc::ENOSYS);
+                -1
+            })
+        }
+    }
 
     pub fn openat_nofollow_dironly(parent_fd: Option<RawFd>, p: &CStr) -> io::Result<OwnedFd> {
         let fd = cvt_r(|| unsafe {
@@ -1680,47 +1687,54 @@ mod remove_dir_impl {
         }
     }
 
-    fn remove_dir_all_recursive(parent_fd: Option<RawFd>, p: &Path) -> io::Result<()> {
-        let pcstr = cstr(p)?;
-
-        // entry is expected to be a directory, open as such
-        let fd = openat_nofollow_dironly(parent_fd, &pcstr)?;
+    fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
+        // try opening as directory
+        let fd = match openat_nofollow_dironly(parent_fd, &path) {
+            Err(err) if matches!(err.raw_os_error(), Some(libc::ENOTDIR | libc::ELOOP)) => {
+                // not a directory - don't traverse further
+                // (for symlinks, older Linux kernels may return ELOOP instead of ENOTDIR)
+                return match parent_fd {
+                    // unlink...
+                    Some(parent_fd) => {
+                        cvt(unsafe { unlinkat(parent_fd, path.as_ptr(), 0) }).map(drop)
+                    }
+                    // ...unless this was supposed to be the deletion root directory
+                    None => Err(err),
+                };
+            }
+            result => result?,
+        };
 
         // open the directory passing ownership of the fd
         let (dir, fd) = fdreaddir(fd)?;
         for child in dir {
             let child = child?;
+            let child_name = child.name_cstr();
             match is_dir(&child) {
                 Some(true) => {
-                    remove_dir_all_recursive(Some(fd), Path::new(&child.file_name()))?;
+                    remove_dir_all_recursive(Some(fd), child_name)?;
                 }
                 Some(false) => {
-                    cvt(unsafe { unlinkat(fd, child.name_cstr().as_ptr(), 0) })?;
+                    cvt(unsafe { unlinkat(fd, child_name.as_ptr(), 0) })?;
                 }
-                None => match cvt(unsafe { unlinkat(fd, child.name_cstr().as_ptr(), 0) }) {
-                    // type unknown - try to unlink
-                    Err(err)
-                        if err.raw_os_error() == Some(libc::EISDIR)
-                            || err.raw_os_error() == Some(libc::EPERM) =>
-                    {
-                        // if the file is a directory unlink fails with EISDIR on Linux and EPERM everyhwere else
-                        remove_dir_all_recursive(Some(fd), Path::new(&child.file_name()))?;
-                    }
-                    result => {
-                        result?;
-                    }
-                },
+                None => {
+                    // POSIX specifies that calling unlink()/unlinkat(..., 0) on a directory can succeed
+                    // if the process has the appropriate privileges. This however can causing orphaned
+                    // directories requiring an fsck e.g. on Solaris and Illumos. So we try recursing
+                    // into it first instead of trying to unlink() it.
+                    remove_dir_all_recursive(Some(fd), child_name)?;
+                }
             }
         }
 
         // unlink the directory after removing its contents
         cvt(unsafe {
-            unlinkat(parent_fd.unwrap_or(libc::AT_FDCWD), pcstr.as_ptr(), libc::AT_REMOVEDIR)
+            unlinkat(parent_fd.unwrap_or(libc::AT_FDCWD), path.as_ptr(), libc::AT_REMOVEDIR)
         })?;
         Ok(())
     }
 
-    pub fn remove_dir_all(p: &Path) -> io::Result<()> {
+    fn remove_dir_all_modern(p: &Path) -> io::Result<()> {
         // We cannot just call remove_dir_all_recursive() here because that would not delete a passed
         // symlink. No need to worry about races, because remove_dir_all_recursive() does not recurse
         // into symlinks.
@@ -1728,7 +1742,23 @@ mod remove_dir_impl {
         if attr.file_type().is_symlink() {
             crate::fs::remove_file(p)
         } else {
-            remove_dir_all_recursive(None, p)
+            remove_dir_all_recursive(None, &cstr(p)?)
+        }
+    }
+
+    #[cfg(not(all(target_os = "macos", not(target_arch = "aarch64"))))]
+    pub fn remove_dir_all(p: &Path) -> io::Result<()> {
+        remove_dir_all_modern(p)
+    }
+
+    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
+    pub fn remove_dir_all(p: &Path) -> io::Result<()> {
+        if macos_weak::has_openat() {
+            // openat() is available with macOS 10.10+, just like unlinkat() and fdopendir()
+            remove_dir_all_modern(p)
+        } else {
+            // fall back to classic implementation
+            crate::sys_common::fs::remove_dir_all(p)
         }
     }
 }

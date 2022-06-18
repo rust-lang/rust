@@ -1,10 +1,12 @@
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Binder, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{
+    self, Binder, Instance, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor,
+};
 use rustc_span::{sym, DUMMY_SP};
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use traits::{translate_substs, Reveal};
 
@@ -110,11 +112,10 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     }
 }
 
-#[instrument(level = "debug", skip(tcx))]
 fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>,
-) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     let (param_env, (did, substs)) = key.into_parts();
     if let Some(did) = did.as_local() {
         if let Some(param_did) = tcx.opt_const_param_of(did) {
@@ -128,7 +129,7 @@ fn resolve_instance<'tcx>(
 fn resolve_instance_of_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (LocalDefId, DefId, SubstsRef<'tcx>)>,
-) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     let (param_env, (did, const_param_did, substs)) = key.into_parts();
     inner_resolve_instance(
         tcx,
@@ -139,11 +140,10 @@ fn resolve_instance_of_const_arg<'tcx>(
     )
 }
 
-#[instrument(level = "debug", skip(tcx))]
 fn inner_resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)>,
-) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     let (param_env, (def, substs)) = key.into_parts();
 
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def.did) {
@@ -154,12 +154,7 @@ fn inner_resolve_instance<'tcx>(
         let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, ty);
 
         let def = match *item_type.kind() {
-            ty::FnDef(..)
-                if {
-                    let f = item_type.fn_sig(tcx);
-                    f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic
-                } =>
-            {
+            ty::FnDef(def_id, ..) if tcx.is_intrinsic(def_id) => {
                 debug!(" => intrinsic");
                 ty::InstanceDef::Intrinsic(def.did)
             }
@@ -203,7 +198,7 @@ fn resolve_associated_item<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,
     rcvr_substs: SubstsRef<'tcx>,
-) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     debug!(?trait_item_id, ?param_env, ?trait_id, ?rcvr_substs, "resolve_associated_item");
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
@@ -212,7 +207,22 @@ fn resolve_associated_item<'tcx>(
     let mut bound_vars_collector = BoundVarsCollector::new();
     trait_ref.visit_with(&mut bound_vars_collector);
     let trait_binder = ty::Binder::bind_with_vars(trait_ref, bound_vars_collector.into_vars(tcx));
-    let vtbl = tcx.codegen_fulfill_obligation((param_env, trait_binder))?;
+    let vtbl = match tcx.codegen_fulfill_obligation((param_env, trait_binder)) {
+        Ok(vtbl) => vtbl,
+        Err(CodegenObligationError::Ambiguity) => {
+            let reported = tcx.sess.delay_span_bug(
+                tcx.def_span(trait_item_id),
+                &format!(
+                    "encountered ambiguity selecting `{:?}` during codegen, presuming due to \
+                     overflow or prior type error",
+                    trait_binder
+                ),
+            );
+            return Err(reported);
+        }
+        Err(CodegenObligationError::Unimplemented) => return Ok(None),
+        Err(CodegenObligationError::FulfillmentError) => return Ok(None),
+    };
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
@@ -281,7 +291,7 @@ fn resolve_associated_item<'tcx>(
             // we know the error would've been caught (e.g. in an upstream crate).
             //
             // A better approach might be to just introduce a query (returning
-            // `Result<(), ErrorReported>`) for the check that `rustc_typeck`
+            // `Result<(), ErrorGuaranteed>`) for the check that `rustc_typeck`
             // performs (i.e. that the definition's type in the `impl` matches
             // the declaration in the `trait`), so that we can cheaply check
             // here if it failed, instead of approximating it.
@@ -306,9 +316,9 @@ fn resolve_associated_item<'tcx>(
                         resolved_ty,
                     );
                     let span = tcx.def_span(leaf_def.item.def_id);
-                    tcx.sess.delay_span_bug(span, &msg);
+                    let reported = tcx.sess.delay_span_bug(span, &msg);
 
-                    return Err(ErrorReported);
+                    return Err(reported);
                 }
             }
 
@@ -337,11 +347,15 @@ fn resolve_associated_item<'tcx>(
             _ => None,
         },
         traits::ImplSource::Object(ref data) => {
-            let index = traits::get_vtable_index_of_object_method(tcx, data, trait_item_id);
-            Some(Instance {
-                def: ty::InstanceDef::Virtual(trait_item_id, index),
-                substs: rcvr_substs,
-            })
+            if let Some(index) = traits::get_vtable_index_of_object_method(tcx, data, trait_item_id)
+            {
+                Some(Instance {
+                    def: ty::InstanceDef::Virtual(trait_item_id, index),
+                    substs: rcvr_substs,
+                })
+            } else {
+                None
+            }
         }
         traits::ImplSource::Builtin(..) => {
             if Some(trait_ref.def_id) == tcx.lang_items().clone_trait() {
@@ -378,7 +392,7 @@ fn resolve_associated_item<'tcx>(
         | traits::ImplSource::DiscriminantKind(..)
         | traits::ImplSource::Pointee(..)
         | traits::ImplSource::TraitUpcasting(_)
-        | traits::ImplSource::ConstDrop(_) => None,
+        | traits::ImplSource::ConstDestruct(_) => None,
     })
 }
 

@@ -9,14 +9,24 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
     /// ### What it does
     /// When sorting primitive values (integers, bools, chars, as well
-    /// as arrays, slices, and tuples of such items), it is better to
+    /// as arrays, slices, and tuples of such items), it is typically better to
     /// use an unstable sort than a stable sort.
     ///
     /// ### Why is this bad?
-    /// Using a stable sort consumes more memory and cpu cycles. Because
-    /// values which compare equal are identical, preserving their
+    /// Typically, using a stable sort consumes more memory and cpu cycles.
+    /// Because values which compare equal are identical, preserving their
     /// relative order (the guarantee that a stable sort provides) means
     /// nothing, while the extra costs still apply.
+    ///
+    /// ### Known problems
+    ///
+    /// As pointed out in
+    /// [issue #8241](https://github.com/rust-lang/rust-clippy/issues/8241),
+    /// a stable sort can instead be significantly faster for certain scenarios
+    /// (eg. when a sorted vector is extended with new data and resorted).
+    ///
+    /// For more information and benchmarking results, please refer to the
+    /// issue linked above.
     ///
     /// ### Example
     /// ```rust
@@ -30,7 +40,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.47.0"]
     pub STABLE_SORT_PRIMITIVE,
-    perf,
+    pedantic,
     "use of sort() when sort_unstable() is equivalent"
 }
 
@@ -126,7 +136,7 @@ impl LateLintPass<'_> for StableSortPrimitive {
                         Applicability::MachineApplicable,
                     );
                     diag.note(
-                        "an unstable sort would perform faster without any observable difference for this data type",
+                        "an unstable sort typically performs faster without any observable difference for this data type",
                     );
                 },
             );

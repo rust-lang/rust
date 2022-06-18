@@ -115,6 +115,14 @@ fn main() {
     let _: Result<usize, usize> = res.or_else(|_| Ok(2));
     let _: Result<usize, usize> = res.or_else(|_| Ok(astronomers_pi));
     let _: Result<usize, usize> = res.or_else(|_| Ok(ext_str.some_field));
+    let _: Result<usize, usize> = res.
+        // some lines
+        // some lines
+        // some lines
+        // some lines
+        // some lines
+        // some lines
+        or_else(|_| Ok(ext_str.some_field));
 
     // neither bind_instead_of_map nor unnecessary_lazy_eval applies here
     let _: Result<usize, usize> = res.and_then(|x| Err(x));

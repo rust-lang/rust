@@ -3,7 +3,6 @@
 #![crate_type = "lib"]
 
 // In an older version, when NLL was still a feature, the following previously did not compile
-// #![feature(nll)]
 
 use std::ops::Index;
 

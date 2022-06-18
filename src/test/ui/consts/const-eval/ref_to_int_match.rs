@@ -22,4 +22,6 @@ type Int = u64;
 #[cfg(target_pointer_width="32")]
 type Int = u32;
 
-const BAR: Int = unsafe { Foo { r: &42 }.f }; //~ ERROR it is undefined behavior to use this value
+const BAR: Int = unsafe { Foo { r: &42 }.f };
+//~^ ERROR any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out

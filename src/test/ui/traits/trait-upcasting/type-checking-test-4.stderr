@@ -1,123 +1,52 @@
-error[E0308]: mismatched types
-  --> $DIR/type-checking-test-4.rs:17:13
-   |
-LL |     let _ = x as &dyn Bar<'static, 'a>; // Error
-   |             ^ lifetime mismatch
-   |
-   = note: expected trait object `dyn Bar<'static, 'a>`
-              found trait object `dyn Bar<'static, 'static>`
-note: the lifetime `'a` as defined here...
-  --> $DIR/type-checking-test-4.rs:16:16
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:16:13
    |
 LL | fn test_wrong1<'a>(x: &dyn Foo<'static>, y: &'a u32) {
-   |                ^^
-   = note: ...does not necessarily outlive the static lifetime
+   |                -- lifetime `'a` defined here
+LL |     let _ = x as &dyn Bar<'static, 'a>; // Error
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
-error[E0308]: mismatched types
-  --> $DIR/type-checking-test-4.rs:22:13
-   |
-LL |     let _ = x as &dyn Bar<'a, 'static>; // Error
-   |             ^ lifetime mismatch
-   |
-   = note: expected trait object `dyn Bar<'a, 'static>`
-              found trait object `dyn Bar<'static, 'static>`
-note: the lifetime `'a` as defined here...
-  --> $DIR/type-checking-test-4.rs:21:16
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:21:13
    |
 LL | fn test_wrong2<'a>(x: &dyn Foo<'static>, y: &'a u32) {
-   |                ^^
-   = note: ...does not necessarily outlive the static lifetime
+   |                -- lifetime `'a` defined here
+LL |     let _ = x as &dyn Bar<'a, 'static>; // Error
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
-error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/type-checking-test-4.rs:27:27
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:27:5
    |
 LL | fn test_wrong3<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                       ------------ this data with lifetime `'a`...
+   |                -- lifetime `'a` defined here
 LL |     let y = x as &dyn Bar<'_, '_>;
-   |             -             ^^
-   |             |
-   |             ...is used here...
-LL |
 LL |     y.get_b() // ERROR
-   |     - ...is used here...
-   |
-note: ...and is required to live as long as `'static` here
-  --> $DIR/type-checking-test-4.rs:29:5
-   |
-LL |     y.get_b() // ERROR
-   |     ^^^^^^^^^
-note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/type-checking-test-4.rs:26:48
-   |
-LL | fn test_wrong3<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                                                ^^^^^^^ `'static` requirement introduced here
-...
-LL |     y.get_b() // ERROR
-   |     --------- because of this returned expression
+   |     ^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
-error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/type-checking-test-4.rs:33:5
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:32:5
    |
 LL | fn test_wrong4<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                       ------------ this data with lifetime `'a`...
+   |                -- lifetime `'a` defined here
 LL |     <_ as Bar>::get_b(x) // ERROR
-   |     ^^^^^^^^^^^^^^^^^ ...is used and required to live as long as `'static` here
-   |
-note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/type-checking-test-4.rs:32:48
-   |
-LL | fn test_wrong4<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                                                ^^^^^^^ `'static` requirement introduced here
-LL |     <_ as Bar>::get_b(x) // ERROR
-   |     -------------------- because of this returned expression
+   |     ^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
-error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/type-checking-test-4.rs:38:15
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:37:5
    |
 LL | fn test_wrong5<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                       ------------ this data with lifetime `'a`...
+   |                -- lifetime `'a` defined here
 LL |     <_ as Bar<'_, '_>>::get_b(x) // ERROR
-   |     ----------^^------------- ...is used and required to live as long as `'static` here
-   |
-note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/type-checking-test-4.rs:37:48
-   |
-LL | fn test_wrong5<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                                                ^^^^^^^ `'static` requirement introduced here
-LL |     <_ as Bar<'_, '_>>::get_b(x) // ERROR
-   |     ---------------------------- because of this returned expression
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
-error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/type-checking-test-4.rs:43:27
+error: lifetime may not live long enough
+  --> $DIR/type-checking-test-4.rs:45:5
    |
 LL | fn test_wrong6<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                       ------------ this data with lifetime `'a`...
-LL |     let y = x as &dyn Bar<'_, '_>;
-   |             -             ^^
-   |             |
-   |             ...is used here...
-LL |
-LL |     y.get_b(); // ERROR
-   |     - ...is used here...
-LL |     let z = y;
-LL |     z.get_b() // ERROR
-   |     - ...is used here...
-   |
-note: ...and is required to live as long as `'static` here
-  --> $DIR/type-checking-test-4.rs:47:5
-   |
-LL |     z.get_b() // ERROR
-   |     ^^^^^^^^^
-note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/type-checking-test-4.rs:42:48
-   |
-LL | fn test_wrong6<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
-   |                                                ^^^^^^^ `'static` requirement introduced here
+   |                -- lifetime `'a` defined here
 ...
 LL |     z.get_b() // ERROR
-   |     --------- because of this returned expression
+   |     ^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0308, E0759.
-For more information about an error, try `rustc --explain E0308`.

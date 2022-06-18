@@ -6,8 +6,8 @@ use crate::thread;
 #[test]
 fn test_full() {
     let q: Queue<Box<_>> = Queue::new();
-    q.push(box 1);
-    q.push(box 2);
+    q.push(Box::new(1));
+    q.push(Box::new(2));
 }
 
 #[test]

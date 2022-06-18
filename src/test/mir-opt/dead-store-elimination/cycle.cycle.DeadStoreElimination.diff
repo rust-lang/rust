@@ -1,0 +1,75 @@
+- // MIR for `cycle` before DeadStoreElimination
++ // MIR for `cycle` after DeadStoreElimination
+  
+  fn cycle(_1: i32, _2: i32, _3: i32) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/cycle.rs:9:10: 9:15
+      debug y => _2;                       // in scope 0 at $DIR/cycle.rs:9:22: 9:27
+      debug z => _3;                       // in scope 0 at $DIR/cycle.rs:9:34: 9:39
+      let mut _0: ();                      // return place in scope 0 at $DIR/cycle.rs:9:46: 9:46
+      let mut _4: ();                      // in scope 0 at $DIR/cycle.rs:9:1: 18:2
+      let mut _5: bool;                    // in scope 0 at $DIR/cycle.rs:12:11: 12:17
+      let _6: i32;                         // in scope 0 at $DIR/cycle.rs:13:13: 13:17
+      let mut _7: i32;                     // in scope 0 at $DIR/cycle.rs:14:13: 14:14
+      let mut _8: i32;                     // in scope 0 at $DIR/cycle.rs:15:13: 15:14
+      let mut _9: i32;                     // in scope 0 at $DIR/cycle.rs:16:13: 16:17
+      let mut _10: !;                      // in scope 0 at $DIR/cycle.rs:12:5: 17:6
+      let _11: ();                         // in scope 0 at $DIR/cycle.rs:12:5: 17:6
+      let mut _12: !;                      // in scope 0 at $DIR/cycle.rs:12:5: 17:6
+      scope 1 {
+          debug temp => _6;                // in scope 1 at $DIR/cycle.rs:13:13: 13:17
+      }
+  
+      bb0: {
+          goto -> bb1;                     // scope 0 at $DIR/cycle.rs:12:5: 17:6
+      }
+  
+      bb1: {
+          StorageLive(_5);                 // scope 0 at $DIR/cycle.rs:12:11: 12:17
+          _5 = cond() -> bb2;              // scope 0 at $DIR/cycle.rs:12:11: 12:17
+                                           // mir::Constant
+                                           // + span: $DIR/cycle.rs:12:11: 12:15
+                                           // + literal: Const { ty: fn() -> bool {cond}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb2: {
+          switchInt(move _5) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/cycle.rs:12:11: 12:17
+      }
+  
+      bb3: {
+          StorageLive(_6);                 // scope 0 at $DIR/cycle.rs:13:13: 13:17
+-         _6 = _3;                         // scope 0 at $DIR/cycle.rs:13:20: 13:21
++         nop;                             // scope 0 at $DIR/cycle.rs:13:20: 13:21
+          StorageLive(_7);                 // scope 1 at $DIR/cycle.rs:14:13: 14:14
+-         _7 = _2;                         // scope 1 at $DIR/cycle.rs:14:13: 14:14
+-         _3 = move _7;                    // scope 1 at $DIR/cycle.rs:14:9: 14:14
++         nop;                             // scope 1 at $DIR/cycle.rs:14:13: 14:14
++         nop;                             // scope 1 at $DIR/cycle.rs:14:9: 14:14
+          StorageDead(_7);                 // scope 1 at $DIR/cycle.rs:14:13: 14:14
+          StorageLive(_8);                 // scope 1 at $DIR/cycle.rs:15:13: 15:14
+-         _8 = _1;                         // scope 1 at $DIR/cycle.rs:15:13: 15:14
+-         _2 = move _8;                    // scope 1 at $DIR/cycle.rs:15:9: 15:14
++         nop;                             // scope 1 at $DIR/cycle.rs:15:13: 15:14
++         nop;                             // scope 1 at $DIR/cycle.rs:15:9: 15:14
+          StorageDead(_8);                 // scope 1 at $DIR/cycle.rs:15:13: 15:14
+          StorageLive(_9);                 // scope 1 at $DIR/cycle.rs:16:13: 16:17
+-         _9 = _6;                         // scope 1 at $DIR/cycle.rs:16:13: 16:17
+-         _1 = move _9;                    // scope 1 at $DIR/cycle.rs:16:9: 16:17
++         nop;                             // scope 1 at $DIR/cycle.rs:16:13: 16:17
++         nop;                             // scope 1 at $DIR/cycle.rs:16:9: 16:17
+          StorageDead(_9);                 // scope 1 at $DIR/cycle.rs:16:16: 16:17
+-         _4 = const ();                   // scope 0 at $DIR/cycle.rs:12:18: 17:6
++         nop;                             // scope 0 at $DIR/cycle.rs:12:18: 17:6
+          StorageDead(_6);                 // scope 0 at $DIR/cycle.rs:17:5: 17:6
+          StorageDead(_5);                 // scope 0 at $DIR/cycle.rs:17:5: 17:6
+          goto -> bb1;                     // scope 0 at $DIR/cycle.rs:12:5: 17:6
+      }
+  
+      bb4: {
+          StorageLive(_11);                // scope 0 at $DIR/cycle.rs:12:5: 17:6
+          _0 = const ();                   // scope 0 at $DIR/cycle.rs:12:5: 17:6
+          StorageDead(_11);                // scope 0 at $DIR/cycle.rs:17:5: 17:6
+          StorageDead(_5);                 // scope 0 at $DIR/cycle.rs:17:5: 17:6
+          return;                          // scope 0 at $DIR/cycle.rs:18:2: 18:2
+      }
+  }
+  

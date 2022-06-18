@@ -6,7 +6,9 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
-use rustc_middle::ty::{self, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable, Variance};
+use rustc_middle::ty::{
+    self, EarlyBinder, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable, Variance,
+};
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Predicate, ToPredicate};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
@@ -21,7 +23,7 @@ use rustc_trait_selection::traits::query::{Fallible, NoSolution};
 use rustc_trait_selection::traits::{Normalized, Obligation, ObligationCause, TraitEngine};
 use std::fmt;
 
-crate fn provide(p: &mut Providers) {
+pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
         type_op_ascribe_user_type,
         type_op_eq,
@@ -115,7 +117,7 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        value.subst(self.tcx(), substs)
+        EarlyBinder(value).subst(self.tcx(), substs)
     }
 
     fn relate_mir_and_user_ty(

@@ -3,7 +3,6 @@
 
 use std::cell::RefCell;
 use std::ffi::CString;
-use std::lazy::SyncOnceCell;
 use std::os::raw::{c_char, c_int};
 use std::sync::{mpsc, Mutex};
 
@@ -13,6 +12,9 @@ use rustc_session::Session;
 use rustc_span::Symbol;
 
 use cranelift_jit::{JITBuilder, JITModule};
+
+// FIXME use std::lazy::SyncOnceCell once it stabilizes
+use once_cell::sync::OnceCell;
 
 use crate::{prelude::*, BackendConfig};
 use crate::{CodegenCx, CodegenMode};
@@ -27,8 +29,7 @@ thread_local! {
 }
 
 /// The Sender owned by the rustc thread
-static GLOBAL_MESSAGE_SENDER: SyncOnceCell<Mutex<mpsc::Sender<UnsafeMessage>>> =
-    SyncOnceCell::new();
+static GLOBAL_MESSAGE_SENDER: OnceCell<Mutex<mpsc::Sender<UnsafeMessage>>> = OnceCell::new();
 
 /// A message that is sent from the jitted runtime to the rustc thread.
 /// Senders are responsible for upholding `Send` semantics.
@@ -73,6 +74,7 @@ fn create_jit_module<'tcx>(
     jit_builder.hotswap(hotswap);
     crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
     jit_builder.symbols(imported_symbols);
+    jit_builder.symbol("__clif_jit_fn", clif_jit_fn as *const u8);
     let mut jit_module = JITModule::new(jit_builder);
 
     let mut cx = crate::CodegenCx::new(
@@ -209,8 +211,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     }
 }
 
-#[no_mangle]
-extern "C" fn __clif_jit_fn(
+extern "C" fn clif_jit_fn(
     instance_ptr: *const Instance<'static>,
     trampoline_ptr: *const u8,
 ) -> *const u8 {
@@ -287,8 +288,8 @@ fn load_imported_symbols_for_jit(
         match data[cnum.as_usize() - 1] {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
-                let name = &crate_info.crate_name[&cnum];
-                let mut err = sess.struct_err(&format!("Can't load static lib {}", name.as_str()));
+                let name = crate_info.crate_name[&cnum];
+                let mut err = sess.struct_err(&format!("Can't load static lib {}", name));
                 err.note("rustc_codegen_cranelift can only load dylibs in JIT mode.");
                 err.emit();
             }

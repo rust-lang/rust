@@ -27,8 +27,8 @@ impl CrateNum {
     }
 
     #[inline]
-    pub fn as_def_id(&self) -> DefId {
-        DefId { krate: *self, index: CRATE_DEF_INDEX }
+    pub fn as_def_id(self) -> DefId {
+        DefId { krate: self, index: CRATE_DEF_INDEX }
     }
 }
 
@@ -41,8 +41,8 @@ impl fmt::Display for CrateNum {
 /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
 /// Therefore, make sure to include the context when encode a `CrateNum`.
 impl<E: Encoder> Encodable<E> for CrateNum {
-    default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_u32(self.as_u32())
+    default fn encode(&self, s: &mut E) {
+        s.emit_u32(self.as_u32());
     }
 }
 
@@ -203,7 +203,7 @@ rustc_index::newtype_index! {
 }
 
 impl<E: Encoder> Encodable<E> for DefIndex {
-    default fn encode(&self, _: &mut E) -> Result<(), E::Error> {
+    default fn encode(&self, _: &mut E) {
         panic!("cannot encode `DefIndex` with `{}`", std::any::type_name::<E>());
     }
 }
@@ -222,6 +222,7 @@ impl<D: Decoder> Decodable<D> for DefIndex {
 // On below-64 bit systems we can simply use the derived `Hash` impl
 #[cfg_attr(not(target_pointer_width = "64"), derive(Hash))]
 #[repr(C)]
+#[rustc_pass_by_value]
 // We guarantee field order. Note that the order is essential here, see below why.
 pub struct DefId {
     // cfg-ing the order of fields so that the `DefIndex` which is high entropy always ends up in
@@ -278,22 +279,36 @@ impl DefId {
     }
 
     #[inline]
+    #[track_caller]
     pub fn expect_local(self) -> LocalDefId {
-        self.as_local().unwrap_or_else(|| panic!("DefId::expect_local: `{:?}` isn't local", self))
+        // NOTE: `match` below is required to apply `#[track_caller]`,
+        // i.e. don't use closures.
+        match self.as_local() {
+            Some(local_def_id) => local_def_id,
+            None => panic!("DefId::expect_local: `{:?}` isn't local", self),
+        }
     }
 
+    #[inline]
+    pub fn is_crate_root(self) -> bool {
+        self.index == CRATE_DEF_INDEX
+    }
+
+    #[inline]
+    pub fn as_crate_root(self) -> Option<CrateNum> {
+        if self.is_crate_root() { Some(self.krate) } else { None }
+    }
+
+    #[inline]
     pub fn is_top_level_module(self) -> bool {
-        self.is_local() && self.index == CRATE_DEF_INDEX
+        self.is_local() && self.is_crate_root()
     }
 }
 
 impl<E: Encoder> Encodable<E> for DefId {
-    default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_struct(false, |s| {
-            s.emit_struct_field("krate", true, |s| self.krate.encode(s))?;
-
-            s.emit_struct_field("index", false, |s| self.index.encode(s))
-        })
+    default fn encode(&self, s: &mut E) {
+        self.krate.encode(s);
+        self.index.encode(s);
     }
 }
 
@@ -356,7 +371,7 @@ impl LocalDefId {
 
     #[inline]
     pub fn is_top_level_module(self) -> bool {
-        self.local_def_index == CRATE_DEF_INDEX
+        self == CRATE_DEF_ID
     }
 }
 
@@ -367,8 +382,8 @@ impl fmt::Debug for LocalDefId {
 }
 
 impl<E: Encoder> Encodable<E> for LocalDefId {
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        self.to_def_id().encode(s)
+    fn encode(&self, s: &mut E) {
+        self.to_def_id().encode(s);
     }
 }
 

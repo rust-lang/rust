@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 struct Foo<'a, 'b: 'a>(&'a &'b ());
 
 impl<'a, 'b> Foo<'a, 'b> {

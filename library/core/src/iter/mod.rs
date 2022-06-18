@@ -144,7 +144,7 @@
 //! let values = vec![1, 2, 3, 4, 5];
 //!
 //! for x in values {
-//!     println!("{}", x);
+//!     println!("{x}");
 //! }
 //! ```
 //!
@@ -164,7 +164,7 @@
 //! let values = vec![1, 2, 3, 4, 5];
 //!
 //! for x in values {
-//!     println!("{}", x);
+//!     println!("{x}");
 //! }
 //! ```
 //!
@@ -181,7 +181,7 @@
 //!                 None => break,
 //!             };
 //!             let x = next;
-//!             let () = { println!("{}", x); };
+//!             let () = { println!("{x}"); };
 //!         },
 //!     };
 //!     result
@@ -243,13 +243,12 @@
 //! ```
 //!
 //! While many collections offer `iter()`, not all offer `iter_mut()`. For
-//! example, mutating the keys of a [`HashSet<T>`] or [`HashMap<K, V>`] could
-//! put the collection into an inconsistent state if the key hashes change, so
-//! these collections only offer `iter()`.
+//! example, mutating the keys of a [`HashSet<T>`] could put the collection
+//! into an inconsistent state if the key hashes change, so this collection
+//! only offers `iter()`.
 //!
 //! [`into_iter()`]: IntoIterator::into_iter
 //! [`HashSet<T>`]: ../../std/collections/struct.HashSet.html
-//! [`HashMap<K, V>`]: ../../std/collections/struct.HashMap.html
 //!
 //! # Adapters
 //!
@@ -280,7 +279,7 @@
 //! ```
 //! # #![allow(unused_must_use)]
 //! let v = vec![1, 2, 3, 4, 5];
-//! v.iter().map(|x| println!("{}", x));
+//! v.iter().map(|x| println!("{x}"));
 //! ```
 //!
 //! This will not print any values, as we only created an iterator, rather than
@@ -297,10 +296,10 @@
 //! ```
 //! let v = vec![1, 2, 3, 4, 5];
 //!
-//! v.iter().for_each(|x| println!("{}", x));
+//! v.iter().for_each(|x| println!("{x}"));
 //! // or
 //! for x in &v {
-//!     println!("{}", x);
+//!     println!("{x}");
 //! }
 //! ```
 //!
@@ -329,7 +328,7 @@
 //! let five_numbers = numbers.take(5);
 //!
 //! for number in five_numbers {
-//!     println!("{}", number);
+//!     println!("{number}");
 //! }
 //! ```
 //!
@@ -345,7 +344,7 @@
 //! let ones = std::iter::repeat(1);
 //! let least = ones.min().unwrap(); // Oh no! An infinite loop!
 //! // `ones.min()` causes an infinite loop, so we won't reach this point!
-//! println!("The smallest number one is {}.", least);
+//! println!("The smallest number one is {least}.");
 //! ```
 //!
 //! [`take`]: Iterator::take
@@ -363,6 +362,12 @@ pub use self::traits::Iterator;
 )]
 pub use self::range::Step;
 
+#[unstable(
+    feature = "iter_from_generator",
+    issue = "43122",
+    reason = "generators are unstable"
+)]
+pub use self::sources::from_generator;
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub use self::sources::{empty, Empty};
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
@@ -393,6 +398,8 @@ pub use self::traits::{
 
 #[stable(feature = "iter_zip", since = "1.59.0")]
 pub use self::adapters::zip;
+#[unstable(feature = "std_internals", issue = "none")]
+pub use self::adapters::ByRefSized;
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::adapters::Cloned;
 #[stable(feature = "iter_copied", since = "1.36.0")]

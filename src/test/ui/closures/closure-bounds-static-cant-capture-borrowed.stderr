@@ -1,26 +1,44 @@
-error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:9
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:5
    |
 LL |   fn foo(x: &()) {
-   |             --- this data with an anonymous lifetime `'_`...
-LL |       bar(|| {
-   |  _________^
+   |          -  - let's call the lifetime of this reference `'1`
+   |          |
+   |          `x` is a reference that is only valid in the function body
+LL | /     bar(|| {
+LL | |
 LL | |
 LL | |         let _ = x;
 LL | |     })
-   | |_____^ ...is used here...
-   |
-note: ...and is required to live as long as `'static` here
-  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:5
+   | |      ^
+   | |      |
+   | |______`x` escapes the function body here
+   |        argument requires that `'1` must outlive `'static`
+
+error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:9
    |
 LL |     bar(|| {
-   |     ^^^
-note: `'static` lifetime requirement introduced by this bound
-  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:1:39
+   |         ^^ may outlive borrowed value `x`
+...
+LL |         let _ = x;
+   |                 - `x` is borrowed here
    |
-LL | fn bar<F>(blk: F) where F: FnOnce() + 'static {
-   |                                       ^^^^^^^
+note: function requires argument type to outlive `'static`
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:5
+   |
+LL | /     bar(|| {
+LL | |
+LL | |
+LL | |         let _ = x;
+LL | |     })
+   | |______^
+help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |     bar(move || {
+   |         ++++
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0759`.
+Some errors have detailed explanations: E0373, E0521.
+For more information about an error, try `rustc --explain E0373`.

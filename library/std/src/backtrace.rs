@@ -330,7 +330,7 @@ impl Backtrace {
                     frame: RawFrame::Actual(frame.clone()),
                     symbols: Vec::new(),
                 });
-                if frame.symbol_address() as usize == ip && actual_start.is_none() {
+                if frame.symbol_address().addr() == ip && actual_start.is_none() {
                     actual_start = Some(frames.len());
                 }
                 true
@@ -493,7 +493,7 @@ impl RawFrame {
         match self {
             RawFrame::Actual(frame) => frame.ip(),
             #[cfg(test)]
-            RawFrame::Fake => 1 as *mut c_void,
+            RawFrame::Fake => crate::ptr::invalid_mut(1),
         }
     }
 }

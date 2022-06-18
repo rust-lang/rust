@@ -1,4 +1,4 @@
-// This tests that `default_method_body_is_const` methods can
+// This tests that `const_trait` default methods can
 // be called from a const context when used across crates.
 //
 // check-pass

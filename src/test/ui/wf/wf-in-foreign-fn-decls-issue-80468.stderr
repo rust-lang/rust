@@ -2,9 +2,13 @@ error[E0726]: implicit elided lifetime not allowed here
   --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:13:16
    |
 LL | impl Trait for Ref {}
-   |                ^^^- help: indicate the anonymous lifetime: `<'_>`
+   |                ^^^ expected lifetime parameter
    |
    = note: assuming a `'static` lifetime...
+help: indicate the anonymous lifetime
+   |
+LL | impl Trait for Ref<'_> {}
+   |                   ++++
 
 error: incompatible lifetime on type
   --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:16:21

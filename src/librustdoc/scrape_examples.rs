@@ -17,7 +17,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{
-    opaque::{Decoder, FileEncoder},
+    opaque::{FileEncoder, MemDecoder},
     Decodable, Encodable,
 };
 use rustc_session::getopts;
@@ -31,14 +31,14 @@ use std::fs;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
-crate struct ScrapeExamplesOptions {
+pub(crate) struct ScrapeExamplesOptions {
     output_path: PathBuf,
     target_crates: Vec<String>,
-    crate scrape_tests: bool,
+    pub(crate) scrape_tests: bool,
 }
 
 impl ScrapeExamplesOptions {
-    crate fn new(
+    pub(crate) fn new(
         matches: &getopts::Matches,
         diag: &rustc_errors::Handler,
     ) -> Result<Option<Self>, i32> {
@@ -65,52 +65,55 @@ impl ScrapeExamplesOptions {
 }
 
 #[derive(Encodable, Decodable, Debug, Clone)]
-crate struct SyntaxRange {
-    crate byte_span: (u32, u32),
-    crate line_span: (usize, usize),
+pub(crate) struct SyntaxRange {
+    pub(crate) byte_span: (u32, u32),
+    pub(crate) line_span: (usize, usize),
 }
 
 impl SyntaxRange {
-    fn new(span: rustc_span::Span, file: &SourceFile) -> Self {
+    fn new(span: rustc_span::Span, file: &SourceFile) -> Option<Self> {
         let get_pos = |bytepos: BytePos| file.original_relative_byte_pos(bytepos).0;
-        let get_line = |bytepos: BytePos| file.lookup_line(bytepos).unwrap();
+        let get_line = |bytepos: BytePos| file.lookup_line(bytepos);
 
-        SyntaxRange {
+        Some(SyntaxRange {
             byte_span: (get_pos(span.lo()), get_pos(span.hi())),
-            line_span: (get_line(span.lo()), get_line(span.hi())),
-        }
+            line_span: (get_line(span.lo())?, get_line(span.hi())?),
+        })
     }
 }
 
 #[derive(Encodable, Decodable, Debug, Clone)]
-crate struct CallLocation {
-    crate call_expr: SyntaxRange,
-    crate enclosing_item: SyntaxRange,
+pub(crate) struct CallLocation {
+    pub(crate) call_expr: SyntaxRange,
+    pub(crate) call_ident: SyntaxRange,
+    pub(crate) enclosing_item: SyntaxRange,
 }
 
 impl CallLocation {
     fn new(
         expr_span: rustc_span::Span,
+        ident_span: rustc_span::Span,
         enclosing_item_span: rustc_span::Span,
         source_file: &SourceFile,
-    ) -> Self {
-        CallLocation {
-            call_expr: SyntaxRange::new(expr_span, source_file),
-            enclosing_item: SyntaxRange::new(enclosing_item_span, source_file),
-        }
+    ) -> Option<Self> {
+        Some(CallLocation {
+            call_expr: SyntaxRange::new(expr_span, source_file)?,
+            call_ident: SyntaxRange::new(ident_span, source_file)?,
+            enclosing_item: SyntaxRange::new(enclosing_item_span, source_file)?,
+        })
     }
 }
 
 #[derive(Encodable, Decodable, Debug, Clone)]
-crate struct CallData {
-    crate locations: Vec<CallLocation>,
-    crate url: String,
-    crate display_name: String,
-    crate edition: Edition,
+pub(crate) struct CallData {
+    pub(crate) locations: Vec<CallLocation>,
+    pub(crate) url: String,
+    pub(crate) display_name: String,
+    pub(crate) edition: Edition,
 }
 
-crate type FnCallLocations = FxHashMap<PathBuf, CallData>;
-crate type AllCallLocations = FxHashMap<DefPathHash, FnCallLocations>;
+pub(crate) type FnCallLocations = FxHashMap<PathBuf, CallData>;
+pub(crate) type AllCallLocations = FxHashMap<DefPathHash, FnCallLocations>;
 
 /// Visitor for traversing a crate and finding instances of function calls.
 struct FindCalls<'a, 'tcx> {
@@ -146,24 +149,26 @@ where
         }
 
         // Get type of function if expression is a function call
-        let (ty, span) = match ex.kind {
+        let (ty, call_span, ident_span) = match ex.kind {
             hir::ExprKind::Call(f, _) => {
                 let types = tcx.typeck(ex.hir_id.owner);
 
                 if let Some(ty) = types.node_type_opt(f.hir_id) {
-                    (ty, ex.span)
+                    (ty, ex.span, f.span)
                 } else {
                     trace!("node_type_opt({}) = None", f.hir_id);
                     return;
                 }
             }
-            hir::ExprKind::MethodCall(_, _, span) => {
+            hir::ExprKind::MethodCall(path, _, call_span) => {
                 let types = tcx.typeck(ex.hir_id.owner);
                 let Some(def_id) = types.type_dependent_def_id(ex.hir_id) else {
                     trace!("type_dependent_def_id({}) = None", ex.hir_id);
                     return;
                 };
-                (tcx.type_of(def_id), span)
+
+                let ident_span = path.ident.span;
+                (tcx.type_of(def_id), call_span, ident_span)
             }
             _ => {
                 return;
@@ -172,8 +177,8 @@ where
 
         // If this span comes from a macro expansion, then the source code may not actually show
         // a use of the given item, so it would be a poor example. Hence, we skip all uses in macros.
-        if span.from_expansion() {
-            trace!("Rejecting expr from macro: {:?}", span);
+        if call_span.from_expansion() {
+            trace!("Rejecting expr from macro: {call_span:?}");
             return;
         }
 
@@ -183,56 +188,89 @@ where
             .hir()
             .span_with_body(tcx.hir().local_def_id_to_hir_id(tcx.hir().get_parent_item(ex.hir_id)));
         if enclosing_item_span.from_expansion() {
-            trace!("Rejecting expr ({:?}) from macro item: {:?}", span, enclosing_item_span);
+            trace!("Rejecting expr ({call_span:?}) from macro item: {enclosing_item_span:?}");
             return;
         }
 
-        assert!(
-            enclosing_item_span.contains(span),
-            "Attempted to scrape call at [{:?}] whose enclosing item [{:?}] doesn't contain the span of the call.",
-            span,
-            enclosing_item_span
-        );
+        // If the enclosing item doesn't actually enclose the call, this means we probably have a weird
+        // macro issue even though the spans aren't tagged as being from an expansion.
+        if !enclosing_item_span.contains(call_span) {
+            warn!(
+                "Attempted to scrape call at [{call_span:?}] whose enclosing item [{enclosing_item_span:?}] doesn't contain the span of the call."
+            );
+            return;
+        }
+
+        // Similarly for the call w/ the function ident.
+        if !call_span.contains(ident_span) {
+            warn!(
+                "Attempted to scrape call at [{call_span:?}] whose identifier [{ident_span:?}] was not contained in the span of the call."
+            );
+            return;
+        }
 
         // Save call site if the function resolves to a concrete definition
         if let ty::FnDef(def_id, _) = ty.kind() {
             if self.target_crates.iter().all(|krate| *krate != def_id.krate) {
-                trace!("Rejecting expr from crate not being documented: {:?}", span);
+                trace!("Rejecting expr from crate not being documented: {call_span:?}");
                 return;
             }
 
             let source_map = tcx.sess.source_map();
-            let file = source_map.lookup_char_pos(span.lo()).file;
+            let file = source_map.lookup_char_pos(call_span.lo()).file;
             let file_path = match file.name.clone() {
                 FileName::Real(real_filename) => real_filename.into_local_path(),
                 _ => None,
             };
 
             if let Some(file_path) = file_path {
-                let abs_path = fs::canonicalize(file_path.clone()).unwrap();
+                let abs_path = match fs::canonicalize(file_path.clone()) {
+                    Ok(abs_path) => abs_path,
+                    Err(_) => {
+                        trace!("Could not canonicalize file path: {}", file_path.display());
+                        return;
+                    }
+                };
+
                 let cx = &self.cx;
+                let clean_span = crate::clean::types::Span::new(call_span);
+                let url = match cx.href_from_span(clean_span, false) {
+                    Some(url) => url,
+                    None => {
+                        trace!(
+                            "Rejecting expr ({call_span:?}) whose clean span ({clean_span:?}) cannot be turned into a link"
+                        );
+                        return;
+                    }
+                };
+
                 let mk_call_data = || {
-                    let clean_span = crate::clean::types::Span::new(span);
-                    let url = cx.href_from_span(clean_span, false).unwrap();
                     let display_name = file_path.display().to_string();
-                    let edition = span.edition();
+                    let edition = call_span.edition();
                     CallData { locations: Vec::new(), url, display_name, edition }
                 };
 
                 let fn_key = tcx.def_path_hash(*def_id);
                 let fn_entries = self.calls.entry(fn_key).or_default();
 
-                trace!("Including expr: {:?}", span);
+                trace!("Including expr: {:?}", call_span);
                 let enclosing_item_span =
                     source_map.span_extend_to_prev_char(enclosing_item_span, '\n', false);
-                let location = CallLocation::new(span, enclosing_item_span, &file);
+                let location =
+                    match CallLocation::new(call_span, ident_span, enclosing_item_span, &file) {
+                        Some(location) => location,
+                        None => {
+                            trace!("Could not get serializable call location for {call_span:?}");
+                            return;
+                        }
+                    };
                 fn_entries.entry(abs_path).or_insert_with(mk_call_data).locations.push(location);
             }
         }
     }
 }
 
-crate fn run(
+pub(crate) fn run(
     krate: clean::Crate,
     mut renderopts: config::RenderOptions,
     cache: formats::cache::Cache,
@@ -259,13 +297,13 @@ crate fn run(
             .map(|(crate_num, _)| **crate_num)
             .collect::<Vec<_>>();
 
-        debug!("All crates in TyCtxt: {:?}", all_crates);
-        debug!("Scrape examples target_crates: {:?}", target_crates);
+        debug!("All crates in TyCtxt: {all_crates:?}");
+        debug!("Scrape examples target_crates: {target_crates:?}");
 
         // Run call-finder on all items
         let mut calls = FxHashMap::default();
         let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates };
-        tcx.hir().visit_all_item_likes(&mut finder.as_deep_visitor());
+        tcx.hir().deep_visit_all_item_likes(&mut finder);
 
         // Sort call locations within a given file in document order
         for fn_calls in calls.values_mut() {
@@ -276,8 +314,8 @@ crate fn run(
 
         // Save output to provided path
         let mut encoder = FileEncoder::new(options.output_path).map_err(|e| e.to_string())?;
-        calls.encode(&mut encoder).map_err(|e| e.to_string())?;
-        encoder.flush().map_err(|e| e.to_string())?;
+        calls.encode(&mut encoder);
+        encoder.finish().map_err(|e| e.to_string())?;
 
         Ok(())
     };
@@ -290,7 +328,7 @@ crate fn run(
 }
 
 // Note: the Handler must be passed in explicitly because sess isn't available while parsing options
-crate fn load_call_locations(
+pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
     diag: &rustc_errors::Handler,
 ) -> Result<AllCallLocations, i32> {
@@ -298,7 +336,7 @@ crate fn load_call_locations(
         let mut all_calls: AllCallLocations = FxHashMap::default();
         for path in with_examples {
             let bytes = fs::read(&path).map_err(|e| format!("{} (for path {})", e, path))?;
-            let mut decoder = Decoder::new(&bytes, 0);
+            let mut decoder = MemDecoder::new(&bytes, 0);
             let calls = AllCallLocations::decode(&mut decoder);
 
             for (function, fn_calls) in calls.into_iter() {

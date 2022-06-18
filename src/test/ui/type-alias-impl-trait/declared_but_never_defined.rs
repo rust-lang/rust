@@ -3,4 +3,4 @@
 fn main() {}
 
 // declared but never defined
-type Bar = impl std::fmt::Debug; //~ ERROR could not find defining uses
+type Bar = impl std::fmt::Debug; //~ ERROR unconstrained opaque type

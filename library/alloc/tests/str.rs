@@ -1116,7 +1116,7 @@ fn test_escape_debug() {
     assert_eq!("abc".escape_debug().to_string(), "abc");
     assert_eq!("a c".escape_debug().to_string(), "a c");
     assert_eq!("éèê".escape_debug().to_string(), "éèê");
-    assert_eq!("\r\n\t".escape_debug().to_string(), "\\r\\n\\t");
+    assert_eq!("\0\r\n\t".escape_debug().to_string(), "\\0\\r\\n\\t");
     assert_eq!("'\"\\".escape_debug().to_string(), "\\'\\\"\\\\");
     assert_eq!("\u{7f}\u{ff}".escape_debug().to_string(), "\\u{7f}\u{ff}");
     assert_eq!("\u{100}\u{ffff}".escape_debug().to_string(), "\u{100}\\u{ffff}");
@@ -1259,7 +1259,7 @@ fn test_chars_debug() {
     let s = "ศไทย中华Việt Nam";
     let c = s.chars();
     assert_eq!(
-        format!("{:?}", c),
+        format!("{c:?}"),
         r#"Chars(['ศ', 'ไ', 'ท', 'ย', '中', '华', 'V', 'i', 'ệ', 't', ' ', 'N', 'a', 'm'])"#
     );
 }
@@ -1772,6 +1772,20 @@ fn to_lowercase() {
     assert_eq!("ΑΣΑ".to_lowercase(), "ασα");
     assert_eq!("ΑΣ'Α".to_lowercase(), "ασ'α");
     assert_eq!("ΑΣ''Α".to_lowercase(), "ασ''α");
+
+    // a really long string that has it's lowercase form
+    // even longer. this tests that implementations don't assume
+    // an incorrect upper bound on allocations
+    let upper = str::repeat("İ", 512);
+    let lower = str::repeat("i̇", 512);
+    assert_eq!(upper.to_lowercase(), lower);
+
+    // a really long ascii-only string.
+    // This test that the ascii hot-path
+    // functions correctly
+    let upper = str::repeat("A", 511);
+    let lower = str::repeat("a", 511);
+    assert_eq!(upper.to_lowercase(), lower);
 }
 
 #[test]
@@ -1870,7 +1884,7 @@ mod pattern {
         }
 
         if let Some(err) = err {
-            panic!("Input skipped range at {}", err);
+            panic!("Input skipped range at {err}");
         }
 
         if first_index != haystack.len() {
@@ -2187,10 +2201,10 @@ fn utf8() {
     fn check_str_eq(a: String, b: String) {
         let mut i: isize = 0;
         for ab in a.bytes() {
-            println!("{}", i);
-            println!("{}", ab);
+            println!("{i}");
+            println!("{ab}");
             let bb: u8 = b.as_bytes()[i as usize];
-            println!("{}", bb);
+            println!("{bb}");
             assert_eq!(ab, bb);
             i += 1;
         }
@@ -2234,11 +2248,14 @@ fn utf8_chars() {
 #[test]
 fn utf8_char_counts() {
     let strs = [("e", 1), ("é", 1), ("€", 1), ("\u{10000}", 1), ("eé€\u{10000}", 4)];
-    let mut reps =
-        [8, 64, 256, 512, 1024].iter().copied().flat_map(|n| n - 8..=n + 8).collect::<Vec<usize>>();
+    let spread = if cfg!(miri) { 4 } else { 8 };
+    let mut reps = [8, 64, 256, 512]
+        .iter()
+        .copied()
+        .flat_map(|n| n - spread..=n + spread)
+        .collect::<Vec<usize>>();
     if cfg!(not(miri)) {
-        let big = 1 << 16;
-        reps.extend(big - 8..=big + 8);
+        reps.extend([1024, 1 << 16].iter().copied().flat_map(|n| n - spread..=n + spread));
     }
     let counts = if cfg!(miri) { 0..1 } else { 0..8 };
     let padding = counts.map(|len| " ".repeat(len)).collect::<Vec<String>>();

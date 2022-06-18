@@ -1,32 +1,26 @@
-error: unused macro definition: `unused`
-  --> $DIR/unused-macro-rules.rs:4:14
+error: 4th rule of macro `num` is never used
+  --> $DIR/unused-macro-rules.rs:10:5
    |
-LL | macro_rules! unused {
-   |              ^^^^^^
+LL |     (four) => { 4 };
+   |     ^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/unused-macro-rules.rs:1:9
    |
-LL | #![deny(unused_macros)]
-   |         ^^^^^^^^^^^^^
+LL | #![deny(unused_macro_rules)]
+   |         ^^^^^^^^^^^^^^^^^^
 
-error: unused macro definition: `m`
-  --> $DIR/unused-macro-rules.rs:11:22
+error: 2nd rule of macro `num` is never used
+  --> $DIR/unused-macro-rules.rs:8:5
    |
-LL |         macro_rules! m {
-   |                      ^
+LL |     (two) => { 2 };
+   |     ^^^^^
 
-error: unused macro definition: `unused`
-  --> $DIR/unused-macro-rules.rs:24:18
+error: 3rd rule of macro `num_rec` is never used
+  --> $DIR/unused-macro-rules.rs:30:5
    |
-LL |     macro_rules! unused {
-   |                  ^^^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/unused-macro-rules.rs:23:12
-   |
-LL |     #[deny(unused_macros)]
-   |            ^^^^^^^^^^^^^
+LL |     (three) => {
+   |     ^^^^^^^
 
 error: aborting due to 3 previous errors
 

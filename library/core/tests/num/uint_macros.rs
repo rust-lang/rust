@@ -1,9 +1,9 @@
 macro_rules! uint_module {
-    ($T:ident, $T_i:ident) => {
+    ($T:ident) => {
         #[cfg(test)]
         mod tests {
             use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
-            use core::$T_i::*;
+            use core::$T::*;
             use std::str::FromStr;
 
             use crate::num;

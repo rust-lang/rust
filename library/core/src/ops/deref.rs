@@ -164,7 +164,7 @@ impl<T: ?Sized> const Deref for &mut T {
 ///
 /// let mut x = DerefMutExample { value: 'a' };
 /// *x = 'b';
-/// assert_eq!('b', *x);
+/// assert_eq!('b', x.value);
 /// ```
 #[lang = "deref_mut"]
 #[doc(alias = "*")]

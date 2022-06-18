@@ -1,69 +1,34 @@
-error[E0478]: lifetime bound not satisfied
+error: lifetime may not live long enough
   --> $DIR/regions-trait-object-subtyping.rs:15:5
    |
+LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
+   |         -- -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     // Without knowing 'a:'b, we can't coerce
 LL |     x
-   |     ^
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
-note: lifetime parameter instantiated with the lifetime `'a` as defined here
-  --> $DIR/regions-trait-object-subtyping.rs:13:9
-   |
-LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
-   |         ^^
-note: but lifetime parameter must outlive the lifetime `'b` as defined here
-  --> $DIR/regions-trait-object-subtyping.rs:13:12
-   |
-LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
-   |            ^^
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable reference to `dyn Dummy`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-error[E0495]: cannot infer an appropriate lifetime for automatic coercion due to conflicting requirements
-  --> $DIR/regions-trait-object-subtyping.rs:15:5
-   |
-LL |     x
-   |     ^
-   |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
-  --> $DIR/regions-trait-object-subtyping.rs:13:9
-   |
-LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
-   |         ^^
-note: ...so that reference does not outlive borrowed content
-  --> $DIR/regions-trait-object-subtyping.rs:15:5
-   |
-LL |     x
-   |     ^
-note: but, the lifetime must be valid for the lifetime `'b` as defined here...
-  --> $DIR/regions-trait-object-subtyping.rs:13:12
-   |
-LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
-   |            ^^
-note: ...so that the types are compatible
-  --> $DIR/regions-trait-object-subtyping.rs:15:5
-   |
-LL |     x
-   |     ^
-   = note: expected `&'b mut (dyn Dummy + 'b)`
-              found `&mut (dyn Dummy + 'b)`
-
-error[E0308]: mismatched types
+error: lifetime may not live long enough
   --> $DIR/regions-trait-object-subtyping.rs:22:5
    |
+LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut dyn Dummy>) -> Wrapper<&'b mut dyn Dummy> {
+   |         --    -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     // We can't coerce because it is packed in `Wrapper`
 LL |     x
-   |     ^ lifetime mismatch
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
-   = note: expected struct `Wrapper<&'b mut (dyn Dummy + 'b)>`
-              found struct `Wrapper<&'a mut (dyn Dummy + 'a)>`
-note: the lifetime `'b` as defined here...
-  --> $DIR/regions-trait-object-subtyping.rs:20:15
-   |
-LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut dyn Dummy>) -> Wrapper<&'b mut dyn Dummy> {
-   |               ^^
-note: ...does not necessarily outlive the lifetime `'a` as defined here
-  --> $DIR/regions-trait-object-subtyping.rs:20:9
-   |
-LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut dyn Dummy>) -> Wrapper<&'b mut dyn Dummy> {
-   |         ^^
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable reference to `dyn Dummy`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0308, E0478, E0495.
-For more information about an error, try `rustc --explain E0308`.

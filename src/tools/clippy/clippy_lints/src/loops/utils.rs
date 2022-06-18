@@ -13,7 +13,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_typeck::hir_ty_to_ty;
 use std::iter::Iterator;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 enum IncrementVisitorVarState {
     Initial,  // Not examined yet
     IncrOnce, // Incremented exactly once, may be a loop counter

@@ -1,9 +1,11 @@
-#![feature(crate_visibility_modifier)]
-#![feature(derive_default_enum)]
+#![feature(if_let_guard)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
+#![feature(never_type)]
 #![feature(once_cell)]
 #![feature(option_get_or_insert_default)]
+#![feature(rustc_attrs)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 

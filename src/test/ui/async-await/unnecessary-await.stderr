@@ -13,7 +13,7 @@ help: remove the `.await`
    |
 LL -     boo().await;
 LL +     boo();
-   | 
+   |
 help: alternatively, consider making `fn boo` asynchronous
    |
 LL | async fn boo() {}

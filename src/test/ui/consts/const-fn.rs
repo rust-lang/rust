@@ -4,7 +4,6 @@
 // A very basic test of const fn functionality.
 
 #![feature(const_indexing)]
-#![feature(const_fn_trait_bound)]
 
 const fn add(x: u32, y: u32) -> u32 {
     x + y

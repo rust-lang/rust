@@ -57,7 +57,7 @@ fn enforce_trait_manually_implementable(
             E0322,
             "explicit impls for the `Pointee` trait are not permitted"
         )
-        .span_label(span, "impl of 'Pointee' not allowed")
+        .span_label(span, "impl of `Pointee` not allowed")
         .emit();
         return;
     }
@@ -70,7 +70,7 @@ fn enforce_trait_manually_implementable(
             E0322,
             "explicit impls for the `DiscriminantKind` trait are not permitted"
         )
-        .span_label(span, "impl of 'DiscriminantKind' not allowed")
+        .span_label(span, "impl of `DiscriminantKind` not allowed")
         .emit();
         return;
     }
@@ -83,7 +83,7 @@ fn enforce_trait_manually_implementable(
             E0322,
             "explicit impls for the `Sized` trait are not permitted"
         )
-        .span_label(span, "impl of 'Sized' not allowed")
+        .span_label(span, "impl of `Sized` not allowed")
         .emit();
         return;
     }
@@ -144,13 +144,14 @@ fn enforce_empty_impls_for_marker_traits(
 
 pub fn provide(providers: &mut Providers) {
     use self::builtin::coerce_unsized_info;
-    use self::inherent_impls::{crate_inherent_impls, inherent_impls};
+    use self::inherent_impls::{crate_incoherent_impls, crate_inherent_impls, inherent_impls};
     use self::inherent_impls_overlap::crate_inherent_impls_overlap_check;
     use self::orphan::orphan_check_crate;
 
     *providers = Providers {
         coherent_trait,
         crate_inherent_impls,
+        crate_incoherent_impls,
         inherent_impls,
         crate_inherent_impls_overlap_check,
         coerce_unsized_info,

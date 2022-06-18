@@ -22,21 +22,17 @@ declare_clippy_lint! {
     ///
     /// ### Examples
     /// ```rust
-    /// // Bad
+    /// # fn somefunc() -> bool { true };
     /// if { true } { /* ... */ }
     ///
-    /// // Good
-    /// if true { /* ... */ }
+    /// if { let x = somefunc(); x } { /* ... */ }
     /// ```
     ///
-    /// // or
-    ///
+    /// Use instead:
     /// ```rust
     /// # fn somefunc() -> bool { true };
-    /// // Bad
-    /// if { let x = somefunc(); x } { /* ... */ }
+    /// if true { /* ... */ }
     ///
-    /// // Good
     /// let res = { let x = somefunc(); x };
     /// if res { /* ... */ }
     /// ```
@@ -55,7 +51,7 @@ struct ExVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if let ExprKind::Closure(_, _, eid, _, _) = expr.kind {
+        if let ExprKind::Closure { body, .. } = expr.kind {
             // do not lint if the closure is called using an iterator (see #1141)
             if_chain! {
                 if let Some(parent) = get_parent_expr(self.cx, expr);
@@ -68,7 +64,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
                 }
             }
 
-            let body = self.cx.tcx.hir().body(eid);
+            let body = self.cx.tcx.hir().body(body);
             let ex = &body.value;
             if let ExprKind::Block(block, _) = ex.kind {
                 if !body.value.span.from_expansion() && !block.stmts.is_empty() {

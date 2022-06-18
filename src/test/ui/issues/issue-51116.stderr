@@ -1,9 +1,6 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-51116.rs:6:13
+  --> $DIR/issue-51116.rs:5:13
    |
-LL |         for tile in row {
-   |                     --- the element type for this iterator is not specified
-LL |
 LL |             *tile = 0;
    |             ^^^^^ cannot infer type
    |

@@ -1,4 +1,6 @@
-use std::iter;
+use std::{borrow::Cow, iter};
+
+use crate::spec::cvs;
 
 use super::{LinkerFlavor, LldFlavor, Target, TargetOptions};
 
@@ -58,18 +60,18 @@ pub fn target() -> Target {
         abi: "fortanix".into(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         executables: true,
-        linker: Some("rust-lld".to_owned()),
+        linker: Some("rust-lld".into()),
         max_atomic_width: Some(64),
         cpu: "x86-64".into(),
         features: "+rdrnd,+rdseed,+lvi-cfi,+lvi-load-hardening".into(),
-        llvm_args: vec!["--x86-experimental-lvi-inline-asm-hardening".into()],
+        llvm_args: cvs!["--x86-experimental-lvi-inline-asm-hardening"],
         position_independent_executables: true,
         pre_link_args: iter::once((
             LinkerFlavor::Lld(LldFlavor::Ld),
-            PRE_LINK_ARGS.iter().cloned().map(String::from).collect(),
+            PRE_LINK_ARGS.iter().cloned().map(Cow::from).collect(),
         ))
         .collect(),
-        override_export_symbols: Some(EXPORT_SYMBOLS.iter().cloned().map(String::from).collect()),
+        override_export_symbols: Some(EXPORT_SYMBOLS.iter().cloned().map(Cow::from).collect()),
         relax_elf_relocations: true,
         ..Default::default()
     };

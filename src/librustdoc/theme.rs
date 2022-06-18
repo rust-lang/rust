@@ -9,9 +9,9 @@ use rustc_errors::Handler;
 mod tests;
 
 #[derive(Debug, Clone, Eq)]
-crate struct CssPath {
-    crate name: String,
-    crate children: FxHashSet<CssPath>,
+pub(crate) struct CssPath {
+    pub(crate) name: String,
+    pub(crate) children: FxHashSet<CssPath>,
 }
 
 // This PartialEq implementation IS NOT COMMUTATIVE!!!
@@ -173,16 +173,19 @@ fn build_rule(v: &[u8], positions: &[usize]) -> String {
             .map(|x| ::std::str::from_utf8(&v[x[0]..x[1]]).unwrap_or(""))
             .collect::<String>()
             .trim()
-            .replace('\n', " ")
-            .replace('/', "")
-            .replace('\t', " ")
-            .replace('{', "")
-            .replace('}', "")
+            .chars()
+            .filter_map(|c| match c {
+                '\n' | '\t' => Some(' '),
+                '/' | '{' | '}' => None,
+                c => Some(c),
+            })
+            .collect::<String>()
             .split(' ')
             .filter(|s| !s.is_empty())
-            .collect::<Vec<&str>>()
-            .join(" "),
+            .intersperse(" ")
+            .collect::<String>(),
     )
+    .map(|css| css.to_string())
     .unwrap_or_else(|_| String::new())
 }
 
@@ -212,7 +215,7 @@ fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> FxHashSet<CssPath> {
     paths.iter().cloned().collect()
 }
 
-crate fn load_css_paths(v: &[u8]) -> CssPath {
+pub(crate) fn load_css_paths(v: &[u8]) -> CssPath {
     let events = load_css_events(v);
     let mut pos = 0;
 
@@ -221,7 +224,7 @@ crate fn load_css_paths(v: &[u8]) -> CssPath {
     parent
 }
 
-crate fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) {
+pub(crate) fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) {
     if against.name == other.name {
         for child in &against.children {
             let mut found = false;
@@ -248,7 +251,7 @@ crate fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>
     }
 }
 
-crate fn test_theme_against<P: AsRef<Path>>(
+pub(crate) fn test_theme_against<P: AsRef<Path>>(
     f: &P,
     against: &CssPath,
     diag: &Handler,

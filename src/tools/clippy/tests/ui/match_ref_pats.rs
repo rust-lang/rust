@@ -1,5 +1,6 @@
+// run-rustfix
 #![warn(clippy::match_ref_pats)]
-#![allow(clippy::equatable_if_let, clippy::enum_variant_names)]
+#![allow(dead_code, unused_variables, clippy::equatable_if_let, clippy::enum_variant_names)]
 
 fn ref_pats() {
     {

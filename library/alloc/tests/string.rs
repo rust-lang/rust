@@ -470,7 +470,7 @@ fn test_simple_types() {
 #[test]
 fn test_vectors() {
     let x: Vec<i32> = vec![];
-    assert_eq!(format!("{:?}", x), "[]");
+    assert_eq!(format!("{x:?}"), "[]");
     assert_eq!(format!("{:?}", vec![1]), "[1]");
     assert_eq!(format!("{:?}", vec![1, 2, 3]), "[1, 2, 3]");
     assert!(format!("{:?}", vec![vec![], vec![1], vec![1, 1]]) == "[[], [1], [1, 1]]");
@@ -871,6 +871,6 @@ fn test_from_char() {
 fn test_str_concat() {
     let a: String = "hello".to_string();
     let b: String = "world".to_string();
-    let s: String = format!("{}{}", a, b);
+    let s: String = format!("{a}{b}");
     assert_eq!(s.as_bytes()[9], 'd' as u8);
 }

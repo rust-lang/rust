@@ -8,7 +8,7 @@ use rustc_middle::ty::RegionVid;
 use std::ops::Range;
 use std::rc::Rc;
 
-crate struct ReverseSccGraph {
+pub(crate) struct ReverseSccGraph {
     graph: VecGraph<ConstraintSccIndex>,
     /// For each SCC, the range of `universal_regions` that use that SCC as
     /// their value.

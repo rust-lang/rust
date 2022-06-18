@@ -234,8 +234,6 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// about a given `SwitchInt` terminator for each one of its edges—and more efficient—the
     /// engine doesn't need to clone the exit state for a block unless
     /// `SwitchIntEdgeEffects::apply` is actually called.
-    ///
-    /// FIXME: This class of effects is not supported for backward dataflow analyses.
     fn apply_switch_int_edge_effects(
         &self,
         _block: BasicBlock,

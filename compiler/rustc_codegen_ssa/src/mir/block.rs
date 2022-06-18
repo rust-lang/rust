@@ -22,7 +22,7 @@ use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_symbol_mangling::typeid_for_fnabi;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
-use rustc_target::abi::{self, HasDataLayout, WrappingRange};
+use rustc_target::abi::{self, HasDataLayout, InitKind, WrappingRange};
 use rustc_target::spec::abi::Abi;
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
@@ -401,7 +401,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args = &args[..1];
                 (
                     meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                        .get_fn(&mut bx, vtable, &fn_abi),
+                        .get_fn(&mut bx, vtable, ty, &fn_abi),
                     fn_abi,
                 )
             }
@@ -489,11 +489,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
 
-        // Obtain the panic entry point.
-        let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
-        let instance = ty::Instance::mono(bx.tcx(), def_id);
-        let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
-        let llfn = bx.get_fn_addr(instance);
+        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), lang_item);
 
         // Codegen the actual panic invoke/call.
         helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup);
@@ -509,10 +505,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(&mut bx, terminator.source_info);
 
         // Obtain the panic entry point.
-        let def_id = common::langcall(bx.tcx(), Some(span), "", LangItem::PanicNoUnwind);
-        let instance = ty::Instance::mono(bx.tcx(), def_id);
-        let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
-        let llfn = bx.get_fn_addr(instance);
+        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), LangItem::PanicNoUnwind);
 
         // Codegen the actual panic invoke/call.
         helper.do_call(self, &mut bx, fn_abi, llfn, &[], None, None);
@@ -526,8 +519,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         intrinsic: Option<Symbol>,
         instance: Option<Instance<'tcx>>,
         source_info: mir::SourceInfo,
-        destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
+        target: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
+        strict_validity: bool,
     ) -> bool {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
@@ -550,8 +544,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let layout = bx.layout_of(ty);
             let do_panic = match intrinsic {
                 Inhabited => layout.abi.is_uninhabited(),
-                ZeroValid => !layout.might_permit_raw_init(bx, /*zero:*/ true),
-                UninitValid => !layout.might_permit_raw_init(bx, /*zero:*/ false),
+                ZeroValid => !layout.might_permit_raw_init(bx, InitKind::Zero, strict_validity),
+                UninitValid => !layout.might_permit_raw_init(bx, InitKind::Uninit, strict_validity),
             };
             if do_panic {
                 let msg_str = with_no_visible_paths!({
@@ -573,12 +567,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let location = self.get_caller_location(bx, source_info).immediate();
 
                 // Obtain the panic entry point.
-                // FIXME: dedup this with `codegen_assert_terminator` above.
-                let def_id =
-                    common::langcall(bx.tcx(), Some(source_info.span), "", LangItem::Panic);
-                let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
-                let llfn = bx.get_fn_addr(instance);
+                let (fn_abi, llfn) =
+                    common::build_langcall(bx, Some(source_info.span), LangItem::Panic);
 
                 // Codegen the actual panic invoke/call.
                 helper.do_call(
@@ -587,12 +577,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     fn_abi,
                     llfn,
                     &[msg.0, msg.1, location],
-                    destination.as_ref().map(|(_, bb)| (ReturnDest::Nothing, *bb)),
+                    target.as_ref().map(|bb| (ReturnDest::Nothing, *bb)),
                     cleanup,
                 );
             } else {
                 // a NOP
-                let target = destination.as_ref().unwrap().1;
+                let target = target.unwrap();
                 helper.funclet_br(self, bx, target)
             }
             true
@@ -608,7 +598,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],
-        destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
+        destination: mir::Place<'tcx>,
+        target: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
         fn_span: Span,
     ) {
@@ -635,7 +626,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if let Some(ty::InstanceDef::DropGlue(_, None)) = def {
             // Empty drop glue; a no-op.
-            let &(_, target) = destination.as_ref().unwrap();
+            let target = target.unwrap();
             helper.funclet_br(self, &mut bx, target);
             return;
         }
@@ -664,9 +655,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if intrinsic == Some(sym::transmute) {
-            if let Some(destination_ref) = destination.as_ref() {
-                let &(dest, target) = destination_ref;
-                self.codegen_transmute(&mut bx, &args[0], dest);
+            if let Some(target) = target {
+                self.codegen_transmute(&mut bx, &args[0], destination);
                 helper.funclet_br(self, &mut bx, target);
             } else {
                 // If we are trying to transmute to an uninhabited type,
@@ -687,8 +677,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             intrinsic,
             instance,
             source_info,
-            destination,
+            target,
             cleanup,
+            self.cx.tcx().sess.opts.debugging_opts.strict_init_checks,
         ) {
             return;
         }
@@ -698,15 +689,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut llargs = Vec::with_capacity(arg_count);
 
         // Prepare the return value destination
-        let ret_dest = if let Some((dest, _)) = *destination {
+        let ret_dest = if target.is_some() {
             let is_intrinsic = intrinsic.is_some();
-            self.make_return_dest(&mut bx, dest, &fn_abi.ret, &mut llargs, is_intrinsic)
+            self.make_return_dest(&mut bx, destination, &fn_abi.ret, &mut llargs, is_intrinsic)
         } else {
             ReturnDest::Nothing
         };
 
         if intrinsic == Some(sym::caller_location) {
-            if let Some((_, target)) = destination.as_ref() {
+            if let Some(target) = target {
                 let location = self
                     .get_caller_location(&mut bx, mir::SourceInfo { span: fn_span, ..source_info });
 
@@ -714,7 +705,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     location.val.store(&mut bx, tmp);
                 }
                 self.store_return(&mut bx, ret_dest, &fn_abi.ret, location.immediate());
-                helper.funclet_br(self, &mut bx, *target);
+                helper.funclet_br(self, &mut bx, target);
             }
             return;
         }
@@ -777,7 +768,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.store_return(&mut bx, ret_dest, &fn_abi.ret, dst.llval);
                 }
 
-                if let Some((_, target)) = *destination {
+                if let Some(target) = target {
                     helper.funclet_br(self, &mut bx, target);
                 } else {
                     bx.unreachable();
@@ -828,9 +819,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // the data pointer as the first argument
                     match op.val {
                         Pair(data_ptr, meta) => {
-                            llfn = Some(
-                                meth::VirtualIndex::from_index(idx).get_fn(&mut bx, meta, &fn_abi),
-                            );
+                            llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
+                                &mut bx,
+                                meta,
+                                op.layout.ty,
+                                &fn_abi,
+                            ));
                             llargs.push(data_ptr);
                             continue 'make_args;
                         }
@@ -838,7 +832,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 } else if let Ref(data_ptr, Some(meta), _) = op.val {
                     // by-value dynamic dispatch
-                    llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(&mut bx, meta, &fn_abi));
+                    llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
+                        &mut bx,
+                        meta,
+                        op.layout.ty,
+                        &fn_abi,
+                    ));
                     llargs.push(data_ptr);
                     continue;
                 } else {
@@ -924,7 +923,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 fn_abi,
                 fn_ptr,
                 &llargs,
-                destination.as_ref().map(|&(_, target)| (ret_dest, target)),
+                target.as_ref().map(|&target| (ret_dest, target)),
                 cleanup,
             );
 
@@ -941,7 +940,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             fn_abi,
             fn_ptr,
             &llargs,
-            destination.as_ref().map(|&(_, target)| (ret_dest, target)),
+            target.as_ref().map(|&target| (ret_dest, target)),
             cleanup,
         );
     }
@@ -1094,7 +1093,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::TerminatorKind::Call {
                 ref func,
                 ref args,
-                ref destination,
+                destination,
+                target,
                 cleanup,
                 from_hir_call: _,
                 fn_span,
@@ -1106,6 +1106,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     func,
                     args,
                     destination,
+                    target,
                     cleanup,
                     fn_span,
                 );
@@ -1440,10 +1441,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let llretty = self.landing_pad_type();
             bx.cleanup_landing_pad(llretty, llpersonality);
 
-            let def_id = common::langcall(bx.tcx(), None, "", LangItem::PanicNoUnwind);
-            let instance = ty::Instance::mono(bx.tcx(), def_id);
-            let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
-            let fn_ptr = bx.get_fn_addr(instance);
+            let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, LangItem::PanicNoUnwind);
             let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
             let llret = bx.call(fn_ty, fn_ptr, &[], None);
@@ -1572,7 +1570,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match (src.layout.abi, dst.layout.abi) {
             (abi::Abi::Scalar(src_scalar), abi::Abi::Scalar(dst_scalar)) => {
                 // HACK(eddyb) LLVM doesn't like `bitcast`s between pointers and non-pointers.
-                if (src_scalar.value == abi::Pointer) == (dst_scalar.value == abi::Pointer) {
+                if (src_scalar.primitive() == abi::Pointer)
+                    == (dst_scalar.primitive() == abi::Pointer)
+                {
                     assert_eq!(src.layout.size, dst.layout.size);
 
                     // NOTE(eddyb) the `from_immediate` and `to_immediate_scalar`

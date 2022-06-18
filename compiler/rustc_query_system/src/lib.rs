@@ -1,5 +1,4 @@
 #![feature(assert_matches)]
-#![feature(bool_to_option)]
 #![feature(core_intrinsics)]
 #![feature(hash_raw_entry)]
 #![feature(let_else)]

@@ -20,7 +20,6 @@ declare_clippy_lint! {
     /// ```rust
     /// struct Foo(i32);
     ///
-    /// // Bad
     /// impl From<String> for Foo {
     ///     fn from(s: String) -> Self {
     ///         Foo(s.parse().unwrap())
@@ -28,11 +27,10 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
+    /// Use instead:
     /// ```rust
-    /// // Good
     /// struct Foo(i32);
     ///
-    /// use std::convert::TryFrom;
     /// impl TryFrom<String> for Foo {
     ///     type Error = ();
     ///     fn try_from(s: String) -> Result<Self, Self::Error> {
@@ -86,9 +84,9 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
 
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-                let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
-                if is_type_diagnostic_item(self.lcx, reciever_ty, sym::Option)
-                    || is_type_diagnostic_item(self.lcx, reciever_ty, sym::Result)
+                let receiver_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
+                if is_type_diagnostic_item(self.lcx, receiver_ty, sym::Option)
+                    || is_type_diagnostic_item(self.lcx, receiver_ty, sym::Result)
                 {
                     self.result.push(expr.span);
                 }

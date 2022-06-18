@@ -24,7 +24,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             self.fulfillment_cx.borrow_mut().pending_obligations()
         );
 
-        // Check if we have any unsolved varibales. If not, no need for fallback.
+        // Check if we have any unsolved variables. If not, no need for fallback.
         let unsolved_variables = self.unsolved_variables();
         if unsolved_variables.is_empty() {
             return false;
@@ -64,16 +64,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // If we had tried to fallback the opaque inference variable to `MyType`,
         // we will generate a confusing type-check error that does not explicitly
         // refer to opaque types.
-        self.select_obligations_where_possible(fallback_has_occurred, |_| {});
-
-        // We now run fallback again, but this time we allow it to replace
-        // unconstrained opaque type variables, in addition to performing
-        // other kinds of fallback.
-        for ty in &self.unsolved_variables() {
-            fallback_has_occurred |= self.fallback_opaque_type_vars(*ty);
-        }
-
-        // See if we can make any more progress.
         self.select_obligations_where_possible(fallback_has_occurred, |_| {});
 
         fallback_has_occurred
@@ -136,59 +126,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         true
     }
 
-    /// Second round of fallback: Unconstrained type variables created
-    /// from the instantiation of an opaque type fall back to the
-    /// opaque type itself. This is a somewhat incomplete attempt to
-    /// manage "identity passthrough" for `impl Trait` types.
-    ///
-    /// For example, in this code:
-    ///
-    ///```
-    /// type MyType = impl Copy;
-    /// fn defining_use() -> MyType { true }
-    /// fn other_use() -> MyType { defining_use() }
-    /// ```
-    ///
-    /// `defining_use` will constrain the instantiated inference
-    /// variable to `bool`, while `other_use` will constrain
-    /// the instantiated inference variable to `MyType`.
-    ///
-    /// When we process opaque types during writeback, we
-    /// will handle cases like `other_use`, and not count
-    /// them as defining usages
-    ///
-    /// However, we also need to handle cases like this:
-    ///
-    /// ```rust
-    /// pub type Foo = impl Copy;
-    /// fn produce() -> Option<Foo> {
-    ///     None
-    ///  }
-    ///  ```
-    ///
-    /// In the above snippet, the inference variable created by
-    /// instantiating `Option<Foo>` will be completely unconstrained.
-    /// We treat this as a non-defining use by making the inference
-    /// variable fall back to the opaque type itself.
-    fn fallback_opaque_type_vars(&self, ty: Ty<'tcx>) -> bool {
-        let span = self
-            .infcx
-            .type_var_origin(ty)
-            .map(|origin| origin.span)
-            .unwrap_or(rustc_span::DUMMY_SP);
-        let oty = self.inner.borrow().opaque_types_vars.get(&ty).copied();
-        if let Some(opaque_ty) = oty {
-            debug!(
-                "fallback_opaque_type_vars(ty={:?}): falling back to opaque type {:?}",
-                ty, opaque_ty
-            );
-            self.demand_eqtype(span, ty, opaque_ty);
-            true
-        } else {
-            return false;
-        }
-    }
-
     /// The "diverging fallback" system is rather complicated. This is
     /// a result of our need to balance 'do the right thing' with
     /// backwards compatibility.
@@ -207,6 +144,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// code. The most common case is something like this:
     ///
     /// ```rust
+    /// # fn foo() -> i32 { 4 }
     /// match foo() {
     ///     22 => Default::default(), // call this type `?D`
     ///     _ => return, // return has type `!`
@@ -231,7 +169,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// fallback to use based on whether there is a coercion pattern
     /// like this:
     ///
-    /// ```
+    /// ```ignore (not-rust)
     /// ?Diverging -> ?V
     /// ?NonDiverging -> ?V
     /// ?V != ?NonDiverging

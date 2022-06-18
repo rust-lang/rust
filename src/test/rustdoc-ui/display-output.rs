@@ -1,4 +1,4 @@
-// Test that `--show-output` has an effect and `allow(unused)` can be overriden.
+// Test that `--show-output` has an effect and `allow(unused)` can be overridden.
 
 // check-pass
 // edition:2018

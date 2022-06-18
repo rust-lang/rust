@@ -10,8 +10,8 @@ use regex::Regex;
 
 // A few of those error codes can't be tested but all the others can and *should* be tested!
 const EXEMPTED_FROM_TEST: &[&str] = &[
-    "E0279", "E0313", "E0377", "E0461", "E0462", "E0465", "E0476", "E0514", "E0519", "E0523",
-    "E0554", "E0640", "E0717", "E0729",
+    "E0279", "E0313", "E0377", "E0461", "E0462", "E0465", "E0476", "E0490", "E0514", "E0519",
+    "E0523", "E0554", "E0640", "E0717", "E0729",
 ];
 
 // Some error codes don't have any tests apparently...
@@ -260,7 +260,7 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
 
         for (err_code, error_status) in &error_codes {
             if !error_status.has_test && !EXEMPTED_FROM_TEST.contains(&err_code.as_str()) {
-                errors.push(format!("Error code {} needs to have at least one UI test!", err_code));
+                errors.push(format!("Error code {err_code} needs to have at least one UI test!"));
             } else if error_status.has_test && EXEMPTED_FROM_TEST.contains(&err_code.as_str()) {
                 errors.push(format!(
                     "Error code {} has a UI test, it shouldn't be listed into EXEMPTED_FROM_TEST!",
@@ -309,7 +309,7 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
     }
     errors.sort();
     for err in &errors {
-        eprintln!("{}", err);
+        eprintln!("{err}");
     }
     println!("Found {} error(s) in error codes", errors.len());
     if !errors.is_empty() {

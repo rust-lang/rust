@@ -1,10 +1,14 @@
-use rustc_errors::{DiagnosticBuilder, ErrorReported};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_infer::infer::region_constraints::Constraint;
+use rustc_infer::infer::region_constraints::RegionConstraintData;
+use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::infer::{InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt as _};
 use rustc_infer::traits::{Normalized, ObligationCause, TraitEngine, TraitEngineExt};
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::RegionVid;
+use rustc_middle::ty::UniverseIndex;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op;
@@ -18,7 +22,7 @@ use crate::region_infer::values::RegionElement;
 use crate::MirBorrowckCtxt;
 
 #[derive(Clone)]
-crate struct UniverseInfo<'tcx>(UniverseInfoInner<'tcx>);
+pub(crate) struct UniverseInfo<'tcx>(UniverseInfoInner<'tcx>);
 
 /// What operation a universe was created for.
 #[derive(Clone)]
@@ -32,15 +36,15 @@ enum UniverseInfoInner<'tcx> {
 }
 
 impl<'tcx> UniverseInfo<'tcx> {
-    crate fn other() -> UniverseInfo<'tcx> {
+    pub(crate) fn other() -> UniverseInfo<'tcx> {
         UniverseInfo(UniverseInfoInner::Other)
     }
 
-    crate fn relate(expected: Ty<'tcx>, found: Ty<'tcx>) -> UniverseInfo<'tcx> {
+    pub(crate) fn relate(expected: Ty<'tcx>, found: Ty<'tcx>) -> UniverseInfo<'tcx> {
         UniverseInfo(UniverseInfoInner::RelateTys { expected, found })
     }
 
-    crate fn report_error(
+    pub(crate) fn report_error(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
@@ -72,8 +76,17 @@ impl<'tcx> UniverseInfo<'tcx> {
     }
 }
 
-crate trait ToUniverseInfo<'tcx> {
+pub(crate) trait ToUniverseInfo<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx>;
+}
+
+impl<'tcx> ToUniverseInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
+    fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
+        UniverseInfo(UniverseInfoInner::TypeOp(Rc::new(crate::type_check::InstantiateOpaqueType {
+            base_universe: Some(base_universe),
+            ..self
+        })))
+    }
 }
 
 impl<'tcx> ToUniverseInfo<'tcx>
@@ -116,6 +129,12 @@ impl<'tcx, F, G> ToUniverseInfo<'tcx> for Canonical<'tcx, type_op::custom::Custo
     }
 }
 
+impl<'tcx> ToUniverseInfo<'tcx> for ! {
+    fn to_universe_info(self, _base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
+        self
+    }
+}
+
 #[allow(unused_lifetimes)]
 trait TypeOpInfo<'tcx> {
     /// Returns an error to be reported if rerunning the type op fails to
@@ -124,17 +143,17 @@ trait TypeOpInfo<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported>;
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     fn base_universe(&self) -> ty::UniverseIndex;
 
     fn nice_error(
         &self,
-        tcx: TyCtxt<'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>>;
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>>;
 
     fn report_error(
         &self,
@@ -175,7 +194,7 @@ trait TypeOpInfo<'tcx> {
         debug!(?placeholder_region);
 
         let span = cause.span;
-        let nice_error = self.nice_error(tcx, cause, placeholder_region, error_region);
+        let nice_error = self.nice_error(mbcx, cause, placeholder_region, error_region);
 
         if let Some(nice_error) = nice_error {
             mbcx.buffer_error(nice_error);
@@ -196,7 +215,7 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = tcx.sess.struct_span_err(span, "higher-ranked lifetime error");
         err.note(&format!("could not prove {}", self.canonical_query.value.value.predicate));
         err
@@ -208,16 +227,16 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
 
     fn nice_error(
         &self,
-        tcx: TyCtxt<'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
-        tcx.infer_ctxt().enter_with_canonical(
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+        mbcx.infcx.tcx.infer_ctxt().enter_with_canonical(
             cause.span,
             &self.canonical_query,
             |ref infcx, key, _| {
-                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
+                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
                 type_op_prove_predicate_with_cause(infcx, &mut *fulfill_cx, key, cause);
                 try_extract_error_from_fulfill_cx(
                     fulfill_cx,
@@ -243,7 +262,7 @@ where
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = tcx.sess.struct_span_err(span, "higher-ranked lifetime error");
         err.note(&format!("could not normalize `{}`", self.canonical_query.value.value.value));
         err
@@ -255,16 +274,16 @@ where
 
     fn nice_error(
         &self,
-        tcx: TyCtxt<'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
-        tcx.infer_ctxt().enter_with_canonical(
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+        mbcx.infcx.tcx.infer_ctxt().enter_with_canonical(
             cause.span,
             &self.canonical_query,
             |ref infcx, key, _| {
-                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
+                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
 
                 let mut selcx = SelectionContext::new(infcx);
 
@@ -304,7 +323,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
         // and is only the fallback when the nice error fails. Consider improving this some more.
         tcx.sess.struct_span_err(span, "higher-ranked lifetime error")
@@ -316,16 +335,16 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
 
     fn nice_error(
         &self,
-        tcx: TyCtxt<'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
-        tcx.infer_ctxt().enter_with_canonical(
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+        mbcx.infcx.tcx.infer_ctxt().enter_with_canonical(
             cause.span,
             &self.canonical_query,
             |ref infcx, key, _| {
-                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
+                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
                 type_op_ascribe_user_type_with_span(infcx, &mut *fulfill_cx, key, Some(cause.span))
                     .ok()?;
                 try_extract_error_from_fulfill_cx(
@@ -339,22 +358,74 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
     }
 }
 
+impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
+    fn fallback_error(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+        // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
+        // and is only the fallback when the nice error fails. Consider improving this some more.
+        tcx.sess.struct_span_err(span, "higher-ranked lifetime error for opaque type!")
+    }
+
+    fn base_universe(&self) -> ty::UniverseIndex {
+        self.base_universe.unwrap()
+    }
+
+    fn nice_error(
+        &self,
+        mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
+        _cause: ObligationCause<'tcx>,
+        placeholder_region: ty::Region<'tcx>,
+        error_region: Option<ty::Region<'tcx>>,
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+        try_extract_error_from_region_constraints(
+            mbcx.infcx,
+            placeholder_region,
+            error_region,
+            self.region_constraints.as_ref().unwrap(),
+            // We're using the original `InferCtxt` that we
+            // started MIR borrowchecking with, so the region
+            // constraints have already been taken. Use the data from
+            // our `mbcx` instead.
+            |vid| mbcx.regioncx.var_infos[vid].origin,
+            |vid| mbcx.regioncx.var_infos[vid].universe,
+        )
+    }
+}
+
 #[instrument(skip(fulfill_cx, infcx), level = "debug")]
 fn try_extract_error_from_fulfill_cx<'tcx>(
     mut fulfill_cx: Box<dyn TraitEngine<'tcx> + 'tcx>,
     infcx: &InferCtxt<'_, 'tcx>,
     placeholder_region: ty::Region<'tcx>,
     error_region: Option<ty::Region<'tcx>>,
-) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
-    let tcx = infcx.tcx;
-
+) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
     // We generally shouldn't have errors here because the query was
     // already run, but there's no point using `delay_span_bug`
     // when we're going to emit an error here anyway.
     let _errors = fulfill_cx.select_all_or_error(infcx);
+    let region_constraints = infcx.with_region_constraints(|r| r.clone());
+    try_extract_error_from_region_constraints(
+        infcx,
+        placeholder_region,
+        error_region,
+        &region_constraints,
+        |vid| infcx.region_var_origin(vid),
+        |vid| infcx.universe_of_region(infcx.tcx.mk_region(ty::ReVar(vid))),
+    )
+}
 
-    let (sub_region, cause) = infcx.with_region_constraints(|region_constraints| {
-        debug!("{:#?}", region_constraints);
+fn try_extract_error_from_region_constraints<'tcx>(
+    infcx: &InferCtxt<'_, 'tcx>,
+    placeholder_region: ty::Region<'tcx>,
+    error_region: Option<ty::Region<'tcx>>,
+    region_constraints: &RegionConstraintData<'tcx>,
+    mut region_var_origin: impl FnMut(RegionVid) -> RegionVariableOrigin,
+    mut universe_of_region: impl FnMut(RegionVid) -> UniverseIndex,
+) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+    let (sub_region, cause) =
         region_constraints.constraints.iter().find_map(|(constraint, cause)| {
             match *constraint {
                 Constraint::RegSubReg(sub, sup) if sup == placeholder_region && sup != sub => {
@@ -362,12 +433,11 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
                 }
                 // FIXME: Should this check the universe of the var?
                 Constraint::VarSubReg(vid, sup) if sup == placeholder_region => {
-                    Some((tcx.mk_region(ty::ReVar(vid)), cause.clone()))
+                    Some((infcx.tcx.mk_region(ty::ReVar(vid)), cause.clone()))
                 }
                 _ => None,
             }
-        })
-    })?;
+        })?;
 
     debug!(?sub_region, "cause = {:#?}", cause);
     let nice_error = match (error_region, *sub_region) {
@@ -375,7 +445,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
             infcx,
             RegionResolutionError::SubSupConflict(
                 vid,
-                infcx.region_var_origin(vid),
+                region_var_origin(vid),
                 cause.clone(),
                 error_region,
                 cause.clone(),
@@ -392,8 +462,8 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
             infcx,
             RegionResolutionError::UpperBoundUniverseConflict(
                 vid,
-                infcx.region_var_origin(vid),
-                infcx.universe_of_region(sub_region),
+                region_var_origin(vid),
+                universe_of_region(vid),
                 cause.clone(),
                 placeholder_region,
             ),

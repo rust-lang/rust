@@ -157,6 +157,8 @@ pub struct TestProps {
     pub should_ice: bool,
     // If true, the stderr is expected to be different across bit-widths.
     pub stderr_per_bitwidth: bool,
+    // The MIR opt to unit test, if any
+    pub mir_unit_test: Option<String>,
 }
 
 mod directives {
@@ -189,6 +191,9 @@ mod directives {
     pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
     pub const INCREMENTAL: &'static str = "incremental";
     pub const KNOWN_BUG: &'static str = "known-bug";
+    pub const MIR_UNIT_TEST: &'static str = "unit-test";
+    // This isn't a real directive, just one that is probably mistyped often
+    pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
 
 impl TestProps {
@@ -230,6 +235,7 @@ impl TestProps {
             assembly_output: None,
             should_ice: false,
             stderr_per_bitwidth: false,
+            mir_unit_test: None,
         }
     }
 
@@ -281,6 +287,9 @@ impl TestProps {
 
                 if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
                     self.compile_flags.extend(flags.split_whitespace().map(|s| s.to_owned()));
+                }
+                if config.parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS).is_some() {
+                    panic!("`compiler-flags` directive should be spelled `compile-flags`");
                 }
 
                 if let Some(edition) = config.parse_edition(ln) {
@@ -387,6 +396,9 @@ impl TestProps {
                 config.set_name_directive(ln, STDERR_PER_BITWIDTH, &mut self.stderr_per_bitwidth);
                 config.set_name_directive(ln, INCREMENTAL, &mut self.incremental);
                 config.set_name_directive(ln, KNOWN_BUG, &mut self.known_bug);
+                config.set_name_value_directive(ln, MIR_UNIT_TEST, &mut self.mir_unit_test, |s| {
+                    s.trim().to_string()
+                });
             });
         }
 
@@ -615,7 +627,6 @@ impl Config {
             (name == "endian-big" && util::is_big_endian(&self.target)) ||
             (self.remote_test_client.is_some() && name == "remote") ||
             match self.compare_mode {
-                Some(CompareMode::Nll) => name == "compare-mode-nll",
                 Some(CompareMode::Polonius) => name == "compare-mode-polonius",
                 Some(CompareMode::Chalk) => name == "compare-mode-chalk",
                 Some(CompareMode::SplitDwarf) => name == "compare-mode-split-dwarf",
@@ -806,8 +817,7 @@ pub fn make_test_description<R: Read>(
     cfg: Option<&str>,
 ) -> test::TestDesc {
     let mut ignore = false;
-    #[cfg(not(bootstrap))]
-    let ignore_message: Option<String> = None;
+    let ignore_message = None;
     let mut should_fail = false;
 
     let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
@@ -879,7 +889,6 @@ pub fn make_test_description<R: Read>(
     test::TestDesc {
         name,
         ignore,
-        #[cfg(not(bootstrap))]
         ignore_message,
         should_panic,
         compile_fail: false,

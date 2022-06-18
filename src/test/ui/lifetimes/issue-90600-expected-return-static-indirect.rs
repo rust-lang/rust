@@ -5,8 +5,9 @@ fn main() {}
 
 fn inner(mut foo: &[u8]) {
     let refcell = RefCell::new(&mut foo);
-    //~^ ERROR `foo` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement [E0759]
+    //~^ ERROR `foo` does not live long enough
     let read = &refcell as &RefCell<dyn Read>;
+    //~^ ERROR lifetime may not live long enough
 
     read_thing(read);
 }

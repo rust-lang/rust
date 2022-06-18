@@ -1,5 +1,5 @@
 error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/ice-6254.rs:12:9
+  --> $DIR/ice-6254.rs:13:9
    |
 LL |         FOO_REF_REF => {},
    |         ^^^^^^^^^^^

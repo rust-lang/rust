@@ -1,0 +1,25 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-95305.rs:11:26
+   |
+LL | fn foo(x: &impl Foo<Item<'_> = u32>) { }
+   |                          ^^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | fn foo<'a>(x: &impl Foo<Item<'a> = u32>) { }
+   |       ++++                   ~~
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-95305.rs:14:41
+   |
+LL | fn bar(x: &impl for<'a> Foo<Item<'a> = &'_ u32>) { }
+   |                                         ^^ expected named lifetime parameter
+   |
+help: consider using the `'a` lifetime
+   |
+LL | fn bar(x: &impl for<'a> Foo<Item<'a> = &'a u32>) { }
+   |                                         ~~
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

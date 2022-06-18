@@ -21,7 +21,7 @@ use crate::html::escape::Escape;
 mod tests;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-crate enum Cfg {
+pub(crate) enum Cfg {
     /// Accepts all configurations.
     True,
     /// Denies all configurations.
@@ -37,9 +37,9 @@ crate enum Cfg {
 }
 
 #[derive(PartialEq, Debug)]
-crate struct InvalidCfgError {
-    crate msg: &'static str,
-    crate span: Span,
+pub(crate) struct InvalidCfgError {
+    pub(crate) msg: &'static str,
+    pub(crate) span: Span,
 }
 
 impl Cfg {
@@ -56,7 +56,7 @@ impl Cfg {
         }
     }
 
-    crate fn parse_without(
+    pub(crate) fn parse_without(
         cfg: &MetaItem,
         exclude: &FxHashSet<Cfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
@@ -87,15 +87,20 @@ impl Cfg {
                 }),
             },
             MetaItemKind::List(ref items) => {
+                let orig_len = items.len();
                 let sub_cfgs =
                     items.iter().filter_map(|i| Cfg::parse_nested(i, exclude).transpose());
                 let ret = match name {
                     sym::all => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
                     sym::any => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
                     sym::not => {
-                        let mut sub_cfgs = sub_cfgs.collect::<Vec<_>>();
-                        if sub_cfgs.len() == 1 {
-                            Ok(!sub_cfgs.pop().unwrap()?)
+                        if orig_len == 1 {
+                            let mut sub_cfgs = sub_cfgs.collect::<Vec<_>>();
+                            if sub_cfgs.len() == 1 {
+                                Ok(!sub_cfgs.pop().unwrap()?)
+                            } else {
+                                return Ok(None);
+                            }
                         } else {
                             Err(InvalidCfgError { msg: "expected 1 cfg-pattern", span: cfg.span })
                         }
@@ -117,7 +122,7 @@ impl Cfg {
     ///
     /// If the content is not properly formatted, it will return an error indicating what and where
     /// the error is.
-    crate fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
+    pub(crate) fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
         Self::parse_without(cfg, &FxHashSet::default()).map(|ret| ret.unwrap())
     }
 
@@ -125,7 +130,7 @@ impl Cfg {
     ///
     /// Equivalent to `attr::cfg_matches`.
     // FIXME: Actually make use of `features`.
-    crate fn matches(&self, parse_sess: &ParseSess, features: Option<&Features>) -> bool {
+    pub(crate) fn matches(&self, parse_sess: &ParseSess, features: Option<&Features>) -> bool {
         match *self {
             Cfg::False => false,
             Cfg::True => true,
@@ -171,11 +176,8 @@ impl Cfg {
     pub(crate) fn render_long_html(&self) -> String {
         let on = if self.should_use_with_in_description() { "with" } else { "on" };
 
-        let mut msg = format!(
-            "This is supported {} <strong>{}</strong>",
-            on,
-            Display(self, Format::LongHtml)
-        );
+        let mut msg =
+            format!("Available {on} <strong>{}</strong>", Display(self, Format::LongHtml));
         if self.should_append_only_to_description() {
             msg.push_str(" only");
         }
@@ -187,7 +189,7 @@ impl Cfg {
     pub(crate) fn render_long_plain(&self) -> String {
         let on = if self.should_use_with_in_description() { "with" } else { "on" };
 
-        let mut msg = format!("This is supported {} {}", on, Display(self, Format::LongPlain));
+        let mut msg = format!("Available {on} {}", Display(self, Format::LongPlain));
         if self.should_append_only_to_description() {
             msg.push_str(" only");
         }
@@ -307,8 +309,7 @@ impl ops::BitAnd for Cfg {
 impl ops::BitOrAssign for Cfg {
     fn bitor_assign(&mut self, other: Cfg) {
         match (self, other) {
-            (&mut Cfg::True, _) | (_, Cfg::False) => {}
-            (s, Cfg::True) => *s = Cfg::True,
+            (Cfg::True, _) | (_, Cfg::False) | (_, Cfg::True) => {}
             (s @ &mut Cfg::False, b) => *s = b,
             (&mut Cfg::Any(ref mut a), Cfg::Any(ref mut b)) => {
                 for c in b.drain(..) {
@@ -520,6 +521,8 @@ impl<'a> fmt::Display for Display<'a> {
                         "msp430" => "MSP430",
                         "powerpc" => "PowerPC",
                         "powerpc64" => "PowerPC-64",
+                        "riscv32" => "RISC-V RV32",
+                        "riscv64" => "RISC-V RV64",
                         "s390x" => "s390x",
                         "sparc64" => "SPARC64",
                         "wasm32" | "wasm64" => "WebAssembly",

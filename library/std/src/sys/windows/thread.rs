@@ -1,11 +1,12 @@
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZeroUsize;
-use crate::os::windows::io::{AsRawHandle, FromRawHandle};
+use crate::os::windows::io::AsRawHandle;
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::handle::Handle;
 use crate::sys::stack_overflow;
+use crate::sys_common::FromInner;
 use crate::time::Duration;
 
 use libc::c_void;
@@ -28,25 +29,22 @@ impl Thread {
         // PTHREAD_STACK_MIN bytes big.  Windows has no such lower limit, it's
         // just that below a certain threshold you can't do anything useful.
         // That threshold is application and architecture-specific, however.
-        // Round up to the next 64 kB because that's what the NT kernel does,
-        // might as well make it explicit.
-        let stack_size = (stack + 0xfffe) & (!0xfffe);
         let ret = c::CreateThread(
             ptr::null_mut(),
-            stack_size,
+            stack,
             thread_start,
             p as *mut _,
             c::STACK_SIZE_PARAM_IS_A_RESERVATION,
             ptr::null_mut(),
         );
 
-        return if ret as usize == 0 {
+        return if let Ok(handle) = ret.try_into() {
+            Ok(Thread { handle: Handle::from_inner(handle) })
+        } else {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
             drop(Box::from_raw(p));
             Err(io::Error::last_os_error())
-        } else {
-            Ok(Thread { handle: Handle::from_raw_handle(ret) })
         };
 
         extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {

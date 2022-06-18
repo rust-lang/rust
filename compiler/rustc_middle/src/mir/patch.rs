@@ -78,11 +78,22 @@ impl<'tcx> MirPatch<'tcx> {
         Location { block: bb, statement_index: offset }
     }
 
-    pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
+    pub fn new_local_with_info(
+        &mut self,
+        ty: Ty<'tcx>,
+        span: Span,
+        local_info: Option<Box<LocalInfo<'tcx>>>,
+    ) -> Local {
         let index = self.next_local;
         self.next_local += 1;
-        self.new_locals.push(LocalDecl::new(ty, span));
+        let mut new_decl = LocalDecl::new(ty, span);
+        new_decl.local_info = local_info;
+        self.new_locals.push(new_decl);
         Local::new(index as usize)
+    }
+
+    pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
+        self.new_local_with_info(ty, span, None)
     }
 
     pub fn new_internal(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
@@ -141,6 +152,7 @@ impl<'tcx> MirPatch<'tcx> {
 
         let mut delta = 0;
         let mut last_bb = START_BLOCK;
+        let mut stmts_and_targets: Vec<(Statement<'_>, BasicBlock)> = Vec::new();
         for (mut loc, stmt) in new_statements {
             if loc.block != last_bb {
                 delta = 0;
@@ -149,10 +161,26 @@ impl<'tcx> MirPatch<'tcx> {
             debug!("MirPatch: adding statement {:?} at loc {:?}+{}", stmt, loc, delta);
             loc.statement_index += delta;
             let source_info = Self::source_info_for_index(&body[loc.block], loc);
+
+            // For mir-opt `Derefer` to work in all cases we need to
+            // get terminator's targets and apply the statement to all of them.
+            if loc.statement_index > body[loc.block].statements.len() {
+                let term = body[loc.block].terminator();
+                for i in term.successors() {
+                    stmts_and_targets.push((Statement { source_info, kind: stmt.clone() }, i));
+                }
+                delta += 1;
+                continue;
+            }
+
             body[loc.block]
                 .statements
                 .insert(loc.statement_index, Statement { source_info, kind: stmt });
             delta += 1;
+        }
+
+        for (stmt, target) in stmts_and_targets.into_iter().rev() {
+            body[target].statements.insert(0, stmt);
         }
     }
 
@@ -163,7 +191,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
     }
 
-    pub fn source_info_for_location(&self, body: &Body<'_>, loc: Location) -> SourceInfo {
+    pub fn source_info_for_location(&self, body: &Body<'tcx>, loc: Location) -> SourceInfo {
         let data = match loc.block.index().checked_sub(body.basic_blocks().len()) {
             Some(new) => &self.new_blocks[new],
             None => &body[loc.block],

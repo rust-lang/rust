@@ -11,6 +11,7 @@ fn main() {
 // return type, which can't depend on the obligation.
 fn cycle1() -> impl Clone {
     //~^ ERROR cycle detected
+    //~| ERROR cycle detected
     send(cycle2().clone());
 
     Rc::new(Cell::new(5))

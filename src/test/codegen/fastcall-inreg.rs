@@ -19,7 +19,7 @@ pub mod tests {
     #[no_mangle]
     pub extern "fastcall" fn f1(_: i32, _: i32, _: i32) {}
 
-    // CHECK: @f2(i32* inreg %_1, i32* inreg %_2, i32* %_3)
+    // CHECK: @f2({{i32\*|ptr}} inreg %_1, {{i32\*|ptr}} inreg %_2, {{i32\*|ptr}} %_3)
     #[no_mangle]
     pub extern "fastcall" fn f2(_: *const i32, _: *const i32, _: *const i32) {}
 

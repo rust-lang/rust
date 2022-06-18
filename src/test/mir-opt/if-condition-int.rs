@@ -1,4 +1,4 @@
-// compile-flags: -O
+// unit-test: SimplifyComparisonIntegral
 // EMIT_MIR if_condition_int.opt_u32.SimplifyComparisonIntegral.diff
 // EMIT_MIR if_condition_int.opt_negative.SimplifyComparisonIntegral.diff
 // EMIT_MIR if_condition_int.opt_char.SimplifyComparisonIntegral.diff

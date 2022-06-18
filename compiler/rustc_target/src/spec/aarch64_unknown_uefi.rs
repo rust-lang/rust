@@ -9,7 +9,7 @@ pub fn target() -> Target {
 
     base.max_atomic_width = Some(64);
 
-    let pre_link_args_msvc = vec!["/machine:arm64".to_string()];
+    let pre_link_args_msvc = vec!["/machine:arm64".into()];
 
     base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().extend(pre_link_args_msvc.clone());
     base.pre_link_args
@@ -18,10 +18,10 @@ pub fn target() -> Target {
         .extend(pre_link_args_msvc);
 
     Target {
-        llvm_target: "aarch64-unknown-windows".to_string(),
+        llvm_target: "aarch64-unknown-windows".into(),
         pointer_width: 64,
-        data_layout: "e-m:w-p:64:64-i32:32-i64:64-i128:128-n32:64-S128".to_string(),
-        arch: "aarch64".to_string(),
+        data_layout: "e-m:w-p:64:64-i32:32-i64:64-i128:128-n32:64-S128".into(),
+        arch: "aarch64".into(),
         options: base,
     }
 }

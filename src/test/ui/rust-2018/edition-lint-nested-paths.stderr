@@ -22,25 +22,7 @@ LL | use foo::{a, b};
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-nested-paths.rs:6:5
-   |
-LL | use foo::{a, b};
-   |     ^^^^^^^^^^^ help: use `crate`: `crate::foo::{a, b}`
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
-   = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
-
-error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-nested-paths.rs:6:5
-   |
-LL | use foo::{a, b};
-   |     ^^^^^^^^^^^ help: use `crate`: `crate::foo::{a, b}`
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
-   = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
-
-error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-nested-paths.rs:27:13
+  --> $DIR/edition-lint-nested-paths.rs:23:13
    |
 LL |         use foo::{self as x, c};
    |             ^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::foo::{self as x, c}`
@@ -49,7 +31,7 @@ LL |         use foo::{self as x, c};
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-nested-paths.rs:27:13
+  --> $DIR/edition-lint-nested-paths.rs:23:13
    |
 LL |         use foo::{self as x, c};
    |             ^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::foo::{self as x, c}`
@@ -57,14 +39,5 @@ LL |         use foo::{self as x, c};
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
-error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-nested-paths.rs:27:13
-   |
-LL |         use foo::{self as x, c};
-   |             ^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::foo::{self as x, c}`
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
-   = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
-
-error: aborting due to 7 previous errors
+error: aborting due to 4 previous errors
 

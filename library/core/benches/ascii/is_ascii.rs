@@ -77,6 +77,6 @@ fn is_ascii_align_to_unrolled(bytes: &[u8]) -> bool {
 
 #[inline]
 fn contains_nonascii(v: usize) -> bool {
-    const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
+    const NONASCII_MASK: usize = usize::from_ne_bytes([0x80; core::mem::size_of::<usize>()]);
     (NONASCII_MASK & v) != 0
 }

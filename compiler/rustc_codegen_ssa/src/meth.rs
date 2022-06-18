@@ -1,6 +1,8 @@
 use crate::traits::*;
 
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, subst::GenericArgKind, ExistentialPredicate, Ty, TyCtxt};
+use rustc_session::config::Lto;
+use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::call::FnAbi;
 
 #[derive(Copy, Clone, Debug)]
@@ -15,20 +17,32 @@ impl<'a, 'tcx> VirtualIndex {
         self,
         bx: &mut Bx,
         llvtable: Bx::Value,
+        ty: Ty<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     ) -> Bx::Value {
         // Load the data pointer from the object.
-        debug!("get_fn({:?}, {:?})", llvtable, self);
-
+        debug!("get_fn({llvtable:?}, {ty:?}, {self:?})");
         let llty = bx.fn_ptr_backend_type(fn_abi);
         let llvtable = bx.pointercast(llvtable, bx.type_ptr_to(llty));
-        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let gep = bx.inbounds_gep(llty, llvtable, &[bx.const_usize(self.0)]);
-        let ptr = bx.load(llty, gep, ptr_align);
-        bx.nonnull_metadata(ptr);
-        // Vtable loads are invariant.
-        bx.set_invariant_load(ptr);
-        ptr
+
+        if bx.cx().sess().opts.debugging_opts.virtual_function_elimination
+            && bx.cx().sess().lto() == Lto::Fat
+        {
+            let typeid =
+                bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), get_trait_ref(bx.tcx(), ty)));
+            let vtable_byte_offset = self.0 * bx.data_layout().pointer_size.bytes();
+            let type_checked_load = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
+            let func = bx.extract_value(type_checked_load, 0);
+            bx.pointercast(func, llty)
+        } else {
+            let ptr_align = bx.tcx().data_layout.pointer_align.abi;
+            let gep = bx.inbounds_gep(llty, llvtable, &[bx.const_usize(self.0)]);
+            let ptr = bx.load(llty, gep, ptr_align);
+            bx.nonnull_metadata(ptr);
+            // Vtable loads are invariant.
+            bx.set_invariant_load(ptr);
+            ptr
+        }
     }
 
     pub fn get_usize<Bx: BuilderMethods<'a, 'tcx>>(
@@ -48,6 +62,24 @@ impl<'a, 'tcx> VirtualIndex {
         bx.set_invariant_load(ptr);
         ptr
     }
+}
+
+fn get_trait_ref<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::PolyExistentialTraitRef<'tcx> {
+    for arg in ty.peel_refs().walk() {
+        if let GenericArgKind::Type(ty) = arg.unpack() {
+            if let ty::Dynamic(trait_refs, _) = ty.kind() {
+                return trait_refs[0].map_bound(|trait_ref| match trait_ref {
+                    ExistentialPredicate::Trait(tr) => tr,
+                    ExistentialPredicate::Projection(proj) => proj.trait_ref(tcx),
+                    ExistentialPredicate::AutoTrait(_) => {
+                        bug!("auto traits don't have functions")
+                    }
+                });
+            }
+        }
+    }
+
+    bug!("expected a `dyn Trait` ty, found {ty:?}")
 }
 
 /// Creates a dynamic vtable for the given type and vtable origin.
@@ -78,7 +110,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     let align = cx.data_layout().pointer_align.abi;
     let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));
 
-    cx.create_vtable_metadata(ty, trait_ref, vtable);
+    cx.create_vtable_debuginfo(ty, trait_ref, vtable);
     cx.vtables().borrow_mut().insert((ty, trait_ref), vtable);
     vtable
 }

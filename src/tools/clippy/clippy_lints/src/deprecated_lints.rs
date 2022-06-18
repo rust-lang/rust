@@ -194,7 +194,6 @@ declare_deprecated_lint! {
     /// ### Deprecation reason
     /// The `avoid_breaking_exported_api` config option was added, which
     /// enables the `enum_variant_names` lint for public items.
-    /// ```
     #[clippy::version = "1.54.0"]
     pub PUB_ENUM_VARIANT_NAMES,
     "set the `avoid-breaking-exported-api` config option to `false` to enable the `enum_variant_names` lint for public items"

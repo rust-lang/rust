@@ -7,7 +7,8 @@ fn foo<'min,'max>(v: SomeStruct<&'min ()>)
                   -> SomeStruct<&'max ()>
     where 'max : 'min
 {
-    v //~ ERROR mismatched types
+    v
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() { }

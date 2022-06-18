@@ -8,7 +8,7 @@ LL |     foo.hello();
 help: the following trait defines an item `hello`, perhaps you need to restrict type parameter `impl Foo` with it:
    |
 LL | fn test(foo: impl Foo + Bar) {
-   |              ~~~~~~~~~~~~~~
+   |                       +++++
 
 error: aborting due to previous error
 

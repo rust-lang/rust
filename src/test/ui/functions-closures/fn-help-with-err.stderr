@@ -14,9 +14,9 @@ error[E0599]: no method named `blablabla` found for struct `Arc<[closure@$DIR/fn
   --> $DIR/fn-help-with-err.rs:12:10
    |
 LL |     arc2.blablabla();
-   |          ^^^^^^^^^ method not found in `Arc<[closure@$DIR/fn-help-with-err.rs:10:36: 10:40]>`
-   |
-   = note: `arc2` is a function, perhaps you wish to call it
+   |     ---- ^^^^^^^^^ method not found in `Arc<[closure@$DIR/fn-help-with-err.rs:10:36: 10:40]>`
+   |     |
+   |     this is a function, perhaps you wish to call it
 
 error: aborting due to 3 previous errors
 

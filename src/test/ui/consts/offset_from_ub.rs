@@ -1,7 +1,7 @@
 #![feature(const_ptr_offset_from)]
 #![feature(core_intrinsics)]
 
-use std::intrinsics::ptr_offset_from;
+use std::intrinsics::{ptr_offset_from, ptr_offset_from_unsigned};
 
 #[repr(C)]
 struct Struct {
@@ -15,7 +15,7 @@ pub const DIFFERENT_ALLOC: usize = {
     let uninit2 = std::mem::MaybeUninit::<Struct>::uninit();
     let field_ptr: *const Struct = &uninit2 as *const _ as *const Struct;
     let offset = unsafe { ptr_offset_from(field_ptr, base_ptr) }; //~ERROR evaluation of constant value failed
-    //~| cannot compute offset of pointers into different allocations.
+    //~| pointers into different allocations
     offset as usize
 };
 
@@ -41,7 +41,50 @@ pub const DIFFERENT_INT: isize = { // offset_from with two different integers: l
     let ptr1 = 8 as *const u8;
     let ptr2 = 16 as *const u8;
     unsafe { ptr_offset_from(ptr2, ptr1) } //~ERROR evaluation of constant value failed
-    //~| 0x10 is not a valid pointer
+    //~| 0x8 is not a valid pointer
+};
+
+const OUT_OF_BOUNDS_1: isize = {
+    let start_ptr = &4 as *const _ as *const u8;
+    let length = 10;
+    let end_ptr = (start_ptr).wrapping_add(length);
+    // First ptr is out of bounds
+    unsafe { ptr_offset_from(end_ptr, start_ptr) } //~ERROR evaluation of constant value failed
+    //~| pointer to 10 bytes starting at offset 0 is out-of-bounds
+};
+
+const OUT_OF_BOUNDS_2: isize = {
+    let start_ptr = &4 as *const _ as *const u8;
+    let length = 10;
+    let end_ptr = (start_ptr).wrapping_add(length);
+    // Second ptr is out of bounds
+    unsafe { ptr_offset_from(start_ptr, end_ptr) } //~ERROR evaluation of constant value failed
+    //~| pointer to 10 bytes starting at offset 0 is out-of-bounds
+};
+
+const OUT_OF_BOUNDS_SAME: isize = {
+    let start_ptr = &4 as *const _ as *const u8;
+    let length = 10;
+    let end_ptr = (start_ptr).wrapping_add(length);
+    unsafe { ptr_offset_from(end_ptr, end_ptr) } //~ERROR evaluation of constant value failed
+    //~| pointer at offset 10 is out-of-bounds
+};
+
+pub const DIFFERENT_ALLOC_UNSIGNED: usize = {
+    let uninit = std::mem::MaybeUninit::<Struct>::uninit();
+    let base_ptr: *const Struct = &uninit as *const _ as *const Struct;
+    let uninit2 = std::mem::MaybeUninit::<Struct>::uninit();
+    let field_ptr: *const Struct = &uninit2 as *const _ as *const Struct;
+    let offset = unsafe { ptr_offset_from_unsigned(field_ptr, base_ptr) }; //~ERROR evaluation of constant value failed
+    //~| pointers into different allocations
+    offset as usize
+};
+
+const WRONG_ORDER_UNSIGNED: usize = {
+    let a = ['a', 'b', 'c'];
+    let p = a.as_ptr();
+    unsafe { ptr_offset_from_unsigned(p, p.add(2) ) } //~ERROR evaluation of constant value failed
+    //~| first pointer has smaller offset than second: 0 < 8
 };
 
 fn main() {}

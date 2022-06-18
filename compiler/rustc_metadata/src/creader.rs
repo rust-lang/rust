@@ -13,11 +13,10 @@ use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::TyCtxt;
-use rustc_serialize::json::ToJson;
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate};
 use rustc_session::cstore::{ExternCrateSource, MetadataLoaderDyn};
-use rustc_session::lint::{self, BuiltinLintDiagnostics, ExternDepSpec};
+use rustc_session::lint;
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
@@ -27,7 +26,6 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use proc_macro::bridge::client::ProcMacro;
-use std::collections::BTreeMap;
 use std::ops::Fn;
 use std::path::Path;
 use std::{cmp, env};
@@ -72,7 +70,7 @@ pub enum LoadedMacro {
     ProcMacro(SyntaxExtension),
 }
 
-crate struct Library {
+pub(crate) struct Library {
     pub source: CrateSource,
     pub metadata: MetadataBlob,
 }
@@ -84,7 +82,7 @@ enum LoadResult {
 
 /// A reference to `CrateMetadata` that can also give access to whole crate store when necessary.
 #[derive(Clone, Copy)]
-crate struct CrateMetadataRef<'a> {
+pub(crate) struct CrateMetadataRef<'a> {
     pub cdata: &'a CrateMetadata,
     pub cstore: &'a CStore,
 }
@@ -135,7 +133,7 @@ impl CStore {
         CrateNum::new(self.metas.len() - 1)
     }
 
-    crate fn get_crate_data(&self, cnum: CrateNum) -> CrateMetadataRef<'_> {
+    pub(crate) fn get_crate_data(&self, cnum: CrateNum) -> CrateMetadataRef<'_> {
         let cdata = self.metas[cnum]
             .as_ref()
             .unwrap_or_else(|| panic!("Failed to get crate data for {:?}", cnum));
@@ -147,7 +145,7 @@ impl CStore {
         self.metas[cnum] = Some(Lrc::new(data));
     }
 
-    crate fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
+    pub(crate) fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
         self.metas
             .iter_enumerated()
             .filter_map(|(cnum, data)| data.as_ref().map(|data| (cnum, &**data)))
@@ -166,7 +164,7 @@ impl CStore {
         }
     }
 
-    crate fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
+    pub(crate) fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
         let mut deps = Vec::new();
         if cnum == LOCAL_CRATE {
             for (cnum, _) in self.iter_crate_data() {
@@ -184,23 +182,25 @@ impl CStore {
         deps
     }
 
-    crate fn injected_panic_runtime(&self) -> Option<CrateNum> {
+    pub(crate) fn injected_panic_runtime(&self) -> Option<CrateNum> {
         self.injected_panic_runtime
     }
 
-    crate fn allocator_kind(&self) -> Option<AllocatorKind> {
+    pub(crate) fn allocator_kind(&self) -> Option<AllocatorKind> {
         self.allocator_kind
     }
 
-    crate fn has_global_allocator(&self) -> bool {
+    pub(crate) fn has_global_allocator(&self) -> bool {
         self.has_global_allocator
     }
 
     pub fn report_unused_deps(&self, tcx: TyCtxt<'_>) {
+        let json_unused_externs = tcx.sess.opts.json_unused_externs;
+
         // We put the check for the option before the lint_level_at_node call
         // because the call mutates internal state and introducing it
         // leads to some ui tests failing.
-        if !tcx.sess.opts.json_unused_externs {
+        if !json_unused_externs.is_enabled() {
             return;
         }
         let level = tcx
@@ -210,10 +210,11 @@ impl CStore {
             let unused_externs =
                 self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();
             let unused_externs = unused_externs.iter().map(String::as_str).collect::<Vec<&str>>();
-            tcx.sess
-                .parse_sess
-                .span_diagnostic
-                .emit_unused_externs(level.as_str(), &unused_externs);
+            tcx.sess.parse_sess.span_diagnostic.emit_unused_externs(
+                level,
+                json_unused_externs.is_loud(),
+                &unused_externs,
+            );
         }
     }
 }
@@ -322,7 +323,7 @@ impl<'a> CrateLoader<'a> {
         None
     }
 
-    fn verify_no_symbol_conflicts(&self, root: &CrateRoot<'_>) -> Result<(), CrateError> {
+    fn verify_no_symbol_conflicts(&self, root: &CrateRoot) -> Result<(), CrateError> {
         // Check for (potential) conflicts with the local crate
         if self.sess.local_stable_crate_id() == root.stable_crate_id() {
             return Err(CrateError::SymbolConflictsCurrent(root.name()));
@@ -341,7 +342,7 @@ impl<'a> CrateLoader<'a> {
 
     fn verify_no_stable_crate_id_hash_conflicts(
         &mut self,
-        root: &CrateRoot<'_>,
+        root: &CrateRoot,
         cnum: CrateNum,
     ) -> Result<(), CrateError> {
         if let Some(existing) = self.cstore.stable_crate_ids.insert(root.stable_crate_id(), cnum) {
@@ -417,6 +418,7 @@ impl<'a> CrateLoader<'a> {
 
         let crate_metadata = CrateMetadata::new(
             self.sess,
+            &self.cstore,
             metadata,
             crate_root,
             raw_proc_macros,
@@ -621,7 +623,7 @@ impl<'a> CrateLoader<'a> {
     fn resolve_crate_deps(
         &mut self,
         root: &CratePaths,
-        crate_root: &CrateRoot<'_>,
+        crate_root: &CrateRoot,
         metadata: &MetadataBlob,
         krate: CrateNum,
         dep_kind: CrateDepKind,
@@ -825,11 +827,13 @@ impl<'a> CrateLoader<'a> {
         for (_, data) in self.cstore.iter_crate_data() {
             if data.has_global_allocator() {
                 match global_allocator {
-                    Some(other_crate) => self.sess.err(&format!(
+                    Some(other_crate) => {
+                        self.sess.err(&format!(
                         "the `#[global_allocator]` in {} conflicts with global allocator in: {}",
                         other_crate,
                         data.name()
-                    )),
+                    ));
+                    }
                     None => global_allocator = Some(data.name()),
                 }
             }
@@ -864,7 +868,7 @@ impl<'a> CrateLoader<'a> {
         // don't perform this validation if the session has errors, as one of
         // those errors may indicate a circular dependency which could cause
         // this to stack overflow.
-        if self.sess.has_errors() {
+        if self.sess.has_errors().is_some() {
             return;
         }
 
@@ -899,11 +903,15 @@ impl<'a> CrateLoader<'a> {
 
     fn report_unused_deps(&mut self, krate: &ast::Crate) {
         // Make a point span rather than covering the whole file
-        let span = krate.span.shrink_to_lo();
+        let span = krate.spans.inner_span.shrink_to_lo();
         // Complain about anything left over
         for (name, entry) in self.sess.opts.externs.iter() {
             if let ExternLocation::FoundInLibrarySearchDirectories = entry.location {
                 // Don't worry about pathless `--extern foo` sysroot references
+                continue;
+            }
+            if entry.nounused_dep {
+                // We're not worried about this one
                 continue;
             }
             let name_interned = Symbol::intern(name);
@@ -912,25 +920,12 @@ impl<'a> CrateLoader<'a> {
             }
 
             // Got a real unused --extern
-            if self.sess.opts.json_unused_externs {
+            if self.sess.opts.json_unused_externs.is_enabled() {
                 self.cstore.unused_externs.push(name_interned);
                 continue;
             }
 
-            let diag = match self.sess.opts.extern_dep_specs.get(name) {
-                Some(loc) => BuiltinLintDiagnostics::ExternDepSpec(name.clone(), loc.into()),
-                None => {
-                    // If we don't have a specific location, provide a json encoding of the `--extern`
-                    // option.
-                    let meta: BTreeMap<String, String> =
-                        std::iter::once(("name".to_string(), name.to_string())).collect();
-                    BuiltinLintDiagnostics::ExternDepSpec(
-                        name.clone(),
-                        ExternDepSpec::Json(meta.to_json()),
-                    )
-                }
-            };
-            self.sess.parse_sess.buffer_lint_with_diagnostic(
+            self.sess.parse_sess.buffer_lint(
                     lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                     span,
                     ast::CRATE_NODE_ID,
@@ -939,7 +934,6 @@ impl<'a> CrateLoader<'a> {
                         name,
                         self.local_crate_name,
                         name),
-                    diag,
                 );
         }
     }

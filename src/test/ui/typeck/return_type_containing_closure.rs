@@ -1,10 +1,10 @@
 #[allow(unused)]
-fn foo() {
-    //~^ NOTE possibly return type missing here?
+fn foo() { //~ HELP a return type might be missing here
     vec!['a'].iter().map(|c| c)
     //~^ ERROR mismatched types [E0308]
     //~| NOTE expected `()`, found struct `Map`
     //~| NOTE expected unit type `()`
+    //~| HELP consider using a semicolon here
 }
 
 fn main() {}

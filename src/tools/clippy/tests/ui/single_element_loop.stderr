@@ -2,7 +2,7 @@ error: for loop over a single element
   --> $DIR/single_element_loop.rs:7:5
    |
 LL | /     for item in &[item1] {
-LL | |         println!("{}", item);
+LL | |         dbg!(item);
 LL | |     }
    | |_____^
    |
@@ -11,7 +11,7 @@ help: try
    |
 LL ~     {
 LL +         let item = &item1;
-LL +         println!("{}", item);
+LL +         dbg!(item);
 LL +     }
    |
 
@@ -19,7 +19,7 @@ error: for loop over a single element
   --> $DIR/single_element_loop.rs:11:5
    |
 LL | /     for item in [item1].iter() {
-LL | |         println!("{:?}", item);
+LL | |         dbg!(item);
 LL | |     }
    | |_____^
    |
@@ -27,9 +27,73 @@ help: try
    |
 LL ~     {
 LL +         let item = &item1;
-LL +         println!("{:?}", item);
+LL +         dbg!(item);
 LL +     }
    |
 
-error: aborting due to 2 previous errors
+error: for loop over a single element
+  --> $DIR/single_element_loop.rs:15:5
+   |
+LL | /     for item in &[0..5] {
+LL | |         dbg!(item);
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     {
+LL +         let item = &(0..5);
+LL +         dbg!(item);
+LL +     }
+   |
+
+error: for loop over a single element
+  --> $DIR/single_element_loop.rs:19:5
+   |
+LL | /     for item in [0..5].iter_mut() {
+LL | |         dbg!(item);
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     {
+LL +         let item = &mut (0..5);
+LL +         dbg!(item);
+LL +     }
+   |
+
+error: for loop over a single element
+  --> $DIR/single_element_loop.rs:23:5
+   |
+LL | /     for item in [0..5] {
+LL | |         dbg!(item);
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     {
+LL +         let item = 0..5;
+LL +         dbg!(item);
+LL +     }
+   |
+
+error: for loop over a single element
+  --> $DIR/single_element_loop.rs:27:5
+   |
+LL | /     for item in [0..5].into_iter() {
+LL | |         dbg!(item);
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     {
+LL +         let item = 0..5;
+LL +         dbg!(item);
+LL +     }
+   |
+
+error: aborting due to 6 previous errors
 

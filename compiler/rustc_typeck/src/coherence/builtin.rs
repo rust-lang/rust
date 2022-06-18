@@ -2,21 +2,21 @@
 //! up data structures required by type-checking/codegen.
 
 use crate::errors::{CopyImplOnNonAdt, CopyImplOnTypeWithDtor, DropImplOnWrongItem};
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{RegionckMode, TyCtxtInferExt};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
-use rustc_middle::ty::TypeFoldable;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeFoldable};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
 use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::{self, ObligationCause, TraitEngine, TraitEngineExt};
+use std::collections::BTreeMap;
 
 pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
     let lang_items = tcx.lang_items();
@@ -91,8 +91,87 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 E0204,
                 "the trait `Copy` may not be implemented for this type"
             );
-            for span in fields.iter().map(|f| tcx.def_span(f.did)) {
-                err.span_label(span, "this field does not implement `Copy`");
+
+            // We'll try to suggest constraining type parameters to fulfill the requirements of
+            // their `Copy` implementation.
+            let mut generics = None;
+            if let ty::Adt(def, _substs) = self_type.kind() {
+                let self_def_id = def.did();
+                if let Some(local) = self_def_id.as_local() {
+                    let self_item = tcx.hir().expect_item(local);
+                    generics = self_item.kind.generics();
+                }
+            }
+            let mut errors: BTreeMap<_, Vec<_>> = Default::default();
+            let mut bounds = vec![];
+
+            for (field, ty) in fields {
+                let field_span = tcx.def_span(field.did);
+                let field_ty_span = match tcx.hir().get_if_local(field.did) {
+                    Some(hir::Node::Field(field_def)) => field_def.ty.span,
+                    _ => field_span,
+                };
+                err.span_label(field_span, "this field does not implement `Copy`");
+                // Spin up a new FulfillmentContext, so we can get the _precise_ reason
+                // why this field does not implement Copy. This is useful because sometimes
+                // it is not immediately clear why Copy is not implemented for a field, since
+                // all we point at is the field itself.
+                tcx.infer_ctxt().enter(|infcx| {
+                    let mut fulfill_cx = traits::FulfillmentContext::new_ignoring_regions();
+                    fulfill_cx.register_bound(
+                        &infcx,
+                        param_env,
+                        ty,
+                        tcx.lang_items().copy_trait().unwrap(),
+                        traits::ObligationCause::dummy_with_span(field_ty_span),
+                    );
+                    for error in fulfill_cx.select_all_or_error(&infcx) {
+                        let error_predicate = error.obligation.predicate;
+                        // Only note if it's not the root obligation, otherwise it's trivial and
+                        // should be self-explanatory (i.e. a field literally doesn't implement Copy).
+
+                        // FIXME: This error could be more descriptive, especially if the error_predicate
+                        // contains a foreign type or if it's a deeply nested type...
+                        if error_predicate != error.root_obligation.predicate {
+                            errors
+                                .entry((ty.to_string(), error_predicate.to_string()))
+                                .or_default()
+                                .push(error.obligation.cause.span);
+                        }
+                        if let ty::PredicateKind::Trait(ty::TraitPredicate {
+                            trait_ref,
+                            polarity: ty::ImplPolarity::Positive,
+                            ..
+                        }) = error_predicate.kind().skip_binder()
+                        {
+                            let ty = trait_ref.self_ty();
+                            if let ty::Param(_) = ty.kind() {
+                                bounds.push((
+                                    format!("{ty}"),
+                                    trait_ref.print_only_trait_path().to_string(),
+                                    Some(trait_ref.def_id),
+                                ));
+                            }
+                        }
+                    }
+                });
+            }
+            for ((ty, error_predicate), spans) in errors {
+                let span: MultiSpan = spans.into();
+                err.span_note(
+                    span,
+                    &format!("the `Copy` impl for `{}` requires that `{}`", ty, error_predicate),
+                );
+            }
+            if let Some(generics) = generics {
+                suggest_constraining_type_params(
+                    tcx,
+                    generics,
+                    &mut err,
+                    bounds.iter().map(|(param, constraint, def_id)| {
+                        (param.as_str(), constraint.as_str(), *def_id)
+                    }),
+                );
             }
             err.emit();
         }
@@ -145,7 +224,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
     tcx.infer_ctxt().enter(|infcx| {
         let cause = ObligationCause::misc(span, impl_hir_id);
 
-        use ty::TyKind::*;
+        use rustc_type_ir::sty::TyKind::*;
         match (source.kind(), target.kind()) {
             (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
                 if infcx.at(&cause, param_env).eq(r_a, *r_b).is_ok() && mutbl_a == *mutbl_b => {}
@@ -154,8 +233,8 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
                 if def_a.is_struct() && def_b.is_struct() =>
             {
                 if def_a != def_b {
-                    let source_path = tcx.def_path_str(def_a.did);
-                    let target_path = tcx.def_path_str(def_b.did);
+                    let source_path = tcx.def_path_str(def_a.did());
+                    let target_path = tcx.def_path_str(def_b.did());
 
                     create_err(&format!(
                         "the trait `DispatchFromDyn` may only be implemented \
@@ -168,7 +247,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
                     return;
                 }
 
-                if def_a.repr.c() || def_a.repr.packed() {
+                if def_a.repr().c() || def_a.repr().packed() {
                     create_err(
                         "structs implementing `DispatchFromDyn` may not have \
                              `#[repr(packed)]` or `#[repr(C)]`",
@@ -270,11 +349,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
 
                     // Finally, resolve all regions.
                     let outlives_env = OutlivesEnvironment::new(param_env);
-                    infcx.resolve_regions_and_report_errors(
-                        impl_did.to_def_id(),
-                        &outlives_env,
-                        RegionckMode::default(),
-                    );
+                    infcx.resolve_regions_and_report_errors(impl_did.to_def_id(), &outlives_env);
                 }
             }
             _ => {
@@ -353,8 +428,8 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 if def_a.is_struct() && def_b.is_struct() =>
             {
                 if def_a != def_b {
-                    let source_path = tcx.def_path_str(def_a.did);
-                    let target_path = tcx.def_path_str(def_b.did);
+                    let source_path = tcx.def_path_str(def_a.did());
+                    let target_path = tcx.def_path_str(def_b.did());
                     struct_span_err!(
                         tcx.sess,
                         span,
@@ -531,11 +606,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
 
         // Finally, resolve all regions.
         let outlives_env = OutlivesEnvironment::new(param_env);
-        infcx.resolve_regions_and_report_errors(
-            impl_did.to_def_id(),
-            &outlives_env,
-            RegionckMode::default(),
-        );
+        infcx.resolve_regions_and_report_errors(impl_did.to_def_id(), &outlives_env);
 
         CoerceUnsizedInfo { custom_kind: kind }
     })

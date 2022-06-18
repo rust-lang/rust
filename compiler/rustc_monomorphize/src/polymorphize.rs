@@ -13,7 +13,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{
     self,
-    fold::{TypeFoldable, TypeVisitor},
+    fold::{TypeFoldable, TypeSuperFoldable, TypeVisitor},
     query::Providers,
     subst::SubstsRef,
     Const, Ty, TyCtxt,
@@ -65,7 +65,7 @@ fn unused_generic_params<'tcx>(
     mark_used_by_default_parameters(tcx, def_id, generics, &mut unused_parameters);
     debug!(?unused_parameters, "(after default)");
 
-    // Visit MIR and accumululate used generic parameters.
+    // Visit MIR and accumulate used generic parameters.
     let body = match tcx.hir().body_const_context(def_id.expect_local()) {
         // Const functions are actually called and should thus be considered for polymorphization
         // via their runtime MIR.
@@ -158,7 +158,7 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::Fn
         | DefKind::Const
         | DefKind::ConstParam
-        | DefKind::Static
+        | DefKind::Static(_)
         | DefKind::Ctor(_, _)
         | DefKind::AssocFn
         | DefKind::AssocConst
@@ -197,11 +197,11 @@ fn emit_unused_generic_params_error<'tcx>(
     unused_parameters: &FiniteBitSet<u32>,
 ) {
     let base_def_id = tcx.typeck_root_def_id(def_id);
-    if !tcx.get_attrs(base_def_id).iter().any(|a| a.has_name(sym::rustc_polymorphize_error)) {
+    if !tcx.has_attr(base_def_id, sym::rustc_polymorphize_error) {
         return;
     }
 
-    let fn_span = match tcx.opt_item_name(def_id) {
+    let fn_span = match tcx.opt_item_ident(def_id) {
         Some(ident) => ident.span,
         _ => tcx.def_span(def_id),
     };
@@ -283,7 +283,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
             return ControlFlow::CONTINUE;
         }
 
-        match c.val() {
+        match c.kind() {
             ty::ConstKind::Param(param) => {
                 debug!(?param);
                 self.unused_parameters.clear(param.index);
@@ -353,7 +353,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
             return ControlFlow::CONTINUE;
         }
 
-        match c.val() {
+        match c.kind() {
             ty::ConstKind::Param(param) => {
                 if self.unused_parameters.contains(param.index).unwrap_or(false) {
                     ControlFlow::CONTINUE

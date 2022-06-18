@@ -5,7 +5,7 @@ use crate::mir::Promoted;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::ParamEnv;
 use crate::ty::{self, TyCtxt, TypeFoldable};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_target::abi::Size;
@@ -63,7 +63,7 @@ pub enum ConstKind<'tcx> {
     Unevaluated(Unevaluated<'tcx>),
 
     /// Used to hold computed value.
-    Value(ConstValue<'tcx>),
+    Value(ty::ValTree<'tcx>),
 
     /// A placeholder for a const which could not be computed; this is
     /// propagated to avoid useless error messages.
@@ -75,7 +75,7 @@ static_assert_size!(ConstKind<'_>, 40);
 
 impl<'tcx> ConstKind<'tcx> {
     #[inline]
-    pub fn try_to_value(self) -> Option<ConstValue<'tcx>> {
+    pub fn try_to_value(self) -> Option<ty::ValTree<'tcx>> {
         if let ConstKind::Value(val) = self { Some(val) } else { None }
     }
 
@@ -86,7 +86,7 @@ impl<'tcx> ConstKind<'tcx> {
 
     #[inline]
     pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
-        Some(self.try_to_value()?.try_to_scalar()?.assert_int())
+        self.try_to_value()?.try_to_scalar_int()
     }
 
     #[inline]
@@ -115,22 +115,65 @@ pub enum InferConst<'tcx> {
     Fresh(u32),
 }
 
+enum EvalMode {
+    Typeck,
+    Mir,
+}
+
+enum EvalResult<'tcx> {
+    ValTree(ty::ValTree<'tcx>),
+    ConstVal(ConstValue<'tcx>),
+}
+
 impl<'tcx> ConstKind<'tcx> {
     #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
-        self.try_eval(tcx, param_env).and_then(Result::ok).map_or(self, ConstKind::Value)
+        self.try_eval_for_typeck(tcx, param_env).and_then(Result::ok).map_or(self, ConstKind::Value)
     }
 
     #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that isn't possible or necessary
     /// return `None`.
-    pub(super) fn try_eval(
+    // FIXME(@lcnr): Completely rework the evaluation/normalization system for `ty::Const` once valtrees are merged.
+    pub fn try_eval_for_mir(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-    ) -> Option<Result<ConstValue<'tcx>, ErrorReported>> {
+    ) -> Option<Result<ConstValue<'tcx>, ErrorGuaranteed>> {
+        match self.try_eval_inner(tcx, param_env, EvalMode::Mir) {
+            Some(Ok(EvalResult::ValTree(_))) => unreachable!(),
+            Some(Ok(EvalResult::ConstVal(v))) => Some(Ok(v)),
+            Some(Err(e)) => Some(Err(e)),
+            None => None,
+        }
+    }
+
+    #[inline]
+    /// Tries to evaluate the constant if it is `Unevaluated`. If that isn't possible or necessary
+    /// return `None`.
+    // FIXME(@lcnr): Completely rework the evaluation/normalization system for `ty::Const` once valtrees are merged.
+    pub fn try_eval_for_typeck(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> Option<Result<ty::ValTree<'tcx>, ErrorGuaranteed>> {
+        match self.try_eval_inner(tcx, param_env, EvalMode::Typeck) {
+            Some(Ok(EvalResult::ValTree(v))) => Some(Ok(v)),
+            Some(Ok(EvalResult::ConstVal(_))) => unreachable!(),
+            Some(Err(e)) => Some(Err(e)),
+            None => None,
+        }
+    }
+
+    #[inline]
+    fn try_eval_inner(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        eval_mode: EvalMode,
+    ) -> Option<Result<EvalResult<'tcx>, ErrorGuaranteed>> {
         if let ConstKind::Unevaluated(unevaluated) = self {
             use crate::mir::interpret::ErrorHandled;
 
@@ -165,14 +208,29 @@ impl<'tcx> ConstKind<'tcx> {
             let (param_env, unevaluated) = param_env_and.into_parts();
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            match tcx.const_eval_resolve(param_env, unevaluated, None) {
-                // NOTE(eddyb) `val` contains no lifetimes/types/consts,
-                // and we use the original type, so nothing from `substs`
-                // (which may be identity substs, see above),
-                // can leak through `val` into the const we return.
-                Ok(val) => Some(Ok(val)),
-                Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => None,
-                Err(ErrorHandled::Reported(e)) => Some(Err(e)),
+            match eval_mode {
+                EvalMode::Typeck => {
+                    match tcx.const_eval_resolve_for_typeck(param_env, unevaluated, None) {
+                        // NOTE(eddyb) `val` contains no lifetimes/types/consts,
+                        // and we use the original type, so nothing from `substs`
+                        // (which may be identity substs, see above),
+                        // can leak through `val` into the const we return.
+                        Ok(val) => Some(Ok(EvalResult::ValTree(val?))),
+                        Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => None,
+                        Err(ErrorHandled::Reported(e)) => Some(Err(e)),
+                    }
+                }
+                EvalMode::Mir => {
+                    match tcx.const_eval_resolve(param_env, unevaluated, None) {
+                        // NOTE(eddyb) `val` contains no lifetimes/types/consts,
+                        // and we use the original type, so nothing from `substs`
+                        // (which may be identity substs, see above),
+                        // can leak through `val` into the const we return.
+                        Ok(val) => Some(Ok(EvalResult::ConstVal(val))),
+                        Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => None,
+                        Err(ErrorHandled::Reported(e)) => Some(Err(e)),
+                    }
+                }
             }
         } else {
             None

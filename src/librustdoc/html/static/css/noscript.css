@@ -18,7 +18,3 @@ rules.
 	/* The search bar and related controls don't work without JS */
 	display: none;
 }
-
-#theme-picker {
-	display: none;
-}

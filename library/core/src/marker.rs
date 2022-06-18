@@ -219,7 +219,7 @@ pub trait StructuralEq {
 ///
 /// // `x` has moved into `y`, and so cannot be used
 ///
-/// // println!("{:?}", x); // error: use of moved value
+/// // println!("{x:?}"); // error: use of moved value
 /// ```
 ///
 /// However, if a type implements `Copy`, it instead has 'copy semantics':
@@ -236,7 +236,7 @@ pub trait StructuralEq {
 ///
 /// // `y` is a copy of `x`
 ///
-/// println!("{:?}", x); // A-OK!
+/// println!("{x:?}"); // A-OK!
 /// ```
 ///
 /// It's important to note that in these two examples, the only difference is whether you
@@ -359,7 +359,6 @@ pub trait StructuralEq {
 ///
 /// * Function item types (i.e., the distinct types defined for each function)
 /// * Function pointer types (e.g., `fn() -> i32`)
-/// * Tuple types, if each component also implements `Copy` (e.g., `()`, `(i32, bool)`)
 /// * Closure types, if they capture no value from the environment
 ///   or if all such captured values implement `Copy` themselves.
 ///   Note that variables captured by shared reference always implement `Copy`
@@ -791,6 +790,15 @@ impl<T: ?Sized> Unpin for *const T {}
 
 #[stable(feature = "pin_raw", since = "1.38.0")]
 impl<T: ?Sized> Unpin for *mut T {}
+
+/// A marker for types that can be dropped.
+///
+/// This should be used for `~const` bounds,
+/// as non-const bounds will always hold for every type.
+#[unstable(feature = "const_trait_impl", issue = "67792")]
+#[lang = "destruct"]
+#[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+pub trait Destruct {}
 
 /// Implementations of `Copy` for primitive types.
 ///

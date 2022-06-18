@@ -24,7 +24,7 @@ mod bogus_attribute_types_1 {
 }
 
 #[deprecated(since = "a", note = "b")]
-#[deprecated(since = "a", note = "b")] //~ ERROR multiple deprecated attributes
+#[deprecated(since = "a", note = "b")] //~ ERROR multiple `deprecated` attributes
 fn multiple1() { }
 
 #[deprecated(since = "a", since = "b", note = "c")] //~ ERROR multiple 'since' items

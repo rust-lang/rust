@@ -11,7 +11,7 @@ use std::iter::Peekable;
 use std::ops::Range;
 use std::str::CharIndices;
 
-crate const CHECK_INVALID_HTML_TAGS: Pass = Pass {
+pub(crate) const CHECK_INVALID_HTML_TAGS: Pass = Pass {
     name: "check-invalid-html-tags",
     run: check_invalid_html_tags,
     description: "detects invalid HTML tags in doc comments",
@@ -21,7 +21,7 @@ struct InvalidHtmlTagsLinter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
 }
 
-crate fn check_invalid_html_tags(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn check_invalid_html_tags(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     if cx.tcx.sess.is_nightly_build() {
         let mut coll = InvalidHtmlTagsLinter { cx };
         coll.visit_crate(&krate);
@@ -91,11 +91,7 @@ fn extract_path_backwards(text: &str, end_pos: usize) -> Option<usize> {
         }
         break;
     }
-    if current_pos == end_pos {
-        return None;
-    } else {
-        return Some(current_pos);
-    }
+    if current_pos == end_pos { None } else { Some(current_pos) }
 }
 
 fn extract_html_tag(
@@ -197,13 +193,9 @@ fn extract_tags(
 impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         let tcx = self.cx.tcx;
-        let hir_id = match DocContext::as_local_hir_id(tcx, item.def_id) {
-            Some(hir_id) => hir_id,
-            None => {
-                // If non-local, no need to check anything.
-                return;
-            }
-        };
+        let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id)
+        // If non-local, no need to check anything.
+        else { return };
         let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
         if !dox.is_empty() {
             let report_diag = |msg: &str, range: &Range<usize>, is_open_tag: bool| {
@@ -219,7 +211,7 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
                     // We don't try to detect stuff `<like, this>` because that's not valid HTML,
                     // and we don't try to detect stuff `<like this>` because that's not valid Rust.
                     if let Some(Some(generics_start)) = (is_open_tag
-                        && dox[..range.end].ends_with(">"))
+                        && dox[..range.end].ends_with('>'))
                     .then(|| extract_path_backwards(&dox, range.start))
                     {
                         let generics_sp = match super::source_span_for_markdown_range(

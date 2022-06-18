@@ -4,7 +4,8 @@ struct Dog {
 
 impl Dog {
     pub fn chase_cat(&mut self) {
-        let p: &'static mut usize = &mut self.cats_chased; //~ ERROR E0759
+        let p: &'static mut usize = &mut self.cats_chased;
+        //~^ ERROR lifetime may not live long enough
         *p += 1;
     }
 

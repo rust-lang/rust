@@ -83,6 +83,6 @@ pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
     }
     let buf = unsafe { slice::from_raw_parts(m as *const u8, s as _) };
     if let Ok(s) = str::from_utf8(&buf[..buf.iter().position(|&b| b == 0).unwrap_or(buf.len())]) {
-        eprint!("{}", s);
+        eprint!("{s}");
     }
 }

@@ -54,22 +54,6 @@ mod imp {
     use crate::sys::unix::os::page_size;
     use crate::sys_common::thread_info;
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
-        #[repr(C)]
-        struct siginfo_t {
-            a: [libc::c_int; 3], // si_signo, si_errno, si_code
-            si_addr: *mut libc::c_void,
-        }
-
-        (*(info as *const siginfo_t)).si_addr as usize
-    }
-
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
-        (*info).si_addr as usize
-    }
-
     // Signal handler for the SIGSEGV and SIGBUS handlers. We've got guard pages
     // (unmapped pages) at the end of every thread's stack, so if a thread ends
     // up running into the guard page it'll trigger this handler. We want to
@@ -97,7 +81,7 @@ mod imp {
         _data: *mut libc::c_void,
     ) {
         let guard = thread_info::stack_guard().unwrap_or(0..0);
-        let addr = siginfo_si_addr(info);
+        let addr = (*info).si_addr() as usize;
 
         // If the faulting address is within the guard page, then we print a
         // message saying so and abort.

@@ -31,7 +31,7 @@ note: struct defined here, with 2 generic parameters: `T`, `N`
   --> $DIR/issue-89066.rs:8:8
    |
 LL | struct All<'a, T, const N: usize> {
-   |        ^^^     -        -
+   |        ^^^     -  --------------
 
 error: aborting due to 4 previous errors
 

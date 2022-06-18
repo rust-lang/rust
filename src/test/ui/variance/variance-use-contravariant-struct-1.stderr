@@ -1,22 +1,15 @@
-error[E0308]: mismatched types
-  --> $DIR/variance-use-contravariant-struct-1.rs:12:5
+error: lifetime may not live long enough
+  --> $DIR/variance-use-contravariant-struct-1.rs:10:5
    |
+LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
+   |        ---- ---- lifetime `'max` defined here
+   |        |
+   |        lifetime `'min` defined here
+...
 LL |     v
-   |     ^ lifetime mismatch
+   |     ^ function was supposed to return data with lifetime `'max` but it is returning data with lifetime `'min`
    |
-   = note: expected struct `SomeStruct<&'min ()>`
-              found struct `SomeStruct<&'max ()>`
-note: the lifetime `'min` as defined here...
-  --> $DIR/variance-use-contravariant-struct-1.rs:8:8
-   |
-LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
-   |        ^^^^
-note: ...does not necessarily outlive the lifetime `'max` as defined here
-  --> $DIR/variance-use-contravariant-struct-1.rs:8:13
-   |
-LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
-   |             ^^^^
+   = help: consider adding the following bound: `'min: 'max`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0308`.

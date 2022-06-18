@@ -10,6 +10,7 @@ mod kw {
     syn::custom_keyword!(MAX);
     syn::custom_keyword!(ENCODABLE);
     syn::custom_keyword!(custom);
+    syn::custom_keyword!(ORD_IMPL);
 }
 
 #[derive(Debug)]
@@ -42,6 +43,7 @@ impl Parse for Newtype {
         let mut max = None;
         let mut consts = Vec::new();
         let mut encodable = true;
+        let mut ord = true;
 
         // Parse an optional trailing comma
         let try_comma = || -> Result<()> {
@@ -99,13 +101,20 @@ impl Parse for Newtype {
                     encodable = false;
                     continue;
                 }
+                if body.lookahead1().peek(kw::ORD_IMPL) {
+                    body.parse::<kw::ORD_IMPL>()?;
+                    body.parse::<Token![=]>()?;
+                    body.parse::<kw::custom>()?;
+                    ord = false;
+                    continue;
+                }
 
                 // We've parsed everything that the user provided, so we're done
                 if body.is_empty() {
                     break;
                 }
 
-                // Otherwise, we are parsng a user-defined constant
+                // Otherwise, we are parsing a user-defined constant
                 let const_attrs = body.call(Attribute::parse_outer)?;
                 body.parse::<Token![const]>()?;
                 let const_name: Ident = body.parse()?;
@@ -128,10 +137,44 @@ impl Parse for Newtype {
                     }
                 }
                 impl<E: ::rustc_serialize::Encoder> ::rustc_serialize::Encodable<E> for #name {
-                    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-                        e.emit_u32(self.private)
+                    fn encode(&self, e: &mut E) {
+                        e.emit_u32(self.private);
                     }
                 }
+            }
+        } else {
+            quote! {}
+        };
+
+        if ord {
+            derive_paths.push(parse_quote!(Ord));
+            derive_paths.push(parse_quote!(PartialOrd));
+        }
+
+        let step = if ord {
+            quote! {
+                impl ::std::iter::Step for #name {
+                    #[inline]
+                    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                        <usize as ::std::iter::Step>::steps_between(
+                            &Self::index(*start),
+                            &Self::index(*end),
+                        )
+                    }
+
+                    #[inline]
+                    fn forward_checked(start: Self, u: usize) -> Option<Self> {
+                        Self::index(start).checked_add(u).map(Self::from_usize)
+                    }
+
+                    #[inline]
+                    fn backward_checked(start: Self, u: usize) -> Option<Self> {
+                        Self::index(start).checked_sub(u).map(Self::from_usize)
+                    }
+                }
+
+                // Safety: The implementation of `Step` upholds all invariants.
+                unsafe impl ::std::iter::TrustedStep for #name {}
             }
         } else {
             quote! {}
@@ -152,8 +195,9 @@ impl Parse for Newtype {
 
         Ok(Self(quote! {
             #(#attrs)*
-            #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, #(#derive_paths),*)]
+            #[derive(Clone, Copy, PartialEq, Eq, Hash, #(#derive_paths),*)]
             #[rustc_layout_scalar_valid_range_end(#max)]
+            #[rustc_pass_by_value]
             #vis struct #name {
                 private: u32,
             }
@@ -247,28 +291,7 @@ impl Parse for Newtype {
                 }
             }
 
-            impl ::std::iter::Step for #name {
-                #[inline]
-                fn steps_between(start: &Self, end: &Self) -> Option<usize> {
-                    <usize as ::std::iter::Step>::steps_between(
-                        &Self::index(*start),
-                        &Self::index(*end),
-                    )
-                }
-
-                #[inline]
-                fn forward_checked(start: Self, u: usize) -> Option<Self> {
-                    Self::index(start).checked_add(u).map(Self::from_usize)
-                }
-
-                #[inline]
-                fn backward_checked(start: Self, u: usize) -> Option<Self> {
-                    Self::index(start).checked_sub(u).map(Self::from_usize)
-                }
-            }
-
-            // Safety: The implementation of `Step` upholds all invariants.
-            unsafe impl ::std::iter::TrustedStep for #name {}
+            #step
 
             impl From<#name> for u32 {
                 #[inline]

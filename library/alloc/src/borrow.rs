@@ -67,14 +67,13 @@ pub trait ToOwned {
     /// Basic usage:
     ///
     /// ```
-    /// # #![feature(toowned_clone_into)]
     /// let mut s: String = String::new();
     /// "hello".clone_into(&mut s);
     ///
     /// let mut v: Vec<i32> = Vec::new();
     /// [1, 2][..].clone_into(&mut v);
     /// ```
-    #[unstable(feature = "toowned_clone_into", reason = "recently added", issue = "41263")]
+    #[stable(feature = "toowned_clone_into", since = "1.63.0")]
     fn clone_into(&self, target: &mut Self::Owned) {
         *target = self.to_owned();
     }
@@ -161,7 +160,7 @@ where
 /// let readonly = [1, 2];
 /// let borrowed = Items::new((&readonly[..]).into());
 /// match borrowed {
-///     Items { values: Cow::Borrowed(b) } => println!("borrowed {:?}", b),
+///     Items { values: Cow::Borrowed(b) } => println!("borrowed {b:?}"),
 ///     _ => panic!("expect borrowed value"),
 /// }
 ///
@@ -292,8 +291,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     ///
     /// # Examples
     ///
-    /// Calling `into_owned` on a `Cow::Borrowed` clones the underlying data
-    /// and becomes a `Cow::Owned`:
+    /// Calling `into_owned` on a `Cow::Borrowed` returns a clone of the borrowed data:
     ///
     /// ```
     /// use std::borrow::Cow;
@@ -307,7 +305,8 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// );
     /// ```
     ///
-    /// Calling `into_owned` on a `Cow::Owned` is a no-op:
+    /// Calling `into_owned` on a `Cow::Owned` returns the owned data. The data is moved out of the
+    /// `Cow` without being cloned.
     ///
     /// ```
     /// use std::borrow::Cow;

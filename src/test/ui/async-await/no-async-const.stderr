@@ -7,7 +7,7 @@ LL | pub async const fn x() {}
    |     |     expected one of `extern`, `fn`, or `unsafe`
    |     help: `const` must come before `async`: `const async`
    |
-   = note: keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 
 error: aborting due to previous error
 

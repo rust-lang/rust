@@ -296,7 +296,7 @@ help: remove the `format!(..)` macro call
    |
 LL -     panic!(format!("{}", 1));
 LL +     panic!("{}", 1);
-   | 
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:50:18
@@ -311,7 +311,7 @@ help: remove the `format!(..)` macro call
    |
 LL -     unreachable!(format!("{}", 1));
 LL +     unreachable!("{}", 1);
-   | 
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:51:20
@@ -326,7 +326,7 @@ help: remove the `format!(..)` macro call
    |
 LL -     assert!(false, format!("{}", 1));
 LL +     assert!(false, "{}", 1);
-   | 
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:52:26
@@ -341,7 +341,7 @@ help: remove the `format!(..)` macro call
    |
 LL -     debug_assert!(false, format!("{}", 1));
 LL +     debug_assert!(false, "{}", 1);
-   | 
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:54:12

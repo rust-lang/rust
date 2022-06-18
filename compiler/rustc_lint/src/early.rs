@@ -18,8 +18,7 @@ use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self as ast_visit, Visitor};
-use rustc_ast::AstLike;
-use rustc_ast::{self as ast, walk_list};
+use rustc_ast::{self as ast, walk_list, HasAttrs};
 use rustc_middle::ty::RegisteredTools;
 use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
@@ -45,7 +44,9 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
             self.context.lookup_with_diagnostics(
                 lint_id.lint,
                 Some(span),
-                |lint| lint.build(&msg).emit(),
+                |lint| {
+                    lint.build(&msg).emit();
+                },
                 diagnostic,
             );
         }
@@ -59,22 +60,15 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
         F: FnOnce(&mut Self),
     {
         let is_crate_node = id == ast::CRATE_NODE_ID;
-        let push = self.context.builder.push(attrs, is_crate_node);
-        self.check_id(id);
-        self.enter_attrs(attrs);
-        f(self);
-        self.exit_attrs(attrs);
-        self.context.builder.pop(push);
-    }
+        let push = self.context.builder.push(attrs, is_crate_node, None);
 
-    fn enter_attrs(&mut self, attrs: &'a [ast::Attribute]) {
+        self.check_id(id);
         debug!("early context: enter_attrs({:?})", attrs);
         run_early_pass!(self, enter_lint_attrs, attrs);
-    }
-
-    fn exit_attrs(&mut self, attrs: &'a [ast::Attribute]) {
+        f(self);
         debug!("early context: exit_attrs({:?})", attrs);
         run_early_pass!(self, exit_lint_attrs, attrs);
+        self.context.builder.pop(push);
     }
 }
 
@@ -155,7 +149,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
         // Explicitly check for lints associated with 'closure_id', since
         // it does not have a corresponding AST node
-        if let ast_visit::FnKind::Fn(_, _, sig, _, _) = fk {
+        if let ast_visit::FnKind::Fn(_, _, sig, _, _, _) = fk {
             if let ast::Async::Yes { closure_id, .. } = sig.header.asyncness {
                 self.check_id(closure_id);
             }
@@ -237,6 +231,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
         run_early_pass!(self, check_generic_param, param);
+        self.check_id(param.id);
         ast_visit::walk_generic_param(self, param);
     }
 
@@ -270,7 +265,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         });
     }
 
-    fn visit_lifetime(&mut self, lt: &'a ast::Lifetime) {
+    fn visit_lifetime(&mut self, lt: &'a ast::Lifetime, _: ast_visit::LifetimeCtxt) {
         run_early_pass!(self, check_lifetime, lt);
         self.check_id(lt.id);
     }
@@ -279,6 +274,11 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         run_early_pass!(self, check_path, p, id);
         self.check_id(id);
         ast_visit::walk_path(self, p);
+    }
+
+    fn visit_path_segment(&mut self, path_span: Span, s: &'a ast::PathSegment) {
+        self.check_id(s.id);
+        ast_visit::walk_path_segment(self, path_span, s);
     }
 
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
@@ -416,10 +416,25 @@ pub fn check_ast_node<'a>(
     let mut passes: Vec<_> = passes.iter().map(|p| (p)()).collect();
     let mut buffered = lint_buffer.unwrap_or_default();
 
-    if !sess.opts.debugging_opts.no_interleave_lints {
+    if sess.opts.debugging_opts.no_interleave_lints {
+        for (i, pass) in passes.iter_mut().enumerate() {
+            buffered =
+                sess.prof.extra_verbose_generic_activity("run_lint", pass.name()).run(|| {
+                    early_lint_node(
+                        sess,
+                        !pre_expansion && i == 0,
+                        lint_store,
+                        registered_tools,
+                        buffered,
+                        EarlyLintPassObjects { lints: slice::from_mut(pass) },
+                        check_node,
+                    )
+                });
+        }
+    } else {
         buffered = early_lint_node(
             sess,
-            pre_expansion,
+            !pre_expansion,
             lint_store,
             registered_tools,
             buffered,
@@ -437,21 +452,6 @@ pub fn check_ast_node<'a>(
                 EarlyLintPassObjects { lints: &mut passes[..] },
                 check_node,
             );
-        }
-    } else {
-        for (i, pass) in passes.iter_mut().enumerate() {
-            buffered =
-                sess.prof.extra_verbose_generic_activity("run_lint", pass.name()).run(|| {
-                    early_lint_node(
-                        sess,
-                        pre_expansion && i == 0,
-                        lint_store,
-                        registered_tools,
-                        buffered,
-                        EarlyLintPassObjects { lints: slice::from_mut(pass) },
-                        check_node,
-                    )
-                });
         }
     }
 

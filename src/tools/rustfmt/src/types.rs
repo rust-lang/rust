@@ -251,7 +251,7 @@ fn rewrite_segment(
         match **args {
             ast::GenericArgs::AngleBracketed(ref data) if !data.args.is_empty() => {
                 // HACK: squeeze out the span between the identifier and the parameters.
-                // The hack is requried so that we don't remove the separator inside macro calls.
+                // The hack is required so that we don't remove the separator inside macro calls.
                 // This does not work in the presence of comment, hoping that people are
                 // sane about where to put their comment.
                 let separator_snippet = context
@@ -575,7 +575,16 @@ impl Rewrite for ast::GenericParam {
         let mut result = String::with_capacity(128);
         // FIXME: If there are more than one attributes, this will force multiline.
         match self.attrs.rewrite(context, shape) {
-            Some(ref rw) if !rw.is_empty() => result.push_str(&format!("{} ", rw)),
+            Some(ref rw) if !rw.is_empty() => {
+                result.push_str(rw);
+                // When rewriting generic params, an extra newline should be put
+                // if the attributes end with a doc comment
+                if let Some(true) = self.attrs.last().map(|a| a.is_doc_comment()) {
+                    result.push_str(&shape.indent.to_string_with_newline(context.config));
+                } else {
+                    result.push(' ');
+                }
+            }
             _ => (),
         }
 

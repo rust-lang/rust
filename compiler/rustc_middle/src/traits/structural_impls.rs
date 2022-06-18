@@ -33,7 +33,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
 
             super::ImplSource::TraitUpcasting(ref d) => write!(f, "{:?}", d),
 
-            super::ImplSource::ConstDrop(ref d) => write!(f, "{:?}", d),
+            super::ImplSource::ConstDestruct(ref d) => write!(f, "{:?}", d),
         }
     }
 }
@@ -120,9 +120,9 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitAliasData<'tcx, 
     }
 }
 
-impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceConstDropData<N> {
+impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceConstDestructData<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ImplSourceConstDropData(nested={:?})", self.nested)
+        write!(f, "ImplSourceConstDestructData(nested={:?})", self.nested)
     }
 }
 

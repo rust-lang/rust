@@ -60,7 +60,7 @@ use crate::mir::mono::MonoItem;
 use crate::ty::TyCtxt;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::HirId;
 use rustc_query_system::dep_graph::FingerprintStyle;
@@ -195,13 +195,16 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
 // Be very careful changing this type signature!
-crate fn make_compile_codegen_unit(tcx: TyCtxt<'_>, name: Symbol) -> DepNode {
+pub(crate) fn make_compile_codegen_unit(tcx: TyCtxt<'_>, name: Symbol) -> DepNode {
     DepNode::construct(tcx, DepKind::CompileCodegenUnit, &name)
 }
 
 // WARNING: `construct` is generic and does not know that `CompileMonoItem` takes `MonoItem`s as keys.
 // Be very careful changing this type signature!
-crate fn make_compile_mono_item<'tcx>(tcx: TyCtxt<'tcx>, mono_item: &MonoItem<'tcx>) -> DepNode {
+pub(crate) fn make_compile_mono_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mono_item: &MonoItem<'tcx>,
+) -> DepNode {
     DepNode::construct(tcx, DepKind::CompileMonoItem, mono_item)
 }
 
@@ -366,7 +369,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
 
     #[inline(always)]
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
-        let def_id = DefId { krate: *self, index: CRATE_DEF_INDEX };
+        let def_id = self.as_def_id();
         def_id.to_fingerprint(tcx)
     }
 

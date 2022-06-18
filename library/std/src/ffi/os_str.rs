@@ -6,7 +6,7 @@ use crate::cmp;
 use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::iter::{Extend, FromIterator};
+use crate::iter::Extend;
 use crate::ops;
 use crate::rc::Rc;
 use crate::str::FromStr;
@@ -44,6 +44,22 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// as just discussed, strings are also actually stored as a sequence of 8-bit
 /// values, encoded in a less-strict variant of UTF-8. This is useful to
 /// understand when handling capacity and length values.
+///
+/// # Capacity of `OsString`
+///
+/// Capacity uses units of UTF-8 bytes for OS strings which were created from valid unicode, and
+/// uses units of bytes in an unspecified encoding for other contents. On a given target, all
+/// `OsString` and `OsStr` values use the same units for capacity, so the following will work:
+/// ```
+/// use std::ffi::{OsStr, OsString};
+///
+/// fn concat_os_strings(a: &OsStr, b: &OsStr) -> OsString {
+///     let mut ret = OsString::with_capacity(a.len() + b.len()); // This will allocate
+///     ret.push(a); // This will not allocate further
+///     ret.push(b); // This will not allocate further
+///     ret
+/// }
+/// ```
 ///
 /// # Creating an `OsString`
 ///
@@ -186,7 +202,7 @@ impl OsString {
     /// OS strings without reallocating. If `capacity` is 0, the string will not
     /// allocate.
     ///
-    /// See main `OsString` documentation information about encoding.
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -229,7 +245,7 @@ impl OsString {
 
     /// Returns the capacity this `OsString` can hold without reallocating.
     ///
-    /// See `OsString` introduction for information about encoding.
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -250,6 +266,8 @@ impl OsString {
     /// in the given `OsString`.
     ///
     /// The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -272,6 +290,8 @@ impl OsString {
     /// greater than or equal to `self.len() + additional`. Does nothing if
     /// capacity is already sufficient.
     ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
+    ///
     /// # Errors
     ///
     /// If the capacity overflows, or the allocator reports a failure, then an error
@@ -280,7 +300,6 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(try_reserve_2)]
     /// use std::ffi::{OsStr, OsString};
     /// use std::collections::TryReserveError;
     ///
@@ -297,7 +316,7 @@ impl OsString {
     /// }
     /// # process_data("123").expect("why is the test harness OOMing on 3 bytes?");
     /// ```
-    #[unstable(feature = "try_reserve_2", issue = "91789")]
+    #[stable(feature = "try_reserve_2", since = "1.63.0")]
     #[inline]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.inner.try_reserve(additional)
@@ -312,6 +331,8 @@ impl OsString {
     /// minimal. Prefer [`reserve`] if future insertions are expected.
     ///
     /// [`reserve`]: OsString::reserve
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -340,6 +361,8 @@ impl OsString {
     ///
     /// [`try_reserve`]: OsString::try_reserve
     ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
+    ///
     /// # Errors
     ///
     /// If the capacity overflows, or the allocator reports a failure, then an error
@@ -348,7 +371,6 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(try_reserve_2)]
     /// use std::ffi::{OsStr, OsString};
     /// use std::collections::TryReserveError;
     ///
@@ -365,13 +387,15 @@ impl OsString {
     /// }
     /// # process_data("123").expect("why is the test harness OOMing on 3 bytes?");
     /// ```
-    #[unstable(feature = "try_reserve_2", issue = "91789")]
+    #[stable(feature = "try_reserve_2", since = "1.63.0")]
     #[inline]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.inner.try_reserve_exact(additional)
     }
 
     /// Shrinks the capacity of the `OsString` to match its length.
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -398,6 +422,8 @@ impl OsString {
     /// and the supplied value.
     ///
     /// If the current capacity is less than the lower limit, this is a no-op.
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -772,6 +798,8 @@ impl OsStr {
     ///
     /// This number is simply useful for passing to other methods, like
     /// [`OsString::with_capacity`] to avoid reallocations.
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -1219,6 +1247,23 @@ impl fmt::Debug for OsStr {
 impl OsStr {
     pub(crate) fn display(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.inner, formatter)
+    }
+}
+
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<S: Borrow<OsStr>> alloc::slice::Join<&OsStr> for [S] {
+    type Output = OsString;
+
+    fn join(slice: &Self, sep: &OsStr) -> OsString {
+        let Some((first, suffix)) = slice.split_first() else {
+            return OsString::new();
+        };
+        let first_owned = first.borrow().to_owned();
+        suffix.iter().fold(first_owned, |mut a, b| {
+            a.push(sep);
+            a.push(b.borrow());
+            a
+        })
     }
 }
 

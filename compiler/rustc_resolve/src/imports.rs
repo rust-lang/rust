@@ -2,19 +2,17 @@
 
 use crate::diagnostics::Suggestion;
 use crate::Determinacy::{self, *};
-use crate::Namespace::{self, MacroNS, TypeNS};
+use crate::Namespace::{MacroNS, TypeNS};
 use crate::{module_to_string, names_to_string};
-use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
-use crate::{BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
-use crate::{CrateLint, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet, Weak};
-use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
+use crate::{AmbiguityKind, BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
+use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet};
+use crate::{NameBinding, NameBindingKind, PathResult};
 
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{pluralize, struct_span_err, Applicability};
-use rustc_hir::def::{self, PartialRes};
-use rustc_hir::def_id::DefId;
+use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
+use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::span_bug;
 use rustc_middle::ty;
@@ -23,7 +21,7 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
 
 use tracing::*;
 
@@ -66,7 +64,7 @@ pub enum ImportKind<'a> {
 
 /// One import.
 #[derive(Debug, Clone)]
-crate struct Import<'a> {
+pub(crate) struct Import<'a> {
     pub kind: ImportKind<'a>,
 
     /// The ID of the `extern crate`, `UseTree` etc that imported this `Import`.
@@ -74,7 +72,7 @@ crate struct Import<'a> {
     /// In the case where the `Import` was expanded from a "nested" use tree,
     /// this id is the ID of the leaf tree. For example:
     ///
-    /// ```ignore (pacify the mercilous tidy)
+    /// ```ignore (pacify the merciless tidy)
     /// use foo::bar::{a, b}
     /// ```
     ///
@@ -123,21 +121,17 @@ impl<'a> Import<'a> {
             _ => false,
         }
     }
-
-    crate fn crate_lint(&self) -> CrateLint {
-        CrateLint::UsePath { root_id: self.root_id, root_span: self.root_span }
-    }
 }
 
-#[derive(Clone, Default, Debug)]
 /// Records information about the resolution of a name in a namespace of a module.
-pub struct NameResolution<'a> {
+#[derive(Clone, Default, Debug)]
+pub(crate) struct NameResolution<'a> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
-    single_imports: FxHashSet<Interned<'a, Import<'a>>>,
+    pub single_imports: FxHashSet<Interned<'a, Import<'a>>>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
-    shadowed_glob: Option<&'a NameBinding<'a>>,
+    pub shadowed_glob: Option<&'a NameBinding<'a>>,
 }
 
 impl<'a> NameResolution<'a> {
@@ -152,7 +146,7 @@ impl<'a> NameResolution<'a> {
         })
     }
 
-    crate fn add_single_import(&mut self, import: &'a Import<'a>) {
+    pub(crate) fn add_single_import(&mut self, import: &'a Import<'a>) {
         self.single_imports.insert(Interned::new_unchecked(import));
     }
 }
@@ -173,293 +167,9 @@ fn pub_use_of_private_extern_crate_hack(import: &Import<'_>, binding: &NameBindi
 }
 
 impl<'a> Resolver<'a> {
-    crate fn resolve_ident_in_module_unadjusted(
-        &mut self,
-        module: ModuleOrUniformRoot<'a>,
-        ident: Ident,
-        ns: Namespace,
-        parent_scope: &ParentScope<'a>,
-        record_used: bool,
-        path_span: Span,
-    ) -> Result<&'a NameBinding<'a>, Determinacy> {
-        self.resolve_ident_in_module_unadjusted_ext(
-            module,
-            ident,
-            ns,
-            parent_scope,
-            false,
-            record_used,
-            path_span,
-        )
-        .map_err(|(determinacy, _)| determinacy)
-    }
-
-    /// Attempts to resolve `ident` in namespaces `ns` of `module`.
-    /// Invariant: if `record_used` is `Some`, expansion and import resolution must be complete.
-    crate fn resolve_ident_in_module_unadjusted_ext(
-        &mut self,
-        module: ModuleOrUniformRoot<'a>,
-        ident: Ident,
-        ns: Namespace,
-        parent_scope: &ParentScope<'a>,
-        restricted_shadowing: bool,
-        record_used: bool,
-        path_span: Span,
-    ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
-        let module = match module {
-            ModuleOrUniformRoot::Module(module) => module,
-            ModuleOrUniformRoot::CrateRootAndExternPrelude => {
-                assert!(!restricted_shadowing);
-                let binding = self.early_resolve_ident_in_lexical_scope(
-                    ident,
-                    ScopeSet::AbsolutePath(ns),
-                    parent_scope,
-                    record_used,
-                    record_used,
-                    path_span,
-                );
-                return binding.map_err(|determinacy| (determinacy, Weak::No));
-            }
-            ModuleOrUniformRoot::ExternPrelude => {
-                assert!(!restricted_shadowing);
-                return if ns != TypeNS {
-                    Err((Determined, Weak::No))
-                } else if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
-                    Ok(binding)
-                } else if !self.graph_root.unexpanded_invocations.borrow().is_empty() {
-                    // Macro-expanded `extern crate` items can add names to extern prelude.
-                    Err((Undetermined, Weak::No))
-                } else {
-                    Err((Determined, Weak::No))
-                };
-            }
-            ModuleOrUniformRoot::CurrentScope => {
-                assert!(!restricted_shadowing);
-                if ns == TypeNS {
-                    if ident.name == kw::Crate || ident.name == kw::DollarCrate {
-                        let module = self.resolve_crate_root(ident);
-                        let binding =
-                            (module, ty::Visibility::Public, module.span, LocalExpnId::ROOT)
-                                .to_name_binding(self.arenas);
-                        return Ok(binding);
-                    } else if ident.name == kw::Super || ident.name == kw::SelfLower {
-                        // FIXME: Implement these with renaming requirements so that e.g.
-                        // `use super;` doesn't work, but `use super as name;` does.
-                        // Fall through here to get an error from `early_resolve_...`.
-                    }
-                }
-
-                let scopes = ScopeSet::All(ns, true);
-                let binding = self.early_resolve_ident_in_lexical_scope(
-                    ident,
-                    scopes,
-                    parent_scope,
-                    record_used,
-                    record_used,
-                    path_span,
-                );
-                return binding.map_err(|determinacy| (determinacy, Weak::No));
-            }
-        };
-
-        let key = self.new_key(ident, ns);
-        let resolution =
-            self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
-
-        if let Some(binding) = resolution.binding {
-            if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
-                if let NameBindingKind::Res(_, true) = binding.kind {
-                    self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
-                }
-            }
-        }
-
-        let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
-            if let Some(unusable_binding) = this.unusable_binding {
-                if ptr::eq(binding, unusable_binding) {
-                    return Err((Determined, Weak::No));
-                }
-            }
-            let usable = this.is_accessible_from(binding.vis, parent_scope.module);
-            if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
-        };
-
-        if record_used {
-            return resolution
-                .binding
-                .and_then(|binding| {
-                    // If the primary binding is unusable, search further and return the shadowed glob
-                    // binding if it exists. What we really want here is having two separate scopes in
-                    // a module - one for non-globs and one for globs, but until that's done use this
-                    // hack to avoid inconsistent resolution ICEs during import validation.
-                    if let Some(unusable_binding) = self.unusable_binding {
-                        if ptr::eq(binding, unusable_binding) {
-                            return resolution.shadowed_glob;
-                        }
-                    }
-                    Some(binding)
-                })
-                .ok_or((Determined, Weak::No))
-                .and_then(|binding| {
-                    if self.last_import_segment && check_usable(self, binding).is_err() {
-                        Err((Determined, Weak::No))
-                    } else {
-                        self.record_use(ident, binding, restricted_shadowing);
-
-                        if let Some(shadowed_glob) = resolution.shadowed_glob {
-                            // Forbid expanded shadowing to avoid time travel.
-                            if restricted_shadowing
-                                && binding.expansion != LocalExpnId::ROOT
-                                && binding.res() != shadowed_glob.res()
-                            {
-                                self.ambiguity_errors.push(AmbiguityError {
-                                    kind: AmbiguityKind::GlobVsExpanded,
-                                    ident,
-                                    b1: binding,
-                                    b2: shadowed_glob,
-                                    misc1: AmbiguityErrorMisc::None,
-                                    misc2: AmbiguityErrorMisc::None,
-                                });
-                            }
-                        }
-
-                        if !self.is_accessible_from(binding.vis, parent_scope.module) {
-                            self.privacy_errors.push(PrivacyError {
-                                ident,
-                                binding,
-                                dedup_span: path_span,
-                            });
-                        }
-
-                        Ok(binding)
-                    }
-                });
-        }
-
-        // Items and single imports are not shadowable, if we have one, then it's determined.
-        if let Some(binding) = resolution.binding {
-            if !binding.is_glob_import() {
-                return check_usable(self, binding);
-            }
-        }
-
-        // --- From now on we either have a glob resolution or no resolution. ---
-
-        // Check if one of single imports can still define the name,
-        // if it can then our result is not determined and can be invalidated.
-        for single_import in &resolution.single_imports {
-            if !self.is_accessible_from(single_import.vis.get(), parent_scope.module) {
-                continue;
-            }
-            let Some(module) = single_import.imported_module.get() else {
-                return Err((Undetermined, Weak::No));
-            };
-            let ImportKind::Single { source: ident, .. } = single_import.kind else {
-                unreachable!();
-            };
-            match self.resolve_ident_in_module(
-                module,
-                ident,
-                ns,
-                &single_import.parent_scope,
-                false,
-                path_span,
-            ) {
-                Err(Determined) => continue,
-                Ok(binding)
-                    if !self.is_accessible_from(binding.vis, single_import.parent_scope.module) =>
-                {
-                    continue;
-                }
-                Ok(_) | Err(Undetermined) => return Err((Undetermined, Weak::No)),
-            }
-        }
-
-        // So we have a resolution that's from a glob import. This resolution is determined
-        // if it cannot be shadowed by some new item/import expanded from a macro.
-        // This happens either if there are no unexpanded macros, or expanded names cannot
-        // shadow globs (that happens in macro namespace or with restricted shadowing).
-        //
-        // Additionally, any macro in any module can plant names in the root module if it creates
-        // `macro_export` macros, so the root module effectively has unresolved invocations if any
-        // module has unresolved invocations.
-        // However, it causes resolution/expansion to stuck too often (#53144), so, to make
-        // progress, we have to ignore those potential unresolved invocations from other modules
-        // and prohibit access to macro-expanded `macro_export` macros instead (unless restricted
-        // shadowing is enabled, see `macro_expanded_macro_export_errors`).
-        let unexpanded_macros = !module.unexpanded_invocations.borrow().is_empty();
-        if let Some(binding) = resolution.binding {
-            if !unexpanded_macros || ns == MacroNS || restricted_shadowing {
-                return check_usable(self, binding);
-            } else {
-                return Err((Undetermined, Weak::No));
-            }
-        }
-
-        // --- From now on we have no resolution. ---
-
-        // Now we are in situation when new item/import can appear only from a glob or a macro
-        // expansion. With restricted shadowing names from globs and macro expansions cannot
-        // shadow names from outer scopes, so we can freely fallback from module search to search
-        // in outer scopes. For `early_resolve_ident_in_lexical_scope` to continue search in outer
-        // scopes we return `Undetermined` with `Weak::Yes`.
-
-        // Check if one of unexpanded macros can still define the name,
-        // if it can then our "no resolution" result is not determined and can be invalidated.
-        if unexpanded_macros {
-            return Err((Undetermined, Weak::Yes));
-        }
-
-        // Check if one of glob imports can still define the name,
-        // if it can then our "no resolution" result is not determined and can be invalidated.
-        for glob_import in module.globs.borrow().iter() {
-            if !self.is_accessible_from(glob_import.vis.get(), parent_scope.module) {
-                continue;
-            }
-            let module = match glob_import.imported_module.get() {
-                Some(ModuleOrUniformRoot::Module(module)) => module,
-                Some(_) => continue,
-                None => return Err((Undetermined, Weak::Yes)),
-            };
-            let tmp_parent_scope;
-            let (mut adjusted_parent_scope, mut ident) =
-                (parent_scope, ident.normalize_to_macros_2_0());
-            match ident.span.glob_adjust(module.expansion, glob_import.span) {
-                Some(Some(def)) => {
-                    tmp_parent_scope =
-                        ParentScope { module: self.expn_def_scope(def), ..*parent_scope };
-                    adjusted_parent_scope = &tmp_parent_scope;
-                }
-                Some(None) => {}
-                None => continue,
-            };
-            let result = self.resolve_ident_in_module_unadjusted(
-                ModuleOrUniformRoot::Module(module),
-                ident,
-                ns,
-                adjusted_parent_scope,
-                false,
-                path_span,
-            );
-
-            match result {
-                Err(Determined) => continue,
-                Ok(binding)
-                    if !self.is_accessible_from(binding.vis, glob_import.parent_scope.module) =>
-                {
-                    continue;
-                }
-                Ok(_) | Err(Undetermined) => return Err((Undetermined, Weak::Yes)),
-            }
-        }
-
-        // No resolution and no one else can define the name - determinate error.
-        Err((Determined, Weak::No))
-    }
-
     // Given a binding and an import that resolves to it,
     // return the corresponding binding defined by the import.
-    crate fn import(
+    pub(crate) fn import(
         &self,
         binding: &'a NameBinding<'a>,
         import: &'a Import<'a>,
@@ -488,7 +198,7 @@ impl<'a> Resolver<'a> {
     }
 
     // Define the name or return the existing binding if there is a collision.
-    crate fn try_define(
+    pub(crate) fn try_define(
         &mut self,
         module: Module<'a>,
         key: BindingKey,
@@ -599,18 +309,23 @@ impl<'a> Resolver<'a> {
         t
     }
 
-    // Define a "dummy" resolution containing a Res::Err as a placeholder for a
-    // failed resolution
+    // Define a dummy resolution containing a `Res::Err` as a placeholder for a failed resolution,
+    // also mark such failed imports as used to avoid duplicate diagnostics.
     fn import_dummy_binding(&mut self, import: &'a Import<'a>) {
-        if let ImportKind::Single { target, .. } = import.kind {
+        if let ImportKind::Single { target, ref target_bindings, .. } = import.kind {
+            if target_bindings.iter().any(|binding| binding.get().is_some()) {
+                return; // Has resolution, do not create the dummy binding
+            }
             let dummy_binding = self.dummy_binding;
             let dummy_binding = self.import(dummy_binding, import);
             self.per_ns(|this, ns| {
                 let key = this.new_key(target, ns);
                 let _ = this.try_define(import.parent_scope.module, key, dummy_binding);
             });
-            // Consider erroneous imports used to avoid duplicate diagnostics.
             self.record_use(target, dummy_binding, false);
+        } else if import.imported_module.get().is_none() {
+            import.used.set(true);
+            self.used_imports.insert(import.id);
         }
     }
 }
@@ -627,12 +342,6 @@ struct UnresolvedImportError {
 
 pub struct ImportResolver<'a, 'b> {
     pub r: &'a mut Resolver<'b>,
-}
-
-impl<'a, 'b> ty::DefIdTree for &'a ImportResolver<'a, 'b> {
-    fn parent(self, id: DefId) -> Option<DefId> {
-        self.r.parent(id)
-    }
 }
 
 impl<'a, 'b> ImportResolver<'a, 'b> {
@@ -675,7 +384,13 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             .map(|i| (false, i))
             .chain(indeterminate_imports.into_iter().map(|i| (true, i)))
         {
-            if let Some(err) = self.finalize_import(import) {
+            let unresolved_import_error = self.finalize_import(import);
+
+            // If this import is unresolved then create a dummy import
+            // resolution for it so that later resolve stages won't complain.
+            self.r.import_dummy_binding(import);
+
+            if let Some(err) = unresolved_import_error {
                 if let ImportKind::Single { source, ref source_bindings, .. } = import.kind {
                     if source.name == kw::SelfLower {
                         // Silence `unresolved import` error if E0429 is already emitted
@@ -685,9 +400,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     }
                 }
 
-                // If the error is a single failed import then create a "fake" import
-                // resolution for it so that later resolve stages won't complain.
-                self.r.import_dummy_binding(import);
                 if prev_root_id.as_u32() != 0
                     && prev_root_id.as_u32() != import.root_id.as_u32()
                     && !errors.is_empty()
@@ -707,8 +419,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     prev_root_id = import.root_id;
                 }
             } else if is_indeterminate {
-                // Consider erroneous imports used to avoid duplicate diagnostics.
-                self.r.used_imports.insert(import.id);
                 let path = import_path_to_string(
                     &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
                     &import.kind,
@@ -720,7 +430,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     note: Vec::new(),
                     suggestion: None,
                 };
-                errors.push((path, err));
+                if path.contains("::") {
+                    errors.push((path, err))
+                }
             }
         }
 
@@ -753,7 +465,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         if let Some((_, UnresolvedImportError { note, .. })) = errors.iter().last() {
             for message in note {
-                diag.note(&message);
+                diag.note(message);
             }
         }
 
@@ -763,6 +475,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             }
 
             if let Some((suggestions, msg, applicability)) = err.suggestion {
+                if suggestions.is_empty() {
+                    diag.help(&msg);
+                    continue;
+                }
                 diag.multipart_suggestion(&msg, suggestions, applicability);
             }
         }
@@ -785,14 +501,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             // For better failure detection, pretend that the import will
             // not define any names while resolving its module path.
             let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-            let path_res = self.r.resolve_path(
-                &import.module_path,
-                None,
-                &import.parent_scope,
-                false,
-                import.span,
-                import.crate_lint(),
-            );
+            let path_res =
+                self.r.maybe_resolve_path(&import.module_path, None, &import.parent_scope);
             import.vis.set(orig_vis);
 
             match path_res {
@@ -831,8 +541,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         source,
                         ns,
                         &import.parent_scope,
-                        false,
-                        import.span,
+                        None,
+                        None,
                     );
                     import.vis.set(orig_vis);
                     source_bindings[ns].set(binding);
@@ -845,25 +555,22 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     Err(Undetermined) => indeterminate = true,
                     // Don't update the resolution, because it was never added.
                     Err(Determined) if target.name == kw::Underscore => {}
-                    Err(Determined) => {
+                    Ok(binding) if binding.is_importable() => {
+                        let imported_binding = this.import(binding, import);
+                        target_bindings[ns].set(Some(imported_binding));
+                        this.define(parent, target, ns, imported_binding);
+                    }
+                    source_binding @ (Ok(..) | Err(Determined)) => {
+                        if source_binding.is_ok() {
+                            let msg = format!("`{}` is not directly importable", target);
+                            struct_span_err!(this.session, import.span, E0253, "{}", &msg)
+                                .span_label(import.span, "cannot be imported directly")
+                                .emit();
+                        }
                         let key = this.new_key(target, ns);
                         this.update_resolution(parent, key, |_, resolution| {
                             resolution.single_imports.remove(&Interned::new_unchecked(import));
                         });
-                    }
-                    Ok(binding) if !binding.is_importable() => {
-                        let msg = format!("`{}` is not directly importable", target);
-                        struct_span_err!(this.session, import.span, E0253, "{}", &msg)
-                            .span_label(import.span, "cannot be imported directly")
-                            .emit();
-                        // Do not import this illegal binding. Import a dummy binding and pretend
-                        // everything is fine
-                        this.import_dummy_binding(import);
-                    }
-                    Ok(binding) => {
-                        let imported_binding = this.import(binding, import);
-                        target_bindings[ns].set(Some(imported_binding));
-                        this.define(parent, target, ns, imported_binding);
                     }
                 }
             }
@@ -878,30 +585,21 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// consolidate multiple unresolved import errors into a single diagnostic.
     fn finalize_import(&mut self, import: &'b Import<'b>) -> Option<UnresolvedImportError> {
         let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-        let orig_unusable_binding = match &import.kind {
-            ImportKind::Single { target_bindings, .. } => {
-                Some(mem::replace(&mut self.r.unusable_binding, target_bindings[TypeNS].get()))
-            }
+        let ignore_binding = match &import.kind {
+            ImportKind::Single { target_bindings, .. } => target_bindings[TypeNS].get(),
             _ => None,
         };
         let prev_ambiguity_errors_len = self.r.ambiguity_errors.len();
+        let finalize = Finalize::with_root_span(import.root_id, import.span, import.root_span);
         let path_res = self.r.resolve_path(
             &import.module_path,
             None,
             &import.parent_scope,
-            true,
-            import.span,
-            import.crate_lint(),
+            Some(finalize),
+            ignore_binding,
         );
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
-        if let Some(orig_unusable_binding) = orig_unusable_binding {
-            self.r.unusable_binding = orig_unusable_binding;
-        }
         import.vis.set(orig_vis);
-        if let PathResult::Failed { .. } | PathResult::NonModule(..) = path_res {
-            // Consider erroneous imports used to avoid duplicate diagnostics.
-            self.r.used_imports.insert(import.id);
-        }
         let module = match path_res {
             PathResult::Module(module) => {
                 // Consistency checks, analogous to `finalize_macro_resolutions`.
@@ -979,12 +677,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     // 2 segments, so the `resolve_path` above won't trigger it.
                     let mut full_path = import.module_path.clone();
                     full_path.push(Segment::from_ident(Ident::empty()));
-                    self.r.lint_if_path_starts_with_module(
-                        import.crate_lint(),
-                        &full_path,
-                        import.span,
-                        None,
-                    );
+                    self.r.lint_if_path_starts_with_module(Some(finalize), &full_path, None);
                 }
 
                 if let ModuleOrUniformRoot::Module(module) = module {
@@ -1000,7 +693,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 }
                 if !is_prelude &&
                    max_vis.get() != ty::Visibility::Invisible && // Allow empty globs.
-                   !max_vis.get().is_at_least(import.vis.get(), &*self)
+                   !max_vis.get().is_at_least(import.vis.get(), &*self.r)
                 {
                     let msg = "glob import doesn't reexport anything because no candidate is public enough";
                     self.r.lint_buffer.buffer_lint(UNUSED_IMPORTS, import.id, import.span, msg);
@@ -1014,19 +707,14 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         self.r.per_ns(|this, ns| {
             if !type_ns_only || ns == TypeNS {
                 let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-                let orig_unusable_binding =
-                    mem::replace(&mut this.unusable_binding, target_bindings[ns].get());
-                let orig_last_import_segment = mem::replace(&mut this.last_import_segment, true);
                 let binding = this.resolve_ident_in_module(
                     module,
                     ident,
                     ns,
                     &import.parent_scope,
-                    true,
-                    import.span,
+                    Some(Finalize { report_private: false, ..finalize }),
+                    target_bindings[ns].get(),
                 );
-                this.last_import_segment = orig_last_import_segment;
-                this.unusable_binding = orig_unusable_binding;
                 import.vis.set(orig_vis);
 
                 match binding {
@@ -1084,8 +772,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         ident,
                         ns,
                         &import.parent_scope,
-                        true,
-                        import.span,
+                        Some(finalize),
+                        None,
                     );
                     if binding.is_ok() {
                         all_ns_failed = false;
@@ -1173,7 +861,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 })
             } else {
                 // `resolve_ident_in_module` reported a privacy error.
-                self.r.import_dummy_binding(import);
                 None
             };
         }
@@ -1235,11 +922,28 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         .note(&format!("consider declaring type or module `{}` with `pub`", ident))
                         .emit();
                 } else {
-                    let note_msg =
-                        format!("consider marking `{}` as `pub` in the imported module", ident);
-                    struct_span_err!(self.r.session, import.span, E0364, "{}", error_msg)
-                        .span_note(import.span, &note_msg)
-                        .emit();
+                    let mut err =
+                        struct_span_err!(self.r.session, import.span, E0364, "{error_msg}");
+                    match binding.kind {
+                        NameBindingKind::Res(Res::Def(DefKind::Macro(_), def_id), _)
+                            // exclude decl_macro
+                            if self.r.get_macro_by_def_id(def_id).macro_rules =>
+                        {
+                            err.span_help(
+                                binding.span,
+                                "consider adding a `#[macro_export]` to the macro in the imported module",
+                            );
+                        }
+                        _ => {
+                            err.span_note(
+                                import.span,
+                                &format!(
+                                    "consider marking `{ident}` as `pub` in the imported module"
+                                ),
+                            );
+                        }
+                    }
+                    err.emit();
                 }
             }
         }
@@ -1251,12 +955,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             full_path.push(Segment::from_ident(ident));
             self.r.per_ns(|this, ns| {
                 if let Ok(binding) = source_bindings[ns].get() {
-                    this.lint_if_path_starts_with_module(
-                        import.crate_lint(),
-                        &full_path,
-                        import.span,
-                        Some(binding),
-                    );
+                    this.lint_if_path_starts_with_module(Some(finalize), &full_path, Some(binding));
                 }
             });
         }
@@ -1305,16 +1004,13 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     return;
                 }
 
-                let orig_unusable_binding =
-                    mem::replace(&mut this.unusable_binding, target_bindings[ns].get());
-
                 match this.early_resolve_ident_in_lexical_scope(
                     target,
                     ScopeSet::All(ns, false),
                     &import.parent_scope,
+                    None,
                     false,
-                    false,
-                    import.span,
+                    target_bindings[ns].get(),
                 ) {
                     Ok(other_binding) => {
                         is_redundant[ns] = Some(
@@ -1324,8 +1020,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     }
                     Err(_) => is_redundant[ns] = Some(false),
                 }
-
-                this.unusable_binding = orig_unusable_binding;
             }
         });
 

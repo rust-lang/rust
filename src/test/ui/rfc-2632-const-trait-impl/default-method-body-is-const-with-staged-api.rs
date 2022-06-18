@@ -7,11 +7,10 @@
 
 #![feature(staged_api)]
 #![feature(const_trait_impl)]
-#![feature(const_fn_trait_bound)]
 #![stable(since = "1", feature = "foo")]
 
+#[const_trait]
 trait Tr {
-    #[default_method_body_is_const]
     fn a() {}
 }
 

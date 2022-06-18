@@ -5,12 +5,12 @@
 
 use std::env;
 use std::fs;
-use std::path::{Component, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
-use build_helper::t;
+use crate::util::t;
 
-use crate::dist::{self, sanitize_sh};
+use crate::dist;
 use crate::tarball::GeneratedTarball;
 use crate::Compiler;
 
@@ -21,6 +21,29 @@ use crate::config::{Config, TargetSelection};
 const SHELL: &str = "bash";
 #[cfg(not(target_os = "illumos"))]
 const SHELL: &str = "sh";
+
+// We have to run a few shell scripts, which choke quite a bit on both `\`
+// characters and on `C:\` paths, so normalize both of them away.
+fn sanitize_sh(path: &Path) -> String {
+    let path = path.to_str().unwrap().replace("\\", "/");
+    return change_drive(unc_to_lfs(&path)).unwrap_or(path);
+
+    fn unc_to_lfs(s: &str) -> &str {
+        s.strip_prefix("//?/").unwrap_or(s)
+    }
+
+    fn change_drive(s: &str) -> Option<String> {
+        let mut ch = s.chars();
+        let drive = ch.next().unwrap_or('C');
+        if ch.next() != Some(':') {
+            return None;
+        }
+        if ch.next() != Some('/') {
+            return None;
+        }
+        Some(format!("/{}/{}", drive, &s[drive.len_utf8() + 2..]))
+    }
+}
 
 fn install_sh(
     builder: &Builder<'_>,
@@ -93,7 +116,7 @@ fn prepare_dir(mut path: PathBuf) -> String {
 macro_rules! install {
     (($sel:ident, $builder:ident, $_config:ident),
        $($name:ident,
-       $path:expr,
+       $condition_name: ident = $path_or_alias: literal,
        $default_cond:expr,
        only_hosts: $only_hosts:expr,
        $run_item:block $(, $c:ident)*;)+) => {
@@ -108,7 +131,7 @@ macro_rules! install {
             #[allow(dead_code)]
             fn should_build(config: &Config) -> bool {
                 config.extended && config.tools.as_ref()
-                    .map_or(true, |t| t.contains($path))
+                    .map_or(true, |t| t.contains($path_or_alias))
             }
         }
 
@@ -120,7 +143,7 @@ macro_rules! install {
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 let $_config = &run.builder.config;
-                run.path($path).default_condition($default_cond)
+                run.$condition_name($path_or_alias).default_condition($default_cond)
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -138,11 +161,11 @@ macro_rules! install {
 }
 
 install!((self, builder, _config),
-    Docs, "src/doc", _config.docs, only_hosts: false, {
+    Docs, path = "src/doc", _config.docs, only_hosts: false, {
         let tarball = builder.ensure(dist::Docs { host: self.target }).expect("missing docs");
         install_sh(builder, "docs", self.compiler.stage, Some(self.target), &tarball);
     };
-    Std, "library/std", true, only_hosts: false, {
+    Std, path = "library/std", true, only_hosts: false, {
         for target in &builder.targets {
             // `expect` should be safe, only None when host != build, but this
             // only runs when host == build
@@ -153,13 +176,13 @@ install!((self, builder, _config),
             install_sh(builder, "std", self.compiler.stage, Some(*target), &tarball);
         }
     };
-    Cargo, "cargo", Self::should_build(_config), only_hosts: true, {
+    Cargo, alias = "cargo", Self::should_build(_config), only_hosts: true, {
         let tarball = builder
             .ensure(dist::Cargo { compiler: self.compiler, target: self.target })
             .expect("missing cargo");
         install_sh(builder, "cargo", self.compiler.stage, Some(self.target), &tarball);
     };
-    Rls, "rls", Self::should_build(_config), only_hosts: true, {
+    Rls, alias = "rls", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::Rls { compiler: self.compiler, target: self.target }) {
             install_sh(builder, "rls", self.compiler.stage, Some(self.target), &tarball);
         } else {
@@ -168,7 +191,7 @@ install!((self, builder, _config),
             );
         }
     };
-    RustAnalyzer, "rust-analyzer", Self::should_build(_config), only_hosts: true, {
+    RustAnalyzer, alias = "rust-analyzer", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) =
             builder.ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target })
         {
@@ -179,13 +202,13 @@ install!((self, builder, _config),
             );
         }
     };
-    Clippy, "clippy", Self::should_build(_config), only_hosts: true, {
+    Clippy, alias = "clippy", Self::should_build(_config), only_hosts: true, {
         let tarball = builder
             .ensure(dist::Clippy { compiler: self.compiler, target: self.target })
             .expect("missing clippy");
         install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
     };
-    Miri, "miri", Self::should_build(_config), only_hosts: true, {
+    Miri, alias = "miri", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::Miri { compiler: self.compiler, target: self.target }) {
             install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
         } else {
@@ -194,7 +217,7 @@ install!((self, builder, _config),
             );
         }
     };
-    Rustfmt, "rustfmt", Self::should_build(_config), only_hosts: true, {
+    Rustfmt, alias = "rustfmt", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::Rustfmt {
             compiler: self.compiler,
             target: self.target
@@ -206,7 +229,7 @@ install!((self, builder, _config),
             );
         }
     };
-    RustDemangler, "rust-demangler", Self::should_build(_config), only_hosts: true, {
+    RustDemangler, alias = "rust-demangler", Self::should_build(_config), only_hosts: true, {
         // Note: Even though `should_build` may return true for `extended` default tools,
         // dist::RustDemangler may still return None, unless the target-dependent `profiler` config
         // is also true, or the `tools` array explicitly includes "rust-demangler".
@@ -222,7 +245,7 @@ install!((self, builder, _config),
             );
         }
     };
-    Analysis, "analysis", Self::should_build(_config), only_hosts: false, {
+    Analysis, alias = "analysis", Self::should_build(_config), only_hosts: false, {
         // `expect` should be safe, only None with host != build, but this
         // only uses the `build` compiler
         let tarball = builder.ensure(dist::Analysis {
@@ -234,7 +257,7 @@ install!((self, builder, _config),
         }).expect("missing analysis");
         install_sh(builder, "analysis", self.compiler.stage, Some(self.target), &tarball);
     };
-    Rustc, "src/librustc", true, only_hosts: true, {
+    Rustc, path = "compiler/rustc", true, only_hosts: true, {
         let tarball = builder.ensure(dist::Rustc {
             compiler: builder.compiler(builder.top_stage, self.target),
         });

@@ -24,8 +24,8 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
                     let exprs = if let PatKind::Lit(arm_bool) = arms[0].pat.kind {
                         if let ExprKind::Lit(ref lit) = arm_bool.kind {
                             match lit.node {
-                                LitKind::Bool(true) => Some((&*arms[0].body, &*arms[1].body)),
-                                LitKind::Bool(false) => Some((&*arms[1].body, &*arms[0].body)),
+                                LitKind::Bool(true) => Some((arms[0].body, arms[1].body)),
+                                LitKind::Bool(false) => Some((arms[1].body, arms[0].body)),
                                 _ => None,
                             }
                         } else {

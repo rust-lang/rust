@@ -5,7 +5,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::io::ErrorKind;
-use crate::os::raw::c_char;
 use crate::sync::atomic::{AtomicBool, Ordering};
 
 pub mod abi;
@@ -15,7 +14,6 @@ pub mod alloc;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
-pub mod condvar;
 pub mod env;
 pub mod fd;
 #[path = "../unsupported/fs.rs"]
@@ -23,7 +21,6 @@ pub mod fs;
 #[path = "../unsupported/io.rs"]
 pub mod io;
 pub mod memchr;
-pub mod mutex;
 pub mod net;
 pub mod os;
 #[path = "../unix/os_str.rs"]
@@ -33,11 +30,20 @@ pub mod path;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-pub mod rwlock;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_key;
 pub mod time;
+
+mod condvar;
+mod mutex;
+mod rwlock;
+
+pub mod locks {
+    pub use super::condvar::*;
+    pub use super::mutex::*;
+    pub use super::rwlock::*;
+}
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
@@ -121,15 +127,6 @@ pub fn decode_error_kind(code: i32) -> ErrorKind {
     } else {
         ErrorKind::Uncategorized
     }
-}
-
-pub unsafe fn strlen(mut s: *const c_char) -> usize {
-    let mut n = 0;
-    while unsafe { *s } != 0 {
-        n += 1;
-        s = unsafe { s.offset(1) };
-    }
-    return n;
 }
 
 pub fn abort_internal() -> ! {

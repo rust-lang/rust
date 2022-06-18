@@ -7,7 +7,7 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-itertools = "0.10"
+itertools = "0.10.1"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 rustc_ast = { path = "../rustc_ast" }
@@ -19,7 +19,6 @@ rustc_index = { path = "../rustc_index" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
-rustc_query_system = { path = "../rustc_query_system" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_target = { path = "../rustc_target" }

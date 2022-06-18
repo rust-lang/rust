@@ -30,11 +30,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// It is a bug to call this with a not-fully-simplified pattern.
     pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
-            PatKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => Test {
+            PatKind::Variant { adt_def, substs: _, variant_index: _, subpatterns: _ } => Test {
                 span: match_pair.pattern.span,
                 kind: TestKind::Switch {
                     adt_def,
-                    variants: BitSet::new_empty(adt_def.variants.len()),
+                    variants: BitSet::new_empty(adt_def.variants().len()),
                 },
             },
 
@@ -86,7 +86,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test_place: &PlaceBuilder<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
         switch_ty: Ty<'tcx>,
-        options: &mut FxIndexMap<ty::Const<'tcx>, u128>,
+        options: &mut FxIndexMap<ConstantKind<'tcx>, u128>,
     ) -> bool {
         let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
             return false;
@@ -174,7 +174,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestKind::Switch { adt_def, ref variants } => {
                 let target_blocks = make_target_blocks(self);
                 // Variants is a BitVec of indexes into adt_def.variants.
-                let num_enum_variants = adt_def.variants.len();
+                let num_enum_variants = adt_def.variants().len();
                 debug_assert_eq!(target_blocks.len(), num_enum_variants + 1);
                 let otherwise_block = *target_blocks.last().unwrap();
                 let tcx = self.tcx;
@@ -201,7 +201,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     otherwise_block,
                 );
                 debug!("num_enum_variants: {}, variants: {:?}", num_enum_variants, variants);
-                let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
+                let discr_ty = adt_def.repr().discr_type().to_ty(tcx);
                 let discr = self.temp(discr_ty, test.span);
                 self.cfg.push_assign(
                     block,
@@ -366,7 +366,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
         source_info: SourceInfo,
-        value: ty::Const<'tcx>,
+        value: ConstantKind<'tcx>,
         place: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
@@ -441,10 +441,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Need to experiment.
                     user_ty: None,
 
-                    literal: method.into(),
+                    literal: method,
                 })),
                 args: vec![val, expect],
-                destination: Some((eq_result, eq_block)),
+                destination: eq_result,
+                target: Some(eq_block),
                 cleanup: None,
                 from_hir_call: false,
                 fn_span: source_info.span,
@@ -631,39 +632,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             (&TestKind::Range(test), &PatKind::Range(pat)) => {
+                use std::cmp::Ordering::*;
+
                 if test == pat {
                     self.candidate_without_match_pair(match_pair_index, candidate);
                     return Some(0);
                 }
 
-                let no_overlap = (|| {
-                    use rustc_hir::RangeEnd::*;
-                    use std::cmp::Ordering::*;
-
-                    let tcx = self.tcx;
-
-                    let test_ty = test.lo.ty();
-                    let lo = compare_const_vals(tcx, test.lo, pat.hi, self.param_env, test_ty)?;
-                    let hi = compare_const_vals(tcx, test.hi, pat.lo, self.param_env, test_ty)?;
-
-                    match (test.end, pat.end, lo, hi) {
-                        // pat < test
-                        (_, _, Greater, _) |
-                        (_, Excluded, Equal, _) |
-                        // pat > test
-                        (_, _, _, Less) |
-                        (Excluded, _, _, Equal) => Some(true),
-                        _ => Some(false),
-                    }
-                })();
-
-                if let Some(true) = no_overlap {
-                    // Testing range does not overlap with pattern range,
-                    // so the pattern can be matched only if this test fails.
+                // For performance, it's important to only do the second
+                // `compare_const_vals` if necessary.
+                let no_overlap = if matches!(
+                    (compare_const_vals(self.tcx, test.hi, pat.lo, self.param_env)?, test.end),
+                    (Less, _) | (Equal, RangeEnd::Excluded) // test < pat
+                ) || matches!(
+                    (compare_const_vals(self.tcx, test.lo, pat.hi, self.param_env)?, pat.end),
+                    (Greater, _) | (Equal, RangeEnd::Excluded) // test > pat
+                ) {
                     Some(1)
                 } else {
                     None
-                }
+                };
+
+                // If the testing range does not overlap with pattern range,
+                // the pattern can be matched only if this test fails.
+                no_overlap
             }
 
             (&TestKind::Range(range), &PatKind::Constant { value }) => {
@@ -733,7 +725,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn candidate_after_variant_switch<'pat>(
         &mut self,
         match_pair_index: usize,
-        adt_def: &'tcx ty::AdtDef,
+        adt_def: ty::AdtDef<'tcx>,
         variant_index: VariantIdx,
         subpatterns: &'pat [FieldPat<'tcx>],
         candidate: &mut Candidate<'pat, 'tcx>,
@@ -744,7 +736,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // we want to create a set of derived match-patterns like
         // `(x as Variant).0 @ P1` and `(x as Variant).1 @ P1`.
         let elem =
-            ProjectionElem::Downcast(Some(adt_def.variants[variant_index].name), variant_index);
+            ProjectionElem::Downcast(Some(adt_def.variant(variant_index).name), variant_index);
         let downcast_place = match_pair.place.project(elem); // `(x as Variant)`
         let consequent_match_pairs = subpatterns.iter().map(|subpattern| {
             // e.g., `(x as Variant).0`
@@ -760,24 +752,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span_bug!(match_pair.pattern.span, "simplifyable pattern found: {:?}", match_pair.pattern)
     }
 
-    fn const_range_contains(&self, range: PatRange<'tcx>, value: ty::Const<'tcx>) -> Option<bool> {
+    fn const_range_contains(
+        &self,
+        range: PatRange<'tcx>,
+        value: ConstantKind<'tcx>,
+    ) -> Option<bool> {
         use std::cmp::Ordering::*;
 
-        let tcx = self.tcx;
-
-        let a = compare_const_vals(tcx, range.lo, value, self.param_env, range.lo.ty())?;
-        let b = compare_const_vals(tcx, value, range.hi, self.param_env, range.lo.ty())?;
-
-        match (b, range.end) {
-            (Less, _) | (Equal, RangeEnd::Included) if a != Greater => Some(true),
-            _ => Some(false),
-        }
+        // For performance, it's important to only do the second
+        // `compare_const_vals` if necessary.
+        Some(
+            matches!(compare_const_vals(self.tcx, range.lo, value, self.param_env)?, Less | Equal)
+                && matches!(
+                    (compare_const_vals(self.tcx, value, range.hi, self.param_env)?, range.end),
+                    (Less, _) | (Equal, RangeEnd::Included)
+                ),
+        )
     }
 
     fn values_not_contained_in_range(
         &self,
         range: PatRange<'tcx>,
-        options: &FxIndexMap<ty::Const<'tcx>, u128>,
+        options: &FxIndexMap<ConstantKind<'tcx>, u128>,
     ) -> Option<bool> {
         for &val in options.keys() {
             if self.const_range_contains(range, val)? {
@@ -798,7 +794,7 @@ impl Test<'_> {
                 // variants, we have a target for each variant and the
                 // otherwise case, and we make sure that all of the cases not
                 // specified have the same block.
-                adt_def.variants.len() + 1
+                adt_def.variants().len() + 1
             }
             TestKind::SwitchInt { switch_ty, ref options, .. } => {
                 if switch_ty.is_bool() {
@@ -823,7 +819,7 @@ fn trait_method<'tcx>(
     method_name: Symbol,
     self_ty: Ty<'tcx>,
     params: &[GenericArg<'tcx>],
-) -> ty::Const<'tcx> {
+) -> ConstantKind<'tcx> {
     let substs = tcx.mk_substs_trait(self_ty, params);
 
     // The unhygienic comparison here is acceptable because this is only
@@ -834,7 +830,8 @@ fn trait_method<'tcx>(
         .find(|item| item.kind == ty::AssocKind::Fn)
         .expect("trait method not found");
 
-    let method_ty = tcx.type_of(item.def_id);
+    let method_ty = tcx.bound_type_of(item.def_id);
     let method_ty = method_ty.subst(tcx, substs);
-    ty::Const::zero_sized(tcx, method_ty)
+
+    ConstantKind::zero_sized(method_ty)
 }

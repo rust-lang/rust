@@ -254,7 +254,7 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
             then {
                 check_replace_option_with_none(cx, src, dest, expr.span);
                 check_replace_with_uninit(cx, src, dest, expr.span);
-                if meets_msrv(self.msrv.as_ref(), &msrvs::MEM_TAKE) {
+                if meets_msrv(self.msrv, msrvs::MEM_TAKE) {
                     check_replace_with_default(cx, src, dest, expr.span);
                 }
             }

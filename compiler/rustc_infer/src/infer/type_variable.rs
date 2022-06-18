@@ -73,10 +73,10 @@ pub struct TypeVariableStorage<'tcx> {
     /// table exists only to help with the occurs check. In particular,
     /// we want to report constraints like these as an occurs check
     /// violation:
-    ///
-    ///     ?1 <: ?3
-    ///     Box<?3> <: ?1
-    ///
+    /// ``` text
+    /// ?1 <: ?3
+    /// Box<?3> <: ?1
+    /// ```
     /// Without this second table, what would happen in a case like
     /// this is that we would instantiate `?1` with a generalized
     /// type like `Box<?6>`. We would then relate `Box<?3> <: Box<?6>`
@@ -287,8 +287,9 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// related via equality or subtyping will yield the same root
     /// variable (per the union-find algorithm), so `sub_root_var(a)
     /// == sub_root_var(b)` implies that:
-    ///
-    ///     exists X. (a <: X || X <: a) && (b <: X || X <: b)
+    /// ```text
+    /// exists X. (a <: X || X <: a) && (b <: X || X <: b)
+    /// ```
     pub fn sub_root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
         self.sub_relations().find(vid)
     }

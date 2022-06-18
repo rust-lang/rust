@@ -1,14 +1,12 @@
 #![feature(type_alias_impl_trait)]
 #![allow(dead_code)]
-
+// check-pass
 use std::fmt::Debug;
 
 type Foo = impl Debug;
 
-// FIXME: This should compile, but it currently doesn't
 fn foo1(mut x: Foo) {
     x = 22_u32;
-    //~^ ERROR: mismatched types [E0308]
 }
 
 fn foo2(mut x: Foo) {

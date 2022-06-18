@@ -1,6 +1,7 @@
 use crate::iter::{InPlaceIterable, Iterator};
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, NeverShortCircuit, Residual, Try};
 
+mod by_ref_sized;
 mod chain;
 mod cloned;
 mod copied;
@@ -30,6 +31,9 @@ pub use self::{
     flatten::FlatMap, fuse::Fuse, inspect::Inspect, map::Map, peekable::Peekable, rev::Rev,
     scan::Scan, skip::Skip, skip_while::SkipWhile, take::Take, take_while::TakeWhile, zip::Zip,
 };
+
+#[unstable(feature = "std_internals", issue = "none")]
+pub use self::by_ref_sized::ByRefSized;
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::cloned::Cloned;
@@ -74,6 +78,11 @@ pub use self::zip::zip;
 ///
 /// The trait is unsafe because implementers must uphold additional safety properties.
 /// See [`as_inner`] for details.
+///
+/// The primary use of this trait is in-place iteration. Refer to the [`vec::in_place_collect`]
+/// module documentation for more information.
+///
+/// [`vec::in_place_collect`]: ../../../../alloc/vec/in_place_collect/index.html
 ///
 /// # Examples
 ///

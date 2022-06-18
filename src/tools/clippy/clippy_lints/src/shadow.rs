@@ -23,10 +23,12 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let x = 1;
-    /// // Bad
     /// let x = &x;
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let x = 1;
     /// let y = &x; // use different variable name
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -79,11 +81,14 @@ declare_clippy_lint! {
     /// # let y = 1;
     /// # let z = 2;
     /// let x = y;
-    ///
-    /// // Bad
     /// let x = z; // shadows the earlier binding
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let y = 1;
+    /// # let z = 2;
+    /// let x = y;
     /// let w = z; // use different variable name
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -139,14 +144,20 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
         let hir = cx.tcx.hir();
-        if !matches!(hir.body_owner_kind(hir.body_owner(body.id())), BodyOwnerKind::Closure) {
+        if !matches!(
+            hir.body_owner_kind(hir.body_owner_def_id(body.id())),
+            BodyOwnerKind::Closure
+        ) {
             self.bindings.push(FxHashMap::default());
         }
     }
 
     fn check_body_post(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
         let hir = cx.tcx.hir();
-        if !matches!(hir.body_owner_kind(hir.body_owner(body.id())), BodyOwnerKind::Closure) {
+        if !matches!(
+            hir.body_owner_kind(hir.body_owner_def_id(body.id())),
+            BodyOwnerKind::Closure
+        ) {
             self.bindings.pop();
         }
     }
@@ -154,9 +165,13 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
 
 fn is_shadow(cx: &LateContext<'_>, owner: LocalDefId, first: ItemLocalId, second: ItemLocalId) -> bool {
     let scope_tree = cx.tcx.region_scope_tree(owner.to_def_id());
-    let first_scope = scope_tree.var_scope(first);
-    let second_scope = scope_tree.var_scope(second);
-    scope_tree.is_subscope_of(second_scope, first_scope)
+    if let Some(first_scope) = scope_tree.var_scope(first) {
+        if let Some(second_scope) = scope_tree.var_scope(second) {
+            return scope_tree.is_subscope_of(second_scope, first_scope);
+        }
+    }
+
+    false
 }
 
 fn lint_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, shadowed: HirId, span: Span) {

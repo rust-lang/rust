@@ -1,10 +1,6 @@
 // edition:2018
-// [nll] check-pass
-// revisions: migrate nll
-// Explicitly testing nll with revision, so ignore compare-mode=nll
-// ignore-compare-mode-nll
+// check-pass
 
-#![cfg_attr(nll, feature(nll))]
 #![feature(generic_associated_types)]
 
 use std::future::Future;
@@ -18,8 +14,6 @@ trait Client {
 }
 
 fn call_connect<C>(c: &'_ C) -> impl '_ + Future + Send
-//[migrate]~^ ERROR the parameter
-//[migrate]~| ERROR the parameter
 where
     C: Client + Send + Sync,
 {

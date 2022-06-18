@@ -8,6 +8,7 @@ doctest = false
 
 [dependencies]
 tracing = "0.1"
+rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 rustc_macros = { path = "../rustc_macros" }
@@ -18,6 +19,8 @@ atty = "0.2"
 termcolor = "1.0"
 annotate-snippets = "0.8.0"
 termize = "0.1.1"
+serde = { version = "1.0.125", features = ["derive"] }
+serde_json = "1.0.59"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["handleapi", "synchapi", "winbase"] }

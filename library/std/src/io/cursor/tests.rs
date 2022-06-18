@@ -50,9 +50,11 @@ fn test_mem_mut_writer() {
     assert_eq!(&writer.get_ref()[..], b);
 }
 
-#[test]
-fn test_box_slice_writer() {
-    let mut writer = Cursor::new(vec![0u8; 9].into_boxed_slice());
+fn test_slice_writer<T>(writer: &mut Cursor<T>)
+where
+    T: AsRef<[u8]>,
+    Cursor<T>: Write,
+{
     assert_eq!(writer.position(), 0);
     assert_eq!(writer.write(&[0]).unwrap(), 1);
     assert_eq!(writer.position(), 1);
@@ -65,12 +67,14 @@ fn test_box_slice_writer() {
     assert_eq!(writer.write(&[8, 9]).unwrap(), 1);
     assert_eq!(writer.write(&[10]).unwrap(), 0);
     let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
-    assert_eq!(&**writer.get_ref(), b);
+    assert_eq!(writer.get_ref().as_ref(), b);
 }
 
-#[test]
-fn test_box_slice_writer_vectored() {
-    let mut writer = Cursor::new(vec![0u8; 9].into_boxed_slice());
+fn test_slice_writer_vectored<T>(writer: &mut Cursor<T>)
+where
+    T: AsRef<[u8]>,
+    Cursor<T>: Write,
+{
     assert_eq!(writer.position(), 0);
     assert_eq!(writer.write_vectored(&[IoSlice::new(&[0])]).unwrap(), 1);
     assert_eq!(writer.position(), 1);
@@ -85,53 +89,45 @@ fn test_box_slice_writer_vectored() {
     assert_eq!(writer.write_vectored(&[IoSlice::new(&[8, 9])]).unwrap(), 1);
     assert_eq!(writer.write_vectored(&[IoSlice::new(&[10])]).unwrap(), 0);
     let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
-    assert_eq!(&**writer.get_ref(), b);
+    assert_eq!(writer.get_ref().as_ref(), b);
+}
+
+#[test]
+fn test_box_slice_writer() {
+    let mut writer = Cursor::new(vec![0u8; 9].into_boxed_slice());
+    test_slice_writer(&mut writer);
+}
+
+#[test]
+fn test_box_slice_writer_vectored() {
+    let mut writer = Cursor::new(vec![0u8; 9].into_boxed_slice());
+    test_slice_writer_vectored(&mut writer);
+}
+
+#[test]
+fn test_array_writer() {
+    let mut writer = Cursor::new([0u8; 9]);
+    test_slice_writer(&mut writer);
+}
+
+#[test]
+fn test_array_writer_vectored() {
+    let mut writer = Cursor::new([0u8; 9]);
+    test_slice_writer_vectored(&mut writer);
 }
 
 #[test]
 fn test_buf_writer() {
     let mut buf = [0 as u8; 9];
-    {
-        let mut writer = Cursor::new(&mut buf[..]);
-        assert_eq!(writer.position(), 0);
-        assert_eq!(writer.write(&[0]).unwrap(), 1);
-        assert_eq!(writer.position(), 1);
-        assert_eq!(writer.write(&[1, 2, 3]).unwrap(), 3);
-        assert_eq!(writer.write(&[4, 5, 6, 7]).unwrap(), 4);
-        assert_eq!(writer.position(), 8);
-        assert_eq!(writer.write(&[]).unwrap(), 0);
-        assert_eq!(writer.position(), 8);
-
-        assert_eq!(writer.write(&[8, 9]).unwrap(), 1);
-        assert_eq!(writer.write(&[10]).unwrap(), 0);
-    }
-    let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
-    assert_eq!(buf, b);
+    let mut writer = Cursor::new(&mut buf[..]);
+    test_slice_writer(&mut writer);
 }
 
 #[test]
 fn test_buf_writer_vectored() {
     let mut buf = [0 as u8; 9];
-    {
-        let mut writer = Cursor::new(&mut buf[..]);
-        assert_eq!(writer.position(), 0);
-        assert_eq!(writer.write_vectored(&[IoSlice::new(&[0])]).unwrap(), 1);
-        assert_eq!(writer.position(), 1);
-        assert_eq!(
-            writer
-                .write_vectored(&[IoSlice::new(&[1, 2, 3]), IoSlice::new(&[4, 5, 6, 7])],)
-                .unwrap(),
-            7,
-        );
-        assert_eq!(writer.position(), 8);
-        assert_eq!(writer.write_vectored(&[]).unwrap(), 0);
-        assert_eq!(writer.position(), 8);
-
-        assert_eq!(writer.write_vectored(&[IoSlice::new(&[8, 9])]).unwrap(), 1);
-        assert_eq!(writer.write_vectored(&[IoSlice::new(&[10])]).unwrap(), 0);
-    }
-    let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
-    assert_eq!(buf, b);
+    let mut writer = Cursor::new(&mut buf[..]);
+    test_slice_writer_vectored(&mut writer);
 }
 
 #[test]

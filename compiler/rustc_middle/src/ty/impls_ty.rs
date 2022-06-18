@@ -4,6 +4,7 @@
 use crate::middle::region;
 use crate::mir;
 use crate::ty;
+use crate::ty::fast_reject::SimplifiedType;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::HashingControls;
@@ -55,6 +56,18 @@ where
     }
 }
 
+impl<'a> ToStableHashKey<StableHashingContext<'a>> for SimplifiedType {
+    type KeyType = Fingerprint;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> Fingerprint {
+        let mut hasher = StableHasher::new();
+        let mut hcx: StableHashingContext<'a> = hcx.clone();
+        self.hash_stable(&mut hcx, &mut hasher);
+        hasher.finish()
+    }
+}
+
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArg<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.unpack().hash_stable(hcx, hasher);
@@ -73,18 +86,16 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArgKin
             //
             // In order to make it very unlikely for the sequence of bytes being hashed for
             // a `GenericArgKind::Type` to be the same as the sequence of bytes being
-            // hashed for one of the other variants, we hash a `0xFF` byte before hashing
-            // their discriminant (since the discriminant of `TyKind` is unlikely to ever start
-            // with 0xFF).
+            // hashed for one of the other variants, we hash some very high number instead
+            // of their actual discriminant since `TyKind` should never start with anything
+            // that high.
             ty::subst::GenericArgKind::Type(ty) => ty.hash_stable(hcx, hasher),
             ty::subst::GenericArgKind::Const(ct) => {
-                0xFFu8.hash_stable(hcx, hasher);
-                mem::discriminant(self).hash_stable(hcx, hasher);
+                0xF3u8.hash_stable(hcx, hasher);
                 ct.hash_stable(hcx, hasher);
             }
             ty::subst::GenericArgKind::Lifetime(lt) => {
-                0xFFu8.hash_stable(hcx, hasher);
-                mem::discriminant(self).hash_stable(hcx, hasher);
+                0xF5u8.hash_stable(hcx, hasher);
                 lt.hash_stable(hcx, hasher);
             }
         }
@@ -124,8 +135,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
             ty::RePlaceholder(p) => {
                 p.hash_stable(hcx, hasher);
             }
-            ty::ReVar(..) => {
-                bug!("StableHasher: unexpected region {:?}", *self)
+            ty::ReVar(reg) => {
+                reg.hash_stable(hcx, hasher);
             }
         }
     }

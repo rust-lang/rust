@@ -1,5 +1,4 @@
 use crate::traits::*;
-use rustc_errors::ErrorReported;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
@@ -191,7 +190,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             all_consts_ok = false;
             match err {
                 // errored or at least linted
-                ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {}
+                ErrorHandled::Reported(_) | ErrorHandled::Linted => {}
                 ErrorHandled::TooGeneric => {
                     span_bug!(const_.span, "codgen encountered polymorphic constant: {:?}", err)
                 }
@@ -245,7 +244,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx.debug_introduce_locals(&mut bx);
 
     // Codegen the body of each block using reverse postorder
-    // FIXME(eddyb) reuse RPO iterator between `analysis` and this.
     for (bb, _) in traversal::reverse_postorder(&mir) {
         fx.codegen_block(bb);
     }

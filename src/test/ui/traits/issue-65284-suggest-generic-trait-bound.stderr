@@ -7,8 +7,8 @@ LL |     t.foo()
    = help: items from traits can only be used if the type parameter is bounded by the trait
 help: the following trait defines an item `foo`, perhaps you need to restrict type parameter `T` with it:
    |
-LL | fn do_stuff<T: Foo + Bar>(t : T) {
-   |             ~~~~~~~~
+LL | fn do_stuff<T : Bar + Foo>(t : T) {
+   |                     +++++
 
 error: aborting due to previous error
 

@@ -3,18 +3,17 @@ use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
-use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
+use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::AccessLevels;
-use crate::middle::region;
-use crate::middle::resolve_lifetime::{
-    LifetimeScopeForPath, ObjectLifetimeDefault, Region, ResolveLifetimes,
-};
+use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLifetimes};
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
-use crate::mir::interpret::{ConstAlloc, LitToConstError, LitToConstInput};
-use crate::mir::interpret::{ConstValue, EvalToAllocationRawResult, EvalToConstValueResult};
+use crate::mir::interpret::{
+    ConstValue, EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
+};
+use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::thir;
 use crate::traits::query::{
@@ -23,7 +22,7 @@ use crate::traits::query::{
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
 };
 use crate::traits::query::{
-    DropckOutlivesResult, DtorckConstraint, MethodAutoderefStepsResult, NormalizationResult,
+    DropckConstraint, DropckOutlivesResult, MethodAutoderefStepsResult, NormalizationResult,
     OutlivesBound,
 };
 use crate::traits::specialization_graph;
@@ -31,13 +30,16 @@ use crate::traits::{self, ImplSource};
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
+use crate::ty::GeneratorDiagnosticData;
 use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_attr as attr;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -49,13 +51,10 @@ use rustc_session::cstore::{CrateDepKind, CrateSource};
 use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Limits;
-use rustc_target::abi;
-use rustc_target::spec::PanicStrategy;
-
-use rustc_ast as ast;
-use rustc_attr as attr;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi;
+use rustc_target::spec::PanicStrategy;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -337,7 +336,7 @@ rustc_query_append! { [define_callbacks!][<'tcx>] }
 mod sealed {
     use super::{DefId, LocalDefId};
 
-    /// An analogue of the `Into` trait that's intended only for query paramaters.
+    /// An analogue of the `Into` trait that's intended only for query parameters.
     ///
     /// This exists to allow queries to accept either `DefId` or `LocalDefId` while requiring that the
     /// user call `to_def_id` to convert between them everywhere else.

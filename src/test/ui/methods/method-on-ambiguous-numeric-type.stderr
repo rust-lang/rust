@@ -46,6 +46,7 @@ LL |     bar.pow(2);
    |         ^^^
    |
 help: you must specify a type for this binding, like `i32`
+  --> $DIR/auxiliary/macro-in-other-crate.rs:3:29
    |
 LL |     ($ident:ident) => { let $ident: i32 = 42; }
    |                             ~~~~~~~~~~~

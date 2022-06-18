@@ -1,7 +1,7 @@
 // Compiler:
 //
 // Run-time:
-//   stdout: Panicking
+//   stdout: Success
 //   status: signal
 
 #![allow(unused_attributes)]
@@ -49,7 +49,7 @@ mod libc {
         pub fn puts(s: *const u8) -> i32;
         pub fn fflush(stream: *mut i32) -> i32;
 
-        pub static STDOUT: *mut i32;
+        pub static stdout: *mut i32;
     }
 }
 
@@ -64,8 +64,10 @@ mod intrinsics {
 #[no_mangle]
 pub fn panic(_msg: &str) -> ! {
     unsafe {
-        libc::puts("Panicking\0" as *const str as *const u8);
-        libc::fflush(libc::STDOUT);
+        // Panicking is expected iff overflow checking is enabled.
+        #[cfg(debug_assertions)]
+        libc::puts("Success\0" as *const str as *const u8);
+        libc::fflush(libc::stdout);
         intrinsics::abort();
     }
 }
@@ -124,6 +126,15 @@ impl Add for isize {
 #[start]
 fn main(mut argc: isize, _argv: *const *const u8) -> isize {
     let int = 9223372036854775807isize;
-    let int = int + argc;
+    let int = int + argc;  // overflow
+
+    // If overflow checking is disabled, we should reach here.
+    #[cfg(not(debug_assertions))]
+    unsafe {
+        libc::puts("Success\0" as *const str as *const u8);
+        libc::fflush(libc::stdout);
+        intrinsics::abort();
+    }
+
     int
 }

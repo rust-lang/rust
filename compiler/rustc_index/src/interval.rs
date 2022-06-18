@@ -1,7 +1,7 @@
 use std::iter::Step;
 use std::marker::PhantomData;
-use std::ops::Bound;
 use std::ops::RangeBounds;
+use std::ops::{Bound, Range};
 
 use crate::vec::Idx;
 use crate::vec::IndexVec;
@@ -11,6 +11,10 @@ use smallvec::SmallVec;
 mod tests;
 
 /// Stores a set of intervals on the indices.
+///
+/// The elements in `map` are sorted and non-adjacent, which means
+/// the second value of the previous element is *greater* than the
+/// first value of the following element.
 #[derive(Debug, Clone)]
 pub struct IntervalSet<I> {
     // Start, end
@@ -70,7 +74,7 @@ impl<I: Idx> IntervalSet<I> {
     /// Returns true if we increased the number of elements present.
     pub fn insert_range(&mut self, range: impl RangeBounds<I> + Clone) -> bool {
         let start = inclusive_start(range.clone());
-        let Some(mut end) = inclusive_end(self.domain, range) else {
+        let Some(end) = inclusive_end(self.domain, range) else {
             // empty range
             return false;
         };
@@ -78,60 +82,65 @@ impl<I: Idx> IntervalSet<I> {
             return false;
         }
 
-        loop {
-            // This condition looks a bit weird, but actually makes sense.
-            //
-            // if r.0 == end + 1, then we're actually adjacent, so we want to
-            // continue to the next range. We're looking here for the first
-            // range which starts *non-adjacently* to our end.
-            let next = self.map.partition_point(|r| r.0 <= end + 1);
-            if let Some(last) = next.checked_sub(1) {
-                let (prev_start, prev_end) = &mut self.map[last];
-                if *prev_end + 1 >= start {
-                    // If the start for the inserted range is adjacent to the
-                    // end of the previous, we can extend the previous range.
-                    if start < *prev_start {
-                        // Our range starts before the one we found. We'll need
-                        // to *remove* it, and then try again.
-                        //
-                        // FIXME: This is not so efficient; we may need to
-                        // recurse a bunch of times here. Instead, it's probably
-                        // better to do something like drain_filter(...) on the
-                        // map to be able to delete or modify all the ranges in
-                        // start..=end and then potentially re-insert a new
-                        // range.
-                        end = std::cmp::max(end, *prev_end);
-                        self.map.remove(last);
-                    } else {
-                        // We overlap with the previous range, increase it to
-                        // include us.
-                        //
-                        // Make sure we're actually going to *increase* it though --
-                        // it may be that end is just inside the previously existing
-                        // set.
-                        return if end > *prev_end {
-                            *prev_end = end;
-                            true
-                        } else {
-                            false
-                        };
+        // This condition looks a bit weird, but actually makes sense.
+        //
+        // if r.0 == end + 1, then we're actually adjacent, so we want to
+        // continue to the next range. We're looking here for the first
+        // range which starts *non-adjacently* to our end.
+        let next = self.map.partition_point(|r| r.0 <= end + 1);
+        let result = if let Some(right) = next.checked_sub(1) {
+            let (prev_start, prev_end) = self.map[right];
+            if prev_end + 1 >= start {
+                // If the start for the inserted range is adjacent to the
+                // end of the previous, we can extend the previous range.
+                if start < prev_start {
+                    // The first range which ends *non-adjacently* to our start.
+                    // And we can ensure that left <= right.
+                    let left = self.map.partition_point(|l| l.1 + 1 < start);
+                    let min = std::cmp::min(self.map[left].0, start);
+                    let max = std::cmp::max(prev_end, end);
+                    self.map[right] = (min, max);
+                    if left != right {
+                        self.map.drain(left..right);
                     }
+                    true
                 } else {
-                    // Otherwise, we don't overlap, so just insert
-                    self.map.insert(last + 1, (start, end));
-                    return true;
+                    // We overlap with the previous range, increase it to
+                    // include us.
+                    //
+                    // Make sure we're actually going to *increase* it though --
+                    // it may be that end is just inside the previously existing
+                    // set.
+                    if end > prev_end {
+                        self.map[right].1 = end;
+                        true
+                    } else {
+                        false
+                    }
                 }
             } else {
-                if self.map.is_empty() {
-                    // Quite common in practice, and expensive to call memcpy
-                    // with length zero.
-                    self.map.push((start, end));
-                } else {
-                    self.map.insert(next, (start, end));
-                }
-                return true;
+                // Otherwise, we don't overlap, so just insert
+                self.map.insert(right + 1, (start, end));
+                true
             }
-        }
+        } else {
+            if self.map.is_empty() {
+                // Quite common in practice, and expensive to call memcpy
+                // with length zero.
+                self.map.push((start, end));
+            } else {
+                self.map.insert(next, (start, end));
+            }
+            true
+        };
+        debug_assert!(
+            self.check_invariants(),
+            "wrong intervals after insert {:?}..={:?} to {:?}",
+            start,
+            end,
+            self
+        );
+        result
     }
 
     pub fn contains(&self, needle: I) -> bool {
@@ -148,9 +157,26 @@ impl<I: Idx> IntervalSet<I> {
     where
         I: Step,
     {
-        // FIXME: Performance here is probably not great. We will be doing a lot
-        // of pointless tree traversals.
-        other.iter().all(|elem| self.contains(elem))
+        let mut sup_iter = self.iter_intervals();
+        let mut current = None;
+        let contains = |sup: Range<I>, sub: Range<I>, current: &mut Option<Range<I>>| {
+            if sup.end < sub.start {
+                // if `sup.end == sub.start`, the next sup doesn't contain `sub.start`
+                None // continue to the next sup
+            } else if sup.end >= sub.end && sup.start <= sub.start {
+                *current = Some(sup); // save the current sup
+                Some(true)
+            } else {
+                Some(false)
+            }
+        };
+        other.iter_intervals().all(|sub| {
+            current
+                .take()
+                .and_then(|sup| contains(sup, sub.clone(), &mut current))
+                .or_else(|| sup_iter.find_map(|sup| contains(sup, sub.clone(), &mut current)))
+                .unwrap_or(false)
+        })
     }
 
     pub fn is_empty(&self) -> bool {
@@ -177,7 +203,10 @@ impl<I: Idx> IntervalSet<I> {
 
     pub fn insert_all(&mut self) {
         self.clear();
-        self.map.push((0, self.domain.try_into().unwrap()));
+        if let Some(end) = self.domain.checked_sub(1) {
+            self.map.push((0, end.try_into().unwrap()));
+        }
+        debug_assert!(self.check_invariants());
     }
 
     pub fn union(&mut self, other: &IntervalSet<I>) -> bool
@@ -189,7 +218,20 @@ impl<I: Idx> IntervalSet<I> {
         for range in other.iter_intervals() {
             did_insert |= self.insert_range(range);
         }
+        debug_assert!(self.check_invariants());
         did_insert
+    }
+
+    // Check the intervals are valid, sorted and non-adjacent
+    fn check_invariants(&self) -> bool {
+        let mut current: Option<u32> = None;
+        for (start, end) in &self.map {
+            if start > end || current.map_or(false, |x| x + 1 >= *start) {
+                return false;
+            }
+            current = Some(*end);
+        }
+        current.map_or(true, |x| x < self.domain as u32)
     }
 }
 

@@ -29,7 +29,7 @@
 //!
 //! Suppose we have the following always applicable impl:
 //!
-//! ```rust
+//! ```ignore (illustrative)
 //! impl<T> SpecExtend<T> for std::vec::IntoIter<T> { /* specialized impl */ }
 //! impl<T, I: Iterator<Item=T>> SpecExtend<T> for I { /* default impl */ }
 //! ```
@@ -66,11 +66,12 @@
 //! on traits with methods can.
 
 use crate::constrained_generic_params as cgp;
+use crate::errors::SubstsOnOverriddenImpl;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{InferCtxt, RegionckMode, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::specialization_graph::Node;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -163,9 +164,9 @@ fn get_impl_substs<'tcx>(
 
     // Conservatively use an empty `ParamEnv`.
     let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
-    infcx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env, RegionckMode::default());
+    infcx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env);
     let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
-        tcx.sess.struct_span_err(span, "could not resolve substs on overridden impl").emit();
+        tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
         return None;
     };
     Some((impl1_substs, impl2_substs))

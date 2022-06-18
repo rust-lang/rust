@@ -4,5 +4,4 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-rustc_span = { path = "../rustc_span" }
 rustc_lexer = { path = "../rustc_lexer" }

@@ -9,6 +9,19 @@ error: parenthesized generic arguments cannot be used in associated type constra
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                           ^^^^^
+   |
+help: use angle brackets instead
+   |
+LL | fn foo<'a>(arg: Box<dyn X<Y<'a> = &'a ()>>) {}
+   |                            ~  ~
+
+error: parenthesized generic arguments cannot be used in associated type constraints
+  --> $DIR/gat-trait-path-parenthesised-args.rs:14:27
+   |
+LL | fn bar<'a>(arg: Box<dyn X<Y() = ()>>) {}
+   |                           ^--
+   |                            |
+   |                            help: remove these parentheses
 
 error[E0107]: this associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/gat-trait-path-parenthesised-args.rs:7:27
@@ -40,6 +53,22 @@ note: associated type defined here, with 0 generic parameters
 LL |   type Y<'a>;
    |        ^
 
-error: aborting due to 4 previous errors
+error[E0107]: this associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/gat-trait-path-parenthesised-args.rs:14:27
+   |
+LL | fn bar<'a>(arg: Box<dyn X<Y() = ()>>) {}
+   |                           ^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/gat-trait-path-parenthesised-args.rs:4:8
+   |
+LL |   type Y<'a>;
+   |        ^ --
+help: add missing lifetime argument
+   |
+LL | fn bar<'a>(arg: Box<dyn X<Y('a) = ()>>) {}
+   |                             ++
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0107`.

@@ -15,7 +15,7 @@ macro_rules! test_literal {
         for input in inputs {
             assert_eq!(input.parse(), Ok(x64));
             assert_eq!(input.parse(), Ok(x32));
-            let neg_input = &format!("-{}", input);
+            let neg_input = &format!("-{input}");
             assert_eq!(neg_input.parse(), Ok(-x64));
             assert_eq!(neg_input.parse(), Ok(-x32));
         }
@@ -123,9 +123,9 @@ fn inf() {
 #[test]
 fn massive_exponent() {
     let max = i64::MAX;
-    assert_eq!(format!("1e{}000", max).parse(), Ok(f64::INFINITY));
-    assert_eq!(format!("1e-{}000", max).parse(), Ok(0.0));
-    assert_eq!(format!("1e{}000", max).parse(), Ok(f64::INFINITY));
+    assert_eq!(format!("1e{max}000").parse(), Ok(f64::INFINITY));
+    assert_eq!(format!("1e-{max}000").parse(), Ok(0.0));
+    assert_eq!(format!("1e{max}000").parse(), Ok(f64::INFINITY));
 }
 
 #[test]

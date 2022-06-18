@@ -1,12 +1,12 @@
-#![feature(no_core, lang_items, rustdoc_internals)]
+#![feature(no_core, lang_items, rustdoc_internals, rustc_attrs)]
 #![no_core]
+#![rustc_coherence_is_core]
 #![crate_type="rlib"]
 
 #[doc(primitive = "char")]
 /// Some char docs
 mod char {}
 
-#[lang = "char"]
 impl char {
     pub fn len_utf8(self) -> usize {
         42

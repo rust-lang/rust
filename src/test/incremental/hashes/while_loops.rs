@@ -7,7 +7,7 @@
 
 // build-pass (FIXME(62277): could be check-pass?)
 // revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
-// compile-flags: -Z query-dep-graph
+// compile-flags: -Z query-dep-graph -O
 // [cfail1]compile-flags: -Zincremental-ignore-spans
 // [cfail2]compile-flags: -Zincremental-ignore-spans
 // [cfail3]compile-flags: -Zincremental-ignore-spans
@@ -31,9 +31,9 @@ pub fn change_loop_body() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_loop_body() {
     let mut _x = 0;
@@ -56,9 +56,9 @@ pub fn change_loop_condition() {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_loop_condition() {
     let mut _x = 0;

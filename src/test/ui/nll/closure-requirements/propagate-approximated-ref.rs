@@ -12,7 +12,7 @@
 // Note: the use of `Cell` here is to introduce invariance. One less
 // variable.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![feature(rustc_attrs)]
 

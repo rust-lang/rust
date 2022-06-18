@@ -1,6 +1,4 @@
 #![feature(array_windows)]
-#![feature(bool_to_option)]
-#![feature(crate_visibility_modifier)]
 #![feature(control_flow_enum)]
 #![feature(let_else)]
 #![recursion_limit = "256"]

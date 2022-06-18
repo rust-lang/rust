@@ -1,7 +1,7 @@
 // Check that repeated type variables are correctly handled
 
 #![allow(unused)]
-#![feature(nll, type_ascription)]
+#![feature(type_ascription)]
 
 type PairUncoupled<'a, 'b, T> = (&'a T, &'b T);
 type PairCoupledTypes<T> = (T, T);

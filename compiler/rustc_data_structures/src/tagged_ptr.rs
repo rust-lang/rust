@@ -45,7 +45,8 @@ pub unsafe trait Pointer: Deref {
     /// case you'll need to manually figure out what the right type to pass to
     /// align_of is.
     ///
-    /// ```rust
+    /// ```ignore UNSOLVED (what to do about the Self)
+    /// # use std::ops::Deref;
     /// std::mem::align_of::<<Self as Deref>::Target>().trailing_zeros() as usize;
     /// ```
     const BITS: usize;

@@ -23,14 +23,14 @@ fn bar<'a>(x: &'a isize) {
     let y: &'a isize = x;
 
     // &'a is not visible to *items*:
-    type X = Option<&'a isize>; //~ ERROR undeclared lifetime
+    type X = Option<&'a isize>; //~ ERROR can't use generic parameters from outer item
     enum E {
-        E1(&'a isize) //~ ERROR undeclared lifetime
+        E1(&'a isize) //~ ERROR can't use generic parameters from outer item
     }
     struct S {
-        f: &'a isize //~ ERROR undeclared lifetime
+        f: &'a isize //~ ERROR can't use generic parameters from outer item
     }
-    fn f(a: &'a isize) { } //~ ERROR undeclared lifetime
+    fn f(a: &'a isize) { } //~ ERROR can't use generic parameters from outer item
 
     // &'a CAN be declared on functions and used then:
     fn g<'a>(a: &'a isize) { } // OK

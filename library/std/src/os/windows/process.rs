@@ -22,7 +22,7 @@ impl FromRawHandle for process::Stdio {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedHandle> for process::Stdio {
     fn from(handle: OwnedHandle) -> process::Stdio {
         let handle = sys::handle::Handle::from_inner(handle);
@@ -39,7 +39,7 @@ impl AsRawHandle for process::Child {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for process::Child {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -54,7 +54,7 @@ impl IntoRawHandle for process::Child {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<process::Child> for OwnedHandle {
     fn from(child: process::Child) -> OwnedHandle {
         child.into_inner().into_handle().into_inner()
@@ -159,7 +159,7 @@ pub trait CommandExt: Sealed {
     ///
     /// This is useful for passing arguments to `cmd.exe /c`, which doesn't follow
     /// `CommandLineToArgvW` escaping rules.
-    #[unstable(feature = "windows_process_extensions_raw_arg", issue = "29494")]
+    #[stable(feature = "windows_process_extensions_raw_arg", since = "1.62.0")]
     fn raw_arg<S: AsRef<OsStr>>(&mut self, text_to_append_as_is: S) -> &mut process::Command;
 }
 
@@ -178,5 +178,19 @@ impl CommandExt for process::Command {
     fn raw_arg<S: AsRef<OsStr>>(&mut self, raw_text: S) -> &mut process::Command {
         self.as_inner_mut().raw_arg(raw_text.as_ref());
         self
+    }
+}
+
+#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+pub trait ChildExt: Sealed {
+    /// Extracts the main thread raw handle, without taking ownership
+    #[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+    fn main_thread_handle(&self) -> BorrowedHandle<'_>;
+}
+
+#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+impl ChildExt for process::Child {
+    fn main_thread_handle(&self) -> BorrowedHandle<'_> {
+        self.handle.main_thread_handle()
     }
 }

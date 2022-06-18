@@ -861,10 +861,8 @@ fn test_vis() {
     // VisibilityKind::Public
     assert_eq!(stringify_vis!(pub), "pub ");
 
-    // VisibilityKind::Crate
-    assert_eq!(stringify_vis!(crate), "crate ");
-
     // VisibilityKind::Restricted
+    assert_eq!(stringify_vis!(pub(crate)), "pub(crate) ");
     assert_eq!(stringify_vis!(pub(self)), "pub(self) ");
     assert_eq!(stringify_vis!(pub(super)), "pub(super) ");
     assert_eq!(stringify_vis!(pub(in self)), "pub(self) ");

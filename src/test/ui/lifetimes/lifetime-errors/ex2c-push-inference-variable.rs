@@ -4,7 +4,8 @@ struct Ref<'a, T: 'a> {
 
 fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
     let z = Ref { data: y.data };
-    x.push(z); //~ ERROR lifetime mismatch
+    x.push(z);
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() { }

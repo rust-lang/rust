@@ -1,11 +1,11 @@
 use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor, TrailingToken};
-use rustc_ast::token::{self, DelimToken, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttributesData, CreateTokenStream};
 use rustc_ast::tokenstream::{AttrAnnotatedTokenTree, DelimSpan, LazyTokenStream, Spacing};
 use rustc_ast::{self as ast};
-use rustc_ast::{AstLike, AttrVec, Attribute};
+use rustc_ast::{AttrVec, Attribute, HasAttrs, HasTokens};
 use rustc_errors::PResult;
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_span::{sym, Span};
 
 use std::convert::TryInto;
 use std::ops::Range;
@@ -100,20 +100,16 @@ rustc_data_structures::static_assert_size!(LazyTokenStreamImpl, 144);
 
 impl CreateTokenStream for LazyTokenStreamImpl {
     fn create_token_stream(&self) -> AttrAnnotatedTokenStream {
-        // The token produced by the final call to `next` or `next_desugared`
-        // was not actually consumed by the callback. The combination
-        // of chaining the initial token and using `take` produces the desired
-        // result - we produce an empty `TokenStream` if no calls were made,
-        // and omit the final token otherwise.
+        // The token produced by the final call to `{,inlined_}next` was not
+        // actually consumed by the callback. The combination of chaining the
+        // initial token and using `take` produces the desired result - we
+        // produce an empty `TokenStream` if no calls were made, and omit the
+        // final token otherwise.
         let mut cursor_snapshot = self.cursor_snapshot.clone();
         let tokens =
             std::iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))
                 .chain((0..self.num_calls).map(|_| {
-                    let token = if cursor_snapshot.desugar_doc_comments {
-                        cursor_snapshot.next_desugared()
-                    } else {
-                        cursor_snapshot.next()
-                    };
+                    let token = cursor_snapshot.next(cursor_snapshot.desugar_doc_comments);
                     (FlatToken::Token(token.0), token.1)
                 }))
                 .take(self.num_calls);
@@ -187,7 +183,7 @@ impl<'a> Parser<'a> {
     ///
     /// Note: If your callback consumes an opening delimiter
     /// (including the case where you call `collect_tokens`
-    /// when the current token is an opening delimeter),
+    /// when the current token is an opening delimiter),
     /// you must also consume the corresponding closing delimiter.
     ///
     /// That is, you can consume
@@ -196,7 +192,7 @@ impl<'a> Parser<'a> {
     /// This restriction shouldn't be an issue in practice,
     /// since this function is used to record the tokens for
     /// a parsed AST item, which always has matching delimiters.
-    pub fn collect_tokens_trailing_token<R: AstLike>(
+    pub fn collect_tokens_trailing_token<R: HasAttrs + HasTokens>(
         &mut self,
         attrs: AttrWrapper,
         force_collect: ForceCollect,
@@ -259,7 +255,7 @@ impl<'a> Parser<'a> {
             // We also call `has_cfg_or_cfg_attr` at the beginning of this function,
             // but we only bail out if there's no possibility of inner attributes
             // (!R::SUPPORTS_CUSTOM_INNER_ATTRS)
-            // We only catpure about `#[cfg]` or `#[cfg_attr]` in `capture_cfg`
+            // We only capture about `#[cfg]` or `#[cfg_attr]` in `capture_cfg`
             // mode - during normal parsing, we don't need any special capturing
             // for those attributes, since they're builtin.
             && !(self.capture_cfg && has_cfg_or_cfg_attr(ret.attrs()))
@@ -381,7 +377,7 @@ impl<'a> Parser<'a> {
         if matches!(self.capture_state.capturing, Capturing::No) {
             self.capture_state.replace_ranges.clear();
             // We don't clear `inner_attr_ranges`, as doing so repeatedly
-            // had a measureable performance impact. Most inner attributes that
+            // had a measurable performance impact. Most inner attributes that
             // we insert will get removed - when we drop the parser, we'll free
             // up the memory used by any attributes that we didn't remove from the map.
         }
@@ -392,63 +388,35 @@ impl<'a> Parser<'a> {
 /// Converts a flattened iterator of tokens (including open and close delimiter tokens)
 /// into a `TokenStream`, creating a `TokenTree::Delimited` for each matching pair
 /// of open and close delims.
-// FIXME(#67062): Currently, we don't parse `None`-delimited groups correctly,
-// which can cause us to end up with mismatched `None` delimiters in our
-// captured tokens. This function contains several hacks to work around this -
-// essentially, we throw away mismatched `None` delimiters when we encounter them.
-// Once we properly parse `None` delimiters, they can be captured just like any
-// other tokens, and these hacks can be removed.
 fn make_token_stream(
     mut iter: impl Iterator<Item = (FlatToken, Spacing)>,
     break_last_token: bool,
 ) -> AttrAnnotatedTokenStream {
     #[derive(Debug)]
     struct FrameData {
-        open: Span,
-        open_delim: DelimToken,
+        // This is `None` for the first frame, `Some` for all others.
+        open_delim_sp: Option<(Delimiter, Span)>,
         inner: Vec<(AttrAnnotatedTokenTree, Spacing)>,
     }
-    let mut stack =
-        vec![FrameData { open: DUMMY_SP, open_delim: DelimToken::NoDelim, inner: vec![] }];
+    let mut stack = vec![FrameData { open_delim_sp: None, inner: vec![] }];
     let mut token_and_spacing = iter.next();
     while let Some((token, spacing)) = token_and_spacing {
         match token {
             FlatToken::Token(Token { kind: TokenKind::OpenDelim(delim), span }) => {
-                stack.push(FrameData { open: span, open_delim: delim, inner: vec![] });
+                stack.push(FrameData { open_delim_sp: Some((delim, span)), inner: vec![] });
             }
             FlatToken::Token(Token { kind: TokenKind::CloseDelim(delim), span }) => {
-                // HACK: If we enconter a mismatched `None` delimiter at the top
-                // level, just ignore it.
-                if matches!(delim, DelimToken::NoDelim)
-                    && (stack.len() == 1
-                        || !matches!(stack.last_mut().unwrap().open_delim, DelimToken::NoDelim))
-                {
-                    token_and_spacing = iter.next();
-                    continue;
-                }
                 let frame_data = stack
                     .pop()
                     .unwrap_or_else(|| panic!("Token stack was empty for token: {:?}", token));
 
-                // HACK: If our current frame has a mismatched opening `None` delimiter,
-                // merge our current frame with the one above it. That is, transform
-                // `[ { < first second } third ]` into `[ { first second } third ]`
-                if !matches!(delim, DelimToken::NoDelim)
-                    && matches!(frame_data.open_delim, DelimToken::NoDelim)
-                {
-                    stack.last_mut().unwrap().inner.extend(frame_data.inner);
-                    // Process our closing delimiter again, this time at the previous
-                    // frame in the stack
-                    token_and_spacing = Some((token, spacing));
-                    continue;
-                }
-
+                let (open_delim, open_sp) = frame_data.open_delim_sp.unwrap();
                 assert_eq!(
-                    frame_data.open_delim, delim,
+                    open_delim, delim,
                     "Mismatched open/close delims: open={:?} close={:?}",
-                    frame_data.open, span
+                    open_delim, span
                 );
-                let dspan = DelimSpan::from_pair(frame_data.open, span);
+                let dspan = DelimSpan::from_pair(open_sp, span);
                 let stream = AttrAnnotatedTokenStream::new(frame_data.inner);
                 let delimited = AttrAnnotatedTokenTree::Delimited(dspan, delim, stream);
                 stack
@@ -472,13 +440,6 @@ fn make_token_stream(
             FlatToken::Empty => {}
         }
         token_and_spacing = iter.next();
-    }
-    // HACK: If we don't have a closing `None` delimiter for our last
-    // frame, merge the frame with the top-level frame. That is,
-    // turn `< first second` into `first second`
-    if stack.len() == 2 && stack[1].open_delim == DelimToken::NoDelim {
-        let temp_buf = stack.pop().unwrap();
-        stack.last_mut().unwrap().inner.extend(temp_buf.inner);
     }
     let mut final_buf = stack.pop().expect("Missing final buf!");
     if break_last_token {

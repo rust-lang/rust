@@ -14,7 +14,7 @@ help: remove parentheses in `for` loop
    |
 LL -     for ( elem in vec ) {
 LL +     for  elem in vec  {
-   | 
+   |
 
 error[E0308]: mismatched types
   --> $DIR/recover-for-loop-parens-around-head.rs:13:38

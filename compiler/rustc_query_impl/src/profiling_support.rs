@@ -1,7 +1,7 @@
 use measureme::{StringComponent, StringId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
 use rustc_middle::ty::{TyCtxt, WithOptConstParam};
 use rustc_query_system::query::QueryCache;
@@ -143,7 +143,7 @@ impl SpecIntoSelfProfilingString for CrateNum {
         &self,
         builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
     ) -> StringId {
-        builder.def_id_to_string_id(DefId { krate: *self, index: CRATE_DEF_INDEX })
+        builder.def_id_to_string_id(self.as_def_id())
     }
 }
 
@@ -275,6 +275,9 @@ fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
             let query_name = profiler.get_or_alloc_cached_string(query_name);
             let event_id = event_id_builder.from_label(query_name).to_string_id();
 
+            // FIXME(eddyb) make this O(1) by using a pre-cached query name `EventId`,
+            // instead of passing the `DepNodeIndex` to `finish_with_query_invocation_id`,
+            // when recording the event in the first place.
             let mut query_invocation_ids = Vec::new();
             query_cache.iter(&mut |_, _, i| {
                 query_invocation_ids.push(i.into());

@@ -2,7 +2,8 @@
 //!
 //! See the `Qualif` trait for more info.
 
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
+use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngine;
 use rustc_middle::mir::*;
@@ -17,7 +18,7 @@ use super::ConstCx;
 pub fn in_any_value_of_ty<'tcx>(
     cx: &ConstCx<'_, 'tcx>,
     ty: Ty<'tcx>,
-    tainted_by_errors: Option<ErrorReported>,
+    tainted_by_errors: Option<ErrorGuaranteed>,
 ) -> ConstQualifs {
     ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
@@ -55,7 +56,7 @@ pub trait Qualif {
     /// Returns `true` if *any* value of the given type could possibly have this `Qualif`.
     ///
     /// This function determines `Qualif`s when we cannot do a value-based analysis. Since qualif
-    /// propagation is context-insenstive, this includes function arguments and values returned
+    /// propagation is context-insensitive, this includes function arguments and values returned
     /// from a call to another function.
     ///
     /// It also determines the `Qualif`s for primitive types.
@@ -71,7 +72,7 @@ pub trait Qualif {
     /// Returning `true` for `in_adt_inherently` but `false` for `in_any_value_of_ty` is unsound.
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
-        adt: &'tcx AdtDef,
+        adt: AdtDef<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> bool;
 }
@@ -96,12 +97,12 @@ impl Qualif for HasMutInterior {
 
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
-        adt: &'tcx AdtDef,
+        adt: AdtDef<'tcx>,
         _: SubstsRef<'tcx>,
     ) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
-        Some(adt.did) == cx.tcx.lang_items().unsafe_cell_type()
+        Some(adt.did()) == cx.tcx.lang_items().unsafe_cell_type()
     }
 }
 
@@ -126,7 +127,7 @@ impl Qualif for NeedsDrop {
 
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
-        adt: &'tcx AdtDef,
+        adt: AdtDef<'tcx>,
         _: SubstsRef<'tcx>,
     ) -> bool {
         adt.has_dtor(cx.tcx)
@@ -152,18 +153,14 @@ impl Qualif for NeedsNonConstDrop {
             return false;
         }
 
-        let Some(drop_trait) = cx.tcx.lang_items().drop_trait() else {
-            // there is no way to define a type that needs non-const drop
-            // without having the lang item present.
-            return false;
-        };
+        let destruct = cx.tcx.require_lang_item(LangItem::Destruct, None);
 
         let obligation = Obligation::new(
             ObligationCause::dummy(),
             cx.param_env,
             ty::Binder::dummy(ty::TraitPredicate {
                 trait_ref: ty::TraitRef {
-                    def_id: drop_trait,
+                    def_id: destruct,
                     substs: cx.tcx.mk_substs_trait(ty, &[]),
                 },
                 constness: ty::BoundConstness::ConstIfConst,
@@ -174,15 +171,16 @@ impl Qualif for NeedsNonConstDrop {
         cx.tcx.infer_ctxt().enter(|infcx| {
             let mut selcx = SelectionContext::new(&infcx);
             let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
-                // If we couldn't select a const drop candidate, then it's bad
+                // If we couldn't select a const destruct candidate, then it's bad
                 return true;
             };
 
             if !matches!(
                 impl_src,
-                ImplSource::ConstDrop(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
+                ImplSource::ConstDestruct(_)
+                    | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
             ) {
-                // If our const drop candidate is not ConstDrop or implied by the param env,
+                // If our const destruct candidate is not ConstDestruct or implied by the param env,
                 // then it's bad
                 return true;
             }
@@ -205,7 +203,7 @@ impl Qualif for NeedsNonConstDrop {
 
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
-        adt: &'tcx AdtDef,
+        adt: AdtDef<'tcx>,
         _: SubstsRef<'tcx>,
     ) -> bool {
         adt.has_non_const_dtor(cx.tcx)
@@ -233,7 +231,7 @@ impl Qualif for CustomEq {
 
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
-        adt: &'tcx AdtDef,
+        adt: AdtDef<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> bool {
         let ty = cx.tcx.mk_ty(ty::Adt(adt, substs));
@@ -355,7 +353,8 @@ where
 
     // Check the qualifs of the value of `const` items.
     if let Some(ct) = constant.literal.const_for_ty() {
-        if let ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) = ct.val() {
+        if let ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) = ct.kind()
+        {
             // Use qualifs of the type for the promoted. Promoteds in MIR body should be possible
             // only for `NeedsNonConstDrop` with precise drop checking. This is the only const
             // check performed after the promotion. Verify that with an assertion.

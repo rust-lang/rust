@@ -24,7 +24,7 @@ use crate::{
 use super::{find_use, RegionName, UseSpans};
 
 #[derive(Debug)]
-pub(crate) enum BorrowExplanation {
+pub(crate) enum BorrowExplanation<'tcx> {
     UsedLater(LaterUseKind, Span, Option<Span>),
     UsedLaterInLoop(LaterUseKind, Span, Option<Span>),
     UsedLaterWhenDropped {
@@ -33,7 +33,7 @@ pub(crate) enum BorrowExplanation {
         should_note_order: bool,
     },
     MustBeValidFor {
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         from_closure: bool,
         span: Span,
         region_name: RegionName,
@@ -51,11 +51,11 @@ pub(crate) enum LaterUseKind {
     Other,
 }
 
-impl BorrowExplanation {
+impl<'tcx> BorrowExplanation<'tcx> {
     pub(crate) fn is_explained(&self) -> bool {
         !matches!(self, BorrowExplanation::Unexplained)
     }
-    pub(crate) fn add_explanation_to_diagnostic<'tcx>(
+    pub(crate) fn add_explanation_to_diagnostic(
         &self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
@@ -138,7 +138,7 @@ impl BorrowExplanation {
                 let mut ty = local_decl.ty;
                 if local_decl.source_info.span.desugaring_kind() == Some(DesugaringKind::ForLoop) {
                     if let ty::Adt(adt, substs) = local_decl.ty.kind() {
-                        if tcx.is_diagnostic_item(sym::Option, adt.did) {
+                        if tcx.is_diagnostic_item(sym::Option, adt.did()) {
                             // in for loop desugaring, only look at the `Some(..)` inner type
                             ty = substs.type_at(0);
                         }
@@ -148,7 +148,7 @@ impl BorrowExplanation {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
                     ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => {
-                        ("`Drop` code", format!("type `{}`", tcx.def_path_str(adt.did)))
+                        ("`Drop` code", format!("type `{}`", tcx.def_path_str(adt.did())))
                     }
 
                     // Otherwise, just report the whole type (and use
@@ -212,7 +212,7 @@ impl BorrowExplanation {
                                         "consider adding semicolon after the expression so its \
                                         temporaries are dropped sooner, before the local variables \
                                         declared by the block are dropped",
-                                        ";".to_string(),
+                                        ";",
                                         Applicability::MaybeIncorrect,
                                     );
                                 }
@@ -276,7 +276,7 @@ impl BorrowExplanation {
     pub(crate) fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
         err: &mut Diagnostic,
-        category: &ConstraintCategory,
+        category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,
     ) {
@@ -305,7 +305,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
-    ) -> (ConstraintCategory, bool, Span, Option<RegionName>) {
+    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>) {
         let BlameConstraint { category, from_closure, cause, variance_info: _ } =
             self.regioncx.best_blame_constraint(
                 &self.body,
@@ -337,7 +337,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         borrow: &BorrowData<'tcx>,
         kind_place: Option<(WriteKind, Place<'tcx>)>,
-    ) -> BorrowExplanation {
+    ) -> BorrowExplanation<'tcx> {
         debug!(
             "explain_why_borrow_contains_point(location={:?}, borrow={:?}, kind_place={:?})",
             location, borrow, kind_place
@@ -467,7 +467,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     block
                         .terminator()
                         .successors()
-                        .map(|bb| Location { statement_index: 0, block: *bb })
+                        .map(|bb| Location { statement_index: 0, block: bb })
                         .filter(|s| visited_locations.insert(*s))
                         .map(|s| {
                             if self.is_back_edge(location, s) {
@@ -526,7 +526,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             } else {
                 for bb in block.terminator().successors() {
-                    let successor = Location { statement_index: 0, block: *bb };
+                    let successor = Location { statement_index: 0, block: bb };
 
                     if !visited_locations.contains(&successor)
                         && self.find_loop_head_dfs(successor, loop_head, visited_locations)
@@ -705,10 +705,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let terminator = block.terminator();
                 debug!("was_captured_by_trait_object: terminator={:?}", terminator);
 
-                if let TerminatorKind::Call { destination: Some((place, block)), args, .. } =
+                if let TerminatorKind::Call { destination, target: Some(block), args, .. } =
                     &terminator.kind
                 {
-                    if let Some(dest) = place.as_local() {
+                    if let Some(dest) = destination.as_local() {
                         debug!(
                             "was_captured_by_trait_object: target={:?} dest={:?} args={:?}",
                             target, dest, args

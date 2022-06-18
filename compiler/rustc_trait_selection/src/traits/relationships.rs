@@ -12,50 +12,38 @@ pub(crate) fn update<'tcx, T>(
     T: TraitEngine<'tcx>,
 {
     // (*) binder skipped
-    if let ty::PredicateKind::Trait(predicate) = obligation.predicate.kind().skip_binder() {
-        if let Some(ty) =
-            infcx.shallow_resolve(predicate.self_ty()).ty_vid().map(|t| infcx.root_var(t))
-        {
-            if infcx
-                .tcx
-                .lang_items()
-                .sized_trait()
-                .map_or(false, |st| st != predicate.trait_ref.def_id)
-            {
-                let new_self_ty = infcx.tcx.types.unit;
+    if let ty::PredicateKind::Trait(tpred) = obligation.predicate.kind().skip_binder()
+        && let Some(ty) = infcx.shallow_resolve(tpred.self_ty()).ty_vid().map(|t| infcx.root_var(t))
+        && infcx.tcx.lang_items().sized_trait().map_or(false, |st| st != tpred.trait_ref.def_id)
+    {
+        let new_self_ty = infcx.tcx.types.unit;
 
-                let trait_ref = ty::TraitRef {
-                    substs: infcx
-                        .tcx
-                        .mk_substs_trait(new_self_ty, &predicate.trait_ref.substs[1..]),
-                    ..predicate.trait_ref
-                };
+        let trait_ref = ty::TraitRef {
+            substs: infcx.tcx.mk_substs_trait(new_self_ty, &tpred.trait_ref.substs[1..]),
+            ..tpred.trait_ref
+        };
 
-                // Then contstruct a new obligation with Self = () added
-                // to the ParamEnv, and see if it holds.
-                let o = rustc_infer::traits::Obligation::new(
-                    ObligationCause::dummy(),
-                    obligation.param_env,
-                    obligation
-                        .predicate
-                        .kind()
-                        .map_bound(|_| {
-                            // (*) binder moved here
-                            ty::PredicateKind::Trait(ty::TraitPredicate {
-                                trait_ref,
-                                constness: predicate.constness,
-                                polarity: predicate.polarity,
-                            })
-                        })
-                        .to_predicate(infcx.tcx),
-                );
-                // Don't report overflow errors. Otherwise equivalent to may_hold.
-                if let Ok(result) = infcx.probe(|_| infcx.evaluate_obligation(&o)) {
-                    if result.may_apply() {
-                        engine.relationships().entry(ty).or_default().self_in_trait = true;
-                    }
-                }
-            }
+        // Then construct a new obligation with Self = () added
+        // to the ParamEnv, and see if it holds.
+        let o = rustc_infer::traits::Obligation::new(
+            ObligationCause::dummy(),
+            obligation.param_env,
+            obligation
+                .predicate
+                .kind()
+                .map_bound(|_| {
+                    // (*) binder moved here
+                    ty::PredicateKind::Trait(ty::TraitPredicate {
+                        trait_ref,
+                        constness: tpred.constness,
+                        polarity: tpred.polarity,
+                    })
+                })
+                .to_predicate(infcx.tcx),
+        );
+        // Don't report overflow errors. Otherwise equivalent to may_hold.
+        if let Ok(result) = infcx.probe(|_| infcx.evaluate_obligation(&o)) && result.may_apply() {
+            engine.relationships().entry(ty).or_default().self_in_trait = true;
         }
     }
 

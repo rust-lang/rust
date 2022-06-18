@@ -1,7 +1,8 @@
-#![feature(const_fn_trait_bound)]
 // Regression test related to issue 88434
 
 const _CONST: &() = &f(&|_| {});
+//~^ ERROR any use of this value
+//~| WARNING this was previously
 
 const fn f<F>(_: &F)
 where

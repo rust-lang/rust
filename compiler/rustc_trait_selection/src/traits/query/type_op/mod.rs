@@ -28,6 +28,7 @@ pub use rustc_middle::traits::query::type_op::*;
 /// cannot be completed).
 pub trait TypeOp<'tcx>: Sized + fmt::Debug {
     type Output;
+    type ErrorInfo;
 
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
@@ -41,9 +42,8 @@ pub struct TypeOpOutput<'tcx, Op: TypeOp<'tcx>> {
     pub output: Op::Output,
     /// Any region constraints from performing the type op.
     pub constraints: Option<Rc<QueryRegionConstraints<'tcx>>>,
-    /// The canonicalized form of the query.
-    /// This for error reporting to be able to rerun the query.
-    pub canonicalized_query: Option<Canonical<'tcx, Op>>,
+    /// Used for error reporting to be able to rerun the query
+    pub error_info: Option<Op::ErrorInfo>,
 }
 
 /// "Query type ops" are type ops that are implemented using a
@@ -119,10 +119,11 @@ where
     Q: QueryTypeOp<'tcx>,
 {
     type Output = Q::QueryResponse;
+    type ErrorInfo = Canonical<'tcx, ParamEnvAnd<'tcx, Q>>;
 
     fn fully_perform(self, infcx: &InferCtxt<'_, 'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
         let mut region_constraints = QueryRegionConstraints::default();
-        let (output, canonicalized_query, mut obligations, _) =
+        let (output, error_info, mut obligations, _) =
             Q::fully_perform_into(self, infcx, &mut region_constraints)?;
 
         // Typically, instantiating NLL query results does not
@@ -160,6 +161,6 @@ where
         let region_constraints =
             if region_constraints.is_empty() { None } else { Some(Rc::new(region_constraints)) };
 
-        Ok(TypeOpOutput { output, constraints: region_constraints, canonicalized_query })
+        Ok(TypeOpOutput { output, constraints: region_constraints, error_info })
     }
 }

@@ -1,5 +1,6 @@
 use crate::io::prelude::*;
 
+use crate::env;
 use crate::fs::{self, File, OpenOptions};
 use crate::io::{ErrorKind, SeekFrom};
 use crate::path::Path;
@@ -30,7 +31,7 @@ macro_rules! check {
     ($e:expr) => {
         match $e {
             Ok(t) => t,
-            Err(e) => panic!("{} failed with: {}", stringify!($e), e),
+            Err(e) => panic!("{} failed with: {e}", stringify!($e)),
         }
     };
 }
@@ -470,7 +471,7 @@ fn file_test_directoryinfo_readdir() {
     check!(fs::create_dir(dir));
     let prefix = "foo";
     for n in 0..3 {
-        let f = dir.join(&format!("{}.txt", n));
+        let f = dir.join(&format!("{n}.txt"));
         let mut w = check!(File::create(&f));
         let msg_str = format!("{}{}", prefix, n.to_string());
         let msg = msg_str.as_bytes();
@@ -643,9 +644,9 @@ fn recursive_rmdir_toctou() {
     // Test for time-of-check to time-of-use issues.
     //
     // Scenario:
-    // The attacker wants to get directory contents deleted, to which he does not have access.
-    // He has a way to get a privileged Rust binary call `std::fs::remove_dir_all()` on a
-    // directory he controls, e.g. in his home directory.
+    // The attacker wants to get directory contents deleted, to which they do not have access.
+    // They have a way to get a privileged Rust binary call `std::fs::remove_dir_all()` on a
+    // directory they control, e.g. in their home directory.
     //
     // The POC sets up the `attack_dest/attack_file` which the attacker wants to have deleted.
     // The attacker repeatedly creates a directory and replaces it with a symlink from
@@ -906,7 +907,14 @@ fn read_link() {
         // junction
         assert_eq!(check!(fs::read_link(r"C:\Users\Default User")), Path::new(r"C:\Users\Default"));
         // junction with special permissions
-        assert_eq!(check!(fs::read_link(r"C:\Documents and Settings\")), Path::new(r"C:\Users"));
+        // Since not all localized windows versions contain the folder "Documents and Settings" in english,
+        // we will briefly check, if it exists and otherwise skip the test. Except during CI we will always execute the test.
+        if Path::new(r"C:\Documents and Settings\").exists() || env::var_os("CI").is_some() {
+            assert_eq!(
+                check!(fs::read_link(r"C:\Documents and Settings\")),
+                Path::new(r"C:\Users")
+            );
+        }
     }
     let tmpdir = tmpdir();
     let link = tmpdir.join("link");
@@ -1329,7 +1337,7 @@ fn dir_entry_methods() {
                 assert!(file.file_type().unwrap().is_file());
                 assert!(file.metadata().unwrap().is_file());
             }
-            f => panic!("unknown file name: {:?}", f),
+            f => panic!("unknown file name: {f:?}"),
         }
     }
 }
@@ -1340,7 +1348,7 @@ fn dir_entry_debug() {
     File::create(&tmpdir.join("b")).unwrap();
     let mut read_dir = tmpdir.path().read_dir().unwrap();
     let dir_entry = read_dir.next().unwrap().unwrap();
-    let actual = format!("{:?}", dir_entry);
+    let actual = format!("{dir_entry:?}");
     let expected = format!("DirEntry({:?})", dir_entry.0.path());
     assert_eq!(actual, expected);
 }
@@ -1348,6 +1356,12 @@ fn dir_entry_debug() {
 #[test]
 fn read_dir_not_found() {
     let res = fs::read_dir("/path/that/does/not/exist");
+    assert_eq!(res.err().unwrap().kind(), ErrorKind::NotFound);
+}
+
+#[test]
+fn file_open_not_found() {
+    let res = File::open("/path/that/does/not/exist");
     assert_eq!(res.err().unwrap().kind(), ErrorKind::NotFound);
 }
 
@@ -1409,7 +1423,7 @@ fn metadata_access_times() {
                     || e1.kind() == ErrorKind::Unsupported
                         && e2.kind() == ErrorKind::Unsupported => {}
             (a, b) => {
-                panic!("creation time must be always supported or not supported: {:?} {:?}", a, b,)
+                panic!("creation time must be always supported or not supported: {a:?} {b:?}")
             }
         }
     }

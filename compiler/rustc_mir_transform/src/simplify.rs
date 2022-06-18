@@ -81,7 +81,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
         for (_, data) in traversal::preorder(body) {
             if let Some(ref term) = data.terminator {
-                for &tgt in term.successors() {
+                for tgt in term.successors() {
                     pred_count[tgt] += 1;
                 }
             }
@@ -235,8 +235,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         };
 
         let first_succ = {
-            if let Some(&first_succ) = terminator.successors().next() {
-                if terminator.successors().all(|s| *s == first_succ) {
+            if let Some(first_succ) = terminator.successors().next() {
+                if terminator.successors().all(|s| s == first_succ) {
                     let count = terminator.successors().count();
                     self.pred_count[first_succ] -= (count - 1) as u32;
                     first_succ
@@ -494,11 +494,16 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             StatementKind::StorageLive(_local) | StatementKind::StorageDead(_local) => {}
 
             StatementKind::Assign(box (ref place, ref rvalue)) => {
-                self.visit_lhs(place, location);
-                self.visit_rvalue(rvalue, location);
+                if rvalue.is_safe_to_remove() {
+                    self.visit_lhs(place, location);
+                    self.visit_rvalue(rvalue, location);
+                } else {
+                    self.super_statement(statement, location);
+                }
             }
 
-            StatementKind::SetDiscriminant { ref place, variant_index: _ } => {
+            StatementKind::SetDiscriminant { ref place, variant_index: _ }
+            | StatementKind::Deinit(ref place) => {
                 self.visit_lhs(place, location);
             }
         }
@@ -534,9 +539,8 @@ fn remove_unused_definitions(used_locals: &mut UsedLocals, body: &mut Body<'_>) 
                     }
                     StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
 
-                    StatementKind::SetDiscriminant { ref place, .. } => {
-                        used_locals.is_used(place.local)
-                    }
+                    StatementKind::SetDiscriminant { ref place, .. }
+                    | StatementKind::Deinit(ref place) => used_locals.is_used(place.local),
                     _ => true,
                 };
 

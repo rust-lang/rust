@@ -7,7 +7,7 @@ trait Trait {
     fn broken() -> Self::Ty;
 }
 
-struct Foo {}
+struct Foo;
 
 impl Trait for Foo {
     type Ty = Foo;

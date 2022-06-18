@@ -57,7 +57,7 @@ fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>
 
     // ref pattern and deref
     match Some(&[1]) {
-        Some(ref s) => match &*s {
+        Some(ref s) => match s {
             [n] => foo(n),
             _ => (),
         },

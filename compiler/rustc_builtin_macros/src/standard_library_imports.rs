@@ -70,6 +70,7 @@ pub fn inject(
             Edition2015 => sym::rust_2015,
             Edition2018 => sym::rust_2018,
             Edition2021 => sym::rust_2021,
+            Edition2024 => sym::rust_2024,
         }])
         .map(|&symbol| Ident::new(symbol, span))
         .collect();

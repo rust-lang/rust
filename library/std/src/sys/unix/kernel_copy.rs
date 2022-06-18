@@ -45,7 +45,6 @@
 //! * complexity
 
 use crate::cmp::min;
-use crate::convert::TryInto;
 use crate::fs::{File, Metadata};
 use crate::io::copy::generic_copy;
 use crate::io::{

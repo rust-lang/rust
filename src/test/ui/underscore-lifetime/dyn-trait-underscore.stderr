@@ -1,22 +1,12 @@
-error[E0759]: `items` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/dyn-trait-underscore.rs:8:20
+error: lifetime may not live long enough
+  --> $DIR/dyn-trait-underscore.rs:8:5
    |
 LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
-   |                ---- this data with an anonymous lifetime `'_`...
+   |                - let's call the lifetime of this reference `'1`
 LL |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
 LL |     Box::new(items.iter())
-   |              ----- ^^^^
-   |              |
-   |              ...is used and required to live as long as `'static` here
+   |     ^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
    |
-note: `'static` lifetime requirement introduced by the return type
-  --> $DIR/dyn-trait-underscore.rs:6:29
-   |
-LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
-   |                             ^^^^^^^^^^^^^^^^^^^^^ `'static` requirement introduced here
-LL |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
-LL |     Box::new(items.iter())
-   |     ---------------------- because of this returned expression
 help: to declare that the trait object captures data from argument `items`, you can add an explicit `'_` lifetime bound
    |
 LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T> + '_> {
@@ -24,4 +14,3 @@ LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T> + '_> {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0759`.

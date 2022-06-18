@@ -9,7 +9,8 @@ use rustc_hir::{
     def::{CtorOf, DefKind, Res},
     def_id::LocalDefId,
     intravisit::{walk_inf, walk_ty, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Path, QPath, TyKind,
+    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath,
+    TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
@@ -29,11 +30,11 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// - Unaddressed false negative in fn bodies of trait implementations
-    /// - False positive with assotiated types in traits (#4140)
+    /// - False positive with associated types in traits (#4140)
     ///
     /// ### Example
     /// ```rust
-    /// struct Foo {}
+    /// struct Foo;
     /// impl Foo {
     ///     fn new() -> Foo {
     ///         Foo {}
@@ -42,7 +43,7 @@ declare_clippy_lint! {
     /// ```
     /// could be
     /// ```rust
-    /// struct Foo {}
+    /// struct Foo;
     /// impl Foo {
     ///     fn new() -> Self {
     ///         Self {}
@@ -197,7 +198,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
         if_chain! {
             if !hir_ty.span.from_expansion();
-            if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check {
                 impl_id,
                 in_body,
@@ -224,7 +225,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion();
-            if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
             if cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id);
             then {} else { return; }
@@ -249,6 +250,30 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             // unit enum variants (`Enum::A`)
             ExprKind::Path(QPath::Resolved(_, path)) => lint_path_to_variant(cx, path),
             _ => (),
+        }
+    }
+
+    fn check_pat(&mut self, cx: &LateContext<'_>, pat: &Pat<'_>) {
+        if_chain! {
+            if !pat.span.from_expansion();
+            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
+            // get the path from the pattern
+            if let PatKind::Path(QPath::Resolved(_, path))
+                 | PatKind::TupleStruct(QPath::Resolved(_, path), _, _)
+                 | PatKind::Struct(QPath::Resolved(_, path), _, _) = pat.kind;
+            if cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id);
+            then {
+                match path.res {
+                    Res::Def(DefKind::Ctor(ctor_of, _), ..) => match ctor_of {
+                            CtorOf::Variant => lint_path_to_variant(cx, path),
+                            CtorOf::Struct => span_lint(cx, path.span),
+                    },
+                    Res::Def(DefKind::Variant, ..) => lint_path_to_variant(cx, path),
+                    Res::Def(DefKind::Struct, ..) => span_lint(cx, path.span),
+                    _ => ()
+                }
+            }
         }
     }
 

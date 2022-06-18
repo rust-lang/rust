@@ -13,7 +13,7 @@ trait MyTrait {
 struct Foo;
 
 impl MyTrait for Foo {
-    type Assoc<'a, 'b> where 'b: 'a = u32;
+    type Assoc<'a, 'b> = u32 where 'b: 'a;
 
     fn do_sth(_: u32) {}
     // fn do_sth(_: Self::Assoc<'static, 'static>) {}

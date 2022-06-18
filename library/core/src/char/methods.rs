@@ -7,7 +7,6 @@ use crate::unicode::{self, conversions};
 
 use super::*;
 
-#[lang = "char"]
 impl char {
     /// The highest valid code point a `char` can have, `'\u{10FFFF}'`.
     ///
@@ -344,10 +343,10 @@ impl char {
                   without modifying the original"]
     #[inline]
     pub const fn to_digit(self, radix: u32) -> Option<u32> {
-        assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
         // If not a digit, a number greater than radix will be created.
         let mut digit = (self as u32).wrapping_sub('0' as u32);
         if radix > 10 {
+            assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
             if digit < 10 {
                 return Some(digit);
             }
@@ -370,7 +369,7 @@ impl char {
     ///
     /// ```
     /// for c in '❤'.escape_unicode() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -421,6 +420,7 @@ impl char {
     #[inline]
     pub(crate) fn escape_debug_ext(self, args: EscapeDebugExtArgs) -> EscapeDebug {
         let init_state = match self {
+            '\0' => EscapeDefaultState::Backslash('0'),
             '\t' => EscapeDefaultState::Backslash('t'),
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
@@ -448,7 +448,7 @@ impl char {
     ///
     /// ```
     /// for c in '\n'.escape_debug() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -504,7 +504,7 @@ impl char {
     ///
     /// ```
     /// for c in '"'.escape_default() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -803,6 +803,9 @@ impl char {
     /// ```
     /// assert!(' '.is_whitespace());
     ///
+    /// // line break
+    /// assert!('\n'.is_whitespace());
+    ///
     /// // a non-breaking space
     /// assert!('\u{A0}'.is_whitespace());
     ///
@@ -949,7 +952,7 @@ impl char {
     ///
     /// ```
     /// for c in 'İ'.to_lowercase() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -1016,7 +1019,7 @@ impl char {
     ///
     /// ```
     /// for c in 'ß'.to_uppercase() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -1091,7 +1094,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_char_is_ascii", since = "1.32.0")]
     #[inline]
     pub const fn is_ascii(&self) -> bool {
         *self as u32 <= 0x7F

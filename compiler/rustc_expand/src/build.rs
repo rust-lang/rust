@@ -113,6 +113,7 @@ impl<'a> ExtCtxt<'a> {
             bounds,
             kind: ast::GenericParamKind::Type { default },
             is_placeholder: false,
+            colon_span: None,
         }
     }
 
@@ -159,7 +160,7 @@ impl<'a> ExtCtxt<'a> {
             attrs: AttrVec::new(),
             tokens: None,
         });
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp }
+        self.stmt_local(local, sp)
     }
 
     // Generates `let _: Type;`, which is usually used for type assertions.
@@ -173,6 +174,10 @@ impl<'a> ExtCtxt<'a> {
             attrs: AttrVec::new(),
             tokens: None,
         });
+        self.stmt_local(local, span)
+    }
+
+    pub fn stmt_local(&self, local: P<ast::Local>, span: Span) -> ast::Stmt {
         ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span }
     }
 
@@ -513,7 +518,7 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    // FIXME: unused `self`
+    // `self` is unused but keep it as method for the convenience use.
     pub fn fn_decl(&self, inputs: Vec<ast::Param>, output: ast::FnRetTy) -> P<ast::FnDecl> {
         P(ast::FnDecl { inputs, output })
     }

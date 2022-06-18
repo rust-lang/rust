@@ -41,6 +41,10 @@
           StorageDead(_1);                 // scope 0 at $DIR/inline-cycle.rs:49:12: 49:13
           _0 = const ();                   // scope 0 at $DIR/inline-cycle.rs:48:10: 50:2
           return;                          // scope 0 at $DIR/inline-cycle.rs:50:2: 50:2
++     }
++ 
++     bb2 (cleanup): {
++         resume;                          // scope 0 at $DIR/inline-cycle.rs:48:1: 50:2
       }
   }
   

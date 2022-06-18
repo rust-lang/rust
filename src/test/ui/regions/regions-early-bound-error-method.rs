@@ -18,7 +18,7 @@ impl<'a> GetRef<'a> for Box<'a> {
 impl<'a> Box<'a> {
     fn or<'b,G:GetRef<'b>>(&self, g2: G) -> &'a isize {
         g2.get()
-        //~^ ERROR E0312
+        //~^ ERROR lifetime may not live long enough
     }
 }
 

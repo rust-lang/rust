@@ -8,7 +8,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 
 use crate::{
     constraints::OutlivesConstraint,
@@ -18,7 +18,7 @@ use crate::{
     universal_regions::UniversalRegions,
 };
 
-crate struct ConstraintConversion<'a, 'tcx> {
+pub(crate) struct ConstraintConversion<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     tcx: TyCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
@@ -26,19 +26,21 @@ crate struct ConstraintConversion<'a, 'tcx> {
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
     locations: Locations,
-    category: ConstraintCategory,
+    span: Span,
+    category: ConstraintCategory<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 }
 
 impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
-    crate fn new(
+    pub(crate) fn new(
         infcx: &'a InferCtxt<'a, 'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
-        category: ConstraintCategory,
+        span: Span,
+        category: ConstraintCategory<'tcx>,
         constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     ) -> Self {
         Self {
@@ -49,6 +51,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             implicit_region_bound,
             param_env,
             locations,
+            span,
             category,
             constraints,
         }
@@ -153,6 +156,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         self.constraints.outlives_constraints.push(OutlivesConstraint {
             locations: self.locations,
             category: self.category,
+            span: self.span,
             sub,
             sup,
             variance_info: ty::VarianceDiagInfo::default(),

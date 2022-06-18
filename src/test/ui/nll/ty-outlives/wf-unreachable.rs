@@ -1,8 +1,6 @@
 // Test that we check that user type annotations are well-formed, even in dead
 // code.
 
-#![feature(nll)]
-
 fn uninit<'a>() {
     return;
     let x: &'static &'a ();                         //~ ERROR lifetime may not live long enough

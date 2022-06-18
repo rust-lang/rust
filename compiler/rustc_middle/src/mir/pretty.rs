@@ -12,14 +12,14 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer, Provenance,
+    read_target_uint, AllocId, Allocation, ConstAllocation, ConstValue, GlobalAlloc, Pointer,
+    Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::MirSource;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::abi::Size;
-use std::ops::ControlFlow;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -448,8 +448,19 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 self.push(&format!("+ user_ty: {:?}", user_ty));
             }
 
+            let fmt_val = |val: &ConstValue<'tcx>| match val {
+                ConstValue::Scalar(s) => format!("Scalar({:?})", s),
+                ConstValue::Slice { .. } => format!("Slice(..)"),
+                ConstValue::ByRef { .. } => format!("ByRef(..)"),
+            };
+
+            let fmt_valtree = |valtree: &ty::ValTree<'tcx>| match valtree {
+                ty::ValTree::Leaf(leaf) => format!("ValTree::Leaf({:?})", leaf),
+                ty::ValTree::Branch(_) => format!("ValTree::Branch(..)"),
+            };
+
             let val = match literal {
-                ConstantKind::Ty(ct) => match ct.val() {
+                ConstantKind::Ty(ct) => match ct.kind() {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
                     ty::ConstKind::Unevaluated(uv) => format!(
                         "Unevaluated({}, {:?}, {:?})",
@@ -457,7 +468,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                         uv.substs,
                         uv.promoted,
                     ),
-                    ty::ConstKind::Value(val) => format!("Value({:?})", val),
+                    ty::ConstKind::Value(val) => format!("Value({})", fmt_valtree(&val)),
                     ty::ConstKind::Error(_) => "Error".to_string(),
                     // These variants shouldn't exist in the MIR.
                     ty::ConstKind::Placeholder(_)
@@ -467,9 +478,12 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 // To keep the diffs small, we render this like we render `ty::Const::Value`.
                 //
                 // This changes once `ty::Const::Value` is represented using valtrees.
-                ConstantKind::Val(val, _) => format!("Value({:?})", val),
+                ConstantKind::Val(val, _) => format!("Value({})", fmt_val(&val)),
             };
 
+            // This reflects what `Const` looked liked before `val` was renamed
+            // as `kind`. We print it like this to avoid having to update
+            // expected output in a lot of tests.
             self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), val));
         }
     }
@@ -561,8 +575,7 @@ fn write_scope_tree(
         }
         indented_decl.push(';');
 
-        let local_name =
-            if local == RETURN_PLACE { " return place".to_string() } else { String::new() };
+        let local_name = if local == RETURN_PLACE { " return place" } else { "" };
 
         writeln!(
             w,
@@ -652,12 +665,15 @@ pub fn write_allocations<'tcx>(
     body: &Body<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
-    fn alloc_ids_from_alloc(alloc: &Allocation) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
-        alloc.relocations().values().map(|id| *id)
+    fn alloc_ids_from_alloc(
+        alloc: ConstAllocation<'_>,
+    ) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
+        alloc.inner().relocations().values().map(|id| *id)
     }
-    fn alloc_ids_from_const(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
+
+    fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
         match val {
-            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _size)) => {
+            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
                 Either::Left(Either::Left(std::iter::once(ptr.provenance)))
             }
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => {
@@ -669,16 +685,21 @@ pub fn write_allocations<'tcx>(
         }
     }
     struct CollectAllocIds(BTreeSet<AllocId>);
-    impl<'tcx> TypeVisitor<'tcx> for CollectAllocIds {
-        fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::ConstKind::Value(val) = c.val() {
-                self.0.extend(alloc_ids_from_const(val));
+
+    impl<'tcx> Visitor<'tcx> for CollectAllocIds {
+        fn visit_constant(&mut self, c: &Constant<'tcx>, loc: Location) {
+            match c.literal {
+                ConstantKind::Ty(c) => self.visit_const(c, loc),
+                ConstantKind::Val(val, _) => {
+                    self.0.extend(alloc_ids_from_const_val(val));
+                }
             }
-            c.super_visit_with(self)
         }
     }
+
     let mut visitor = CollectAllocIds(Default::default());
-    body.visit_with(&mut visitor);
+    visitor.visit_body(body);
+
     // `seen` contains all seen allocations, including the ones we have *not* printed yet.
     // The protocol is to first `insert` into `seen`, and only if that returns `true`
     // then push to `todo`.
@@ -686,14 +707,14 @@ pub fn write_allocations<'tcx>(
     let mut todo: Vec<_> = seen.iter().copied().collect();
     while let Some(id) = todo.pop() {
         let mut write_allocation_track_relocs =
-            |w: &mut dyn Write, alloc: &Allocation| -> io::Result<()> {
+            |w: &mut dyn Write, alloc: ConstAllocation<'tcx>| -> io::Result<()> {
                 // `.rev()` because we are popping them from the back of the `todo` vector.
                 for id in alloc_ids_from_alloc(alloc).rev() {
                     if seen.insert(id) {
                         todo.push(id);
                     }
                 }
-                write!(w, "{}", display_allocation(tcx, alloc))
+                write!(w, "{}", display_allocation(tcx, alloc.inner()))
             };
         write!(w, "\n{}", id)?;
         match tcx.get_global_alloc(id) {
@@ -839,6 +860,7 @@ fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
         }
         if let Some(&tag) = alloc.relocations().get(&i) {
             // Memory with a relocation must be defined
+            assert!(alloc.init_mask().is_range_initialized(i, i + ptr_size).is_ok());
             let j = i.bytes_usize();
             let offset = alloc
                 .inspect_with_uninit_and_ptr_outside_interpreter(j..j + ptr_size.bytes_usize());
@@ -937,9 +959,8 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Res
     match (kind, body.source.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
         (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
-        (DefKind::Static, _) => {
-            write!(w, "static {}", if tcx.is_mutable_static(def_id) { "mut " } else { "" })?
-        }
+        (DefKind::Static(hir::Mutability::Not), _) => write!(w, "static ")?,
+        (DefKind::Static(hir::Mutability::Mut), _) => write!(w, "static mut ")?,
         (_, _) if is_function => write!(w, "fn ")?,
         (DefKind::AnonConst | DefKind::InlineConst, _) => {} // things like anon const, not an item
         _ => bug!("Unexpected def kind {:?}", kind),
@@ -989,10 +1010,11 @@ fn write_user_type_annotations(
     for (index, annotation) in body.user_type_annotations.iter_enumerated() {
         writeln!(
             w,
-            "| {:?}: {:?} at {}",
+            "| {:?}: user_ty: {:?}, span: {}, inferred_ty: {:?}",
             index.index(),
             annotation.user_ty,
-            tcx.sess.source_map().span_to_embeddable_string(annotation.span)
+            tcx.sess.source_map().span_to_embeddable_string(annotation.span),
+            annotation.inferred_ty,
         )?;
     }
     if !body.user_type_annotations.is_empty() {

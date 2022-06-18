@@ -1,14 +1,13 @@
 // run-pass
 
 #![feature(const_trait_impl)]
-#![feature(const_fn_trait_bound)]
 
 trait Bar {
     fn bar() -> u8;
 }
 
+#[const_trait]
 trait Foo {
-    #[default_method_body_is_const]
     fn foo() -> u8 where Self: ~const Bar {
         <Self as Bar>::bar() * 6
     }

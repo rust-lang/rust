@@ -78,7 +78,7 @@ pub fn array_u8_1(f: fn(*const u8)) {
 #[no_mangle]
 pub fn array_u8_small(f: fn(*const u8)) {
     let a = [0u8; 2];
-    let b = [0u8; 8];
+    let b = [0u8; 7];
     f(&a as *const _);
     f(&b as *const _);
 

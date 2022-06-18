@@ -393,6 +393,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn llvm_cconv(&self) -> llvm::CallConv {
         match self.conv {
             Conv::C | Conv::Rust | Conv::CCmseNonSecureCall => llvm::CCallConv,
+            Conv::RustCold => llvm::ColdCallConv,
             Conv::AmdGpuKernel => llvm::AmdGpuKernel,
             Conv::AvrInterrupt => llvm::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
@@ -510,9 +511,9 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             // If the value is a boolean, the range is 0..2 and that ultimately
             // become 0..0 when the type becomes i1, which would be rejected
             // by the LLVM verifier.
-            if let Int(..) = scalar.value {
+            if let Int(..) = scalar.primitive() {
                 if !scalar.is_bool() && !scalar.is_always_valid(bx) {
-                    bx.range_metadata(callsite, scalar.valid_range);
+                    bx.range_metadata(callsite, scalar.valid_range(bx));
                 }
             }
         }
@@ -561,8 +562,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         if self.conv == Conv::CCmseNonSecureCall {
             // This will probably get ignored on all targets but those supporting the TrustZone-M
             // extension (thumbv8m targets).
-            let cmse_nonsecure_call =
-                llvm::CreateAttrString(bx.cx.llcx, cstr::cstr!("cmse_nonsecure_call"));
+            let cmse_nonsecure_call = llvm::CreateAttrString(bx.cx.llcx, "cmse_nonsecure_call");
             attributes::apply_to_callsite(
                 callsite,
                 llvm::AttributePlace::Function,

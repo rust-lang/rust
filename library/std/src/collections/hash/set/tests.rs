@@ -301,10 +301,10 @@ fn test_show() {
     set.insert(1);
     set.insert(2);
 
-    let set_str = format!("{:?}", set);
+    let set_str = format!("{set:?}");
 
     assert!(set_str == "{1, 2}" || set_str == "{2, 1}");
-    assert_eq!(format!("{:?}", empty), "{}");
+    assert_eq!(format!("{empty:?}"), "{}");
 }
 
 #[test]

@@ -97,7 +97,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
                         test_name,
                         duration.as_secs_f64()
                     ))?;
-                    self.write_message(&*format!("<failure message=\"{}\" type=\"assert\"/>", m))?;
+                    self.write_message(&*format!("<failure message=\"{m}\" type=\"assert\"/>"))?;
                     self.write_message("</testcase>")?;
                 }
 

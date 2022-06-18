@@ -50,8 +50,6 @@ fn test_iterator_step_by_nth() {
 
 #[test]
 fn test_iterator_step_by_nth_overflow() {
-    #[cfg(target_pointer_width = "8")]
-    type Bigger = u16;
     #[cfg(target_pointer_width = "16")]
     type Bigger = u32;
     #[cfg(target_pointer_width = "32")]

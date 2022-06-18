@@ -34,7 +34,7 @@ impl<'tcx> TypeWalker<'tcx> {
     ///
     /// Example: Imagine you are walking `Foo<Bar<i32>, usize>`.
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// let mut iter: TypeWalker = ...;
     /// iter.next(); // yields Foo
     /// iter.next(); // yields Bar<i32>
@@ -190,7 +190,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
         GenericArgKind::Lifetime(_) => {}
         GenericArgKind::Const(parent_ct) => {
             stack.push(parent_ct.ty().into());
-            match parent_ct.val() {
+            match parent_ct.kind() {
                 ty::ConstKind::Infer(_)
                 | ty::ConstKind::Param(_)
                 | ty::ConstKind::Placeholder(_)

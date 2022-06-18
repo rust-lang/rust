@@ -7,6 +7,7 @@ use rustc_hir::{self as hir, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
+use std::fmt::Write as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -71,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
             let ty = cx.typeck_results().expr_ty(expr);
             if let Some(adt_def) = ty.ty_adt_def();
             if adt_def.is_struct();
-            if let Some(variant) = adt_def.variants.iter().next();
+            if let Some(variant) = adt_def.variants().iter().next();
             if fields.iter().all(|f| f.is_shorthand);
             then {
                 let mut def_order_map = FxHashMap::default();
@@ -89,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
                 let mut fields_snippet = String::new();
                 let (last_ident, idents) = ordered_fields.split_last().unwrap();
                 for ident in idents {
-                    fields_snippet.push_str(&format!("{}, ", ident));
+                    let _ = write!(fields_snippet, "{}, ", ident);
                 }
                 fields_snippet.push_str(&last_ident.to_string());
 

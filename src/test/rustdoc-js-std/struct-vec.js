@@ -1,8 +1,8 @@
-const QUERY = 'struct:Vec';
+const QUERY = 'struct:VecD';
 
 const EXPECTED = {
     'others': [
-        { 'path': 'std::vec', 'name': 'Vec' },
         { 'path': 'std::collections', 'name': 'VecDeque' },
+        { 'path': 'std::vec', 'name': 'Vec' },
     ],
 };

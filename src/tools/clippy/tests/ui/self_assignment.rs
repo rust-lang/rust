@@ -39,7 +39,7 @@ pub fn negatives_not_equal(mut a: usize, b: &mut usize, mut s: S) {
     t.0 = t.1;
 }
 
-#[allow(clippy::eval_order_dependence)]
+#[allow(clippy::mixed_read_write_in_expression)]
 pub fn negatives_side_effects() {
     let mut v = vec![1, 2, 3, 4, 5];
     let mut i = 0;

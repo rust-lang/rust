@@ -1,4 +1,4 @@
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/attrs-on-params.rs:3:13
    |
 LL | fn function(#[inline] param: u32) {

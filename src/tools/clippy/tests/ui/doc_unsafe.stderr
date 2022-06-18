@@ -1,5 +1,5 @@
 error: unsafe function's docs miss `# Safety` section
-  --> $DIR/doc_unsafe.rs:7:1
+  --> $DIR/doc_unsafe.rs:9:1
    |
 LL | / pub unsafe fn destroy_the_planet() {
 LL | |     unimplemented!();
@@ -9,7 +9,7 @@ LL | | }
    = note: `-D clippy::missing-safety-doc` implied by `-D warnings`
 
 error: unsafe function's docs miss `# Safety` section
-  --> $DIR/doc_unsafe.rs:30:5
+  --> $DIR/doc_unsafe.rs:32:5
    |
 LL | /     pub unsafe fn republished() {
 LL | |         unimplemented!();
@@ -17,13 +17,13 @@ LL | |     }
    | |_____^
 
 error: unsafe function's docs miss `# Safety` section
-  --> $DIR/doc_unsafe.rs:38:5
+  --> $DIR/doc_unsafe.rs:40:5
    |
 LL |     unsafe fn woefully_underdocumented(self);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for unsafe trait missing `# Safety` section
-  --> $DIR/doc_unsafe.rs:44:1
+  --> $DIR/doc_unsafe.rs:46:1
    |
 LL | / pub unsafe trait UnsafeTrait {
 LL | |     fn method();
@@ -31,7 +31,7 @@ LL | | }
    | |_^
 
 error: unsafe function's docs miss `# Safety` section
-  --> $DIR/doc_unsafe.rs:74:5
+  --> $DIR/doc_unsafe.rs:76:5
    |
 LL | /     pub unsafe fn more_undocumented_unsafe() -> Self {
 LL | |         unimplemented!();
@@ -39,7 +39,7 @@ LL | |     }
    | |_____^
 
 error: unsafe function's docs miss `# Safety` section
-  --> $DIR/doc_unsafe.rs:90:9
+  --> $DIR/doc_unsafe.rs:92:9
    |
 LL | /         pub unsafe fn whee() {
 LL | |             unimplemented!()

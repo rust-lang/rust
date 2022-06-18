@@ -4,10 +4,9 @@
 //! types or regions but can be other things. Examples of type relations are
 //! subtyping, type equality, etc.
 
-use crate::mir::interpret::{get_slice_bytes, ConstValue, GlobalAlloc, Scalar};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use crate::ty::{self, Term, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ImplSubject, Term, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
 use rustc_span::DUMMY_SP;
@@ -61,7 +60,7 @@ pub trait TypeRelation<'tcx>: Sized {
 
         let tcx = self.tcx();
         let opt_variances = tcx.variances_of(item_def_id);
-        relate_substs(self, Some((item_def_id, opt_variances)), a_subst, b_subst)
+        relate_substs_with_variances(self, item_def_id, opt_variances, a_subst, b_subst)
     }
 
     /// Switch variance for the purpose of relating `a` and `b`.
@@ -135,29 +134,35 @@ pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
     }
 }
 
+#[inline]
 pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
-    variances: Option<(DefId, &[ty::Variance])>,
+    a_subst: SubstsRef<'tcx>,
+    b_subst: SubstsRef<'tcx>,
+) -> RelateResult<'tcx, SubstsRef<'tcx>> {
+    relation.tcx().mk_substs(iter::zip(a_subst, b_subst).map(|(a, b)| {
+        relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)
+    }))
+}
+
+pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
+    relation: &mut R,
+    ty_def_id: DefId,
+    variances: &[ty::Variance],
     a_subst: SubstsRef<'tcx>,
     b_subst: SubstsRef<'tcx>,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
     let tcx = relation.tcx();
-    let mut cached_ty = None;
 
+    let mut cached_ty = None;
     let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
-        let (variance, variance_info) = match variances {
-            Some((ty_def_id, variances)) => {
-                let variance = variances[i];
-                let variance_info = if variance == ty::Invariant {
-                    let ty = *cached_ty
-                        .get_or_insert_with(|| tcx.type_of(ty_def_id).subst(tcx, a_subst));
-                    ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
-                } else {
-                    ty::VarianceDiagInfo::default()
-                };
-                (variance, variance_info)
-            }
-            None => (ty::Invariant, ty::VarianceDiagInfo::default()),
+        let variance = variances[i];
+        let variance_info = if variance == ty::Invariant {
+            let ty =
+                *cached_ty.get_or_insert_with(|| tcx.bound_type_of(ty_def_id).subst(tcx, a_subst));
+            ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
+        } else {
+            ty::VarianceDiagInfo::default()
         };
         relation.relate_with_variance(variance, variance_info, a, b)
     });
@@ -318,7 +323,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
-            let substs = relate_substs(relation, None, a.substs, b.substs)?;
+            let substs = relate_substs(relation, a.substs, b.substs)?;
             Ok(ty::TraitRef { def_id: a.def_id, substs })
         }
     }
@@ -334,7 +339,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
-            let substs = relate_substs(relation, None, a.substs, b.substs)?;
+            let substs = relate_substs(relation, a.substs, b.substs)?;
             Ok(ty::ExistentialTraitRef { def_id: a.def_id, substs })
         }
     }
@@ -353,6 +358,30 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
         let tcx = relation.tcx();
         let types = tcx.mk_type_list(iter::zip(a.0, b.0).map(|(a, b)| relation.relate(a, b)))?;
         Ok(GeneratorWitness(types))
+    }
+}
+
+impl<'tcx> Relate<'tcx> for ImplSubject<'tcx> {
+    #[inline]
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ImplSubject<'tcx>,
+        b: ImplSubject<'tcx>,
+    ) -> RelateResult<'tcx, ImplSubject<'tcx>> {
+        match (a, b) {
+            (ImplSubject::Trait(trait_ref_a), ImplSubject::Trait(trait_ref_b)) => {
+                let trait_ref = ty::TraitRef::relate(relation, trait_ref_a, trait_ref_b)?;
+                Ok(ImplSubject::Trait(trait_ref))
+            }
+            (ImplSubject::Inherent(ty_a), ImplSubject::Inherent(ty_b)) => {
+                let ty = Ty::relate(relation, ty_a, ty_b)?;
+                Ok(ImplSubject::Inherent(ty))
+            }
+            (ImplSubject::Trait(_), ImplSubject::Inherent(_))
+            | (ImplSubject::Inherent(_), ImplSubject::Trait(_)) => {
+                bug!("can not relate TraitRef and Ty");
+            }
+        }
     }
 }
 
@@ -406,7 +435,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (ty::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => Ok(a),
 
         (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs)) if a_def == b_def => {
-            let substs = relation.relate_item_substs(a_def.did, a_substs, b_substs)?;
+            let substs = relation.relate_item_substs(a_def.did(), a_substs, b_substs)?;
             Ok(tcx.mk_adt(a_def, substs))
         }
 
@@ -530,7 +559,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (&ty::Opaque(a_def_id, a_substs), &ty::Opaque(b_def_id, b_substs))
             if a_def_id == b_def_id =>
         {
-            let substs = relate_substs(relation, None, a_substs, b_substs)?;
+            let substs = relate_substs(relation, a_substs, b_substs)?;
             Ok(tcx.mk_opaque(a_def_id, substs))
         }
 
@@ -549,10 +578,15 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
 
-    // FIXME(oli-obk): once const generics can have generic types, this assertion
-    // will likely get triggered. Move to `normalize_erasing_regions` at that point.
-    let a_ty = tcx.erase_regions(a.ty());
-    let b_ty = tcx.erase_regions(b.ty());
+    let a_ty;
+    let b_ty;
+    if relation.tcx().features().adt_const_params {
+        a_ty = tcx.normalize_erasing_regions(relation.param_env(), a.ty());
+        b_ty = tcx.normalize_erasing_regions(relation.param_env(), b.ty());
+    } else {
+        a_ty = tcx.erase_regions(a.ty());
+        b_ty = tcx.erase_regions(b.ty());
+    }
     if a_ty != b_ty {
         relation.tcx().sess.delay_span_bug(
             DUMMY_SP,
@@ -567,7 +601,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
     // to structural-match types.
-    let is_match = match (a.val(), b.val()) {
+    let is_match = match (a.kind(), b.kind()) {
         (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
             // The caller should handle these cases!
             bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
@@ -578,14 +612,12 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
 
         (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) => a_p.index == b_p.index,
         (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) => p1 == p2,
-        (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => {
-            check_const_value_eq(relation, a_val, b_val, a, b)?
-        }
+        (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => a_val == b_val,
 
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
             if tcx.features().generic_const_exprs =>
         {
-            tcx.try_unify_abstract_consts((au.shrink(), bu.shrink()))
+            tcx.try_unify_abstract_consts(relation.param_env().and((au.shrink(), bu.shrink())))
         }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
@@ -601,7 +633,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                 bu.substs,
             )?;
             return Ok(tcx.mk_const(ty::ConstS {
-                val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: au.def,
                     substs,
                     promoted: au.promoted,
@@ -612,66 +644,6 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         _ => false,
     };
     if is_match { Ok(a) } else { Err(TypeError::ConstMismatch(expected_found(relation, a, b))) }
-}
-
-fn check_const_value_eq<'tcx, R: TypeRelation<'tcx>>(
-    relation: &mut R,
-    a_val: ConstValue<'tcx>,
-    b_val: ConstValue<'tcx>,
-    // FIXME(oli-obk): these arguments should go away with valtrees
-    a: ty::Const<'tcx>,
-    b: ty::Const<'tcx>,
-    // FIXME(oli-obk): this should just be `bool` with valtrees
-) -> RelateResult<'tcx, bool> {
-    let tcx = relation.tcx();
-    Ok(match (a_val, b_val) {
-        (ConstValue::Scalar(Scalar::Int(a_val)), ConstValue::Scalar(Scalar::Int(b_val))) => {
-            a_val == b_val
-        }
-        (
-            ConstValue::Scalar(Scalar::Ptr(a_val, _a_size)),
-            ConstValue::Scalar(Scalar::Ptr(b_val, _b_size)),
-        ) => {
-            a_val == b_val
-                || match (tcx.global_alloc(a_val.provenance), tcx.global_alloc(b_val.provenance)) {
-                    (GlobalAlloc::Function(a_instance), GlobalAlloc::Function(b_instance)) => {
-                        a_instance == b_instance
-                    }
-                    _ => false,
-                }
-        }
-
-        (ConstValue::Slice { .. }, ConstValue::Slice { .. }) => {
-            get_slice_bytes(&tcx, a_val) == get_slice_bytes(&tcx, b_val)
-        }
-
-        (ConstValue::ByRef { alloc: alloc_a, .. }, ConstValue::ByRef { alloc: alloc_b, .. })
-            if a.ty().is_ref() || b.ty().is_ref() =>
-        {
-            if a.ty().is_ref() && b.ty().is_ref() {
-                alloc_a == alloc_b
-            } else {
-                false
-            }
-        }
-        (ConstValue::ByRef { .. }, ConstValue::ByRef { .. }) => {
-            let a_destructured = tcx.destructure_const(relation.param_env().and(a));
-            let b_destructured = tcx.destructure_const(relation.param_env().and(b));
-
-            // Both the variant and each field have to be equal.
-            if a_destructured.variant == b_destructured.variant {
-                for (a_field, b_field) in iter::zip(a_destructured.fields, b_destructured.fields) {
-                    relation.consts(*a_field, *b_field)?;
-                }
-
-                true
-            } else {
-                false
-            }
-        }
-
-        _ => false,
-    })
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>> {
@@ -718,7 +690,7 @@ impl<'tcx> Relate<'tcx> for ty::ClosureSubsts<'tcx> {
         a: ty::ClosureSubsts<'tcx>,
         b: ty::ClosureSubsts<'tcx>,
     ) -> RelateResult<'tcx, ty::ClosureSubsts<'tcx>> {
-        let substs = relate_substs(relation, None, a.substs, b.substs)?;
+        let substs = relate_substs(relation, a.substs, b.substs)?;
         Ok(ty::ClosureSubsts { substs })
     }
 }
@@ -729,7 +701,7 @@ impl<'tcx> Relate<'tcx> for ty::GeneratorSubsts<'tcx> {
         a: ty::GeneratorSubsts<'tcx>,
         b: ty::GeneratorSubsts<'tcx>,
     ) -> RelateResult<'tcx, ty::GeneratorSubsts<'tcx>> {
-        let substs = relate_substs(relation, None, a.substs, b.substs)?;
+        let substs = relate_substs(relation, a.substs, b.substs)?;
         Ok(ty::GeneratorSubsts { substs })
     }
 }
@@ -740,7 +712,7 @@ impl<'tcx> Relate<'tcx> for SubstsRef<'tcx> {
         a: SubstsRef<'tcx>,
         b: SubstsRef<'tcx>,
     ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
-        relate_substs(relation, None, a, b)
+        relate_substs(relation, a, b)
     }
 }
 

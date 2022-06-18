@@ -151,9 +151,12 @@ use core::ptr;
 
 use crate::collections::TryReserveError;
 use crate::slice;
-use crate::vec::{self, AsIntoIter, Vec};
+use crate::vec::{self, AsVecIntoIter, Vec};
 
 use super::SpecExtend;
+
+#[cfg(test)]
+mod tests;
 
 /// A priority queue implemented with a binary heap.
 ///
@@ -163,9 +166,10 @@ use super::SpecExtend;
 /// item's ordering relative to any other item, as determined by the [`Ord`]
 /// trait, changes while it is in the heap. This is normally only possible
 /// through [`Cell`], [`RefCell`], global state, I/O, or unsafe code. The
-/// behavior resulting from such a logic error is not specified (it
-/// could include panics, incorrect results, aborts, memory leaks, or
-/// non-termination) but will not be undefined behavior.
+/// behavior resulting from such a logic error is not specified, but will
+/// be encapsulated to the `BinaryHeap` that observed the logic error and not
+/// result in undefined behavior. This could include panics, incorrect results,
+/// aborts, memory leaks, and non-termination.
 ///
 /// # Examples
 ///
@@ -194,7 +198,7 @@ use super::SpecExtend;
 /// // We can iterate over the items in the heap, although they are returned in
 /// // a random order.
 /// for x in &heap {
-///     println!("{}", x);
+///     println!("{x}");
 /// }
 ///
 /// // If we instead pop these scores, they should come back in order.
@@ -779,7 +783,7 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns
+    /// In other words, remove all elements `e` for which `f(&e)` returns
     /// `false`. The elements are visited in unsorted (and unspecified) order.
     ///
     /// # Examples
@@ -830,7 +834,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order
     /// for x in heap.iter() {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -974,7 +978,6 @@ impl<T> BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(try_reserve_2)]
     /// use std::collections::BinaryHeap;
     /// use std::collections::TryReserveError;
     ///
@@ -991,7 +994,7 @@ impl<T> BinaryHeap<T> {
     /// }
     /// # find_max_slow(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
-    #[unstable(feature = "try_reserve_2", issue = "91789")]
+    #[stable(feature = "try_reserve_2", since = "1.63.0")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.data.try_reserve_exact(additional)
     }
@@ -1010,7 +1013,6 @@ impl<T> BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(try_reserve_2)]
     /// use std::collections::BinaryHeap;
     /// use std::collections::TryReserveError;
     ///
@@ -1027,7 +1029,7 @@ impl<T> BinaryHeap<T> {
     /// }
     /// # find_max_slow(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
-    #[unstable(feature = "try_reserve_2", issue = "91789")]
+    #[stable(feature = "try_reserve_2", since = "1.63.0")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.data.try_reserve(additional)
     }
@@ -1110,7 +1112,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// // Will print in some order
     /// for x in vec {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
@@ -1179,7 +1181,7 @@ impl<T> BinaryHeap<T> {
     /// assert!(!heap.is_empty());
     ///
     /// for x in heap.drain() {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// assert!(heap.is_empty());
@@ -1401,6 +1403,8 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
+// In addition to the SAFETY invariants of the following three unsafe traits
+// also refer to the vec::in_place_collect module documentation to get an overview
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
 unsafe impl<T> SourceIter for IntoIter<T> {
@@ -1416,7 +1420,7 @@ unsafe impl<T> SourceIter for IntoIter<T> {
 #[doc(hidden)]
 unsafe impl<I> InPlaceIterable for IntoIter<I> {}
 
-impl<I> AsIntoIter for IntoIter<I> {
+unsafe impl<I> AsVecIntoIter for IntoIter<I> {
     type Item = I;
 
     fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {
@@ -1624,7 +1628,7 @@ impl<T> IntoIterator for BinaryHeap<T> {
     /// // Print 1, 2, 3, 4 in arbitrary order
     /// for x in heap.into_iter() {
     ///     // x has type i32, not &i32
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     fn into_iter(self) -> IntoIter<T> {

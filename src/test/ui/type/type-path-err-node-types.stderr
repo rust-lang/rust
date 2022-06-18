@@ -26,7 +26,12 @@ error[E0282]: type annotations needed
   --> $DIR/type-path-err-node-types.rs:23:14
    |
 LL |     let _ = |a, b: _| -> _ { 0 };
-   |              ^ consider giving this closure parameter a type
+   |              ^
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     let _ = |a: _, b: _| -> _ { 0 };
+   |               +++
 
 error: aborting due to 5 previous errors
 

@@ -38,8 +38,13 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("bitmaps", "MPL-2.0+"),          // cargo via im-rc
     ("instant", "BSD-3-Clause"),      // rustc_driver/tracing-subscriber/parking_lot
     ("snap", "BSD-3-Clause"),         // rustc
+    ("fluent-langneg", "Apache-2.0"), // rustc (fluent translations)
+    ("self_cell", "Apache-2.0"),      // rustc (fluent translations)
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
+    ("dunce", "CC0-1.0"),            // cargo (dev dependency)
+    ("similar", "Apache-2.0"),       // cargo (dev dependency)
+    ("normalize-line-endings", "Apache-2.0"), // cargo (dev dependency)
 ];
 
 const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
@@ -95,6 +100,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "compiler_builtins",
     "cpufeatures",
     "crc32fast",
+    "crossbeam-channel",
     "crossbeam-deque",
     "crossbeam-epoch",
     "crossbeam-utils",
@@ -113,6 +119,9 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "filetime",
     "fixedbitset",
     "flate2",
+    "fluent-bundle",
+    "fluent-langneg",
+    "fluent-syntax",
     "fortanix-sgx-abi",
     "generic-array",
     "getopts",
@@ -125,6 +134,8 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "if_chain",
     "indexmap",
     "instant",
+    "intl-memoizer",
+    "intl_pluralrules",
     "itertools",
     "itoa",
     "jobserver",
@@ -157,6 +168,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "pkg-config",
     "polonius-engine",
     "ppv-lite86",
+    "proc-macro-hack",
     "proc-macro2",
     "psm",
     "punycode",
@@ -166,7 +178,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "rand_chacha",
     "rand_core",
     "rand_hc",
-    "rand_pcg",
     "rand_xorshift",
     "rand_xoshiro",
     "redox_syscall",
@@ -184,6 +195,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "ryu",
     "scoped-tls",
     "scopeguard",
+    "self_cell",
     "semver",
     "serde",
     "serde_derive",
@@ -200,9 +212,12 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "tempfile",
     "termcolor",
     "termize",
+    "thiserror",
+    "thiserror-impl",
     "thorin-dwp",
     "thread_local",
     "time",
+    "tinystr",
     "tinyvec",
     "tracing",
     "tracing-attributes",
@@ -210,11 +225,16 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "tracing-log",
     "tracing-subscriber",
     "tracing-tree",
+    "type-map",
     "typenum",
     "unic-char-property",
     "unic-char-range",
     "unic-common",
     "unic-emoji-char",
+    "unic-langid",
+    "unic-langid-impl",
+    "unic-langid-macros",
+    "unic-langid-macros-impl",
     "unic-ucd-version",
     "unicode-normalization",
     "unicode-script",
@@ -228,7 +248,8 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "winapi-i686-pc-windows-gnu",
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
-    // this is a false-positive: it's only used by rustfmt, but because it's enabled through a feature, tidy thinks it's used by rustc as well.
+    // this is a false-positive: it's only used by rustfmt, but because it's enabled through a
+    // feature, tidy thinks it's used by rustc as well.
     "yansi-term",
 ];
 
@@ -258,6 +279,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "mach",
     "memchr",
     "object",
+    "once_cell",
     "regalloc",
     "region",
     "rustc-hash",
@@ -340,8 +362,8 @@ fn check_exceptions(
                 }
                 Some(pkg_license) => {
                     if pkg_license.as_str() != *license {
-                        println!("dependency exception `{}` license has changed", name);
-                        println!("    previously `{}` now `{}`", license, pkg_license);
+                        println!("dependency exception `{name}` license has changed");
+                        println!("    previously `{license}` now `{pkg_license}`");
                         println!("    update EXCEPTIONS for the new license");
                         *bad = true;
                     }
@@ -418,7 +440,7 @@ fn check_dependencies(
     if !unapproved.is_empty() {
         tidy_error!(bad, "Dependencies not explicitly permitted:");
         for dep in unapproved {
-            println!("* {}", dep);
+            println!("* {dep}");
         }
     }
 }
@@ -501,7 +523,7 @@ fn deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a Package
         .nodes
         .iter()
         .find(|n| &n.id == pkg_id)
-        .unwrap_or_else(|| panic!("could not find `{}` in resolve", pkg_id));
+        .unwrap_or_else(|| panic!("could not find `{pkg_id}` in resolve"));
     node.deps
         .iter()
         .map(|dep| {
@@ -516,8 +538,8 @@ fn deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a Package
 fn pkg_from_name<'a>(metadata: &'a Metadata, name: &'static str) -> &'a Package {
     let mut i = metadata.packages.iter().filter(|p| p.name == name);
     let result =
-        i.next().unwrap_or_else(|| panic!("could not find package `{}` in package list", name));
-    assert!(i.next().is_none(), "more than one package found for `{}`", name);
+        i.next().unwrap_or_else(|| panic!("could not find package `{name}` in package list"));
+    assert!(i.next().is_none(), "more than one package found for `{name}`");
     result
 }
 
@@ -545,7 +567,7 @@ fn normal_deps_of_r<'a>(
         .nodes
         .iter()
         .find(|n| &n.id == pkg_id)
-        .unwrap_or_else(|| panic!("could not find `{}` in resolve", pkg_id));
+        .unwrap_or_else(|| panic!("could not find `{pkg_id}` in resolve"));
     for dep in &node.deps {
         normal_deps_of_r(resolve, &dep.pkg, result);
     }

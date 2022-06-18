@@ -6,7 +6,31 @@ use serde::de::{Deserializer, IgnoredAny, IntoDeserializer, MapAccess, Visitor};
 use serde::Deserialize;
 use std::error::Error;
 use std::path::{Path, PathBuf};
-use std::{env, fmt, fs, io};
+use std::str::FromStr;
+use std::{cmp, env, fmt, fs, io, iter};
+
+#[rustfmt::skip]
+const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
+    "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
+    "DirectX",
+    "ECMAScript",
+    "GPLv2", "GPLv3",
+    "GitHub", "GitLab",
+    "IPv4", "IPv6",
+    "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
+    "NaN", "NaNs",
+    "OAuth", "GraphQL",
+    "OCaml",
+    "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS",
+    "WebGL",
+    "TensorFlow",
+    "TrueType",
+    "iOS", "macOS", "FreeBSD",
+    "TeX", "LaTeX", "BibTeX", "BibLaTeX",
+    "MinGW",
+    "CamelCase",
+];
+const DEFAULT_BLACKLISTED_NAMES: &[&str] = &["foo", "baz", "quux"];
 
 /// Holds information used by `MISSING_ENFORCED_IMPORT_RENAMES` lint.
 #[derive(Clone, Debug, Deserialize)]
@@ -43,16 +67,31 @@ pub enum DisallowedType {
 #[derive(Default)]
 pub struct TryConf {
     pub conf: Conf,
-    pub errors: Vec<String>,
+    pub errors: Vec<Box<dyn Error>>,
 }
 
 impl TryConf {
-    fn from_error(error: impl Error) -> Self {
+    fn from_error(error: impl Error + 'static) -> Self {
         Self {
             conf: Conf::default(),
-            errors: vec![error.to_string()],
+            errors: vec![Box::new(error)],
         }
     }
+}
+
+#[derive(Debug)]
+struct ConfError(String);
+
+impl fmt::Display for ConfError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <String as fmt::Display>::fmt(&self.0, f)
+    }
+}
+
+impl Error for ConfError {}
+
+fn conf_error(s: String) -> Box<dyn Error> {
+    Box::new(ConfError(s))
 }
 
 macro_rules! define_Conf {
@@ -103,11 +142,11 @@ macro_rules! define_Conf {
                 while let Some(name) = map.next_key::<&str>()? {
                     match Field::deserialize(name.into_deserializer())? {
                         $(Field::$name => {
-                            $(errors.push(format!("deprecated field `{}`. {}", name, $dep));)?
+                            $(errors.push(conf_error(format!("deprecated field `{}`. {}", name, $dep)));)?
                             match map.next_value() {
-                                Err(e) => errors.push(e.to_string()),
+                                Err(e) => errors.push(conf_error(e.to_string())),
                                 Ok(value) => match $name {
-                                    Some(_) => errors.push(format!("duplicate field `{}`", name)),
+                                    Some(_) => errors.push(conf_error(format!("duplicate field `{}`", name))),
                                     None => $name = Some(value),
                                 }
                             }
@@ -156,14 +195,16 @@ define_Conf! {
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED.
     ///
     /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
     /// Lint: BLACKLISTED_NAME.
     ///
-    /// The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses
-    (blacklisted_names: Vec<String> = ["foo", "baz", "quux"].iter().map(ToString::to_string).collect()),
+    /// The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses. The value
+    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
+    /// default configuration of Clippy. By default any configuraction will replace the default value.
+    (blacklisted_names: Vec<String> = super::DEFAULT_BLACKLISTED_NAMES.iter().map(ToString::to_string).collect()),
     /// Lint: COGNITIVE_COMPLEXITY.
     ///
     /// The maximum cognitive complexity a function can have
@@ -175,27 +216,14 @@ define_Conf! {
     (cyclomatic_complexity_threshold: Option<u64> = None),
     /// Lint: DOC_MARKDOWN.
     ///
-    /// The list of words this lint should not consider as identifiers needing ticks
-    (doc_valid_idents: Vec<String> = [
-        "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
-        "DirectX",
-        "ECMAScript",
-        "GPLv2", "GPLv3",
-        "GitHub", "GitLab",
-        "IPv4", "IPv6",
-        "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
-        "NaN", "NaNs",
-        "OAuth", "GraphQL",
-        "OCaml",
-        "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS",
-        "WebGL",
-        "TensorFlow",
-        "TrueType",
-        "iOS", "macOS", "FreeBSD",
-        "TeX", "LaTeX", "BibTeX", "BibLaTeX",
-        "MinGW",
-        "CamelCase",
-    ].iter().map(ToString::to_string).collect()),
+    /// The list of words this lint should not consider as identifiers needing ticks. The value
+    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
+    /// default configuration of Clippy. By default any configuraction will replace the default value. For example:
+    /// * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
+    /// * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
+    ///
+    /// Default list:
+    (doc_valid_idents: Vec<String> = super::DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect()),
     /// Lint: TOO_MANY_ARGUMENTS.
     ///
     /// The maximum number of argument a function or method can have
@@ -310,6 +338,24 @@ define_Conf! {
     /// the slice pattern that is suggested. If more elements would be necessary, the lint is suppressed.
     /// For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
     (max_suggested_slice_pattern_length: u64 = 3),
+    /// Lint: AWAIT_HOLDING_INVALID_TYPE
+    (await_holding_invalid_types: Vec<crate::utils::conf::DisallowedType> = Vec::new()),
+    /// Lint: LARGE_INCLUDE_FILE.
+    ///
+    /// The maximum size of a file included via `include_bytes!()` or `include_str!()`, in bytes
+    (max_include_file_size: u64 = 1_000_000),
+    /// Lint: EXPECT_USED.
+    ///
+    /// Whether `expect` should be allowed in test functions
+    (allow_expect_in_tests: bool = false),
+    /// Lint: UNWRAP_USED.
+    ///
+    /// Whether `unwrap` should be allowed in test functions
+    (allow_unwrap_in_tests: bool = false),
+    /// Lint: DBG_MACRO.
+    ///
+    /// Whether `dbg!` should be allowed in test functions
+    (allow_dbg_in_tests: bool = false),
 }
 
 /// Search for the configuration file.
@@ -367,5 +413,118 @@ pub fn read(path: &Path) -> TryConf {
         Err(e) => return TryConf::from_error(e),
         Ok(content) => content,
     };
-    toml::from_str(&content).unwrap_or_else(TryConf::from_error)
+    match toml::from_str::<TryConf>(&content) {
+        Ok(mut conf) => {
+            extend_vec_if_indicator_present(&mut conf.conf.doc_valid_idents, DEFAULT_DOC_VALID_IDENTS);
+            extend_vec_if_indicator_present(&mut conf.conf.blacklisted_names, DEFAULT_BLACKLISTED_NAMES);
+
+            conf
+        },
+        Err(e) => TryConf::from_error(e),
+    }
+}
+
+fn extend_vec_if_indicator_present(vec: &mut Vec<String>, default: &[&str]) {
+    if vec.contains(&"..".to_string()) {
+        vec.extend(default.iter().map(ToString::to_string));
+    }
+}
+
+const SEPARATOR_WIDTH: usize = 4;
+
+// Check whether the error is "unknown field" and, if so, list the available fields sorted and at
+// least one per line, more if `CLIPPY_TERMINAL_WIDTH` is set and allows it.
+pub fn format_error(error: Box<dyn Error>) -> String {
+    let s = error.to_string();
+
+    if_chain! {
+        if error.downcast::<toml::de::Error>().is_ok();
+        if let Some((prefix, mut fields, suffix)) = parse_unknown_field_message(&s);
+        then {
+            use fmt::Write;
+
+            fields.sort_unstable();
+
+            let (rows, column_widths) = calculate_dimensions(&fields);
+
+            let mut msg = String::from(prefix);
+            for row in 0..rows {
+                write!(msg, "\n").unwrap();
+                for (column, column_width) in column_widths.iter().copied().enumerate() {
+                    let index = column * rows + row;
+                    let field = fields.get(index).copied().unwrap_or_default();
+                    write!(
+                        msg,
+                        "{:separator_width$}{:field_width$}",
+                        " ",
+                        field,
+                        separator_width = SEPARATOR_WIDTH,
+                        field_width = column_width
+                    )
+                    .unwrap();
+                }
+            }
+            write!(msg, "\n{}", suffix).unwrap();
+            msg
+        } else {
+            s
+        }
+    }
+}
+
+// `parse_unknown_field_message` will become unnecessary if
+// https://github.com/alexcrichton/toml-rs/pull/364 is merged.
+fn parse_unknown_field_message(s: &str) -> Option<(&str, Vec<&str>, &str)> {
+    // An "unknown field" message has the following form:
+    //   unknown field `UNKNOWN`, expected one of `FIELD0`, `FIELD1`, ..., `FIELDN` at line X column Y
+    //                                           ^^      ^^^^                     ^^
+    if_chain! {
+        if s.starts_with("unknown field");
+        let slices = s.split("`, `").collect::<Vec<_>>();
+        let n = slices.len();
+        if n >= 2;
+        if let Some((prefix, first_field)) = slices[0].rsplit_once(" `");
+        if let Some((last_field, suffix)) = slices[n - 1].split_once("` ");
+        then {
+            let fields = iter::once(first_field)
+                .chain(slices[1..n - 1].iter().copied())
+                .chain(iter::once(last_field))
+                .collect::<Vec<_>>();
+            Some((prefix, fields, suffix))
+        } else {
+            None
+        }
+    }
+}
+
+fn calculate_dimensions(fields: &[&str]) -> (usize, Vec<usize>) {
+    let columns = env::var("CLIPPY_TERMINAL_WIDTH")
+        .ok()
+        .and_then(|s| <usize as FromStr>::from_str(&s).ok())
+        .map_or(1, |terminal_width| {
+            let max_field_width = fields.iter().map(|field| field.len()).max().unwrap();
+            cmp::max(1, terminal_width / (SEPARATOR_WIDTH + max_field_width))
+        });
+
+    let rows = (fields.len() + (columns - 1)) / columns;
+
+    let column_widths = (0..columns)
+        .map(|column| {
+            if column < columns - 1 {
+                (0..rows)
+                    .map(|row| {
+                        let index = column * rows + row;
+                        let field = fields.get(index).copied().unwrap_or_default();
+                        field.len()
+                    })
+                    .max()
+                    .unwrap()
+            } else {
+                // Avoid adding extra space to the last column.
+                0
+            }
+        })
+        .collect::<Vec<_>>();
+
+    (rows, column_widths)
 }

@@ -1,5 +1,3 @@
-// compile-flags: -Z borrowck=mir
-
 // run-pass
 
 use std::io::Result;

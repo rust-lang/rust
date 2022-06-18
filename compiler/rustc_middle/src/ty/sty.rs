@@ -2,16 +2,15 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-use self::TyKind::*;
-
 use crate::infer::canonical::Canonical;
 use crate::ty::fold::ValidateBoundVars;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
-use crate::ty::InferTy::{self, *};
+use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitor,
+    self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperFoldable,
+    TypeVisitor,
 };
-use crate::ty::{DelaySpanBugEmitted, List, ParamEnv};
+use crate::ty::{List, ParamEnv};
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
@@ -28,6 +27,13 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
+
+use rustc_type_ir::sty::TyKind::*;
+use rustc_type_ir::TyKind as IrTyKind;
+
+// Re-export the `TyKind` from `rustc_type_ir` here for convenience
+#[rustc_diagnostic_item = "TyKind"]
+pub type TyKind<'tcx> = IrTyKind<TyCtxt<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
@@ -78,188 +84,13 @@ impl BoundRegionKind {
     }
 }
 
-/// Defines the kinds of types used by the type system.
-///
-/// Types written by the user start out as [hir::TyKind](rustc_hir::TyKind) and get
-/// converted to this representation using `AstConv::ast_ty_to_ty`.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable, Debug)]
-#[derive(HashStable)]
-#[rustc_diagnostic_item = "TyKind"]
-pub enum TyKind<'tcx> {
-    /// The primitive boolean type. Written as `bool`.
-    Bool,
-
-    /// The primitive character type; holds a Unicode scalar value
-    /// (a non-surrogate code point). Written as `char`.
-    Char,
-
-    /// A primitive signed integer type. For example, `i32`.
-    Int(ty::IntTy),
-
-    /// A primitive unsigned integer type. For example, `u32`.
-    Uint(ty::UintTy),
-
-    /// A primitive floating-point type. For example, `f64`.
-    Float(ty::FloatTy),
-
-    /// Algebraic data types (ADT). For example: structures, enumerations and unions.
-    ///
-    /// For example, the type `List<i32>` would be represented using the `AdtDef`
-    /// for `struct List<T>` and the substs `[i32]`.
-    ///
-    /// Note that generic parameters in fields only get lazily substituted
-    /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, substs))`.
-    Adt(&'tcx AdtDef, SubstsRef<'tcx>),
-
-    /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
-    Foreign(DefId),
-
-    /// The pointee of a string slice. Written as `str`.
-    Str,
-
-    /// An array with the given length. Written as `[T; N]`.
-    Array(Ty<'tcx>, ty::Const<'tcx>),
-
-    /// The pointee of an array slice. Written as `[T]`.
-    Slice(Ty<'tcx>),
-
-    /// A raw pointer. Written as `*mut T` or `*const T`
-    RawPtr(TypeAndMut<'tcx>),
-
-    /// A reference; a pointer with an associated lifetime. Written as
-    /// `&'a mut T` or `&'a T`.
-    Ref(Region<'tcx>, Ty<'tcx>, hir::Mutability),
-
-    /// The anonymous type of a function declaration/definition. Each
-    /// function has a unique type.
-    ///
-    /// For the function `fn foo() -> i32 { 3 }` this type would be
-    /// shown to the user as `fn() -> i32 {foo}`.
-    ///
-    /// For example the type of `bar` here:
-    /// ```rust
-    /// fn foo() -> i32 { 1 }
-    /// let bar = foo; // bar: fn() -> i32 {foo}
-    /// ```
-    FnDef(DefId, SubstsRef<'tcx>),
-
-    /// A pointer to a function. Written as `fn() -> i32`.
-    ///
-    /// Note that both functions and closures start out as either
-    /// [FnDef] or [Closure] which can be then be coerced to this variant.
-    ///
-    /// For example the type of `bar` here:
-    ///
-    /// ```rust
-    /// fn foo() -> i32 { 1 }
-    /// let bar: fn() -> i32 = foo;
-    /// ```
-    FnPtr(PolyFnSig<'tcx>),
-
-    /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
-    Dynamic(&'tcx List<Binder<'tcx, ExistentialPredicate<'tcx>>>, ty::Region<'tcx>),
-
-    /// The anonymous type of a closure. Used to represent the type of `|a| a`.
-    ///
-    /// Closure substs contain both the - potentially substituted - generic parameters
-    /// of its parent and some synthetic parameters. See the documentation for
-    /// [ClosureSubsts] for more details.
-    Closure(DefId, SubstsRef<'tcx>),
-
-    /// The anonymous type of a generator. Used to represent the type of
-    /// `|a| yield a`.
-    ///
-    /// For more info about generator substs, visit the documentation for
-    /// [GeneratorSubsts].
-    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
-
-    /// A type representing the types stored inside a generator.
-    /// This should only appear as part of the [GeneratorSubsts].
-    ///
-    /// Note that the captured variables for generators are stored separately
-    /// using a tuple in the same way as for closures.
-    ///
-    /// Unlike upvars, the witness can reference lifetimes from
-    /// inside of the generator itself. To deal with them in
-    /// the type of the generator, we convert them to higher ranked
-    /// lifetimes bound by the witness itself.
-    ///
-    /// Looking at the following example, the witness for this generator
-    /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
-    ///
-    /// ```rust
-    /// |a| {
-    ///     let x = &vec![3];
-    ///     yield a;
-    ///     yield x[0];
-    /// }
-    /// ```
-    GeneratorWitness(Binder<'tcx, &'tcx List<Ty<'tcx>>>),
-
-    /// The never type `!`.
-    Never,
-
-    /// A tuple type. For example, `(i32, bool)`.
-    Tuple(&'tcx List<Ty<'tcx>>),
-
-    /// The projection of an associated type. For example,
-    /// `<T as Trait<..>>::N`.
-    Projection(ProjectionTy<'tcx>),
-
-    /// Opaque (`impl Trait`) type found in a return type.
-    ///
-    /// The `DefId` comes either from
-    /// * the `impl Trait` ast::Ty node,
-    /// * or the `type Foo = impl Trait` declaration
-    ///
-    /// For RPIT the substitutions are for the generics of the function,
-    /// while for TAIT it is used for the generic parameters of the alias.
-    ///
-    /// During codegen, `tcx.type_of(def_id)` can be used to get the underlying type.
-    Opaque(DefId, SubstsRef<'tcx>),
-
-    /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
-    Param(ParamTy),
-
-    /// Bound type variable, used to represent the `'a` in `for<'a> fn(&'a ())`.
-    ///
-    /// For canonical queries, we replace inference variables with bound variables,
-    /// so e.g. when checking whether `&'_ (): Trait<_>` holds, we canonicalize that to
-    /// `for<'a, T> &'a (): Trait<T>` and then convert the introduced bound variables
-    /// back to inference variables in a new inference context when inside of the query.
-    ///
-    /// See the `rustc-dev-guide` for more details about
-    /// [higher-ranked trait bounds][1] and [canonical queries][2].
-    ///
-    /// [1]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-    /// [2]: https://rustc-dev-guide.rust-lang.org/traits/canonical-queries.html
-    Bound(ty::DebruijnIndex, BoundTy),
-
-    /// A placeholder type, used during higher ranked subtyping to instantiate
-    /// bound variables.
-    Placeholder(ty::PlaceholderType),
-
-    /// A type variable used during type checking.
-    ///
-    /// Similar to placeholders, inference variables also live in a universe to
-    /// correctly deal with higher ranked types. Though unlike placeholders,
-    /// that universe is stored in the `InferCtxt` instead of directly
-    /// inside of the type.
-    Infer(InferTy),
-
-    /// A placeholder for a type which could not be computed; this is
-    /// propagated to avoid useless error messages.
-    Error(DelaySpanBugEmitted),
+pub trait Article {
+    fn article(&self) -> &'static str;
 }
 
-impl<'tcx> TyKind<'tcx> {
-    #[inline]
-    pub fn is_primitive(&self) -> bool {
-        matches!(self, Bool | Char | Int(_) | Uint(_) | Float(_))
-    }
-
+impl<'tcx> Article for TyKind<'tcx> {
     /// Get the article ("a" or "an") to use with this type.
-    pub fn article(&self) -> &'static str {
+    fn article(&self) -> &'static str {
         match self {
             Int(_) | Float(_) | Array(_, _) => "an",
             Adt(def, _) if def.is_enum() => "an",
@@ -276,9 +107,9 @@ impl<'tcx> TyKind<'tcx> {
 static_assert_size!(TyKind<'_>, 32);
 
 /// A closure can be modeled as a struct that looks like:
-///
-///     struct Closure<'l0...'li, T0...Tj, CK, CS, U>(...U);
-///
+/// ```ignore (illustrative)
+/// struct Closure<'l0...'li, T0...Tj, CK, CS, U>(...U);
+/// ```
 /// where:
 ///
 /// - 'l0...'li and T0...Tj are the generic parameters
@@ -295,25 +126,25 @@ static_assert_size!(TyKind<'_>, 32);
 ///    and the up-var has the type `Foo`, then that field of U will be `&Foo`).
 ///
 /// So, for example, given this function:
-///
-///     fn foo<'a, T>(data: &'a mut T) {
-///          do(|| data.count += 1)
-///     }
-///
+/// ```ignore (illustrative)
+/// fn foo<'a, T>(data: &'a mut T) {
+///      do(|| data.count += 1)
+/// }
+/// ```
 /// the type of the closure would be something like:
-///
-///     struct Closure<'a, T, U>(...U);
-///
+/// ```ignore (illustrative)
+/// struct Closure<'a, T, U>(...U);
+/// ```
 /// Note that the type of the upvar is not specified in the struct.
 /// You may wonder how the impl would then be able to use the upvar,
 /// if it doesn't know it's type? The answer is that the impl is
 /// (conceptually) not fully generic over Closure but rather tied to
 /// instances with the expected upvar types:
-///
-///     impl<'b, 'a, T> FnMut() for Closure<'a, T, (&'b mut &'a mut T,)> {
-///         ...
-///     }
-///
+/// ```ignore (illustrative)
+/// impl<'b, 'a, T> FnMut() for Closure<'a, T, (&'b mut &'a mut T,)> {
+///     ...
+/// }
+/// ```
 /// You can see that the *impl* fully specified the type of the upvar
 /// and thus knows full well that `data` has type `&'b mut &'a mut T`.
 /// (Here, I am assuming that `data` is mut-borrowed.)
@@ -698,7 +529,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     }
 
     /// This returns the types of the MIR locals which had to be stored across suspension points.
-    /// It is calculated in rustc_const_eval::transform::generator::StateTransform.
+    /// It is calculated in rustc_mir_transform::generator::StateTransform.
     /// All the types here must be in the tuple in GeneratorInterior.
     ///
     /// The locals are grouped by their variant number. Note that some locals may
@@ -711,7 +542,9 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     ) -> impl Iterator<Item = impl Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
         let layout = tcx.generator_layout(def_id).unwrap();
         layout.variant_fields.iter().map(move |variant| {
-            variant.iter().map(move |field| layout.field_tys[*field].subst(tcx, self.substs))
+            variant
+                .iter()
+                .map(move |field| EarlyBinder(layout.field_tys[*field]).subst(tcx, self.substs))
         })
     }
 
@@ -760,9 +593,9 @@ impl<'tcx> UpvarSubsts<'tcx> {
 }
 
 /// An inline const is modeled like
-///
-///     const InlineConst<'l0...'li, T0...Tj, R>: R;
-///
+/// ```ignore (illustrative)
+/// const InlineConst<'l0...'li, T0...Tj, R>: R;
+/// ```
 /// where:
 ///
 /// - 'l0...'li and T0...Tj are the generic parameters
@@ -926,7 +759,7 @@ impl<'tcx> List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
     }
 
     #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
+    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + Captures<'tcx> + 'a {
         self.iter().filter_map(|predicate| match predicate.skip_binder() {
             ExistentialPredicate::AutoTrait(did) => Some(did),
             _ => None,
@@ -936,9 +769,9 @@ impl<'tcx> List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
 
 /// A complete reference to a trait. These take numerous guises in syntax,
 /// but perhaps the most recognizable form is in a where-clause:
-///
-///     T: Foo<U>
-///
+/// ```ignore (illustrative)
+/// T: Foo<U>
+/// ```
 /// This would be represented by a trait-reference where the `DefId` is the
 /// `DefId` for the trait `Foo` and the substs define `T` as parameter 0,
 /// and `U` as parameter 1.
@@ -977,7 +810,6 @@ impl<'tcx> TraitRef<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> ty::TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
-
         ty::TraitRef { def_id: trait_id, substs: tcx.intern_substs(&substs[..defs.params.len()]) }
     }
 }
@@ -1000,13 +832,22 @@ impl<'tcx> PolyTraitRef<'tcx> {
             polarity: ty::ImplPolarity::Positive,
         })
     }
+
+    /// Same as [`PolyTraitRef::to_poly_trait_predicate`] but sets a negative polarity instead.
+    pub fn to_poly_trait_predicate_negative_polarity(&self) -> ty::PolyTraitPredicate<'tcx> {
+        self.map_bound(|trait_ref| ty::TraitPredicate {
+            trait_ref,
+            constness: ty::BoundConstness::NotConst,
+            polarity: ty::ImplPolarity::Negative,
+        })
+    }
 }
 
 /// An existential reference to a trait, where `Self` is erased.
 /// For example, the trait object `Trait<'a, 'b, X, Y>` is:
-///
-///     exists T. T: Trait<'a, 'b, X, Y>
-///
+/// ```ignore (illustrative)
+/// exists T. T: Trait<'a, 'b, X, Y>
+/// ```
 /// The substitutions don't include the erased `Self`, only trait
 /// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
@@ -1055,6 +896,69 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     /// or some placeholder type.
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::PolyTraitRef<'tcx> {
         self.map_bound(|trait_ref| trait_ref.with_self_ty(tcx, self_ty))
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable)]
+pub struct EarlyBinder<T>(pub T);
+
+impl<T> EarlyBinder<T> {
+    pub fn as_ref(&self) -> EarlyBinder<&T> {
+        EarlyBinder(&self.0)
+    }
+
+    pub fn map_bound_ref<F, U>(&self, f: F) -> EarlyBinder<U>
+    where
+        F: FnOnce(&T) -> U,
+    {
+        self.as_ref().map_bound(f)
+    }
+
+    pub fn map_bound<F, U>(self, f: F) -> EarlyBinder<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        let value = f(self.0);
+        EarlyBinder(value)
+    }
+
+    pub fn try_map_bound<F, U, E>(self, f: F) -> Result<EarlyBinder<U>, E>
+    where
+        F: FnOnce(T) -> Result<U, E>,
+    {
+        let value = f(self.0)?;
+        Ok(EarlyBinder(value))
+    }
+}
+
+impl<T> EarlyBinder<Option<T>> {
+    pub fn transpose(self) -> Option<EarlyBinder<T>> {
+        self.0.map(|v| EarlyBinder(v))
+    }
+}
+
+impl<T, U> EarlyBinder<(T, U)> {
+    pub fn transpose_tuple2(self) -> (EarlyBinder<T>, EarlyBinder<U>) {
+        (EarlyBinder(self.0.0), EarlyBinder(self.0.1))
+    }
+}
+
+pub struct EarlyBinderIter<T> {
+    t: T,
+}
+
+impl<T: IntoIterator> EarlyBinder<T> {
+    pub fn transpose_iter(self) -> EarlyBinderIter<T::IntoIter> {
+        EarlyBinderIter { t: self.0.into_iter() }
+    }
+}
+
+impl<T: Iterator> Iterator for EarlyBinderIter<T> {
+    type Item = EarlyBinder<T::Item>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.t.next().map(|i| EarlyBinder(i))
     }
 }
 
@@ -1126,6 +1030,13 @@ impl<'tcx, T> Binder<'tcx, T> {
     }
 
     pub fn as_ref(&self) -> Binder<'tcx, &T> {
+        Binder(&self.0, self.1)
+    }
+
+    pub fn as_deref(&self) -> Binder<'tcx, &T::Target>
+    where
+        T: Deref,
+    {
         Binder(&self.0, self.1)
     }
 
@@ -1394,7 +1305,7 @@ impl ParamConst {
     }
 }
 
-/// Use this rather than `TyKind`, whenever possible.
+/// Use this rather than `RegionKind`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind>);
@@ -1426,7 +1337,7 @@ impl<'tcx> fmt::Debug for Region<'tcx> {
 ///
 /// In general, the region lattice looks like
 ///
-/// ```
+/// ```text
 /// static ----------+-----...------+       (greatest)
 /// |                |              |
 /// early-bound and  |              |
@@ -1772,14 +1683,14 @@ impl<'tcx> Region<'tcx> {
     /// Given an early-bound or free region, returns the `DefId` where it was bound.
     /// For example, consider the regions in this snippet of code:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// impl<'a> Foo {
-    ///      ^^ -- early bound, declared on an impl
+    /// //   ^^ -- early bound, declared on an impl
     ///
     ///     fn bar<'b, 'c>(x: &self, y: &'b u32, z: &'c u64) where 'static: 'c
-    ///            ^^  ^^     ^ anonymous, late-bound
-    ///            |   early-bound, appears in where-clauses
-    ///            late-bound, appears only in fn args
+    /// //         ^^  ^^     ^ anonymous, late-bound
+    /// //         |   early-bound, appears in where-clauses
+    /// //         late-bound, appears only in fn args
     ///     {..}
     /// }
     /// ```
@@ -1790,7 +1701,7 @@ impl<'tcx> Region<'tcx> {
     /// function might return the `DefId` of a closure.
     pub fn free_region_binding_scope(self, tcx: TyCtxt<'_>) -> DefId {
         match *self {
-            ty::ReEarlyBound(br) => tcx.parent(br.def_id).unwrap(),
+            ty::ReEarlyBound(br) => tcx.parent(br.def_id),
             ty::ReFree(fr) => fr.scope,
             _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),
         }
@@ -1881,8 +1792,14 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_slice(self) -> bool {
+        matches!(self.kind(), Slice(_))
+    }
+
+    #[inline]
+    pub fn is_array_slice(self) -> bool {
         match self.kind() {
-            RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => matches!(ty.kind(), Slice(_) | Str),
+            Slice(_) => true,
+            RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => matches!(ty.kind(), Slice(_)),
             _ => false,
         }
     }
@@ -1895,7 +1812,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_simd(self) -> bool {
         match self.kind() {
-            Adt(def, _) => def.repr.simd(),
+            Adt(def, _) => def.repr().simd(),
             _ => false,
         }
     }
@@ -1908,10 +1825,17 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    pub fn expect_opaque_type(self) -> ty::OpaqueTypeKey<'tcx> {
+        match *self.kind() {
+            Opaque(def_id, substs) => ty::OpaqueTypeKey { def_id, substs },
+            _ => bug!("`expect_opaque_type` called on non-opaque type: {}", self),
+        }
+    }
+
     pub fn simd_size_and_type(self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
         match self.kind() {
             Adt(def, substs) => {
-                assert!(def.repr.simd(), "`simd_size_and_type` called on non-SIMD type");
+                assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
                 let variant = def.non_enum_variant();
                 let f0_ty = variant.fields[0].ty(tcx, substs);
 
@@ -2116,7 +2040,7 @@ impl<'tcx> Ty<'tcx> {
 
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
-            FnDef(def_id, substs) => tcx.fn_sig(*def_id).subst(tcx, substs),
+            FnDef(def_id, substs) => tcx.bound_fn_sig(*def_id).subst(tcx, substs),
             FnPtr(f) => *f,
             Error(_) => {
                 // ignore errors (#54954)
@@ -2145,15 +2069,16 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn ty_adt_def(self) -> Option<&'tcx AdtDef> {
+    pub fn ty_adt_def(self) -> Option<AdtDef<'tcx>> {
         match self.kind() {
-            Adt(adt, _) => Some(adt),
+            Adt(adt, _) => Some(*adt),
             _ => None,
         }
     }
 
     /// Iterates over tuple fields.
     /// Panics when called on anything but a tuple.
+    #[inline]
     pub fn tuple_fields(self) -> &'tcx List<Ty<'tcx>> {
         match self.kind() {
             Tuple(substs) => substs,
@@ -2186,7 +2111,7 @@ impl<'tcx> Ty<'tcx> {
         variant_index: VariantIdx,
     ) -> Option<Discr<'tcx>> {
         match self.kind() {
-            TyKind::Adt(adt, _) if adt.variants.is_empty() => {
+            TyKind::Adt(adt, _) if adt.variants().is_empty() => {
                 // This can actually happen during CTFE, see
                 // https://github.com/rust-lang/rust/issues/89765.
                 None
@@ -2204,7 +2129,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the type of the discriminant of this type.
     pub fn discriminant_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
-            ty::Adt(adt, _) if adt.is_enum() => adt.repr.discr_type().to_ty(tcx),
+            ty::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(tcx),
             ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
 
             ty::Param(_) | ty::Projection(_) | ty::Opaque(..) | ty::Infer(ty::TyVar(_)) => {
@@ -2244,13 +2169,14 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Returns the type of metadata for (potentially fat) pointers to this type.
+    /// Returns the type of metadata for (potentially fat) pointers to this type,
+    /// and a boolean signifying if this is conditional on this type being `Sized`.
     pub fn ptr_metadata_ty(
         self,
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
-    ) -> Ty<'tcx> {
-        let tail = tcx.struct_tail_with_normalize(self, normalize);
+    ) -> (Ty<'tcx>, bool) {
+        let tail = tcx.struct_tail_with_normalize(self, normalize, || {});
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -2269,28 +2195,30 @@ impl<'tcx> Ty<'tcx> {
             | ty::Closure(..)
             | ty::Never
             | ty::Error(_)
+            // Extern types have metadata = ().
             | ty::Foreign(..)
             // If returned by `struct_tail_without_normalization` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
             // If returned by `struct_tail_without_normalization` this is the empty tuple,
             // a.k.a. unit type, which is Sized
-            | ty::Tuple(..) => tcx.types.unit,
+            | ty::Tuple(..) => (tcx.types.unit, false),
 
-            ty::Str | ty::Slice(_) => tcx.types.usize,
+            ty::Str | ty::Slice(_) => (tcx.types.usize, false),
             ty::Dynamic(..) => {
                 let dyn_metadata = tcx.lang_items().dyn_metadata().unwrap();
-                tcx.type_of(dyn_metadata).subst(tcx, &[tail.into()])
+                (tcx.bound_type_of(dyn_metadata).subst(tcx, &[tail.into()]), false)
             },
 
-            ty::Projection(_)
-            | ty::Param(_)
-            | ty::Opaque(..)
-            | ty::Infer(ty::TyVar(_))
+            // type parameters only have unit metadata if they're sized, so return true
+            // to make sure we double check this during confirmation
+            ty::Param(_) |  ty::Projection(_) | ty::Opaque(..) => (tcx.types.unit, true),
+
+            ty::Infer(ty::TyVar(_))
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                bug!("`ptr_metadata_ty` applied to unexpected type: {:?}", tail)
+                bug!("`ptr_metadata_ty` applied to unexpected type: {:?} (tail = {:?})", self, tail)
             }
         }
     }
@@ -2369,6 +2297,57 @@ impl<'tcx> Ty<'tcx> {
             | ty::Placeholder(..)
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
+            }
+        }
+    }
+
+    /// Fast path helper for primitives which are always `Copy` and which
+    /// have a side-effect-free `Clone` impl.
+    ///
+    /// Returning true means the type is known to be pure and `Copy+Clone`.
+    /// Returning `false` means nothing -- could be `Copy`, might not be.
+    ///
+    /// This is mostly useful for optimizations, as there are the types
+    /// on which we can replace cloning with dereferencing.
+    pub fn is_trivially_pure_clone_copy(self) -> bool {
+        match self.kind() {
+            ty::Bool | ty::Char | ty::Never => true,
+
+            // These aren't even `Clone`
+            ty::Str | ty::Slice(..) | ty::Foreign(..) | ty::Dynamic(..) => false,
+
+            ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
+
+            // The voldemort ZSTs are fine.
+            ty::FnDef(..) => true,
+
+            ty::Array(element_ty, _len) => element_ty.is_trivially_pure_clone_copy(),
+
+            // A 100-tuple isn't "trivial", so doing this only for reasonable sizes.
+            ty::Tuple(field_tys) => {
+                field_tys.len() <= 3 && field_tys.iter().all(Self::is_trivially_pure_clone_copy)
+            }
+
+            // Sometimes traits aren't implemented for every ABI or arity,
+            // because we can't be generic over everything yet.
+            ty::FnPtr(..) => false,
+
+            // Definitely absolutely not copy.
+            ty::Ref(_, _, hir::Mutability::Mut) => false,
+
+            // Thin pointers & thin shared references are pure-clone-copy, but for
+            // anything with custom metadata it might be more complicated.
+            ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => false,
+
+            ty::Generator(..) | ty::GeneratorWitness(..) => false,
+
+            // Might be, but not "trivial" so just giving the safe answer.
+            ty::Adt(..) | ty::Closure(..) | ty::Opaque(..) => false,
+
+            ty::Projection(..) | ty::Param(..) | ty::Infer(..) | ty::Error(..) => false,
+
+            ty::Bound(..) | ty::Placeholder(..) => {
+                bug!("`is_trivially_pure_clone_copy` applied to unexpected type: {:?}", self);
             }
         }
     }

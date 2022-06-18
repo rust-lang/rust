@@ -127,7 +127,7 @@ pub(crate) fn coerce_unsized_into<'tcx>(
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            for i in 0..def_a.variants[VariantIdx::new(0)].fields.len() {
+            for i in 0..def_a.variant(VariantIdx::new(0)).fields.len() {
                 let src_f = src.value_field(fx, mir::Field::new(i));
                 let dst_f = dst.place_field(fx, mir::Field::new(i));
 
@@ -200,7 +200,7 @@ pub(crate) fn size_and_align_of_dst<'tcx>(
 
             // Packed types ignore the alignment of their fields.
             if let ty::Adt(def, _) = layout.ty.kind() {
-                if def.repr.packed() {
+                if def.repr().packed() {
                     unsized_align = sized_align;
                 }
             }

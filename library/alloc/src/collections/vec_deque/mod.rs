@@ -12,7 +12,7 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{repeat_with, FromIterator};
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice;
@@ -53,6 +53,10 @@ mod pair_slices;
 use self::ring_slices::RingSlices;
 
 mod ring_slices;
+
+use self::spec_extend::SpecExtend;
+
+mod spec_extend;
 
 #[cfg(test)]
 mod tests;
@@ -181,16 +185,28 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Turn ptr into a slice
+    /// Turn ptr into a slice, since the elements of the backing buffer may be uninitialized,
+    /// we will return a slice of [`MaybeUninit<T>`].
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[inline]
-    unsafe fn buffer_as_slice(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.ptr(), self.cap()) }
+    unsafe fn buffer_as_slice(&self) -> &[MaybeUninit<T>] {
+        unsafe { slice::from_raw_parts(self.ptr() as *mut MaybeUninit<T>, self.cap()) }
     }
 
-    /// Turn ptr into a mut slice
+    /// Turn ptr into a mut slice, since the elements of the backing buffer may be uninitialized,
+    /// we will return a slice of [`MaybeUninit<T>`].
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[inline]
-    unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { slice::from_raw_parts_mut(self.ptr(), self.cap()) }
+    unsafe fn buffer_as_mut_slice(&mut self) -> &mut [MaybeUninit<T>] {
+        unsafe { slice::from_raw_parts_mut(self.ptr() as *mut MaybeUninit<T>, self.cap()) }
     }
 
     /// Moves an element out of the buffer
@@ -435,6 +451,25 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 ptr::copy_nonoverlapping(right.as_ptr(), self.ptr(), right.len());
             }
         }
+    }
+
+    /// Writes all values from `iter` to `dst`.
+    ///
+    /// # Safety
+    ///
+    /// Assumes no wrapping around happens.
+    /// Assumes capacity is sufficient.
+    #[inline]
+    unsafe fn write_iter(
+        &mut self,
+        dst: usize,
+        iter: impl Iterator<Item = T>,
+        written: &mut usize,
+    ) {
+        iter.enumerate().for_each(|(i, element)| unsafe {
+            self.buffer_write(dst + i, element);
+            *written += 1;
+        });
     }
 
     /// Frobs the head and tail sections around to handle the fact that we
@@ -997,7 +1032,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, T> {
-        Iter { tail: self.tail, head: self.head, ring: unsafe { self.buffer_as_slice() } }
+        Iter::new(unsafe { self.buffer_as_slice() }, self.tail, self.head)
     }
 
     /// Returns a front-to-back iterator that returns mutable references.
@@ -1055,9 +1090,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_slices(&self) -> (&[T], &[T]) {
+        // Safety:
+        // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+        // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
         unsafe {
             let buf = self.buffer_as_slice();
-            RingSlices::ring_slices(buf, self.head, self.tail)
+            let (front, back) = RingSlices::ring_slices(buf, self.head, self.tail);
+            (MaybeUninit::slice_assume_init_ref(front), MaybeUninit::slice_assume_init_ref(back))
         }
     }
 
@@ -1089,11 +1128,15 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
+        // Safety:
+        // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+        // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
         unsafe {
             let head = self.head;
             let tail = self.tail;
             let buf = self.buffer_as_mut_slice();
-            RingSlices::ring_slices(buf, head, tail)
+            let (front, back) = RingSlices::ring_slices(buf, head, tail);
+            (MaybeUninit::slice_assume_init_mut(front), MaybeUninit::slice_assume_init_mut(back))
         }
     }
 
@@ -1168,12 +1211,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         R: RangeBounds<usize>,
     {
         let (tail, head) = self.range_tail_head(range);
-        Iter {
-            tail,
-            head,
-            // The shared reference we have in &self is maintained in the '_ of Iter.
-            ring: unsafe { self.buffer_as_slice() },
-        }
+        // The shared reference we have in &self is maintained in the '_ of Iter.
+        Iter::new(unsafe { self.buffer_as_slice() }, tail, head)
     }
 
     /// Creates an iterator that covers the specified mutable range in the deque.
@@ -1289,16 +1328,15 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.head = drain_tail;
 
         let deque = NonNull::from(&mut *self);
-        let iter = Iter {
-            tail: drain_tail,
-            head: drain_head,
+        unsafe {
             // Crucially, we only create shared references from `self` here and read from
             // it.  We do not write to `self` nor reborrow to a mutable reference.
             // Hence the raw pointer we created above, for `deque`, remains valid.
-            ring: unsafe { self.buffer_as_slice() },
-        };
+            let ring = self.buffer_as_slice();
+            let iter = Iter::new(ring, drain_tail, drain_head);
 
-        unsafe { Drain::new(drain_head, head, iter, deque) }
+            Drain::new(drain_head, head, iter, deque)
+        }
     }
 
     /// Clears the deque, removing all values.
@@ -1321,6 +1359,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Returns `true` if the deque contains an element equal to the
     /// given value.
+    ///
+    /// This operation is *O*(*n*).
+    ///
+    /// Note that if you have a sorted `VecDeque`, [`binary_search`] may be faster.
+    ///
+    /// [`binary_search`]: VecDeque::binary_search
     ///
     /// # Examples
     ///
@@ -2119,7 +2163,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns false.
+    /// In other words, remove all elements `e` for which `f(&e)` returns false.
     /// This method operates in place, visiting each element exactly once in the
     /// original order, and preserves the order of the retained elements.
     ///
@@ -2158,15 +2202,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns false.
+    /// In other words, remove all elements `e` for which `f(&e)` returns false.
     /// This method operates in place, visiting each element exactly once in the
     /// original order, and preserves the order of the retained elements.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_retain_mut)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -2179,7 +2221,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// });
     /// assert_eq!(buf, [3, 5]);
     /// ```
-    #[unstable(feature = "vec_retain_mut", issue = "90829")]
+    #[stable(feature = "vec_retain_mut", since = "1.61.0")]
     pub fn retain_mut<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut T) -> bool,
@@ -2327,7 +2369,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
         if self.is_contiguous() {
             let tail = self.tail;
             let head = self.head;
-            return unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 };
+            // Safety:
+            // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+            // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
+            return unsafe {
+                MaybeUninit::slice_assume_init_mut(
+                    RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0,
+                )
+            };
         }
 
         let buf = self.buf.ptr();
@@ -2413,7 +2462,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
         let tail = self.tail;
         let head = self.head;
-        unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 }
+        // Safety:
+        // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+        // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
+        unsafe {
+            MaybeUninit::slice_assume_init_mut(
+                RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0,
+            )
+        }
     }
 
     /// Rotates the double-ended queue `mid` places to the left.
@@ -2528,7 +2584,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Binary searches the sorted deque for a given element.
+    /// Binary searches this `VecDeque` for a given element.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2538,6 +2595,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`binary_search_by`]: VecDeque::binary_search_by
     /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
     /// [`partition_point`]: VecDeque::partition_point
@@ -2561,14 +2619,15 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     ///
     /// If you want to insert an item to a sorted deque, while maintaining
-    /// sort order:
+    /// sort order, consider using [`partition_point`]:
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     /// let num = 42;
-    /// let idx = deque.binary_search(&num).unwrap_or_else(|x| x);
+    /// let idx = deque.partition_point(|&x| x < num);
+    /// // The above is equivalent to `let idx = deque.binary_search(&num).unwrap_or_else(|x| x);`
     /// deque.insert(idx, num);
     /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
@@ -2581,7 +2640,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.binary_search_by(|e| e.cmp(x))
     }
 
-    /// Binary searches the sorted deque with a comparator function.
+    /// Binary searches this `VecDeque` with a comparator function.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// The comparator function should implement an order consistent
     /// with the sort order of the deque, returning an order code that
@@ -2596,6 +2656,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`binary_search`]: VecDeque::binary_search
     /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
     /// [`partition_point`]: VecDeque::partition_point
@@ -2634,7 +2695,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Binary searches the sorted deque with a key extraction function.
+    /// Binary searches this `VecDeque` with a key extraction function.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// Assumes that the deque is sorted by the key, for instance with
     /// [`make_contiguous().sort_by_key()`] using the same key extraction function.
@@ -2647,6 +2709,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`make_contiguous().sort_by_key()`]: VecDeque::make_contiguous
     /// [`binary_search`]: VecDeque::binary_search
     /// [`binary_search_by`]: VecDeque::binary_search_by
@@ -2711,6 +2774,19 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(i, 4);
     /// assert!(deque.iter().take(i).all(|&x| x < 5));
     /// assert!(deque.iter().skip(i).all(|&x| !(x < 5)));
+    /// ```
+    ///
+    /// If you want to insert an item to a sorted deque, while maintaining
+    /// sort order:
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+    /// let num = 42;
+    /// let idx = deque.partition_point(|&x| x < num);
+    /// deque.insert(idx, num);
+    /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
     #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     pub fn partition_point<P>(&self, mut pred: P) -> usize
@@ -2837,7 +2913,7 @@ impl<T: Ord, A: Allocator> Ord for VecDeque<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash, A: Allocator> Hash for VecDeque<T, A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.len().hash(state);
+        state.write_length_prefix(self.len());
         // It's not possible to use Hash::hash_slice on slices
         // returned by as_slices method as their length can vary
         // in otherwise identical deques.
@@ -2912,24 +2988,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut VecDeque<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        // This function should be the moral equivalent of:
-        //
-        //      for item in iter.into_iter() {
-        //          self.push_back(item);
-        //      }
-        let mut iter = iter.into_iter();
-        while let Some(element) = iter.next() {
-            if self.len() == self.capacity() {
-                let (lower, _) = iter.size_hint();
-                self.reserve(lower.saturating_add(1));
-            }
-
-            let head = self.head;
-            self.head = self.wrap_add(self.head, 1);
-            unsafe {
-                self.buffer_write(head, element);
-            }
-        }
+        <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter());
     }
 
     #[inline]
@@ -2946,7 +3005,7 @@ impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
+        self.spec_extend(iter.into_iter());
     }
 
     #[inline]

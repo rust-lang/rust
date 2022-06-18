@@ -92,50 +92,50 @@ pub fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for io::Stdin {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw_fd(libc::STDIN_FILENO) }
+        unsafe { BorrowedFd::borrow_raw(libc::STDIN_FILENO) }
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<'a> AsFd for io::StdinLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw_fd(libc::STDIN_FILENO) }
+        unsafe { BorrowedFd::borrow_raw(libc::STDIN_FILENO) }
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for io::Stdout {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw_fd(libc::STDOUT_FILENO) }
+        unsafe { BorrowedFd::borrow_raw(libc::STDOUT_FILENO) }
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<'a> AsFd for io::StdoutLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw_fd(libc::STDOUT_FILENO) }
+        unsafe { BorrowedFd::borrow_raw(libc::STDOUT_FILENO) }
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for io::Stderr {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw_fd(libc::STDERR_FILENO) }
+        unsafe { BorrowedFd::borrow_raw(libc::STDERR_FILENO) }
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<'a> AsFd for io::StderrLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw_fd(libc::STDERR_FILENO) }
+        unsafe { BorrowedFd::borrow_raw(libc::STDERR_FILENO) }
     }
 }

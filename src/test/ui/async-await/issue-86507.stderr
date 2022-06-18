@@ -14,10 +14,10 @@ note: captured value is not `Send` because `&` references cannot be sent unless 
 LL |                     let x = x;
    |                             ^ has type `&T` which is not `Send`, because `T` is not `Sync`
    = note: required for the cast to the object type `dyn Future<Output = ()> + Send`
-help: consider further restricting type parameter `T`
+help: consider further restricting this bound
    |
-LL |         where 'me:'async_trait, T: std::marker::Sync {
-   |                               ++++++++++++++++++++++
+LL |     fn bar<'me, 'async_trait, T: Send + std::marker::Sync>(x: &'me T)
+   |                                       +++++++++++++++++++
 
 error: aborting due to previous error
 

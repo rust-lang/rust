@@ -6,10 +6,13 @@
 #![allow(unreachable_patterns, irrefutable_let_patterns, unused_variables)]
 
 fn main() {
+    // Should be ignored by this lint, as nesting requires more characters.
+    if let &0 | &2 = &0 {}
+
     if let box 0 | box 2 = Box::new(0) {}
     if let box ((0 | 1)) | box (2 | 3) | box 4 = Box::new(0) {}
-    const C0: &u8 = &1;
-    if let &0 | C0 | &2 = &0 {}
+    const C0: Option<u8> = Some(1);
+    if let Some(1) | C0 | Some(2) = None {}
     if let &mut 0 | &mut 2 = &mut 0 {}
     if let x @ 0 | x @ 2 = 0 {}
     if let (0, 1) | (0, 2) | (0, 3) = (0, 0) {}

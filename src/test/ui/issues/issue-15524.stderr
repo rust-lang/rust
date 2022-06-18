@@ -1,28 +1,53 @@
-error[E0081]: discriminant value `1` already exists
-  --> $DIR/issue-15524.rs:5:9
+error[E0081]: discriminant value `1` assigned more than once
+  --> $DIR/issue-15524.rs:3:1
    |
-LL |     A = 1,
-   |         - first use of `1`
-LL |     B = 1,
-   |         ^ enum already has `1`
+LL | / enum Foo {
+LL | |
+LL | |
+LL | |
+LL | |     A = 1,
+   | |         - first assignment of `1`
+LL | |     B = 1,
+   | |         - second assignment of `1`
+...  |
+LL | |
+LL | | }
+   | |_^
 
-error[E0081]: discriminant value `1` already exists
-  --> $DIR/issue-15524.rs:8:5
+error[E0081]: discriminant value `1` assigned more than once
+  --> $DIR/issue-15524.rs:3:1
    |
-LL |     A = 1,
-   |         - first use of `1`
-...
-LL |     D,
-   |     ^ enum already has `1`
+LL | / enum Foo {
+LL | |
+LL | |
+LL | |
+LL | |     A = 1,
+   | |         - first assignment of `1`
+LL | |     B = 1,
+LL | |     C = 0,
+   | |     ----- assigned discriminant for `D` was incremented from this discriminant
+LL | |     D,
+   | |     - second assignment of `1`
+...  |
+LL | |
+LL | | }
+   | |_^
 
-error[E0081]: discriminant value `1` already exists
-  --> $DIR/issue-15524.rs:11:9
+error[E0081]: discriminant value `1` assigned more than once
+  --> $DIR/issue-15524.rs:3:1
    |
-LL |     A = 1,
-   |         - first use of `1`
-...
-LL |     E = N,
-   |         ^ enum already has `1`
+LL | / enum Foo {
+LL | |
+LL | |
+LL | |
+LL | |     A = 1,
+   | |         - first assignment of `1`
+...  |
+LL | |     E = N,
+   | |         - second assignment of `1`
+LL | |
+LL | | }
+   | |_^
 
 error: aborting due to 3 previous errors
 

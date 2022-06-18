@@ -14,29 +14,33 @@ pub(crate) fn prepare() {
     eprintln!("[INSTALL] hyperfine");
     Command::new("cargo").arg("install").arg("hyperfine").spawn().unwrap().wait().unwrap();
 
-    clone_repo(
+    clone_repo_shallow_github(
         "rand",
-        "https://github.com/rust-random/rand.git",
+        "rust-random",
+        "rand",
         "0f933f9c7176e53b2a3c7952ded484e1783f0bf1",
     );
     apply_patches("rand", Path::new("rand"));
 
-    clone_repo(
+    clone_repo_shallow_github(
         "regex",
-        "https://github.com/rust-lang/regex.git",
+        "rust-lang",
+        "regex",
         "341f207c1071f7290e3f228c710817c280c8dca1",
     );
 
-    clone_repo(
+    clone_repo_shallow_github(
         "portable-simd",
-        "https://github.com/rust-lang/portable-simd",
+        "rust-lang",
+        "portable-simd",
         "b8d6b6844602f80af79cd96401339ec594d472d8",
     );
     apply_patches("portable-simd", Path::new("portable-simd"));
 
-    clone_repo(
+    clone_repo_shallow_github(
         "simple-raytracer",
-        "https://github.com/ebobby/simple-raytracer",
+        "ebobby",
+        "simple-raytracer",
         "804a7a21b9e673a482797aa289a18ed480e4d813",
     );
 
@@ -74,29 +78,12 @@ fn prepare_sysroot() {
     git_init_cmd.arg("init").arg("-q").current_dir(&sysroot_src);
     spawn_and_wait(git_init_cmd);
 
-    let mut git_add_cmd = Command::new("git");
-    git_add_cmd.arg("add").arg(".").current_dir(&sysroot_src);
-    spawn_and_wait(git_add_cmd);
-
-    let mut git_commit_cmd = Command::new("git");
-    git_commit_cmd
-        .arg("commit")
-        .arg("-m")
-        .arg("Initial commit")
-        .arg("-q")
-        .current_dir(&sysroot_src);
-    spawn_and_wait(git_commit_cmd);
+    init_git_repo(&sysroot_src);
 
     apply_patches("sysroot", &sysroot_src);
-
-    clone_repo(
-        "build_sysroot/compiler-builtins",
-        "https://github.com/rust-lang/compiler-builtins.git",
-        "0.1.70",
-    );
-    apply_patches("compiler-builtins", Path::new("build_sysroot/compiler-builtins"));
 }
 
+#[allow(dead_code)]
 fn clone_repo(target_dir: &str, repo: &str, rev: &str) {
     eprintln!("[CLONE] {}", repo);
     // Ignore exit code as the repo may already have been checked out
@@ -109,6 +96,57 @@ fn clone_repo(target_dir: &str, repo: &str, rev: &str) {
     let mut checkout_cmd = Command::new("git");
     checkout_cmd.arg("checkout").arg("-q").arg(rev).current_dir(target_dir);
     spawn_and_wait(checkout_cmd);
+}
+
+fn clone_repo_shallow_github(target_dir: &str, username: &str, repo: &str, rev: &str) {
+    if cfg!(windows) {
+        // Older windows doesn't have tar or curl by default. Fall back to using git.
+        clone_repo(target_dir, &format!("https://github.com/{}/{}.git", username, repo), rev);
+        return;
+    }
+
+    let archive_url = format!("https://github.com/{}/{}/archive/{}.tar.gz", username, repo, rev);
+    let archive_file = format!("{}.tar.gz", rev);
+    let archive_dir = format!("{}-{}", repo, rev);
+
+    eprintln!("[DOWNLOAD] {}/{} from {}", username, repo, archive_url);
+
+    // Remove previous results if they exists
+    let _ = std::fs::remove_file(&archive_file);
+    let _ = std::fs::remove_dir_all(&archive_dir);
+    let _ = std::fs::remove_dir_all(target_dir);
+
+    // Download zip archive
+    let mut download_cmd = Command::new("curl");
+    download_cmd.arg("--location").arg("--output").arg(&archive_file).arg(archive_url);
+    spawn_and_wait(download_cmd);
+
+    // Unpack tar archive
+    let mut unpack_cmd = Command::new("tar");
+    unpack_cmd.arg("xf").arg(&archive_file);
+    spawn_and_wait(unpack_cmd);
+
+    // Rename unpacked dir to the expected name
+    std::fs::rename(archive_dir, target_dir).unwrap();
+
+    init_git_repo(Path::new(target_dir));
+
+    // Cleanup
+    std::fs::remove_file(archive_file).unwrap();
+}
+
+fn init_git_repo(repo_dir: &Path) {
+    let mut git_init_cmd = Command::new("git");
+    git_init_cmd.arg("init").arg("-q").current_dir(repo_dir);
+    spawn_and_wait(git_init_cmd);
+
+    let mut git_add_cmd = Command::new("git");
+    git_add_cmd.arg("add").arg(".").current_dir(repo_dir);
+    spawn_and_wait(git_add_cmd);
+
+    let mut git_commit_cmd = Command::new("git");
+    git_commit_cmd.arg("commit").arg("-m").arg("Initial commit").arg("-q").current_dir(repo_dir);
+    spawn_and_wait(git_commit_cmd);
 }
 
 fn get_patches(crate_name: &str) -> Vec<OsString> {

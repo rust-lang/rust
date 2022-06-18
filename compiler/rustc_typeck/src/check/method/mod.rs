@@ -8,7 +8,6 @@ pub mod probe;
 mod suggest;
 
 pub use self::suggest::SelfSource;
-pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
 use crate::check::FnCtxt;
@@ -78,34 +77,12 @@ pub struct NoMatchData<'tcx> {
     pub mode: probe::Mode,
 }
 
-impl<'tcx> NoMatchData<'tcx> {
-    pub fn new(
-        static_candidates: Vec<CandidateSource>,
-        unsatisfied_predicates: Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
-        out_of_scope_traits: Vec<DefId>,
-        lev_candidate: Option<ty::AssocItem>,
-        mode: probe::Mode,
-    ) -> Self {
-        NoMatchData {
-            static_candidates,
-            unsatisfied_predicates,
-            out_of_scope_traits,
-            lev_candidate,
-            mode,
-        }
-    }
-}
-
 // A pared down enum describing just the places from which a method
 // candidate can arise. Used for error reporting only.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CandidateSource {
-    ImplSource(DefId),
-    TraitSource(DefId /* trait id */),
+    Impl(DefId),
+    Trait(DefId /* trait id */),
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -139,7 +116,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Adds a suggestion to call the given method to the provided diagnostic.
     #[instrument(level = "debug", skip(self, err, call_expr))]
-    crate fn suggest_method_call(
+    pub(crate) fn suggest_method_call(
         &self,
         err: &mut Diagnostic,
         msg: &str,
@@ -259,8 +236,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         match *source {
                             // Note: this cannot come from an inherent impl,
                             // because the first probing succeeded.
-                            ImplSource(def) => self.tcx.trait_id_of_impl(def),
-                            TraitSource(_) => None,
+                            CandidateSource::Impl(def) => self.tcx.trait_id_of_impl(def),
+                            CandidateSource::Trait(_) => None,
                         }
                     })
                     .collect(),
@@ -483,9 +460,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // N.B., instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let fn_sig = tcx.fn_sig(def_id);
-        let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, fn_sig).0;
+        let fn_sig = tcx.bound_fn_sig(def_id);
         let fn_sig = fn_sig.subst(self.tcx, substs);
+        let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, fn_sig);
 
         let InferOk { value, obligations: o } = if is_op {
             self.normalize_op_associated_types_in_as_infer_ok(span, fn_sig, opt_input_expr)
@@ -589,9 +566,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let ty::Adt(adt_def, _) = self_ty.kind() {
             if adt_def.is_enum() {
                 let variant_def = adt_def
-                    .variants
+                    .variants()
                     .iter()
-                    .find(|vd| tcx.hygienic_eq(method_name, vd.ident(tcx), adt_def.did));
+                    .find(|vd| tcx.hygienic_eq(method_name, vd.ident(tcx), adt_def.did()));
                 if let Some(variant_def) = variant_def {
                     // Braced variants generate unusable names in value namespace (reserved for
                     // possible future use), so variants resolved as associated items may refer to

@@ -21,11 +21,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// // format!() returns a `String`
     /// let s: String = format!("hello").into();
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let s: String = format!("hello");
     /// ```
     #[clippy::version = "1.45.0"]
@@ -41,7 +42,7 @@ pub struct UselessConversion {
 
 impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 impl<'tcx> LateLintPass<'tcx> for UselessConversion {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {

@@ -32,7 +32,6 @@ where
 
 #[rustc_polymorphize_error]
 pub fn unused_type<T>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
-    //~^ ERROR item has unused generic parameters
     || {
         //~^ ERROR item has unused generic parameters
         yield 1;
@@ -58,7 +57,6 @@ pub fn used_type_in_return<R: Default>() -> impl Generator<(), Yield = u32, Retu
 
 #[rustc_polymorphize_error]
 pub fn unused_const<const T: u32>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
-    //~^ ERROR item has unused generic parameters
     || {
         //~^ ERROR item has unused generic parameters
         yield 1;

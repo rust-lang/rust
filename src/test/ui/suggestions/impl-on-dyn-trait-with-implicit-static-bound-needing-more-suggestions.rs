@@ -63,7 +63,7 @@ mod bay {
     impl Bar for i32 {}
 
     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32> + 'a>) -> &'a () {
-        val.use_self() //~ ERROR E0772
+        val.use_self()
     }
 }
 

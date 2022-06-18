@@ -108,11 +108,11 @@ pub const fn identity<T>(x: T) -> T {
 /// If you need to do a costly conversion it is better to implement [`From`] with type
 /// `&T` or write a custom function.
 ///
-/// `AsRef` has the same signature as [`Borrow`], but [`Borrow`] is different in few aspects:
+/// `AsRef` has the same signature as [`Borrow`], but [`Borrow`] is different in a few aspects:
 ///
 /// - Unlike `AsRef`, [`Borrow`] has a blanket impl for any `T`, and can be used to accept either
 ///   a reference or a value.
-/// - [`Borrow`] also requires that [`Hash`], [`Eq`] and [`Ord`] for borrowed value are
+/// - [`Borrow`] also requires that [`Hash`], [`Eq`] and [`Ord`] for a borrowed value are
 ///   equivalent to those of the owned value. For this reason, if you want to
 ///   borrow only a single field of a struct you can implement `AsRef`, but not [`Borrow`].
 ///
@@ -154,7 +154,7 @@ pub const fn identity<T>(x: T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "AsRef")]
 pub trait AsRef<T: ?Sized> {
-    /// Performs the conversion.
+    /// Converts this type into a shared reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_ref(&self) -> &T;
 }
@@ -196,7 +196,7 @@ pub trait AsRef<T: ?Sized> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "AsMut")]
 pub trait AsMut<T: ?Sized> {
-    /// Performs the conversion.
+    /// Converts this type into a mutable reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_mut(&mut self) -> &mut T;
 }
@@ -272,7 +272,7 @@ pub trait AsMut<T: ?Sized> {
 #[rustc_diagnostic_item = "Into"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
-    /// Performs the conversion.
+    /// Converts this type into the (usually inferred) input type.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into(self) -> T;
@@ -300,7 +300,8 @@ pub trait Into<T>: Sized {
 /// that encapsulate multiple error types. See the "Examples" section and [the book][book] for more
 /// details.
 ///
-/// **Note: This trait must not fail**. If the conversion can fail, use [`TryFrom`].
+/// **Note: This trait must not fail**. The `From` trait is intended for perfect conversions.
+/// If the conversion can fail or is not perfect, use [`TryFrom`].
 ///
 /// # Generic Implementations
 ///
@@ -366,7 +367,7 @@ pub trait Into<T>: Sized {
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
 pub trait From<T>: Sized {
-    /// Performs the conversion.
+    /// Converts to this type from the input type.
     #[lang = "from"]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -486,6 +487,7 @@ impl<T: ?Sized, U: ?Sized> const AsRef<U> for &T
 where
     T: ~const AsRef<U>,
 {
+    #[inline]
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
     }
@@ -498,6 +500,7 @@ impl<T: ?Sized, U: ?Sized> const AsRef<U> for &mut T
 where
     T: ~const AsRef<U>,
 {
+    #[inline]
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
     }
@@ -518,6 +521,7 @@ impl<T: ?Sized, U: ?Sized> const AsMut<U> for &mut T
 where
     T: ~const AsMut<U>,
 {
+    #[inline]
     fn as_mut(&mut self) -> &mut U {
         (*self).as_mut()
     }
@@ -690,7 +694,8 @@ impl AsMut<str> for str {
 pub enum Infallible {}
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-impl Clone for Infallible {
+#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
+impl const Clone for Infallible {
     fn clone(&self) -> Infallible {
         match *self {}
     }

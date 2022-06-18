@@ -17,6 +17,7 @@ use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, adjustment, AdtKind, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
+use ty::BorrowKind::ImmBorrow;
 
 use crate::mem_categorization as mc;
 
@@ -47,12 +48,34 @@ pub trait Delegate<'tcx> {
         bk: ty::BorrowKind,
     );
 
+    /// The value found at `place` is being copied.
+    /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
+    fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+        // In most cases, copying data from `x` is equivalent to doing `*&x`, so by default
+        // we treat a copy of `x` as a borrow of `x`.
+        self.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow)
+    }
+
     /// The path at `assignee_place` is being assigned to.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
 
+    /// The path at `binding_place` is a binding that is being initialized.
+    ///
+    /// This covers cases such as `let x = 42;`
+    fn bind(&mut self, binding_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+        // Bindings can normally be treated as a regular assignment, so by default we
+        // forward this to the mutate callback.
+        self.mutate(binding_place, diag_expr_id)
+    }
+
     /// The `place` should be a fake read because of specified `cause`.
-    fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause, diag_expr_id: hir::HirId);
+    fn fake_read(
+        &mut self,
+        place_with_id: &PlaceWithHirId<'tcx>,
+        cause: FakeReadCause,
+        diag_expr_id: hir::HirId,
+    );
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -310,7 +333,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     };
 
                     self.delegate.fake_read(
-                        discr_place.place.clone(),
+                        &discr_place,
                         FakeReadCause::ForMatchedPlace(closure_def_id),
                         discr_place.hir_id,
                     );
@@ -341,8 +364,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             hir::ExprKind::InlineAsm(asm) => {
                 for (op, _op_sp) in asm.operands {
                     match op {
-                        hir::InlineAsmOperand::In { expr, .. }
-                        | hir::InlineAsmOperand::Sym { expr, .. } => self.consume_expr(expr),
+                        hir::InlineAsmOperand::In { expr, .. } => self.consume_expr(expr),
                         hir::InlineAsmOperand::Out { expr: Some(expr), .. }
                         | hir::InlineAsmOperand::InOut { expr, .. } => {
                             self.mutate_expr(expr);
@@ -354,7 +376,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             }
                         }
                         hir::InlineAsmOperand::Out { expr: None, .. }
-                        | hir::InlineAsmOperand::Const { .. } => {}
+                        | hir::InlineAsmOperand::Const { .. }
+                        | hir::InlineAsmOperand::SymFn { .. }
+                        | hir::InlineAsmOperand::SymStatic { .. } => {}
                     }
                 }
             }
@@ -413,7 +437,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_expr(base);
             }
 
-            hir::ExprKind::Closure(..) => {
+            hir::ExprKind::Closure { .. } => {
                 self.walk_captures(expr);
             }
 
@@ -514,7 +538,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // struct; however, when EUV is run during typeck, it
                 // may not. This will generate an error earlier in typeck,
                 // so we can just ignore it.
-                if !self.tcx().sess.has_errors() {
+                if !self.tcx().sess.has_errors().is_some() {
                     span_bug!(with_expr.span, "with expression doesn't evaluate to a struct");
                 }
             }
@@ -599,16 +623,16 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         };
 
         self.delegate.fake_read(
-            discr_place.place.clone(),
+            discr_place,
             FakeReadCause::ForMatchedPlace(closure_def_id),
             discr_place.hir_id,
         );
-        self.walk_pat(discr_place, arm.pat);
+        self.walk_pat(discr_place, arm.pat, arm.guard.is_some());
 
         if let Some(hir::Guard::If(e)) = arm.guard {
             self.consume_expr(e)
-        } else if let Some(hir::Guard::IfLet(_, ref e)) = arm.guard {
-            self.consume_expr(e)
+        } else if let Some(hir::Guard::IfLet(ref l)) = arm.guard {
+            self.consume_expr(l.init)
         }
 
         self.consume_expr(arm.body);
@@ -623,16 +647,21 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         };
 
         self.delegate.fake_read(
-            discr_place.place.clone(),
+            discr_place,
             FakeReadCause::ForLet(closure_def_id),
             discr_place.hir_id,
         );
-        self.walk_pat(discr_place, pat);
+        self.walk_pat(discr_place, pat, false);
     }
 
     /// The core driver for walking a pattern
-    fn walk_pat(&mut self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>) {
-        debug!("walk_pat(discr_place={:?}, pat={:?})", discr_place, pat);
+    fn walk_pat(
+        &mut self,
+        discr_place: &PlaceWithHirId<'tcx>,
+        pat: &hir::Pat<'_>,
+        has_guard: bool,
+    ) {
+        debug!("walk_pat(discr_place={:?}, pat={:?}, has_guard={:?})", discr_place, pat, has_guard);
 
         let tcx = self.tcx();
         let ExprUseVisitor { ref mc, body_owner: _, ref mut delegate } = *self;
@@ -648,11 +677,16 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     let pat_ty = return_if_err!(mc.node_ty(pat.hir_id));
                     debug!("walk_pat: pat_ty={:?}", pat_ty);
 
-                    // Each match binding is effectively an assignment to the
-                    // binding being produced.
                     let def = Res::Local(canonical_id);
                     if let Ok(ref binding_place) = mc.cat_res(pat.hir_id, pat.span, pat_ty, def) {
-                        delegate.mutate(binding_place, binding_place.hir_id);
+                        delegate.bind(binding_place, binding_place.hir_id);
+                    }
+
+                    // Subtle: MIR desugaring introduces immutable borrows for each pattern
+                    // binding when lowering pattern guards to ensure that the guard does not
+                    // modify the scrutinee.
+                    if has_guard {
+                        delegate.borrow(place, discr_place.hir_id, ImmBorrow);
                     }
 
                     // It is also a borrow or copy/move of the value being matched.
@@ -682,12 +716,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// In the following example the closures `c` only captures `p.x` even though `incr`
     /// is a capture of the nested closure
     ///
-    /// ```rust,ignore(cannot-test-this-because-pseudo-code)
-    /// let p = ..;
+    /// ```
+    /// struct P { x: i32 }
+    /// let mut p = P { x: 4 };
     /// let c = || {
     ///    let incr = 10;
     ///    let nested = || p.x += incr;
-    /// }
+    /// };
     /// ```
     ///
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
@@ -695,10 +730,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>) {
         fn upvar_is_local_variable<'tcx>(
             upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
-            upvar_id: &hir::HirId,
+            upvar_id: hir::HirId,
             body_owner_is_closure: bool,
         ) -> bool {
-            upvars.map(|upvars| !upvars.contains_key(upvar_id)).unwrap_or(body_owner_is_closure)
+            upvars.map(|upvars| !upvars.contains_key(&upvar_id)).unwrap_or(body_owner_is_closure)
         }
 
         debug!("walk_captures({:?})", closure_expr);
@@ -708,10 +743,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let upvars = tcx.upvars_mentioned(self.body_owner);
 
         // For purposes of this function, generator and closures are equivalent.
-        let body_owner_is_closure = matches!(
-            tcx.hir().body_owner_kind(tcx.hir().local_def_id_to_hir_id(self.body_owner)),
-            hir::BodyOwnerKind::Closure,
-        );
+        let body_owner_is_closure =
+            matches!(tcx.hir().body_owner_kind(self.body_owner), hir::BodyOwnerKind::Closure,);
 
         // If we have a nested closure, we want to include the fake reads present in the nested closure.
         if let Some(fake_reads) = self.mc.typeck_results.closure_fake_reads.get(&closure_def_id) {
@@ -720,7 +753,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     PlaceBase::Upvar(upvar_id) => {
                         if upvar_is_local_variable(
                             upvars,
-                            &upvar_id.var_path.hir_id,
+                            upvar_id.var_path.hir_id,
                             body_owner_is_closure,
                         ) {
                             // The nested closure might be fake reading the current (enclosing) closure's local variables.
@@ -749,7 +782,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         );
                     }
                 };
-                self.delegate.fake_read(fake_read.clone(), *cause, *hir_id);
+                self.delegate.fake_read(
+                    &PlaceWithHirId { place: fake_read.clone(), hir_id: *hir_id },
+                    *cause,
+                    *hir_id,
+                );
             }
         }
 
@@ -829,9 +866,7 @@ fn delegate_consume<'a, 'tcx>(
 
     match mode {
         ConsumeMode::Move => delegate.consume(place_with_id, diag_expr_id),
-        ConsumeMode::Copy => {
-            delegate.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow)
-        }
+        ConsumeMode::Copy => delegate.copy(place_with_id, diag_expr_id),
     }
 }
 
@@ -848,7 +883,7 @@ fn is_multivariant_adt(ty: Ty<'_>) -> bool {
             }
             AdtKind::Enum => def.is_variant_list_non_exhaustive(),
         };
-        def.variants.len() > 1 || (!def.did.is_local() && is_non_exhaustive)
+        def.variants().len() > 1 || (!def.did().is_local() && is_non_exhaustive)
     } else {
         false
     }

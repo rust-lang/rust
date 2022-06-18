@@ -9,6 +9,6 @@ fn my_iter<T>(t: T) -> MyIter<T> {
 }
 
 fn my_iter2<T>(t: T) -> MyIter<T> {
-    //~^ ERROR concrete type differs from previous
     Some(t).into_iter()
+    //~^ ERROR concrete type differs from previous
 }

@@ -12,7 +12,7 @@ use rustc_target::abi::VariantIdx;
 #[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct PlaceTy<'tcx> {
     pub ty: Ty<'tcx>,
-    /// Downcast to a particular variant of an enum, if included.
+    /// Downcast to a particular variant of an enum or a generator, if included.
     pub variant_index: Option<VariantIdx>,
 }
 
@@ -33,14 +33,14 @@ impl<'tcx> PlaceTy<'tcx> {
     /// not carry a `Ty` for `T`.)
     ///
     /// Note that the resulting type has not been normalized.
-    pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: &Field) -> Ty<'tcx> {
+    pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: Field) -> Ty<'tcx> {
         let answer = match self.ty.kind() {
             ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
                     None => adt_def.non_enum_variant(),
                     Some(variant_index) => {
                         assert!(adt_def.is_enum());
-                        &adt_def.variants[variant_index]
+                        &adt_def.variant(variant_index)
                     }
                 };
                 let field_def = &variant_def.fields[f.index()];
@@ -57,7 +57,7 @@ impl<'tcx> PlaceTy<'tcx> {
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
     pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, &ty| ty)
+        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
@@ -70,12 +70,15 @@ impl<'tcx> PlaceTy<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         elem: &ProjectionElem<V, T>,
-        mut handle_field: impl FnMut(&Self, &Field, &T) -> Ty<'tcx>,
+        mut handle_field: impl FnMut(&Self, Field, T) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where
         V: ::std::fmt::Debug,
-        T: ::std::fmt::Debug,
+        T: ::std::fmt::Debug + Copy,
     {
+        if self.variant_index.is_some() && !matches!(elem, ProjectionElem::Field(..)) {
+            bug!("cannot use non field projection on downcasted place")
+        }
         let answer = match *elem {
             ProjectionElem::Deref => {
                 let ty = self
@@ -105,7 +108,7 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Downcast(_name, index) => {
                 PlaceTy { ty: self.ty, variant_index: Some(index) }
             }
-            ProjectionElem::Field(ref f, ref fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
+            ProjectionElem::Field(f, fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer
@@ -199,7 +202,9 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx))),
-                AggregateKind::Adt(did, _, substs, _, _) => tcx.type_of(did).subst(tcx, substs),
+                AggregateKind::Adt(did, _, substs, _, _) => {
+                    tcx.bound_type_of(did).subst(tcx, substs)
+                }
                 AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
                 AggregateKind::Generator(did, substs, movability) => {
                     tcx.mk_generator(did, substs, movability)

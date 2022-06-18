@@ -12,6 +12,6 @@ fn use_alias<T>(val: T) -> AliasOfForeignType<T> {
 }
 
 impl<T> foreign_crate::ForeignTrait for AliasOfForeignType<T> {}
-//~^ ERROR the type parameter `T` is not constrained by the impl trait, self type, or predicates
+//~^ ERROR cannot implement trait on type alias impl trait
 
 fn main() {}

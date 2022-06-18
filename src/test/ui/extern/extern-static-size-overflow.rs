@@ -4,7 +4,7 @@ struct ReallyBig {
 }
 
 // The limit for "too big for the current architecture" is dependent on the target pointer size
-// however it's artifically limited on 64 bits
+// however it's artificially limited on 64 bits
 // logic copied from rustc_target::abi::TargetDataLayout::obj_size_bound()
 const fn max_size() -> usize {
     #[cfg(target_pointer_width = "16")]

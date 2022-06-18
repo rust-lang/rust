@@ -60,14 +60,8 @@ pub struct IndexVec<I: Idx, T> {
 unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
 
 impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for IndexVec<I, T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        Encodable::encode(&self.raw, s)
-    }
-}
-
-impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for &IndexVec<I, T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        Encodable::encode(&self.raw, s)
+    fn encode(&self, s: &mut S) {
+        Encodable::encode(&self.raw, s);
     }
 }
 

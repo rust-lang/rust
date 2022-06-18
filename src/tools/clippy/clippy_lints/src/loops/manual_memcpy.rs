@@ -334,7 +334,7 @@ struct Start<'hir> {
 
 fn get_slice_like_element_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     match ty.kind() {
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Vec, adt.did) => Some(subs.type_at(0)),
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Vec, adt.did()) => Some(subs.type_at(0)),
         ty::Ref(_, subty, _) => get_slice_like_element_ty(cx, *subty),
         ty::Slice(ty) | ty::Array(ty, _) => Some(*ty),
         _ => None,

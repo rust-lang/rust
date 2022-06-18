@@ -3,8 +3,8 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_c_void;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Ty, TypeAndMut};
+use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::{self, IntTy, Ty, TypeAndMut, UintTy};
 use rustc_span::Span;
 
 #[allow(clippy::too_many_lines)]
@@ -23,7 +23,8 @@ pub(super) fn check<'tcx>(
                 unsized_ty,
                 to_ty: to_sub_ty,
             } => match reduce_ty(cx, to_sub_ty) {
-                ReducedTy::IntArray | ReducedTy::TypeErasure => break,
+                ReducedTy::TypeErasure => break,
+                ReducedTy::UnorderedFields(ty) if is_size_pair(ty) => break,
                 ReducedTy::Ref(to_sub_ty) => {
                     from_ty = unsized_ty;
                     to_ty = to_sub_ty;
@@ -48,7 +49,8 @@ pub(super) fn check<'tcx>(
                 unsized_ty,
                 from_ty: from_sub_ty,
             } => match reduce_ty(cx, from_sub_ty) {
-                ReducedTy::IntArray | ReducedTy::TypeErasure => break,
+                ReducedTy::TypeErasure => break,
+                ReducedTy::UnorderedFields(ty) if is_size_pair(ty) => break,
                 ReducedTy::Ref(from_sub_ty) => {
                     from_ty = from_sub_ty;
                     to_ty = unsized_ty;
@@ -123,9 +125,19 @@ pub(super) fn check<'tcx>(
                 from_ty: from_sub_ty,
                 to_ty: to_sub_ty,
             } => match (reduce_ty(cx, from_sub_ty), reduce_ty(cx, to_sub_ty)) {
-                (ReducedTy::IntArray | ReducedTy::TypeErasure, _)
-                | (_, ReducedTy::IntArray | ReducedTy::TypeErasure) => return false,
+                (ReducedTy::TypeErasure, _) | (_, ReducedTy::TypeErasure) => return false,
                 (ReducedTy::UnorderedFields(from_ty), ReducedTy::UnorderedFields(to_ty)) if from_ty != to_ty => {
+                    let same_adt_did = if let (ty::Adt(from_def, from_subs), ty::Adt(to_def, to_subs))
+                        = (from_ty.kind(), to_ty.kind())
+                        && from_def == to_def
+                    {
+                        if same_except_params(from_subs, to_subs) {
+                            return false;
+                        }
+                        Some(from_def.did())
+                    } else {
+                        None
+                    };
                     span_lint_and_then(
                         cx,
                         TRANSMUTE_UNDEFINED_REPR,
@@ -135,21 +147,17 @@ pub(super) fn check<'tcx>(
                             from_ty_orig, to_ty_orig
                         ),
                         |diag| {
-                            if_chain! {
-                                if let (Some(from_def), Some(to_def)) = (from_ty.ty_adt_def(), to_ty.ty_adt_def());
-                                if from_def == to_def;
-                                then {
-                                    diag.note(&format!(
-                                        "two instances of the same generic type (`{}`) may have different layouts",
-                                        cx.tcx.item_name(from_def.did)
-                                    ));
-                                } else {
-                                    if from_ty_orig.peel_refs() != from_ty {
-                                        diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
-                                    }
-                                    if to_ty_orig.peel_refs() != to_ty {
-                                        diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
-                                    }
+                            if let Some(same_adt_did) = same_adt_did {
+                                diag.note(&format!(
+                                    "two instances of the same generic type (`{}`) may have different layouts",
+                                    cx.tcx.item_name(same_adt_did)
+                                ));
+                            } else {
+                                if from_ty_orig.peel_refs() != from_ty {
+                                    diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
+                                }
+                                if to_ty_orig.peel_refs() != to_ty {
+                                    diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
                                 }
                             }
                         },
@@ -196,10 +204,13 @@ pub(super) fn check<'tcx>(
                     continue;
                 },
                 (
-                    ReducedTy::OrderedFields(_) | ReducedTy::Ref(_) | ReducedTy::Other(_),
-                    ReducedTy::OrderedFields(_) | ReducedTy::Ref(_) | ReducedTy::Other(_),
+                    ReducedTy::OrderedFields(_) | ReducedTy::Ref(_) | ReducedTy::Other(_) | ReducedTy::Param,
+                    ReducedTy::OrderedFields(_) | ReducedTy::Ref(_) | ReducedTy::Other(_) | ReducedTy::Param,
                 )
-                | (ReducedTy::UnorderedFields(_), ReducedTy::UnorderedFields(_)) => break,
+                | (
+                    ReducedTy::UnorderedFields(_) | ReducedTy::Param,
+                    ReducedTy::UnorderedFields(_) | ReducedTy::Param,
+                ) => break,
             },
         }
     }
@@ -263,9 +274,8 @@ enum ReducedTy<'tcx> {
     UnorderedFields(Ty<'tcx>),
     /// The type is a reference to the contained type.
     Ref(Ty<'tcx>),
-    /// The type is an array of a primitive integer type. These can be used as storage for a value
-    /// of another type.
-    IntArray,
+    /// The type is a generic parameter.
+    Param,
     /// Any other type.
     Other(Ty<'tcx>),
 }
@@ -275,17 +285,18 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
     loop {
         ty = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty).unwrap_or(ty);
         return match *ty.kind() {
-            ty::Array(sub_ty, _) if matches!(sub_ty.kind(), ty::Int(_) | ty::Uint(_)) => ReducedTy::IntArray,
+            ty::Array(sub_ty, _) if matches!(sub_ty.kind(), ty::Int(_) | ty::Uint(_)) => ReducedTy::TypeErasure,
             ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
                 ty = sub_ty;
                 continue;
             },
             ty::Tuple(args) if args.is_empty() => ReducedTy::TypeErasure,
             ty::Tuple(args) => {
-                let Some(sized_ty) = args.iter().find(|&ty| !is_zero_sized_ty(cx, ty)) else {
+                let mut iter = args.iter();
+                let Some(sized_ty) = iter.find(|&ty| !is_zero_sized_ty(cx, ty)) else {
                     return ReducedTy::OrderedFields(ty);
                 };
-                if args.iter().all(|ty| is_zero_sized_ty(cx, ty)) {
+                if iter.all(|ty| is_zero_sized_ty(cx, ty)) {
                     ty = sized_ty;
                     continue;
                 }
@@ -296,7 +307,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     .non_enum_variant()
                     .fields
                     .iter()
-                    .map(|f| cx.tcx.type_of(f.did).subst(cx.tcx, substs));
+                    .map(|f| cx.tcx.bound_type_of(f.did).subst(cx.tcx, substs));
                 let Some(sized_ty) = iter.find(|&ty| !is_zero_sized_ty(cx, ty)) else {
                     return ReducedTy::TypeErasure;
                 };
@@ -304,18 +315,21 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     ty = sized_ty;
                     continue;
                 }
-                if def.repr.inhibit_struct_field_reordering_opt() {
+                if def.repr().inhibit_struct_field_reordering_opt() {
                     ReducedTy::OrderedFields(ty)
                 } else {
                     ReducedTy::UnorderedFields(ty)
                 }
             },
-            ty::Adt(def, _) if def.is_enum() && (def.variants.is_empty() || is_c_void(cx, ty)) => {
+            ty::Adt(def, _) if def.is_enum() && (def.variants().is_empty() || is_c_void(cx, ty)) => {
                 ReducedTy::TypeErasure
             },
+            // TODO: Check if the conversion to or from at least one of a union's fields is valid.
+            ty::Adt(def, _) if def.is_union() => ReducedTy::TypeErasure,
             ty::Foreign(_) => ReducedTy::TypeErasure,
             ty::Ref(_, ty, _) => ReducedTy::Ref(ty),
             ty::RawPtr(ty) => ReducedTy::Ref(ty.ty),
+            ty::Param(_) => ReducedTy::Param,
             _ => ReducedTy::Other(ty),
         };
     }
@@ -326,9 +340,33 @@ fn is_zero_sized_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty);
         if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty));
         then {
-            layout.layout.size.bytes() == 0
+            layout.layout.size().bytes() == 0
         } else {
             false
         }
     }
+}
+
+fn is_size_pair(ty: Ty<'_>) -> bool {
+    if let ty::Tuple(tys) = *ty.kind()
+        && let [ty1, ty2] = &**tys
+    {
+        matches!(ty1.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
+            && matches!(ty2.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
+    } else {
+        false
+    }
+}
+
+fn same_except_params<'tcx>(subs1: SubstsRef<'tcx>, subs2: SubstsRef<'tcx>) -> bool {
+    // TODO: check const parameters as well. Currently this will consider `Array<5>` the same as
+    // `Array<6>`
+    for (ty1, ty2) in subs1.types().zip(subs2.types()).filter(|(ty1, ty2)| ty1 != ty2) {
+        match (ty1.kind(), ty2.kind()) {
+            (ty::Param(_), _) | (_, ty::Param(_)) => (),
+            (ty::Adt(adt1, subs1), ty::Adt(adt2, subs2)) if adt1 == adt2 && same_except_params(subs1, subs2) => (),
+            _ => return false,
+        }
+    }
+    true
 }

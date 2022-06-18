@@ -84,5 +84,41 @@ error: manual `!RangeInclusive::contains` implementation
 LL |     y < 0. || y > 1.;
    |     ^^^^^^^^^^^^^^^^ help: use: `!(0. ..=1.).contains(&y)`
 
-error: aborting due to 14 previous errors
+error: manual `RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:48:5
+   |
+LL |     x >= -10 && x <= 10;
+   |     ^^^^^^^^^^^^^^^^^^^ help: use: `(-10..=10).contains(&x)`
+
+error: manual `RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:50:5
+   |
+LL |     y >= -3. && y <= 3.;
+   |     ^^^^^^^^^^^^^^^^^^^ help: use: `(-3. ..=3.).contains(&y)`
+
+error: manual `RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:55:30
+   |
+LL |     (x >= 0) && (x <= 10) && (z >= 0) && (z <= 10);
+   |                              ^^^^^^^^^^^^^^^^^^^^^ help: use: `(0..=10).contains(&z)`
+
+error: manual `RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:55:5
+   |
+LL |     (x >= 0) && (x <= 10) && (z >= 0) && (z <= 10);
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: use: `(0..=10).contains(&x)`
+
+error: manual `!Range::contains` implementation
+  --> $DIR/range_contains.rs:56:29
+   |
+LL |     (x < 0) || (x >= 10) || (z < 0) || (z >= 10);
+   |                             ^^^^^^^^^^^^^^^^^^^^ help: use: `!(0..10).contains(&z)`
+
+error: manual `!Range::contains` implementation
+  --> $DIR/range_contains.rs:56:5
+   |
+LL |     (x < 0) || (x >= 10) || (z < 0) || (z >= 10);
+   |     ^^^^^^^^^^^^^^^^^^^^ help: use: `!(0..10).contains(&x)`
+
+error: aborting due to 20 previous errors
 

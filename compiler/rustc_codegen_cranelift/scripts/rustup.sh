@@ -11,7 +11,7 @@ case $1 in
         sed -i "s/\"nightly-.*\"/\"nightly-${TOOLCHAIN}\"/" rust-toolchain
         rustup component add rustfmt || true
 
-        echo "=> Uninstalling all old nighlies"
+        echo "=> Uninstalling all old nightlies"
         for nightly in $(rustup toolchain list | grep nightly | grep -v "$TOOLCHAIN" | grep -v nightly-x86_64); do
             rustup toolchain uninstall "$nightly"
         done

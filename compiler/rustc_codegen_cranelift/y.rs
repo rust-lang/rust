@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-#![allow()] /*This line is ignored by bash
+#![deny(unsafe_code)] /*This line is ignored by bash
 # This block is ignored by rustc
 set -e
 echo "[BUILD] y.rs" 1>&2
-rustc $0 -o ${0/.rs/.bin} -g
+rustc $0 -o ${0/.rs/.bin} -Cdebuginfo=1
 exec ${0/.rs/.bin} $@
 */
 

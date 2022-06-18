@@ -1,10 +1,11 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/error-handling-2.rs:10:60
+  --> $DIR/error-handling-2.rs:22:5
    |
 LL | fn foo<'a: 'b, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
-   |        --                                                  ^^^^^^^^^
-   |        |
-   |        hidden type `*mut &'a i32` captures the lifetime `'a` as defined here
+   |        -- hidden type `*mut &'a i32` captures the lifetime `'a` as defined here
+...
+LL |     u.0
+   |     ^^^
 
 error: aborting due to previous error
 

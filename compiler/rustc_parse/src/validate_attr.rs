@@ -2,8 +2,9 @@
 
 use crate::parse_in;
 
-use rustc_ast::tokenstream::{DelimSpan, TokenTree};
-use rustc_ast::{self as ast, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
+use rustc_ast::tokenstream::DelimSpan;
+use rustc_ast::{self as ast, Attribute, MacArgs, MacArgsEq, MacDelimiter, MetaItem, MetaItemKind};
+use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
@@ -42,16 +43,40 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
         path: item.path.clone(),
         kind: match &item.args {
             MacArgs::Empty => MetaItemKind::Word,
-            MacArgs::Eq(_, t) => {
-                let t = TokenTree::Token(t.clone()).into();
-                let v = parse_in(sess, t, "name value", |p| p.parse_unsuffixed_lit())?;
-                MetaItemKind::NameValue(v)
-            }
             MacArgs::Delimited(dspan, delim, t) => {
                 check_meta_bad_delim(sess, *dspan, *delim, "wrong meta list delimiters");
                 let nmis = parse_in(sess, t.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                 MetaItemKind::List(nmis)
             }
+            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => {
+                if let ast::ExprKind::Lit(lit) = &expr.kind {
+                    if !lit.kind.is_unsuffixed() {
+                        let mut err = sess.span_diagnostic.struct_span_err(
+                            lit.span,
+                            "suffixed literals are not allowed in attributes",
+                        );
+                        err.help(
+                            "instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), \
+                            use an unsuffixed version (`1`, `1.0`, etc.)",
+                        );
+                        return Err(err);
+                    } else {
+                        MetaItemKind::NameValue(lit.clone())
+                    }
+                } else {
+                    // The non-error case can happen with e.g. `#[foo = 1+1]`. The error case can
+                    // happen with e.g. `#[foo = include_str!("non-existent-file.rs")]`; in that
+                    // case we delay the error because an earlier error will have already been
+                    // reported.
+                    let msg = format!("unexpected expression: `{}`", pprust::expr_to_string(expr));
+                    let mut err = sess.span_diagnostic.struct_span_err(expr.span, msg);
+                    if let ast::ExprKind::Err = expr.kind {
+                        err.downgrade_to_delayed_bug();
+                    }
+                    return Err(err);
+                }
+            }
+            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => MetaItemKind::NameValue(lit.clone()),
         },
     })
 }

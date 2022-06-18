@@ -1,4 +1,5 @@
 // revisions: nofallback fallback
+// ignore-windows - the number of `Error` impls is platform-dependent
 //[fallback] check-pass
 //[nofallback] check-fail
 

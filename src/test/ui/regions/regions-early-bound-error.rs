@@ -17,7 +17,7 @@ impl<'a,T:Clone> GetRef<'a,T> for Box<'a,T> {
 
 fn get<'a,'b,G:GetRef<'a, isize>>(g1: G, b: &'b isize) -> &'b isize {
     g1.get()
-    //~^ ERROR E0312
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {

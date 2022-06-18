@@ -62,7 +62,7 @@ declare_clippy_lint! {
 declare_lint_pass!(ImplicitHasher => [IMPLICIT_HASHER]);
 
 impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
-    #[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
+    #[expect(clippy::cast_possible_truncation, clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         use rustc_span::BytePos;
 
@@ -117,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
         }
 
         match item.kind {
-            ItemKind::Impl(ref impl_) => {
+            ItemKind::Impl(impl_) => {
                 let mut vis = ImplicitHasherTypeVisitor::new(cx);
                 vis.visit_ty(impl_.self_ty);
 
@@ -155,7 +155,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     );
                 }
             },
-            ItemKind::Fn(ref sig, ref generics, body_id) => {
+            ItemKind::Fn(ref sig, generics, body_id) => {
                 let body = cx.tcx.hir().body(body_id);
 
                 for ty in sig.decl.inputs {

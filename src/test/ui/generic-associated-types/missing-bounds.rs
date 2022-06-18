@@ -1,5 +1,3 @@
-// run-rustfix
-
 use std::ops::Add;
 
 struct A<B>(B);

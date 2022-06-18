@@ -19,4 +19,8 @@ fn c(_1: &[T]) -> &[T] {
         StorageDead(_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:14:1: 14:2
         return;                          // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:14:2: 14:2
     }
+
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:12:1: 14:2
+    }
 }

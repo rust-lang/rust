@@ -95,7 +95,9 @@ bitflags! {
 }
 
 impl CodegenFnAttrs {
-    pub fn new() -> CodegenFnAttrs {
+    pub const EMPTY: &'static Self = &Self::new();
+
+    pub const fn new() -> CodegenFnAttrs {
         CodegenFnAttrs {
             flags: CodegenFnAttrFlags::empty(),
             inline: InlineAttr::None,

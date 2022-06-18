@@ -249,6 +249,10 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
     extern "C-unwind" {
         pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
     }
+    #[cfg_attr(
+        all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
+        link(name = "unwind", kind = "static", modifiers = "-bundle")
+    )]
     extern "C" {
         pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
                                  trace_argument: *mut c_void)
@@ -260,10 +264,7 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
         pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
     }
 
-    #[inline]
-    pub unsafe fn _Unwind_RaiseException(exc: *mut _Unwind_Exception) -> _Unwind_Reason_Code {
-        _Unwind_SjLj_RaiseException(exc)
-    }
+    pub use _Unwind_SjLj_RaiseException as _Unwind_RaiseException;
 }
 } // cfg_if!
 

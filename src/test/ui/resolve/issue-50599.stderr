@@ -10,7 +10,19 @@ LL | use std::f32::consts::LOG10_2;
    |
 LL | use std::f64::consts::LOG10_2;
    |
+help: if you import `LOG10_2`, refer to it directly
+   |
+LL -     const M: usize = (f64::from(N) * std::f64::LOG10_2) as usize;
+LL +     const M: usize = (f64::from(N) * LOG10_2) as usize;
+   |
 
-error: aborting due to previous error
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-50599.rs:4:29
+   |
+LL |     let mut digits = [0u32; M];
+   |                             ^ referenced constant has errors
 
-For more information about this error, try `rustc --explain E0425`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0425.
+For more information about an error, try `rustc --explain E0080`.

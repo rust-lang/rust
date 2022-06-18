@@ -63,6 +63,8 @@ class ValueBuilder:
 def unwrap_unique_or_non_null(unique_or_nonnull):
     # BACKCOMPAT: rust 1.32
     # https://github.com/rust-lang/rust/commit/7a0911528058e87d22ea305695f4047572c5e067
+    # BACKCOMPAT: rust 1.60
+    # https://github.com/rust-lang/rust/commit/2a91eeac1a2d27dd3de1bf55515d765da20fd86f
     ptr = unique_or_nonnull.GetChildMemberWithName("pointer")
     return ptr if ptr.TypeIsPointerType() else ptr.GetChildAtIndex(0)
 
@@ -268,7 +270,9 @@ class StdVecSyntheticProvider:
     struct RawVec<T> { ptr: Unique<T>, cap: usize, ... }
     rust 1.31.1: struct Unique<T: ?Sized> { pointer: NonZero<*const T>, ... }
     rust 1.33.0: struct Unique<T: ?Sized> { pointer: *const T, ... }
+    rust 1.62.0: struct Unique<T: ?Sized> { pointer: NonNull<T>, ... }
     struct NonZero<T>(T)
+    struct NonNull<T> { pointer: *const T }
     """
 
     def __init__(self, valobj, dict):

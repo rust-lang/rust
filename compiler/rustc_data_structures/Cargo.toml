@@ -9,7 +9,7 @@ doctest = false
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
 ena = "0.14"
-indexmap = { version = "1.8.0", features = ["rustc-rayon"] }
+indexmap = { version = "1.8.2" }
 tracing = "0.1"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 rustc_serialize = { path = "../rustc_serialize" }
@@ -17,10 +17,10 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_graphviz = { path = "../rustc_graphviz" }
 cfg-if = "0.1.2"
 stable_deref_trait = "1.0.0"
-rayon = { version = "0.3.2", package = "rustc-rayon" }
-rayon-core = { version = "0.3.2", package = "rustc-rayon-core" }
+rayon = { version = "0.4.0", package = "rustc-rayon", optional = true }
+rayon-core = { version = "0.4.0", package = "rustc-rayon-core", optional = true }
 rustc-hash = "1.1.0"
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { version = "1.6.1", features = ["const_generics", "union", "may_dangle"] }
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
 bitflags = "1.2.1"
 measureme = "10.0.0"
@@ -36,3 +36,6 @@ winapi = { version = "0.3", features = ["fileapi", "psapi", "winerror"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 memmap2 = "0.2.1"
+
+[features]
+rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rayon", "rayon-core"]

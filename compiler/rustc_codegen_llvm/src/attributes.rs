@@ -1,14 +1,12 @@
 //! Set and unset common attributes on LLVM values.
 
-use std::ffi::CString;
-
-use cstr::cstr;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_data_structures::small_str::SmallStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::OptLevel;
+use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
@@ -25,12 +23,6 @@ use crate::value::Value;
 pub fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
     if !attrs.is_empty() {
         llvm::AddFunctionAttributes(llfn, idx, attrs);
-    }
-}
-
-pub fn remove_from_llfn(llfn: &Value, idx: AttributePlace, attrs: &[AttributeKind]) {
-    if !attrs.is_empty() {
-        llvm::RemoveFunctionAttributes(llfn, idx, attrs);
     }
 }
 
@@ -79,13 +71,11 @@ pub fn sanitize_attrs<'ll>(
     }
     if enabled.contains(SanitizerSet::MEMTAG) {
         // Check to make sure the mte target feature is actually enabled.
-        let sess = cx.tcx.sess;
-        let features = llvm_util::llvm_global_features(sess).join(",");
-        let mte_feature_enabled = features.rfind("+mte");
-        let mte_feature_disabled = features.rfind("-mte");
-
-        if mte_feature_enabled.is_none() || (mte_feature_disabled > mte_feature_enabled) {
-            sess.err("`-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`");
+        let features = cx.tcx.global_backend_features(());
+        let mte_feature =
+            features.iter().map(|s| &s[..]).rfind(|n| ["+mte", "-mte"].contains(&&n[..]));
+        if let None | Some("-mte") = mte_feature {
+            cx.tcx.sess.err("`-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`");
         }
 
         attrs.push(llvm::AttributeKind::SanitizeMemTag.create_attr(cx.llcx));
@@ -111,11 +101,11 @@ pub fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attr
         fp = FramePointer::Always;
     }
     let attr_value = match fp {
-        FramePointer::Always => cstr!("all"),
-        FramePointer::NonLeaf => cstr!("non-leaf"),
+        FramePointer::Always => "all",
+        FramePointer::NonLeaf => "non-leaf",
         FramePointer::MayOmit => return None,
     };
-    Some(llvm::CreateAttrStringValue(cx.llcx, cstr!("frame-pointer"), attr_value))
+    Some(llvm::CreateAttrStringValue(cx.llcx, "frame-pointer", attr_value))
 }
 
 /// Tell LLVM what instrument function to insert.
@@ -127,11 +117,11 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribu
 
         // The function name varies on platforms.
         // See test/CodeGen/mcount.c in clang.
-        let mcount_name = CString::new(cx.sess().target.mcount.as_str().as_bytes()).unwrap();
+        let mcount_name = cx.sess().target.mcount.as_ref();
 
         Some(llvm::CreateAttrStringValue(
             cx.llcx,
-            cstr!("instrument-function-entry-inlined"),
+            "instrument-function-entry-inlined",
             &mcount_name,
         ))
     } else {
@@ -167,20 +157,20 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
         StackProbeType::None => return None,
         // Request LLVM to generate the probes inline. If the given LLVM version does not support
         // this, no probe is generated at all (even if the attribute is specified).
-        StackProbeType::Inline => cstr!("inline-asm"),
+        StackProbeType::Inline => "inline-asm",
         // Flag our internal `__rust_probestack` function as the stack probe symbol.
         // This is defined in the `compiler-builtins` crate for each architecture.
-        StackProbeType::Call => cstr!("__rust_probestack"),
+        StackProbeType::Call => "__rust_probestack",
         // Pick from the two above based on the LLVM version.
         StackProbeType::InlineOrCall { min_llvm_version_for_inline } => {
             if llvm_util::get_version() < min_llvm_version_for_inline {
-                cstr!("__rust_probestack")
+                "__rust_probestack"
             } else {
-                cstr!("inline-asm")
+                "inline-asm"
             }
         }
     };
-    Some(llvm::CreateAttrStringValue(cx.llcx, cstr!("probe-stack"), attr_value))
+    Some(llvm::CreateAttrStringValue(cx.llcx, "probe-stack", attr_value))
 }
 
 fn stackprotector_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
@@ -195,15 +185,13 @@ fn stackprotector_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
 }
 
 pub fn target_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll Attribute {
-    let target_cpu = SmallCStr::new(llvm_util::target_cpu(cx.tcx.sess));
-    llvm::CreateAttrStringValue(cx.llcx, cstr!("target-cpu"), target_cpu.as_c_str())
+    let target_cpu = llvm_util::target_cpu(cx.tcx.sess);
+    llvm::CreateAttrStringValue(cx.llcx, "target-cpu", target_cpu)
 }
 
 pub fn tune_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
-    llvm_util::tune_cpu(cx.tcx.sess).map(|tune| {
-        let tune_cpu = SmallCStr::new(tune);
-        llvm::CreateAttrStringValue(cx.llcx, cstr!("tune-cpu"), tune_cpu.as_c_str())
-    })
+    llvm_util::tune_cpu(cx.tcx.sess)
+        .map(|tune_cpu| llvm::CreateAttrStringValue(cx.llcx, "tune-cpu", tune_cpu))
 }
 
 /// Get the `NonLazyBind` LLVM attribute,
@@ -217,38 +205,23 @@ pub fn non_lazy_bind_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute
     }
 }
 
-/// Returns attributes to remove and to add, respectively,
-/// to set the default optimizations attrs on a function.
+/// Get the default optimizations attrs for a function.
 #[inline]
 pub(crate) fn default_optimisation_attrs<'ll>(
     cx: &CodegenCx<'ll, '_>,
-) -> (
-    // Attributes to remove
-    SmallVec<[AttributeKind; 3]>,
-    // Attributes to add
-    SmallVec<[&'ll Attribute; 2]>,
-) {
-    let mut to_remove = SmallVec::new();
-    let mut to_add = SmallVec::new();
+) -> SmallVec<[&'ll Attribute; 2]> {
+    let mut attrs = SmallVec::new();
     match cx.sess().opts.optimize {
         OptLevel::Size => {
-            to_remove.push(llvm::AttributeKind::MinSize);
-            to_add.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
-            to_remove.push(llvm::AttributeKind::OptimizeNone);
+            attrs.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
         }
         OptLevel::SizeMin => {
-            to_add.push(llvm::AttributeKind::MinSize.create_attr(cx.llcx));
-            to_add.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
-            to_remove.push(llvm::AttributeKind::OptimizeNone);
-        }
-        OptLevel::No => {
-            to_remove.push(llvm::AttributeKind::MinSize);
-            to_remove.push(llvm::AttributeKind::OptimizeForSize);
-            to_remove.push(llvm::AttributeKind::OptimizeNone);
+            attrs.push(llvm::AttributeKind::MinSize.create_attr(cx.llcx));
+            attrs.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
         }
         _ => {}
     }
-    (to_remove, to_add)
+    attrs
 }
 
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
@@ -260,25 +233,17 @@ pub fn from_fn_attrs<'ll, 'tcx>(
 ) {
     let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
 
-    let mut to_remove = SmallVec::<[_; 4]>::new();
     let mut to_add = SmallVec::<[_; 16]>::new();
 
     match codegen_fn_attrs.optimize {
         OptimizeAttr::None => {
-            let (to_remove_opt, to_add_opt) = default_optimisation_attrs(cx);
-            to_remove.extend(to_remove_opt);
-            to_add.extend(to_add_opt);
-        }
-        OptimizeAttr::Speed => {
-            to_remove.push(llvm::AttributeKind::MinSize);
-            to_remove.push(llvm::AttributeKind::OptimizeForSize);
-            to_remove.push(llvm::AttributeKind::OptimizeNone);
+            to_add.extend(default_optimisation_attrs(cx));
         }
         OptimizeAttr::Size => {
             to_add.push(llvm::AttributeKind::MinSize.create_attr(cx.llcx));
             to_add.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
-            to_remove.push(llvm::AttributeKind::OptimizeNone);
         }
+        OptimizeAttr::Speed => {}
     }
 
     let inline = if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
@@ -311,7 +276,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     }
 
     if cx.sess().opts.debugging_opts.profile_sample_use.is_some() {
-        to_add.push(llvm::CreateAttrString(cx.llcx, cstr!("use-sample-profile")));
+        to_add.push(llvm::CreateAttrString(cx.llcx, "use-sample-profile"));
     }
 
     // FIXME: none of these three functions interact with source level attributes.
@@ -341,7 +306,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         attributes::apply_to_llfn(llfn, AttributePlace::ReturnValue, &[no_alias]);
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
-        to_add.push(llvm::CreateAttrString(cx.llcx, cstr!("cmse_nonsecure_entry")));
+        to_add.push(llvm::CreateAttrString(cx.llcx, "cmse_nonsecure_entry"));
     }
     if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align as usize);
@@ -365,9 +330,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     ) {
         let span = cx
             .tcx
-            .get_attrs(instance.def_id())
-            .iter()
-            .find(|a| a.has_name(rustc_span::sym::target_feature))
+            .get_attr(instance.def_id(), sym::target_feature)
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
         let msg = format!(
             "the target features {} must all be either enabled or disabled together",
@@ -382,10 +345,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     let mut function_features = function_features
         .iter()
         .flat_map(|feat| {
-            llvm_util::to_llvm_feature(cx.tcx.sess, feat)
-                .into_iter()
-                .map(|f| format!("+{}", f))
-                .collect::<Vec<String>>()
+            llvm_util::to_llvm_features(cx.tcx.sess, feat).into_iter().map(|f| format!("+{}", f))
         })
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
             InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
@@ -397,12 +357,12 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         // If this function is an import from the environment but the wasm
         // import has a specific module/name, apply them here.
         if let Some(module) = wasm_import_module(cx.tcx, instance.def_id()) {
-            to_add.push(llvm::CreateAttrStringValue(cx.llcx, cstr!("wasm-import-module"), &module));
+            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-module", &module));
 
             let name =
                 codegen_fn_attrs.link_name.unwrap_or_else(|| cx.tcx.item_name(instance.def_id()));
-            let name = CString::new(name.as_str()).unwrap();
-            to_add.push(llvm::CreateAttrStringValue(cx.llcx, cstr!("wasm-import-name"), &name));
+            let name = name.as_str();
+            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-name", name));
         }
 
         // The `"wasm"` abi on wasm targets automatically enables the
@@ -417,18 +377,17 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         }
     }
 
-    if !function_features.is_empty() {
-        let mut global_features = llvm_util::llvm_global_features(cx.tcx.sess);
-        global_features.extend(function_features.into_iter());
-        let features = global_features.join(",");
-        let val = CString::new(features).unwrap();
-        to_add.push(llvm::CreateAttrStringValue(cx.llcx, cstr!("target-features"), &val));
+    let global_features = cx.tcx.global_backend_features(()).iter().map(|s| s.as_str());
+    let function_features = function_features.iter().map(|s| s.as_str());
+    let target_features =
+        global_features.chain(function_features).intersperse(",").collect::<SmallStr<1024>>();
+    if !target_features.is_empty() {
+        to_add.push(llvm::CreateAttrStringValue(cx.llcx, "target-features", &target_features));
     }
 
-    attributes::remove_from_llfn(llfn, Function, &to_remove);
     attributes::apply_to_llfn(llfn, Function, &to_add);
 }
 
-fn wasm_import_module(tcx: TyCtxt<'_>, id: DefId) -> Option<CString> {
-    tcx.wasm_import_module_map(id.krate).get(&id).map(|s| CString::new(&s[..]).unwrap())
+fn wasm_import_module(tcx: TyCtxt<'_>, id: DefId) -> Option<&String> {
+    tcx.wasm_import_module_map(id.krate).get(&id)
 }

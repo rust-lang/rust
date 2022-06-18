@@ -11,7 +11,8 @@ impl Xyz {
         &'a self, foo: &dyn Foo
     ) -> &dyn Foo
     {
-        foo  //~ ERROR lifetime mismatch
+        //~^ ERROR explicit lifetime required in the type of `foo` [E0621]
+        foo
     }
 }
 

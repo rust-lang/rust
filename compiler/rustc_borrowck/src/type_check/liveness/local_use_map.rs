@@ -18,7 +18,7 @@ use crate::region_infer::values::{PointIndex, RegionValueElements};
 /// (and code simplicity) was favored. The rationale is that we only keep
 /// a small number of `IndexVec`s throughout the entire analysis while, in
 /// contrast, we're accessing each `Local` *many* times.
-crate struct LocalUseMap {
+pub(crate) struct LocalUseMap {
     /// Head of a linked list of **definitions** of each variable --
     /// definition in this context means assignment, e.g., `x` is
     /// defined in `x = y` but not `y`; that first def is the head of
@@ -58,7 +58,11 @@ impl vll::LinkElem for Appearance {
 }
 
 impl LocalUseMap {
-    crate fn build(live_locals: &[Local], elements: &RegionValueElements, body: &Body<'_>) -> Self {
+    pub(crate) fn build(
+        live_locals: &[Local],
+        elements: &RegionValueElements,
+        body: &Body<'_>,
+    ) -> Self {
         let nones = IndexVec::from_elem_n(None, body.local_decls.len());
         let mut local_use_map = LocalUseMap {
             first_def_at: nones.clone(),
@@ -81,17 +85,17 @@ impl LocalUseMap {
         local_use_map
     }
 
-    crate fn defs(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+    pub(crate) fn defs(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
         vll::iter(self.first_def_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
-    crate fn uses(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+    pub(crate) fn uses(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
         vll::iter(self.first_use_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
-    crate fn drops(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+    pub(crate) fn drops(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
         vll::iter(self.first_drop_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }

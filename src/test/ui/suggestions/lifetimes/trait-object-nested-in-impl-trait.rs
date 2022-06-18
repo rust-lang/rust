@@ -26,8 +26,9 @@ struct Bar(Vec<Box<dyn Foo>>);
 impl Bar {
     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
         Iter {
+            //~^ ERROR lifetime may not live long enough
             current: None,
-            remaining: self.0.iter(), //~ ERROR E0759
+            remaining: self.0.iter(),
         }
     }
 }
@@ -37,8 +38,9 @@ struct Baz(Vec<Box<dyn Foo>>);
 impl Baz {
     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
         Iter {
+            //~^ ERROR lifetime may not live long enough
             current: None,
-            remaining: self.0.iter(), //~ ERROR E0759
+            remaining: self.0.iter(),
         }
     }
 }
@@ -48,8 +50,9 @@ struct Bat(Vec<Box<dyn Foo>>);
 impl Bat {
     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
         Iter {
+            //~^ ERROR lifetime may not live long enough
             current: None,
-            remaining: self.0.iter(), //~ ERROR E0759
+            remaining: self.0.iter(),
         }
     }
 }
@@ -59,8 +62,9 @@ struct Ban(Vec<Box<dyn Foo>>);
 impl Ban {
     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {
         Iter {
+            //~^ ERROR lifetime may not live long enough
             current: None,
-            remaining: self.0.iter(), //~ ERROR E0759
+            remaining: self.0.iter(),
         }
     }
 }

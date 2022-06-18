@@ -5,6 +5,7 @@ LL |     let x2: Vec<f64> = x1.into_iter().collect();
    |                                       ^^^^^^^ value of type `Vec<f64>` cannot be built from `std::iter::Iterator<Item=&f64>`
    |
    = help: the trait `FromIterator<&f64>` is not implemented for `Vec<f64>`
+   = help: the trait `FromIterator<T>` is implemented for `Vec<T>`
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
@@ -18,6 +19,7 @@ LL |     let x3 = x1.into_iter().collect::<Vec<f64>>();
    |                             ^^^^^^^ value of type `Vec<f64>` cannot be built from `std::iter::Iterator<Item=&f64>`
    |
    = help: the trait `FromIterator<&f64>` is not implemented for `Vec<f64>`
+   = help: the trait `FromIterator<T>` is implemented for `Vec<T>`
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |

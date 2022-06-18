@@ -260,7 +260,7 @@ mod this_crate {
         <Foo>::trait_deprecated_text(&foo); //~ ERROR use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
 
-        // Future deprecations are only permitted for rustc_deprecated.
+        // Future deprecations are only permitted with `#![feature(staged_api)]`
         deprecated_future(); //~ ERROR use of deprecated function
         deprecated_future_text(); //~ ERROR use of deprecated function
 

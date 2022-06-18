@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `B: Bar` is not satisfied
+  --> $DIR/issue-90400-2.rs:26:9
+   |
+LL |         MyBaz(bar)
+   |         ^^^^^^^^^^ the trait `Bar` is not implemented for `B`
+   |
+note: required because of the requirements on the impl of `Baz` for `MyBaz<B>`
+  --> $DIR/issue-90400-2.rs:31:14
+   |
+LL | impl<B: Bar> Baz for MyBaz<B> {
+   |              ^^^     ^^^^^^^^
+help: consider restricting type parameter `B`
+   |
+LL |     type FooFn<B: Bar> = impl Baz;
+   |                 +++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

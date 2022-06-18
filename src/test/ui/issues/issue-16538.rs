@@ -1,7 +1,6 @@
 // revisions: mir thir
 // [thir]compile-flags: -Z thir-unsafeck
 
-#![feature(const_raw_ptr_deref)]
 mod Y {
     pub type X = usize;
     extern "C" {

@@ -7,13 +7,13 @@ pub mod nested_filter;
 pub mod place;
 
 use crate::ty::query::Providers;
-use crate::ty::TyCtxt;
+use crate::ty::{DefIdTree, ImplSubject, TyCtxt};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_span::DUMMY_SP;
+use rustc_span::{ExpnId, DUMMY_SP};
 
 /// Top-level HIR node for current owner. This only contains the node for which
 /// `HirId::local_id == 0`, and excludes bodies.
@@ -36,13 +36,31 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies.  The Ids are in visitor order.  This is used to partition a pass between modules.
-#[derive(Debug, HashStable)]
+#[derive(Debug, HashStable, Encodable, Decodable)]
 pub struct ModuleItems {
     submodules: Box<[LocalDefId]>,
     items: Box<[ItemId]>,
     trait_items: Box<[TraitItemId]>,
     impl_items: Box<[ImplItemId]>,
     foreign_items: Box<[ForeignItemId]>,
+}
+
+impl ModuleItems {
+    pub fn items(&self) -> impl Iterator<Item = ItemId> + '_ {
+        self.items.iter().copied()
+    }
+
+    pub fn trait_items(&self) -> impl Iterator<Item = TraitItemId> + '_ {
+        self.trait_items.iter().copied()
+    }
+
+    pub fn impl_items(&self) -> impl Iterator<Item = ImplItemId> + '_ {
+        self.impl_items.iter().copied()
+    }
+
+    pub fn foreign_items(&self) -> impl Iterator<Item = ForeignItemId> + '_ {
+        self.foreign_items.iter().copied()
+    }
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -54,6 +72,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn parent_module(self, id: HirId) -> LocalDefId {
         self.parent_module_from_def_id(id.owner)
     }
+
+    pub fn impl_subject(self, def_id: DefId) -> ImplSubject<'tcx> {
+        self.impl_trait_ref(def_id)
+            .map(ImplSubject::Trait)
+            .unwrap_or_else(|| ImplSubject::Inherent(self.type_of(def_id)))
+    }
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -62,6 +86,7 @@ pub fn provide(providers: &mut Providers) {
         hir.get_module_parent_node(hir.local_def_id_to_hir_id(id))
     };
     providers.hir_crate = |tcx, ()| tcx.untracked_crate;
+    providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
     providers.hir_owner = |tcx, id| {
@@ -79,24 +104,31 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id].map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {
-        // Accessing the def_key is ok since its value is hashed as part of `id`'s DefPathHash.
-        let parent = tcx.untracked_resolutions.definitions.def_key(id).parent;
-        let parent = parent.map_or(CRATE_HIR_ID, |local_def_index| {
-            let def_id = LocalDefId { local_def_index };
-            let mut parent_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        // Accessing the local_parent is ok since its value is hashed as part of `id`'s DefPathHash.
+        tcx.opt_local_parent(id).map_or(CRATE_HIR_ID, |parent| {
+            let mut parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent);
             if let Some(local_id) =
                 tcx.hir_crate(()).owners[parent_hir_id.owner].unwrap().parenting.get(&id)
             {
                 parent_hir_id.local_id = *local_id;
             }
             parent_hir_id
-        });
-        parent
+        })
     };
     providers.hir_attrs =
         |tcx, id| tcx.hir_crate(()).owners[id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs);
-    providers.source_span = |tcx, def_id| tcx.resolutions(()).definitions.def_span(def_id);
-    providers.def_span = |tcx, def_id| tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);
+    providers.source_span =
+        |tcx, def_id| tcx.resolutions(()).source_span.get(def_id).copied().unwrap_or(DUMMY_SP);
+    providers.def_span = |tcx, def_id| {
+        let def_id = def_id.expect_local();
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        tcx.hir().opt_span(hir_id).unwrap_or(DUMMY_SP)
+    };
+    providers.def_ident_span = |tcx, def_id| {
+        let def_id = def_id.expect_local();
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        tcx.hir().opt_ident_span(hir_id)
+    };
     providers.fn_arg_names = |tcx, id| {
         let hir = tcx.hir();
         let hir_id = hir.local_def_id_to_hir_id(id.expect_local());
@@ -116,7 +148,7 @@ pub fn provide(providers: &mut Providers) {
     providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
     providers.expn_that_defined = |tcx, id| {
         let id = id.expect_local();
-        tcx.resolutions(()).definitions.expansion_that_defined(id)
+        tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root())
     };
     providers.in_scope_traits_map =
         |tcx, id| tcx.hir_crate(()).owners[id].as_owner().map(|owner_info| &owner_info.trait_map);

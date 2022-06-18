@@ -18,11 +18,6 @@ warning: unused variable: `last`
 LL |         last = Some(s);
    |         ^^^^
    |
-note: the lint level is defined here
-  --> $DIR/liveness-upvars.rs:4:9
-   |
-LL | #![warn(unused)]
-   |         ^^^^^^
    = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
    = help: did you mean to capture by reference instead?
 

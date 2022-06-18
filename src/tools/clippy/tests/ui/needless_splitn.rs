@@ -24,4 +24,24 @@ fn main() {
     let _ = str.rsplitn(2, '=').nth(1);
     let (_, _) = str.rsplitn(2, '=').next_tuple().unwrap();
     let (_, _) = str.rsplitn(3, '=').next_tuple().unwrap();
+
+    let _ = str.splitn(5, '=').next();
+    let _ = str.splitn(5, '=').nth(3);
+    let _ = str.splitn(5, '=').nth(4);
+    let _ = str.splitn(5, '=').nth(5);
+}
+
+fn _question_mark(s: &str) -> Option<()> {
+    let _ = s.splitn(2, '=').next()?;
+    let _ = s.splitn(2, '=').nth(0)?;
+    let _ = s.rsplitn(2, '=').next()?;
+    let _ = s.rsplitn(2, '=').nth(0)?;
+
+    Some(())
+}
+
+fn _test_msrv() {
+    #![clippy::msrv = "1.51"]
+    // `manual_split_once` MSRV shouldn't apply to `needless_splitn`
+    let _ = "key=value".splitn(2, '=').nth(0).unwrap();
 }

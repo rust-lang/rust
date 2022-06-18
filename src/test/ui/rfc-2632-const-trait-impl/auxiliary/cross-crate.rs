@@ -1,8 +1,7 @@
-#![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
 
+#[const_trait]
 pub trait MyTrait {
-    #[default_method_body_is_const]
     fn defaulted_func(&self) {}
     fn func(self);
 }

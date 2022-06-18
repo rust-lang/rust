@@ -1,32 +1,12 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'s` due to conflicting requirements
+error: lifetime may not live long enough
   --> $DIR/issue-55394.rs:9:9
-   |
-LL |         Foo { bar }
-   |         ^^^
-   |
-note: first, the lifetime cannot outlive the anonymous lifetime defined here...
-  --> $DIR/issue-55394.rs:8:17
    |
 LL |     fn new(bar: &mut Bar) -> Self {
-   |                 ^^^^^^^^
-note: ...so that reference does not outlive borrowed content
-  --> $DIR/issue-55394.rs:9:15
-   |
+   |                 -            ---- return type is Foo<'2>
+   |                 |
+   |                 let's call the lifetime of this reference `'1`
 LL |         Foo { bar }
-   |               ^^^
-note: but, the lifetime must be valid for the lifetime `'_` as defined here...
-  --> $DIR/issue-55394.rs:7:10
-   |
-LL | impl Foo<'_> {
-   |          ^^
-note: ...so that the types are compatible
-  --> $DIR/issue-55394.rs:9:9
-   |
-LL |         Foo { bar }
-   |         ^^^^^^^^^^^
-   = note: expected `Foo<'_>`
-              found `Foo<'_>`
+   |         ^^^^^^^^^^^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.

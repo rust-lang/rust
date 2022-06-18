@@ -7,16 +7,24 @@ fn d(_1: &Box<T>) -> &T {
     let mut _3: &std::boxed::Box<T>;     // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
     scope 1 (inlined <Box<T> as AsRef<T>>::as_ref) { // at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
         debug self => _3;                // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        let mut _4: std::boxed::Box<T>;  // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
     }
 
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
         StorageLive(_3);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
         _3 = &(*_1);                     // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
-        _2 = &(*(*_3));                  // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        StorageLive(_4);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        _4 = move (*_3);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        _2 = &(*_4);                     // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        StorageDead(_4);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _0 = &(*_2);                     // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
         StorageDead(_3);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:14: 18:15
         StorageDead(_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:19:1: 19:2
         return;                          // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:19:2: 19:2
+    }
+
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:17:1: 19:2
     }
 }

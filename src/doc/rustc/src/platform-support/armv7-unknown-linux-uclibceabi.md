@@ -36,8 +36,8 @@ target = ["armv7-unknown-linux-uclibceabi"]
 cc = "/path/to/arm-unknown-linux-uclibcgnueabi-gcc"
 cxx = "/path/to/arm-unknown-linux-uclibcgnueabi-g++"
 ar = "path/to/arm-unknown-linux-uclibcgnueabi-ar"
-ranlib = "path/to/arm-unknown-linux-uclibcgnueabi-"
-linker = "/path/to/arm-unknown-linux-uclibcgnueabi-"
+ranlib = "path/to/arm-unknown-linux-uclibcgnueabi-ranlib"
+linker = "/path/to/arm-unknown-linux-uclibcgnueabi-gcc"
 ```
 
 ## Building Rust programs
@@ -75,27 +75,37 @@ To cross compile, you'll need to:
     ```
 * Build with:
     ```text
-    CC=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-gcc \
-    CXX=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-g++ \
-    AR=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-ar \
+    CC_armv7_unknown_linux_uclibceabi=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-gcc \
+    CXX_armv7_unknown_linux_uclibceabi=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-g++ \
+    AR_armv7_unknown_linux_uclibceabi=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-ar \
+    CFLAGS_armv7_unknown_linux_uclibceabi="-march=armv7-a -mtune=cortex-a9" \
+    CXXFLAGS_armv7_unknown_linux_uclibceabi="-march=armv7-a -mtune=cortex-a9" \
     CARGO_TARGET_ARMV7_UNKNOWN_LINUX_UCLIBCEABI_LINKER=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-gcc \
     CARGO_TARGET_ARMV7_UNKNOWN_LINUX_UCLIBCEABI_RUSTFLAGS='-Clink-arg=-s -Clink-arg=-Wl,--dynamic-linker=/mmc/lib/ld-uClibc.so.1 -Clink-arg=-Wl,-rpath,/mmc/lib' \
-    cargo +stage2 build --target armv7-unknown-linux-uclibceabi --release
+    cargo +stage2 \
+    build \
+    --target armv7-unknown-linux-uclibceabi \
+    --release
     ```
 * Copy the binary to your target device and run.
 
-We specify `CC`, `CXX`, and `AR` because somtimes a project or a subproject requires the use of your `'C'` cross toolchain. Since Tomatoware has a modified sysroot we also pass via RUSTFLAGS the location of the dynamic-linker and rpath.
+We specify `CC`, `CXX`, `AR`, `CFLAGS`, and `CXXFLAGS` environment variables because sometimes a project or a subproject requires the use of your `'C'` cross toolchain. Since Tomatoware has a modified sysroot we also pass via RUSTFLAGS the location of the dynamic-linker and rpath.
 
 ### Test with QEMU
 
 To test a cross-compiled binary on your build system follow the instructions for `Cross Compilation`, install `qemu-arm-static`, and run with the following.
 ```text
-CC=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-gcc \
-CXX=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-g++ \
-AR=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-ar \
+CC_armv7_unknown_linux_uclibceabi=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-gcc \
+CXX_armv7_unknown_linux_uclibceabi=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-g++ \
+AR_armv7_unknown_linux_uclibceabi=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-ar \
+CFLAGS_armv7_unknown_linux_uclibceabi="-march=armv7-a -mtune=cortex-a9" \
+CXXFLAGS_armv7_unknown_linux_uclibceabi="-march=armv7-a -mtune=cortex-a9" \
 CARGO_TARGET_ARMV7_UNKNOWN_LINUX_UCLIBCEABI_LINKER=/opt/tomatoware/arm-soft-mmc/bin/arm-linux-gcc \
 CARGO_TARGET_ARMV7_UNKNOWN_LINUX_UCLIBCEABI_RUNNER="qemu-arm-static -L /opt/tomatoware/arm-soft-mmc/arm-tomatoware-linux-uclibcgnueabi/sysroot/" \
-cargo +stage2 run --target armv7-unknown-linux-uclibceabi --release
+cargo +stage2 \
+run \
+--target armv7-unknown-linux-uclibceabi \
+--release
 ```
 ### Run in a chroot
 

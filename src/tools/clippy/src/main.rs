@@ -123,8 +123,12 @@ impl ClippyCmd {
             .map(|arg| format!("{}__CLIPPY_HACKERY__", arg))
             .collect();
 
+        // Currently, `CLIPPY_TERMINAL_WIDTH` is used only to format "unknown field" error messages.
+        let terminal_width = termize::dimensions().map_or(0, |(w, _)| w);
+
         cmd.env("RUSTC_WORKSPACE_WRAPPER", Self::path())
             .env("CLIPPY_ARGS", clippy_args)
+            .env("CLIPPY_TERMINAL_WIDTH", terminal_width.to_string())
             .arg(self.cargo_subcommand)
             .args(&self.args);
 

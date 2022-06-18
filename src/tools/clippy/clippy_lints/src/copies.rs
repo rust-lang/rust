@@ -1,18 +1,18 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
 use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, snippet_opt};
 use clippy_utils::{
-    both, count_eq, eq_expr_value, get_enclosing_block, get_parent_expr, if_sequence, is_else_clause, is_lint_allowed,
-    search_same, ContainsName, SpanlessEq, SpanlessHash,
+    eq_expr_value, get_enclosing_block, hash_expr, hash_stmt, if_sequence, is_else_clause, is_lint_allowed,
+    search_same, ContainsName, HirEqInterExpr, SpanlessEq,
 };
-use if_chain::if_chain;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diagnostic};
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, HirId};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::nested_filter;
+use core::iter;
+use rustc_errors::Applicability;
+use rustc_hir::intravisit;
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Stmt, StmtKind};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{source_map::Span, symbol::Symbol, BytePos};
+use rustc_span::hygiene::walk_chain;
+use rustc_span::source_map::SourceMap;
+use rustc_span::{BytePos, Span, Symbol};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -126,7 +126,7 @@ declare_clippy_lint! {
     /// Duplicate code is less maintainable.
     ///
     /// ### Known problems
-    /// * The lint doesn't check if the moved expressions modify values that are beeing used in
+    /// * The lint doesn't check if the moved expressions modify values that are being used in
     ///   the if condition. The suggestion can in that case modify the behavior of the program.
     ///   See [rust-clippy#7452](https://github.com/rust-lang/rust-clippy/issues/7452)
     ///
@@ -141,7 +141,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     ///
-    /// Could be written as:
+    /// Use instead:
     /// ```ignore
     /// println!("Hello World");
     /// let foo = if … {
@@ -165,243 +165,315 @@ declare_lint_pass!(CopyAndPaste => [
 
 impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !expr.span.from_expansion() {
-            if let ExprKind::If(_, _, _) = expr.kind {
-                // skip ifs directly in else, it will be checked in the parent if
-                if let Some(&Expr {
-                    kind: ExprKind::If(_, _, Some(else_expr)),
-                    ..
-                }) = get_parent_expr(cx, expr)
-                {
-                    if else_expr.hir_id == expr.hir_id {
-                        return;
-                    }
-                }
-
-                let (conds, blocks) = if_sequence(expr);
-                // Conditions
-                lint_same_cond(cx, &conds);
-                lint_same_fns_in_if_cond(cx, &conds);
-                // Block duplication
-                lint_same_then_else(cx, &conds, &blocks, conds.len() == blocks.len(), expr);
+        if !expr.span.from_expansion() && matches!(expr.kind, ExprKind::If(..)) && !is_else_clause(cx.tcx, expr) {
+            let (conds, blocks) = if_sequence(expr);
+            lint_same_cond(cx, &conds);
+            lint_same_fns_in_if_cond(cx, &conds);
+            let all_same =
+                !is_lint_allowed(cx, IF_SAME_THEN_ELSE, expr.hir_id) && lint_if_same_then_else(cx, &conds, &blocks);
+            if !all_same && conds.len() != blocks.len() {
+                lint_branches_sharing_code(cx, &conds, &blocks, expr);
             }
         }
     }
 }
 
-/// Implementation of `BRANCHES_SHARING_CODE` and `IF_SAME_THEN_ELSE` if the blocks are equal.
-fn lint_same_then_else<'tcx>(
-    cx: &LateContext<'tcx>,
-    conds: &[&'tcx Expr<'_>],
-    blocks: &[&Block<'tcx>],
-    has_conditional_else: bool,
-    expr: &'tcx Expr<'_>,
-) {
-    // We only lint ifs with multiple blocks
-    if blocks.len() < 2 || is_else_clause(cx.tcx, expr) {
-        return;
-    }
-
-    // Check if each block has shared code
-    let has_expr = blocks[0].expr.is_some();
-
-    let (start_eq, mut end_eq, expr_eq) = if let Some(block_eq) = scan_block_for_eq(cx, conds, blocks) {
-        (block_eq.start_eq, block_eq.end_eq, block_eq.expr_eq)
-    } else {
-        return;
-    };
-
-    // BRANCHES_SHARING_CODE prerequisites
-    if has_conditional_else || (start_eq == 0 && end_eq == 0 && (has_expr && !expr_eq)) {
-        return;
-    }
-
-    // Only the start is the same
-    if start_eq != 0 && end_eq == 0 && (!has_expr || !expr_eq) {
-        let block = blocks[0];
-        let start_stmts = block.stmts.split_at(start_eq).0;
-
-        let mut start_walker = UsedValueFinderVisitor::new(cx);
-        for stmt in start_stmts {
-            intravisit::walk_stmt(&mut start_walker, stmt);
-        }
-
-        emit_branches_sharing_code_lint(
-            cx,
-            start_eq,
-            0,
-            false,
-            check_for_warn_of_moved_symbol(cx, &start_walker.def_symbols, expr),
-            blocks,
-            expr,
-        );
-    } else if end_eq != 0 || (has_expr && expr_eq) {
-        let block = blocks[blocks.len() - 1];
-        let (start_stmts, block_stmts) = block.stmts.split_at(start_eq);
-        let (block_stmts, end_stmts) = block_stmts.split_at(block_stmts.len() - end_eq);
-
-        // Scan start
-        let mut start_walker = UsedValueFinderVisitor::new(cx);
-        for stmt in start_stmts {
-            intravisit::walk_stmt(&mut start_walker, stmt);
-        }
-        let mut moved_syms = start_walker.def_symbols;
-
-        // Scan block
-        let mut block_walker = UsedValueFinderVisitor::new(cx);
-        for stmt in block_stmts {
-            intravisit::walk_stmt(&mut block_walker, stmt);
-        }
-        let mut block_defs = block_walker.defs;
-
-        // Scan moved stmts
-        let mut moved_start: Option<usize> = None;
-        let mut end_walker = UsedValueFinderVisitor::new(cx);
-        for (index, stmt) in end_stmts.iter().enumerate() {
-            intravisit::walk_stmt(&mut end_walker, stmt);
-
-            for value in &end_walker.uses {
-                // Well we can't move this and all prev statements. So reset
-                if block_defs.contains(value) {
-                    moved_start = Some(index + 1);
-                    end_walker.defs.drain().for_each(|x| {
-                        block_defs.insert(x);
-                    });
-
-                    end_walker.def_symbols.clear();
-                }
-            }
-
-            end_walker.uses.clear();
-        }
-
-        if let Some(moved_start) = moved_start {
-            end_eq -= moved_start;
-        }
-
-        let end_linable = block.expr.map_or_else(
-            || end_eq != 0,
-            |expr| {
-                intravisit::walk_expr(&mut end_walker, expr);
-                end_walker.uses.iter().any(|x| !block_defs.contains(x))
-            },
-        );
-
-        if end_linable {
-            end_walker.def_symbols.drain().for_each(|x| {
-                moved_syms.insert(x);
-            });
-        }
-
-        emit_branches_sharing_code_lint(
-            cx,
-            start_eq,
-            end_eq,
-            end_linable,
-            check_for_warn_of_moved_symbol(cx, &moved_syms, expr),
-            blocks,
-            expr,
-        );
+/// Checks if the given expression is a let chain.
+fn contains_let(e: &Expr<'_>) -> bool {
+    match e.kind {
+        ExprKind::Let(..) => true,
+        ExprKind::Binary(op, lhs, rhs) if op.node == BinOpKind::And => {
+            matches!(lhs.kind, ExprKind::Let(..)) || contains_let(rhs)
+        },
+        _ => false,
     }
 }
 
-struct BlockEqual {
-    /// The amount statements that are equal from the start
-    start_eq: usize,
-    /// The amount statements that are equal from the end
-    end_eq: usize,
-    ///  An indication if the block expressions are the same. This will also be true if both are
-    /// `None`
-    expr_eq: bool,
-}
-
-/// This function can also trigger the `IF_SAME_THEN_ELSE` in which case it'll return `None` to
-/// abort any further processing and avoid duplicate lint triggers.
-fn scan_block_for_eq(cx: &LateContext<'_>, conds: &[&Expr<'_>], blocks: &[&Block<'_>]) -> Option<BlockEqual> {
-    let mut start_eq = usize::MAX;
-    let mut end_eq = usize::MAX;
-    let mut expr_eq = true;
-    let mut iter = blocks.windows(2).enumerate();
-    while let Some((i, &[block0, block1])) = iter.next() {
-        let l_stmts = block0.stmts;
-        let r_stmts = block1.stmts;
-
-        // `SpanlessEq` now keeps track of the locals and is therefore context sensitive clippy#6752.
-        // The comparison therefore needs to be done in a way that builds the correct context.
-        let mut evaluator = SpanlessEq::new(cx);
-        let mut evaluator = evaluator.inter_expr();
-
-        let current_start_eq = count_eq(&mut l_stmts.iter(), &mut r_stmts.iter(), |l, r| evaluator.eq_stmt(l, r));
-
-        let current_end_eq = {
-            // We skip the middle statements which can't be equal
-            let end_comparison_count = l_stmts.len().min(r_stmts.len()) - current_start_eq;
-            let it1 = l_stmts.iter().skip(l_stmts.len() - end_comparison_count);
-            let it2 = r_stmts.iter().skip(r_stmts.len() - end_comparison_count);
-            it1.zip(it2)
-                .fold(0, |acc, (l, r)| if evaluator.eq_stmt(l, r) { acc + 1 } else { 0 })
-        };
-        let block_expr_eq = both(&block0.expr, &block1.expr, |l, r| evaluator.eq_expr(l, r));
-
-        // IF_SAME_THEN_ELSE
-        if_chain! {
-            if block_expr_eq;
-            if l_stmts.len() == r_stmts.len();
-            if l_stmts.len() == current_start_eq;
-            // `conds` may have one last item than `blocks`.
-            // Any `i` from `blocks.windows(2)` will exist in `conds`, but `i+1` may not exist on the last iteration.
-            if !matches!(conds[i].kind, ExprKind::Let(..));
-            if !matches!(conds.get(i + 1).map(|e| &e.kind), Some(ExprKind::Let(..)));
-            if !is_lint_allowed(cx, IF_SAME_THEN_ELSE, block0.hir_id);
-            if !is_lint_allowed(cx, IF_SAME_THEN_ELSE, block1.hir_id);
-            then {
+fn lint_if_same_then_else(cx: &LateContext<'_>, conds: &[&Expr<'_>], blocks: &[&Block<'_>]) -> bool {
+    let mut eq = SpanlessEq::new(cx);
+    blocks
+        .array_windows::<2>()
+        .enumerate()
+        .fold(true, |all_eq, (i, &[lhs, rhs])| {
+            if eq.eq_block(lhs, rhs) && !contains_let(conds[i]) && conds.get(i + 1).map_or(true, |e| !contains_let(e)) {
                 span_lint_and_note(
                     cx,
                     IF_SAME_THEN_ELSE,
-                    block0.span,
+                    lhs.span,
                     "this `if` has identical blocks",
-                    Some(block1.span),
+                    Some(rhs.span),
                     "same as this",
                 );
-
-                return None;
+                all_eq
+            } else {
+                false
             }
-        }
-
-        start_eq = start_eq.min(current_start_eq);
-        end_eq = end_eq.min(current_end_eq);
-        expr_eq &= block_expr_eq;
-    }
-
-    if !expr_eq {
-        end_eq = 0;
-    }
-
-    // Check if the regions are overlapping. Set `end_eq` to prevent the overlap
-    let min_block_size = blocks.iter().map(|x| x.stmts.len()).min().unwrap();
-    if (start_eq + end_eq) > min_block_size {
-        end_eq = min_block_size - start_eq;
-    }
-
-    Some(BlockEqual {
-        start_eq,
-        end_eq,
-        expr_eq,
-    })
+        })
 }
 
-fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &FxHashSet<Symbol>, if_expr: &Expr<'_>) -> bool {
+fn lint_branches_sharing_code<'tcx>(
+    cx: &LateContext<'tcx>,
+    conds: &[&'tcx Expr<'_>],
+    blocks: &[&Block<'tcx>],
+    expr: &'tcx Expr<'_>,
+) {
+    // We only lint ifs with multiple blocks
+    let &[first_block, ref blocks @ ..] = blocks else {
+        return;
+    };
+    let &[.., last_block] = blocks else {
+        return;
+    };
+
+    let res = scan_block_for_eq(cx, conds, first_block, blocks);
+    let sm = cx.tcx.sess.source_map();
+    let start_suggestion = res.start_span(first_block, sm).map(|span| {
+        let first_line_span = first_line_of_span(cx, expr.span);
+        let replace_span = first_line_span.with_hi(span.hi());
+        let cond_span = first_line_span.until(first_block.span);
+        let cond_snippet = reindent_multiline(snippet(cx, cond_span, "_"), false, None);
+        let cond_indent = indent_of(cx, cond_span);
+        let moved_snippet = reindent_multiline(snippet(cx, span, "_"), true, None);
+        let suggestion = moved_snippet.to_string() + "\n" + &cond_snippet + "{";
+        let suggestion = reindent_multiline(Cow::Borrowed(&suggestion), true, cond_indent);
+        (replace_span, suggestion.to_string())
+    });
+    let end_suggestion = res.end_span(last_block, sm).map(|span| {
+        let moved_snipped = reindent_multiline(snippet(cx, span, "_"), true, None);
+        let indent = indent_of(cx, expr.span.shrink_to_hi());
+        let suggestion = "}\n".to_string() + &moved_snipped;
+        let suggestion = reindent_multiline(Cow::Borrowed(&suggestion), true, indent);
+
+        let span = span.with_hi(last_block.span.hi());
+        // Improve formatting if the inner block has indention (i.e. normal Rust formatting)
+        let test_span = Span::new(span.lo() - BytePos(4), span.lo(), span.ctxt(), span.parent());
+        let span = if snippet_opt(cx, test_span).map_or(false, |snip| snip == "    ") {
+            span.with_lo(test_span.lo())
+        } else {
+            span
+        };
+        (span, suggestion.to_string())
+    });
+
+    let (span, msg, end_span) = match (&start_suggestion, &end_suggestion) {
+        (&Some((span, _)), &Some((end_span, _))) => (
+            span,
+            "all if blocks contain the same code at both the start and the end",
+            Some(end_span),
+        ),
+        (&Some((span, _)), None) => (span, "all if blocks contain the same code at the start", None),
+        (None, &Some((span, _))) => (span, "all if blocks contain the same code at the end", None),
+        (None, None) => return,
+    };
+    span_lint_and_then(cx, BRANCHES_SHARING_CODE, span, msg, |diag| {
+        if let Some(span) = end_span {
+            diag.span_note(span, "this code is shared at the end");
+        }
+        if let Some((span, sugg)) = start_suggestion {
+            diag.span_suggestion(
+                span,
+                "consider moving these statements before the if",
+                sugg,
+                Applicability::Unspecified,
+            );
+        }
+        if let Some((span, sugg)) = end_suggestion {
+            diag.span_suggestion(
+                span,
+                "consider moving these statements after the if",
+                sugg,
+                Applicability::Unspecified,
+            );
+            if !cx.typeck_results().expr_ty(expr).is_unit() {
+                diag.note("the end suggestion probably needs some adjustments to use the expression result correctly");
+            }
+        }
+        if check_for_warn_of_moved_symbol(cx, &res.moved_locals, expr) {
+            diag.warn("some moved values might need to be renamed to avoid wrong references");
+        }
+    });
+}
+
+struct BlockEq {
+    /// The end of the range of equal stmts at the start.
+    start_end_eq: usize,
+    /// The start of the range of equal stmts at the end.
+    end_begin_eq: Option<usize>,
+    /// The name and id of every local which can be moved at the beginning and the end.
+    moved_locals: Vec<(HirId, Symbol)>,
+}
+impl BlockEq {
+    fn start_span(&self, b: &Block<'_>, sm: &SourceMap) -> Option<Span> {
+        match &b.stmts[..self.start_end_eq] {
+            [first, .., last] => Some(sm.stmt_span(first.span, b.span).to(sm.stmt_span(last.span, b.span))),
+            [s] => Some(sm.stmt_span(s.span, b.span)),
+            [] => None,
+        }
+    }
+
+    fn end_span(&self, b: &Block<'_>, sm: &SourceMap) -> Option<Span> {
+        match (&b.stmts[b.stmts.len() - self.end_begin_eq?..], b.expr) {
+            ([first, .., last], None) => Some(sm.stmt_span(first.span, b.span).to(sm.stmt_span(last.span, b.span))),
+            ([first, ..], Some(last)) => Some(sm.stmt_span(first.span, b.span).to(sm.stmt_span(last.span, b.span))),
+            ([s], None) => Some(sm.stmt_span(s.span, b.span)),
+            ([], Some(e)) => Some(walk_chain(e.span, b.span.ctxt())),
+            ([], None) => None,
+        }
+    }
+}
+
+/// If the statement is a local, checks if the bound names match the expected list of names.
+fn eq_binding_names(s: &Stmt<'_>, names: &[(HirId, Symbol)]) -> bool {
+    if let StmtKind::Local(l) = s.kind {
+        let mut i = 0usize;
+        let mut res = true;
+        l.pat.each_binding_or_first(&mut |_, _, _, name| {
+            if names.get(i).map_or(false, |&(_, n)| n == name.name) {
+                i += 1;
+            } else {
+                res = false;
+            }
+        });
+        res && i == names.len()
+    } else {
+        false
+    }
+}
+
+/// Checks if the given statement should be considered equal to the statement in the same position
+/// for each block.
+fn eq_stmts(
+    stmt: &Stmt<'_>,
+    blocks: &[&Block<'_>],
+    get_stmt: impl for<'a> Fn(&'a Block<'a>) -> Option<&'a Stmt<'a>>,
+    eq: &mut HirEqInterExpr<'_, '_, '_>,
+    moved_bindings: &mut Vec<(HirId, Symbol)>,
+) -> bool {
+    (if let StmtKind::Local(l) = stmt.kind {
+        let old_count = moved_bindings.len();
+        l.pat.each_binding_or_first(&mut |_, id, _, name| {
+            moved_bindings.push((id, name.name));
+        });
+        let new_bindings = &moved_bindings[old_count..];
+        blocks
+            .iter()
+            .all(|b| get_stmt(b).map_or(false, |s| eq_binding_names(s, new_bindings)))
+    } else {
+        true
+    }) && blocks
+        .iter()
+        .all(|b| get_stmt(b).map_or(false, |s| eq.eq_stmt(s, stmt)))
+}
+
+fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'_>, blocks: &[&Block<'_>]) -> BlockEq {
+    let mut eq = SpanlessEq::new(cx);
+    let mut eq = eq.inter_expr();
+    let mut moved_locals = Vec::new();
+
+    let start_end_eq = block
+        .stmts
+        .iter()
+        .enumerate()
+        .find(|&(i, stmt)| !eq_stmts(stmt, blocks, |b| b.stmts.get(i), &mut eq, &mut moved_locals))
+        .map_or(block.stmts.len(), |(i, _)| i);
+
+    // Walk backwards through the final expression/statements so long as their hashes are equal. Note
+    // `SpanlessHash` treats all local references as equal allowing locals declared earlier in the block
+    // to match those in other blocks. e.g. If each block ends with the following the hash value will be
+    // the same even though each `x` binding will have a different `HirId`:
+    //     let x = foo();
+    //     x + 50
+    let expr_hash_eq = if let Some(e) = block.expr {
+        let hash = hash_expr(cx, e);
+        blocks
+            .iter()
+            .all(|b| b.expr.map_or(false, |e| hash_expr(cx, e) == hash))
+    } else {
+        blocks.iter().all(|b| b.expr.is_none())
+    };
+    if !expr_hash_eq {
+        return BlockEq {
+            start_end_eq,
+            end_begin_eq: None,
+            moved_locals,
+        };
+    }
+    let end_search_start = block.stmts[start_end_eq..]
+        .iter()
+        .rev()
+        .enumerate()
+        .find(|&(offset, stmt)| {
+            let hash = hash_stmt(cx, stmt);
+            blocks.iter().any(|b| {
+                b.stmts
+                    // the bounds check will catch the underflow
+                    .get(b.stmts.len().wrapping_sub(offset + 1))
+                    .map_or(true, |s| hash != hash_stmt(cx, s))
+            })
+        })
+        .map_or(block.stmts.len() - start_end_eq, |(i, _)| i);
+
+    let moved_locals_at_start = moved_locals.len();
+    let mut i = end_search_start;
+    let end_begin_eq = block.stmts[block.stmts.len() - end_search_start..]
+        .iter()
+        .zip(iter::repeat_with(move || {
+            let x = i;
+            i -= 1;
+            x
+        }))
+        .fold(end_search_start, |init, (stmt, offset)| {
+            if eq_stmts(
+                stmt,
+                blocks,
+                |b| b.stmts.get(b.stmts.len() - offset),
+                &mut eq,
+                &mut moved_locals,
+            ) {
+                init
+            } else {
+                // Clear out all locals seen at the end so far. None of them can be moved.
+                let stmts = &blocks[0].stmts;
+                for stmt in &stmts[stmts.len() - init..=stmts.len() - offset] {
+                    if let StmtKind::Local(l) = stmt.kind {
+                        l.pat.each_binding_or_first(&mut |_, id, _, _| {
+                            eq.locals.remove(&id);
+                        });
+                    }
+                }
+                moved_locals.truncate(moved_locals_at_start);
+                offset - 1
+            }
+        });
+    if let Some(e) = block.expr {
+        for block in blocks {
+            if block.expr.map_or(false, |expr| !eq.eq_expr(expr, e)) {
+                moved_locals.truncate(moved_locals_at_start);
+                return BlockEq {
+                    start_end_eq,
+                    end_begin_eq: None,
+                    moved_locals,
+                };
+            }
+        }
+    }
+
+    BlockEq {
+        start_end_eq,
+        end_begin_eq: Some(end_begin_eq),
+        moved_locals,
+    }
+}
+
+fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbol)], if_expr: &Expr<'_>) -> bool {
     get_enclosing_block(cx, if_expr.hir_id).map_or(false, |block| {
         let ignore_span = block.span.shrink_to_lo().to(if_expr.span);
 
         symbols
             .iter()
-            .filter(|sym| !sym.as_str().starts_with('_'))
-            .any(move |sym| {
-                let mut walker = ContainsName {
-                    name: *sym,
-                    result: false,
-                };
+            .filter(|&&(_, name)| !name.as_str().starts_with('_'))
+            .any(|&(_, name)| {
+                let mut walker = ContainsName { name, result: false };
 
                 // Scan block
                 block
@@ -419,194 +491,9 @@ fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &FxHashSet<Symb
     })
 }
 
-fn emit_branches_sharing_code_lint(
-    cx: &LateContext<'_>,
-    start_stmts: usize,
-    end_stmts: usize,
-    lint_end: bool,
-    warn_about_moved_symbol: bool,
-    blocks: &[&Block<'_>],
-    if_expr: &Expr<'_>,
-) {
-    if start_stmts == 0 && !lint_end {
-        return;
-    }
-
-    // (help, span, suggestion)
-    let mut suggestions: Vec<(&str, Span, String)> = vec![];
-    let mut add_expr_note = false;
-
-    // Construct suggestions
-    let sm = cx.sess().source_map();
-    if start_stmts > 0 {
-        let block = blocks[0];
-        let span_start = first_line_of_span(cx, if_expr.span).shrink_to_lo();
-        let span_end = sm.stmt_span(block.stmts[start_stmts - 1].span, block.span);
-
-        let cond_span = first_line_of_span(cx, if_expr.span).until(block.span);
-        let cond_snippet = reindent_multiline(snippet(cx, cond_span, "_"), false, None);
-        let cond_indent = indent_of(cx, cond_span);
-        let moved_span = block.stmts[0].span.source_callsite().to(span_end);
-        let moved_snippet = reindent_multiline(snippet(cx, moved_span, "_"), true, None);
-        let suggestion = moved_snippet.to_string() + "\n" + &cond_snippet + "{";
-        let suggestion = reindent_multiline(Cow::Borrowed(&suggestion), true, cond_indent);
-
-        let span = span_start.to(span_end);
-        suggestions.push(("start", span, suggestion.to_string()));
-    }
-
-    if lint_end {
-        let block = blocks[blocks.len() - 1];
-        let span_end = block.span.shrink_to_hi();
-
-        let moved_start = if end_stmts == 0 && block.expr.is_some() {
-            block.expr.unwrap().span.source_callsite()
-        } else {
-            sm.stmt_span(block.stmts[block.stmts.len() - end_stmts].span, block.span)
-        };
-        let moved_end = block.expr.map_or_else(
-            || sm.stmt_span(block.stmts[block.stmts.len() - 1].span, block.span),
-            |expr| expr.span.source_callsite(),
-        );
-
-        let moved_span = moved_start.to(moved_end);
-        let moved_snipped = reindent_multiline(snippet(cx, moved_span, "_"), true, None);
-        let indent = indent_of(cx, if_expr.span.shrink_to_hi());
-        let suggestion = "}\n".to_string() + &moved_snipped;
-        let suggestion = reindent_multiline(Cow::Borrowed(&suggestion), true, indent);
-
-        let mut span = moved_start.to(span_end);
-        // Improve formatting if the inner block has indention (i.e. normal Rust formatting)
-        let test_span = Span::new(span.lo() - BytePos(4), span.lo(), span.ctxt(), span.parent());
-        if snippet_opt(cx, test_span)
-            .map(|snip| snip == "    ")
-            .unwrap_or_default()
-        {
-            span = span.with_lo(test_span.lo());
-        }
-
-        suggestions.push(("end", span, suggestion.to_string()));
-        add_expr_note = !cx.typeck_results().expr_ty(if_expr).is_unit();
-    }
-
-    let add_optional_msgs = |diag: &mut Diagnostic| {
-        if add_expr_note {
-            diag.note("The end suggestion probably needs some adjustments to use the expression result correctly");
-        }
-
-        if warn_about_moved_symbol {
-            diag.warn("Some moved values might need to be renamed to avoid wrong references");
-        }
-    };
-
-    // Emit lint
-    if suggestions.len() == 1 {
-        let (place_str, span, sugg) = suggestions.pop().unwrap();
-        let msg = format!("all if blocks contain the same code at the {}", place_str);
-        let help = format!("consider moving the {} statements out like this", place_str);
-        span_lint_and_then(cx, BRANCHES_SHARING_CODE, span, msg.as_str(), |diag| {
-            diag.span_suggestion(span, help.as_str(), sugg, Applicability::Unspecified);
-
-            add_optional_msgs(diag);
-        });
-    } else if suggestions.len() == 2 {
-        let (_, end_span, end_sugg) = suggestions.pop().unwrap();
-        let (_, start_span, start_sugg) = suggestions.pop().unwrap();
-        span_lint_and_then(
-            cx,
-            BRANCHES_SHARING_CODE,
-            start_span,
-            "all if blocks contain the same code at the start and the end. Here at the start",
-            move |diag| {
-                diag.span_note(end_span, "and here at the end");
-
-                diag.span_suggestion(
-                    start_span,
-                    "consider moving the start statements out like this",
-                    start_sugg,
-                    Applicability::Unspecified,
-                );
-
-                diag.span_suggestion(
-                    end_span,
-                    "and consider moving the end statements out like this",
-                    end_sugg,
-                    Applicability::Unspecified,
-                );
-
-                add_optional_msgs(diag);
-            },
-        );
-    }
-}
-
-/// This visitor collects `HirId`s and Symbols of defined symbols and `HirId`s of used values.
-struct UsedValueFinderVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-
-    /// The `HirId`s of defined values in the scanned statements
-    defs: FxHashSet<HirId>,
-
-    /// The Symbols of the defined symbols in the scanned statements
-    def_symbols: FxHashSet<Symbol>,
-
-    /// The `HirId`s of the used values
-    uses: FxHashSet<HirId>,
-}
-
-impl<'a, 'tcx> UsedValueFinderVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'tcx>) -> Self {
-        UsedValueFinderVisitor {
-            cx,
-            defs: FxHashSet::default(),
-            def_symbols: FxHashSet::default(),
-            uses: FxHashSet::default(),
-        }
-    }
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for UsedValueFinderVisitor<'a, 'tcx> {
-    type NestedFilter = nested_filter::All;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
-    }
-
-    fn visit_local(&mut self, l: &'tcx rustc_hir::Local<'tcx>) {
-        let local_id = l.pat.hir_id;
-        self.defs.insert(local_id);
-
-        if let Some(sym) = l.pat.simple_ident() {
-            self.def_symbols.insert(sym.name);
-        }
-
-        if let Some(expr) = l.init {
-            intravisit::walk_expr(self, expr);
-        }
-    }
-
-    fn visit_qpath(&mut self, qpath: &'tcx rustc_hir::QPath<'tcx>, id: HirId, _span: rustc_span::Span) {
-        if let rustc_hir::QPath::Resolved(_, path) = *qpath {
-            if path.segments.len() == 1 {
-                if let rustc_hir::def::Res::Local(var) = self.cx.qpath_res(qpath, id) {
-                    self.uses.insert(var);
-                }
-            }
-        }
-    }
-}
-
 /// Implementation of `IFS_SAME_COND`.
 fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
-    let hash: &dyn Fn(&&Expr<'_>) -> u64 = &|expr| -> u64 {
-        let mut h = SpanlessHash::new(cx);
-        h.hash_expr(expr);
-        h.finish()
-    };
-
-    let eq: &dyn Fn(&&Expr<'_>, &&Expr<'_>) -> bool = &|&lhs, &rhs| -> bool { eq_expr_value(cx, lhs, rhs) };
-
-    for (i, j) in search_same(conds, hash, eq) {
+    for (i, j) in search_same(conds, |e| hash_expr(cx, e), |lhs, rhs| eq_expr_value(cx, lhs, rhs)) {
         span_lint_and_note(
             cx,
             IFS_SAME_COND,
@@ -620,12 +507,6 @@ fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
 
 /// Implementation of `SAME_FUNCTIONS_IN_IF_CONDITION`.
 fn lint_same_fns_in_if_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
-    let hash: &dyn Fn(&&Expr<'_>) -> u64 = &|expr| -> u64 {
-        let mut h = SpanlessHash::new(cx);
-        h.hash_expr(expr);
-        h.finish()
-    };
-
     let eq: &dyn Fn(&&Expr<'_>, &&Expr<'_>) -> bool = &|&lhs, &rhs| -> bool {
         // Do not lint if any expr originates from a macro
         if lhs.span.from_expansion() || rhs.span.from_expansion() {
@@ -638,7 +519,7 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
         SpanlessEq::new(cx).eq_expr(lhs, rhs)
     };
 
-    for (i, j) in search_same(conds, hash, eq) {
+    for (i, j) in search_same(conds, |e| hash_expr(cx, e), eq) {
         span_lint_and_note(
             cx,
             SAME_FUNCTIONS_IN_IF_CONDITION,

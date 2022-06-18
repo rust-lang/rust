@@ -1,0 +1,10 @@
+warning: unexpected `cfg` condition name
+  --> $DIR/compact-names.rs:11:28
+   |
+LL | #[cfg(target(os = "linux", architecture = "arm"))]
+   |                            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

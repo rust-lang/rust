@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// complexity.
     ///
     /// ### Example
-    /// No. You'll see it when you get the warning.
+    /// You'll see it when you get the warning.
     #[clippy::version = "1.35.0"]
     pub COGNITIVE_COMPLEXITY,
     nursery,
@@ -48,7 +48,7 @@ impl CognitiveComplexity {
 impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_possible_truncation)]
     fn check<'tcx>(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -70,7 +70,7 @@ impl CognitiveComplexity {
         let ret_adjust = if is_type_diagnostic_item(cx, ret_ty, sym::Result) {
             returns
         } else {
-            #[allow(clippy::integer_division)]
+            #[expect(clippy::integer_division)]
             (returns / 2)
         };
 
@@ -82,7 +82,7 @@ impl CognitiveComplexity {
 
         if rust_cc > self.limit.limit() {
             let fn_span = match kind {
-                FnKind::ItemFn(ident, _, _, _) | FnKind::Method(ident, _, _) => ident.span,
+                FnKind::ItemFn(ident, _, _) | FnKind::Method(ident, _) => ident.span,
                 FnKind::Closure => {
                     let header_span = body_span.with_hi(decl.output.span().lo());
                     let pos = snippet_opt(cx, header_span).and_then(|snip| {

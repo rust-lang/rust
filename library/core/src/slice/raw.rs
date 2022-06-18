@@ -1,6 +1,7 @@
 //! Free functions to create `&[T]` and `&mut [T]`.
 
 use crate::array;
+use crate::intrinsics::{assert_unsafe_precondition, is_aligned_and_not_null};
 use crate::ops::Range;
 use crate::ptr;
 
@@ -85,11 +86,16 @@ use crate::ptr;
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
+#[must_use]
 pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
-    debug_check_data_len(data, len);
-
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
-    unsafe { &*ptr::slice_from_raw_parts(data, len) }
+    unsafe {
+        assert_unsafe_precondition!(
+            is_aligned_and_not_null(data)
+                && crate::mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize
+        );
+        &*ptr::slice_from_raw_parts(data, len)
+    }
 }
 
 /// Performs the same functionality as [`from_raw_parts`], except that a
@@ -124,50 +130,22 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
+#[must_use]
 pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
-    debug_check_data_len(data as _, len);
-
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
-    unsafe { &mut *ptr::slice_from_raw_parts_mut(data, len) }
-}
-
-// In debug builds checks that `data` pointer is aligned and non-null and that slice with given `len` would cover less than half the address space
-#[cfg(debug_assertions)]
-#[unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
-const fn debug_check_data_len<T>(data: *const T, len: usize) {
-    fn rt_check<T>(data: *const T) {
-        use crate::intrinsics::is_aligned_and_not_null;
-
-        assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
-    }
-
-    const fn noop<T>(_: *const T) {}
-
-    // SAFETY:
-    //
-    // `rt_check` is just a debug assert to hint users that they are causing UB,
-    // it is not required for safety (the safety must be guatanteed by
-    // the `from_raw_parts[_mut]` caller).
-    //
-    // As per our safety precondition, we may assume that assertion above never fails.
-    // Therefore, noop and rt_check are observably equivalent.
     unsafe {
-        crate::intrinsics::const_eval_select((data,), noop, rt_check);
+        assert_unsafe_precondition!(
+            is_aligned_and_not_null(data)
+                && crate::mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize
+        );
+        &mut *ptr::slice_from_raw_parts_mut(data, len)
     }
-
-    assert!(
-        crate::mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
-        "attempt to create slice covering at least half the address space"
-    );
 }
-
-#[cfg(not(debug_assertions))]
-const fn debug_check_data_len<T>(_data: *const T, _len: usize) {}
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
-#[rustc_const_unstable(feature = "const_slice_from_ref", issue = "90206")]
+#[rustc_const_stable(feature = "const_slice_from_ref_shared", since = "1.63.0")]
+#[must_use]
 pub const fn from_ref<T>(s: &T) -> &[T] {
     array::from_ref(s)
 }
@@ -175,6 +153,7 @@ pub const fn from_ref<T>(s: &T) -> &[T] {
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_slice_from_ref", issue = "90206")]
+#[must_use]
 pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
     array::from_mut(s)
 }
@@ -234,9 +213,10 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 ///
 /// [valid]: ptr#safety
 #[unstable(feature = "slice_from_ptr_range", issue = "89792")]
-pub unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
+#[rustc_const_unstable(feature = "const_slice_from_ptr_range", issue = "89792")]
+pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
     // SAFETY: the caller must uphold the safety contract for `from_ptr_range`.
-    unsafe { from_raw_parts(range.start, range.end.offset_from(range.start) as usize) }
+    unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
 }
 
 /// Performs the same functionality as [`from_ptr_range`], except that a
@@ -284,7 +264,8 @@ pub unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 ///
 /// [valid]: ptr#safety
 #[unstable(feature = "slice_from_ptr_range", issue = "89792")]
-pub unsafe fn from_mut_ptr_range<'a, T>(range: Range<*mut T>) -> &'a mut [T] {
+#[rustc_const_unstable(feature = "const_slice_from_mut_ptr_range", issue = "89792")]
+pub const unsafe fn from_mut_ptr_range<'a, T>(range: Range<*mut T>) -> &'a mut [T] {
     // SAFETY: the caller must uphold the safety contract for `from_mut_ptr_range`.
-    unsafe { from_raw_parts_mut(range.start, range.end.offset_from(range.start) as usize) }
+    unsafe { from_raw_parts_mut(range.start, range.end.sub_ptr(range.start)) }
 }

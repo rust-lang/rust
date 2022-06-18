@@ -1,7 +1,7 @@
 //! Compiler intrinsics.
 //!
-//! The corresponding definitions are in `compiler/rustc_codegen_llvm/src/intrinsic.rs`.
-//! The corresponding const implementations are in `compiler/rustc_mir/src/interpret/intrinsics.rs`
+//! The corresponding definitions are in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>.
+//! The corresponding const implementations are in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
 //!
 //! # Const intrinsics
 //!
@@ -10,8 +10,8 @@
 //!
 //! In order to make an intrinsic usable at compile-time, one needs to copy the implementation
 //! from <https://github.com/rust-lang/miri/blob/master/src/shims/intrinsics.rs> to
-//! `compiler/rustc_mir/src/interpret/intrinsics.rs` and add a
-//! `#[rustc_const_unstable(feature = "foo", issue = "01234")]` to the intrinsic.
+//! <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs> and add a
+//! `#[rustc_const_unstable(feature = "const_such_and_such", issue = "01234")]` to the intrinsic declaration.
 //!
 //! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
 //! the intrinsic's attribute must be `rustc_const_stable`, too. Such a change should not be done
@@ -54,7 +54,7 @@
 )]
 #![allow(missing_docs)]
 
-use crate::marker::DiscriminantKind;
+use crate::marker::{Destruct, DiscriminantKind};
 use crate::mem;
 
 // These imports are used for simplifying intra-doc links
@@ -63,10 +63,7 @@ use crate::mem;
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[rustc_deprecated(
-    reason = "no longer an intrinsic - use `ptr::drop_in_place` directly",
-    since = "1.52.0"
-)]
+#[deprecated(note = "no longer an intrinsic - use `ptr::drop_in_place` directly", since = "1.52.0")]
 #[inline]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // SAFETY: see `ptr::drop_in_place`
@@ -933,6 +930,9 @@ extern "rust-intrinsic" {
     /// fn foo() -> i32 {
     ///     0
     /// }
+    /// // Crucially, we `as`-cast to a raw pointer before `transmute`ing to a function pointer.
+    /// // This avoids an integer-to-pointer `transmute`, which can be problematic.
+    /// // Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
     /// let pointer = foo as *const ();
     /// let function = unsafe {
     ///     std::mem::transmute::<*const (), fn() -> i32>(pointer)
@@ -981,7 +981,7 @@ extern "rust-intrinsic" {
     ///
     /// Turning a pointer into a `usize`:
     ///
-    /// ```
+    /// ```no_run
     /// let ptr = &0;
     /// let ptr_num_transmute = unsafe {
     ///     std::mem::transmute::<&i32, usize>(ptr)
@@ -990,6 +990,16 @@ extern "rust-intrinsic" {
     /// // Use an `as` cast instead
     /// let ptr_num_cast = ptr as *const i32 as usize;
     /// ```
+    ///
+    /// Note that using `transmute` to turn a pointer to a `usize` is (as noted above) [undefined
+    /// behavior][ub] in `const` contexts. Also outside of consts, this operation might not behave
+    /// as expected -- this is touching on many unspecified aspects of the Rust memory model.
+    /// Depending on what the code is doing, the following alternatives are preferrable to
+    /// pointer-to-integer transmutation:
+    /// - If the code just wants to store data of arbitrary type in some buffer and needs to pick a
+    ///   type for that buffer, it can use [`MaybeUninit`][mem::MaybeUninit].
+    /// - If the code actually wants to work on the address the pointer points to, it can use `as`
+    ///   casts or [`ptr.addr()`][pointer::addr].
     ///
     /// Turning a `*mut T` into an `&mut T`:
     ///
@@ -1152,7 +1162,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
     #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
-    pub fn needs_drop<T>() -> bool;
+    pub fn needs_drop<T: ?Sized>() -> bool;
 
     /// Calculates the offset from a pointer.
     ///
@@ -1168,7 +1178,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`pointer::offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Calculates the offset from a pointer, potentially wrapping.
@@ -1185,7 +1195,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`pointer::wrapping_offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
@@ -1638,7 +1648,7 @@ extern "rust-intrinsic" {
     /// let num_trailing = unsafe { cttz_nonzero(x) };
     /// assert_eq!(num_trailing, 3);
     /// ```
-    #[rustc_const_stable(feature = "const_cttz", since = "1.53.0")]
+    #[rustc_const_stable(feature = "const_cttz_nonzero", since = "1.53.0")]
     pub fn cttz_nonzero<T: Copy>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.
@@ -1718,7 +1728,7 @@ extern "rust-intrinsic" {
     /// Safe wrappers for this intrinsic are available on the integer
     /// primitives via the `checked_div` method. For example,
     /// [`u32::checked_div`]
-    #[rustc_const_stable(feature = "const_int_unchecked_arith", since = "1.52.0")]
+    #[rustc_const_stable(feature = "const_int_unchecked_div", since = "1.52.0")]
     pub fn unchecked_div<T: Copy>(x: T, y: T) -> T;
     /// Returns the remainder of an unchecked division, resulting in
     /// undefined behavior when `y == 0` or `x == T::MIN && y == -1`
@@ -1726,7 +1736,7 @@ extern "rust-intrinsic" {
     /// Safe wrappers for this intrinsic are available on the integer
     /// primitives via the `checked_rem` method. For example,
     /// [`u32::checked_rem`]
-    #[rustc_const_stable(feature = "const_int_unchecked_arith", since = "1.52.0")]
+    #[rustc_const_stable(feature = "const_int_unchecked_rem", since = "1.52.0")]
     pub fn unchecked_rem<T: Copy>(x: T, y: T) -> T;
 
     /// Performs an unchecked left shift, resulting in undefined behavior when
@@ -1896,6 +1906,10 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
+    /// See documentation of `<*const T>::sub_ptr` for details.
+    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
+
     /// See documentation of `<*const T>::guaranteed_eq` for details.
     ///
     /// Note that, unlike most intrinsics, this is safe to call;
@@ -1969,18 +1983,51 @@ extern "rust-intrinsic" {
 // (`transmute` also falls into this category, but it cannot be wrapped due to the
 // check that `T` and `U` have the same size.)
 
+/// Check that the preconditions of an unsafe function are followed, if debug_assertions are on,
+/// and only at runtime.
+///
+/// # Safety
+///
+/// Invoking this macro is only sound if the following code is already UB when the passed
+/// expression evaluates to false.
+///
+/// This macro expands to a check at runtime if debug_assertions is set. It has no effect at
+/// compile time, but the semantics of the contained `const_eval_select` must be the same at
+/// runtime and at compile time. Thus if the expression evaluates to false, this macro produces
+/// different behavior at compile time and at runtime, and invoking it is incorrect.
+///
+/// So in a sense it is UB if this macro is useful, but we expect callers of `unsafe fn` to make
+/// the occasional mistake, and this check should help them figure things out.
+#[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
+macro_rules! assert_unsafe_precondition {
+    ($e:expr) => {
+        if cfg!(debug_assertions) {
+            // Use a closure so that we can capture arbitrary expressions from the invocation
+            let runtime = || {
+                if !$e {
+                    // abort instead of panicking to reduce impact on code size
+                    ::core::intrinsics::abort();
+                }
+            };
+            const fn comptime() {}
+
+            ::core::intrinsics::const_eval_select((), comptime, runtime);
+        }
+    };
+}
+pub(crate) use assert_unsafe_precondition;
+
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
-    !ptr.is_null() && ptr as usize % mem::align_of::<T>() == 0
+    !ptr.is_null() && ptr.addr() % mem::align_of::<T>() == 0
 }
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size_of::<T>()` do *not* overlap.
-#[cfg(debug_assertions)]
 pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
-    let src_usize = src as usize;
-    let dst_usize = dst as usize;
+    let src_usize = src.addr();
+    let dst_usize = dst.addr();
     let size = mem::size_of::<T>().checked_mul(count).unwrap();
     let diff = if src_usize > dst_usize { src_usize - dst_usize } else { dst_usize - src_usize };
     // If the absolute distance between the ptrs is at least as big as the size of the buffer,
@@ -2071,36 +2118,24 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
         pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-    }
-
-    #[cfg(debug_assertions)]
-    fn runtime_check<T>(src: *const T, dst: *mut T, count: usize) {
-        if !is_aligned_and_not_null(src)
-            || !is_aligned_and_not_null(dst)
-            || !is_nonoverlapping(src, dst, count)
-        {
-            // Not panicking to keep codegen impact smaller.
-            abort();
-        }
-    }
-    #[cfg(debug_assertions)]
-    const fn compiletime_check<T>(_src: *const T, _dst: *mut T, _count: usize) {}
-    #[cfg(debug_assertions)]
-    // SAFETY: As per our safety precondition, we may assume that the `abort` above is never reached.
-    // Therefore, compiletime_check and runtime_check are observably equivalent.
-    unsafe {
-        const_eval_select((src, dst, count), compiletime_check, runtime_check);
     }
 
     // SAFETY: the safety contract for `copy_nonoverlapping` must be
     // upheld by the caller.
-    unsafe { copy_nonoverlapping(src, dst, count) }
+    unsafe {
+        assert_unsafe_precondition!(
+            is_aligned_and_not_null(src)
+                && is_aligned_and_not_null(dst)
+                && is_nonoverlapping(src, dst, count)
+        );
+        copy_nonoverlapping(src, dst, count)
+    }
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -2165,32 +2200,19 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }
 
-    #[cfg(debug_assertions)]
-    fn runtime_check<T>(src: *const T, dst: *mut T) {
-        if !is_aligned_and_not_null(src) || !is_aligned_and_not_null(dst) {
-            // Not panicking to keep codegen impact smaller.
-            abort();
-        }
-    }
-    #[cfg(debug_assertions)]
-    const fn compiletime_check<T>(_src: *const T, _dst: *mut T) {}
-    #[cfg(debug_assertions)]
-    // SAFETY: As per our safety precondition, we may assume that the `abort` above is never reached.
-    // Therefore, compiletime_check and runtime_check are observably equivalent.
-    unsafe {
-        const_eval_select((src, dst), compiletime_check, runtime_check);
-    }
-
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
-    unsafe { copy(src, dst, count) }
+    unsafe {
+        assert_unsafe_precondition!(is_aligned_and_not_null(src) && is_aligned_and_not_null(dst));
+        copy(src, dst, count)
+    }
 }
 
 /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
@@ -2265,6 +2287,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// // Now the box is fine
 /// assert_eq!(*v, 42);
 /// ```
+#[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[inline]
@@ -2274,24 +2297,11 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
         fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     }
 
-    #[cfg(debug_assertions)]
-    fn runtime_check<T>(ptr: *mut T) {
-        debug_assert!(
-            is_aligned_and_not_null(ptr),
-            "attempt to write to unaligned or null pointer"
-        );
-    }
-    #[cfg(debug_assertions)]
-    const fn compiletime_check<T>(_ptr: *mut T) {}
-    #[cfg(debug_assertions)]
-    // SAFETY: runtime debug-assertions are a best-effort basis; it's fine to
-    // not do them during compile time
-    unsafe {
-        const_eval_select((dst,), compiletime_check, runtime_check);
-    }
-
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
-    unsafe { write_bytes(dst, val, count) }
+    unsafe {
+        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
+        write_bytes(dst, val, count)
+    }
 }
 
 /// Selects which function to call depending on the context.
@@ -2353,6 +2363,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
 #[lang = "const_eval_select"]
 #[rustc_do_not_const_check]
+#[inline]
 pub const unsafe fn const_eval_select<ARG, F, G, RET>(
     arg: ARG,
     _called_in_const: F,
@@ -2360,7 +2371,7 @@ pub const unsafe fn const_eval_select<ARG, F, G, RET>(
 ) -> RET
 where
     F: ~const FnOnce<ARG, Output = RET>,
-    G: FnOnce<ARG, Output = RET> + ~const Drop,
+    G: FnOnce<ARG, Output = RET> + ~const Destruct,
 {
     called_at_rt.call_once(arg)
 }
@@ -2379,7 +2390,7 @@ pub const unsafe fn const_eval_select_ct<ARG, F, G, RET>(
 ) -> RET
 where
     F: ~const FnOnce<ARG, Output = RET>,
-    G: FnOnce<ARG, Output = RET> + ~const Drop,
+    G: FnOnce<ARG, Output = RET> + ~const Destruct,
 {
     called_in_const.call_once(arg)
 }

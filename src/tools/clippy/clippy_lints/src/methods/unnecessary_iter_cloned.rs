@@ -1,14 +1,12 @@
+use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{get_associated_type, get_iterator_item_ty, implements_trait};
-use clippy_utils::{fn_def_id, get_parent_expr, path_to_local_id, usage};
+use clippy_utils::{fn_def_id, get_parent_expr};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, HirId, LangItem, Mutability, Pat};
+use rustc_hir::{def_id::DefId, Expr, ExprKind, LangItem};
 use rustc_lint::LateContext;
-use rustc_middle::hir::nested_filter;
-use rustc_middle::ty;
 use rustc_span::{sym, Symbol};
 
 use super::UNNECESSARY_TO_OWNED;
@@ -87,7 +85,7 @@ pub fn check_for_loop_iter(
                         match addr_of_expr.kind {
                             ExprKind::AddrOf(_, _, referent) => {
                                 let span = addr_of_expr.span.with_hi(referent.span.lo());
-                                diag.span_suggestion(span, "remove this `&`", String::new(), applicability);
+                                diag.span_suggestion(span, "remove this `&`", "", applicability);
                             }
                             _ => unreachable!(),
                         }
@@ -98,89 +96,6 @@ pub fn check_for_loop_iter(
         }
     }
     false
-}
-
-/// The core logic of `check_for_loop_iter` above, this function wraps a use of
-/// `CloneOrCopyVisitor`.
-fn clone_or_copy_needed<'tcx>(
-    cx: &LateContext<'tcx>,
-    pat: &Pat<'tcx>,
-    body: &'tcx Expr<'tcx>,
-) -> (bool, Vec<&'tcx Expr<'tcx>>) {
-    let mut visitor = CloneOrCopyVisitor {
-        cx,
-        binding_hir_ids: pat_bindings(pat),
-        clone_or_copy_needed: false,
-        addr_of_exprs: Vec::new(),
-    };
-    visitor.visit_expr(body);
-    (visitor.clone_or_copy_needed, visitor.addr_of_exprs)
-}
-
-/// Returns a vector of all `HirId`s bound by the pattern.
-fn pat_bindings(pat: &Pat<'_>) -> Vec<HirId> {
-    let mut collector = usage::ParamBindingIdCollector {
-        binding_hir_ids: Vec::new(),
-    };
-    collector.visit_pat(pat);
-    collector.binding_hir_ids
-}
-
-/// `clone_or_copy_needed` will be false when `CloneOrCopyVisitor` is done visiting if the only
-/// operations performed on `binding_hir_ids` are:
-/// * to take non-mutable references to them
-/// * to use them as non-mutable `&self` in method calls
-/// If any of `binding_hir_ids` is used in any other way, then `clone_or_copy_needed` will be true
-/// when `CloneOrCopyVisitor` is done visiting.
-struct CloneOrCopyVisitor<'cx, 'tcx> {
-    cx: &'cx LateContext<'tcx>,
-    binding_hir_ids: Vec<HirId>,
-    clone_or_copy_needed: bool,
-    addr_of_exprs: Vec<&'tcx Expr<'tcx>>,
-}
-
-impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
-    type NestedFilter = nested_filter::OnlyBodies;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
-    }
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        walk_expr(self, expr);
-        if self.is_binding(expr) {
-            if let Some(parent) = get_parent_expr(self.cx, expr) {
-                match parent.kind {
-                    ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, _) => {
-                        self.addr_of_exprs.push(parent);
-                        return;
-                    },
-                    ExprKind::MethodCall(_, args, _) => {
-                        if_chain! {
-                            if args.iter().skip(1).all(|arg| !self.is_binding(arg));
-                            if let Some(method_def_id) = self.cx.typeck_results().type_dependent_def_id(parent.hir_id);
-                            let method_ty = self.cx.tcx.type_of(method_def_id);
-                            let self_ty = method_ty.fn_sig(self.cx.tcx).input(0).skip_binder();
-                            if matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Not));
-                            then {
-                                return;
-                            }
-                        }
-                    },
-                    _ => {},
-                }
-            }
-            self.clone_or_copy_needed = true;
-        }
-    }
-}
-
-impl<'cx, 'tcx> CloneOrCopyVisitor<'cx, 'tcx> {
-    fn is_binding(&self, expr: &Expr<'tcx>) -> bool {
-        self.binding_hir_ids
-            .iter()
-            .any(|hir_id| path_to_local_id(expr, *hir_id))
-    }
 }
 
 /// Returns true if the named method is `IntoIterator::into_iter`.

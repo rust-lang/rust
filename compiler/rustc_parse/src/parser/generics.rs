@@ -30,8 +30,10 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
 
         // Parse optional colon and param bounds.
+        let mut colon_span = None;
         let bounds = if self.eat(&token::Colon) {
-            self.parse_generic_bounds(Some(self.prev_token.span))?
+            colon_span = Some(self.prev_token.span);
+            self.parse_generic_bounds(colon_span)?
         } else {
             Vec::new()
         };
@@ -45,10 +47,11 @@ impl<'a> Parser<'a> {
             bounds,
             kind: GenericParamKind::Type { default },
             is_placeholder: false,
+            colon_span,
         })
     }
 
-    crate fn parse_const_param(
+    pub(crate) fn parse_const_param(
         &mut self,
         preceding_attrs: Vec<Attribute>,
     ) -> PResult<'a, GenericParam> {
@@ -69,6 +72,7 @@ impl<'a> Parser<'a> {
             bounds: Vec::new(),
             kind: GenericParamKind::Const { ty, kw_span: const_span, default },
             is_placeholder: false,
+            colon_span: None,
         })
     }
 
@@ -97,10 +101,10 @@ impl<'a> Parser<'a> {
                     let param = if this.check_lifetime() {
                         let lifetime = this.expect_lifetime();
                         // Parse lifetime parameter.
-                        let bounds = if this.eat(&token::Colon) {
-                            this.parse_lt_param_bounds()
+                        let (colon_span, bounds) = if this.eat(&token::Colon) {
+                            (Some(this.prev_token.span), this.parse_lt_param_bounds())
                         } else {
-                            Vec::new()
+                            (None, Vec::new())
                         };
                         Some(ast::GenericParam {
                             ident: lifetime.ident,
@@ -109,6 +113,7 @@ impl<'a> Parser<'a> {
                             bounds,
                             kind: ast::GenericParamKind::Lifetime,
                             is_placeholder: false,
+                            colon_span,
                         })
                     } else if this.check_keyword(kw::Const) {
                         // Parse const parameter.
@@ -118,7 +123,7 @@ impl<'a> Parser<'a> {
                         Some(this.parse_ty_param(attrs)?)
                     } else if this.token.can_begin_type() {
                         // Trying to write an associated type bound? (#26271)
-                        let snapshot = this.clone();
+                        let snapshot = this.create_snapshot_for_diagnostic();
                         match this.parse_ty_where_predicate() {
                             Ok(where_predicate) => {
                                 this.struct_span_err(
@@ -133,7 +138,7 @@ impl<'a> Parser<'a> {
                             Err(err) => {
                                 err.cancel();
                                 // FIXME - maybe we should overwrite 'self' outside of `collect_tokens`?
-                                *this = snapshot;
+                                this.restore_snapshot(snapshot);
                                 return Ok((None, TrailingToken::None));
                             }
                         }
@@ -266,7 +271,7 @@ impl<'a> Parser<'a> {
                 err.span_suggestion_verbose(
                     prev_token.shrink_to_hi().to(self.prev_token.span),
                     "consider joining the two `where` clauses into one",
-                    ",".to_owned(),
+                    ",",
                     Applicability::MaybeIncorrect,
                 );
                 err.emit();
@@ -312,6 +317,7 @@ impl<'a> Parser<'a> {
                 id: ast::DUMMY_NODE_ID,
             }))
         } else {
+            self.maybe_recover_bounds_doubled_colon(&ty)?;
             self.unexpected()
         }
     }

@@ -118,7 +118,6 @@ pub enum FailMode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CompareMode {
-    Nll,
     Polonius,
     Chalk,
     SplitDwarf,
@@ -128,7 +127,6 @@ pub enum CompareMode {
 impl CompareMode {
     pub(crate) fn to_str(&self) -> &'static str {
         match *self {
-            CompareMode::Nll => "nll",
             CompareMode::Polonius => "polonius",
             CompareMode::Chalk => "chalk",
             CompareMode::SplitDwarf => "split-dwarf",
@@ -138,7 +136,6 @@ impl CompareMode {
 
     pub fn parse(s: String) -> CompareMode {
         match s.as_str() {
-            "nll" => CompareMode::Nll,
             "polonius" => CompareMode::Polonius,
             "chalk" => CompareMode::Chalk,
             "split-dwarf" => CompareMode::SplitDwarf,
@@ -198,11 +195,8 @@ pub struct Config {
     /// The rust-demangler executable.
     pub rust_demangler_path: Option<PathBuf>,
 
-    /// The Python executable to use for LLDB.
-    pub lldb_python: String,
-
-    /// The Python executable to use for htmldocck.
-    pub docck_python: String,
+    /// The Python executable to use for LLDB and htmldocck.
+    pub python: String,
 
     /// The jsondocck executable.
     pub jsondocck_path: Option<String>,
@@ -248,6 +242,10 @@ pub struct Config {
 
     /// Only run tests that match these filters
     pub filters: Vec<String>,
+
+    /// Skip tests tests matching these substrings. Corresponds to
+    /// `test::TestOpts::skip`. `filter_exact` does not apply to these flags.
+    pub skip: Vec<String>,
 
     /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
@@ -357,6 +355,7 @@ pub struct Config {
     pub cc: String,
     pub cxx: String,
     pub cflags: String,
+    pub cxxflags: String,
     pub ar: String,
     pub linker: Option<String>,
     pub llvm_components: String,

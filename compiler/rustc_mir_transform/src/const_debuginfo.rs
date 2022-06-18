@@ -19,7 +19,7 @@ impl<'tcx> MirPass<'tcx> for ConstDebugInfo {
         sess.opts.debugging_opts.unsound_mir_opts && sess.mir_opt_level() > 0
     }
 
-    fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("running ConstDebugInfo on {:?}", body.source);
 
         for (local, constant) in find_optimization_oportunities(body) {
@@ -55,14 +55,12 @@ fn find_optimization_oportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, Consta
 
     let mut locals_to_debuginfo = BitSet::new_empty(body.local_decls.len());
     for debuginfo in &body.var_debug_info {
-        if let VarDebugInfoContents::Place(p) = debuginfo.value {
-            if let Some(l) = p.as_local() {
-                locals_to_debuginfo.insert(l);
-            }
+        if let VarDebugInfoContents::Place(p) = debuginfo.value && let Some(l) = p.as_local() {
+            locals_to_debuginfo.insert(l);
         }
     }
 
-    let mut eligable_locals = Vec::new();
+    let mut eligible_locals = Vec::new();
     for (local, mutating_uses) in visitor.local_mutating_uses.drain_enumerated(..) {
         if mutating_uses != 1 || !locals_to_debuginfo.contains(local) {
             continue;
@@ -80,13 +78,13 @@ fn find_optimization_oportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, Consta
                 &bb.statements[location.statement_index].kind
             {
                 if let Some(local) = p.as_local() {
-                    eligable_locals.push((local, *c));
+                    eligible_locals.push((local, *c));
                 }
             }
         }
     }
 
-    eligable_locals
+    eligible_locals
 }
 
 impl Visitor<'_> for LocalUseVisitor {

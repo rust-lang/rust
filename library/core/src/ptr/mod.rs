@@ -26,6 +26,7 @@
 //!   some memory happens to exist at that address and gets deallocated. This corresponds to writing
 //!   your own allocator: allocating zero-sized objects is not very hard. The canonical way to
 //!   obtain a pointer that is valid for zero-sized accesses is [`NonNull::dangling`].
+//FIXME: mention `ptr::invalid` above, once it is stable.
 //! * All accesses performed by functions in this module are *non-atomic* in the sense
 //!   of [atomic operations] used to synchronize between threads. This means it is
 //!   undefined behavior to perform two concurrent accesses to the same location from different
@@ -63,19 +64,317 @@
 //! separate allocated object), heap allocations (each allocation created by the global allocator is
 //! a separate allocated object), and `static` variables.
 //!
+//!
+//! # Strict Provenance
+//!
+//! **The following text is non-normative, insufficiently formal, and is an extremely strict
+//! interpretation of provenance. It's ok if your code doesn't strictly conform to it.**
+//!
+//! [Strict Provenance][] is an experimental set of APIs that help tools that try
+//! to validate the memory-safety of your program's execution. Notably this includes [Miri][]
+//! and [CHERI][], which can detect when you access out of bounds memory or otherwise violate
+//! Rust's memory model.
+//!
+//! Provenance must exist in some form for any programming
+//! language compiled for modern computer architectures, but specifying a model for provenance
+//! in a way that is useful to both compilers and programmers is an ongoing challenge.
+//! The [Strict Provenance][] experiment seeks to explore the question: *what if we just said you
+//! couldn't do all the nasty operations that make provenance so messy?*
+//!
+//! What APIs would have to be removed? What APIs would have to be added? How much would code
+//! have to change, and is it worse or better now? Would any patterns become truly inexpressible?
+//! Could we carve out special exceptions for those patterns? Should we?
+//!
+//! A secondary goal of this project is to see if we can disambiguate the many functions of
+//! pointer<->integer casts enough for the definition of `usize` to be loosened so that it
+//! isn't *pointer*-sized but address-space/offset/allocation-sized (we'll probably continue
+//! to conflate these notions). This would potentially make it possible to more efficiently
+//! target platforms where pointers are larger than offsets, such as CHERI and maybe some
+//! segmented architecures.
+//!
+//! ## Provenance
+//!
+//! **This section is *non-normative* and is part of the [Strict Provenance][] experiment.**
+//!
+//! Pointers are not *simply* an "integer" or "address". For instance, it's uncontroversial
+//! to say that a Use After Free is clearly Undefined Behaviour, even if you "get lucky"
+//! and the freed memory gets reallocated before your read/write (in fact this is the
+//! worst-case scenario, UAFs would be much less concerning if this didn't happen!).
+//! To rationalize this claim, pointers need to somehow be *more* than just their addresses:
+//! they must have provenance.
+//!
+//! When an allocation is created, that allocation has a unique Original Pointer. For alloc
+//! APIs this is literally the pointer the call returns, and for local variables and statics,
+//! this is the name of the variable/static. This is mildly overloading the term "pointer"
+//! for the sake of brevity/exposition.
+//!
+//! The Original Pointer for an allocation is guaranteed to have unique access to the entire
+//! allocation and *only* that allocation. In this sense, an allocation can be thought of
+//! as a "sandbox" that cannot be broken into or out of. *Provenance* is the permission
+//! to access an allocation's sandbox and has both a *spatial* and *temporal* component:
+//!
+//! * Spatial: A range of bytes that the pointer is allowed to access.
+//! * Temporal: The lifetime (of the allocation) that access to these bytes is tied to.
+//!
+//! Spatial provenance makes sure you don't go beyond your sandbox, while temporal provenance
+//! makes sure that you can't "get lucky" after your permission to access some memory
+//! has been revoked (either through deallocations or borrows expiring).
+//!
+//! Provenance is implicitly shared with all pointers transitively derived from
+//! The Original Pointer through operations like [`offset`], borrowing, and pointer casts.
+//! Some operations may *shrink* the derived provenance, limiting how much memory it can
+//! access or how long it's valid for (i.e. borrowing a subfield and subslicing).
+//!
+//! Shrinking provenance cannot be undone: even if you "know" there is a larger allocation, you
+//! can't derive a pointer with a larger provenance. Similarly, you cannot "recombine"
+//! two contiguous provenances back into one (i.e. with a `fn merge(&[T], &[T]) -> &[T]`).
+//!
+//! A reference to a value always has provenance over exactly the memory that field occupies.
+//! A reference to a slice always has provenance over exactly the range that slice describes.
+//!
+//! If an allocation is deallocated, all pointers with provenance to that allocation become
+//! invalidated, and effectively lose their provenance.
+//!
+//! The strict provenance experiment is mostly only interested in exploring stricter *spatial*
+//! provenance. In this sense it can be thought of as a subset of the more ambitious and
+//! formal [Stacked Borrows][] research project, which is what tools like [Miri][] are based on.
+//! In particular, Stacked Borrows is necessary to properly describe what borrows are allowed
+//! to do and when they become invalidated. This necessarily involves much more complex
+//! *temporal* reasoning than simply identifying allocations. Adjusting APIs and code
+//! for the strict provenance experiment will also greatly help Stacked Borrows.
+//!
+//!
+//! ## Pointer Vs Addresses
+//!
+//! **This section is *non-normative* and is part of the [Strict Provenance][] experiment.**
+//!
+//! One of the largest historical issues with trying to define provenance is that programmers
+//! freely convert between pointers and integers. Once you allow for this, it generally becomes
+//! impossible to accurately track and preserve provenance information, and you need to appeal
+//! to very complex and unreliable heuristics. But of course, converting between pointers and
+//! integers is very useful, so what can we do?
+//!
+//! Also did you know WASM is actually a "Harvard Architecture"? As in function pointers are
+//! handled completely differently from data pointers? And we kind of just shipped Rust on WASM
+//! without really addressing the fact that we let you freely convert between function pointers
+//! and data pointers, because it mostly Just Works? Let's just put that on the "pointer casts
+//! are dubious" pile.
+//!
+//! Strict Provenance attempts to square these circles by decoupling Rust's traditional conflation
+//! of pointers and `usize` (and `isize`), and defining a pointer to semantically contain the
+//! following information:
+//!
+//! * The **address-space** it is part of (e.g. "data" vs "code" in WASM).
+//! * The **address** it points to, which can be represented by a `usize`.
+//! * The **provenance** it has, defining the memory it has permission to access.
+//!
+//! Under Strict Provenance, a usize *cannot* accurately represent a pointer, and converting from
+//! a pointer to a usize is generally an operation which *only* extracts the address. It is
+//! therefore *impossible* to construct a valid pointer from a usize because there is no way
+//! to restore the address-space and provenance. In other words, pointer-integer-pointer
+//! roundtrips are not possible (in the sense that the resulting pointer is not dereferencable).
+//!
+//! The key insight to making this model *at all* viable is the [`with_addr`][] method:
+//!
+//! ```text
+//!     /// Creates a new pointer with the given address.
+//!     ///
+//!     /// This performs the same operation as an `addr as ptr` cast, but copies
+//!     /// the *address-space* and *provenance* of `self` to the new pointer.
+//!     /// This allows us to dynamically preserve and propagate this important
+//!     /// information in a way that is otherwise impossible with a unary cast.
+//!     ///
+//!     /// This is equivalent to using `wrapping_offset` to offset `self` to the
+//!     /// given address, and therefore has all the same capabilities and restrictions.
+//!     pub fn with_addr(self, addr: usize) -> Self;
+//! ```
+//!
+//! So you're still able to drop down to the address representation and do whatever
+//! clever bit tricks you want *as long as* you're able to keep around a pointer
+//! into the allocation you care about that can "reconstitute" the other parts of the pointer.
+//! Usually this is very easy, because you only are taking a pointer, messing with the address,
+//! and then immediately converting back to a pointer. To make this use case more ergonomic,
+//! we provide the [`map_addr`][] method.
+//!
+//! To help make it clear that code is "following" Strict Provenance semantics, we also provide an
+//! [`addr`][] method which promises that the returned address is not part of a
+//! pointer-usize-pointer roundtrip. In the future we may provide a lint for pointer<->integer
+//! casts to help you audit if your code conforms to strict provenance.
+//!
+//!
+//! ## Using Strict Provenance
+//!
+//! Most code needs no changes to conform to strict provenance, as the only really concerning
+//! operation that *wasn't* obviously already Undefined Behaviour is casts from usize to a
+//! pointer. For code which *does* cast a usize to a pointer, the scope of the change depends
+//! on exactly what you're doing.
+//!
+//! In general you just need to make sure that if you want to convert a usize address to a
+//! pointer and then use that pointer to read/write memory, you need to keep around a pointer
+//! that has sufficient provenance to perform that read/write itself. In this way all of your
+//! casts from an address to a pointer are essentially just applying offsets/indexing.
+//!
+//! This is generally trivial to do for simple cases like tagged pointers *as long as you
+//! represent the tagged pointer as an actual pointer and not a usize*. For instance:
+//!
+//! ```
+//! #![feature(strict_provenance)]
+//!
+//! unsafe {
+//!     // A flag we want to pack into our pointer
+//!     static HAS_DATA: usize = 0x1;
+//!     static FLAG_MASK: usize = !HAS_DATA;
+//!
+//!     // Our value, which must have enough alignment to have spare least-significant-bits.
+//!     let my_precious_data: u32 = 17;
+//!     assert!(core::mem::align_of::<u32>() > 1);
+//!
+//!     // Create a tagged pointer
+//!     let ptr = &my_precious_data as *const u32;
+//!     let tagged = ptr.map_addr(|addr| addr | HAS_DATA);
+//!
+//!     // Check the flag:
+//!     if tagged.addr() & HAS_DATA != 0 {
+//!         // Untag and read the pointer
+//!         let data = *tagged.map_addr(|addr| addr & FLAG_MASK);
+//!         assert_eq!(data, 17);
+//!     } else {
+//!         unreachable!()
+//!     }
+//! }
+//! ```
+//!
+//! (Yes, if you've been using AtomicUsize for pointers in concurrent datastructures, you should
+//! be using AtomicPtr instead. If that messes up the way you atomically manipulate pointers,
+//! we would like to know why, and what needs to be done to fix it.)
+//!
+//! Something more complicated and just generally *evil* like an XOR-List requires more significant
+//! changes like allocating all nodes in a pre-allocated Vec or Arena and using a pointer
+//! to the whole allocation to reconstitute the XORed addresses.
+//!
+//! Situations where a valid pointer *must* be created from just an address, such as baremetal code
+//! accessing a memory-mapped interface at a fixed address, are an open question on how to support.
+//! These situations *will* still be allowed, but we might require some kind of "I know what I'm
+//! doing" annotation to explain the situation to the compiler. It's also possible they need no
+//! special attention at all, because they're generally accessing memory outside the scope of
+//! "the abstract machine", or already using "I know what I'm doing" annotations like "volatile".
+//!
+//! Under [Strict Provenance] it is Undefined Behaviour to:
+//!
+//! * Access memory through a pointer that does not have provenance over that memory.
+//!
+//! * [`offset`] a pointer to or from an address it doesn't have provenance over.
+//!   This means it's always UB to offset a pointer derived from something deallocated,
+//!   even if the offset is 0. Note that a pointer "one past the end" of its provenance
+//!   is not actually outside its provenance, it just has 0 bytes it can load/store.
+//!
+//! But it *is* still sound to:
+//!
+//! * Create an invalid pointer from just an address (see [`ptr::invalid`][]). This can
+//!   be used for sentinel values like `null` *or* to represent a tagged pointer that will
+//!   never be dereferencable. In general, it is always sound for an integer to pretend
+//!   to be a pointer "for fun" as long as you don't use operations on it which require
+//!   it to be valid (offset, read, write, etc).
+//!
+//! * Forge an allocation of size zero at any sufficiently aligned non-null address.
+//!   i.e. the usual "ZSTs are fake, do what you want" rules apply *but* this only applies
+//!   for actual forgery (integers cast to pointers). If you borrow some struct's field
+//!   that *happens* to be zero-sized, the resulting pointer will have provenance tied to
+//!   that allocation and it will still get invalidated if the allocation gets deallocated.
+//!   In the future we may introduce an API to make such a forged allocation explicit.
+//!
+//! * [`wrapping_offset`][] a pointer outside its provenance. This includes invalid pointers
+//!   which have "no" provenance. Unfortunately there may be practical limits on this for a
+//!   particular platform, and it's an open question as to how to specify this (if at all).
+//!   Notably, [CHERI][] relies on a compression scheme that can't handle a
+//!   pointer getting offset "too far" out of bounds. If this happens, the address
+//!   returned by `addr` will be the value you expect, but the provenance will get invalidated
+//!   and using it to read/write will fault. The details of this are architecture-specific
+//!   and based on alignment, but the buffer on either side of the pointer's range is pretty
+//!   generous (think kilobytes, not bytes).
+//!
+//! * Compare arbitrary pointers by address. Addresses *are* just integers and so there is
+//!   always a coherent answer, even if the pointers are invalid or from different
+//!   address-spaces/provenances. Of course, comparing addresses from different address-spaces
+//!   is generally going to be *meaningless*, but so is comparing Kilograms to Meters, and Rust
+//!   doesn't prevent that either. Similarly, if you get "lucky" and notice that a pointer
+//!   one-past-the-end is the "same" address as the start of an unrelated allocation, anything
+//!   you do with that fact is *probably* going to be gibberish. The scope of that gibberish
+//!   is kept under control by the fact that the two pointers *still* aren't allowed to access
+//!   the other's allocation (bytes), because they still have different provenance.
+//!
+//! * Perform pointer tagging tricks. This falls out of [`wrapping_offset`] but is worth
+//!   mentioning in more detail because of the limitations of [CHERI][]. Low-bit tagging
+//!   is very robust, and often doesn't even go out of bounds because types ensure
+//!   size >= align (and over-aligning actually gives CHERI more flexibility). Anything
+//!   more complex than this rapidly enters "extremely platform-specific" territory as
+//!   certain things may or may not be allowed based on specific supported operations.
+//!   For instance, ARM explicitly supports high-bit tagging, and so CHERI on ARM inherits
+//!   that and should support it.
+//!
+//! ## Pointer-usize-pointer roundtrips and 'exposed' provenance
+//!
+//! **This section is *non-normative* and is part of the [Strict Provenance] experiment.**
+//!
+//! As discussed above, pointer-usize-pointer roundtrips are not possible under [Strict Provenance].
+//! However, there exists legacy Rust code that is full of such roundtrips, and legacy platform APIs
+//! regularly assume that `usize` can capture all the information that makes up a pointer. There
+//! also might be code that cannot be ported to Strict Provenance (which is something we would [like
+//! to hear about][Strict Provenance]).
+//!
+//! For situations like this, there is a fallback plan, a way to 'opt out' of Strict Provenance.
+//! However, note that this makes your code a lot harder to specify, and the code will not work
+//! (well) with tools like [Miri] and [CHERI].
+//!
+//! This fallback plan is provided by the [`expose_addr`] and [`from_exposed_addr`] methods (which
+//! are equivalent to `as` casts between pointers and integers). [`expose_addr`] is a lot like
+//! [`addr`], but additionally adds the provenance of the pointer to a global list of 'exposed'
+//! provenances. (This list is purely conceptual, it exists for the purpose of specifying Rust but
+//! is not materialized in actual executions, except in tools like [Miri].) [`from_exposed_addr`]
+//! can be used to construct a pointer with one of these previously 'exposed' provenances.
+//! [`from_exposed_addr`] takes only `addr: usize` as arguments, so unlike in [`with_addr`] there is
+//! no indication of what the correct provenance for the returned pointer is -- and that is exactly
+//! what makes pointer-usize-pointer roundtrips so tricky to rigorously specify! There is no
+//! algorithm that decides which provenance will be used. You can think of this as "guessing" the
+//! right provenance, and the guess will be "maximally in your favor", in the sense that if there is
+//! any way to avoid undefined behavior, then that is the guess that will be taken. However, if
+//! there is *no* previously 'exposed' provenance that justifies the way the returned pointer will
+//! be used, the program has undefined behavior.
+//!
+//! Using [`expose_addr`] or [`from_exposed_addr`] (or the equivalent `as` casts) means that code is
+//! *not* following Strict Provenance rules. The goal of the Strict Provenance experiment is to
+//! determine whether it is possible to use Rust without [`expose_addr`] and [`from_exposed_addr`].
+//! If this is successful, it would be a major win for avoiding specification complexity and to
+//! facilitate adoption of tools like [CHERI] and [Miri] that can be a big help in increasing the
+//! confidence in (unsafe) Rust code.
+//!
 //! [aliasing]: ../../nomicon/aliasing.html
 //! [book]: ../../book/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
 //! [ub]: ../../reference/behavior-considered-undefined.html
 //! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
 //! [atomic operations]: crate::sync::atomic
 //! [`offset`]: pointer::offset
+//! [`wrapping_offset`]: pointer::wrapping_offset
+//! [`with_addr`]: pointer::with_addr
+//! [`map_addr`]: pointer::map_addr
+//! [`addr`]: pointer::addr
+//! [`ptr::invalid`]: core::ptr::invalid
+//! [`expose_addr`]: pointer::expose_addr
+//! [`from_exposed_addr`]: from_exposed_addr
+//! [Miri]: https://github.com/rust-lang/miri
+//! [CHERI]: https://www.cl.cam.ac.uk/research/security/ctsrd/cheri/
+//! [Strict Provenance]: https://github.com/rust-lang/rust/issues/95228
+//! [Stacked Borrows]: https://plv.mpi-sws.org/rustbelt/stacked-borrows/
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{self, abort, is_aligned_and_not_null};
+use crate::intrinsics::{
+    self, assert_unsafe_precondition, is_aligned_and_not_null, is_nonoverlapping,
+};
+
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -209,8 +508,31 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null"]
+#[cfg(bootstrap)]
 pub const fn null<T>() -> *const T {
-    0 as *const T
+    invalid(0)
+}
+
+/// Creates a null raw pointer.
+///
+/// # Examples
+///
+/// ```
+/// use std::ptr;
+///
+/// let p: *const i32 = ptr::null();
+/// assert!(p.is_null());
+/// ```
+#[inline(always)]
+#[must_use]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_promotable]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
+#[rustc_allow_const_fn_unstable(ptr_metadata)]
+#[rustc_diagnostic_item = "ptr_null"]
+#[cfg(not(bootstrap))]
+pub const fn null<T: ?Sized + Thin>() -> *const T {
+    from_raw_parts(invalid(0), ())
 }
 
 /// Creates a null mutable raw pointer.
@@ -229,8 +551,165 @@ pub const fn null<T>() -> *const T {
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null_mut"]
+#[cfg(bootstrap)]
 pub const fn null_mut<T>() -> *mut T {
-    0 as *mut T
+    invalid_mut(0)
+}
+
+/// Creates an invalid pointer with the given address.
+///
+/// This is different from `addr as *const T`, which creates a pointer that picks up a previously
+/// exposed provenance. See [`from_exposed_addr`] for more details on that operation.
+///
+/// The module's top-level documentation discusses the precise meaning of an "invalid"
+/// pointer but essentially this expresses that the pointer is not associated
+/// with any actual allocation and is little more than a usize address in disguise.
+///
+/// This pointer will have no provenance associated with it and is therefore
+/// UB to read/write/offset. This mostly exists to facilitate things
+/// like `ptr::null` and `NonNull::dangling` which make invalid pointers.
+///
+/// (Standard "Zero-Sized-Types get to cheat and lie" caveats apply, although it
+/// may be desirable to give them their own API just to make that 100% clear.)
+///
+/// This API and its claimed semantics are part of the Strict Provenance experiment,
+/// see the [module documentation][crate::ptr] for details.
+#[inline(always)]
+#[must_use]
+#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[unstable(feature = "strict_provenance", issue = "95228")]
+pub const fn invalid<T>(addr: usize) -> *const T {
+    // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+    // We use transmute rather than a cast so tools like Miri can tell that this
+    // is *not* the same as from_exposed_addr.
+    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
+    // pointer).
+    unsafe { mem::transmute(addr) }
+}
+
+/// Creates an invalid mutable pointer with the given address.
+///
+/// This is different from `addr as *mut T`, which creates a pointer that picks up a previously
+/// exposed provenance. See [`from_exposed_addr_mut`] for more details on that operation.
+///
+/// The module's top-level documentation discusses the precise meaning of an "invalid"
+/// pointer but essentially this expresses that the pointer is not associated
+/// with any actual allocation and is little more than a usize address in disguise.
+///
+/// This pointer will have no provenance associated with it and is therefore
+/// UB to read/write/offset. This mostly exists to facilitate things
+/// like `ptr::null` and `NonNull::dangling` which make invalid pointers.
+///
+/// (Standard "Zero-Sized-Types get to cheat and lie" caveats apply, although it
+/// may be desirable to give them their own API just to make that 100% clear.)
+///
+/// This API and its claimed semantics are part of the Strict Provenance experiment,
+/// see the [module documentation][crate::ptr] for details.
+#[inline(always)]
+#[must_use]
+#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[unstable(feature = "strict_provenance", issue = "95228")]
+pub const fn invalid_mut<T>(addr: usize) -> *mut T {
+    // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+    // We use transmute rather than a cast so tools like Miri can tell that this
+    // is *not* the same as from_exposed_addr.
+    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
+    // pointer).
+    unsafe { mem::transmute(addr) }
+}
+
+/// Convert an address back to a pointer, picking up a previously 'exposed' provenance.
+///
+/// This is equivalent to `addr as *const T`. The provenance of the returned pointer is that of *any*
+/// pointer that was previously passed to [`expose_addr`][pointer::expose_addr] or a `ptr as usize`
+/// cast. If there is no previously 'exposed' provenance that justifies the way this pointer will be
+/// used, the program has undefined behavior. Note that there is no algorithm that decides which
+/// provenance will be used. You can think of this as "guessing" the right provenance, and the guess
+/// will be "maximally in your favor", in the sense that if there is any way to avoid undefined
+/// behavior, then that is the guess that will be taken.
+///
+/// On platforms with multiple address spaces, it is your responsibility to ensure that the
+/// address makes sense in the address space that this pointer will be used with.
+///
+/// Using this method means that code is *not* following strict provenance rules. "Guessing" a
+/// suitable provenance complicates specification and reasoning and may not be supported by
+/// tools that help you to stay conformant with the Rust memory model, so it is recommended to
+/// use [`with_addr`][pointer::with_addr] wherever possible.
+///
+/// On most platforms this will produce a value with the same bytes as the address. Platforms
+/// which need to store additional information in a pointer may not support this operation,
+/// since it is generally not possible to actually *compute* which provenance the returned
+/// pointer has to pick up.
+///
+/// This API and its claimed semantics are part of the Strict Provenance experiment, see the
+/// [module documentation][crate::ptr] for details.
+#[must_use]
+#[inline]
+#[unstable(feature = "strict_provenance", issue = "95228")]
+pub fn from_exposed_addr<T>(addr: usize) -> *const T
+where
+    T: Sized,
+{
+    // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+    addr as *const T
+}
+
+/// Convert an address back to a mutable pointer, picking up a previously 'exposed' provenance.
+///
+/// This is equivalent to `addr as *mut T`. The provenance of the returned pointer is that of *any*
+/// pointer that was previously passed to [`expose_addr`][pointer::expose_addr] or a `ptr as usize`
+/// cast. If there is no previously 'exposed' provenance that justifies the way this pointer will be
+/// used, the program has undefined behavior. Note that there is no algorithm that decides which
+/// provenance will be used. You can think of this as "guessing" the right provenance, and the guess
+/// will be "maximally in your favor", in the sense that if there is any way to avoid undefined
+/// behavior, then that is the guess that will be taken.
+///
+/// On platforms with multiple address spaces, it is your responsibility to ensure that the
+/// address makes sense in the address space that this pointer will be used with.
+///
+/// Using this method means that code is *not* following strict provenance rules. "Guessing" a
+/// suitable provenance complicates specification and reasoning and may not be supported by
+/// tools that help you to stay conformant with the Rust memory model, so it is recommended to
+/// use [`with_addr`][pointer::with_addr] wherever possible.
+///
+/// On most platforms this will produce a value with the same bytes as the address. Platforms
+/// which need to store additional information in a pointer may not support this operation,
+/// since it is generally not possible to actually *compute* which provenance the returned
+/// pointer has to pick up.
+///
+/// This API and its claimed semantics are part of the Strict Provenance experiment, see the
+/// [module documentation][crate::ptr] for details.
+#[must_use]
+#[inline]
+#[unstable(feature = "strict_provenance", issue = "95228")]
+pub fn from_exposed_addr_mut<T>(addr: usize) -> *mut T
+where
+    T: Sized,
+{
+    // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+    addr as *mut T
+}
+
+/// Creates a null mutable raw pointer.
+///
+/// # Examples
+///
+/// ```
+/// use std::ptr;
+///
+/// let p: *mut i32 = ptr::null_mut();
+/// assert!(p.is_null());
+/// ```
+#[inline(always)]
+#[must_use]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_promotable]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
+#[rustc_allow_const_fn_unstable(ptr_metadata)]
+#[rustc_diagnostic_item = "ptr_null_mut"]
+#[cfg(not(bootstrap))]
+pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
+    from_raw_parts_mut(invalid_mut(0), ())
 }
 
 /// Forms a raw slice from a pointer and a length.
@@ -326,8 +805,9 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 ///
 /// let mut array = [0, 1, 2, 3];
 ///
-/// let x = array[0..].as_mut_ptr() as *mut [u32; 2]; // this is `array[0..2]`
-/// let y = array[2..].as_mut_ptr() as *mut [u32; 2]; // this is `array[2..4]`
+/// let (x, y) = array.split_at_mut(2);
+/// let x = x.as_mut_ptr().cast::<[u32; 2]>(); // this is `array[0..2]`
+/// let y = y.as_mut_ptr().cast::<[u32; 2]>(); // this is `array[2..4]`
 ///
 /// unsafe {
 ///     ptr::swap(x, y);
@@ -438,7 +918,17 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         };
     }
 
-    // NOTE(scottmcm) MIRI is disabled here as reading in smaller units is a
+    // SAFETY: the caller must guarantee that `x` and `y` are
+    // valid for writes and properly aligned.
+    unsafe {
+        assert_unsafe_precondition!(
+            is_aligned_and_not_null(x)
+                && is_aligned_and_not_null(y)
+                && is_nonoverlapping(x, y, count)
+        );
+    }
+
+    // NOTE(scottmcm) Miri is disabled here as reading in smaller units is a
     // pessimization for it.  Also, if the type contains any unaligned pointers,
     // copying those over multiple reads is difficult to support.
     #[cfg(not(miri))]
@@ -528,6 +1018,7 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // and cannot overlap `src` since `dst` must point to a distinct
     // allocated object.
     unsafe {
+        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
         mem::swap(&mut *dst, &mut src); // cannot overlap
     }
     src
@@ -645,7 +1136,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     // We are calling the intrinsics directly to avoid function calls in the generated code
     // as `intrinsics::copy_nonoverlapping` is a wrapper function.
     extern "rust-intrinsic" {
-        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
         fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
 
@@ -840,7 +1331,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // We are calling the intrinsics directly to avoid function calls in the generated code
     // as `intrinsics::copy_nonoverlapping` is a wrapper function.
     extern "rust-intrinsic" {
-        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
+        #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
         fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
 
@@ -1007,12 +1498,11 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
-    if cfg!(debug_assertions) && !is_aligned_and_not_null(src) {
-        // Not panicking to keep codegen impact smaller.
-        abort();
-    }
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
-    unsafe { intrinsics::volatile_load(src) }
+    unsafe {
+        assert_unsafe_precondition!(is_aligned_and_not_null(src));
+        intrinsics::volatile_load(src)
+    }
 }
 
 /// Performs a volatile write of a memory location with the given value without
@@ -1078,12 +1568,9 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
-    if cfg!(debug_assertions) && !is_aligned_and_not_null(dst) {
-        // Not panicking to keep codegen impact smaller.
-        abort();
-    }
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
+        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
         intrinsics::volatile_store(dst, src);
     }
 }
@@ -1109,6 +1596,8 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     use intrinsics::{
         unchecked_shl, unchecked_shr, unchecked_sub, wrapping_add, wrapping_mul, wrapping_sub,
     };
+
+    let addr = p.addr();
 
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
     ///
@@ -1170,13 +1659,10 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         //
         // which distributes operations around the load-bearing, but pessimizing `and` sufficiently
         // for LLVM to be able to utilize the various optimizations it knows about.
-        return wrapping_sub(
-            wrapping_add(p as usize, a_minus_one) & wrapping_sub(0, a),
-            p as usize,
-        );
+        return wrapping_sub(wrapping_add(addr, a_minus_one) & wrapping_sub(0, a), addr);
     }
 
-    let pmoda = p as usize & a_minus_one;
+    let pmoda = addr & a_minus_one;
     if pmoda == 0 {
         // Already aligned. Yay!
         return 0;
@@ -1193,7 +1679,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     let gcd = unsafe { unchecked_shl(1usize, gcdpow) };
 
     // SAFETY: gcd is always greater or equal to 1.
-    if p as usize & unsafe { unchecked_sub(gcd, 1) } == 0 {
+    if addr & unsafe { unchecked_sub(gcd, 1) } == 0 {
         // This branch solves for the following linear congruence equation:
         //
         // ` p + so = 0 mod a `
@@ -1347,6 +1833,11 @@ pub fn hash<T: ?Sized, S: hash::Hasher>(hashee: *const T, into: &mut S) {
     hashee.hash(into);
 }
 
+// FIXME(strict_provenance_magic): function pointers have buggy codegen that
+// necessitates casting to a usize to get the backend to do the right thing.
+// for now I will break AVR to silence *a billion* lints. We should probably
+// have a proper "opaque function pointer type" to handle this kind of thing.
+
 // Impls for function pointers
 macro_rules! fnptr_impls_safety_abi {
     ($FnTy: ty, $($Arg: ident),*) => {
@@ -1387,24 +1878,14 @@ macro_rules! fnptr_impls_safety_abi {
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                // HACK: The intermediate cast as usize is required for AVR
-                // so that the address space of the source function pointer
-                // is preserved in the final function pointer.
-                //
-                // https://github.com/avr-rust/rust/issues/143
-                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
+                fmt::pointer_fmt_inner(*self as usize, f)
             }
         }
 
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                // HACK: The intermediate cast as usize is required for AVR
-                // so that the address space of the source function pointer
-                // is preserved in the final function pointer.
-                //
-                // https://github.com/avr-rust/rust/issues/143
-                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
+                fmt::pointer_fmt_inner(*self as usize, f)
             }
         }
     }

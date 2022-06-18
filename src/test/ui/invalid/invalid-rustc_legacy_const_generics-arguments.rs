@@ -29,6 +29,11 @@ extern {
 #[rustc_legacy_const_generics(0)] //~ ERROR #[rustc_legacy_const_generics] functions must only have
 fn foo8<X>() {}
 
+impl S {
+    #[rustc_legacy_const_generics(0)] //~ ERROR attribute should be applied to a function
+    fn foo9<const X: usize>() {}
+}
+
 #[rustc_legacy_const_generics] //~ ERROR malformed `rustc_legacy_const_generics` attribute
 fn bar1() {}
 

@@ -1,22 +1,20 @@
 error[E0282]: type annotations needed
   --> $DIR/issue-69455.rs:29:20
    |
-LL |     type Output;
-   |     ------------ `<Self as Test<Rhs>>::Output` defined here
-...
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                    |
-   |                    this method call resolves to `<Self as Test<Rhs>>::Output`
-   |                    cannot infer type for type parameter `T` declared on the associated function `new_display`
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the associated function `new_display`
    |
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider specifying the generic argument
+   |
+LL |     println!("{}", 23u64.test(xs.iter().sum())::<T>);
+   |                                               +++++
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-69455.rs:29:26
+  --> $DIR/issue-69455.rs:29:41
    |
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
-   |                          ^^^^ cannot infer type for type parameter `Rhs` declared on the trait `Test`
+   |                                         ^^^ cannot infer type of the type parameter `S` declared on the associated function `sum`
    |
 note: multiple `impl`s satisfying `u64: Test<_>` found
   --> $DIR/issue-69455.rs:11:1
@@ -26,7 +24,7 @@ LL | impl Test<u32> for u64 {
 ...
 LL | impl Test<u64> for u64 {
    | ^^^^^^^^^^^^^^^^^^^^^^
-help: consider specifying the type argument in the method call
+help: consider specifying the generic argument
    |
 LL |     println!("{}", 23u64.test(xs.iter().sum::<S>()));
    |                                            +++++

@@ -17,10 +17,10 @@ pub fn exhaustive_match(e: E) -> u8 {
 // CHECK: [[OTHERWISE]]:
 // CHECK-NEXT: unreachable
 // CHECK: [[A]]:
-// CHECK-NEXT: store i8 0, i8* %1, align 1
+// CHECK-NEXT: store i8 0, {{i8\*|ptr}} %1, align 1
 // CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
 // CHECK: [[B]]:
-// CHECK-NEXT: store i8 1, i8* %1, align 1
+// CHECK-NEXT: store i8 1, {{i8\*|ptr}} %1, align 1
 // CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
     match e {
         E::A => 0,

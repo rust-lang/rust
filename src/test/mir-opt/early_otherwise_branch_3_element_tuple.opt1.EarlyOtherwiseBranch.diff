@@ -34,6 +34,7 @@
           _6 = _2;                         // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:5:15: 5:16
           StorageLive(_7);                 // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:5:18: 5:19
           _7 = _3;                         // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:5:18: 5:19
+          Deinit(_4);                      // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:5:11: 5:20
           (_4.0: std::option::Option<u32>) = move _5; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:5:11: 5:20
           (_4.1: std::option::Option<u32>) = move _6; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:5:11: 5:20
           (_4.2: std::option::Option<u32>) = move _7; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:5:11: 5:20

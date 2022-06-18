@@ -1,22 +1,13 @@
-error[E0308]: mismatched types
-  --> $DIR/regions-infer-paramd-indirect.rs:22:18
-   |
-LL |         self.f = b;
-   |                  ^ lifetime mismatch
-   |
-   = note: expected struct `Box<Box<&'a isize>>`
-              found struct `Box<Box<&isize>>`
-note: the anonymous lifetime defined here...
-  --> $DIR/regions-infer-paramd-indirect.rs:21:36
-   |
-LL |     fn set_f_bad(&mut self, b: Box<B>) {
-   |                                    ^
-note: ...does not necessarily outlive the lifetime `'a` as defined here
-  --> $DIR/regions-infer-paramd-indirect.rs:16:6
+error: lifetime may not live long enough
+  --> $DIR/regions-infer-paramd-indirect.rs:22:9
    |
 LL | impl<'a> SetF<'a> for C<'a> {
-   |      ^^
+   |      -- lifetime `'a` defined here
+...
+LL |     fn set_f_bad(&mut self, b: Box<B>) {
+   |                             - has type `Box<Box<&'1 isize>>`
+LL |         self.f = b;
+   |         ^^^^^^ assignment requires that `'1` must outlive `'a`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0308`.

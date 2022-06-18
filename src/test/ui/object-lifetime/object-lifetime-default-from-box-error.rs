@@ -15,7 +15,9 @@ fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
     // `Box<SomeTrait>` defaults to a `'static` bound, so this return
     // is illegal.
 
-    ss.r //~ ERROR E0759
+    ss.r
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR cannot move out of
 }
 
 fn store(ss: &mut SomeStruct, b: Box<dyn SomeTrait>) {

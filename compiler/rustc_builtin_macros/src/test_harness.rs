@@ -112,7 +112,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
     fn visit_crate(&mut self, c: &mut ast::Crate) {
         let prev_tests = mem::take(&mut self.tests);
         noop_visit_crate(c, self);
-        self.add_test_cases(ast::CRATE_NODE_ID, c.span, prev_tests);
+        self.add_test_cases(ast::CRATE_NODE_ID, c.spans.inner_span, prev_tests);
 
         // Create a main function to run our tests
         c.items.push(mk_main(&mut self.cx));
@@ -129,7 +129,8 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(_, ModKind::Loaded(.., span)) = item.kind {
+        if let ast::ItemKind::Mod(_, ModKind::Loaded(.., ref spans)) = item.kind {
+            let ast::ModSpans { inner_span: span, inject_use_span: _ } = *spans;
             let prev_tests = mem::take(&mut self.tests);
             noop_visit_item_kind(&mut item.kind, self);
             self.add_test_cases(item.id, span, prev_tests);
@@ -248,7 +249,7 @@ fn generate_test_harness(
 ///
 /// By default this expands to
 ///
-/// ```
+/// ```ignore UNSOLVED (I think I still need guidance for this one. Is it correct? Do we try to make it run? How do we nicely fill it out?)
 /// #[rustc_main]
 /// pub fn main() {
 ///     extern crate test;

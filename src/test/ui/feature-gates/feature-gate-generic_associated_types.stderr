@@ -55,7 +55,7 @@ LL |     type Assoc where Self: Sized;
 error[E0658]: where clauses on associated types are unstable
   --> $DIR/feature-gate-generic_associated_types.rs:27:5
    |
-LL |     type Assoc where Self: Sized = Foo;
+LL |     type Assoc = Foo where Self: Sized;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information

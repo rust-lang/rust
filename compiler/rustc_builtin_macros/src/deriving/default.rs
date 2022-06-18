@@ -46,18 +46,7 @@ pub fn expand_deriving_default(
                     StaticStruct(_, fields) => {
                         default_struct_substructure(cx, trait_span, substr, fields)
                     }
-                    StaticEnum(enum_def, _) => {
-                        if !cx.sess.features_untracked().derive_default_enum {
-                            rustc_session::parse::feature_err(
-                                cx.parse_sess(),
-                                sym::derive_default_enum,
-                                span,
-                                "deriving `Default` on enums is experimental",
-                            )
-                            .emit();
-                        }
-                        default_enum_substructure(cx, trait_span, enum_def)
-                    }
+                    StaticEnum(enum_def, _) => default_enum_substructure(cx, trait_span, enum_def),
                     _ => cx.span_bug(trait_span, "method in `derive(Default)`"),
                 }
             })),
@@ -246,7 +235,7 @@ fn validate_default_attribute(
             .span_suggestion_hidden(
                 attr.span,
                 "try using `#[default]`",
-                "#[default]".into(),
+                "#[default]",
                 Applicability::MaybeIncorrect,
             )
             .emit();

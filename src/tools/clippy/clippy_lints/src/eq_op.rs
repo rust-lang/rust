@@ -30,9 +30,9 @@ declare_clippy_lint! {
     /// ```rust
     /// # let x = 1;
     /// if x + 1 == x + 1 {}
-    /// ```
-    /// or
-    /// ```rust
+    ///
+    /// // or
+    ///
     /// # let a = 3;
     /// # let b = 4;
     /// assert_eq!(a, a);
@@ -52,15 +52,13 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// It is more idiomatic to dereference the other argument.
     ///
-    /// ### Known problems
-    /// None
-    ///
     /// ### Example
-    /// ```ignore
-    /// // Bad
+    /// ```rust,ignore
     /// &x == y
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust,ignore
     /// x == *y
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -72,7 +70,7 @@ declare_clippy_lint! {
 declare_lint_pass!(EqOp => [EQ_OP, OP_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for EqOp {
-    #[allow(clippy::similar_names, clippy::too_many_lines)]
+    #[expect(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if_chain! {
             if let Some((macro_call, macro_name)) = first_node_macro_backtrace(cx, e).find_map(|macro_call| {
@@ -138,7 +136,6 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                 },
             };
             if let Some(trait_id) = trait_id {
-                #[allow(clippy::match_same_arms)]
                 match (&left.kind, &right.kind) {
                     // do not suggest to dereference literals
                     (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {},
@@ -306,7 +303,7 @@ fn in_impl<'tcx>(
 fn are_equal<'tcx>(cx: &LateContext<'tcx>, middle_ty: Ty<'_>, hir_ty: &rustc_hir::Ty<'_>) -> bool {
     if_chain! {
         if let ty::Adt(adt_def, _) = middle_ty.kind();
-        if let Some(local_did) = adt_def.did.as_local();
+        if let Some(local_did) = adt_def.did().as_local();
         let item = cx.tcx.hir().expect_item(local_did);
         let middle_ty_id = item.def_id.to_def_id();
         if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;

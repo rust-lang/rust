@@ -5,7 +5,8 @@
 async fn a() {}
 
 async fn foo() -> Result<(), i32> {
-    Ok(a().await) //~ ERROR mismatched types
+    a().await;
+    Ok(()) //~ ERROR mismatched types
 }
 
 fn main() {}

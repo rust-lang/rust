@@ -1,23 +1,23 @@
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/repr-transparent-other-reprs.rs:5:8
+  --> $DIR/repr-transparent-other-reprs.rs:3:8
    |
 LL | #[repr(transparent, C)]
    |        ^^^^^^^^^^^  ^
 
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/repr-transparent-other-reprs.rs:10:8
+  --> $DIR/repr-transparent-other-reprs.rs:8:8
    |
 LL | #[repr(transparent, packed)]
    |        ^^^^^^^^^^^  ^^^^^^
 
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/repr-transparent-other-reprs.rs:13:8
+  --> $DIR/repr-transparent-other-reprs.rs:11:8
    |
 LL | #[repr(transparent, align(2))]
    |        ^^^^^^^^^^^  ^^^^^^^^
 
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/repr-transparent-other-reprs.rs:16:8
+  --> $DIR/repr-transparent-other-reprs.rs:14:8
    |
 LL | #[repr(transparent)]
    |        ^^^^^^^^^^^

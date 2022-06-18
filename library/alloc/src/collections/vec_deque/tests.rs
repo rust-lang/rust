@@ -1,3 +1,5 @@
+use core::iter::TrustedLen;
+
 use super::*;
 
 #[bench]
@@ -160,6 +162,300 @@ fn test_insert() {
             }
         }
     }
+}
+
+#[test]
+fn test_get() {
+    let mut tester = VecDeque::new();
+    tester.push_back(1);
+    tester.push_back(2);
+    tester.push_back(3);
+
+    assert_eq!(tester.len(), 3);
+
+    assert_eq!(tester.get(1), Some(&2));
+    assert_eq!(tester.get(2), Some(&3));
+    assert_eq!(tester.get(0), Some(&1));
+    assert_eq!(tester.get(3), None);
+
+    tester.remove(0);
+
+    assert_eq!(tester.len(), 2);
+    assert_eq!(tester.get(0), Some(&2));
+    assert_eq!(tester.get(1), Some(&3));
+    assert_eq!(tester.get(2), None);
+}
+
+#[test]
+fn test_get_mut() {
+    let mut tester = VecDeque::new();
+    tester.push_back(1);
+    tester.push_back(2);
+    tester.push_back(3);
+
+    assert_eq!(tester.len(), 3);
+
+    if let Some(elem) = tester.get_mut(0) {
+        assert_eq!(*elem, 1);
+        *elem = 10;
+    }
+
+    if let Some(elem) = tester.get_mut(2) {
+        assert_eq!(*elem, 3);
+        *elem = 30;
+    }
+
+    assert_eq!(tester.get(0), Some(&10));
+    assert_eq!(tester.get(2), Some(&30));
+    assert_eq!(tester.get_mut(3), None);
+
+    tester.remove(2);
+
+    assert_eq!(tester.len(), 2);
+    assert_eq!(tester.get(0), Some(&10));
+    assert_eq!(tester.get(1), Some(&2));
+    assert_eq!(tester.get(2), None);
+}
+
+#[test]
+fn test_swap() {
+    let mut tester = VecDeque::new();
+    tester.push_back(1);
+    tester.push_back(2);
+    tester.push_back(3);
+
+    assert_eq!(tester, [1, 2, 3]);
+
+    tester.swap(0, 0);
+    assert_eq!(tester, [1, 2, 3]);
+    tester.swap(0, 1);
+    assert_eq!(tester, [2, 1, 3]);
+    tester.swap(2, 1);
+    assert_eq!(tester, [2, 3, 1]);
+    tester.swap(1, 2);
+    assert_eq!(tester, [2, 1, 3]);
+    tester.swap(0, 2);
+    assert_eq!(tester, [3, 1, 2]);
+    tester.swap(2, 2);
+    assert_eq!(tester, [3, 1, 2]);
+}
+
+#[test]
+#[should_panic = "assertion failed: j < self.len()"]
+fn test_swap_panic() {
+    let mut tester = VecDeque::new();
+    tester.push_back(1);
+    tester.push_back(2);
+    tester.push_back(3);
+    tester.swap(2, 3);
+}
+
+#[test]
+fn test_reserve_exact() {
+    let mut tester: VecDeque<i32> = VecDeque::with_capacity(1);
+    assert!(tester.capacity() == 1);
+    tester.reserve_exact(50);
+    assert!(tester.capacity() >= 51);
+    tester.reserve_exact(40);
+    assert!(tester.capacity() >= 51);
+    tester.reserve_exact(200);
+    assert!(tester.capacity() >= 200);
+}
+
+#[test]
+#[should_panic = "capacity overflow"]
+fn test_reserve_exact_panic() {
+    let mut tester: VecDeque<i32> = VecDeque::new();
+    tester.reserve_exact(usize::MAX);
+}
+
+#[test]
+fn test_try_reserve_exact() {
+    let mut tester: VecDeque<i32> = VecDeque::with_capacity(1);
+    assert!(tester.capacity() == 1);
+    assert_eq!(tester.try_reserve_exact(100), Ok(()));
+    assert!(tester.capacity() >= 100);
+    assert_eq!(tester.try_reserve_exact(50), Ok(()));
+    assert!(tester.capacity() >= 100);
+    assert_eq!(tester.try_reserve_exact(200), Ok(()));
+    assert!(tester.capacity() >= 200);
+    assert_eq!(tester.try_reserve_exact(0), Ok(()));
+    assert!(tester.capacity() >= 200);
+    assert!(tester.try_reserve_exact(usize::MAX).is_err());
+}
+
+#[test]
+fn test_try_reserve() {
+    let mut tester: VecDeque<i32> = VecDeque::with_capacity(1);
+    assert!(tester.capacity() == 1);
+    assert_eq!(tester.try_reserve(100), Ok(()));
+    assert!(tester.capacity() >= 100);
+    assert_eq!(tester.try_reserve(50), Ok(()));
+    assert!(tester.capacity() >= 100);
+    assert_eq!(tester.try_reserve(200), Ok(()));
+    assert!(tester.capacity() >= 200);
+    assert_eq!(tester.try_reserve(0), Ok(()));
+    assert!(tester.capacity() >= 200);
+    assert!(tester.try_reserve(usize::MAX).is_err());
+}
+
+#[test]
+fn test_contains() {
+    let mut tester = VecDeque::new();
+    tester.push_back(1);
+    tester.push_back(2);
+    tester.push_back(3);
+
+    assert!(tester.contains(&1));
+    assert!(tester.contains(&3));
+    assert!(!tester.contains(&0));
+    assert!(!tester.contains(&4));
+    tester.remove(0);
+    assert!(!tester.contains(&1));
+    assert!(tester.contains(&2));
+    assert!(tester.contains(&3));
+}
+
+#[test]
+fn test_rotate_left_right() {
+    let mut tester: VecDeque<_> = (1..=10).collect();
+
+    assert_eq!(tester.len(), 10);
+
+    tester.rotate_left(0);
+    assert_eq!(tester, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+    tester.rotate_right(0);
+    assert_eq!(tester, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+    tester.rotate_left(3);
+    assert_eq!(tester, [4, 5, 6, 7, 8, 9, 10, 1, 2, 3]);
+
+    tester.rotate_right(5);
+    assert_eq!(tester, [9, 10, 1, 2, 3, 4, 5, 6, 7, 8]);
+
+    tester.rotate_left(tester.len());
+    assert_eq!(tester, [9, 10, 1, 2, 3, 4, 5, 6, 7, 8]);
+
+    tester.rotate_right(tester.len());
+    assert_eq!(tester, [9, 10, 1, 2, 3, 4, 5, 6, 7, 8]);
+
+    tester.rotate_left(1);
+    assert_eq!(tester, [10, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+}
+
+#[test]
+#[should_panic = "assertion failed: mid <= self.len()"]
+fn test_rotate_left_panic() {
+    let mut tester: VecDeque<_> = (1..=10).collect();
+    tester.rotate_left(tester.len() + 1);
+}
+
+#[test]
+#[should_panic = "assertion failed: k <= self.len()"]
+fn test_rotate_right_panic() {
+    let mut tester: VecDeque<_> = (1..=10).collect();
+    tester.rotate_right(tester.len() + 1);
+}
+
+#[test]
+fn test_binary_search() {
+    // If the givin VecDeque is not sorted, the returned result is unspecified and meaningless,
+    // as this method performs a binary search.
+
+    let tester: VecDeque<_> = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+
+    assert_eq!(tester.binary_search(&0), Ok(0));
+    assert_eq!(tester.binary_search(&5), Ok(5));
+    assert_eq!(tester.binary_search(&55), Ok(10));
+    assert_eq!(tester.binary_search(&4), Err(5));
+    assert_eq!(tester.binary_search(&-1), Err(0));
+    assert!(matches!(tester.binary_search(&1), Ok(1..=2)));
+
+    let tester: VecDeque<_> = [1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3].into();
+    assert_eq!(tester.binary_search(&1), Ok(0));
+    assert!(matches!(tester.binary_search(&2), Ok(1..=4)));
+    assert!(matches!(tester.binary_search(&3), Ok(5..=13)));
+    assert_eq!(tester.binary_search(&-2), Err(0));
+    assert_eq!(tester.binary_search(&0), Err(0));
+    assert_eq!(tester.binary_search(&4), Err(14));
+    assert_eq!(tester.binary_search(&5), Err(14));
+}
+
+#[test]
+fn test_binary_search_by() {
+    // If the givin VecDeque is not sorted, the returned result is unspecified and meaningless,
+    // as this method performs a binary search.
+
+    let tester: VecDeque<_> = [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+
+    assert_eq!(tester.binary_search_by(|x| x.cmp(&0)), Ok(0));
+    assert_eq!(tester.binary_search_by(|x| x.cmp(&5)), Ok(5));
+    assert_eq!(tester.binary_search_by(|x| x.cmp(&55)), Ok(10));
+    assert_eq!(tester.binary_search_by(|x| x.cmp(&4)), Err(5));
+    assert_eq!(tester.binary_search_by(|x| x.cmp(&-1)), Err(0));
+    assert!(matches!(tester.binary_search_by(|x| x.cmp(&1)), Ok(1..=2)));
+}
+
+#[test]
+fn test_binary_search_key() {
+    // If the givin VecDeque is not sorted, the returned result is unspecified and meaningless,
+    // as this method performs a binary search.
+
+    let tester: VecDeque<_> = [
+        (-1, 0),
+        (2, 10),
+        (6, 5),
+        (7, 1),
+        (8, 10),
+        (10, 2),
+        (20, 3),
+        (24, 5),
+        (25, 18),
+        (28, 13),
+        (31, 21),
+        (32, 4),
+        (54, 25),
+    ]
+    .into();
+
+    assert_eq!(tester.binary_search_by_key(&-1, |&(a, _b)| a), Ok(0));
+    assert_eq!(tester.binary_search_by_key(&8, |&(a, _b)| a), Ok(4));
+    assert_eq!(tester.binary_search_by_key(&25, |&(a, _b)| a), Ok(8));
+    assert_eq!(tester.binary_search_by_key(&54, |&(a, _b)| a), Ok(12));
+    assert_eq!(tester.binary_search_by_key(&-2, |&(a, _b)| a), Err(0));
+    assert_eq!(tester.binary_search_by_key(&1, |&(a, _b)| a), Err(1));
+    assert_eq!(tester.binary_search_by_key(&4, |&(a, _b)| a), Err(2));
+    assert_eq!(tester.binary_search_by_key(&13, |&(a, _b)| a), Err(6));
+    assert_eq!(tester.binary_search_by_key(&55, |&(a, _b)| a), Err(13));
+    assert_eq!(tester.binary_search_by_key(&100, |&(a, _b)| a), Err(13));
+
+    let tester: VecDeque<_> = [
+        (0, 0),
+        (2, 1),
+        (6, 1),
+        (5, 1),
+        (3, 1),
+        (1, 2),
+        (2, 3),
+        (4, 5),
+        (5, 8),
+        (8, 13),
+        (1, 21),
+        (2, 34),
+        (4, 55),
+    ]
+    .into();
+
+    assert_eq!(tester.binary_search_by_key(&0, |&(_a, b)| b), Ok(0));
+    assert!(matches!(tester.binary_search_by_key(&1, |&(_a, b)| b), Ok(1..=4)));
+    assert_eq!(tester.binary_search_by_key(&8, |&(_a, b)| b), Ok(8));
+    assert_eq!(tester.binary_search_by_key(&13, |&(_a, b)| b), Ok(9));
+    assert_eq!(tester.binary_search_by_key(&55, |&(_a, b)| b), Ok(12));
+    assert_eq!(tester.binary_search_by_key(&-1, |&(_a, b)| b), Err(0));
+    assert_eq!(tester.binary_search_by_key(&4, |&(_a, b)| b), Err(7));
+    assert_eq!(tester.binary_search_by_key(&56, |&(_a, b)| b), Err(13));
+    assert_eq!(tester.binary_search_by_key(&100, |&(_a, b)| b), Err(13));
 }
 
 #[test]
@@ -495,6 +791,101 @@ fn test_from_vec() {
     let vd = VecDeque::from(vec.clone());
     assert!(vd.cap().is_power_of_two());
     assert_eq!(vd.len(), vec.len());
+}
+
+#[test]
+fn test_extend_basic() {
+    test_extend_impl(false);
+}
+
+#[test]
+fn test_extend_trusted_len() {
+    test_extend_impl(true);
+}
+
+fn test_extend_impl(trusted_len: bool) {
+    struct VecDequeTester {
+        test: VecDeque<usize>,
+        expected: VecDeque<usize>,
+        trusted_len: bool,
+    }
+
+    impl VecDequeTester {
+        fn new(trusted_len: bool) -> Self {
+            Self { test: VecDeque::new(), expected: VecDeque::new(), trusted_len }
+        }
+
+        fn test_extend<I>(&mut self, iter: I)
+        where
+            I: Iterator<Item = usize> + TrustedLen + Clone,
+        {
+            struct BasicIterator<I>(I);
+            impl<I> Iterator for BasicIterator<I>
+            where
+                I: Iterator<Item = usize>,
+            {
+                type Item = usize;
+
+                fn next(&mut self) -> Option<Self::Item> {
+                    self.0.next()
+                }
+            }
+
+            if self.trusted_len {
+                self.test.extend(iter.clone());
+            } else {
+                self.test.extend(BasicIterator(iter.clone()));
+            }
+
+            for item in iter {
+                self.expected.push_back(item)
+            }
+
+            assert_eq!(self.test, self.expected);
+            let (a1, b1) = self.test.as_slices();
+            let (a2, b2) = self.expected.as_slices();
+            assert_eq!(a1, a2);
+            assert_eq!(b1, b2);
+        }
+
+        fn drain<R: RangeBounds<usize> + Clone>(&mut self, range: R) {
+            self.test.drain(range.clone());
+            self.expected.drain(range);
+
+            assert_eq!(self.test, self.expected);
+        }
+
+        fn clear(&mut self) {
+            self.test.clear();
+            self.expected.clear();
+        }
+
+        fn remaining_capacity(&self) -> usize {
+            self.test.capacity() - self.test.len()
+        }
+    }
+
+    let mut tester = VecDequeTester::new(trusted_len);
+
+    // Initial capacity
+    tester.test_extend(0..tester.remaining_capacity() - 1);
+
+    // Grow
+    tester.test_extend(1024..2048);
+
+    // Wrap around
+    tester.drain(..128);
+
+    tester.test_extend(0..tester.remaining_capacity() - 1);
+
+    // Continue
+    tester.drain(256..);
+    tester.test_extend(4096..8196);
+
+    tester.clear();
+
+    // Start again
+    tester.test_extend(0..32);
 }
 
 #[test]

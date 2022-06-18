@@ -11,7 +11,7 @@ fn make() -> Box<dyn Foo<Bar = &'static u32>> {
 
 fn take<'a>(_: &'a u32) {
     let _: Box<dyn Foo<Bar = &'a u32>> = make();
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

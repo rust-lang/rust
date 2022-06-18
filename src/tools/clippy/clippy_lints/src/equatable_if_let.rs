@@ -26,7 +26,7 @@ declare_clippy_lint! {
     ///     do_thing();
     /// }
     /// ```
-    /// Should be written
+    /// Use instead:
     /// ```rust,ignore
     /// if x == Some(2) {
     ///     do_thing();

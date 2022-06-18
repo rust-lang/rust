@@ -6,9 +6,10 @@ use rustc_middle::thir::*;
 use rustc_middle::ty;
 
 use rustc_index::vec::Idx;
+use rustc_middle::ty::CanonicalUserTypeAnnotation;
 
 impl<'tcx> Cx<'tcx> {
-    crate fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> Block {
+    pub(crate) fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> Block {
         // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.
         let stmts = self.mirror_stmts(block.hir_id.local_id, block.stmts);
@@ -74,19 +75,24 @@ impl<'tcx> Cx<'tcx> {
                         };
 
                         let mut pattern = self.pattern_from_hir(local.pat);
+                        debug!(?pattern);
 
                         if let Some(ty) = &local.ty {
                             if let Some(&user_ty) =
                                 self.typeck_results.user_provided_types().get(ty.hir_id)
                             {
                                 debug!("mirror_stmts: user_ty={:?}", user_ty);
+                                let annotation = CanonicalUserTypeAnnotation {
+                                    user_ty,
+                                    span: ty.span,
+                                    inferred_ty: self.typeck_results.node_type(ty.hir_id),
+                                };
                                 pattern = Pat {
                                     ty: pattern.ty,
                                     span: pattern.span,
                                     kind: Box::new(PatKind::AscribeUserType {
                                         ascription: Ascription {
-                                            user_ty: PatTyProj::from_user_type(user_ty),
-                                            user_ty_span: ty.span,
+                                            annotation,
                                             variance: ty::Variance::Covariant,
                                         },
                                         subpattern: pattern,

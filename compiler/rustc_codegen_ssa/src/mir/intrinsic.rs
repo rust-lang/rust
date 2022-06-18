@@ -388,17 +388,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     2 => (SequentiallyConsistent, SequentiallyConsistent),
                     3 => match split[2] {
                         "unordered" => (Unordered, Unordered),
-                        "relaxed" => (Monotonic, Monotonic),
+                        "relaxed" => (Relaxed, Relaxed),
                         "acq" => (Acquire, Acquire),
-                        "rel" => (Release, Monotonic),
+                        "rel" => (Release, Relaxed),
                         "acqrel" => (AcquireRelease, Acquire),
-                        "failrelaxed" if is_cxchg => (SequentiallyConsistent, Monotonic),
+                        "failrelaxed" if is_cxchg => (SequentiallyConsistent, Relaxed),
                         "failacq" if is_cxchg => (SequentiallyConsistent, Acquire),
                         _ => bx.sess().fatal("unknown ordering in atomic intrinsic"),
                     },
                     4 => match (split[2], split[3]) {
-                        ("acq", "failrelaxed") if is_cxchg => (Acquire, Monotonic),
-                        ("acqrel", "failrelaxed") if is_cxchg => (AcquireRelease, Monotonic),
+                        ("acq", "failrelaxed") if is_cxchg => (Acquire, Relaxed),
+                        ("acqrel", "failrelaxed") if is_cxchg => (AcquireRelease, Relaxed),
                         _ => bx.sess().fatal("unknown ordering in atomic intrinsic"),
                     },
                     _ => bx.sess().fatal("Atomic intrinsic not in correct format"),
@@ -555,21 +555,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            sym::ptr_offset_from => {
+            sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {
                 let ty = substs.type_at(0);
                 let pointee_size = bx.layout_of(ty).size;
 
-                // This is the same sequence that Clang emits for pointer subtraction.
-                // It can be neither `nsw` nor `nuw` because the input is treated as
-                // unsigned but then the output is treated as signed, so neither works.
                 let a = args[0].immediate();
                 let b = args[1].immediate();
                 let a = bx.ptrtoint(a, bx.type_isize());
                 let b = bx.ptrtoint(b, bx.type_isize());
-                let d = bx.sub(a, b);
                 let pointee_size = bx.const_usize(pointee_size.bytes());
-                // this is where the signed magic happens (notice the `s` in `exactsdiv`)
-                bx.exactsdiv(d, pointee_size)
+                if name == sym::ptr_offset_from {
+                    // This is the same sequence that Clang emits for pointer subtraction.
+                    // It can be neither `nsw` nor `nuw` because the input is treated as
+                    // unsigned but then the output is treated as signed, so neither works.
+                    let d = bx.sub(a, b);
+                    // this is where the signed magic happens (notice the `s` in `exactsdiv`)
+                    bx.exactsdiv(d, pointee_size)
+                } else {
+                    // The `_unsigned` version knows the relative ordering of the pointers,
+                    // so can use `sub nuw` and `udiv exact` instead of dealing in signed.
+                    let d = bx.unchecked_usub(a, b);
+                    bx.exactudiv(d, pointee_size)
+                }
             }
 
             _ => {

@@ -8,12 +8,12 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { version = "0.81.0", features = ["unwind", "all-arch"] }
-cranelift-frontend = "0.81.0"
-cranelift-module = "0.81.0"
-cranelift-native = "0.81.0"
-cranelift-jit = { version = "0.81.0", optional = true }
-cranelift-object = "0.81.0"
+cranelift-codegen = { version = "0.83.0", features = ["unwind", "all-arch"] }
+cranelift-frontend = "0.83.0"
+cranelift-module = "0.83.0"
+cranelift-native = "0.83.0"
+cranelift-jit = { version = "0.83.0", optional = true }
+cranelift-object = "0.83.0"
 target-lexicon = "0.12.0"
 gimli = { version = "0.26.0", default-features = false, features = ["write"]}
 object = { version = "0.27.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
@@ -21,6 +21,7 @@ object = { version = "0.27.0", default-features = false, features = ["std", "rea
 ar = { git = "https://github.com/bjorn3/rust-ar.git", branch = "do_not_remove_cg_clif_ranlib" }
 indexmap = "1.8.0"
 libloading = { version = "0.6.0", optional = true }
+once_cell = "1.10.0"
 smallvec = "1.6.1"
 
 [patch.crates-io]
@@ -39,16 +40,6 @@ smallvec = "1.6.1"
 unstable-features = ["jit", "inline_asm"]
 jit = ["cranelift-jit", "libloading"]
 inline_asm = []
-
-# Disable optimizations and debuginfo of build scripts and some of the heavy build deps, as the
-# execution time of build scripts is so fast that optimizing them slows down the total build time.
-[profile.release.build-override]
-opt-level = 0
-debug = false
-
-[profile.release.package.cranelift-codegen-meta]
-opt-level = 0
-debug = false
 
 [package.metadata.rust-analyzer]
 rustc_private = true

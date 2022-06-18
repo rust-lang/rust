@@ -1,5 +1,7 @@
-use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::sys::mutex as mutex_imp;
+use crate::ptr;
+use crate::sync::atomic::{AtomicPtr, Ordering};
+use crate::sys::locks as imp;
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 use crate::sys_common::mutex::MovableMutex;
 
 pub trait CondvarCheck {
@@ -8,22 +10,29 @@ pub trait CondvarCheck {
 
 /// For boxed mutexes, a `Condvar` will check it's only ever used with the same
 /// mutex, based on its (stable) address.
-impl CondvarCheck for Box<mutex_imp::Mutex> {
+impl<T: LazyInit> CondvarCheck for LazyBox<T> {
     type Check = SameMutexCheck;
 }
 
 pub struct SameMutexCheck {
-    addr: AtomicUsize,
+    addr: AtomicPtr<()>,
 }
 
 #[allow(dead_code)]
 impl SameMutexCheck {
     pub const fn new() -> Self {
-        Self { addr: AtomicUsize::new(0) }
+        Self { addr: AtomicPtr::new(ptr::null_mut()) }
     }
     pub fn verify(&self, mutex: &MovableMutex) {
-        let addr = mutex.raw() as *const mutex_imp::Mutex as usize;
-        match self.addr.compare_exchange(0, addr, Ordering::SeqCst, Ordering::SeqCst) {
+        let addr = mutex.raw() as *const imp::Mutex as *const () as *mut _;
+        // Relaxed is okay here because we never read through `self.addr`, and only use it to
+        // compare addresses.
+        match self.addr.compare_exchange(
+            ptr::null_mut(),
+            addr,
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        ) {
             Ok(_) => {}               // Stored the address
             Err(n) if n == addr => {} // Lost a race to store the same address
             _ => panic!("attempted to use a condition variable with two mutexes"),
@@ -33,7 +42,7 @@ impl SameMutexCheck {
 
 /// Unboxed mutexes may move, so `Condvar` can not require its address to stay
 /// constant.
-impl CondvarCheck for mutex_imp::Mutex {
+impl CondvarCheck for imp::Mutex {
     type Check = NoCheck;
 }
 

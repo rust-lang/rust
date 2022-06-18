@@ -53,7 +53,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         // performing trait matching (which then performs equality
         // unification).
 
-        relate::relate_substs(self, None, a_subst, b_subst)
+        relate::relate_substs(self, a_subst, b_subst)
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
@@ -66,17 +66,18 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         self.relate(a, b)
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        debug!("{}.tys({:?}, {:?})", self.tag(), a, b);
         if a == b {
             return Ok(a);
         }
 
+        trace!(a = ?a.kind(), b = ?b.kind());
+
         let infcx = self.fields.infcx;
+
         let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
         let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
-
-        debug!("{}.tys: replacements ({:?}, {:?})", self.tag(), a, b);
 
         match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
@@ -89,6 +90,25 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
 
             (_, &ty::Infer(TyVar(b_id))) => {
                 self.fields.instantiate(a, RelationDir::EqTo, b_id, self.a_is_expected)?;
+            }
+
+            (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
+                self.fields.infcx.super_combine_tys(self, a, b)?;
+            }
+            (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..))
+                if self.fields.define_opaque_types && did.is_local() =>
+            {
+                self.fields.obligations.extend(
+                    infcx
+                        .handle_opaque_type(
+                            a,
+                            b,
+                            self.a_is_expected(),
+                            &self.fields.trace.cause,
+                            self.param_env(),
+                        )?
+                        .obligations,
+                );
             }
 
             _ => {
@@ -133,12 +153,12 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
     {
         if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
             self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
-            self.fields.higher_ranked_sub(b, a, self.a_is_expected)
+            self.fields.higher_ranked_sub(b, a, self.a_is_expected)?;
         } else {
             // Fast path for the common case.
             self.relate(a.skip_binder(), b.skip_binder())?;
-            Ok(a)
         }
+        Ok(a)
     }
 }
 

@@ -1,0 +1,10 @@
+error: possible intra-doc link using quotes instead of backticks
+  --> $DIR/doc_link_with_quotes.rs:7:1
+   |
+LL | /// Calls ['bar']
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::doc-link-with-quotes` implied by `-D warnings`
+
+error: aborting due to previous error
+

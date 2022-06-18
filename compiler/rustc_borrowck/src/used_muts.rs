@@ -22,7 +22,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ///  been assigned to - this set is used as a proxy for locals that were not initialized due to
     ///  unreachable code. These locals are then considered "used" to silence the lint for them.
     ///  See #55344 for context.
-    crate fn gather_used_muts(
+    pub(crate) fn gather_used_muts(
         &mut self,
         temporary_used_locals: FxHashSet<Local>,
         mut never_initialized_mut_locals: FxHashSet<Local>,
@@ -66,8 +66,8 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         debug!("visit_terminator: terminator={:?}", terminator);
         match &terminator.kind {
-            TerminatorKind::Call { destination: Some((into, _)), .. } => {
-                self.remove_never_initialized_mut_locals(*into);
+            TerminatorKind::Call { destination, .. } => {
+                self.remove_never_initialized_mut_locals(*destination);
             }
             TerminatorKind::DropAndReplace { place, .. } => {
                 self.remove_never_initialized_mut_locals(*place);

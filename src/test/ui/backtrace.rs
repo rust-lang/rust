@@ -88,28 +88,31 @@ fn runtest(me: &str) {
     assert!(!s.contains("stack backtrace") && !s.contains(" - foo"),
             "bad output3: {}", s);
 
-    // Make sure a stack trace is printed
-    let p = template(me).arg("double-fail").spawn().unwrap();
-    let out = p.wait_with_output().unwrap();
-    assert!(!out.status.success());
-    let s = str::from_utf8(&out.stderr).unwrap();
-    // loosened the following from double::h to double:: due to
-    // spurious failures on mac, 32bit, optimized
-    assert!(s.contains("stack backtrace") && contains_verbose_expected(s, "double"),
-            "bad output3: {}", s);
+    #[cfg(not(panic = "abort"))]
+    {
+        // Make sure a stack trace is printed
+        let p = template(me).arg("double-fail").spawn().unwrap();
+        let out = p.wait_with_output().unwrap();
+        assert!(!out.status.success());
+        let s = str::from_utf8(&out.stderr).unwrap();
+        // loosened the following from double::h to double:: due to
+        // spurious failures on mac, 32bit, optimized
+        assert!(s.contains("stack backtrace") && contains_verbose_expected(s, "double"),
+                "bad output3: {}", s);
 
-    // Make sure a stack trace isn't printed too many times
-    let p = template(me).arg("double-fail")
-                                .env("RUST_BACKTRACE", "1").spawn().unwrap();
-    let out = p.wait_with_output().unwrap();
-    assert!(!out.status.success());
-    let s = str::from_utf8(&out.stderr).unwrap();
-    let mut i = 0;
-    for _ in 0..2 {
-        i += s[i + 10..].find("stack backtrace").unwrap() + 10;
+        // Make sure a stack trace isn't printed too many times
+        let p = template(me).arg("double-fail")
+                                    .env("RUST_BACKTRACE", "1").spawn().unwrap();
+        let out = p.wait_with_output().unwrap();
+        assert!(!out.status.success());
+        let s = str::from_utf8(&out.stderr).unwrap();
+        let mut i = 0;
+        for _ in 0..2 {
+            i += s[i + 10..].find("stack backtrace").unwrap() + 10;
+        }
+        assert!(s[i + 10..].find("stack backtrace").is_none(),
+                "bad output4: {}", s);
     }
-    assert!(s[i + 10..].find("stack backtrace").is_none(),
-            "bad output4: {}", s);
 }
 
 fn main() {

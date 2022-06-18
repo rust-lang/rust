@@ -1,17 +1,36 @@
+error[E0277]: expected a `FnOnce<()>` closure, found `()`
+  --> $DIR/issue-63279.rs:8:11
+   |
+LL |     || -> Closure { || () }
+   |           ^^^^^^^ expected an `FnOnce<()>` closure, found `()`
+   |
+   = help: the trait `FnOnce<()>` is not implemented for `()`
+   = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-63279.rs:8:21
+   |
+LL |     || -> Closure { || () }
+   |                     ^^^^^ expected `()`, found closure
+   |
+   = note: expected unit type `()`
+                found closure `[closure@$DIR/issue-63279.rs:8:21: 8:26]`
+
 error[E0308]: mismatched types
   --> $DIR/issue-63279.rs:8:5
    |
 LL | type Closure = impl FnOnce();
-   |                ------------- the found opaque type
-...
+   |                ------------- the expected opaque type
+LL |
+LL | fn c() -> Closure {
+   |           ------- expected `Closure` because of return type
 LL |     || -> Closure { || () }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected closure, found a different closure
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found closure
    |
-   = note: expected type `[closure@$DIR/issue-63279.rs:8:21: 8:26]`
-           found closure `[closure@$DIR/issue-63279.rs:8:5: 8:28]`
-   = note: no two closures, even if identical, have the same type
-   = help: consider boxing your closure and/or using it as a trait object
+   = note: expected opaque type `Closure`
+                  found closure `[closure@$DIR/issue-63279.rs:8:5: 8:28]`
 
-error: aborting due to previous error
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

@@ -15,7 +15,7 @@ LL |     impl AbstractRenderer
 help: use a boxed trait object if all return paths implement trait `AbstractRenderer`
    |
 LL |     Box<dyn AbstractRenderer>
-   |
+   |     ++++                    +
 
 error: aborting due to previous error
 

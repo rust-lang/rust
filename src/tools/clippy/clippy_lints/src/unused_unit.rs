@@ -130,7 +130,7 @@ fn lint_unneeded_unit_return(cx: &EarlyContext<'_>, ty: &ast::Ty, span: Span) {
         snippet_opt(cx, span.with_hi(ty.span.hi())).map_or((ty.span, Applicability::MaybeIncorrect), |fn_source| {
             position_before_rarrow(&fn_source).map_or((ty.span, Applicability::MaybeIncorrect), |rpos| {
                 (
-                    #[allow(clippy::cast_possible_truncation)]
+                    #[expect(clippy::cast_possible_truncation)]
                     ty.span.with_lo(BytePos(span.lo().0 + rpos as u32)),
                     Applicability::MachineApplicable,
                 )

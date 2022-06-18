@@ -31,6 +31,8 @@ macro_rules! panic {
 /// [`eprint!`] instead to print error and progress messages.
 ///
 /// [flush]: crate::io::Write::flush
+/// [`println!`]: crate::println
+/// [`eprint!`]: crate::eprint
 ///
 /// # Panics
 ///
@@ -60,7 +62,9 @@ macro_rules! panic {
 #[cfg_attr(not(test), rustc_diagnostic_item = "print_macro")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::io::_print($crate::format_args!($($arg)*)));
+    ($($arg:tt)*) => {{
+        $crate::io::_print($crate::format_args!($($arg)*));
+    }};
 }
 
 /// Prints to the standard output, with a newline.
@@ -68,13 +72,14 @@ macro_rules! print {
 /// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`) alone
 /// (no additional CARRIAGE RETURN (`\r`/`U+000D`)).
 ///
-/// Use the [`format!`] syntax to write data to the standard output.
+/// This macro uses the same syntax as [`format!`], but writes to the standard output instead.
 /// See [`std::fmt`] for more information.
 ///
 /// Use `println!` only for the primary output of your program. Use
 /// [`eprintln!`] instead to print error and progress messages.
 ///
 /// [`std::fmt`]: crate::fmt
+/// [`eprintln!`]: crate::eprintln
 ///
 /// # Panics
 ///
@@ -94,10 +99,12 @@ macro_rules! print {
 #[cfg_attr(not(test), rustc_diagnostic_item = "println_macro")]
 #[allow_internal_unstable(print_internals, format_args_nl)]
 macro_rules! println {
-    () => ($crate::print!("\n"));
-    ($($arg:tt)*) => ({
+    () => {
+        $crate::print!("\n")
+    };
+    ($($arg:tt)*) => {{
         $crate::io::_print($crate::format_args_nl!($($arg)*));
-    })
+    }};
 }
 
 /// Prints to the standard error.
@@ -126,7 +133,9 @@ macro_rules! println {
 #[cfg_attr(not(test), rustc_diagnostic_item = "eprint_macro")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! eprint {
-    ($($arg:tt)*) => ($crate::io::_eprint($crate::format_args!($($arg)*)));
+    ($($arg:tt)*) => {{
+        $crate::io::_eprint($crate::format_args!($($arg)*));
+    }};
 }
 
 /// Prints to the standard error, with a newline.
@@ -140,6 +149,7 @@ macro_rules! eprint {
 ///
 /// [`io::stderr`]: crate::io::stderr
 /// [`io::stdout`]: crate::io::stdout
+/// [`println!`]: crate::println
 ///
 /// # Panics
 ///
@@ -155,10 +165,12 @@ macro_rules! eprint {
 #[cfg_attr(not(test), rustc_diagnostic_item = "eprintln_macro")]
 #[allow_internal_unstable(print_internals, format_args_nl)]
 macro_rules! eprintln {
-    () => ($crate::eprint!("\n"));
-    ($($arg:tt)*) => ({
+    () => {
+        $crate::eprint!("\n")
+    };
+    ($($arg:tt)*) => {{
         $crate::io::_eprint($crate::format_args_nl!($($arg)*));
-    })
+    }};
 }
 
 /// Prints and returns the value of a given expression for quick and dirty

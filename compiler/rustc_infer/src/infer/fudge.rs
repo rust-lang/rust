@@ -1,4 +1,4 @@
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
 use super::type_variable::TypeVariableOrigin;
@@ -220,18 +220,16 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReVar(vid) = *r {
-            if self.region_vars.0.contains(&vid) {
-                let idx = vid.index() - self.region_vars.0.start.index();
-                let origin = self.region_vars.1[idx];
-                return self.infcx.next_region_var(origin);
-            }
+        if let ty::ReVar(vid) = *r && self.region_vars.0.contains(&vid) {
+            let idx = vid.index() - self.region_vars.0.start.index();
+            let origin = self.region_vars.1[idx];
+            return self.infcx.next_region_var(origin);
         }
         r
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.val() {
+        if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() {
             if self.const_vars.0.contains(&vid) {
                 // This variable was created during the fudging.
                 // Recreate it with a fresh variable here.

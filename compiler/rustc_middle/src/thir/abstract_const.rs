@@ -1,7 +1,7 @@
 //! A subset of a mir body used for const evaluatability checking.
 use crate::mir;
 use crate::ty::{self, Ty, TyCtxt};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 
 rustc_index::newtype_index! {
     /// An index into an `AbstractConst`.
@@ -31,13 +31,13 @@ pub enum Node<'tcx> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub enum NotConstEvaluatable {
-    Error(ErrorReported),
+    Error(ErrorGuaranteed),
     MentionsInfer,
     MentionsParam,
 }
 
-impl From<ErrorReported> for NotConstEvaluatable {
-    fn from(e: ErrorReported) -> NotConstEvaluatable {
+impl From<ErrorGuaranteed> for NotConstEvaluatable {
+    fn from(e: ErrorGuaranteed) -> NotConstEvaluatable {
         NotConstEvaluatable::Error(e)
     }
 }
@@ -51,7 +51,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn thir_abstract_const_opt_const_arg(
         self,
         def: ty::WithOptConstParam<rustc_hir::def_id::DefId>,
-    ) -> Result<Option<&'tcx [Node<'tcx>]>, ErrorReported> {
+    ) -> Result<Option<&'tcx [Node<'tcx>]>, ErrorGuaranteed> {
         if let Some((did, param_did)) = def.as_const_arg() {
             self.thir_abstract_const_of_const_arg((did, param_did))
         } else {

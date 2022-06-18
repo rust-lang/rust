@@ -63,7 +63,7 @@ impl UnixListener {
     /// let listener = match UnixListener::bind("/path/to/the/socket") {
     ///     Ok(sock) => sock,
     ///     Err(e) => {
-    ///         println!("Couldn't connect: {:?}", e);
+    ///         println!("Couldn't connect: {e:?}");
     ///         return
     ///     }
     /// };
@@ -98,7 +98,7 @@ impl UnixListener {
     ///     let listener2 = match UnixListener::bind_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(err) => {
-    ///             println!("Couldn't bind: {:?}", err);
+    ///             println!("Couldn't bind: {err:?}");
     ///             return Err(err);
     ///         }
     ///     };
@@ -136,8 +136,8 @@ impl UnixListener {
     ///     let listener = UnixListener::bind("/path/to/the/socket")?;
     ///
     ///     match listener.accept() {
-    ///         Ok((socket, addr)) => println!("Got a client: {:?}", addr),
-    ///         Err(e) => println!("accept function failed: {:?}", e),
+    ///         Ok((socket, addr)) => println!("Got a client: {addr:?}"),
+    ///         Err(e) => println!("accept function failed: {e:?}"),
     ///     }
     ///     Ok(())
     /// }
@@ -226,7 +226,7 @@ impl UnixListener {
     ///     let listener = UnixListener::bind("/tmp/sock")?;
     ///
     ///     if let Ok(Some(err)) = listener.take_error() {
-    ///         println!("Got error: {:?}", err);
+    ///         println!("Got error: {err:?}");
     ///     }
     ///     Ok(())
     /// }
@@ -300,7 +300,7 @@ impl IntoRawFd for UnixListener {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for UnixListener {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -308,7 +308,7 @@ impl AsFd for UnixListener {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for UnixListener {
     #[inline]
     fn from(fd: OwnedFd) -> UnixListener {
@@ -316,7 +316,7 @@ impl From<OwnedFd> for UnixListener {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixListener> for OwnedFd {
     #[inline]
     fn from(listener: UnixListener) -> OwnedFd {

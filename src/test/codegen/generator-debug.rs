@@ -22,7 +22,7 @@ fn generator_test() -> impl Generator<Yield = i32, Return = ()> {
 
 // CHECK-DAG:  [[GEN_FN:!.*]] = !DINamespace(name: "generator_test"
 // CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "{generator_env#0}", scope: [[GEN_FN]]
-// CHECK:      [[VARIANT:!.*]] = !DICompositeType(tag: DW_TAG_variant_part, scope: [[GEN_FN]],
+// CHECK:      [[VARIANT:!.*]] = !DICompositeType(tag: DW_TAG_variant_part, scope: [[GEN]],
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: discriminator: [[DISC:![0-9]*]]
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "0", scope: [[VARIANT]],
@@ -54,7 +54,7 @@ fn generator_test() -> impl Generator<Yield = i32, Return = ()> {
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "s", scope: [[S1]]
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
-// CHECK:      [[DISC]] = !DIDerivedType(tag: DW_TAG_member, name: "__state", scope: [[GEN_FN]],
+// CHECK:      [[DISC]] = !DIDerivedType(tag: DW_TAG_member, name: "__state", scope: [[GEN]],
 // CHECK-SAME: flags: DIFlagArtificial
 
 fn main() {

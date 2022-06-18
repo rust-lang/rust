@@ -3,12 +3,12 @@ use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
-        llvm_target: "armv7s-apple-ios".to_string(),
+        llvm_target: "armv7s-apple-ios".into(),
         pointer_width: 32,
-        data_layout: "e-m:o-p:32:32-Fi8-f64:32:64-v64:32:64-v128:32:128-a:0:32-n32-S32".to_string(),
-        arch: "arm".to_string(),
+        data_layout: "e-m:o-p:32:32-Fi8-f64:32:64-v64:32:64-v128:32:128-a:0:32-n32-S32".into(),
+        arch: "arm".into(),
         options: TargetOptions {
-            features: "+v7,+vfp4,+neon".to_string(),
+            features: "+v7,+vfp4,+neon".into(),
             max_atomic_width: Some(64),
             ..opts("ios", Arch::Armv7s)
         },

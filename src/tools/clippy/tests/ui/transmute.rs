@@ -16,7 +16,8 @@ fn my_vec() -> MyVec<i32> {
 #[allow(clippy::needless_lifetimes, clippy::transmute_ptr_to_ptr)]
 #[warn(clippy::useless_transmute)]
 unsafe fn _generic<'a, T, U: 'a>(t: &'a T) {
-    let _: &'a T = core::intrinsics::transmute(t);
+    // FIXME: should lint
+    // let _: &'a T = core::intrinsics::transmute(t);
 
     let _: &'a U = core::intrinsics::transmute(t);
 
@@ -48,6 +49,22 @@ fn useless() {
 
         let _ = (1 + 1_usize) as *const usize;
     }
+
+    unsafe fn _f<'a, 'b>(x: &'a u32) -> &'b u32 {
+        std::mem::transmute(x)
+    }
+
+    unsafe fn _f2<'a, 'b>(x: *const (dyn Iterator<Item = u32> + 'a)) -> *const (dyn Iterator<Item = u32> + 'b) {
+        std::mem::transmute(x)
+    }
+
+    unsafe fn _f3<'a, 'b>(x: fn(&'a u32)) -> fn(&'b u32) {
+        std::mem::transmute(x)
+    }
+
+    unsafe fn _f4<'a, 'b>(x: std::borrow::Cow<'a, str>) -> std::borrow::Cow<'b, str> {
+        std::mem::transmute(x)
+    }
 }
 
 struct Usize(usize);
@@ -73,6 +90,10 @@ fn crosspointer() {
 fn int_to_char() {
     let _: char = unsafe { std::mem::transmute(0_u32) };
     let _: char = unsafe { std::mem::transmute(0_i32) };
+
+    // These shouldn't warn
+    const _: char = unsafe { std::mem::transmute(0_u32) };
+    const _: char = unsafe { std::mem::transmute(0_i32) };
 }
 
 #[warn(clippy::transmute_int_to_bool)]
@@ -130,9 +151,12 @@ mod num_to_bytes {
     }
 }
 
-fn bytes_to_str(b: &[u8], mb: &mut [u8]) {
-    let _: &str = unsafe { std::mem::transmute(b) };
+fn bytes_to_str(mb: &mut [u8]) {
+    const B: &[u8] = b"";
+
+    let _: &str = unsafe { std::mem::transmute(B) };
     let _: &mut str = unsafe { std::mem::transmute(mb) };
+    const _: &str = unsafe { std::mem::transmute(B) };
 }
 
 fn main() {}

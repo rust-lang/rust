@@ -3,6 +3,8 @@ error[E0432]: unresolved import `issue_36881_aux`
    |
 LL |     use issue_36881_aux::Foo;
    |         ^^^^^^^^^^^^^^^ maybe a missing crate `issue_36881_aux`?
+   |
+   = help: consider adding `extern crate issue_36881_aux` to use the `issue_36881_aux` crate
 
 error: aborting due to previous error
 

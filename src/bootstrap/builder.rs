@@ -1,22 +1,20 @@
-use std::any::Any;
+use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
-use std::ffi::OsStr;
-use std::fmt::Debug;
-use std::fs;
+use std::ffi::{OsStr, OsString};
+use std::fmt::{Debug, Write};
+use std::fs::{self, File};
 use std::hash::Hash;
+use std::io::{BufRead, BufReader, ErrorKind};
 use std::ops::Deref;
 use std::path::{Component, Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-use build_helper::{output, t};
-
 use crate::cache::{Cache, Interned, INTERNER};
-use crate::check;
 use crate::compile;
-use crate::config::TargetSelection;
+use crate::config::{SplitDebuginfo, TargetSelection};
 use crate::dist;
 use crate::doc;
 use crate::flags::{Color, Subcommand};
@@ -25,12 +23,15 @@ use crate::native;
 use crate::run;
 use crate::test;
 use crate::tool::{self, SourceType};
-use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir};
-use crate::{Build, DocTests, GitRepo, Mode};
+use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
+use crate::EXTRA_CHECK_CFGS;
+use crate::{check, Config};
+use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
 // FIXME: replace with std::lazy after it gets stabilized and reaches beta
-use once_cell::sync::Lazy;
+use once_cell::sync::{Lazy, OnceCell};
+use xz2::bufread::XzDecoder;
 
 pub struct Builder<'a> {
     pub build: &'a Build,
@@ -126,7 +127,8 @@ impl TaskPath {
                     if found_kind.is_empty() {
                         panic!("empty kind in task path {}", path.display());
                     }
-                    kind = Some(Kind::parse(found_kind));
+                    kind = Kind::parse(found_kind);
+                    assert!(kind.is_some());
                     path = Path::new(found_prefix).join(components.as_path());
                 }
             }
@@ -170,7 +172,7 @@ impl PathSet {
 
     fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> PathSet {
         let mut set = BTreeSet::new();
-        set.insert(TaskPath { path: path.into(), kind: Some(kind.into()) });
+        set.insert(TaskPath { path: path.into(), kind: Some(kind) });
         PathSet::Set(set)
     }
 
@@ -227,15 +229,15 @@ impl StepDescription {
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
         if builder.config.exclude.iter().any(|e| pathset.has(&e.path, e.kind)) {
-            eprintln!("Skipping {:?} because it is excluded", pathset);
+            println!("Skipping {:?} because it is excluded", pathset);
             return true;
         }
 
         if !builder.config.exclude.is_empty() {
-            eprintln!(
+            builder.verbose(&format!(
                 "{:?} not skipped for {:?} -- not in {:?}",
                 pathset, self.name, builder.config.exclude
-            );
+            ));
         }
         false
     }
@@ -284,7 +286,19 @@ impl StepDescription {
             }
 
             if !attempted_run {
-                panic!("error: no rules matched {}", path.display());
+                eprintln!(
+                    "error: no `{}` rules matched '{}'",
+                    builder.kind.as_str(),
+                    path.display()
+                );
+                eprintln!(
+                    "help: run `x.py {} --help --verbose` to show a list of available paths",
+                    builder.kind.as_str()
+                );
+                eprintln!(
+                    "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
+                );
+                std::process::exit(1);
             }
         }
     }
@@ -365,6 +379,19 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
+    // single alias, which does not correspond to any on-disk path
+    pub fn alias(mut self, alias: &str) -> Self {
+        assert!(
+            !self.builder.src.join(alias).exists(),
+            "use `builder.path()` for real paths: {}",
+            alias
+        );
+        self.paths.insert(PathSet::Set(
+            std::iter::once(TaskPath { path: alias.into(), kind: Some(self.kind) }).collect(),
+        ));
+        self
+    }
+
     // single, non-aliased path
     pub fn path(self, path: &str) -> Self {
         self.paths(&[path])
@@ -375,7 +402,16 @@ impl<'a> ShouldRun<'a> {
         self.paths.insert(PathSet::Set(
             paths
                 .iter()
-                .map(|p| TaskPath { path: p.into(), kind: Some(self.kind.into()) })
+                .map(|p| {
+                    // FIXME(#96188): make sure this is actually a path.
+                    // This currently breaks for paths within submodules.
+                    //assert!(
+                    //    self.builder.src.join(p).exists(),
+                    //    "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {}",
+                    //    p
+                    //);
+                    TaskPath { path: p.into(), kind: Some(self.kind) }
+                })
                 .collect(),
         ));
         self
@@ -389,8 +425,7 @@ impl<'a> ShouldRun<'a> {
     }
 
     pub fn suite_path(mut self, suite: &str) -> Self {
-        self.paths
-            .insert(PathSet::Suite(TaskPath { path: suite.into(), kind: Some(self.kind.into()) }));
+        self.paths.insert(PathSet::Suite(TaskPath { path: suite.into(), kind: Some(self.kind) }));
         self
     }
 
@@ -411,43 +446,53 @@ pub enum Kind {
     Check,
     Clippy,
     Fix,
+    Format,
     Test,
     Bench,
-    Dist,
     Doc,
+    Clean,
+    Dist,
     Install,
     Run,
+    Setup,
 }
 
 impl Kind {
-    fn parse(string: &str) -> Kind {
-        match string {
-            "build" => Kind::Build,
-            "check" => Kind::Check,
+    pub fn parse(string: &str) -> Option<Kind> {
+        // these strings, including the one-letter aliases, must match the x.py help text
+        Some(match string {
+            "build" | "b" => Kind::Build,
+            "check" | "c" => Kind::Check,
             "clippy" => Kind::Clippy,
             "fix" => Kind::Fix,
-            "test" => Kind::Test,
+            "fmt" => Kind::Format,
+            "test" | "t" => Kind::Test,
             "bench" => Kind::Bench,
+            "doc" | "d" => Kind::Doc,
+            "clean" => Kind::Clean,
             "dist" => Kind::Dist,
-            "doc" => Kind::Doc,
             "install" => Kind::Install,
-            "run" => Kind::Run,
-            other => panic!("unknown kind: {}", other),
-        }
+            "run" | "r" => Kind::Run,
+            "setup" => Kind::Setup,
+            _ => return None,
+        })
     }
 
-    fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Kind::Build => "build",
             Kind::Check => "check",
             Kind::Clippy => "clippy",
             Kind::Fix => "fix",
+            Kind::Format => "fmt",
             Kind::Test => "test",
             Kind::Bench => "bench",
-            Kind::Dist => "dist",
             Kind::Doc => "doc",
+            Kind::Clean => "clean",
+            Kind::Dist => "dist",
             Kind::Install => "install",
             Kind::Run => "run",
+            Kind::Setup => "setup",
         }
     }
 }
@@ -491,7 +536,7 @@ impl<'a> Builder<'a> {
                 native::Lld,
                 native::CrtBeginEnd
             ),
-            Kind::Check | Kind::Clippy { .. } | Kind::Fix => describe!(
+            Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,
                 check::Rustc,
                 check::Rustdoc,
@@ -583,7 +628,6 @@ impl<'a> Builder<'a> {
                 dist::RustcDocs,
                 dist::Mingw,
                 dist::Rustc,
-                dist::DebuggerScripts,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,
@@ -599,7 +643,7 @@ impl<'a> Builder<'a> {
                 dist::RustDev,
                 dist::Extended,
                 // It seems that PlainSourceTarball somehow changes how some of the tools
-                // perceive their dependencies (see #93033) which would invaliate fingerprints
+                // perceive their dependencies (see #93033) which would invalidate fingerprints
                 // and force us to rebuild tools after vendoring dependencies.
                 // To work around this, create the Tarball after building all the tools.
                 dist::PlainSourceTarball,
@@ -621,32 +665,29 @@ impl<'a> Builder<'a> {
                 install::Rustc
             ),
             Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest, run::BumpStage0),
+            // These commands either don't use paths, or they're special-cased in Build::build()
+            Kind::Clean | Kind::Format | Kind::Setup => vec![],
         }
     }
 
-    pub fn get_help(build: &Build, subcommand: &str) -> Option<String> {
-        let kind = match subcommand {
-            "build" => Kind::Build,
-            "doc" => Kind::Doc,
-            "test" => Kind::Test,
-            "bench" => Kind::Bench,
-            "dist" => Kind::Dist,
-            "install" => Kind::Install,
-            _ => return None,
-        };
+    pub fn get_help(build: &Build, kind: Kind) -> Option<String> {
+        let step_descriptions = Builder::get_step_descriptions(kind);
+        if step_descriptions.is_empty() {
+            return None;
+        }
 
         let builder = Self::new_internal(build, kind, vec![]);
         let builder = &builder;
         // The "build" kind here is just a placeholder, it will be replaced with something else in
         // the following statement.
         let mut should_run = ShouldRun::new(builder, Kind::Build);
-        for desc in Builder::get_step_descriptions(builder.kind) {
+        for desc in step_descriptions {
             should_run.kind = desc.kind;
             should_run = (desc.should_run)(should_run);
         }
         let mut help = String::from("Available paths:\n");
         let mut add_path = |path: &Path| {
-            help.push_str(&format!("    ./x.py {} {}\n", subcommand, path.display()));
+            t!(write!(help, "    ./x.py {} {}\n", kind.as_str(), path.display()));
         };
         for pathset in should_run.paths {
             match pathset {
@@ -687,7 +728,8 @@ impl<'a> Builder<'a> {
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
-            Subcommand::Format { .. } | Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
+            Subcommand::Format { .. } => (Kind::Format, &[][..]),
+            Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
                 panic!()
             }
         };
@@ -717,6 +759,240 @@ impl<'a> Builder<'a> {
 
     fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
         StepDescription::run(v, self, paths);
+    }
+
+    /// Modifies the interpreter section of 'fname' to fix the dynamic linker,
+    /// or the RPATH section, to fix the dynamic library search path
+    ///
+    /// This is only required on NixOS and uses the PatchELF utility to
+    /// change the interpreter/RPATH of ELF executables.
+    ///
+    /// Please see https://nixos.org/patchelf.html for more information
+    pub(crate) fn fix_bin_or_dylib(&self, fname: &Path) {
+        // FIXME: cache NixOS detection?
+        match Command::new("uname").arg("-s").stderr(Stdio::inherit()).output() {
+            Err(_) => return,
+            Ok(output) if !output.status.success() => return,
+            Ok(output) => {
+                let mut s = output.stdout;
+                if s.last() == Some(&b'\n') {
+                    s.pop();
+                }
+                if s != b"Linux" {
+                    return;
+                }
+            }
+        }
+
+        // If the user has asked binaries to be patched for Nix, then
+        // don't check for NixOS or `/lib`, just continue to the patching.
+        // NOTE: this intentionally comes after the Linux check:
+        // - patchelf only works with ELF files, so no need to run it on Mac or Windows
+        // - On other Unix systems, there is no stable syscall interface, so Nix doesn't manage the global libc.
+        if !self.config.patch_binaries_for_nix {
+            // Use `/etc/os-release` instead of `/etc/NIXOS`.
+            // The latter one does not exist on NixOS when using tmpfs as root.
+            const NIX_IDS: &[&str] = &["ID=nixos", "ID='nixos'", "ID=\"nixos\""];
+            let os_release = match File::open("/etc/os-release") {
+                Err(e) if e.kind() == ErrorKind::NotFound => return,
+                Err(e) => panic!("failed to access /etc/os-release: {}", e),
+                Ok(f) => f,
+            };
+            if !BufReader::new(os_release).lines().any(|l| NIX_IDS.contains(&t!(l).trim())) {
+                return;
+            }
+            if Path::new("/lib").exists() {
+                return;
+            }
+        }
+
+        // At this point we're pretty sure the user is running NixOS or using Nix
+        println!("info: you seem to be using Nix. Attempting to patch {}", fname.display());
+
+        // Only build `.nix-deps` once.
+        static NIX_DEPS_DIR: OnceCell<PathBuf> = OnceCell::new();
+        let mut nix_build_succeeded = true;
+        let nix_deps_dir = NIX_DEPS_DIR.get_or_init(|| {
+            // Run `nix-build` to "build" each dependency (which will likely reuse
+            // the existing `/nix/store` copy, or at most download a pre-built copy).
+            //
+            // Importantly, we create a gc-root called `.nix-deps` in the `build/`
+            // directory, but still reference the actual `/nix/store` path in the rpath
+            // as it makes it significantly more robust against changes to the location of
+            // the `.nix-deps` location.
+            //
+            // bintools: Needed for the path of `ld-linux.so` (via `nix-support/dynamic-linker`).
+            // zlib: Needed as a system dependency of `libLLVM-*.so`.
+            // patchelf: Needed for patching ELF binaries (see doc comment above).
+            let nix_deps_dir = self.out.join(".nix-deps");
+            const NIX_EXPR: &str = "
+            with (import <nixpkgs> {});
+            symlinkJoin {
+                name = \"rust-stage0-dependencies\";
+                paths = [
+                    zlib
+                    patchelf
+                    stdenv.cc.bintools
+                ];
+            }
+            ";
+            nix_build_succeeded = self.try_run(Command::new("nix-build").args(&[
+                Path::new("-E"),
+                Path::new(NIX_EXPR),
+                Path::new("-o"),
+                &nix_deps_dir,
+            ]));
+            nix_deps_dir
+        });
+        if !nix_build_succeeded {
+            return;
+        }
+
+        let mut patchelf = Command::new(nix_deps_dir.join("bin/patchelf"));
+        let rpath_entries = {
+            // ORIGIN is a relative default, all binary and dynamic libraries we ship
+            // appear to have this (even when `../lib` is redundant).
+            // NOTE: there are only two paths here, delimited by a `:`
+            let mut entries = OsString::from("$ORIGIN/../lib:");
+            entries.push(t!(fs::canonicalize(nix_deps_dir)));
+            entries.push("/lib");
+            entries
+        };
+        patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
+        if !fname.extension().map_or(false, |ext| ext == "so") {
+            // Finally, set the corret .interp for binaries
+            let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
+            // FIXME: can we support utf8 here? `args` doesn't accept Vec<u8>, only OsString ...
+            let dynamic_linker = t!(String::from_utf8(t!(fs::read(dynamic_linker_path))));
+            patchelf.args(&["--set-interpreter", dynamic_linker.trim_end()]);
+        }
+
+        self.try_run(patchelf.arg(fname));
+    }
+
+    pub(crate) fn download_component(&self, url: &str, dest_path: &Path, help_on_error: &str) {
+        // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
+        let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
+        // While bootstrap itself only supports http and https downloads, downstream forks might
+        // need to download components from other protocols. The match allows them adding more
+        // protocols without worrying about merge conficts if we change the HTTP implementation.
+        match url.split_once("://").map(|(proto, _)| proto) {
+            Some("http") | Some("https") => {
+                self.download_http_with_retries(&tempfile, url, help_on_error)
+            }
+            Some(other) => panic!("unsupported protocol {other} in {url}"),
+            None => panic!("no protocol in {url}"),
+        }
+        t!(std::fs::rename(&tempfile, dest_path));
+    }
+
+    fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
+        println!("downloading {}", url);
+        // Try curl. If that fails and we are on windows, fallback to PowerShell.
+        let mut curl = Command::new("curl");
+        curl.args(&[
+            "-#",
+            "-y",
+            "30",
+            "-Y",
+            "10", // timeout if speed is < 10 bytes/sec for > 30 seconds
+            "--connect-timeout",
+            "30", // timeout if cannot connect within 30 seconds
+            "--retry",
+            "3",
+            "-Sf",
+            "-o",
+        ]);
+        curl.arg(tempfile);
+        curl.arg(url);
+        if !self.check_run(&mut curl) {
+            if self.build.build.contains("windows-msvc") {
+                println!("Fallback to PowerShell");
+                for _ in 0..3 {
+                    if self.try_run(Command::new("PowerShell.exe").args(&[
+                        "/nologo",
+                        "-Command",
+                        "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
+                        &format!(
+                            "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
+                            url, tempfile.to_str().expect("invalid UTF-8 not supported with powershell downloads"),
+                        ),
+                    ])) {
+                        return;
+                    }
+                    println!("\nspurious failure, trying again");
+                }
+            }
+            if !help_on_error.is_empty() {
+                eprintln!("{}", help_on_error);
+            }
+            std::process::exit(1);
+        }
+    }
+
+    pub(crate) fn unpack(&self, tarball: &Path, dst: &Path, pattern: &str) {
+        println!("extracting {} to {}", tarball.display(), dst.display());
+        if !dst.exists() {
+            t!(fs::create_dir_all(dst));
+        }
+
+        // `tarball` ends with `.tar.xz`; strip that suffix
+        // example: `rust-dev-nightly-x86_64-unknown-linux-gnu`
+        let uncompressed_filename =
+            Path::new(tarball.file_name().expect("missing tarball filename")).file_stem().unwrap();
+        let directory_prefix = Path::new(Path::new(uncompressed_filename).file_stem().unwrap());
+
+        // decompress the file
+        let data = t!(File::open(tarball));
+        let decompressor = XzDecoder::new(BufReader::new(data));
+
+        let mut tar = tar::Archive::new(decompressor);
+        for member in t!(tar.entries()) {
+            let mut member = t!(member);
+            let original_path = t!(member.path()).into_owned();
+            // skip the top-level directory
+            if original_path == directory_prefix {
+                continue;
+            }
+            let mut short_path = t!(original_path.strip_prefix(directory_prefix));
+            if !short_path.starts_with(pattern) {
+                continue;
+            }
+            short_path = t!(short_path.strip_prefix(pattern));
+            let dst_path = dst.join(short_path);
+            self.verbose(&format!("extracting {} to {}", original_path.display(), dst.display()));
+            if !t!(member.unpack_in(dst)) {
+                panic!("path traversal attack ??");
+            }
+            let src_path = dst.join(original_path);
+            if src_path.is_dir() && dst_path.exists() {
+                continue;
+            }
+            t!(fs::rename(src_path, dst_path));
+        }
+        t!(fs::remove_dir_all(dst.join(directory_prefix)));
+    }
+
+    /// Returns whether the SHA256 checksum of `path` matches `expected`.
+    pub(crate) fn verify(&self, path: &Path, expected: &str) -> bool {
+        use sha2::Digest;
+
+        self.verbose(&format!("verifying {}", path.display()));
+        let mut hasher = sha2::Sha256::new();
+        // FIXME: this is ok for rustfmt (4.1 MB large at time of writing), but it seems memory-intensive for rustc and larger components.
+        // Consider using streaming IO instead?
+        let contents = if self.config.dry_run { vec![] } else { t!(fs::read(path)) };
+        hasher.update(&contents);
+        let found = hex::encode(hasher.finalize().as_slice());
+        let verified = found == expected;
+        if !verified && !self.config.dry_run {
+            println!(
+                "invalid checksum: \n\
+                found:    {found}\n\
+                expected: {expected}",
+            );
+        }
+        return verified;
     }
 
     /// Obtain a compiler at a given stage and for a given host. Explicitly does
@@ -780,7 +1056,7 @@ impl<'a> Builder<'a> {
                     .join("lib");
                 // Avoid deleting the rustlib/ directory we just copied
                 // (in `impl Step for Sysroot`).
-                if !builder.config.download_rustc {
+                if !builder.download_rustc() {
                     let _ = fs::remove_dir_all(&sysroot);
                     t!(fs::create_dir_all(&sysroot));
                 }
@@ -840,6 +1116,18 @@ impl<'a> Builder<'a> {
         }
     }
 
+    pub fn rustc_lib_paths(&self, compiler: Compiler) -> Vec<PathBuf> {
+        let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
+
+        // Ensure that the downloaded LLVM libraries can be found.
+        if self.config.llvm_from_ci {
+            let ci_llvm_lib = self.out.join(&*compiler.host.triple).join("ci-llvm").join("lib");
+            dylib_dirs.push(ci_llvm_lib);
+        }
+
+        dylib_dirs
+    }
+
     /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic
     /// library lookup path.
     pub fn add_rustc_lib_path(&self, compiler: Compiler, cmd: &mut Command) {
@@ -850,15 +1138,7 @@ impl<'a> Builder<'a> {
             return;
         }
 
-        let mut dylib_dirs = vec![self.rustc_libdir(compiler)];
-
-        // Ensure that the downloaded LLVM libraries can be found.
-        if self.config.llvm_from_ci {
-            let ci_llvm_lib = self.out.join(&*compiler.host.triple).join("ci-llvm").join("lib");
-            dylib_dirs.push(ci_llvm_lib);
-        }
-
-        add_dylib_path(dylib_dirs, cmd);
+        add_dylib_path(self.rustc_lib_paths(compiler), cmd);
     }
 
     /// Gets a path to the compiler specified.
@@ -884,7 +1164,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
-        let mut cmd = Command::new(&self.out.join("bootstrap/debug/rustdoc"));
+        let mut cmd = Command::new(&self.bootstrap_out.join("rustdoc"));
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
             // Note that this is *not* the sysroot_libdir because rustdoc must be linked
@@ -926,6 +1206,19 @@ impl<'a> Builder<'a> {
             }
         }
         None
+    }
+
+    /// Convenience wrapper to allow `builder.llvm_link_shared()` instead of `builder.config.llvm_link_shared(&builder)`.
+    pub(crate) fn llvm_link_shared(&self) -> bool {
+        Config::llvm_link_shared(self)
+    }
+
+    pub(crate) fn download_rustc(&self) -> bool {
+        Config::download_rustc(self)
+    }
+
+    pub(crate) fn initial_rustfmt(&self) -> Option<PathBuf> {
+        Config::initial_rustfmt(self)
     }
 
     /// Prepares an invocation of `cargo` to be run.
@@ -1010,7 +1303,7 @@ impl<'a> Builder<'a> {
             // the rustc_llvm cache. That will always work, even though it
             // may mean that on the next non-check build we'll need to rebuild
             // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
-            // of work comparitively, and we'd likely need to rebuild it anyway,
+            // of work comparatively, and we'd likely need to rebuild it anyway,
             // so that's okay.
             if crate::native::prebuilt_llvm_config(self, target).is_err() {
                 cargo.env("RUST_CHECK", "1");
@@ -1095,6 +1388,48 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
+        // FIXME(Urgau): This a hack as it shouldn't be gated on stage 0 but until `rustc_llvm`
+        // is made to work with `--check-cfg` which is currently not easly possible until cargo
+        // get some support for setting `--check-cfg` within build script, it's the least invasive
+        // hack that still let's us have cfg checking for the vast majority of the codebase.
+        if stage != 0 {
+            // Enable cfg checking of cargo features for everything but std and also enable cfg
+            // checking of names and values.
+            //
+            // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
+            // backtrace, core_simd, std_float, ...), those dependencies have their own
+            // features but cargo isn't involved in the #[path] process and so cannot pass the
+            // complete list of features, so for that reason we don't enable checking of
+            // features for std crates.
+            cargo.arg(if mode != Mode::Std {
+                "-Zcheck-cfg=names,values,features"
+            } else {
+                "-Zcheck-cfg=names,values"
+            });
+
+            // Add extra cfg not defined in/by rustc
+            //
+            // Note: Altrough it would seems that "-Zunstable-options" to `rustflags` is useless as
+            // cargo would implicitly add it, it was discover that sometimes bootstrap only use
+            // `rustflags` without `cargo` making it required.
+            rustflags.arg("-Zunstable-options");
+            for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
+                if *restricted_mode == None || *restricted_mode == Some(mode) {
+                    // Creating a string of the values by concatenating each value:
+                    // ',"tvos","watchos"' or '' (nothing) when there are no values
+                    let values = match values {
+                        Some(values) => values
+                            .iter()
+                            .map(|val| [",", "\"", val, "\""])
+                            .flatten()
+                            .collect::<String>(),
+                        None => String::new(),
+                    };
+                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
+                }
+            }
+        }
+
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
         // #71458.
@@ -1133,6 +1468,19 @@ impl<'a> Builder<'a> {
         // this), as well as #63012 which is the tracking issue for this
         // feature on the rustc side.
         cargo.arg("-Zbinary-dep-depinfo");
+        match mode {
+            Mode::ToolBootstrap => {
+                // Restrict the allowed features to those passed by rustbuild, so we don't depend on nightly accidentally.
+                // HACK: because anyhow does feature detection in build.rs, we need to allow the backtrace feature too.
+                rustflags.arg("-Zallow-features=binary-dep-depinfo,backtrace");
+            }
+            Mode::ToolStd => {
+                // Right now this is just compiletest and a few other tools that build on stable.
+                // Allow them to use `feature(test)`, but nothing else.
+                rustflags.arg("-Zallow-features=binary-dep-depinfo,test,backtrace");
+            }
+            Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {}
+        }
 
         cargo.arg("-j").arg(self.jobs().to_string());
         // Remove make-related flags to ensure Cargo can correctly set things up
@@ -1223,7 +1571,7 @@ impl<'a> Builder<'a> {
             .env("RUSTC_STAGE", stage.to_string())
             .env("RUSTC_SYSROOT", &sysroot)
             .env("RUSTC_LIBDIR", &libdir)
-            .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
+            .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
             .env(
                 "RUSTDOC_REAL",
                 if cmd == "doc" || cmd == "rustdoc" || (cmd == "test" && want_rustdoc) {
@@ -1237,7 +1585,7 @@ impl<'a> Builder<'a> {
         // Clippy support is a hack and uses the default `cargo-clippy` in path.
         // Don't override RUSTC so that the `cargo-clippy` in path will be run.
         if cmd != "clippy" {
-            cargo.env("RUSTC", self.out.join("bootstrap/debug/rustc"));
+            cargo.env("RUSTC", self.bootstrap_out.join("rustc"));
         }
 
         // Dealing with rpath here is a little special, so let's go into some
@@ -1334,17 +1682,20 @@ impl<'a> Builder<'a> {
             },
         );
 
-        // `dsymutil` adds time to builds on Apple platforms for no clear benefit, and also makes
-        // it more difficult for debuggers to find debug info. The compiler currently defaults to
-        // running `dsymutil` to preserve its historical default, but when compiling the compiler
-        // itself, we skip it by default since we know it's safe to do so in that case.
-        // See https://github.com/rust-lang/rust/issues/79361 for more info on this flag.
-        if target.contains("apple") {
-            if self.config.rust_run_dsymutil {
-                rustflags.arg("-Csplit-debuginfo=packed");
-            } else {
-                rustflags.arg("-Csplit-debuginfo=unpacked");
+        if !target.contains("windows") {
+            let needs_unstable_opts = target.contains("linux")
+                || target.contains("windows")
+                || target.contains("bsd")
+                || target.contains("dragonfly");
+
+            if needs_unstable_opts {
+                rustflags.arg("-Zunstable-options");
             }
+            match self.config.rust_split_debuginfo {
+                SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
+                SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
+                SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
+            };
         }
 
         if self.config.cmd.bless() {
@@ -1511,7 +1862,7 @@ impl<'a> Builder<'a> {
             let cc = ccacheify(&self.cc(target));
             cargo.env(format!("CC_{}", target.triple), &cc);
 
-            let cflags = self.cflags(target, GitRepo::Rustc).join(" ");
+            let cflags = self.cflags(target, GitRepo::Rustc, CLang::C).join(" ");
             cargo.env(format!("CFLAGS_{}", target.triple), &cflags);
 
             if let Some(ar) = self.ar(target) {
@@ -1523,9 +1874,10 @@ impl<'a> Builder<'a> {
 
             if let Ok(cxx) = self.cxx(target) {
                 let cxx = ccacheify(&cxx);
+                let cxxflags = self.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
                 cargo
                     .env(format!("CXX_{}", target.triple), &cxx)
-                    .env(format!("CXXFLAGS_{}", target.triple), cflags);
+                    .env(format!("CXXFLAGS_{}", target.triple), cxxflags);
             }
         }
 
@@ -1687,6 +2039,9 @@ impl<'a> Builder<'a> {
             stack.push(Box::new(step.clone()));
         }
 
+        #[cfg(feature = "build-metrics")]
+        self.metrics.enter_step(&step);
+
         let (out, dur) = {
             let start = Instant::now();
             let zero = Duration::new(0, 0);
@@ -1698,8 +2053,20 @@ impl<'a> Builder<'a> {
         };
 
         if self.config.print_step_timings && !self.config.dry_run {
-            println!("[TIMING] {:?} -- {}.{:03}", step, dur.as_secs(), dur.subsec_millis());
+            let step_string = format!("{:?}", step);
+            let brace_index = step_string.find("{").unwrap_or(0);
+            let type_string = type_name::<S>();
+            println!(
+                "[TIMING] {} {} -- {}.{:03}",
+                &type_string.strip_prefix("bootstrap::").unwrap_or(type_string),
+                &step_string[brace_index..],
+                dur.as_secs(),
+                dur.subsec_millis()
+            );
         }
+
+        #[cfg(feature = "build-metrics")]
+        self.metrics.exit_step();
 
         {
             let mut stack = self.stack.borrow_mut();
@@ -1742,7 +2109,7 @@ impl<'a> Builder<'a> {
             if should_run.paths.iter().any(|s| s.has(path, Some(desc.kind)))
                 && !desc.is_excluded(
                     self,
-                    &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind.into()) }),
+                    &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
                 )
             {
                 return true;
@@ -1767,7 +2134,7 @@ impl Rustflags {
     }
 
     /// By default, cargo will pick up on various variables in the environment. However, bootstrap
-    /// reuses those variables to pass additional flags to rustdoc, so by default they get overriden.
+    /// reuses those variables to pass additional flags to rustdoc, so by default they get overridden.
     /// Explicitly add back any previous value in the environment.
     ///
     /// `prefix` is usually `RUSTFLAGS` or `RUSTDOCFLAGS`.

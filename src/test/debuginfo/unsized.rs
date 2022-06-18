@@ -16,13 +16,17 @@
 // gdbg-check:$3 = {pointer = [...], vtable = [...]}
 // gdbr-check:$3 = &unsized::Foo<dyn core::fmt::Debug> {pointer: [...], vtable: [...]}
 
+// gdb-command:print _box
+// gdbg-check:$4 = {pointer = [...], vtable = [...]}
+// gdbr-check:$4 = alloc::boxed::Box<unsized::Foo<dyn core::fmt::Debug>, alloc::alloc::Global> {pointer: [...], vtable: [...]}
+
 // gdb-command:print tuple_slice
-// gdbg-check:$4 = {data_ptr = [...], length = 2}
-// gdbr-check:$4 = &(i32, i32, [i32]) {data_ptr: [...], length: 2}
+// gdbg-check:$5 = {data_ptr = [...], length = 2}
+// gdbr-check:$5 = &(i32, i32, [i32]) {data_ptr: [...], length: 2}
 
 // gdb-command:print tuple_dyn
-// gdbg-check:$5 = {pointer = [...], vtable = [...]}
-// gdbr-check:$5 = &(i32, i32, dyn core::fmt::Debug) {pointer: [...], vtable: [...]}
+// gdbg-check:$6 = {pointer = [...], vtable = [...]}
+// gdbr-check:$6 = &(i32, i32, dyn core::fmt::Debug) {pointer: [...], vtable: [...]}
 
 // === CDB TESTS ===================================================================================
 
@@ -41,6 +45,12 @@
 // cdb-check:c                [Type: ref$<unsized::Foo<dyn$<core::fmt::Debug> > >]
 // cdb-check:    [+0x000] pointer          : 0x[...] [Type: unsized::Foo<dyn$<core::fmt::Debug> > *]
 // cdb-check:    [...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[3]]
+
+// cdb-command:dx _box
+// cdb-check:
+// cdb-check:_box             [Type: alloc::boxed::Box<unsized::Foo<dyn$<core::fmt::Debug> >,alloc::alloc::Global>]
+// cdb-check:[+0x000] pointer          : 0x[...] [Type: unsized::Foo<dyn$<core::fmt::Debug> > *]
+// cdb-check:[...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[3]]
 
 // cdb-command:dx tuple_slice
 // cdb-check:tuple_slice      [Type: ref$<tuple$<i32,i32,slice$<i32> > >]
@@ -69,6 +79,7 @@ fn main() {
     let a: &Foo<[u8]> = &foo.value;
     let b: &Foo<Foo<[u8]>> = &foo;
     let c: &Foo<dyn std::fmt::Debug> = &Foo { value: 7i32 };
+    let _box: Box<Foo<dyn std::fmt::Debug>> = Box::new(Foo { value: 8i32 });
 
     // Also check unsized tuples
     let tuple_slice: &(i32, i32, [i32]) = &(0, 1, [2, 3]);

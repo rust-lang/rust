@@ -4,20 +4,20 @@ use super::{
 use crate::infer::InferCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind};
 use rustc_span::symbol::sym;
 use std::iter;
 
 use super::InferCtxtPrivExt;
 
-crate trait InferCtxtExt<'tcx> {
+pub trait InferCtxtExt<'tcx> {
     /*private*/
     fn impl_similar_to(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-    ) -> Option<DefId>;
+    ) -> Option<(DefId, SubstsRef<'tcx>)>;
 
     /*private*/
     fn describe_enclosure(&self, hir_id: hir::HirId) -> Option<&'static str>;
@@ -34,7 +34,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-    ) -> Option<DefId> {
+    ) -> Option<(DefId, SubstsRef<'tcx>)> {
         let tcx = self.tcx;
         let param_env = obligation.param_env;
         let trait_ref = tcx.erase_late_bound_regions(trait_ref);
@@ -45,12 +45,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
             let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
-            let impl_trait_ref = tcx.impl_trait_ref(def_id).unwrap().subst(tcx, impl_substs);
+            let impl_trait_ref = tcx.bound_impl_trait_ref(def_id).unwrap().subst(tcx, impl_substs);
 
             let impl_self_ty = impl_trait_ref.self_ty();
 
             if let Ok(..) = self.can_eq(param_env, trait_self_ty, impl_self_ty) {
-                self_match_impls.push(def_id);
+                self_match_impls.push((def_id, impl_substs));
 
                 if iter::zip(
                     trait_ref.substs.types().skip(1),
@@ -58,12 +58,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 )
                 .all(|(u, v)| self.fuzzy_match_tys(u, v, false).is_some())
                 {
-                    fuzzy_match_impls.push(def_id);
+                    fuzzy_match_impls.push((def_id, impl_substs));
                 }
             }
         });
 
-        let impl_def_id = if self_match_impls.len() == 1 {
+        let impl_def_id_and_substs = if self_match_impls.len() == 1 {
             self_match_impls[0]
         } else if fuzzy_match_impls.len() == 1 {
             fuzzy_match_impls[0]
@@ -71,7 +71,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             return None;
         };
 
-        tcx.has_attr(impl_def_id, sym::rustc_on_unimplemented).then_some(impl_def_id)
+        tcx.has_attr(impl_def_id_and_substs.0, sym::rustc_on_unimplemented)
+            .then_some(impl_def_id_and_substs)
     }
 
     /// Used to set on_unimplemented's `ItemContext`
@@ -102,10 +103,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 })
             }),
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(_is_move, _, body_id, _, gen_movability),
+                kind: hir::ExprKind::Closure { body, movability, .. },
                 ..
-            }) => self.describe_generator(*body_id).or_else(|| {
-                Some(if gen_movability.is_some() { "an async closure" } else { "a closure" })
+            }) => self.describe_generator(*body).or_else(|| {
+                Some(if movability.is_some() { "an async closure" } else { "a closure" })
             }),
             hir::Node::Expr(hir::Expr { .. }) => {
                 let parent_hid = hir.get_parent_node(hir_id);
@@ -120,8 +121,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> OnUnimplementedNote {
-        let def_id =
-            self.impl_similar_to(trait_ref, obligation).unwrap_or_else(|| trait_ref.def_id());
+        let (def_id, substs) = self
+            .impl_similar_to(trait_ref, obligation)
+            .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().substs));
         let trait_ref = trait_ref.skip_binder();
 
         let mut flags = vec![(
@@ -170,13 +172,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if let Some(def) = self_ty.ty_adt_def() {
                 // We also want to be able to select self's original
                 // signature with no type arguments resolved
-                flags.push((sym::_Self, Some(self.tcx.type_of(def.did).to_string())));
+                flags.push((sym::_Self, Some(self.tcx.type_of(def.did()).to_string())));
             }
 
             for param in generics.params.iter() {
                 let value = match param.kind {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        trait_ref.substs[param.index as usize].to_string()
+                        substs[param.index as usize].to_string()
                     }
                     GenericParamDefKind::Lifetime => continue,
                 };
@@ -184,16 +186,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 flags.push((name, Some(value)));
 
                 if let GenericParamDefKind::Type { .. } = param.kind {
-                    let param_ty = trait_ref.substs[param.index as usize].expect_ty();
+                    let param_ty = substs[param.index as usize].expect_ty();
                     if let Some(def) = param_ty.ty_adt_def() {
                         // We also want to be able to select the parameter's
                         // original signature with no type arguments resolved
-                        flags.push((name, Some(self.tcx.type_of(def.did).to_string())));
+                        flags.push((name, Some(self.tcx.type_of(def.did()).to_string())));
                     }
                 }
             }
 
-            if let Some(true) = self_ty.ty_adt_def().map(|def| def.did.is_local()) {
+            if let Some(true) = self_ty.ty_adt_def().map(|def| def.did().is_local()) {
                 flags.push((sym::crate_local, None));
             }
 
@@ -202,22 +204,55 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 flags.push((sym::_Self, Some("{integral}".to_owned())));
             }
 
+            if self_ty.is_array_slice() {
+                flags.push((sym::_Self, Some("&[]".to_owned())));
+            }
+
+            if self_ty.is_fn() {
+                let fn_sig = self_ty.fn_sig(self.tcx);
+                let shortname = match fn_sig.unsafety() {
+                    hir::Unsafety::Normal => "fn",
+                    hir::Unsafety::Unsafe => "unsafe fn",
+                };
+                flags.push((sym::_Self, Some(shortname.to_owned())));
+            }
+
+            // Slices give us `[]`, `[{ty}]`
+            if let ty::Slice(aty) = self_ty.kind() {
+                flags.push((sym::_Self, Some("[]".to_string())));
+                if let Some(def) = aty.ty_adt_def() {
+                    // We also want to be able to select the slice's type's original
+                    // signature with no type arguments resolved
+                    let type_string = self.tcx.type_of(def.did()).to_string();
+                    flags.push((sym::_Self, Some(format!("[{type_string}]"))));
+                }
+                if aty.is_integral() {
+                    flags.push((sym::_Self, Some("[{integral}]".to_string())));
+                }
+            }
+
+            // Arrays give us `[]`, `[{ty}; _]` and `[{ty}; N]`
             if let ty::Array(aty, len) = self_ty.kind() {
-                flags.push((sym::_Self, Some("[]".to_owned())));
-                flags.push((sym::_Self, Some(format!("[{}]", aty))));
+                flags.push((sym::_Self, Some("[]".to_string())));
+                let len = len.kind().try_to_value().and_then(|v| v.try_to_machine_usize(self.tcx));
+                flags.push((sym::_Self, Some(format!("[{}; _]", aty))));
+                if let Some(n) = len {
+                    flags.push((sym::_Self, Some(format!("[{}; {}]", aty, n))));
+                }
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
                     // signature with no type arguments resolved
-                    let type_string = self.tcx.type_of(def.did).to_string();
-                    flags.push((sym::_Self, Some(format!("[{}]", type_string))));
-
-                    let len =
-                        len.val().try_to_value().and_then(|v| v.try_to_machine_usize(self.tcx));
-                    let string = match len {
-                        Some(n) => format!("[{}; {}]", type_string, n),
-                        None => format!("[{}; _]", type_string),
-                    };
-                    flags.push((sym::_Self, Some(string)));
+                    let type_string = self.tcx.type_of(def.did()).to_string();
+                    flags.push((sym::_Self, Some(format!("[{type_string}; _]"))));
+                    if let Some(n) = len {
+                        flags.push((sym::_Self, Some(format!("[{type_string}; {n}]"))));
+                    }
+                }
+                if aty.is_integral() {
+                    flags.push((sym::_Self, Some("[{integral}; _]".to_string())));
+                    if let Some(n) = len {
+                        flags.push((sym::_Self, Some(format!("[{{integral}}; {n}]"))));
+                    }
                 }
             }
             if let ty::Dynamic(traits, _) = self_ty.kind() {
@@ -229,9 +264,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         });
 
-        if let Ok(Some(command)) =
-            OnUnimplementedDirective::of_item(self.tcx, trait_ref.def_id, def_id)
-        {
+        if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, def_id) {
             command.evaluate(self.tcx, trait_ref, &flags)
         } else {
             OnUnimplementedNote::default()

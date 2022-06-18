@@ -25,7 +25,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
       with:
         ref: ${{ github.ref }}
 
@@ -88,7 +88,7 @@ jobs:
       if: matrix.host == 'i686-unknown-linux-gnu'
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -143,12 +143,24 @@ jobs:
       env:
         OS: ${{ runner.os }}
 
-    - name: Test cargo dev new lint
-      run: |
-        cargo dev new_lint --name new_early_pass --pass early
-        cargo dev new_lint --name new_late_pass --pass late
-        cargo check
-        git reset --hard HEAD
+  metadata_collection:
+    needs: base
+    runs-on: ubuntu-latest
+
+    steps:
+     # Setup
+    - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
+      with:
+        github_token: "${{ secrets.github_token }}"
+
+    - name: Checkout
+      uses: actions/checkout@v3.0.2
+
+    - name: Install toolchain
+      run: rustup show active-toolchain
+
+    - name: Test metadata collection
+      run: cargo collect-metadata
 
   integration_build:
     needs: changelog
@@ -161,7 +173,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -219,7 +231,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Install toolchain
       run: rustup show active-toolchain

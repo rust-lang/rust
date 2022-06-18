@@ -5,7 +5,6 @@ use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-use regex::Regex;
 use thiserror::Error;
 
 use crate::config::config_type::ConfigType;
@@ -22,7 +21,6 @@ pub(crate) mod config_type;
 pub(crate) mod options;
 
 pub(crate) mod file_lines;
-pub(crate) mod license;
 pub(crate) mod lists;
 
 // This macro defines configuration options used in rustfmt. Each option
@@ -63,8 +61,6 @@ create_config! {
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, false, "Convert /* */ comments to // comments where possible";
     normalize_doc_attributes: bool, false, false, "Normalize doc attributes as doc comments";
-    license_template_path: String, String::default(), false,
-        "Beginning of file must match license template";
     format_strings: bool, false, false, "Format string literals where necessary";
     format_macro_matchers: bool, false, false,
         "Format the metavariable matching patterns in macros";
@@ -106,6 +102,8 @@ create_config! {
     // Misc.
     remove_nested_parens: bool, true, true, "Remove nested parens";
     combine_control_expr: bool, true, false, "Combine control expressions with function calls";
+    short_array_element_width_threshold: usize, 10, true,
+        "Width threshold for an array element to be considered short";
     overflow_delimited_expr: bool, false, false,
         "Allow trailing bracket/brace delimited expressions to overflow";
     struct_field_align_threshold: usize, 0, false,
@@ -162,10 +160,6 @@ create_config! {
     error_on_unformatted: bool, false, false,
         "Error if unable to get comments or string literals within max_width, \
          or they are left with trailing whitespaces";
-    report_todo: ReportTactic, ReportTactic::Never, false,
-        "Report all, none or unnumbered occurrences of TODO in source file comments";
-    report_fixme: ReportTactic, ReportTactic::Never, false,
-        "Report all, none or unnumbered occurrences of FIXME in source file comments";
     ignore: IgnoreList, IgnoreList::default(), false,
         "Skip formatting the specified files and directories";
 
@@ -364,7 +358,9 @@ fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
             // find the project file yet, and continue searching.
             Err(e) => {
                 if e.kind() != ErrorKind::NotFound {
-                    return Err(e);
+                    let ctx = format!("Failed to get metadata for config file {:?}", &config_file);
+                    let err = anyhow::Error::new(e).context(ctx);
+                    return Err(Error::new(ErrorKind::Other, err));
                 }
             }
             _ => {}
@@ -414,8 +410,6 @@ mod test {
         create_config! {
             // Options that are used by the generated functions
             max_width: usize, 100, true, "Maximum width of each line";
-            license_template_path: String, String::default(), false,
-                "Beginning of file must match license template";
             required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false,
                 "Require a specific version of rustfmt.";
             ignore: IgnoreList, IgnoreList::default(), false,
@@ -521,31 +515,6 @@ mod test {
     }
 
     #[test]
-    fn test_empty_string_license_template_path() {
-        let toml = r#"license_template_path = """#;
-        let config = Config::from_toml(toml, Path::new("")).unwrap();
-        assert!(config.license_template.is_none());
-    }
-
-    #[nightly_only_test]
-    #[test]
-    fn test_valid_license_template_path() {
-        let toml = r#"license_template_path = "tests/license-template/lt.txt""#;
-        let config = Config::from_toml(toml, Path::new("")).unwrap();
-        assert!(config.license_template.is_some());
-    }
-
-    #[nightly_only_test]
-    #[test]
-    fn test_override_existing_license_with_no_license() {
-        let toml = r#"license_template_path = "tests/license-template/lt.txt""#;
-        let mut config = Config::from_toml(toml, Path::new("")).unwrap();
-        assert!(config.license_template.is_some());
-        config.override_value("license_template_path", "");
-        assert!(config.license_template.is_none());
-    }
-
-    #[test]
     fn test_dump_default_config() {
         let default_config = format!(
             r#"max_width = 100
@@ -566,7 +535,6 @@ format_code_in_doc_comments = false
 comment_width = 80
 normalize_comments = false
 normalize_doc_attributes = false
-license_template_path = ""
 format_strings = false
 format_macro_matchers = false
 format_macro_bodies = true
@@ -589,6 +557,7 @@ spaces_around_ranges = false
 binop_separator = "Front"
 remove_nested_parens = true
 combine_control_expr = true
+short_array_element_width_threshold = 10
 overflow_delimited_expr = false
 struct_field_align_threshold = 0
 enum_discrim_align_threshold = 0
@@ -620,8 +589,6 @@ skip_children = false
 hide_parse_errors = false
 error_on_line_overflow = false
 error_on_unformatted = false
-report_todo = "Never"
-report_fixme = "Never"
 ignore = []
 emit_mode = "Files"
 make_backup = false

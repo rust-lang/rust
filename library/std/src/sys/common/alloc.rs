@@ -28,7 +28,7 @@ pub const MIN_ALIGN: usize = 8;
     target_arch = "wasm64",
 )))]
 pub const MIN_ALIGN: usize = 16;
-// The allocator on the esp-idf platform guarentees 4 byte alignment.
+// The allocator on the esp-idf platform guarantees 4 byte alignment.
 #[cfg(all(any(
     all(target_arch = "riscv32", target_os = "espidf"),
     all(target_arch = "xtensa", target_os = "espidf"),

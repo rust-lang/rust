@@ -3,7 +3,7 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{has_drop, is_copy, is_type_diagnostic_item, walk_ptrs_ty_depth};
 use clippy_utils::{fn_has_unsatisfiable_preds, match_def_path, paths};
 use if_chain::if_chain;
-use rustc_data_structures::{fx::FxHashMap, transitive_relation::TransitiveRelation};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{def_id, Body, FnDecl, HirId};
@@ -19,7 +19,6 @@ use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces, GenKill, Ge
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::sym;
-use std::convert::TryFrom;
 use std::ops::ControlFlow;
 
 macro_rules! unwrap_or_continue {
@@ -71,7 +70,7 @@ declare_clippy_lint! {
 declare_lint_pass!(RedundantClone => [REDUNDANT_CLONE]);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantClone {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -114,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             }
 
             // Give up on loops
-            if terminator.successors().any(|s| *s == bb) {
+            if terminator.successors().any(|s| s == bb) {
                 continue;
             }
 
@@ -256,7 +255,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                         diag.span_suggestion(
                             sugg_span,
                             "remove this",
-                            String::new(),
+                            "",
                             app,
                         );
                         if clone_usage.cloned_used {
@@ -289,11 +288,11 @@ fn is_call_with_ref_arg<'tcx>(
         if let mir::TerminatorKind::Call { func, args, destination, .. } = kind;
         if args.len() == 1;
         if let mir::Operand::Move(mir::Place { local, .. }) = &args[0];
-        if let ty::FnDef(def_id, _) = *func.ty(&*mir, cx.tcx).kind();
-        if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
+        if let ty::FnDef(def_id, _) = *func.ty(mir, cx.tcx).kind();
+        if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(mir, cx.tcx));
         if !is_copy(cx, inner_ty);
         then {
-            Some((def_id, *local, inner_ty, destination.as_ref().map(|(dest, _)| dest)?.as_local()?))
+            Some((def_id, *local, inner_ty, destination.as_local()?))
         } else {
             None
         }
@@ -319,7 +318,7 @@ fn find_stmt_assigns_to<'tcx>(
         None
     })?;
 
-    match (by_ref, &*rvalue) {
+    match (by_ref, rvalue) {
         (true, mir::Rvalue::Ref(_, _, place)) | (false, mir::Rvalue::Use(mir::Operand::Copy(place))) => {
             Some(base_local_and_movability(cx, mir, *place))
         },
@@ -440,7 +439,7 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
             // Short-circuit
             if (usage.cloned_used && usage.clone_consumed_or_mutated) ||
                 // Give up on loops
-                tdata.terminator().successors().any(|s| *s == bb)
+                tdata.terminator().successors().any(|s| s == bb)
             {
                 return CloneUsage {
                     cloned_used: true,
@@ -512,7 +511,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeStorageLive {
 /// For example, `b = &a; c = &a;` will make `b` and (transitively) `c`
 /// possible borrowers of `a`.
 struct PossibleBorrowerVisitor<'a, 'tcx> {
-    possible_borrower: TransitiveRelation<mir::Local>,
+    possible_borrower: TransitiveRelation,
     body: &'a mir::Body<'tcx>,
     cx: &'a LateContext<'tcx>,
     possible_origin: FxHashMap<mir::Local, HybridBitSet<mir::Local>>,
@@ -543,18 +542,10 @@ impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
                 continue;
             }
 
-            let borrowers = self.possible_borrower.reachable_from(&row);
+            let mut borrowers = self.possible_borrower.reachable_from(row, self.body.local_decls.len());
+            borrowers.remove(mir::Local::from_usize(0));
             if !borrowers.is_empty() {
-                let mut bs = HybridBitSet::new_empty(self.body.local_decls.len());
-                for &c in borrowers {
-                    if c != mir::Local::from_usize(0) {
-                        bs.insert(c);
-                    }
-                }
-
-                if !bs.is_empty() {
-                    map.insert(row, bs);
-                }
+                map.insert(row, borrowers);
             }
         }
 
@@ -593,7 +584,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'_>, _loc: mir::Location) {
         if let mir::TerminatorKind::Call {
             args,
-            destination: Some((mir::Place { local: dest, .. }, _)),
+            destination: mir::Place { local: dest, .. },
             ..
         } = &terminator.kind
         {
@@ -641,10 +632,10 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
 }
 
 /// Collect possible borrowed for every `&mut` local.
-/// For exampel, `_1 = &mut _2` generate _1: {_2,...}
+/// For example, `_1 = &mut _2` generate _1: {_2,...}
 /// Known Problems: not sure all borrowed are tracked
 struct PossibleOriginVisitor<'a, 'tcx> {
-    possible_origin: TransitiveRelation<mir::Local>,
+    possible_origin: TransitiveRelation,
     body: &'a mir::Body<'tcx>,
 }
 
@@ -663,18 +654,10 @@ impl<'a, 'tcx> PossibleOriginVisitor<'a, 'tcx> {
                 continue;
             }
 
-            let borrowers = self.possible_origin.reachable_from(&row);
+            let mut borrowers = self.possible_origin.reachable_from(row, self.body.local_decls.len());
+            borrowers.remove(mir::Local::from_usize(0));
             if !borrowers.is_empty() {
-                let mut bs = HybridBitSet::new_empty(self.body.local_decls.len());
-                for &c in borrowers {
-                    if c != mir::Local::from_usize(0) {
-                        bs.insert(c);
-                    }
-                }
-
-                if !bs.is_empty() {
-                    map.insert(row, bs);
-                }
+                map.insert(row, borrowers);
             }
         }
         map
@@ -764,5 +747,30 @@ impl PossibleBorrowerMap<'_, '_> {
     fn local_is_alive_at(&mut self, local: mir::Local, at: mir::Location) -> bool {
         self.maybe_live.seek_after_primary_effect(at);
         self.maybe_live.contains(local)
+    }
+}
+
+#[derive(Default)]
+struct TransitiveRelation {
+    relations: FxHashMap<mir::Local, Vec<mir::Local>>,
+}
+impl TransitiveRelation {
+    fn add(&mut self, a: mir::Local, b: mir::Local) {
+        self.relations.entry(a).or_default().push(b);
+    }
+
+    fn reachable_from(&self, a: mir::Local, domain_size: usize) -> HybridBitSet<mir::Local> {
+        let mut seen = HybridBitSet::new_empty(domain_size);
+        let mut stack = vec![a];
+        while let Some(u) = stack.pop() {
+            if let Some(edges) = self.relations.get(&u) {
+                for &v in edges {
+                    if seen.insert(v) {
+                        stack.push(v);
+                    }
+                }
+            }
+        }
+        seen
     }
 }

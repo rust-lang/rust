@@ -14,7 +14,7 @@ const CONVENTIONS: [(&[Convention], &[SelfKind]); 9] = [
     (&[Convention::StartsWith("as_")], &[SelfKind::Ref, SelfKind::RefMut]),
     (&[Convention::StartsWith("from_")], &[SelfKind::No]),
     (&[Convention::StartsWith("into_")], &[SelfKind::Value]),
-    (&[Convention::StartsWith("is_")], &[SelfKind::Ref, SelfKind::No]),
+    (&[Convention::StartsWith("is_")], &[SelfKind::RefMut, SelfKind::Ref, SelfKind::No]),
     (&[Convention::Eq("to_mut")], &[SelfKind::RefMut]),
     (&[Convention::StartsWith("to_"), Convention::EndsWith("_mut")], &[SelfKind::RefMut]),
 

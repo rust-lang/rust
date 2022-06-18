@@ -7,20 +7,17 @@
 //! Everything here is basically just a shim around calling either `rustbook` or
 //! `rustdoc`.
 
-use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-
-use crate::Mode;
-use build_helper::{t, up_to_date};
 
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::{Config, TargetSelection};
 use crate::tool::{self, prepare_tool_cargo, SourceType, Tool};
-use crate::util::symlink_dir;
+use crate::util::{symlink_dir, t, up_to_date};
+use crate::Mode;
 
 macro_rules! submodule_helper {
     ($path:expr, submodule) => {
@@ -419,7 +416,7 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.all_krates("test").default_condition(builder.config.docs)
+        run.all_krates("test").path("library").default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -434,11 +431,16 @@ impl Step for Std {
         let stage = self.stage;
         let target = self.target;
         builder.info(&format!("Documenting stage{} std ({})", stage, target));
+        if builder.no_std(target) == Some(true) {
+            panic!(
+                "building std documentation for no_std target {target} is not supported\n\
+                 Set `docs = false` in the config to disable documentation."
+            );
+        }
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
 
-        builder.ensure(compile::Std { compiler, target });
         let out_dir = builder.stage_out(compiler, Mode::Std).join(target.triple).join("doc");
 
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
@@ -475,11 +477,14 @@ impl Step for Std {
             .iter()
             .map(components_simplified)
             .filter_map(|path| {
-                if path.get(0) == Some(&"library") {
+                if path.len() >= 2 && path.get(0) == Some(&"library") {
+                    // single crate
                     Some(path[1].to_owned())
                 } else if !path.is_empty() {
+                    // ??
                     Some(path[0].to_owned())
                 } else {
+                    // all library crates
                     None
                 }
             })
@@ -545,18 +550,13 @@ impl Step for Rustc {
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let target = self.target;
-        builder.info(&format!("Documenting stage{} compiler ({})", stage, target));
 
         let paths = builder
             .paths
             .iter()
-            .map(components_simplified)
-            .filter_map(|path| {
-                if path.get(0) == Some(&"compiler") {
-                    path.get(1).map(|p| p.to_owned())
-                } else {
-                    None
-                }
+            .filter(|path| {
+                let components = components_simplified(path);
+                components.len() >= 2 && components[0] == "compiler"
             })
             .collect::<Vec<_>>();
 
@@ -564,9 +564,12 @@ impl Step for Rustc {
         let out = builder.compiler_doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        // Build rustc.
+        // Build the standard library, so that proc-macros can use it.
+        // (Normally, only the metadata would be necessary, but proc-macros are special since they run at compile-time.)
         let compiler = builder.compiler(stage, builder.config.build);
-        builder.ensure(compile::Rustc { compiler, target });
+        builder.ensure(compile::Std { compiler, target: builder.config.build });
+
+        builder.info(&format!("Documenting stage{} compiler ({})", stage, target));
 
         // This uses a shared directory so that librustdoc documentation gets
         // correctly built and merged with the rustc documentation. This is
@@ -604,38 +607,22 @@ impl Step for Rustc {
         cargo.rustdocflag("--extern-html-root-url");
         cargo.rustdocflag("ena=https://docs.rs/ena/latest/");
 
-        let mut compiler_crates = HashSet::new();
-
-        if paths.is_empty() {
-            // Find dependencies for top level crates.
-            for root_crate in &["rustc_driver", "rustc_codegen_llvm", "rustc_codegen_ssa"] {
-                compiler_crates.extend(
-                    builder
-                        .in_tree_crates(root_crate, Some(target))
-                        .into_iter()
-                        .map(|krate| krate.name),
-                );
-            }
+        let root_crates = if paths.is_empty() {
+            vec![
+                INTERNER.intern_str("rustc_driver"),
+                INTERNER.intern_str("rustc_codegen_llvm"),
+                INTERNER.intern_str("rustc_codegen_ssa"),
+            ]
         } else {
-            for root_crate in paths {
-                if !builder.src.join("compiler").join(&root_crate).exists() {
-                    builder.info(&format!(
-                        "\tskipping - compiler/{} (unknown compiler crate)",
-                        root_crate
-                    ));
-                } else {
-                    compiler_crates.extend(
-                        builder
-                            .in_tree_crates(root_crate, Some(target))
-                            .into_iter()
-                            .map(|krate| krate.name),
-                    );
-                }
-            }
-        }
+            paths.into_iter().map(|p| builder.crate_paths[p]).collect()
+        };
+        // Find dependencies for top level crates.
+        let compiler_crates = root_crates.iter().flat_map(|krate| {
+            builder.in_tree_crates(krate, Some(target)).into_iter().map(|krate| krate.name)
+        });
 
         let mut to_open = None;
-        for krate in &compiler_crates {
+        for krate in compiler_crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
             // FIXME: Cargo should probably do this itself.
@@ -659,7 +646,6 @@ macro_rules! tool_doc {
     ($tool: ident, $should_run: literal, $path: literal, [$($krate: literal),+ $(,)?] $(,)?) => {
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
-            stage: u32,
             target: TargetSelection,
         }
 
@@ -674,7 +660,7 @@ macro_rules! tool_doc {
             }
 
             fn make_run(run: RunConfig<'_>) {
-                run.builder.ensure($tool { stage: run.builder.top_stage, target: run.target });
+                run.builder.ensure($tool { target: run.target });
             }
 
             /// Generates compiler documentation.
@@ -684,8 +670,21 @@ macro_rules! tool_doc {
             /// we do not merge it with the other documentation from std, test and
             /// proc_macros. This is largely just a wrapper around `cargo doc`.
             fn run(self, builder: &Builder<'_>) {
-                let stage = self.stage;
+                let stage = builder.top_stage;
                 let target = self.target;
+
+                // This is the intended out directory for compiler documentation.
+                let out = builder.compiler_doc_out(target);
+                t!(fs::create_dir_all(&out));
+
+                // Build rustc docs so that we generate relative links.
+                builder.ensure(Rustc { stage, target });
+                // Rustdoc needs the rustc sysroot available to build.
+                // FIXME: is there a way to only ensure `check::Rustc` here? Last time I tried it failed
+                // with strange errors, but only on a full bors test ...
+                let compiler = builder.compiler(stage, builder.config.build);
+                builder.ensure(compile::Rustc { compiler, target });
+
                 builder.info(
                     &format!(
                         "Documenting stage{} {} ({})",
@@ -694,15 +693,6 @@ macro_rules! tool_doc {
                         target,
                     ),
                 );
-
-                // This is the intended out directory for compiler documentation.
-                let out = builder.compiler_doc_out(target);
-                t!(fs::create_dir_all(&out));
-
-                let compiler = builder.compiler(stage, builder.config.build);
-
-                // Build rustc docs so that we generate relative links.
-                builder.ensure(Rustc { stage, target });
 
                 // Symlink compiler docs to the output directory of rustdoc documentation.
                 let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc");
@@ -890,6 +880,10 @@ impl Step for RustcBook {
         }
         if self.validate {
             cmd.arg("--validate");
+        }
+        if !builder.unstable_features() {
+            // We need to validate nightly features, even on the stable channel.
+            cmd.env("RUSTC_BOOTSTRAP", "1");
         }
         // If the lib directories are in an unusual location (changed in
         // config.toml), then this needs to explicitly update the dylib search

@@ -7,13 +7,13 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::Pass;
 
-crate const PROPAGATE_DOC_CFG: Pass = Pass {
+pub(crate) const PROPAGATE_DOC_CFG: Pass = Pass {
     name: "propagate-doc-cfg",
     run: propagate_doc_cfg,
     description: "propagates `#[doc(cfg(...))]` to child items",
 };
 
-crate fn propagate_doc_cfg(cr: Crate, _: &mut DocContext<'_>) -> Crate {
+pub(crate) fn propagate_doc_cfg(cr: Crate, _: &mut DocContext<'_>) -> Crate {
     CfgPropagator { parent_cfg: None }.fold_crate(cr)
 }
 

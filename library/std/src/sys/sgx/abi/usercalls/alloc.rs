@@ -571,7 +571,8 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UserRef<U>> for UserRef<T> {}
 impl<T, I> Index<I> for UserRef<[T]>
 where
     [T]: UserSafe,
-    I: SliceIndex<[T], Output: UserSafe>,
+    I: SliceIndex<[T]>,
+    I::Output: UserSafe,
 {
     type Output = UserRef<I::Output>;
 
@@ -591,7 +592,8 @@ where
 impl<T, I> IndexMut<I> for UserRef<[T]>
 where
     [T]: UserSafe,
-    I: SliceIndex<[T], Output: UserSafe>,
+    I: SliceIndex<[T]>,
+    I::Output: UserSafe,
 {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut UserRef<I::Output> {

@@ -8,8 +8,8 @@ fn test_borrowed_clone() {
 
 #[test]
 fn test_clone_from() {
-    let a = box 5;
-    let mut b = box 10;
+    let a = Box::new(5);
+    let mut b = Box::new(10);
     b.clone_from(&a);
     assert_eq!(*b, 5);
 }

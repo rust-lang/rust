@@ -152,8 +152,10 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         };
 
         let target = &self.config.sess.target;
-        let mingw_gnu_toolchain =
-            target.vendor == "pc" && target.os == "windows" && target.env == "gnu";
+        let mingw_gnu_toolchain = target.vendor == "pc"
+            && target.os == "windows"
+            && target.env == "gnu"
+            && target.abi.is_empty();
 
         let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = dll_imports
             .iter()

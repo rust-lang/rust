@@ -19,7 +19,7 @@ impl Foo for Bar {
     type Assoc = usize;
     type Assoc2<T> = Vec<T>;
     //~^ ERROR `T` doesn't implement `std::fmt::Display`
-    type Assoc3<T> where T: Iterator = Vec<T>;
+    type Assoc3<T> = Vec<T> where T: Iterator;
     //~^ ERROR impl has stricter requirements than trait
     type WithDefault<'a, T: Debug + 'a> = &'a dyn Iterator<Item=T>;
     type NoGenerics = ::std::cell::Cell<i32>;

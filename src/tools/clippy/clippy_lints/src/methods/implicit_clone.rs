@@ -17,7 +17,7 @@ pub fn check(cx: &LateContext<'_>, method_name: &str, expr: &hir::Expr<'_>, recv
         let return_type = cx.typeck_results().expr_ty(expr);
         let input_type = cx.typeck_results().expr_ty(recv);
         let (input_type, ref_count) = peel_mid_ty_refs(input_type);
-        if let Some(ty_name) = input_type.ty_adt_def().map(|adt_def| cx.tcx.item_name(adt_def.did));
+        if let Some(ty_name) = input_type.ty_adt_def().map(|adt_def| cx.tcx.item_name(adt_def.did()));
         if return_type == input_type;
         then {
             let mut app = Applicability::MachineApplicable;
@@ -48,12 +48,11 @@ pub fn is_clone_like(cx: &LateContext<'_>, method_name: &str, method_def_id: hir
         "to_os_string" => is_diag_item_method(cx, method_def_id, sym::OsStr),
         "to_owned" => is_diag_trait_item(cx, method_def_id, sym::ToOwned),
         "to_path_buf" => is_diag_item_method(cx, method_def_id, sym::Path),
-        "to_vec" => {
-            cx.tcx
-                .impl_of_method(method_def_id)
-                .map(|impl_did| Some(impl_did) == cx.tcx.lang_items().slice_alloc_impl())
-                == Some(true)
-        },
+        "to_vec" => cx
+            .tcx
+            .impl_of_method(method_def_id)
+            .filter(|&impl_did| cx.tcx.type_of(impl_did).is_slice() && cx.tcx.impl_trait_ref(impl_did).is_none())
+            .is_some(),
         _ => false,
     }
 }

@@ -30,7 +30,15 @@ LL |     const VAL: T;
 LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `VAL` in implementation
 
-error: aborting due to 3 previous errors
+error: constant expression depends on a generic parameter
+  --> $DIR/ice-6252.rs:13:9
+   |
+LL |     [1; <Multiply<Five, Five>>::VAL];
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0046, E0412.
 For more information about an error, try `rustc --explain E0046`.

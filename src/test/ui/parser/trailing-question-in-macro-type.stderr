@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `o` in this scope
+  --> $DIR/trailing-question-in-macro-type.rs:12:15
+   |
+LL |     fn_expr!{ o?.when(|&i| i > 0)?.when(|&i| i%2 == 0) };
+   |               ^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

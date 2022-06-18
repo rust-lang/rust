@@ -1,0 +1,57 @@
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-features.rs:3:10
+   |
+LL |         ${ count(e) }
+   |          ^^^^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-features.rs:10:13
+   |
+LL |         $( ${ignore(e)} ${index()} )*
+   |             ^^^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-features.rs:10:26
+   |
+LL |         $( ${ignore(e)} ${index()} )*
+   |                          ^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-features.rs:18:19
+   |
+LL |         0 $( + 1 ${ignore(i)} )*
+   |                   ^^^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-features.rs:25:13
+   |
+LL |         $( ${ignore(e)} ${length()} )*
+   |             ^^^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-features.rs:25:26
+   |
+LL |         $( ${ignore(e)} ${length()} )*
+   |                          ^^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

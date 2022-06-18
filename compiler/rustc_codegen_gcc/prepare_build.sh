@@ -1,5 +1,5 @@
-#!/bin/bash --verbose
+#!/usr/bin/env bash
 set -e
+set -v
 
-rustup component add rust-src rustc-dev llvm-tools-preview
 ./build_sysroot/prepare_sysroot_src.sh

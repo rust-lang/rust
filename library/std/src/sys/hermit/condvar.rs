@@ -2,7 +2,7 @@ use crate::ffi::c_void;
 use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sys::hermit::abi;
-use crate::sys::mutex::Mutex;
+use crate::sys::locks::Mutex;
 use crate::time::Duration;
 
 // The implementation is inspired by Andrew D. Birrell's paper
@@ -22,11 +22,6 @@ unsafe impl Sync for Condvar {}
 impl Condvar {
     pub const fn new() -> Condvar {
         Condvar { counter: AtomicUsize::new(0), sem1: ptr::null(), sem2: ptr::null() }
-    }
-
-    pub unsafe fn init(&mut self) {
-        let _ = abi::sem_init(&mut self.sem1 as *mut *const c_void, 0);
-        let _ = abi::sem_init(&mut self.sem2 as *mut *const c_void, 0);
     }
 
     pub unsafe fn notify_one(&self) {
@@ -70,9 +65,13 @@ impl Condvar {
         mutex.lock();
         res == 0
     }
+}
 
-    pub unsafe fn destroy(&self) {
-        let _ = abi::sem_destroy(self.sem1);
-        let _ = abi::sem_destroy(self.sem2);
+impl Drop for Condvar {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = abi::sem_destroy(self.sem1);
+            let _ = abi::sem_destroy(self.sem2);
+        }
     }
 }

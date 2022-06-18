@@ -53,8 +53,8 @@ fn uncached_llvm_type<'a, 'tcx>(
             if let (&ty::Adt(def, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
             {
-                if def.is_enum() && !def.variants.is_empty() {
-                    write!(&mut name, "::{}", def.variants[index].name).unwrap();
+                if def.is_enum() && !def.variants().is_empty() {
+                    write!(&mut name, "::{}", def.variant(index).name).unwrap();
                 }
             }
             if let (&ty::Generator(_, _, _), &Variants::Single { index }) =
@@ -309,7 +309,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         scalar: Scalar,
         offset: Size,
     ) -> &'a Type {
-        match scalar.value {
+        match scalar.primitive() {
             Int(i, _) => cx.type_from_integer(i),
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
@@ -362,8 +362,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             return cx.type_i1();
         }
 
-        let offset =
-            if index == 0 { Size::ZERO } else { a.value.size(cx).align_to(b.value.align(cx).abi) };
+        let offset = if index == 0 { Size::ZERO } else { a.size(cx).align_to(b.align(cx).abi) };
         self.scalar_llvm_type_at(cx, scalar, offset)
     }
 

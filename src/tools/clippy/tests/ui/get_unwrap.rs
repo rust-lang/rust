@@ -1,13 +1,12 @@
 // run-rustfix
 
-#![allow(unused_mut, clippy::from_iter_instead_of_collect)]
+#![allow(unused_mut, clippy::from_iter_instead_of_collect, clippy::get_first)]
 #![warn(clippy::unwrap_used)]
 #![deny(clippy::get_unwrap)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::VecDeque;
-use std::iter::FromIterator;
 
 struct GetFalsePositive {
     arr: [u32; 3],

@@ -18,11 +18,11 @@ declare_clippy_lint! {
     /// the least it hurts readability of the code.
     ///
     /// ### Example
-    /// ```ignore
+    /// ```rust,ignore
     /// min(0, max(100, x))
-    /// ```
-    /// or
-    /// ```ignore
+    ///
+    /// // or
+    ///
     /// x.max(100).min(0)
     /// ```
     /// It will always be equal to `0`. Probably the author meant to clamp the value

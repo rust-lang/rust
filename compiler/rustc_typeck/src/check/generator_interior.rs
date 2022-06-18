@@ -1,6 +1,6 @@
 //! This calculates the types which has storage which lives across a suspension point in a
 //! generator from the perspective of typeck. The actual types used at runtime
-//! is calculated in `rustc_const_eval::transform::generator` and may be a subset of the
+//! is calculated in `rustc_mir_transform::generator` and may be a subset of the
 //! types computed here.
 
 use self::drop_ranges::DropRanges;
@@ -13,29 +13,22 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
-use rustc_middle::middle::region::{self, YieldData};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
+use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use smallvec::SmallVec;
 use tracing::debug;
 
 mod drop_ranges;
 
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
+    region_scope_tree: &'a region::ScopeTree,
     types: FxIndexSet<ty::GeneratorInteriorTypeCause<'tcx>>,
-    region_scope_tree: &'tcx region::ScopeTree,
+    rvalue_scopes: &'a RvalueScopes,
     expr_count: usize,
     kind: hir::GeneratorKind,
     prev_unresolved_span: Option<Span>,
-    /// Match arm guards have temporary borrows from the pattern bindings.
-    /// In case there is a yield point in a guard with a reference to such bindings,
-    /// such borrows can span across this yield point.
-    /// As such, we need to track these borrows and record them despite of the fact
-    /// that they may succeed the said yield point in the post-order.
-    guard_bindings: SmallVec<[SmallVec<[HirId; 4]>; 1]>,
-    guard_bindings_set: HirIdSet,
     linted_values: HirIdSet,
     drop_ranges: DropRanges,
 }
@@ -48,7 +41,6 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
         scope: Option<region::Scope>,
         expr: Option<&'tcx Expr<'tcx>>,
         source_span: Span,
-        guard_borrowing_from_pattern: bool,
     ) {
         use rustc_span::DUMMY_SP;
 
@@ -89,8 +81,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                             // If it is a borrowing happening in the guard,
                             // it needs to be recorded regardless because they
                             // do live across this yield point.
-                            guard_borrowing_from_pattern
-                                || yield_data.expr_and_pat_count >= self.expr_count
+                            yield_data.expr_and_pat_count >= self.expr_count
                         })
                         .cloned()
                 })
@@ -189,22 +180,22 @@ pub fn resolve_interior<'a, 'tcx>(
     kind: hir::GeneratorKind,
 ) {
     let body = fcx.tcx.hir().body(body_id);
+    let typeck_results = fcx.inh.typeck_results.borrow();
     let mut visitor = InteriorVisitor {
         fcx,
         types: FxIndexSet::default(),
         region_scope_tree: fcx.tcx.region_scope_tree(def_id),
+        rvalue_scopes: &typeck_results.rvalue_scopes,
         expr_count: 0,
         kind,
         prev_unresolved_span: None,
-        guard_bindings: <_>::default(),
-        guard_bindings_set: <_>::default(),
         linted_values: <_>::default(),
         drop_ranges: drop_ranges::compute_drop_ranges(fcx, def_id, body),
     };
     intravisit::walk_body(&mut visitor, body);
 
     // Check that we visited the same amount of expressions as the RegionResolutionVisitor
-    let region_expr_count = visitor.region_scope_tree.body_expr_count(body_id).unwrap();
+    let region_expr_count = fcx.tcx.region_scope_tree(def_id).body_expr_count(body_id).unwrap();
     assert_eq!(region_expr_count, visitor.expr_count);
 
     // The types are already kept in insertion order.
@@ -260,8 +251,9 @@ pub fn resolve_interior<'a, 'tcx>(
     let witness =
         fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars.clone()));
 
+    drop(typeck_results);
     // Store the generator types and spans into the typeck results for this generator.
-    visitor.fcx.inh.typeck_results.borrow_mut().generator_interior_types =
+    fcx.inh.typeck_results.borrow_mut().generator_interior_types =
         ty::Binder::bind_with_vars(type_causes, bound_vars);
 
     debug!(
@@ -284,30 +276,55 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         let Arm { guard, pat, body, .. } = arm;
         self.visit_pat(pat);
         if let Some(ref g) = guard {
-            self.guard_bindings.push(<_>::default());
-            ArmPatCollector {
-                guard_bindings_set: &mut self.guard_bindings_set,
-                guard_bindings: self
-                    .guard_bindings
-                    .last_mut()
-                    .expect("should have pushed at least one earlier"),
+            {
+                // If there is a guard, we need to count all variables bound in the pattern as
+                // borrowed for the entire guard body, regardless of whether they are accessed.
+                // We do this by walking the pattern bindings and recording `&T` for any `x: T`
+                // that is bound.
+
+                struct ArmPatCollector<'a, 'b, 'tcx> {
+                    interior_visitor: &'a mut InteriorVisitor<'b, 'tcx>,
+                    scope: Scope,
+                }
+
+                impl<'a, 'b, 'tcx> Visitor<'tcx> for ArmPatCollector<'a, 'b, 'tcx> {
+                    fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
+                        intravisit::walk_pat(self, pat);
+                        if let PatKind::Binding(_, id, ident, ..) = pat.kind {
+                            let ty =
+                                self.interior_visitor.fcx.typeck_results.borrow().node_type(id);
+                            let tcx = self.interior_visitor.fcx.tcx;
+                            let ty = tcx.mk_ref(
+                                // Use `ReErased` as `resolve_interior` is going to replace all the
+                                // regions anyway.
+                                tcx.mk_region(ty::ReErased),
+                                ty::TypeAndMut { ty, mutbl: hir::Mutability::Not },
+                            );
+                            self.interior_visitor.record(
+                                ty,
+                                id,
+                                Some(self.scope),
+                                None,
+                                ident.span,
+                            );
+                        }
+                    }
+                }
+
+                ArmPatCollector {
+                    interior_visitor: self,
+                    scope: Scope { id: g.body().hir_id.local_id, data: ScopeData::Node },
+                }
+                .visit_pat(pat);
             }
-            .visit_pat(pat);
 
             match g {
                 Guard::If(ref e) => {
                     self.visit_expr(e);
                 }
-                Guard::IfLet(ref pat, ref e) => {
-                    self.visit_pat(pat);
-                    self.visit_expr(e);
+                Guard::IfLet(ref l) => {
+                    self.visit_let_expr(l);
                 }
-            }
-
-            let mut scope_var_ids =
-                self.guard_bindings.pop().expect("should have pushed at least one earlier");
-            for var_id in scope_var_ids.drain(..) {
-                self.guard_bindings_set.remove(&var_id);
             }
         }
         self.visit_expr(body);
@@ -319,15 +336,13 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         self.expr_count += 1;
 
         if let PatKind::Binding(..) = pat.kind {
-            let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id);
+            let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id).unwrap();
             let ty = self.fcx.typeck_results.borrow().pat_ty(pat);
-            self.record(ty, pat.hir_id, Some(scope), None, pat.span, false);
+            self.record(ty, pat.hir_id, Some(scope), None, pat.span);
         }
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        let mut guard_borrowing_from_pattern = false;
-
         match &expr.kind {
             ExprKind::Call(callee, args) => match &callee.kind {
                 ExprKind::Path(qpath) => {
@@ -354,34 +369,37 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 }
                 _ => intravisit::walk_expr(self, expr),
             },
-            ExprKind::Path(qpath) => {
-                intravisit::walk_expr(self, expr);
-                let res = self.fcx.typeck_results.borrow().qpath_res(qpath, expr.hir_id);
-                match res {
-                    Res::Local(id) if self.guard_bindings_set.contains(&id) => {
-                        guard_borrowing_from_pattern = true;
-                    }
-                    _ => {}
-                }
-            }
             _ => intravisit::walk_expr(self, expr),
         }
 
         self.expr_count += 1;
 
-        let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+        debug!("is_borrowed_temporary: {:?}", self.drop_ranges.is_borrowed_temporary(expr));
+
+        // Typically, the value produced by an expression is consumed by its parent in some way,
+        // so we only have to check if the parent contains a yield (note that the parent may, for
+        // example, store the value into a local variable, but then we already consider local
+        // variables to be live across their scope).
+        //
+        // However, in the case of temporary values, we are going to store the value into a
+        // temporary on the stack that is live for the current temporary scope and then return a
+        // reference to it. That value may be live across the entire temporary scope.
+        let scope = if self.drop_ranges.is_borrowed_temporary(expr) {
+            self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
+        } else {
+            debug!("parent_node: {:?}", self.fcx.tcx.hir().find_parent_node(expr.hir_id));
+            match self.fcx.tcx.hir().find_parent_node(expr.hir_id) {
+                Some(parent) => Some(Scope { id: parent.local_id, data: ScopeData::Node }),
+                None => {
+                    self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
+                }
+            }
+        };
 
         // If there are adjustments, then record the final type --
         // this is the actual value that is being produced.
         if let Some(adjusted_ty) = self.fcx.typeck_results.borrow().expr_ty_adjusted_opt(expr) {
-            self.record(
-                adjusted_ty,
-                expr.hir_id,
-                scope,
-                Some(expr),
-                expr.span,
-                guard_borrowing_from_pattern,
-            );
+            self.record(adjusted_ty, expr.hir_id, scope, Some(expr), expr.span);
         }
 
         // Also record the unadjusted type (which is the only type if
@@ -409,50 +427,9 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // The type table might not have information for this expression
         // if it is in a malformed scope. (#66387)
         if let Some(ty) = self.fcx.typeck_results.borrow().expr_ty_opt(expr) {
-            if guard_borrowing_from_pattern {
-                // Match guards create references to all the bindings in the pattern that are used
-                // in the guard, e.g. `y if is_even(y) => ...` becomes `is_even(*r_y)` where `r_y`
-                // is a reference to `y`, so we must record a reference to the type of the binding.
-                let tcx = self.fcx.tcx;
-                let ref_ty = tcx.mk_ref(
-                    // Use `ReErased` as `resolve_interior` is going to replace all the regions anyway.
-                    tcx.mk_region(ty::ReErased),
-                    ty::TypeAndMut { ty, mutbl: hir::Mutability::Not },
-                );
-                self.record(
-                    ref_ty,
-                    expr.hir_id,
-                    scope,
-                    Some(expr),
-                    expr.span,
-                    guard_borrowing_from_pattern,
-                );
-            }
-            self.record(
-                ty,
-                expr.hir_id,
-                scope,
-                Some(expr),
-                expr.span,
-                guard_borrowing_from_pattern,
-            );
+            self.record(ty, expr.hir_id, scope, Some(expr), expr.span);
         } else {
             self.fcx.tcx.sess.delay_span_bug(expr.span, "no type for node");
-        }
-    }
-}
-
-struct ArmPatCollector<'a> {
-    guard_bindings_set: &'a mut HirIdSet,
-    guard_bindings: &'a mut SmallVec<[HirId; 4]>,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for ArmPatCollector<'a> {
-    fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
-        intravisit::walk_pat(self, pat);
-        if let PatKind::Binding(_, id, ..) = pat.kind {
-            self.guard_bindings.push(id);
-            self.guard_bindings_set.insert(id);
         }
     }
 }
@@ -468,11 +445,11 @@ pub struct SuspendCheckData<'a, 'tcx> {
 }
 
 // Returns whether it emitted a diagnostic or not
-// Note that this fn and the proceding one are based on the code
+// Note that this fn and the proceeding one are based on the code
 // for creating must_use diagnostics
 //
 // Note that this technique was chosen over things like a `Suspend` marker trait
-// as it is simpler and has precendent in the compiler
+// as it is simpler and has precedent in the compiler
 pub fn check_must_not_suspend_ty<'tcx>(
     fcx: &FnCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
@@ -496,7 +473,7 @@ pub fn check_must_not_suspend_ty<'tcx>(
             let descr_pre = &format!("{}boxed ", data.descr_pre);
             check_must_not_suspend_ty(fcx, boxed_ty, hir_id, SuspendCheckData { descr_pre, ..data })
         }
-        ty::Adt(def, _) => check_must_not_suspend_def(fcx.tcx, def.did, hir_id, data),
+        ty::Adt(def, _) => check_must_not_suspend_def(fcx.tcx, def.did(), hir_id, data),
         // FIXME: support adding the attribute to TAITs
         ty::Opaque(def, _) => {
             let mut has_emitted = false;
@@ -549,7 +526,7 @@ pub fn check_must_not_suspend_ty<'tcx>(
                 _ => None,
             };
             for (i, ty) in fields.iter().enumerate() {
-                let descr_post = &format!(" in tuple element {}", i);
+                let descr_post = &format!(" in tuple element {i}");
                 let span = comps.and_then(|c| c.get(i)).map(|e| e.span).unwrap_or(data.source_span);
                 if check_must_not_suspend_ty(
                     fcx,
@@ -591,44 +568,43 @@ fn check_must_not_suspend_def(
     hir_id: HirId,
     data: SuspendCheckData<'_, '_>,
 ) -> bool {
-    for attr in tcx.get_attrs(def_id).iter() {
-        if attr.has_name(sym::must_not_suspend) {
-            tcx.struct_span_lint_hir(
-                rustc_session::lint::builtin::MUST_NOT_SUSPEND,
-                hir_id,
-                data.source_span,
-                |lint| {
-                    let msg = format!(
-                        "{}`{}`{} held across a suspend point, but should not be",
-                        data.descr_pre,
-                        tcx.def_path_str(def_id),
-                        data.descr_post,
-                    );
-                    let mut err = lint.build(&msg);
+    if let Some(attr) = tcx.get_attr(def_id, sym::must_not_suspend) {
+        tcx.struct_span_lint_hir(
+            rustc_session::lint::builtin::MUST_NOT_SUSPEND,
+            hir_id,
+            data.source_span,
+            |lint| {
+                let msg = format!(
+                    "{}`{}`{} held across a suspend point, but should not be",
+                    data.descr_pre,
+                    tcx.def_path_str(def_id),
+                    data.descr_post,
+                );
+                let mut err = lint.build(&msg);
 
-                    // add span pointing to the offending yield/await
-                    err.span_label(data.yield_span, "the value is held across this suspend point");
+                // add span pointing to the offending yield/await
+                err.span_label(data.yield_span, "the value is held across this suspend point");
 
-                    // Add optional reason note
-                    if let Some(note) = attr.value_str() {
-                        // FIXME(guswynn): consider formatting this better
-                        err.span_note(data.source_span, note.as_str());
-                    }
+                // Add optional reason note
+                if let Some(note) = attr.value_str() {
+                    // FIXME(guswynn): consider formatting this better
+                    err.span_note(data.source_span, note.as_str());
+                }
 
-                    // Add some quick suggestions on what to do
-                    // FIXME: can `drop` work as a suggestion here as well?
-                    err.span_help(
-                        data.source_span,
-                        "consider using a block (`{ ... }`) \
-                        to shrink the value's scope, ending before the suspend point",
-                    );
+                // Add some quick suggestions on what to do
+                // FIXME: can `drop` work as a suggestion here as well?
+                err.span_help(
+                    data.source_span,
+                    "consider using a block (`{ ... }`) \
+                    to shrink the value's scope, ending before the suspend point",
+                );
 
-                    err.emit();
-                },
-            );
+                err.emit();
+            },
+        );
 
-            return true;
-        }
+        true
+    } else {
+        false
     }
-    false
 }

@@ -6,17 +6,17 @@ fn main() {
     let s = [1, 2, 3];
     let v = vec![1, 2, 3];
 
-    s.iter().next();
-    // Should be replaced by s.get(0)
+    let _ = s.iter().next();
+    // Should be replaced by s.first()
 
-    s[2..].iter().next();
+    let _ = s[2..].iter().next();
     // Should be replaced by s.get(2)
 
-    v[5..].iter().next();
+    let _ = v[5..].iter().next();
     // Should be replaced by v.get(5)
 
-    v.iter().next();
-    // Should be replaced by v.get(0)
+    let _ = v.iter().next();
+    // Should be replaced by v.first()
 
     let o = Some(5);
     o.iter().next();

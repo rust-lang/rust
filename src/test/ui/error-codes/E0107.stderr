@@ -128,6 +128,22 @@ note: struct defined here, with 0 lifetime parameters
 LL | struct Quux<T>(T);
    |        ^^^^
 
-error: aborting due to 9 previous errors
+error[E0107]: this trait takes 0 generic arguments but 2 generic arguments were supplied
+  --> $DIR/E0107.rs:55:27
+   |
+LL | fn trait_bound_generic<I: T<u8, u16>>(_i: I) {
+   |                           ^ expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/E0107.rs:50:11
+   |
+LL | pub trait T {
+   |           ^
+help: replace the generic bounds with the associated types
+   |
+LL | fn trait_bound_generic<I: T<A = u8, B = u16>>(_i: I) {
+   |                             ~~~~~~  ~~~~~~~
+
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0107`.

@@ -1,14 +1,15 @@
-error[E0623]: lifetime mismatch
-  --> $DIR/issue-63388-1.rs:14:9
+error[E0621]: explicit lifetime required in the type of `foo`
+  --> $DIR/issue-63388-1.rs:13:5
    |
-LL |         &'a self, foo: &dyn Foo
-   |                        -------- this parameter and the return type are declared with different lifetimes...
-LL |     ) -> &dyn Foo
-   |          --------
-LL |     {
-LL |         foo
-   |         ^^^ ...but data from `foo` is returned here
+LL |           &'a self, foo: &dyn Foo
+   |                          -------- help: add explicit lifetime `'a` to the type of `foo`: `&'a (dyn Foo + 'a)`
+LL |       ) -> &dyn Foo
+LL | /     {
+LL | |
+LL | |         foo
+LL | |     }
+   | |_____^ lifetime `'a` required
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0623`.
+For more information about this error, try `rustc --explain E0621`.

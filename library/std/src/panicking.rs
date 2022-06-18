@@ -20,7 +20,7 @@ use crate::process;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::stdio::panic_output;
 use crate::sys_common::backtrace;
-use crate::sys_common::rwlock::StaticRWLock;
+use crate::sys_common::rwlock::StaticRwLock;
 use crate::sys_common::thread_info;
 use crate::thread;
 
@@ -47,7 +47,7 @@ extern "C" {
 }
 
 #[allow(improper_ctypes)]
-extern "C-unwind" {
+extern "Rust" {
     /// `payload` is passed through another layer of raw pointers as `&mut dyn Trait` is not
     /// FFI-safe. `BoxMeUp` lazily performs allocation only when needed (this avoids allocations
     /// when using the "abort" panic runtime).
@@ -83,7 +83,7 @@ impl Hook {
     }
 }
 
-static HOOK_LOCK: StaticRWLock = StaticRWLock::new();
+static HOOK_LOCK: StaticRwLock = StaticRwLock::new();
 static mut HOOK: Hook = Hook::Default;
 
 /// Registers a custom panic hook, replacing any that was previously registered.
@@ -283,7 +283,7 @@ fn default_hook(info: &PanicInfo<'_>) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        let _ = writeln!(err, "thread '{}' panicked at '{}', {}", name, msg, location);
+        let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
@@ -325,7 +325,7 @@ pub mod panic_count {
     pub const ALWAYS_ABORT_FLAG: usize = 1 << (usize::BITS - 1);
 
     // Panic count for the current thread.
-    thread_local! { static LOCAL_PANIC_COUNT: Cell<usize> = Cell::new(0) }
+    thread_local! { static LOCAL_PANIC_COUNT: Cell<usize> = const { Cell::new(0) } }
 
     // Sum of panic counts from all threads. The purpose of this is to have
     // a fast path in `is_zero` (which is used by `panicking`). In any particular
@@ -677,7 +677,7 @@ fn rust_panic_with_hook(
             // Unfortunately, this does not print a backtrace, because creating
             // a `Backtrace` will allocate, which we must to avoid here.
             let panicinfo = PanicInfo::internal_constructor(message, location, can_unwind);
-            rtprintpanic!("{}\npanicked after panic::always_abort(), aborting.\n", panicinfo);
+            rtprintpanic!("{panicinfo}\npanicked after panic::always_abort(), aborting.\n");
         }
         crate::sys::abort_internal();
     }
@@ -745,5 +745,5 @@ fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
         let obj = &mut msg as *mut &mut dyn BoxMeUp;
         __rust_start_panic(obj)
     };
-    rtabort!("failed to initiate panic, error {}", code)
+    rtabort!("failed to initiate panic, error {code}")
 }

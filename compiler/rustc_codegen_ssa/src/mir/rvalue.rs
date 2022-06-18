@@ -181,6 +181,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cast = bx.cx().layout_of(self.monomorphize(mir_cast_ty));
 
                 let val = match *kind {
+                    mir::CastKind::PointerExposeAddress => {
+                        assert!(bx.cx().is_backend_immediate(cast));
+                        let llptr = operand.immediate();
+                        let llcast_ty = bx.cx().immediate_backend_type(cast);
+                        let lladdr = bx.ptrtoint(llptr, llcast_ty);
+                        OperandValue::Immediate(lladdr)
+                    }
                     mir::CastKind::Pointer(PointerCast::ReifyFnPointer) => {
                         match *operand.layout.ty.kind() {
                             ty::FnDef(def_id, substs) => {
@@ -262,7 +269,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::CastKind::Pointer(
                         PointerCast::MutToConstPointer | PointerCast::ArrayToPointer,
                     )
-                    | mir::CastKind::Misc => {
+                    | mir::CastKind::Misc
+                    // Since int2ptr can have arbitrary integer types as input (so we have to do
+                    // sign extension and all that), it is currently best handled in the same code
+                    // path as the other integer-to-X casts.
+                    | mir::CastKind::PointerFromExposedAddress => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {
@@ -299,7 +310,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                         let mut signed = false;
                         if let Abi::Scalar(scalar) = operand.layout.abi {
-                            if let Int(_, s) = scalar.value {
+                            if let Int(_, s) = scalar.primitive() {
                                 // We use `i1` for bytes that are always `0` or `1`,
                                 // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                                 // let LLVM interpret the `i1` as signed, because
@@ -307,15 +318,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 signed = !scalar.is_bool() && s;
 
                                 if !scalar.is_always_valid(bx.cx())
-                                    && scalar.valid_range.end >= scalar.valid_range.start
+                                    && scalar.valid_range(bx.cx()).end
+                                        >= scalar.valid_range(bx.cx()).start
                                 {
                                     // We want `table[e as usize ± k]` to not
                                     // have bound checks, and this is the most
                                     // convenient place to put the `assume`s.
-                                    if scalar.valid_range.start > 0 {
-                                        let enum_value_lower_bound = bx
-                                            .cx()
-                                            .const_uint_big(ll_t_in, scalar.valid_range.start);
+                                    if scalar.valid_range(bx.cx()).start > 0 {
+                                        let enum_value_lower_bound = bx.cx().const_uint_big(
+                                            ll_t_in,
+                                            scalar.valid_range(bx.cx()).start,
+                                        );
                                         let cmp_start = bx.icmp(
                                             IntPredicate::IntUGE,
                                             llval,
@@ -324,8 +337,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                         bx.assume(cmp_start);
                                     }
 
-                                    let enum_value_upper_bound =
-                                        bx.cx().const_uint_big(ll_t_in, scalar.valid_range.end);
+                                    let enum_value_upper_bound = bx
+                                        .cx()
+                                        .const_uint_big(ll_t_in, scalar.valid_range(bx.cx()).end);
                                     let cmp_end = bx.icmp(
                                         IntPredicate::IntULE,
                                         llval,
@@ -358,9 +372,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                             (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Ptr(_)) => {
                                 bx.pointercast(llval, ll_t_out)
-                            }
-                            (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
-                                bx.ptrtoint(llval, ll_t_out)
                             }
                             (CastTy::Int(_), CastTy::Ptr(_)) => {
                                 let usize_llval = bx.intcast(llval, bx.cx().type_isize(), signed);

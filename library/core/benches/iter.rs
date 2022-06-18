@@ -367,3 +367,27 @@ fn bench_partial_cmp(b: &mut Bencher) {
 fn bench_lt(b: &mut Bencher) {
     b.iter(|| (0..100000).map(black_box).lt((0..100000).map(black_box)))
 }
+
+#[bench]
+fn bench_trusted_random_access_adapters(b: &mut Bencher) {
+    let vec1: Vec<_> = (0usize..100000).collect();
+    let vec2 = black_box(vec1.clone());
+    b.iter(|| {
+        let mut iter = vec1
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(idx, e)| idx.wrapping_add(e))
+            .zip(vec2.iter().copied())
+            .map(|(a, b)| a.wrapping_add(b))
+            .fuse();
+        let mut acc: usize = 0;
+        let size = iter.size();
+        for i in 0..size {
+            // SAFETY: TRA requirements are satisfied by 0..size iteration and then dropping the
+            // iterator.
+            acc = acc.wrapping_add(unsafe { iter.__iterator_get_unchecked(i) });
+        }
+        acc
+    })
+}

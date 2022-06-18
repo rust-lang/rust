@@ -1,10 +1,12 @@
 //! The general point of the optimizations provided here is to simplify something like:
 //!
 //! ```rust
+//! # fn foo<T, E>(x: Result<T, E>) -> Result<T, E> {
 //! match x {
 //!     Ok(x) => Ok(x),
 //!     Err(x) => Err(x)
 //! }
+//! # }
 //! ```
 //!
 //! into just `x`.
@@ -23,7 +25,7 @@ use std::slice::Iter;
 ///
 /// This is done by transforming basic blocks where the statements match:
 ///
-/// ```rust
+/// ```ignore (MIR)
 /// _LOCAL_TMP = ((_LOCAL_1 as Variant ).FIELD: TY );
 /// _TMP_2 = _LOCAL_TMP;
 /// ((_LOCAL_0 as Variant).FIELD: TY) = move _TMP_2;
@@ -32,7 +34,7 @@ use std::slice::Iter;
 ///
 /// into:
 ///
-/// ```rust
+/// ```ignore (MIR)
 /// _LOCAL_0 = move _LOCAL_1
 /// ```
 pub struct SimplifyArmIdentity;
@@ -362,7 +364,7 @@ fn optimization_applies<'tcx>(
         return false;
     } else if last_assigned_to != opt_info.local_tmp_s1 {
         trace!(
-            "NO: end of assignemnt chain does not match written enum temp: {:?} != {:?}",
+            "NO: end of assignment chain does not match written enum temp: {:?} != {:?}",
             last_assigned_to,
             opt_info.local_tmp_s1
         );
@@ -472,7 +474,7 @@ impl Visitor<'_> for LocalUseCounter {
 }
 
 /// Match on:
-/// ```rust
+/// ```ignore (MIR)
 /// _LOCAL_INTO = ((_LOCAL_FROM as Variant).FIELD: TY);
 /// ```
 fn match_get_variant_field<'tcx>(
@@ -492,7 +494,7 @@ fn match_get_variant_field<'tcx>(
 }
 
 /// Match on:
-/// ```rust
+/// ```ignore (MIR)
 /// ((_LOCAL_FROM as Variant).FIELD: TY) = move _LOCAL_INTO;
 /// ```
 fn match_set_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local, VarField<'tcx>)> {
@@ -507,7 +509,7 @@ fn match_set_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local
 }
 
 /// Match on:
-/// ```rust
+/// ```ignore (MIR)
 /// discriminant(_LOCAL_TO_SET) = VAR_IDX;
 /// ```
 fn match_set_discr(stmt: &Statement<'_>) -> Option<(Local, VariantIdx)> {
@@ -690,7 +692,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
     ///
     /// Statements can be trivially equal if the kinds match.
     /// But they can also be considered equal in the following case A:
-    /// ```
+    /// ```ignore (MIR)
     /// discriminant(_0) = 0;   // bb1
     /// _0 = move _1;           // bb2
     /// ```
@@ -707,7 +709,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
     ) -> StatementEquality {
         let helper = |rhs: &Rvalue<'tcx>,
                       place: &Place<'tcx>,
-                      variant_index: &VariantIdx,
+                      variant_index: VariantIdx,
                       switch_value: u128,
                       side_to_choose| {
             let place_type = place.ty(self.body, self.tcx).ty;
@@ -717,7 +719,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
             };
             // We need to make sure that the switch value that targets the bb with
             // SetDiscriminant is the same as the variant discriminant.
-            let variant_discr = adt.discriminant_for_variant(self.tcx, *variant_index).val;
+            let variant_discr = adt.discriminant_for_variant(self.tcx, variant_index).val;
             if variant_discr != switch_value {
                 trace!(
                     "NO: variant discriminant {} does not equal switch value {}",
@@ -726,7 +728,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
                 );
                 return StatementEquality::NotEqual;
             }
-            let variant_is_fieldless = adt.variants[*variant_index].fields.is_empty();
+            let variant_is_fieldless = adt.variant(variant_index).fields.is_empty();
             if !variant_is_fieldless {
                 trace!("NO: variant {:?} was not fieldless", variant_index);
                 return StatementEquality::NotEqual;
@@ -753,7 +755,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
             // check for case A
             (
                 StatementKind::Assign(box (_, rhs)),
-                StatementKind::SetDiscriminant { place, variant_index },
+                &StatementKind::SetDiscriminant { ref place, variant_index },
             ) if y_target_and_value.value.is_some() => {
                 // choose basic block of x, as that has the assign
                 helper(
@@ -765,8 +767,8 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
                 )
             }
             (
-                StatementKind::SetDiscriminant { place, variant_index },
-                StatementKind::Assign(box (_, rhs)),
+                &StatementKind::SetDiscriminant { ref place, variant_index },
+                &StatementKind::Assign(box (_, ref rhs)),
             ) if x_target_and_value.value.is_some() => {
                 // choose basic block of y, as that has the assign
                 helper(

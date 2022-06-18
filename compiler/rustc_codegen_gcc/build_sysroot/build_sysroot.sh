@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Requires the CHANNEL env var to be set to `debug` or `release.`
 
@@ -22,7 +22,7 @@ if [[ "$1" == "--release" ]]; then
     RUSTFLAGS="$RUSTFLAGS -Zmir-opt-level=3" cargo build --target $TARGET_TRIPLE --release
 else
     sysroot_channel='debug'
-    cargo build --target $TARGET_TRIPLE
+    cargo build --target $TARGET_TRIPLE --features compiler_builtins/c
 fi
 
 # Copy files to sysroot

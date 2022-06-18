@@ -18,7 +18,7 @@ use crate::sys_common::IntoInner;
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
 
-use libc::{c_char, c_int, gid_t, uid_t, EXIT_FAILURE, EXIT_SUCCESS};
+use libc::{c_char, c_int, gid_t, pid_t, uid_t, EXIT_FAILURE, EXIT_SUCCESS};
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
@@ -35,7 +35,8 @@ cfg_if::cfg_if! {
 // Android with api less than 21 define sig* functions inline, so it is not
 // available for dynamic link. Implementing sigemptyset and sigaddset allow us
 // to support older Android version (independent of libc version).
-// The following implementations are based on https://git.io/vSkNf
+// The following implementations are based on
+// https://github.com/aosp-mirror/platform_bionic/blob/ad8dcd6023294b646e5a8288c0ed431b0845da49/libc/include/android/legacy_signal_inlines.h
 cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
         pub unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
@@ -82,6 +83,7 @@ pub struct Command {
     stderr: Option<Stdio>,
     #[cfg(target_os = "linux")]
     create_pidfd: bool,
+    pgroup: Option<pid_t>,
 }
 
 // Create a new type for argv, so that we can make it `Send` and `Sync`
@@ -145,6 +147,7 @@ impl Command {
             stdin: None,
             stdout: None,
             stderr: None,
+            pgroup: None,
         }
     }
 
@@ -167,6 +170,7 @@ impl Command {
             stdout: None,
             stderr: None,
             create_pidfd: false,
+            pgroup: None,
         }
     }
 
@@ -201,6 +205,9 @@ impl Command {
     }
     pub fn groups(&mut self, groups: &[gid_t]) {
         self.groups = Some(Box::from(groups));
+    }
+    pub fn pgroup(&mut self, pgroup: pid_t) {
+        self.pgroup = Some(pgroup);
     }
 
     #[cfg(target_os = "linux")]
@@ -264,6 +271,10 @@ impl Command {
     #[allow(dead_code)]
     pub fn get_groups(&self) -> Option<&[gid_t]> {
         self.groups.as_deref()
+    }
+    #[allow(dead_code)]
+    pub fn get_pgroup(&self) -> Option<pid_t> {
+        self.pgroup
     }
 
     pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {

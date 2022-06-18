@@ -1,4 +1,4 @@
-// compiler-flags: -Z parse-only
+// compile-flags: -Z parse-only
 
 #![feature(const_trait_impl)]
 

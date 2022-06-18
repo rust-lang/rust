@@ -57,4 +57,12 @@ impl T2 for S {
     fn ambiguous_method() {}
 }
 
+// @has associated_items/enum.MyEnum.html '//a/@href' 'enum.MyEnum.html#variant.MyVariant'
+/// Link to [MyEnumAlias::MyVariant]
+pub enum MyEnum {
+    MyVariant,
+}
+
+pub type MyEnumAlias = MyEnum;
+
 fn main() {}

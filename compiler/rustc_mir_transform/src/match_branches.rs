@@ -14,7 +14,7 @@ pub struct MatchBranchSimplification;
 ///
 /// For example:
 ///
-/// ```rust
+/// ```ignore (MIR)
 /// bb0: {
 ///     switchInt(move _3) -> [42_isize: bb1, otherwise: bb2];
 /// }
@@ -32,7 +32,7 @@ pub struct MatchBranchSimplification;
 ///
 /// into:
 ///
-/// ```rust
+/// ```ignore (MIR)
 /// bb0: {
 ///    _2 = Eq(move _3, const 42_isize);
 ///    goto -> bb3;

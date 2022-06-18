@@ -2,12 +2,12 @@ error[E0282]: type annotations needed
   --> $DIR/issue-77092.rs:11:26
    |
 LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
-   |                          ^^^^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `N` declared on the function `take_array_from_mut`
+   |                          ^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `take_array_from_mut`
    |
-help: consider specifying the const argument
+help: consider specifying the generic arguments
    |
-LL |         println!("{:?}", take_array_from_mut::<N>(&mut arr, i));
-   |                          ~~~~~~~~~~~~~~~~~~~~~~~~
+LL |         println!("{:?}", take_array_from_mut::<i32, N>(&mut arr, i));
+   |                                             ++++++++++
 
 error: aborting due to previous error
 

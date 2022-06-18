@@ -4,12 +4,16 @@ error[E0277]: the trait bound `(): Foo<N>` is not satisfied
 LL |     <() as Foo<N>>::test()
    |     ^^^^^^^^^^^^^^^^^^^^ the trait `Foo<N>` is not implemented for `()`
    |
-   = help: the following implementations were found:
+   = help: the following other types implement trait `Foo<N>`:
              <() as Foo<0_u8>>
              <() as Foo<100_u8>>
              <() as Foo<101_u8>>
              <() as Foo<102_u8>>
-           and 252 others
+             <() as Foo<103_u8>>
+             <() as Foo<104_u8>>
+             <() as Foo<105_u8>>
+             <() as Foo<106_u8>>
+           and 248 others
 
 error: aborting due to previous error
 

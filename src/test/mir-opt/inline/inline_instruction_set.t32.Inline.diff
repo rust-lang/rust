@@ -41,6 +41,10 @@
           StorageDead(_3);                 // scope 0 at $DIR/inline-instruction-set.rs:46:30: 46:31
           _0 = const ();                   // scope 0 at $DIR/inline-instruction-set.rs:41:14: 47:2
           return;                          // scope 0 at $DIR/inline-instruction-set.rs:47:2: 47:2
++     }
++ 
++     bb3 (cleanup): {
++         resume;                          // scope 0 at $DIR/inline-instruction-set.rs:41:1: 47:2
       }
   }
   

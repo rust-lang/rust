@@ -1,0 +1,9 @@
+error[E0601]: `main` function not found in crate `continue_after_missing_main`
+  --> $DIR/continue-after-missing-main.rs:29:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/continue-after-missing-main.rs`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0601`.

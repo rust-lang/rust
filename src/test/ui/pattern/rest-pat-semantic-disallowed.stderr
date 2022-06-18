@@ -189,7 +189,12 @@ error[E0282]: type annotations needed
   --> $DIR/rest-pat-semantic-disallowed.rs:33:9
    |
 LL |     let x @ ..;
-   |         ^^^^^^ consider giving this pattern a type
+   |         ^^^^^^
+   |
+help: consider giving this pattern a type
+   |
+LL |     let x @ ..: _;
+   |               +++
 
 error: aborting due to 23 previous errors
 

@@ -3,23 +3,25 @@
 //! This module implements parsing `config.toml` configuration files to tweak
 //! how the build runs.
 
+use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::ffi::OsString;
+use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::{exit, Command};
 use std::str::FromStr;
 
-use crate::builder::TaskPath;
+use crate::builder::{Builder, TaskPath};
 use crate::cache::{Interned, INTERNER};
 use crate::channel::GitInfo;
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
-use crate::util::exe;
-use build_helper::t;
-use serde::Deserialize;
+use crate::util::{exe, output, program_out_of_date, t};
+use once_cell::sync::OnceCell;
+use serde::{Deserialize, Deserializer};
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {
@@ -43,6 +45,7 @@ macro_rules! check_ci_llvm {
 /// each field, see the corresponding fields in
 /// `config.toml.example`.
 #[derive(Default)]
+#[cfg_attr(test, derive(Clone))]
 pub struct Config {
     pub changelog_seen: Option<usize>,
     pub ccache: Option<String>,
@@ -50,7 +53,6 @@ pub struct Config {
     pub ninja_in_file: bool,
     pub verbose: usize,
     pub submodules: Option<bool>,
-    pub fast_submodules: bool,
     pub compiler_docs: bool,
     pub docs_minification: bool,
     pub docs: bool,
@@ -68,21 +70,26 @@ pub struct Config {
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
     pub test_compare_mode: bool,
-    pub llvm_libunwind: LlvmLibunwind,
     pub color: Color,
+    pub patch_binaries_for_nix: bool,
+    pub stage0_metadata: Stage0Metadata,
 
     pub on_fail: Option<String>,
     pub stage: u32,
     pub keep_stage: Vec<u32>,
     pub keep_stage_std: Vec<u32>,
     pub src: PathBuf,
-    // defaults to `config.toml`
+    /// defaults to `config.toml`
     pub config: PathBuf,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
     pub dry_run: bool,
-    pub download_rustc: bool,
+    /// `None` if we shouldn't download CI compiler artifacts, or the commit to download if we should.
+    #[cfg(not(test))]
+    download_rustc_commit: Option<String>,
+    #[cfg(test)]
+    pub download_rustc_commit: Option<String>,
 
     pub deny_warnings: bool,
     pub backtrace_on_ice: bool,
@@ -97,7 +104,11 @@ pub struct Config {
     pub llvm_release_debuginfo: bool,
     pub llvm_version_check: bool,
     pub llvm_static_stdcpp: bool,
-    pub llvm_link_shared: bool,
+    /// `None` if `llvm_from_ci` is true and we haven't yet downloaded llvm.
+    #[cfg(not(test))]
+    llvm_link_shared: Cell<Option<bool>>,
+    #[cfg(test)]
+    pub llvm_link_shared: Cell<Option<bool>>,
     pub llvm_clang_cl: Option<String>,
     pub llvm_targets: Option<String>,
     pub llvm_experimental_targets: Option<String>,
@@ -132,7 +143,7 @@ pub struct Config {
     pub rust_debuginfo_level_std: u32,
     pub rust_debuginfo_level_tools: u32,
     pub rust_debuginfo_level_tests: u32,
-    pub rust_run_dsymutil: bool,
+    pub rust_split_debuginfo: SplitDebuginfo,
     pub rust_rpath: bool,
     pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
@@ -147,6 +158,7 @@ pub struct Config {
     pub rust_profile_generate: Option<String>,
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
+    pub llvm_libunwind_default: Option<LlvmLibunwind>,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -193,8 +205,47 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
-    pub initial_rustfmt: Option<PathBuf>,
+    #[cfg(not(test))]
+    initial_rustfmt: RefCell<RustfmtState>,
+    #[cfg(test)]
+    pub initial_rustfmt: RefCell<RustfmtState>,
     pub out: PathBuf,
+}
+
+#[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
+pub struct Stage0Metadata {
+    pub config: Stage0Config,
+    pub checksums_sha256: HashMap<String, String>,
+    pub rustfmt: Option<RustfmtMetadata>,
+}
+#[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
+pub struct Stage0Config {
+    pub dist_server: String,
+    pub artifacts_server: String,
+    pub artifacts_with_llvm_assertions_server: String,
+    pub git_merge_commit_email: String,
+}
+#[derive(Default, Deserialize)]
+#[cfg_attr(test, derive(Clone))]
+pub struct RustfmtMetadata {
+    pub date: String,
+    pub version: String,
+}
+
+#[derive(Clone, Debug)]
+pub enum RustfmtState {
+    SystemToolchain(PathBuf),
+    Downloaded(PathBuf),
+    Unavailable,
+    LazyEvaluated,
+}
+
+impl Default for RustfmtState {
+    fn default() -> Self {
+        RustfmtState::LazyEvaluated
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -223,7 +274,47 @@ impl FromStr for LlvmLibunwind {
     }
 }
 
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SplitDebuginfo {
+    Packed,
+    Unpacked,
+    Off,
+}
+
+impl Default for SplitDebuginfo {
+    fn default() -> Self {
+        SplitDebuginfo::Off
+    }
+}
+
+impl std::str::FromStr for SplitDebuginfo {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "packed" => Ok(SplitDebuginfo::Packed),
+            "unpacked" => Ok(SplitDebuginfo::Unpacked),
+            "off" => Ok(SplitDebuginfo::Off),
+            _ => Err(()),
+        }
+    }
+}
+
+impl SplitDebuginfo {
+    /// Returns the default `-Csplit-debuginfo` value for the current target. See the comment for
+    /// `rust.split-debuginfo` in `config.toml.example`.
+    fn default_for_platform(target: &str) -> Self {
+        if target.contains("apple") {
+            SplitDebuginfo::Unpacked
+        } else if target.contains("windows") {
+            SplitDebuginfo::Packed
+        } else {
+            SplitDebuginfo::Off
+        }
+    }
+}
+
+#[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TargetSelection {
     pub triple: Interned<String>,
     file: Option<Interned<String>>,
@@ -278,6 +369,12 @@ impl fmt::Display for TargetSelection {
     }
 }
 
+impl fmt::Debug for TargetSelection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
 impl PartialEq<&str> for TargetSelection {
     fn eq(&self, other: &&str) -> bool {
         self.triple == *other
@@ -286,11 +383,13 @@ impl PartialEq<&str> for TargetSelection {
 
 /// Per-target configuration stored in the global configuration structure.
 #[derive(Default)]
+#[cfg_attr(test, derive(Clone))]
 pub struct Target {
     /// Some(path to llvm-config) if using an external LLVM.
     pub llvm_config: Option<PathBuf>,
     /// Some(path to FileCheck) if one was specified.
     pub llvm_filecheck: Option<PathBuf>,
+    pub llvm_libunwind: Option<LlvmLibunwind>,
     pub cc: Option<PathBuf>,
     pub cxx: Option<PathBuf>,
     pub ar: Option<PathBuf>,
@@ -364,13 +463,13 @@ impl Merge for TomlConfig {
 
 // We are using a decl macro instead of a derive proc macro here to reduce the compile time of
 // rustbuild.
-macro_rules! derive_merge {
+macro_rules! define_config {
     ($(#[$attr:meta])* struct $name:ident {
-        $($field:ident: $field_ty:ty,)*
+        $($field:ident: Option<$field_ty:ty> = $field_key:literal,)*
     }) => {
         $(#[$attr])*
         struct $name {
-            $($field: $field_ty,)*
+            $($field: Option<$field_ty>,)*
         }
 
         impl Merge for $name {
@@ -382,116 +481,173 @@ macro_rules! derive_merge {
                 )*
             }
         }
+
+        // The following is a trimmed version of what serde_derive generates. All parts not relevant
+        // for toml deserialization have been removed. This reduces the binary size and improves
+        // compile time of rustbuild.
+        impl<'de> Deserialize<'de> for $name {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct Field;
+                impl<'de> serde::de::Visitor<'de> for Field {
+                    type Value = $name;
+                    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        f.write_str(concat!("struct ", stringify!($name)))
+                    }
+
+                    #[inline]
+                    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+                    where
+                        A: serde::de::MapAccess<'de>,
+                    {
+                        $(let mut $field: Option<$field_ty> = None;)*
+                        while let Some(key) =
+                            match serde::de::MapAccess::next_key::<String>(&mut map) {
+                                Ok(val) => val,
+                                Err(err) => {
+                                    return Err(err);
+                                }
+                            }
+                        {
+                            match &*key {
+                                $($field_key => {
+                                    if $field.is_some() {
+                                        return Err(<A::Error as serde::de::Error>::duplicate_field(
+                                            $field_key,
+                                        ));
+                                    }
+                                    $field = match serde::de::MapAccess::next_value::<$field_ty>(
+                                        &mut map,
+                                    ) {
+                                        Ok(val) => Some(val),
+                                        Err(err) => {
+                                            return Err(err);
+                                        }
+                                    };
+                                })*
+                                key => {
+                                    return Err(serde::de::Error::unknown_field(key, FIELDS));
+                                }
+                            }
+                        }
+                        Ok($name { $($field),* })
+                    }
+                }
+                const FIELDS: &'static [&'static str] = &[
+                    $($field_key,)*
+                ];
+                Deserializer::deserialize_struct(
+                    deserializer,
+                    stringify!($name),
+                    FIELDS,
+                    Field,
+                )
+            }
+        }
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of various global build decisions.
-    #[derive(Deserialize, Default, Clone)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+    #[derive(Default)]
     struct Build {
-        build: Option<String>,
-        host: Option<Vec<String>>,
-        target: Option<Vec<String>>,
-        // This is ignored, the rust code always gets the build directory from the `BUILD_DIR` env variable
-        build_dir: Option<String>,
-        cargo: Option<String>,
-        rustc: Option<String>,
-        rustfmt: Option<PathBuf>,
-        docs: Option<bool>,
-        compiler_docs: Option<bool>,
-        docs_minification: Option<bool>,
-        submodules: Option<bool>,
-        fast_submodules: Option<bool>,
-        gdb: Option<String>,
-        nodejs: Option<String>,
-        npm: Option<String>,
-        python: Option<String>,
-        locked_deps: Option<bool>,
-        vendor: Option<bool>,
-        full_bootstrap: Option<bool>,
-        extended: Option<bool>,
-        tools: Option<HashSet<String>>,
-        verbose: Option<usize>,
-        sanitizers: Option<bool>,
-        profiler: Option<bool>,
-        cargo_native_static: Option<bool>,
-        low_priority: Option<bool>,
-        configure_args: Option<Vec<String>>,
-        local_rebuild: Option<bool>,
-        print_step_timings: Option<bool>,
-        print_step_rusage: Option<bool>,
-        check_stage: Option<u32>,
-        doc_stage: Option<u32>,
-        build_stage: Option<u32>,
-        test_stage: Option<u32>,
-        install_stage: Option<u32>,
-        dist_stage: Option<u32>,
-        bench_stage: Option<u32>,
-        patch_binaries_for_nix: Option<bool>,
+        build: Option<String> = "build",
+        host: Option<Vec<String>> = "host",
+        target: Option<Vec<String>> = "target",
+        build_dir: Option<String> = "build-dir",
+        cargo: Option<String> = "cargo",
+        rustc: Option<String> = "rustc",
+        rustfmt: Option<PathBuf> = "rustfmt",
+        docs: Option<bool> = "docs",
+        compiler_docs: Option<bool> = "compiler-docs",
+        docs_minification: Option<bool> = "docs-minification",
+        submodules: Option<bool> = "submodules",
+        gdb: Option<String> = "gdb",
+        nodejs: Option<String> = "nodejs",
+        npm: Option<String> = "npm",
+        python: Option<String> = "python",
+        locked_deps: Option<bool> = "locked-deps",
+        vendor: Option<bool> = "vendor",
+        full_bootstrap: Option<bool> = "full-bootstrap",
+        extended: Option<bool> = "extended",
+        tools: Option<HashSet<String>> = "tools",
+        verbose: Option<usize> = "verbose",
+        sanitizers: Option<bool> = "sanitizers",
+        profiler: Option<bool> = "profiler",
+        cargo_native_static: Option<bool> = "cargo-native-static",
+        low_priority: Option<bool> = "low-priority",
+        configure_args: Option<Vec<String>> = "configure-args",
+        local_rebuild: Option<bool> = "local-rebuild",
+        print_step_timings: Option<bool> = "print-step-timings",
+        print_step_rusage: Option<bool> = "print-step-rusage",
+        check_stage: Option<u32> = "check-stage",
+        doc_stage: Option<u32> = "doc-stage",
+        build_stage: Option<u32> = "build-stage",
+        test_stage: Option<u32> = "test-stage",
+        install_stage: Option<u32> = "install-stage",
+        dist_stage: Option<u32> = "dist-stage",
+        bench_stage: Option<u32> = "bench-stage",
+        patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
+        metrics: Option<bool> = "metrics",
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of various global install decisions.
-    #[derive(Deserialize, Default, Clone)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Install {
-        prefix: Option<String>,
-        sysconfdir: Option<String>,
-        docdir: Option<String>,
-        bindir: Option<String>,
-        libdir: Option<String>,
-        mandir: Option<String>,
-        datadir: Option<String>,
+        prefix: Option<String> = "prefix",
+        sysconfdir: Option<String> = "sysconfdir",
+        docdir: Option<String> = "docdir",
+        bindir: Option<String> = "bindir",
+        libdir: Option<String> = "libdir",
+        mandir: Option<String> = "mandir",
+        datadir: Option<String> = "datadir",
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of how the LLVM build is configured.
-    #[derive(Deserialize, Default)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Llvm {
-        skip_rebuild: Option<bool>,
-        optimize: Option<bool>,
-        thin_lto: Option<bool>,
-        release_debuginfo: Option<bool>,
-        assertions: Option<bool>,
-        tests: Option<bool>,
-        plugins: Option<bool>,
-        ccache: Option<StringOrBool>,
-        version_check: Option<bool>,
-        static_libstdcpp: Option<bool>,
-        ninja: Option<bool>,
-        targets: Option<String>,
-        experimental_targets: Option<String>,
-        link_jobs: Option<u32>,
-        link_shared: Option<bool>,
-        version_suffix: Option<String>,
-        clang_cl: Option<String>,
-        cflags: Option<String>,
-        cxxflags: Option<String>,
-        ldflags: Option<String>,
-        use_libcxx: Option<bool>,
-        use_linker: Option<String>,
-        allow_old_toolchain: Option<bool>,
-        polly: Option<bool>,
-        clang: Option<bool>,
-        download_ci_llvm: Option<StringOrBool>,
-        build_config: Option<HashMap<String, String>>,
+        skip_rebuild: Option<bool> = "skip-rebuild",
+        optimize: Option<bool> = "optimize",
+        thin_lto: Option<bool> = "thin-lto",
+        release_debuginfo: Option<bool> = "release-debuginfo",
+        assertions: Option<bool> = "assertions",
+        tests: Option<bool> = "tests",
+        plugins: Option<bool> = "plugins",
+        ccache: Option<StringOrBool> = "ccache",
+        version_check: Option<bool> = "version-check",
+        static_libstdcpp: Option<bool> = "static-libstdcpp",
+        ninja: Option<bool> = "ninja",
+        targets: Option<String> = "targets",
+        experimental_targets: Option<String> = "experimental-targets",
+        link_jobs: Option<u32> = "link-jobs",
+        link_shared: Option<bool> = "link-shared",
+        version_suffix: Option<String> = "version-suffix",
+        clang_cl: Option<String> = "clang-cl",
+        cflags: Option<String> = "cflags",
+        cxxflags: Option<String> = "cxxflags",
+        ldflags: Option<String> = "ldflags",
+        use_libcxx: Option<bool> = "use-libcxx",
+        use_linker: Option<String> = "use-linker",
+        allow_old_toolchain: Option<bool> = "allow-old-toolchain",
+        polly: Option<bool> = "polly",
+        clang: Option<bool> = "clang",
+        download_ci_llvm: Option<StringOrBool> = "download-ci-llvm",
+        build_config: Option<HashMap<String, String>> = "build-config",
     }
 }
 
-derive_merge! {
-    #[derive(Deserialize, Default, Clone)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+define_config! {
     struct Dist {
-        sign_folder: Option<String>,
-        gpg_password_file: Option<String>,
-        upload_addr: Option<String>,
-        src_tarball: Option<bool>,
-        missing_tools: Option<bool>,
-        compression_formats: Option<Vec<String>>,
+        sign_folder: Option<String> = "sign-folder",
+        gpg_password_file: Option<String> = "gpg-password-file",
+        upload_addr: Option<String> = "upload-addr",
+        src_tarball: Option<bool> = "src-tarball",
+        missing_tools: Option<bool> = "missing-tools",
+        compression_formats: Option<Vec<String>> = "compression-formats",
     }
 }
 
@@ -508,109 +664,95 @@ impl Default for StringOrBool {
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of how the Rust build is configured.
-    #[derive(Deserialize, Default)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Rust {
-        optimize: Option<bool>,
-        debug: Option<bool>,
-        codegen_units: Option<u32>,
-        codegen_units_std: Option<u32>,
-        debug_assertions: Option<bool>,
-        debug_assertions_std: Option<bool>,
-        overflow_checks: Option<bool>,
-        overflow_checks_std: Option<bool>,
-        debug_logging: Option<bool>,
-        debuginfo_level: Option<u32>,
-        debuginfo_level_rustc: Option<u32>,
-        debuginfo_level_std: Option<u32>,
-        debuginfo_level_tools: Option<u32>,
-        debuginfo_level_tests: Option<u32>,
-        run_dsymutil: Option<bool>,
-        backtrace: Option<bool>,
-        incremental: Option<bool>,
-        parallel_compiler: Option<bool>,
-        default_linker: Option<String>,
-        channel: Option<String>,
-        description: Option<String>,
-        musl_root: Option<String>,
-        rpath: Option<bool>,
-        verbose_tests: Option<bool>,
-        optimize_tests: Option<bool>,
-        codegen_tests: Option<bool>,
-        ignore_git: Option<bool>,
-        dist_src: Option<bool>,
-        save_toolstates: Option<String>,
-        codegen_backends: Option<Vec<String>>,
-        lld: Option<bool>,
-        use_lld: Option<bool>,
-        llvm_tools: Option<bool>,
-        deny_warnings: Option<bool>,
-        backtrace_on_ice: Option<bool>,
-        verify_llvm_ir: Option<bool>,
-        thin_lto_import_instr_limit: Option<u32>,
-        remap_debuginfo: Option<bool>,
-        jemalloc: Option<bool>,
-        test_compare_mode: Option<bool>,
-        llvm_libunwind: Option<String>,
-        control_flow_guard: Option<bool>,
-        new_symbol_mangling: Option<bool>,
-        profile_generate: Option<String>,
-        profile_use: Option<String>,
+        optimize: Option<bool> = "optimize",
+        debug: Option<bool> = "debug",
+        codegen_units: Option<u32> = "codegen-units",
+        codegen_units_std: Option<u32> = "codegen-units-std",
+        debug_assertions: Option<bool> = "debug-assertions",
+        debug_assertions_std: Option<bool> = "debug-assertions-std",
+        overflow_checks: Option<bool> = "overflow-checks",
+        overflow_checks_std: Option<bool> = "overflow-checks-std",
+        debug_logging: Option<bool> = "debug-logging",
+        debuginfo_level: Option<u32> = "debuginfo-level",
+        debuginfo_level_rustc: Option<u32> = "debuginfo-level-rustc",
+        debuginfo_level_std: Option<u32> = "debuginfo-level-std",
+        debuginfo_level_tools: Option<u32> = "debuginfo-level-tools",
+        debuginfo_level_tests: Option<u32> = "debuginfo-level-tests",
+        split_debuginfo: Option<String> = "split-debuginfo",
+        run_dsymutil: Option<bool> = "run-dsymutil",
+        backtrace: Option<bool> = "backtrace",
+        incremental: Option<bool> = "incremental",
+        parallel_compiler: Option<bool> = "parallel-compiler",
+        default_linker: Option<String> = "default-linker",
+        channel: Option<String> = "channel",
+        description: Option<String> = "description",
+        musl_root: Option<String> = "musl-root",
+        rpath: Option<bool> = "rpath",
+        verbose_tests: Option<bool> = "verbose-tests",
+        optimize_tests: Option<bool> = "optimize-tests",
+        codegen_tests: Option<bool> = "codegen-tests",
+        ignore_git: Option<bool> = "ignore-git",
+        dist_src: Option<bool> = "dist-src",
+        save_toolstates: Option<String> = "save-toolstates",
+        codegen_backends: Option<Vec<String>> = "codegen-backends",
+        lld: Option<bool> = "lld",
+        use_lld: Option<bool> = "use-lld",
+        llvm_tools: Option<bool> = "llvm-tools",
+        deny_warnings: Option<bool> = "deny-warnings",
+        backtrace_on_ice: Option<bool> = "backtrace-on-ice",
+        verify_llvm_ir: Option<bool> = "verify-llvm-ir",
+        thin_lto_import_instr_limit: Option<u32> = "thin-lto-import-instr-limit",
+        remap_debuginfo: Option<bool> = "remap-debuginfo",
+        jemalloc: Option<bool> = "jemalloc",
+        test_compare_mode: Option<bool> = "test-compare-mode",
+        llvm_libunwind: Option<String> = "llvm-libunwind",
+        control_flow_guard: Option<bool> = "control-flow-guard",
+        new_symbol_mangling: Option<bool> = "new-symbol-mangling",
+        profile_generate: Option<String> = "profile-generate",
+        profile_use: Option<String> = "profile-use",
         // ignored; this is set from an env var set by bootstrap.py
-        download_rustc: Option<StringOrBool>,
+        download_rustc: Option<StringOrBool> = "download-rustc",
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of how each build target is configured.
-    #[derive(Deserialize, Default)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct TomlTarget {
-        cc: Option<String>,
-        cxx: Option<String>,
-        ar: Option<String>,
-        ranlib: Option<String>,
-        default_linker: Option<PathBuf>,
-        linker: Option<String>,
-        llvm_config: Option<String>,
-        llvm_filecheck: Option<String>,
-        android_ndk: Option<String>,
-        sanitizers: Option<bool>,
-        profiler: Option<bool>,
-        crt_static: Option<bool>,
-        musl_root: Option<String>,
-        musl_libdir: Option<String>,
-        wasi_root: Option<String>,
-        qemu_rootfs: Option<String>,
-        no_std: Option<bool>,
+        cc: Option<String> = "cc",
+        cxx: Option<String> = "cxx",
+        ar: Option<String> = "ar",
+        ranlib: Option<String> = "ranlib",
+        default_linker: Option<PathBuf> = "default-linker",
+        linker: Option<String> = "linker",
+        llvm_config: Option<String> = "llvm-config",
+        llvm_filecheck: Option<String> = "llvm-filecheck",
+        llvm_libunwind: Option<String> = "llvm-libunwind",
+        android_ndk: Option<String> = "android-ndk",
+        sanitizers: Option<bool> = "sanitizers",
+        profiler: Option<bool> = "profiler",
+        crt_static: Option<bool> = "crt-static",
+        musl_root: Option<String> = "musl-root",
+        musl_libdir: Option<String> = "musl-libdir",
+        wasi_root: Option<String> = "wasi-root",
+        qemu_rootfs: Option<String> = "qemu-rootfs",
+        no_std: Option<bool> = "no-std",
     }
 }
 
 impl Config {
-    fn path_from_python(var_key: &str) -> PathBuf {
-        match env::var_os(var_key) {
-            Some(var_val) => Self::normalize_python_path(var_val),
-            _ => panic!("expected '{}' to be set", var_key),
-        }
-    }
-
-    /// Normalizes paths from Python slightly. We don't trust paths from Python (#49785).
-    fn normalize_python_path(path: OsString) -> PathBuf {
-        Path::new(&path).components().collect()
-    }
-
     pub fn default_opts() -> Config {
         let mut config = Config::default();
         config.llvm_optimize = true;
         config.ninja_in_file = true;
         config.llvm_version_check = true;
+        config.llvm_static_stdcpp = true;
         config.backtrace = true;
         config.rust_optimize = true;
         config.rust_optimize_tests = true;
         config.submodules = None;
-        config.fast_submodules = true;
         config.docs = true;
         config.docs_minification = true;
         config.rust_rpath = true;
@@ -626,7 +768,7 @@ impl Config {
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         // Undo `src/bootstrap`
         config.src = manifest_dir.parent().unwrap().parent().unwrap().to_owned();
-        config.out = Config::path_from_python("BUILD_DIR");
+        config.out = PathBuf::from("build");
 
         config.initial_cargo = PathBuf::from(env!("CARGO"));
         config.initial_rustc = PathBuf::from(env!("RUSTC"));
@@ -656,11 +798,8 @@ impl Config {
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
 
-        if config.dry_run {
-            let dir = config.out.join("tmp-dry-run");
-            t!(fs::create_dir_all(&dir));
-            config.out = dir;
-        }
+        let stage0_json = t!(std::fs::read(&config.src.join("src").join("stage0.json")));
+        config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
 
         #[cfg(test)]
         let get_toml = |_| TomlConfig::default();
@@ -668,17 +807,40 @@ impl Config {
         let get_toml = |file: &Path| {
             use std::process;
 
-            let contents = t!(fs::read_to_string(file), "`include` config not found");
-            match toml::from_str(&contents) {
+            let contents =
+                t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
+            // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
+            // TomlConfig and sub types to be monomorphized 5x by toml.
+            match toml::from_str(&contents)
+                .and_then(|table: toml::Value| TomlConfig::deserialize(table))
+            {
                 Ok(table) => table,
                 Err(err) => {
-                    println!("failed to parse TOML configuration '{}': {}", file.display(), err);
+                    eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
                     process::exit(2);
                 }
             }
         };
 
-        let mut toml = flags.config.as_deref().map(get_toml).unwrap_or_else(TomlConfig::default);
+        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
+        let toml_path = flags
+            .config
+            .clone()
+            .or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from));
+        let using_default_path = toml_path.is_none();
+        let mut toml_path = toml_path.unwrap_or_else(|| PathBuf::from("config.toml"));
+        if using_default_path && !toml_path.exists() {
+            toml_path = config.src.join(toml_path);
+        }
+
+        // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
+        // but not if `config.toml` hasn't been created.
+        let mut toml = if !using_default_path || toml_path.exists() {
+            get_toml(&toml_path)
+        } else {
+            TomlConfig::default()
+        };
+
         if let Some(include) = &toml.profile {
             let mut include_path = config.src.clone();
             include_path.push("src");
@@ -690,11 +852,24 @@ impl Config {
         }
 
         config.changelog_seen = toml.changelog_seen;
-        if let Some(cfg) = flags.config {
-            config.config = cfg;
-        }
+        config.config = toml_path;
 
         let build = toml.build.unwrap_or_default();
+
+        set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
+        set(&mut config.out, build.build_dir.map(PathBuf::from));
+        // NOTE: Bootstrap spawns various commands with different working directories.
+        // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
+        if !config.out.is_absolute() {
+            // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
+            config.out = crate::util::absolute(&config.out);
+        }
+
+        if config.dry_run {
+            let dir = config.out.join("tmp-dry-run");
+            t!(fs::create_dir_all(&dir));
+            config.out = dir;
+        }
 
         config.hosts = if let Some(arg_host) = flags.host {
             arg_host
@@ -722,15 +897,11 @@ impl Config {
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs_minification, build.docs_minification);
         set(&mut config.docs, build.docs);
-        set(&mut config.fast_submodules, build.fast_submodules);
         set(&mut config.locked_deps, build.locked_deps);
         set(&mut config.vendor, build.vendor);
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
         config.tools = build.tools;
-        if build.rustfmt.is_some() {
-            config.initial_rustfmt = build.rustfmt;
-        }
         set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
         set(&mut config.profiler, build.profiler);
@@ -739,6 +910,7 @@ impl Config {
         set(&mut config.local_rebuild, build.local_rebuild);
         set(&mut config.print_step_timings, build.print_step_timings);
         set(&mut config.print_step_rusage, build.print_step_rusage);
+        set(&mut config.patch_binaries_for_nix, build.patch_binaries_for_nix);
 
         config.verbose = cmp::max(config.verbose, flags.verbose);
 
@@ -794,7 +966,9 @@ impl Config {
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
-            set(&mut config.llvm_link_shared, llvm.link_shared);
+            if let Some(v) = llvm.link_shared {
+                config.llvm_link_shared.set(Some(v));
+            }
             config.llvm_targets = llvm.targets.clone();
             config.llvm_experimental_targets = llvm.experimental_targets.clone();
             config.llvm_link_jobs = llvm.link_jobs;
@@ -864,6 +1038,7 @@ impl Config {
                 check_ci_llvm!(llvm.optimize);
                 check_ci_llvm!(llvm.thin_lto);
                 check_ci_llvm!(llvm.release_debuginfo);
+                // CI-built LLVM can be either dynamic or static. We won't know until we download it.
                 check_ci_llvm!(llvm.link_shared);
                 check_ci_llvm!(llvm.static_libstdcpp);
                 check_ci_llvm!(llvm.targets);
@@ -881,26 +1056,14 @@ impl Config {
                 check_ci_llvm!(llvm.clang);
                 check_ci_llvm!(llvm.build_config);
                 check_ci_llvm!(llvm.plugins);
-
-                // CI-built LLVM can be either dynamic or static.
-                let ci_llvm = config.out.join(&*config.build.triple).join("ci-llvm");
-                config.llvm_link_shared = if config.dry_run {
-                    // just assume dynamic for now
-                    true
-                } else {
-                    let link_type = t!(
-                        std::fs::read_to_string(ci_llvm.join("link-type.txt")),
-                        format!("CI llvm missing: {}", ci_llvm.display())
-                    );
-                    link_type == "dynamic"
-                };
             }
 
+            // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
             if config.llvm_thin_lto && llvm.link_shared.is_none() {
                 // If we're building with ThinLTO on, by default we want to link
                 // to LLVM shared, to avoid re-doing ThinLTO (which happens in
                 // the link step) with each stage.
-                config.llvm_link_shared = true;
+                config.llvm_link_shared.set(Some(true));
             }
         }
 
@@ -916,7 +1079,12 @@ impl Config {
             debuginfo_level_std = rust.debuginfo_level_std;
             debuginfo_level_tools = rust.debuginfo_level_tools;
             debuginfo_level_tests = rust.debuginfo_level_tests;
-            config.rust_run_dsymutil = rust.run_dsymutil.unwrap_or(false);
+            config.rust_split_debuginfo = rust
+                .split_debuginfo
+                .as_deref()
+                .map(SplitDebuginfo::from_str)
+                .map(|v| v.expect("invalid value for rust.split_debuginfo"))
+                .unwrap_or(SplitDebuginfo::default_for_platform(&config.build.triple));
             optimize = rust.optimize;
             ignore_git = rust.ignore_git;
             config.rust_new_symbol_mangling = rust.new_symbol_mangling;
@@ -925,10 +1093,6 @@ impl Config {
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.jemalloc, rust.jemalloc);
             set(&mut config.test_compare_mode, rust.test_compare_mode);
-            config.llvm_libunwind = rust
-                .llvm_libunwind
-                .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"))
-                .unwrap_or_default();
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel);
             config.description = rust.description;
@@ -951,6 +1115,9 @@ impl Config {
             config.rust_thin_lto_import_instr_limit = rust.thin_lto_import_instr_limit;
             set(&mut config.rust_remap_debuginfo, rust.remap_debuginfo);
             set(&mut config.control_flow_guard, rust.control_flow_guard);
+            config.llvm_libunwind_default = rust
+                .llvm_libunwind
+                .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
 
             if let Some(ref backends) = rust.codegen_backends {
                 config.rust_codegen_backends =
@@ -961,7 +1128,11 @@ impl Config {
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
-            config.download_rustc = env::var("BOOTSTRAP_DOWNLOAD_RUSTC").as_deref() == Ok("1");
+            config.download_rustc_commit = download_ci_rustc_commit(
+                &config.stage0_metadata,
+                rust.download_rustc,
+                config.verbose > 0,
+            );
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;
@@ -977,6 +1148,10 @@ impl Config {
                 if let Some(ref s) = cfg.llvm_filecheck {
                     target.llvm_filecheck = Some(config.src.join(s));
                 }
+                target.llvm_libunwind = cfg
+                    .llvm_libunwind
+                    .as_ref()
+                    .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
                 if let Some(ref s) = cfg.android_ndk {
                     target.ndk = Some(config.src.join(s));
                 }
@@ -1022,18 +1197,22 @@ impl Config {
             set(&mut config.missing_tools, t.missing_tools);
         }
 
-        config.initial_rustfmt = config.initial_rustfmt.or_else({
-            let build = config.build;
-            let initial_rustc = &config.initial_rustc;
-
-            move || {
-                // Cargo does not provide a RUSTFMT environment variable, so we
-                // synthesize it manually.
-                let rustfmt = initial_rustc.with_file_name(exe("rustfmt", build));
-
-                if rustfmt.exists() { Some(rustfmt) } else { None }
+        if let Some(r) = build.rustfmt {
+            *config.initial_rustfmt.borrow_mut() = if r.exists() {
+                RustfmtState::SystemToolchain(r)
+            } else {
+                RustfmtState::Unavailable
+            };
+        } else {
+            // If using a system toolchain for bootstrapping, see if that has rustfmt available.
+            let host = config.build;
+            let rustfmt_path = config.initial_rustc.with_file_name(exe("rustfmt", host));
+            let bin_root = config.out.join(host.triple).join("stage0");
+            if !rustfmt_path.starts_with(&bin_root) {
+                // Using a system-provided toolchain; we shouldn't download rustfmt.
+                *config.initial_rustfmt.borrow_mut() = RustfmtState::SystemToolchain(rustfmt_path);
             }
-        });
+        }
 
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
@@ -1069,7 +1248,7 @@ impl Config {
         let default = config.channel == "dev";
         config.ignore_git = ignore_git.unwrap_or(default);
 
-        let download_rustc = config.download_rustc;
+        let download_rustc = config.download_rustc_commit.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {
             Subcommand::Check { .. } => flags.stage.or(build.check_stage).unwrap_or(0),
@@ -1150,6 +1329,78 @@ impl Config {
         }
     }
 
+    /// The absolute path to the downloaded LLVM artifacts.
+    pub(crate) fn ci_llvm_root(&self) -> PathBuf {
+        assert!(self.llvm_from_ci);
+        self.out.join(&*self.build.triple).join("ci-llvm")
+    }
+
+    /// Determine whether llvm should be linked dynamically.
+    ///
+    /// If `false`, llvm should be linked statically.
+    /// This is computed on demand since LLVM might have to first be downloaded from CI.
+    pub(crate) fn llvm_link_shared(builder: &Builder<'_>) -> bool {
+        let mut opt = builder.config.llvm_link_shared.get();
+        if opt.is_none() && builder.config.dry_run {
+            // just assume static for now - dynamic linking isn't supported on all platforms
+            return false;
+        }
+
+        let llvm_link_shared = *opt.get_or_insert_with(|| {
+            if builder.config.llvm_from_ci {
+                crate::native::maybe_download_ci_llvm(builder);
+                let ci_llvm = builder.config.ci_llvm_root();
+                let link_type = t!(
+                    std::fs::read_to_string(ci_llvm.join("link-type.txt")),
+                    format!("CI llvm missing: {}", ci_llvm.display())
+                );
+                link_type == "dynamic"
+            } else {
+                // unclear how thought-through this default is, but it maintains compatibility with
+                // previous behavior
+                false
+            }
+        });
+        builder.config.llvm_link_shared.set(opt);
+        llvm_link_shared
+    }
+
+    /// Return whether we will use a downloaded, pre-compiled version of rustc, or just build from source.
+    pub(crate) fn download_rustc(builder: &Builder<'_>) -> bool {
+        static DOWNLOAD_RUSTC: OnceCell<bool> = OnceCell::new();
+        if builder.config.dry_run && DOWNLOAD_RUSTC.get().is_none() {
+            // avoid trying to actually download the commit
+            return false;
+        }
+
+        *DOWNLOAD_RUSTC.get_or_init(|| match &builder.config.download_rustc_commit {
+            None => false,
+            Some(commit) => {
+                download_ci_rustc(builder, commit);
+                true
+            }
+        })
+    }
+
+    pub(crate) fn initial_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
+        match &mut *builder.config.initial_rustfmt.borrow_mut() {
+            RustfmtState::SystemToolchain(p) | RustfmtState::Downloaded(p) => Some(p.clone()),
+            RustfmtState::Unavailable => None,
+            r @ RustfmtState::LazyEvaluated => {
+                if builder.config.dry_run {
+                    return Some(PathBuf::new());
+                }
+                let path = maybe_download_rustfmt(builder);
+                *r = if let Some(p) = &path {
+                    RustfmtState::Downloaded(p.clone())
+                } else {
+                    RustfmtState::Unavailable
+                };
+                path
+            }
+        }
+    }
+
     pub fn verbose(&self) -> bool {
         self.verbose > 0
     }
@@ -1174,6 +1425,14 @@ impl Config {
         self.rust_codegen_backends.contains(&INTERNER.intern_str("llvm"))
     }
 
+    pub fn llvm_libunwind(&self, target: TargetSelection) -> LlvmLibunwind {
+        self.target_config
+            .get(&target)
+            .and_then(|t| t.llvm_libunwind)
+            .or(self.llvm_libunwind_default)
+            .unwrap_or(LlvmLibunwind::No)
+    }
+
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {
         self.submodules.unwrap_or(rust_info.is_git())
     }
@@ -1190,4 +1449,204 @@ fn threads_from_config(v: u32) -> u32 {
         0 => num_cpus::get() as u32,
         n => n,
     }
+}
+
+/// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
+fn download_ci_rustc_commit(
+    stage0_metadata: &Stage0Metadata,
+    download_rustc: Option<StringOrBool>,
+    verbose: bool,
+) -> Option<String> {
+    // If `download-rustc` is not set, default to rebuilding.
+    let if_unchanged = match download_rustc {
+        None | Some(StringOrBool::Bool(false)) => return None,
+        Some(StringOrBool::Bool(true)) => false,
+        Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
+        Some(StringOrBool::String(other)) => {
+            panic!("unrecognized option for download-rustc: {}", other)
+        }
+    };
+
+    // Handle running from a directory other than the top level
+    let top_level = output(Command::new("git").args(&["rev-parse", "--show-toplevel"]));
+    let top_level = top_level.trim_end();
+    let compiler = format!("{top_level}/compiler/");
+    let library = format!("{top_level}/library/");
+
+    // Look for a version to compare to based on the current commit.
+    // Only commits merged by bors will have CI artifacts.
+    let merge_base = output(
+        Command::new("git")
+            .arg("rev-list")
+            .arg(format!("--author={}", stage0_metadata.config.git_merge_commit_email))
+            .args(&["-n1", "--first-parent", "HEAD"]),
+    );
+    let commit = merge_base.trim_end();
+    if commit.is_empty() {
+        println!("error: could not find commit hash for downloading rustc");
+        println!("help: maybe your repository history is too shallow?");
+        println!("help: consider disabling `download-rustc`");
+        println!("help: or fetch enough history to include one upstream commit");
+        exit(1);
+    }
+
+    // Warn if there were changes to the compiler or standard library since the ancestor commit.
+    let has_changes = !t!(Command::new("git")
+        .args(&["diff-index", "--quiet", &commit, "--", &compiler, &library])
+        .status())
+    .success();
+    if has_changes {
+        if if_unchanged {
+            if verbose {
+                println!(
+                    "warning: saw changes to compiler/ or library/ since {commit}; \
+                          ignoring `download-rustc`"
+                );
+            }
+            return None;
+        }
+        println!(
+            "warning: `download-rustc` is enabled, but there are changes to \
+                  compiler/ or library/"
+        );
+    }
+
+    Some(commit.to_string())
+}
+
+fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
+    let RustfmtMetadata { date, version } = builder.config.stage0_metadata.rustfmt.as_ref()?;
+    let channel = format!("{version}-{date}");
+
+    let host = builder.config.build;
+    let rustfmt_path = builder.config.initial_rustc.with_file_name(exe("rustfmt", host));
+    let bin_root = builder.config.out.join(host.triple).join("stage0");
+    let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
+    if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
+        return Some(rustfmt_path);
+    }
+
+    let filename = format!("rustfmt-{version}-{build}.tar.xz", build = host.triple);
+    download_component(builder, DownloadSource::Dist, filename, "rustfmt-preview", &date, "stage0");
+
+    builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
+    builder.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
+
+    builder.create(&rustfmt_stamp, &channel);
+    Some(rustfmt_path)
+}
+
+fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
+    builder.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
+    // FIXME: support downloading artifacts from the beta channel
+    const CHANNEL: &str = "nightly";
+    let host = builder.config.build.triple;
+    let bin_root = builder.out.join(host).join("ci-rustc");
+    let rustc_stamp = bin_root.join(".rustc-stamp");
+
+    if !bin_root.join("bin").join("rustc").exists() || program_out_of_date(&rustc_stamp, commit) {
+        if bin_root.exists() {
+            t!(fs::remove_dir_all(&bin_root));
+        }
+        let filename = format!("rust-std-{CHANNEL}-{host}.tar.xz");
+        let pattern = format!("rust-std-{host}");
+        download_ci_component(builder, filename, &pattern, commit);
+        let filename = format!("rustc-{CHANNEL}-{host}.tar.xz");
+        download_ci_component(builder, filename, "rustc", commit);
+        // download-rustc doesn't need its own cargo, it can just use beta's.
+        let filename = format!("rustc-dev-{CHANNEL}-{host}.tar.xz");
+        download_ci_component(builder, filename, "rustc-dev", commit);
+
+        builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
+        builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustdoc"));
+        let lib_dir = bin_root.join("lib");
+        for lib in t!(fs::read_dir(lib_dir)) {
+            let lib = t!(lib);
+            if lib.path().extension() == Some(OsStr::new("so")) {
+                builder.fix_bin_or_dylib(&lib.path());
+            }
+        }
+        t!(fs::write(rustc_stamp, commit));
+    }
+}
+
+pub(crate) enum DownloadSource {
+    CI,
+    Dist,
+}
+
+/// Download a single component of a CI-built toolchain (not necessarily a published nightly).
+// NOTE: intentionally takes an owned string to avoid downloading multiple times by accident
+fn download_ci_component(builder: &Builder<'_>, filename: String, prefix: &str, commit: &str) {
+    download_component(builder, DownloadSource::CI, filename, prefix, commit, "ci-rustc")
+}
+
+fn download_component(
+    builder: &Builder<'_>,
+    mode: DownloadSource,
+    filename: String,
+    prefix: &str,
+    key: &str,
+    destination: &str,
+) {
+    let cache_dst = builder.out.join("cache");
+    let cache_dir = cache_dst.join(key);
+    if !cache_dir.exists() {
+        t!(fs::create_dir_all(&cache_dir));
+    }
+
+    let bin_root = builder.out.join(builder.config.build.triple).join(destination);
+    let tarball = cache_dir.join(&filename);
+    let (base_url, url, should_verify) = match mode {
+        DownloadSource::CI => (
+            builder.config.stage0_metadata.config.artifacts_server.clone(),
+            format!("{key}/{filename}"),
+            false,
+        ),
+        DownloadSource::Dist => {
+            let dist_server = env::var("RUSTUP_DIST_SERVER")
+                .unwrap_or(builder.config.stage0_metadata.config.dist_server.to_string());
+            // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
+            (dist_server, format!("dist/{key}/{filename}"), true)
+        }
+    };
+
+    // For the beta compiler, put special effort into ensuring the checksums are valid.
+    // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to update
+    // this on each and every nightly ...
+    let checksum = if should_verify {
+        let error = format!(
+            "src/stage0.json doesn't contain a checksum for {url}. \
+            Pre-built artifacts might not be available for this \
+            target at this time, see https://doc.rust-lang.org/nightly\
+            /rustc/platform-support.html for more information."
+        );
+        let sha256 = builder.config.stage0_metadata.checksums_sha256.get(&url).expect(&error);
+        if tarball.exists() {
+            if builder.verify(&tarball, sha256) {
+                builder.unpack(&tarball, &bin_root, prefix);
+                return;
+            } else {
+                builder.verbose(&format!(
+                    "ignoring cached file {} due to failed verification",
+                    tarball.display()
+                ));
+                builder.remove(&tarball);
+            }
+        }
+        Some(sha256)
+    } else if tarball.exists() {
+        return;
+    } else {
+        None
+    };
+
+    builder.download_component(&format!("{base_url}/{url}"), &tarball, "");
+    if let Some(sha256) = checksum {
+        if !builder.verify(&tarball, sha256) {
+            panic!("failed to verify {}", tarball.display());
+        }
+    }
+
+    builder.unpack(&tarball, &bin_root, prefix);
 }

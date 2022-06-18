@@ -1,5 +1,4 @@
 // run-pass
-// revisions: lxl nll
 
 struct Foo {
     x: u32

@@ -5,9 +5,41 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 
 /* General structure and fonts */
 
-body {
+body, #settings-menu #settings, #settings-menu #settings::before {
 	background-color: #0f1419;
 	color: #c5c5c5;
+}
+
+.setting-line .radio-line input {
+	border-color: #c5c5c5;
+}
+.setting-line .radio-line input:checked {
+	box-shadow: inset 0 0 0 3px #0f1419;
+	background-color: #ffb454;
+}
+.setting-line .radio-line input:focus {
+	box-shadow: 0 0 1px 1px #ffb454;
+}
+/* In here we combine both `:focus` and `:checked` properties. */
+.setting-line .radio-line input:checked:focus {
+	box-shadow: inset 0 0 0 3px 0f1419,
+		0 0 2px 2px #ffb454;
+}
+.setting-line .radio-line input:hover {
+	border-color: #ffb454 !important;
+}
+
+.slider {
+	background-color: #ccc;
+}
+.slider:before {
+	background-color: white;
+}
+input:checked + .slider {
+	background-color: #ffb454;
+}
+input:focus + .slider {
+	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
 }
 
 h1, h2, h3, h4 {
@@ -236,8 +268,8 @@ details.undocumented > summary::before {
 
 #crate-search, .search-input {
 	background-color: #141920;
-	border-color: #424c57;
-	color: #c5c5c5;
+	/* Without the `!important`, the border-color is ignored for `<select>`... */
+	border-color: #424c57 !important;
 }
 
 .search-input {
@@ -249,9 +281,13 @@ details.undocumented > summary::before {
 	color: #000;
 }
 
+/* Created this empty rule to satisfy the theme checks. */
+.stab.empty-impl {}
+
 .stab.unstable,
 .stab.deprecated,
-.stab.portability {
+.stab.portability,
+.stab.empty-impl {
 	color: #c5c5c5;
 	background: #314559 !important;
 	border-style: none !important;
@@ -531,14 +567,18 @@ kbd {
 	box-shadow: inset 0 -1px 0 #5c6773;
 }
 
-#theme-picker, #settings-menu, #help-button {
+#settings-menu > a, #help-button {
 	border-color: #5c6773;
 	background-color: #0f1419;
 	color: #fff;
 }
 
-#theme-picker > img, #settings-menu > img {
+#settings-menu > a img {
 	filter: invert(100);
+}
+
+#settings-menu #settings, #settings-menu #settings::before {
+	border-color: #5c6773;
 }
 
 #copy-path {
@@ -551,8 +591,7 @@ kbd {
 	filter: invert(100%);
 }
 
-#theme-picker:hover, #theme-picker:focus,
-#settings-menu:hover, #settings-menu:focus,
+#settings-menu > a:hover, #settings-menu > a:focus,
 #help-button:hover, #help-button:focus {
 	border-color: #e0e0e0;
 }
@@ -568,12 +607,6 @@ kbd {
 
 #theme-choices > button:hover, #theme-choices > button:focus {
 	background-color: rgba(110, 110, 110, 0.33);
-}
-
-@media (max-width: 700px) {
-	#theme-picker {
-		background: #0f1419;
-	}
 }
 
 .search-results .result-name span.alias {
@@ -604,13 +637,18 @@ div.files > .selected {
 	background-color: #14191f;
 	color: #ffb44c;
 }
-.setting-line > .title {
-	border-bottom-color: #5c6773;
-}
-input:checked + .slider {
-	background-color: #ffb454 !important;
-}
 
+.scraped-example-list .scrape-help {
+	border-color: #aaa;
+	color: #eee;
+}
+.scraped-example-list .scrape-help:hover {
+	border-color: white;
+	color: white;
+}
+.more-examples-toggle summary, .more-examples-toggle .hide-more {
+	color: #999;
+}
 .scraped-example .example-wrap .rust span.highlight {
 	background: rgb(91, 59, 1);
 }
@@ -624,8 +662,8 @@ input:checked + .slider {
 	background: linear-gradient(to top, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
 }
 .toggle-line-inner {
-	background: #616161;
+	background: #999;
 }
 .toggle-line:hover .toggle-line-inner {
-	background: #898989;
+	background: #c5c5c5;
 }

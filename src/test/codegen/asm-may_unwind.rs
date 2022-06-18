@@ -18,10 +18,23 @@ impl Drop for Foo {
     }
 }
 
-// CHECK-LABEL: @may_unwind
+// CHECK-LABEL: @asm_may_unwind
 #[no_mangle]
-pub unsafe fn may_unwind() {
+pub unsafe fn asm_may_unwind() {
     let _m = Foo;
     // CHECK: invoke void asm sideeffect alignstack inteldialect unwind ""
     asm!("", options(may_unwind));
+}
+
+// CHECK-LABEL: @asm_with_result_may_unwind
+#[no_mangle]
+pub unsafe fn asm_with_result_may_unwind() -> u64 {
+    let _m = Foo;
+    let res: u64;
+    // CHECK: [[RES:%[0-9]+]] = invoke i64 asm sideeffect alignstack inteldialect unwind
+    // CHECK-NEXT: to label %[[NORMALBB:[a-b0-9]+]]
+    asm!("mov {}, 1", out(reg) res, options(may_unwind));
+    // CHECK: [[NORMALBB]]:
+    // CHECK: ret i64 [[RES:%[0-9]+]]
+    res
 }

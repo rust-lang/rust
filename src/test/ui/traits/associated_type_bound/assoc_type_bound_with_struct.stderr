@@ -1,3 +1,9 @@
+error[E0433]: failed to resolve: use of undeclared type `Unresolved`
+  --> $DIR/assoc_type_bound_with_struct.rs:19:31
+   |
+LL | fn issue_95327() where <u8 as Unresolved>::Assoc: String {}
+   |                               ^^^^^^^^^^ use of undeclared type `Unresolved`
+
 error[E0404]: expected trait, found struct `String`
   --> $DIR/assoc_type_bound_with_struct.rs:5:46
    |
@@ -78,6 +84,18 @@ help: a trait with a similar name exists
 LL | fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: ToString {
    |                                                         ~~~~~~~~
 
-error: aborting due to 4 previous errors
+error[E0404]: expected trait, found struct `String`
+  --> $DIR/assoc_type_bound_with_struct.rs:19:51
+   |
+LL | fn issue_95327() where <u8 as Unresolved>::Assoc: String {}
+   |                                                   ^^^^^^ help: a trait with a similar name exists: `ToString`
+   |
+  ::: $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+LL | pub trait ToString {
+   | ------------------ similarly named trait `ToString` defined here
 
-For more information about this error, try `rustc --explain E0404`.
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0404, E0433.
+For more information about an error, try `rustc --explain E0404`.

@@ -70,6 +70,8 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
 
             TerminatorKind::Call { ref func, .. } => {
                 let func_ty = func.ty(self.body, self.tcx);
+                let func_id =
+                    if let ty::FnDef(func_id, _) = func_ty.kind() { Some(func_id) } else { None };
                 let sig = func_ty.fn_sig(self.tcx);
                 if let hir::Unsafety::Unsafe = sig.unsafety() {
                     self.require_unsafe(
@@ -78,7 +80,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     )
                 }
 
-                if let ty::FnDef(func_id, _) = func_ty.kind() {
+                if let Some(func_id) = func_id {
                     self.check_target_features(*func_id);
                 }
             }
@@ -97,6 +99,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             StatementKind::Assign(..)
             | StatementKind::FakeRead(..)
             | StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
             | StatementKind::Retag { .. }
@@ -127,7 +130,10 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                 &AggregateKind::Closure(def_id, _) | &AggregateKind::Generator(def_id, _, _) => {
                     let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
                         self.tcx.unsafety_check_result(def_id.expect_local());
-                    self.register_violations(violations, used_unsafe_blocks);
+                    self.register_violations(
+                        violations,
+                        used_unsafe_blocks.iter().map(|(&h, &d)| (h, d)),
+                    );
                 }
             },
             _ => {}
@@ -146,14 +152,14 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             self.check_mut_borrowing_layout_constrained_field(*place, context.is_mutating_use());
         }
 
-        // Some checks below need the extra metainfo of the local declaration.
+        // Some checks below need the extra meta info of the local declaration.
         let decl = &self.body.local_decls[place.local];
 
         // Check the base local: it might be an unsafe-to-access static. We only check derefs of the
         // temporary holding the static pointer to avoid duplicate errors
         // <https://github.com/rust-lang/rust/pull/78068#issuecomment-731753506>.
         if decl.internal && place.projection.first() == Some(&ProjectionElem::Deref) {
-            // If the projection root is an artifical local that we introduced when
+            // If the projection root is an artificial local that we introduced when
             // desugaring `static`, give a more specific error message
             // (avoid the general "raw pointer" clause below, that would only be confusing).
             if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
@@ -261,7 +267,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
     fn register_violations<'a>(
         &mut self,
         violations: impl IntoIterator<Item = &'a UnsafetyViolation>,
-        new_used_unsafe_blocks: impl IntoIterator<Item = (&'a HirId, &'a UsedUnsafeBlockData)>,
+        new_used_unsafe_blocks: impl IntoIterator<Item = (HirId, UsedUnsafeBlockData)>,
     ) {
         use UsedUnsafeBlockData::{AllAllowedInUnsafeFn, SomeDisallowedInUnsafeFn};
 
@@ -318,7 +324,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
 
         new_used_unsafe_blocks
             .into_iter()
-            .for_each(|(&hir_id, &usage_data)| update_entry(self, hir_id, usage_data));
+            .for_each(|(hir_id, usage_data)| update_entry(self, hir_id, usage_data));
     }
     fn check_mut_borrowing_layout_constrained_field(
         &mut self,
@@ -333,7 +339,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
                 ProjectionElem::Field(..) => {
                     let ty = place_base.ty(&self.body.local_decls, self.tcx).ty;
                     if let ty::Adt(def, _) = ty.kind() {
-                        if self.tcx.layout_scalar_valid_range(def.did)
+                        if self.tcx.layout_scalar_valid_range(def.did())
                             != (Bound::Unbounded, Bound::Unbounded)
                         {
                             let details = if is_mut_use {
@@ -369,7 +375,8 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
         }
 
         let callee_features = &self.tcx.codegen_fn_attrs(func_did).target_features;
-        let self_features = &self.tcx.codegen_fn_attrs(self.body_did).target_features;
+        // The body might be a constant, so it doesn't have codegen attributes.
+        let self_features = &self.tcx.body_codegen_attrs(self.body_did.to_def_id()).target_features;
 
         // Is `callee_features` a subset of `calling_features`?
         if !callee_features.iter().all(|feature| self_features.contains(feature)) {
@@ -535,13 +542,13 @@ fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
             UnusedUnsafe::InUnsafeBlock(id) => {
                 db.span_label(
                     tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
-                    format!("because it's nested under this `unsafe` block"),
+                    "because it's nested under this `unsafe` block",
                 );
             }
             UnusedUnsafe::InUnsafeFn(id, usage_lint_root) => {
                 db.span_label(
                     tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
-                    format!("because it's nested under this `unsafe` fn"),
+                    "because it's nested under this `unsafe` fn",
                 )
                 .note(
                     "this `unsafe` block does contain unsafe operations, \
@@ -551,7 +558,6 @@ fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
                     tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, usage_lint_root);
                 assert_eq!(level, Level::Allow);
                 lint::explain_lint_level_source(
-                    tcx.sess,
                     UNSAFE_OP_IN_UNSAFE_FN,
                     Level::Allow,
                     source,

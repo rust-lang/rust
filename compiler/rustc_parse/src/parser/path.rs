@@ -2,7 +2,7 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::maybe_whole;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Token};
+use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocConstraint,
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
@@ -96,7 +96,7 @@ impl<'a> Parser<'a> {
     ///                ^ help: use double colon
     /// ```
     fn recover_colon_before_qpath_proj(&mut self) -> bool {
-        if self.token.kind != token::Colon
+        if !self.check_noexpect(&TokenKind::Colon)
             || self.look_ahead(1, |t| !t.is_ident() || t.is_reserved_ident())
         {
             return false;
@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
             .span_suggestion(
                 self.prev_token.span,
                 "use double colon",
-                "::".to_string(),
+                "::",
                 Applicability::MachineApplicable,
             )
             .emit();
@@ -165,7 +165,7 @@ impl<'a> Parser<'a> {
 
         maybe_whole!(self, NtPath, |path| {
             reject_generics_if_mod_style(self, &path);
-            path
+            path.into_inner()
         });
 
         if let token::Interpolated(nt) = &self.token.kind {
@@ -236,14 +236,14 @@ impl<'a> Parser<'a> {
                 token.kind,
                 token::Lt
                     | token::BinOp(token::Shl)
-                    | token::OpenDelim(token::Paren)
+                    | token::OpenDelim(Delimiter::Parenthesis)
                     | token::LArrow
             )
         };
         let check_args_start = |this: &mut Self| {
             this.expected_tokens.extend_from_slice(&[
                 TokenType::Token(token::Lt),
-                TokenType::Token(token::OpenDelim(token::Paren)),
+                TokenType::Token(token::OpenDelim(Delimiter::Parenthesis)),
             ]);
             is_args_start(&this.token)
         };
@@ -272,7 +272,23 @@ impl<'a> Parser<'a> {
                         lo,
                         ty_generics,
                     )?;
-                    self.expect_gt()?;
+                    self.expect_gt().map_err(|mut err| {
+                        // Attempt to find places where a missing `>` might belong.
+                        if let Some(arg) = args
+                            .iter()
+                            .rev()
+                            .skip_while(|arg| matches!(arg, AngleBracketedArg::Constraint(_)))
+                            .next()
+                        {
+                            err.span_suggestion_verbose(
+                                arg.span().shrink_to_hi(),
+                                "you might have meant to end the type parameters here",
+                                ">",
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        err
+                    })?;
                     let span = lo.to(self.prev_token.span);
                     AngleBracketedArgs { args, span }.into()
                 } else {
@@ -439,7 +455,7 @@ impl<'a> Parser<'a> {
                             "remove extra angle bracket{}",
                             pluralize!(snapshot.unmatched_angle_bracket_count)
                         ),
-                        String::new(),
+                        "",
                         Applicability::MachineApplicable,
                     )
                     .emit();
@@ -462,6 +478,23 @@ impl<'a> Parser<'a> {
         while let Some(arg) = self.parse_angle_arg(ty_generics)? {
             args.push(arg);
             if !self.eat(&token::Comma) {
+                if self.check_noexpect(&TokenKind::Semi)
+                    && self.look_ahead(1, |t| t.is_ident() || t.is_lifetime())
+                {
+                    // Add `>` to the list of expected tokens.
+                    self.check(&token::Gt);
+                    // Handle `,` to `;` substitution
+                    let mut err = self.unexpected::<()>().unwrap_err();
+                    self.bump();
+                    err.span_suggestion_verbose(
+                        self.prev_token.span.until(self.token.span),
+                        "use a comma to separate type parameters",
+                        ", ",
+                        Applicability::MachineApplicable,
+                    );
+                    err.emit();
+                    continue;
+                }
                 if !self.token.kind.should_end_const_arg() {
                     if self.handle_ambiguous_unbraced_const_arg(&mut args)? {
                         // We've managed to (partially) recover, so continue trying to parse
@@ -484,11 +517,25 @@ impl<'a> Parser<'a> {
         let arg = self.parse_generic_arg(ty_generics)?;
         match arg {
             Some(arg) => {
-                if self.check(&token::Colon) | self.check(&token::Eq) {
-                    let (ident, gen_args) = match self.get_ident_from_generic_arg(arg) {
+                // we are using noexpect here because we first want to find out if either `=` or `:`
+                // is present and then use that info to push the other token onto the tokens list
+                let separated =
+                    self.check_noexpect(&token::Colon) || self.check_noexpect(&token::Eq);
+                if separated && (self.check(&token::Colon) | self.check(&token::Eq)) {
+                    let arg_span = arg.span();
+                    let (binder, ident, gen_args) = match self.get_ident_from_generic_arg(&arg) {
                         Ok(ident_gen_args) => ident_gen_args,
-                        Err(arg) => return Ok(Some(AngleBracketedArg::Arg(arg))),
+                        Err(()) => return Ok(Some(AngleBracketedArg::Arg(arg))),
                     };
+                    if binder.is_some() {
+                        // FIXME(compiler-errors): this could be improved by suggesting lifting
+                        // this up to the trait, at least before this becomes real syntax.
+                        // e.g. `Trait<for<'a> Assoc = Ty>` -> `for<'a> Trait<Assoc = Ty>`
+                        return Err(self.struct_span_err(
+                            arg_span,
+                            "`for<...>` is not allowed on associated type bounds",
+                        ));
+                    }
                     let kind = if self.eat(&token::Colon) {
                         // Parse associated type constraint bound.
 
@@ -510,6 +557,14 @@ impl<'a> Parser<'a> {
                         AssocConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args, kind, span };
                     Ok(Some(AngleBracketedArg::Constraint(constraint)))
                 } else {
+                    // we only want to suggest `:` and `=` in contexts where the previous token
+                    // is an ident and the current token or the next token is an ident
+                    if self.prev_token.is_ident()
+                        && (self.token.is_ident() || self.look_ahead(1, |token| token.is_ident()))
+                    {
+                        self.check(&token::Colon);
+                        self.check(&token::Eq);
+                    }
                     Ok(Some(AngleBracketedArg::Arg(arg)))
                 }
             }
@@ -549,13 +604,13 @@ impl<'a> Parser<'a> {
                     err.span_suggestion(
                         self.sess.source_map().next_point(eq).to(before_next),
                         "to constrain the associated type, add a type after `=`",
-                        " TheType".to_string(),
+                        " TheType",
                         Applicability::HasPlaceholders,
                     );
                     err.span_suggestion(
                         eq.to(before_next),
                         &format!("remove the `=` if `{}` is a type", ident),
-                        String::new(),
+                        "",
                         Applicability::MaybeIncorrect,
                     )
                 } else {
@@ -596,7 +651,7 @@ impl<'a> Parser<'a> {
     /// the caller.
     pub(super) fn parse_const_arg(&mut self) -> PResult<'a, AnonConst> {
         // Parse const argument.
-        let value = if let token::OpenDelim(token::Brace) = self.token.kind {
+        let value = if let token::OpenDelim(Delimiter::Brace) = self.token.kind {
             self.parse_block_expr(
                 None,
                 self.token.span,
@@ -624,9 +679,23 @@ impl<'a> Parser<'a> {
             GenericArg::Const(self.parse_const_arg()?)
         } else if self.check_type() {
             // Parse type argument.
+            let is_const_fn =
+                self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Parenthesis));
+            let mut snapshot = self.create_snapshot_for_diagnostic();
             match self.parse_ty() {
                 Ok(ty) => GenericArg::Type(ty),
                 Err(err) => {
+                    if is_const_fn {
+                        match (*snapshot).parse_expr_res(Restrictions::CONST_EXPR, None) {
+                            Ok(expr) => {
+                                self.restore_snapshot(snapshot);
+                                return Ok(Some(self.dummy_const_arg_needs_braces(err, expr.span)));
+                            }
+                            Err(err) => {
+                                err.cancel();
+                            }
+                        }
+                    }
                     // Try to recover from possible `const` arg without braces.
                     return self.recover_const_arg(start, err).map(Some);
                 }
@@ -636,7 +705,7 @@ impl<'a> Parser<'a> {
         } else {
             // Fall back by trying to parse a const-expr expression. If we successfully do so,
             // then we should report an error that it needs to be wrapped in braces.
-            let snapshot = self.clone();
+            let snapshot = self.create_snapshot_for_diagnostic();
             match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
                 Ok(expr) => {
                     return Ok(Some(self.dummy_const_arg_needs_braces(
@@ -645,7 +714,7 @@ impl<'a> Parser<'a> {
                     )));
                 }
                 Err(err) => {
-                    *self = snapshot;
+                    self.restore_snapshot(snapshot);
                     err.cancel();
                     return Ok(None);
                 }
@@ -654,18 +723,32 @@ impl<'a> Parser<'a> {
         Ok(Some(arg))
     }
 
+    /// Given a arg inside of generics, we try to destructure it as if it were the LHS in
+    /// `LHS = ...`, i.e. an associated type binding.
+    /// This returns (optionally, if they are present) any `for<'a, 'b>` binder args, the
+    /// identifier, and any GAT arguments.
     fn get_ident_from_generic_arg(
         &self,
-        gen_arg: GenericArg,
-    ) -> Result<(Ident, Option<GenericArgs>), GenericArg> {
-        if let GenericArg::Type(ty) = &gen_arg
-            && let ast::TyKind::Path(qself, path) = &ty.kind
-            && qself.is_none()
-            && path.segments.len() == 1
-        {
-            let seg = &path.segments[0];
-            return Ok((seg.ident, seg.args.as_deref().cloned()));
+        gen_arg: &GenericArg,
+    ) -> Result<(Option<Vec<ast::GenericParam>>, Ident, Option<GenericArgs>), ()> {
+        if let GenericArg::Type(ty) = gen_arg {
+            if let ast::TyKind::Path(qself, path) = &ty.kind
+                && qself.is_none()
+                && let [seg] = path.segments.as_slice()
+            {
+                return Ok((None, seg.ident, seg.args.as_deref().cloned()));
+            } else if let ast::TyKind::TraitObject(bounds, ast::TraitObjectSyntax::None) = &ty.kind
+                && let [ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifier::None)] =
+                    bounds.as_slice()
+                && let [seg] = trait_ref.trait_ref.path.segments.as_slice()
+            {
+                return Ok((
+                    Some(trait_ref.bound_generic_params.clone()),
+                    seg.ident,
+                    seg.args.as_deref().cloned(),
+                ));
+            }
         }
-        Err(gen_arg)
+        Err(())
     }
 }

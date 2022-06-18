@@ -6,7 +6,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{
     self,
     subst::{GenericArgKind, Subst, SubstsRef},
-    PredicateKind, Ty, TyCtxt,
+    EarlyBinder, PredicateKind, Ty, TyCtxt,
 };
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{symbol::sym, Span};
@@ -37,6 +37,7 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
             func,
             args,
             destination: _,
+            target: _,
             cleanup: _,
             from_hir_call: _,
             fn_span: _,
@@ -90,7 +91,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                             // If the inner type matches the type bound by `Pointer`
                             if inner_ty == bound_ty {
                                 // Do a substitution using the parameters from the callsite
-                                let subst_ty = inner_ty.subst(self.tcx, substs_ref);
+                                let subst_ty = EarlyBinder(inner_ty).subst(self.tcx, substs_ref);
                                 if let Some((fn_id, fn_substs)) =
                                     FunctionItemRefChecker::is_fn_ref(subst_ty)
                                 {

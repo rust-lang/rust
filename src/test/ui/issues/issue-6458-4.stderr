@@ -6,7 +6,7 @@ LL | fn foo(b: bool) -> Result<bool,String> {
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     Err("bar".to_string());
-   |                           - help: consider removing this semicolon
+   |                           - help: remove this semicolon
    |
    = note:   expected enum `Result<bool, String>`
            found unit type `()`

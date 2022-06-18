@@ -52,7 +52,7 @@ async fn already_async() -> impl Future<Output = i32> {
     async { 42 }
 }
 
-struct S {}
+struct S;
 impl S {
     fn inh_fut() -> impl Future<Output = i32> {
         async {

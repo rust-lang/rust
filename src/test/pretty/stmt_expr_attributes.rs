@@ -1,6 +1,8 @@
 // pp-exact
 
 #![feature(box_syntax)]
+#![feature(inline_const)]
+#![feature(inline_const_pat)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 
@@ -16,6 +18,7 @@ fn _1() {
 
     #[rustc_dummy]
     unsafe {
+        #![rustc_dummy]
         // code
     }
 }
@@ -206,6 +209,12 @@ fn _11() {
             let _ = ();
             ()
         };
+    let const {
+                    #![rustc_dummy]
+                } =
+        #[rustc_dummy] const {
+                #![rustc_dummy]
+            };
     let mut x = 0;
     let _ = #[rustc_dummy] x = 15;
     let _ = #[rustc_dummy] x += 15;

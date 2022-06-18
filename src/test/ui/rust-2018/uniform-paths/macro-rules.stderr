@@ -4,11 +4,11 @@ error[E0364]: `legacy_macro` is only public within the crate, and cannot be re-e
 LL |     pub use legacy_macro as _;
    |             ^^^^^^^^^^^^^^^^^
    |
-note: consider marking `legacy_macro` as `pub` in the imported module
-  --> $DIR/macro-rules.rs:11:13
+help: consider adding a `#[macro_export]` to the macro in the imported module
+  --> $DIR/macro-rules.rs:7:5
    |
-LL |     pub use legacy_macro as _;
-   |             ^^^^^^^^^^^^^^^^^
+LL |     macro_rules! legacy_macro { () => () }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0659]: `legacy_macro` is ambiguous
   --> $DIR/macro-rules.rs:31:13

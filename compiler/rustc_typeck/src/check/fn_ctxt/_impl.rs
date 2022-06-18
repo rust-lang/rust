@@ -4,11 +4,12 @@ use crate::astconv::{
 };
 use crate::check::callee::{self, DeferredCallResolution};
 use crate::check::method::{self, MethodCallee, SelfSource};
+use crate::check::rvalue_scopes;
 use crate::check::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diagnostic, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -23,14 +24,14 @@ use rustc_middle::ty::subst::{
     self, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts,
 };
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, DefIdTree, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
-    Ty, UserType,
+    self, AdtKind, CanonicalUserType, DefIdTree, EarlyBinder, GenericParamDefKind, ToPolyTraitRef,
+    ToPredicate, Ty, UserType,
 };
 use rustc_session::lint;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{self, BytePos, MultiSpan, Span};
+use rustc_span::{self, BytePos, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -158,7 +159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn write_resolution(
         &self,
         hir_id: hir::HirId,
-        r: Result<(DefKind, DefId), ErrorReported>,
+        r: Result<(DefKind, DefId), ErrorGuaranteed>,
     ) {
         self.typeck_results.borrow_mut().type_dependent_defs_mut().insert(hir_id, r);
     }
@@ -315,13 +316,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     // FIXME: currently we never try to compose autoderefs
                     // and ReifyFnPointer/UnsafeFnPointer, but we could.
-                    _ => bug!(
-                        "while adjusting {:?}, can't compose {:?} and {:?}",
-                        expr,
-                        entry.get(),
-                        adj
-                    ),
-                };
+                    _ => {
+                        self.tcx.sess.delay_span_bug(
+                            expr.span,
+                            &format!(
+                                "while adjusting {:?}, can't compose {:?} and {:?}",
+                                expr,
+                                entry.get(),
+                                adj
+                            ),
+                        );
+                    }
+                }
                 *entry.get_mut() = adj;
             }
         }
@@ -342,7 +348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         debug!("instantiate_type_scheme(value={:?}, substs={:?})", value, substs);
-        let value = value.subst(self.tcx, substs);
+        let value = EarlyBinder(value).subst(self.tcx, substs);
         let result = self.normalize_associated_types_in(span, value);
         debug!("instantiate_type_scheme = {:?}", result);
         result
@@ -365,23 +371,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             bounds, substs, result, spans,
         );
         (result, spans)
-    }
-
-    /// Replaces the opaque types from the given value with type variables,
-    /// and records the `OpaqueTypeMap` for later use during writeback. See
-    /// `InferCtxt::instantiate_opaque_types` for more details.
-    #[instrument(skip(self, value_span), level = "debug")]
-    pub(in super::super) fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
-        &self,
-        value: T,
-        value_span: Span,
-    ) -> T {
-        self.register_infer_ok_obligations(self.instantiate_opaque_types(
-            self.body_id,
-            self.param_env,
-            value,
-            value_span,
-        ))
     }
 
     /// Convenience method which tracks extra diagnostic information for normalization
@@ -632,6 +621,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.normalize_associated_types_in(span, field.ty(self.tcx, substs))
     }
 
+    pub(in super::super) fn resolve_rvalue_scopes(&self, def_id: DefId) {
+        let scope_tree = self.tcx.region_scope_tree(def_id);
+        let rvalue_scopes = { rvalue_scopes::resolve_rvalue_scopes(self, &scope_tree, def_id) };
+        let mut typeck_results = self.inh.typeck_results.borrow_mut();
+        typeck_results.rvalue_scopes = rvalue_scopes;
+    }
+
     pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
         for (body_id, interior, kind) in generators.drain(..) {
@@ -767,9 +763,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ret: Expectation<'tcx>,
         formal_ret: Ty<'tcx>,
         formal_args: &[Ty<'tcx>],
-    ) -> Vec<Ty<'tcx>> {
+    ) -> Option<Vec<Ty<'tcx>>> {
         let formal_ret = self.resolve_vars_with_obligations(formal_ret);
-        let Some(ret_ty) = expected_ret.only_has_type(self) else { return Vec::new() };
+        let ret_ty = expected_ret.only_has_type(self)?;
+
+        // HACK(oli-obk): This is a hack to keep RPIT and TAIT in sync wrt their behaviour.
+        // Without it, the inference
+        // variable will get instantiated with the opaque type. The inference variable often
+        // has various helpful obligations registered for it that help closures figure out their
+        // signature. If we infer the inference var to the opaque type, the closure won't be able
+        // to find those obligations anymore, and it can't necessarily find them from the opaque
+        // type itself. We could be more powerful with inference if we *combined* the obligations
+        // so that we got both the obligations from the opaque type and the ones from the inference
+        // variable. That will accept more code than we do right now, so we need to carefully consider
+        // the implications.
+        // Note: this check is pessimistic, as the inference type could be matched with something other
+        // than the opaque type, but then we need a new `TypeRelation` just for this specific case and
+        // can't re-use `sup` below.
+        // See src/test/ui/impl-trait/hidden-type-is-opaque.rs and
+        // src/test/ui/impl-trait/hidden-type-is-opaque-2.rs for examples that hit this path.
+        if formal_ret.has_infer_types() {
+            for ty in ret_ty.walk() {
+                if let ty::subst::GenericArgKind::Type(ty) = ty.unpack() {
+                    if let ty::Opaque(def_id, _) = *ty.kind() {
+                        if self.infcx.opaque_type_origin(def_id, DUMMY_SP).is_some() {
+                            return None;
+                        }
+                    }
+                }
+            }
+        }
+
         let expect_args = self
             .fudge_inference_if_ok(|| {
                 // Attempt to apply a subtyping relationship between the formal
@@ -804,7 +828,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Record all the argument types, with the substitutions
                 // produced from the above subtyping unification.
-                Ok(formal_args.iter().map(|&ty| self.resolve_vars_if_possible(ty)).collect())
+                Ok(Some(formal_args.iter().map(|&ty| self.resolve_vars_if_possible(ty)).collect()))
             })
             .unwrap_or_default();
         debug!(?formal_args, ?formal_ret, ?expect_args, ?expected_ret);
@@ -822,9 +846,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let def_kind = self.tcx.def_kind(def_id);
 
         let item_ty = if let DefKind::Variant = def_kind {
-            self.tcx.type_of(self.tcx.parent(def_id).expect("variant w/out parent"))
+            self.tcx.bound_type_of(self.tcx.parent(def_id))
         } else {
-            self.tcx.type_of(def_id)
+            self.tcx.bound_type_of(def_id)
         };
         let substs = self.infcx.fresh_substs_for_item(span, def_id);
         let ty = item_ty.subst(self.tcx, substs);
@@ -900,7 +924,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .or_else(|error| {
                 let result = match error {
                     method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
-                    _ => Err(ErrorReported),
+                    _ => Err(ErrorGuaranteed::unchecked_claim_error_was_emitted()),
                 };
 
                 // If we have a path like `MyTrait::missing_method`, then don't register
@@ -1028,8 +1052,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let (sig, did, substs) = match (&expected.kind(), &found.kind()) {
             (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
-                let sig2 = self.tcx.fn_sig(*did2).subst(self.tcx, substs2);
+                let sig1 = self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1);
+                let sig2 = self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2);
                 if sig1 != sig2 {
                     return;
                 }
@@ -1040,7 +1064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (sig1, *did1, substs1)
             }
             (ty::FnDef(did, substs), ty::FnPtr(sig2)) => {
-                let sig1 = self.tcx.fn_sig(*did).subst(self.tcx, substs);
+                let sig1 = self.tcx.bound_fn_sig(*did).subst(self.tcx, substs);
                 if sig1 != *sig2 {
                     return;
                 }
@@ -1163,7 +1187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(self_ty) = self_ty =>
             {
                 let adt_def = self_ty.ty_adt_def().unwrap();
-                user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did, self_ty });
+                user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did(), self_ty });
                 is_alias_variant_ctor = true;
             }
             Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
@@ -1204,6 +1228,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None
                 }
             }),
+            |_| {},
         );
 
         if let Res::Local(hid) = res {
@@ -1285,7 +1310,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 err.span_suggestion(
                                     span,
                                     "use curly brackets",
-                                    String::from("Self { /* fields */ }"),
+                                    "Self { /* fields */ }",
                                     Applicability::HasPlaceholders,
                                 );
                             }
@@ -1385,12 +1410,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // If we have a default, then we it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.
-                            let default = tcx.type_of(param.def_id);
+                            let default = tcx.bound_type_of(param.def_id);
                             self.fcx
-                                .normalize_ty(
-                                    self.span,
-                                    default.subst_spanned(tcx, substs.unwrap(), Some(self.span)),
-                                )
+                                .normalize_ty(self.span, default.subst(tcx, substs.unwrap()))
                                 .into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
@@ -1400,10 +1422,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
-                    GenericParamDefKind::Const { has_default, .. } => {
+                    GenericParamDefKind::Const { has_default } => {
                         if !infer_args && has_default {
-                            tcx.const_param_default(param.def_id)
-                                .subst_spanned(tcx, substs.unwrap(), Some(self.span))
+                            EarlyBinder(tcx.const_param_default(param.def_id))
+                                .subst(tcx, substs.unwrap())
                                 .into()
                         } else {
                             self.fcx.var_for_def(self.span, param)
@@ -1473,7 +1495,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Add all the obligations that are required, substituting and normalized appropriately.
-    crate fn add_required_obligations(&self, span: Span, def_id: DefId, substs: &SubstsRef<'tcx>) {
+    pub(crate) fn add_required_obligations(
+        &self,
+        span: Span,
+        def_id: DefId,
+        substs: &SubstsRef<'tcx>,
+    ) {
         self.add_required_obligations_with_code(
             span,
             def_id,

@@ -4,7 +4,7 @@ set -ex
 
 source shared.sh
 
-LLVM=llvmorg-13.0.0
+LLVM=llvmorg-14.0.2
 
 mkdir llvm-project
 cd llvm-project
@@ -30,7 +30,12 @@ hide_output \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=/rustroot \
       -DCOMPILER_RT_BUILD_SANITIZERS=OFF \
+      -DCOMPILER_RT_BUILD_XRAY=OFF \
+      -DCOMPILER_RT_BUILD_MEMPROF=OFF \
       -DLLVM_TARGETS_TO_BUILD=X86 \
+      -DLLVM_INCLUDE_BENCHMARKS=OFF \
+      -DLLVM_INCLUDE_TESTS=OFF \
+      -DLLVM_INCLUDE_EXAMPLES=OFF \
       -DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt" \
       -DC_INCLUDE_DIRS="$INC"
 

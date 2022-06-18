@@ -9,8 +9,10 @@ where
 struct Struct;
 
 impl Struct {
-    pub async fn run_dummy_fn(&self) { //~ ERROR E0759
+    pub async fn run_dummy_fn(&self) {
         foo(|| self.bar()).await;
+        //~^ ERROR closure may outlive the current function
+        //~| ERROR borrowed data escapes outside of associated function
     }
 
     pub fn bar(&self) {}

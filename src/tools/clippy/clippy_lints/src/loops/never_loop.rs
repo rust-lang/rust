@@ -117,12 +117,19 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
         | ExprKind::Type(e, _)
         | ExprKind::Field(e, _)
         | ExprKind::AddrOf(_, _, e)
-        | ExprKind::Struct(_, _, Some(e))
         | ExprKind::Repeat(e, _)
         | ExprKind::DropTemps(e) => never_loop_expr(e, main_loop_id),
         ExprKind::Let(let_expr) => never_loop_expr(let_expr.init, main_loop_id),
         ExprKind::Array(es) | ExprKind::MethodCall(_, es, _) | ExprKind::Tup(es) => {
             never_loop_expr_all(&mut es.iter(), main_loop_id)
+        },
+        ExprKind::Struct(_, fields, base) => {
+            let fields = never_loop_expr_all(&mut fields.iter().map(|f| f.expr), main_loop_id);
+            if let Some(base) = base {
+                combine_both(fields, never_loop_expr(base, main_loop_id))
+            } else {
+                fields
+            }
         },
         ExprKind::Call(e, es) => never_loop_expr_all(&mut once(e).chain(es.iter()), main_loop_id),
         ExprKind::Binary(_, e1, e2)
@@ -146,7 +153,7 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
             if arms.is_empty() {
                 e
             } else {
-                let arms = never_loop_expr_branch(&mut arms.iter().map(|a| &*a.body), main_loop_id);
+                let arms = never_loop_expr_branch(&mut arms.iter().map(|a| a.body), main_loop_id);
                 combine_seq(e, arms)
             }
         },
@@ -168,19 +175,20 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
             .operands
             .iter()
             .map(|(o, _)| match o {
-                InlineAsmOperand::In { expr, .. }
-                | InlineAsmOperand::InOut { expr, .. }
-                | InlineAsmOperand::Sym { expr } => never_loop_expr(expr, main_loop_id),
+                InlineAsmOperand::In { expr, .. } | InlineAsmOperand::InOut { expr, .. } => {
+                    never_loop_expr(expr, main_loop_id)
+                },
                 InlineAsmOperand::Out { expr, .. } => never_loop_expr_all(&mut expr.iter(), main_loop_id),
                 InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
                     never_loop_expr_all(&mut once(in_expr).chain(out_expr.iter()), main_loop_id)
                 },
-                InlineAsmOperand::Const { .. } => NeverLoopResult::Otherwise,
+                InlineAsmOperand::Const { .. }
+                | InlineAsmOperand::SymFn { .. }
+                | InlineAsmOperand::SymStatic { .. } => NeverLoopResult::Otherwise,
             })
             .fold(NeverLoopResult::Otherwise, combine_both),
-        ExprKind::Struct(_, _, None)
-        | ExprKind::Yield(_, _)
-        | ExprKind::Closure(_, _, _, _, _)
+        ExprKind::Yield(_, _)
+        | ExprKind::Closure { .. }
         | ExprKind::Path(_)
         | ExprKind::ConstBlock(_)
         | ExprKind::Lit(_)

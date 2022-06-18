@@ -3,7 +3,7 @@
 #![crate_type = "lib"]
 
 // EMIT_MIR lower_intrinsics.wrapping.LowerIntrinsics.diff
-pub fn wrapping<T: Copy>(a: T, b: T) {
+pub fn wrapping(a: i32, b: i32) {
     let _x = core::intrinsics::wrapping_add(a, b);
     let _y = core::intrinsics::wrapping_sub(a, b);
     let _z = core::intrinsics::wrapping_mul(a, b);

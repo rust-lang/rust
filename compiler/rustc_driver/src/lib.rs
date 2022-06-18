@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(nll)]
 #![feature(let_else)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
@@ -21,7 +20,7 @@ use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
-use rustc_errors::{ErrorReported, PResult};
+use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
@@ -30,7 +29,6 @@ use rustc_log::stdout_isatty;
 use rustc_metadata::locator;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
-use rustc_serialize::json::ToJson;
 use rustc_session::config::{nightly_options, CG_OPTIONS, DB_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
 use rustc_session::cstore::MetadataLoader;
@@ -40,6 +38,7 @@ use rustc_session::{config, DiagnosticOutput, Session};
 use rustc_session::{early_error, early_error_no_abort, early_warn};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
+use rustc_target::json::ToJson;
 
 use std::borrow::Cow;
 use std::cmp::max;
@@ -73,7 +72,7 @@ const ICE_REPORT_COMPILER_FLAGS_EXCLUDE: &[&str] = &["metadata", "extra-filename
 
 const ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE: &[&str] = &["incremental"];
 
-pub fn abort_on_err<T>(result: Result<T, ErrorReported>, sess: &Session) -> T {
+pub fn abort_on_err<T>(result: Result<T, ErrorGuaranteed>, sess: &Session) -> T {
     match result {
         Err(..) => {
             sess.abort_if_errors();
@@ -235,7 +234,7 @@ fn run_compiler(
     };
 
     match make_input(config.opts.error_format, &matches.free) {
-        Err(ErrorReported) => return Err(ErrorReported),
+        Err(reported) => return Err(reported),
         Ok(Some((input, input_file_path))) => {
             config.input = input;
             config.input_path = input_file_path;
@@ -343,10 +342,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            if sess.opts.debugging_opts.parse_only
-                || sess.opts.debugging_opts.show_span.is_some()
-                || sess.opts.debugging_opts.ast_json_noexpand
-            {
+            if sess.opts.debugging_opts.parse_only || sess.opts.debugging_opts.show_span.is_some() {
                 return early_exit();
             }
 
@@ -375,7 +371,7 @@ fn run_compiler(
 
             queries.global_ctxt()?;
 
-            if sess.opts.debugging_opts.no_analysis || sess.opts.debugging_opts.ast_json {
+            if sess.opts.debugging_opts.no_analysis {
                 return early_exit();
             }
 
@@ -457,7 +453,7 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>)
 fn make_input(
     error_format: ErrorOutputType,
     free_matches: &[String],
-) -> Result<Option<(Input, Option<PathBuf>)>, ErrorReported> {
+) -> Result<Option<(Input, Option<PathBuf>)>, ErrorGuaranteed> {
     if free_matches.len() == 1 {
         let ifile = &free_matches[0];
         if ifile == "-" {
@@ -465,11 +461,11 @@ fn make_input(
             if io::stdin().read_to_string(&mut src).is_err() {
                 // Immediately stop compilation if there was an issue reading
                 // the input (for example if the input stream is not UTF-8).
-                early_error_no_abort(
+                let reported = early_error_no_abort(
                     error_format,
                     "couldn't read from stdin, as it did not contain valid UTF-8",
                 );
-                return Err(ErrorReported);
+                return Err(reported);
             }
             if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
                 let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
@@ -588,8 +584,12 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
                 sess.fatal(&format!("failed to read rlink file: {}", err));
             });
-            let mut decoder = rustc_serialize::opaque::Decoder::new(&rlink_data, 0);
-            let codegen_results: CodegenResults = rustc_serialize::Decodable::decode(&mut decoder);
+            let codegen_results = match CodegenResults::deserialize_rlink(rlink_data) {
+                Ok(codegen) => codegen,
+                Err(error) => {
+                    sess.fatal(&format!("Could not deserialize .rlink file: {error}"));
+                }
+            };
             let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
             abort_on_err(result, sess);
         } else {
@@ -661,7 +661,9 @@ fn print_crate_info(
             }
             Sysroot => println!("{}", sess.sysroot.display()),
             TargetLibdir => println!("{}", sess.target_tlib_path.dir.display()),
-            TargetSpec => println!("{}", sess.target.to_json().pretty()),
+            TargetSpec => {
+                println!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
+            }
             FileNames | CrateName => {
                 let input = input.unwrap_or_else(|| {
                     early_error(ErrorOutputType::default(), "no input file provided")
@@ -1052,13 +1054,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
-        let backend_name = debug_flags.iter().find_map(|x| {
-            if x.starts_with("codegen-backend=") {
-                Some(&x["codegen-backends=".len()..])
-            } else {
-                None
-            }
-        });
+        let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
         get_codegen_backend(&None, backend_name).print_passes();
         return None;
     }
@@ -1125,10 +1121,10 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
 /// The compiler currently unwinds with a special sentinel value to abort
 /// compilation on fatal errors. This function catches that sentinel and turns
 /// the panic into a `Result` instead.
-pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported> {
+pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorGuaranteed> {
     catch_unwind(panic::AssertUnwindSafe(f)).map_err(|value| {
         if value.is::<rustc_errors::FatalErrorMarker>() {
-            ErrorReported
+            ErrorGuaranteed::unchecked_claim_error_was_emitted()
         } else {
             panic::resume_unwind(value);
         }
@@ -1168,9 +1164,13 @@ static DEFAULT_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
 pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
+    let fallback_bundle =
+        rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
         rustc_errors::ColorConfig::Auto,
         None,
+        None,
+        fallback_bundle,
         false,
         false,
         None,
@@ -1181,8 +1181,8 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // a .span_bug or .bug call has already printed what
     // it wants to print.
     if !info.payload().is::<rustc_errors::ExplicitBug>() {
-        let d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
-        handler.emit_diagnostic(&d);
+        let mut d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
+        handler.emit_diagnostic(&mut d);
     }
 
     let mut xs: Vec<Cow<'static, str>> = vec![
@@ -1205,7 +1205,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     }
 
     for note in &xs {
-        handler.note_without_error(note);
+        handler.note_without_error(note.as_ref());
     }
 
     // If backtraces are enabled, also print the query stack
@@ -1228,7 +1228,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 ///
 /// A custom rustc driver can skip calling this to set up a custom ICE hook.
 pub fn install_ice_hook() {
-    // If the user has not explicitly overriden "RUST_BACKTRACE", then produce
+    // If the user has not explicitly overridden "RUST_BACKTRACE", then produce
     // full backtraces. When a compiler ICE happens, we want to gather
     // as much information as possible to present in the issue opened
     // by the user. Compiler developers and other rustc users can

@@ -54,8 +54,8 @@ LL |         Opts::A(ref mut i) | Opts::B(ref i) => {}
    |                 |
    |                 first introduced with type `&mut isize` here
    |
-   = note: expected type `&mut isize`
-              found type `&isize`
+   = note: expected mutable reference `&mut isize`
+                      found reference `&isize`
    = note: in the same arm, a binding must have the same type in all alternatives
 
 error: aborting due to 6 previous errors

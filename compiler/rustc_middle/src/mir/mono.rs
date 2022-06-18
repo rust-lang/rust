@@ -7,7 +7,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::ItemId;
-use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
+use rustc_index::vec::Idx;
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
@@ -39,7 +40,7 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
@@ -201,26 +202,6 @@ impl<'tcx> MonoItem<'tcx> {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        ::std::mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            MonoItem::Fn(ref instance) => {
-                instance.hash_stable(hcx, hasher);
-            }
-            MonoItem::Static(def_id) => {
-                def_id.hash_stable(hcx, hasher);
-            }
-            MonoItem::GlobalAsm(item_id) => {
-                hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                    item_id.hash_stable(hcx, hasher);
-                })
-            }
-        }
-    }
-}
-
 impl<'tcx> fmt::Display for MonoItem<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -355,7 +336,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         WorkProductId::from_cgu_name(self.name().as_str())
     }
 
-    pub fn work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
+    pub fn previous_work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
         let work_product_id = self.work_product_id();
         tcx.dep_graph
             .previous_work_product(&work_product_id)
@@ -380,7 +361,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // instances into account. The others don't matter for
                             // the codegen tests and can even make item order
                             // unstable.
-                            InstanceDef::Item(def) => Some(def.did.index.as_usize()),
+                            InstanceDef::Item(def) => def.did.as_local().map(Idx::index),
                             InstanceDef::VtableShim(..)
                             | InstanceDef::ReifyShim(..)
                             | InstanceDef::Intrinsic(..)
@@ -391,10 +372,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::CloneShim(..) => None,
                         }
                     }
-                    MonoItem::Static(def_id) => Some(def_id.index.as_usize()),
-                    MonoItem::GlobalAsm(item_id) => {
-                        Some(item_id.def_id.to_def_id().index.as_usize())
-                    }
+                    MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
+                    MonoItem::GlobalAsm(item_id) => Some(item_id.def_id.index()),
                 },
                 item.symbol_name(tcx),
             )
@@ -459,7 +438,7 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
     ///
     /// This function will build CGU names of the form:
     ///
-    /// ```
+    /// ```text
     /// <crate-name>.<crate-disambiguator>[-in-<local-crate-id>](-<component>)*[.<special-suffix>]
     /// <local-crate-id> = <local-crate-name>.<local-crate-disambiguator>
     /// ```

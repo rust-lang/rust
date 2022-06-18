@@ -5,19 +5,34 @@ mod m {
     struct ExistingPrivate;
 }
 
+trait Trait {
+    type Assoc;
+}
+
+enum Enum {
+    Existing,
+}
+
+#[cfg_accessible(Enum)]
+struct ExistingResolved;
+
+#[cfg_accessible(Enum::Existing)]
+struct ExistingResolvedVariant;
+
 #[cfg_accessible(m::ExistingPublic)]
 struct ExistingPublic;
 
-// FIXME: Not implemented yet.
-#[cfg_accessible(m::ExistingPrivate)] //~ ERROR not sure whether the path is accessible or not
+#[cfg_accessible(m::ExistingPrivate)]
 struct ExistingPrivate;
 
-// FIXME: Not implemented yet.
-#[cfg_accessible(m::NonExistent)] //~ ERROR not sure whether the path is accessible or not
-struct ExistingPrivate;
+#[cfg_accessible(m::NonExistent)]
+struct NonExistingPrivate;
 
 #[cfg_accessible(n::AccessibleExpanded)] // OK, `cfg_accessible` can wait and retry.
 struct AccessibleExpanded;
+
+#[cfg_accessible(Trait::Assoc)]
+struct AccessibleTraitAssoc;
 
 macro_rules! generate_accessible_expanded {
     () => {
@@ -29,15 +44,12 @@ macro_rules! generate_accessible_expanded {
 
 generate_accessible_expanded!();
 
-struct S {
-    field: u8,
-}
-
-// FIXME: Not implemented yet.
-#[cfg_accessible(S::field)] //~ ERROR not sure whether the path is accessible or not
-struct Field;
-
 fn main() {
     ExistingPublic;
     AccessibleExpanded;
+    AccessibleTraitAssoc;
+
+    ExistingPrivate; //~ ERROR cannot find
+    NonExistingPrivate; //~ ERROR cannot find
+    NonExistingTraitAlias; //~ ERROR cannot find
 }

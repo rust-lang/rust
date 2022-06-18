@@ -5,13 +5,13 @@ use rustc_span::Symbol;
 use rustc_target::abi::call::FnAbi;
 
 use crate::abi::FnAbiGccExt;
-use crate::context::{CodegenCx, unit_name};
+use crate::context::CodegenCx;
 use crate::intrinsic::llvm;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn get_or_insert_global(&self, name: &str, ty: Type<'gcc>, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
         if self.globals.borrow().contains_key(name) {
-            let typ = self.globals.borrow().get(name).expect("global").get_type();
+            let typ = self.globals.borrow()[name].get_type();
             let global = self.context.new_global(None, GlobalKind::Imported, typ, name);
             if is_tls {
                 global.set_tls_model(self.tls_model);
@@ -22,15 +22,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             global
         }
         else {
-            self.declare_global(name, ty, is_tls, link_section)
+            self.declare_global(name, ty, GlobalKind::Exported, is_tls, link_section)
         }
     }
 
     pub fn declare_unnamed_global(&self, ty: Type<'gcc>) -> LValue<'gcc> {
-        let index = self.global_gen_sym_counter.get();
-        self.global_gen_sym_counter.set(index + 1);
-        let name = format!("global_{}_{}", index, unit_name(&self.codegen_unit));
-        self.context.new_global(None, GlobalKind::Exported, ty, &name)
+        let name = self.generate_local_symbol_name("global");
+        self.context.new_global(None, GlobalKind::Internal, ty, &name)
     }
 
     pub fn declare_global_with_linkage(&self, name: &str, ty: Type<'gcc>, linkage: GlobalKind) -> LValue<'gcc> {
@@ -47,8 +45,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         unsafe { std::mem::transmute(func) }
     }*/
 
-    pub fn declare_global(&self, name: &str, ty: Type<'gcc>, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
-        let global = self.context.new_global(None, GlobalKind::Exported, ty, name);
+    pub fn declare_global(&self, name: &str, ty: Type<'gcc>, global_kind: GlobalKind, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
+        let global = self.context.new_global(None, global_kind, ty, name);
         if is_tls {
             global.set_tls_model(self.tls_model);
         }
@@ -82,8 +80,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> RValue<'gcc> {
-        let (return_type, params, variadic) = fn_abi.gcc_type(self);
+        let (return_type, params, variadic, on_stack_param_indices) = fn_abi.gcc_type(self);
         let func = declare_raw_fn(self, name, () /*fn_abi.llvm_cconv()*/, return_type, &params, variadic);
+        self.on_stack_function_params.borrow_mut().insert(func, on_stack_param_indices);
         // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
         unsafe { std::mem::transmute(func) }
     }
@@ -104,11 +103,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 /// update the declaration and return existing Value instead.
 fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*llvm::CallConv*/, return_type: Type<'gcc>, param_types: &[Type<'gcc>], variadic: bool) -> Function<'gcc> {
     if name.starts_with("llvm.") {
-        return llvm::intrinsic(name, cx);
+        let intrinsic = llvm::intrinsic(name, cx);
+        cx.intrinsics.borrow_mut().insert(name.to_string(), intrinsic);
+        return intrinsic;
     }
     let func =
         if cx.functions.borrow().contains_key(name) {
-            *cx.functions.borrow().get(name).expect("function")
+            cx.functions.borrow()[name]
         }
         else {
             let params: Vec<_> = param_types.into_iter().enumerate()

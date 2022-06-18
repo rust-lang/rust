@@ -35,23 +35,27 @@
 //! This is enough to compute reachability: a pattern in a `match` expression is reachable iff it
 //! is useful w.r.t. the patterns above it:
 //! ```rust
+//! # fn foo(x: Option<i32>) {
 //! match x {
-//!     Some(_) => ...,
-//!     None => ..., // reachable: `None` is matched by this but not the branch above
-//!     Some(0) => ..., // unreachable: all the values this matches are already matched by
-//!                     // `Some(_)` above
+//!     Some(_) => {},
+//!     None => {},    // reachable: `None` is matched by this but not the branch above
+//!     Some(0) => {}, // unreachable: all the values this matches are already matched by
+//!                    // `Some(_)` above
 //! }
+//! # }
 //! ```
 //!
 //! This is also enough to compute exhaustiveness: a match is exhaustive iff the wildcard `_`
 //! pattern is _not_ useful w.r.t. the patterns in the match. The values returned by `usefulness`
 //! are used to tell the user which values are missing.
-//! ```rust
+//! ```compile_fail,E0004
+//! # fn foo(x: Option<i32>) {
 //! match x {
-//!     Some(0) => ...,
-//!     None => ...,
+//!     Some(0) => {},
+//!     None => {},
 //!     // not exhaustive: `_` is useful because it matches `Some(1)`
 //! }
+//! # }
 //! ```
 //!
 //! The entrypoint of this file is the [`compute_match_usefulness`] function, which computes
@@ -62,7 +66,7 @@
 //!
 //! Note: we will often abbreviate "constructor" as "ctor".
 //!
-//! The idea that powers everything that is done in this file is the following: a (matcheable)
+//! The idea that powers everything that is done in this file is the following: a (matchable)
 //! value is made from a constructor applied to a number of subvalues. Examples of constructors are
 //! `Some`, `None`, `(,)` (the 2-tuple constructor), `Foo {..}` (the constructor for a struct
 //! `Foo`), and `2` (the constructor for the number `2`). This is natural when we think of
@@ -71,7 +75,7 @@
 //! Some of the ctors listed above might feel weird: `None` and `2` don't take any arguments.
 //! That's ok: those are ctors that take a list of 0 arguments; they are the simplest case of
 //! ctors. We treat `2` as a ctor because `u64` and other number types behave exactly like a huge
-//! `enum`, with one variant for each number. This allows us to see any matcheable value as made up
+//! `enum`, with one variant for each number. This allows us to see any matchable value as made up
 //! from a tree of ctors, each having a set number of children. For example: `Foo { bar: None,
 //! baz: Ok(0) }` is made from 4 different ctors, namely `Foo{..}`, `None`, `Ok` and `0`.
 //!
@@ -120,12 +124,15 @@
 //! say from knowing only the first constructor of our candidate value.
 //!
 //! Let's take the following example:
-//! ```
+//! ```compile_fail,E0004
+//! # enum Enum { Variant1(()), Variant2(Option<bool>, u32)}
+//! # fn foo(x: Enum) {
 //! match x {
 //!     Enum::Variant1(_) => {} // `p1`
 //!     Enum::Variant2(None, 0) => {} // `p2`
 //!     Enum::Variant2(Some(_), 0) => {} // `q`
 //! }
+//! # }
 //! ```
 //!
 //! We can easily see that if our candidate value `v` starts with `Variant1` it will not match `q`.
@@ -133,11 +140,13 @@
 //! and `v1`. In fact, such a `v` will be a witness of usefulness of `q` exactly when the tuple
 //! `(v0, v1)` is a witness of usefulness of `q'` in the following reduced match:
 //!
-//! ```
+//! ```compile_fail,E0004
+//! # fn foo(x: (Option<bool>, u32)) {
 //! match x {
 //!     (None, 0) => {} // `p2'`
 //!     (Some(_), 0) => {} // `q'`
 //! }
+//! # }
 //! ```
 //!
 //! This motivates a new step in computing usefulness, that we call _specialization_.
@@ -150,7 +159,7 @@
 //! like a stack. We note a pattern-stack simply with `[p_1 ... p_n]`.
 //! Here's a sequence of specializations of a list of pattern-stacks, to illustrate what's
 //! happening:
-//! ```
+//! ```ignore (illustrative)
 //! [Enum::Variant1(_)]
 //! [Enum::Variant2(None, 0)]
 //! [Enum::Variant2(Some(_), 0)]
@@ -234,7 +243,7 @@
 //!     - We return the concatenation of all the witnesses found, if any.
 //!
 //! Example:
-//! ```
+//! ```ignore (illustrative)
 //! [Some(true)] // p_1
 //! [None] // p_2
 //! [Some(_)] // q
@@ -300,16 +309,16 @@ use smallvec::{smallvec, SmallVec};
 use std::fmt;
 use std::iter::once;
 
-crate struct MatchCheckCtxt<'p, 'tcx> {
-    crate tcx: TyCtxt<'tcx>,
+pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
     /// inhabited can depend on whether it was defined in the current module or
     /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
     /// outside its module and should not be matchable with an empty match statement.
-    crate module: DefId,
-    crate param_env: ty::ParamEnv<'tcx>,
-    crate pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    pub(crate) module: DefId,
+    pub(crate) param_env: ty::ParamEnv<'tcx>,
+    pub(crate) pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
@@ -325,7 +334,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub(super) fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Adt(def, ..) => {
-                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did.is_local()
+                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did().is_local()
             }
             _ => false,
         }
@@ -342,7 +351,7 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
     /// subpattern.
     pub(super) is_top_level: bool,
-    /// Wether the current pattern is from a `non_exhaustive` enum.
+    /// Whether the current pattern is from a `non_exhaustive` enum.
     pub(super) is_non_exhaustive: bool,
 }
 
@@ -659,13 +668,15 @@ enum ArmType {
 ///
 /// For example, if we are constructing a witness for the match against
 ///
-/// ```
+/// ```compile_fail,E0004
+/// # #![feature(type_ascription)]
 /// struct Pair(Option<(u32, u32)>, bool);
-///
+/// # fn foo(p: Pair) {
 /// match (p: Pair) {
 ///    Pair(None, _) => {}
 ///    Pair(_, false) => {}
 /// }
+/// # }
 /// ```
 ///
 /// We'll perform the following steps:
@@ -680,7 +691,7 @@ enum ArmType {
 ///
 /// The final `Pair(Some(_), true)` is then the resulting witness.
 #[derive(Debug)]
-crate struct Witness<'p, 'tcx>(Vec<DeconstructedPat<'p, 'tcx>>);
+pub(crate) struct Witness<'p, 'tcx>(Vec<DeconstructedPat<'p, 'tcx>>);
 
 impl<'p, 'tcx> Witness<'p, 'tcx> {
     /// Asserts that the witness contains a single pattern, and returns it.
@@ -765,10 +776,7 @@ fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
 /// `is_under_guard` is used to inform if the pattern has a guard. If it
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
-#[instrument(
-    level = "debug",
-    skip(cx, matrix, witness_preference, hir_id, is_under_guard, is_top_level)
-)]
+#[instrument(level = "debug", skip(cx, matrix, hir_id))]
 fn is_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
@@ -800,6 +808,7 @@ fn is_useful<'p, 'tcx>(
 
     let ty = v.head().ty();
     let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
+    debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
     let pcx = PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
 
     // If the first pattern is an or-pattern, expand it.
@@ -809,9 +818,11 @@ fn is_useful<'p, 'tcx>(
         // We try each or-pattern branch in turn.
         let mut matrix = matrix.clone();
         for v in v.expand_or_pat() {
+            debug!(?v);
             let usefulness = ensure_sufficient_stack(|| {
                 is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false)
             });
+            debug!(?usefulness);
             ret.extend(usefulness);
             // If pattern has a guard don't add it to the matrix.
             if !is_under_guard {
@@ -822,6 +833,7 @@ fn is_useful<'p, 'tcx>(
         }
     } else {
         let v_ctor = v.head().ctor();
+        debug!(?v_ctor);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
             // Lint on likely incorrect range patterns (#63987)
             ctor_range.lint_overlapping_range_endpoints(
@@ -895,17 +907,17 @@ fn is_useful<'p, 'tcx>(
 }
 
 /// The arm of a match expression.
-#[derive(Clone, Copy)]
-crate struct MatchArm<'p, 'tcx> {
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct MatchArm<'p, 'tcx> {
     /// The pattern must have been lowered through `check_match::MatchVisitor::lower_pattern`.
-    crate pat: &'p DeconstructedPat<'p, 'tcx>,
-    crate hir_id: HirId,
-    crate has_guard: bool,
+    pub(crate) pat: &'p DeconstructedPat<'p, 'tcx>,
+    pub(crate) hir_id: HirId,
+    pub(crate) has_guard: bool,
 }
 
 /// Indicates whether or not a given arm is reachable.
 #[derive(Clone, Debug)]
-crate enum Reachability {
+pub(crate) enum Reachability {
     /// The arm is reachable. This additionally carries a set of or-pattern branches that have been
     /// found to be unreachable despite the overall arm being reachable. Used only in the presence
     /// of or-patterns, otherwise it stays empty.
@@ -915,12 +927,12 @@ crate enum Reachability {
 }
 
 /// The output of checking a match for exhaustiveness and arm reachability.
-crate struct UsefulnessReport<'p, 'tcx> {
+pub(crate) struct UsefulnessReport<'p, 'tcx> {
     /// For each arm of the input, whether that arm is reachable after the arms above it.
-    crate arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Reachability)>,
+    pub(crate) arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Reachability)>,
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
-    crate non_exhaustiveness_witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
+    pub(crate) non_exhaustiveness_witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
 }
 
 /// The entrypoint for the usefulness algorithm. Computes whether a match is exhaustive and which
@@ -928,7 +940,8 @@ crate struct UsefulnessReport<'p, 'tcx> {
 ///
 /// Note: the input patterns must have been lowered through
 /// `check_match::MatchVisitor::lower_pattern`.
-crate fn compute_match_usefulness<'p, 'tcx>(
+#[instrument(skip(cx, arms), level = "debug")]
+pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
     scrut_hir_id: HirId,
@@ -939,6 +952,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
         .iter()
         .copied()
         .map(|arm| {
+            debug!(?arm);
             let v = PatStack::from_pattern(arm.pat);
             is_useful(cx, &matrix, &v, RealArm, arm.hir_id, arm.has_guard, true);
             if !arm.has_guard {

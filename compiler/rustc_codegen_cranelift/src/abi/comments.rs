@@ -82,8 +82,14 @@ pub(super) fn add_local_place_comments<'tcx>(
         return;
     }
     let TyAndLayout { ty, layout } = place.layout();
-    let rustc_target::abi::Layout { size, align, abi: _, variants: _, fields: _, largest_niche: _ } =
-        layout;
+    let rustc_target::abi::LayoutS {
+        size,
+        align,
+        abi: _,
+        variants: _,
+        fields: _,
+        largest_niche: _,
+    } = layout.0.0;
 
     let (kind, extra) = match *place.inner() {
         CPlaceInner::Var(place_local, var) => {

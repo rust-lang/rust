@@ -1,10 +1,15 @@
+use crate::{ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt};
+
 use super::LoweringContext;
 
+use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::definitions::DefPathData;
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, Span};
 use rustc_target::asm;
@@ -12,7 +17,11 @@ use std::collections::hash_map::Entry;
 use std::fmt::Write;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    crate fn lower_inline_asm(&mut self, sp: Span, asm: &InlineAsm) -> &'hir hir::InlineAsm<'hir> {
+    pub(crate) fn lower_inline_asm(
+        &mut self,
+        sp: Span,
+        asm: &InlineAsm,
+    ) -> &'hir hir::InlineAsm<'hir> {
         // Rustdoc needs to support asm! from foreign architectures: don't try
         // lowering the register constraints in this case.
         let asm_arch = if self.sess.opts.actually_rustdoc { None } else { self.sess.asm_arch };
@@ -188,7 +197,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             anon_const: self.lower_anon_const(anon_const),
                         }
                     }
-                    InlineAsmOperand::Sym { ref expr } => {
+                    InlineAsmOperand::Sym { ref sym } => {
                         if !self.sess.features_untracked().asm_sym {
                             feature_err(
                                 &self.sess.parse_sess,
@@ -198,7 +207,48 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             )
                             .emit();
                         }
-                        hir::InlineAsmOperand::Sym { expr: self.lower_expr_mut(expr) }
+
+                        let static_def_id = self
+                            .resolver
+                            .get_partial_res(sym.id)
+                            .filter(|res| res.unresolved_segments() == 0)
+                            .and_then(|res| {
+                                if let Res::Def(DefKind::Static(_), def_id) = res.base_res() {
+                                    Some(def_id)
+                                } else {
+                                    None
+                                }
+                            });
+
+                        if let Some(def_id) = static_def_id {
+                            let path = self.lower_qpath(
+                                sym.id,
+                                &sym.qself,
+                                &sym.path,
+                                ParamMode::Optional,
+                                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            );
+                            hir::InlineAsmOperand::SymStatic { path, def_id }
+                        } else {
+                            // Replace the InlineAsmSym AST node with an
+                            // Expr using the name node id.
+                            let expr = Expr {
+                                id: sym.id,
+                                kind: ExprKind::Path(sym.qself.clone(), sym.path.clone()),
+                                span: *op_sp,
+                                attrs: AttrVec::new(),
+                                tokens: None,
+                            };
+
+                            // Wrap the expression in an AnonConst.
+                            let parent_def_id = self.current_hir_id_owner;
+                            let node_id = self.next_node_id();
+                            self.create_def(parent_def_id, node_id, DefPathData::AnonConst);
+                            let anon_const = AnonConst { id: node_id, value: P(expr) };
+                            hir::InlineAsmOperand::SymFn {
+                                anon_const: self.lower_anon_const(&anon_const),
+                            }
+                        }
                     }
                 };
                 (op, self.lower_span(*op_sp))
@@ -260,7 +310,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         err.span_label(op_sp, "argument");
                         err.emit();
                     }
-                    hir::InlineAsmOperand::Sym { .. } => {
+                    hir::InlineAsmOperand::SymFn { .. }
+                    | hir::InlineAsmOperand::SymStatic { .. } => {
                         let mut err = sess.struct_span_err(
                             placeholder_span,
                             "asm template modifiers are not allowed for `sym` arguments",
@@ -308,7 +359,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         hir::InlineAsmOperand::InOut { .. }
                         | hir::InlineAsmOperand::SplitInOut { .. } => (true, true),
 
-                        hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::Sym { .. } => {
+                        hir::InlineAsmOperand::Const { .. }
+                        | hir::InlineAsmOperand::SymFn { .. }
+                        | hir::InlineAsmOperand::SymStatic { .. } => {
                             unreachable!()
                         }
                     };

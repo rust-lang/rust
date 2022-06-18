@@ -2,10 +2,7 @@
 // Error message should pinpoint the type parameter T as needing to be bound
 // (rather than give a general error message)
 // edition:2018
-
-// FIXME(eholk): temporarily disabled while drop range tracking is disabled
-// (see generator_interior.rs:27)
-// ignore-test
+// compile-flags: -Zdrop-tracking
 
 async fn bar<T>() -> () {}
 

@@ -88,7 +88,7 @@ mod no_lint_if_stmt_borrows {
             ret
         }
 
-        struct Bar {}
+        struct Bar;
 
         impl Bar {
             fn new() -> Self {

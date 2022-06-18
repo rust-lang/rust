@@ -420,3 +420,21 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
         CValue::by_val(fx.bcx.ins().bint(types::I8, res), fx.layout_of(fx.tcx.types.bool))
     }
 }
+
+// In Rust floating point min and max don't propagate NaN. In Cranelift they do however.
+// For this reason it is necessary to use `a.is_nan() ? b : (a >= b ? b : a)` for `minnumf*`
+// and `a.is_nan() ? b : (a <= b ? b : a)` for `maxnumf*`. NaN checks are done by comparing
+// a float against itself. Only in case of NaN is it not equal to itself.
+pub(crate) fn codegen_float_min(fx: &mut FunctionCx<'_, '_, '_>, a: Value, b: Value) -> Value {
+    let a_is_nan = fx.bcx.ins().fcmp(FloatCC::NotEqual, a, a);
+    let a_ge_b = fx.bcx.ins().fcmp(FloatCC::GreaterThanOrEqual, a, b);
+    let temp = fx.bcx.ins().select(a_ge_b, b, a);
+    fx.bcx.ins().select(a_is_nan, b, temp)
+}
+
+pub(crate) fn codegen_float_max(fx: &mut FunctionCx<'_, '_, '_>, a: Value, b: Value) -> Value {
+    let a_is_nan = fx.bcx.ins().fcmp(FloatCC::NotEqual, a, a);
+    let a_le_b = fx.bcx.ins().fcmp(FloatCC::LessThanOrEqual, a, b);
+    let temp = fx.bcx.ins().select(a_le_b, b, a);
+    fx.bcx.ins().select(a_is_nan, b, temp)
+}

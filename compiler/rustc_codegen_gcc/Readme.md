@@ -12,7 +12,7 @@ A secondary goal is to check if using the gcc backend will provide any run-time 
 ## Building
 
 **This requires a patched libgccjit in order to work.
-The patches in [this repostory](https://github.com/antoyo/libgccjit-patches) need to be applied.
+The patches in [this repository](https://github.com/antoyo/libgccjit-patches) need to be applied.
 (Those patches should work when applied on master, but in case it doesn't work, they are known to work when applied on 079c23cfe079f203d5df83fea8e92a60c7d7e878.)
 You can also use my [fork of gcc](https://github.com/antoyo/gcc) which already includes these patches.**
 
@@ -21,6 +21,8 @@ You can also use my [fork of gcc](https://github.com/antoyo/gcc) which already i
 ```bash
 $ git clone https://github.com/rust-lang/rustc_codegen_gcc.git
 $ cd rustc_codegen_gcc
+$ git clone https://github.com/llvm/llvm-project llvm --depth 1 --single-branch
+$ export RUST_COMPILER_RT_ROOT="$PWD/llvm/compiler-rt"
 $ ./prepare_build.sh # download and patch sysroot src
 $ ./build.sh --release
 ```
@@ -109,6 +111,13 @@ Or add a breakpoint to `add_error` in gdb and print the line number using:
 
 ```
 p loc->m_line
+p loc->m_filename->m_buffer
+```
+
+To print a debug representation of a tree:
+
+```c
+debug_tree(expr);
 ```
 
 To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo build`.
@@ -134,4 +143,5 @@ To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo b
  * Set `linker='-Clinker=m68k-linux-gcc'`.
  * Set the path to the cross-compiling libgccjit in `gcc_path`.
  * Disable the 128-bit integer types if the target doesn't support them by using `let i128_type = context.new_type::<i64>();` in `context.rs` (same for u128_type).
+ * Comment the line: `context.add_command_line_option("-masm=intel");` in src/base.rs.
  * (might not be necessary) Disable the compilation of libstd.so (and possibly libcore.so?).

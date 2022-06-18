@@ -3,7 +3,7 @@
 use std::cmp::min;
 
 use itertools::Itertools;
-use rustc_ast::token::DelimToken;
+use rustc_ast::token::Delimiter;
 use rustc_ast::{ast, ptr};
 use rustc_span::Span;
 
@@ -26,15 +26,13 @@ use crate::spanned::Spanned;
 use crate::types::{can_be_overflowed_type, SegmentParam};
 use crate::utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp};
 
-const SHORT_ITEM_THRESHOLD: usize = 10;
-
 /// A list of `format!`-like macros, that take a long format string and a list of arguments to
 /// format.
 ///
 /// Organized as a list of `(&str, usize)` tuples, giving the name of the macro and the number of
 /// arguments before the format string (none for `format!("format", ...)`, one for `assert!(result,
 /// "format", ...)`, two for `assert_eq!(left, right, "format", ...)`).
-const SPECIAL_MACRO_WHITELIST: &[(&str, usize)] = &[
+const SPECIAL_CASE_MACROS: &[(&str, usize)] = &[
     // format! like macros
     // From the Rust Standard Library.
     ("eprint!", 0),
@@ -62,7 +60,7 @@ const SPECIAL_MACRO_WHITELIST: &[(&str, usize)] = &[
     ("debug_assert_ne!", 2),
 ];
 
-const SPECIAL_ATTR_WHITELIST: &[(&str, usize)] = &[
+const SPECIAL_CASE_ATTR: &[(&str, usize)] = &[
     // From the `failure` crate.
     ("fail", 0),
 ];
@@ -184,10 +182,10 @@ impl<'a> OverflowableItem<'a> {
         }
     }
 
-    fn whitelist(&self) -> &'static [(&'static str, usize)] {
+    fn special_cases(&self) -> &'static [(&'static str, usize)] {
         match self {
-            OverflowableItem::MacroArg(..) => SPECIAL_MACRO_WHITELIST,
-            OverflowableItem::NestedMetaItem(..) => SPECIAL_ATTR_WHITELIST,
+            OverflowableItem::MacroArg(..) => SPECIAL_CASE_MACROS,
+            OverflowableItem::NestedMetaItem(..) => SPECIAL_CASE_ATTR,
             _ => &[],
         }
     }
@@ -299,11 +297,11 @@ pub(crate) fn rewrite_with_square_brackets<'a, T: 'a + IntoOverflowableItem<'a>>
     shape: Shape,
     span: Span,
     force_separator_tactic: Option<SeparatorTactic>,
-    delim_token: Option<DelimToken>,
+    delim_token: Option<Delimiter>,
 ) -> Option<String> {
     let (lhs, rhs) = match delim_token {
-        Some(DelimToken::Paren) => ("(", ")"),
-        Some(DelimToken::Brace) => ("{", "}"),
+        Some(Delimiter::Parenthesis) => ("(", ")"),
+        Some(Delimiter::Brace) => ("{", "}"),
         _ => ("[", "]"),
     };
     Context::new(
@@ -572,7 +570,12 @@ impl<'a> Context<'a> {
                             if one_line {
                                 tactic = DefinitiveListTactic::SpecialMacro(num_args_before);
                             };
-                        } else if is_every_expr_simple(&self.items) && no_long_items(list_items) {
+                        } else if is_every_expr_simple(&self.items)
+                            && no_long_items(
+                                list_items,
+                                self.context.config.short_array_element_width_threshold(),
+                            )
+                        {
                             tactic = DefinitiveListTactic::Mixed;
                         }
                     }
@@ -755,9 +758,9 @@ fn shape_from_indent_style(
     }
 }
 
-fn no_long_items(list: &[ListItem]) -> bool {
+fn no_long_items(list: &[ListItem], short_array_element_width_threshold: usize) -> bool {
     list.iter()
-        .all(|item| item.inner_as_ref().len() <= SHORT_ITEM_THRESHOLD)
+        .all(|item| item.inner_as_ref().len() <= short_array_element_width_threshold)
 }
 
 /// In case special-case style is required, returns an offset from which we start horizontal layout.
@@ -767,7 +770,7 @@ pub(crate) fn maybe_get_args_offset(
 ) -> Option<(bool, usize)> {
     if let Some(&(_, num_args_before)) = args
         .get(0)?
-        .whitelist()
+        .special_cases()
         .iter()
         .find(|&&(s, _)| s == callee_str)
     {

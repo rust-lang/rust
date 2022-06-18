@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, EarlyBinder, ImplSubject, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 pub use rustc_infer::traits::{self, util::*};
@@ -118,13 +118,14 @@ impl<'tcx> TraitAliasExpander<'tcx> {
 
         // Get components of trait alias.
         let predicates = tcx.super_predicates_of(trait_ref.def_id());
+        debug!(?predicates);
 
         let items = predicates.predicates.iter().rev().filter_map(|(pred, span)| {
             pred.subst_supertrait(tcx, &trait_ref)
                 .to_opt_poly_trait_pred()
                 .map(|trait_ref| item.clone_and_push(trait_ref.map_bound(|t| t.trait_ref), *span))
         });
-        debug!("expand_trait_aliases: items={:?}", items.clone());
+        debug!("expand_trait_aliases: items={:?}", items.clone().collect::<Vec<_>>());
 
         self.stack.extend(items);
 
@@ -190,19 +191,19 @@ impl Iterator for SupertraitDefIds<'_> {
 // Other
 ///////////////////////////////////////////////////////////////////////////
 
-/// Instantiate all bound parameters of the impl with the given substs,
-/// returning the resulting trait ref and all obligations that arise.
+/// Instantiate all bound parameters of the impl subject with the given substs,
+/// returning the resulting subject and all obligations that arise.
 /// The obligations are closed under normalization.
-pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
+pub fn impl_subject_and_oblig<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
     impl_substs: SubstsRef<'tcx>,
-) -> (ty::TraitRef<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
-    let impl_trait_ref = selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
-    let impl_trait_ref = impl_trait_ref.subst(selcx.tcx(), impl_substs);
-    let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
-        super::normalize(selcx, param_env, ObligationCause::dummy(), impl_trait_ref);
+) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
+    let subject = selcx.tcx().impl_subject(impl_def_id);
+    let subject = EarlyBinder(subject).subst(selcx.tcx(), impl_substs);
+    let Normalized { value: subject, obligations: normalization_obligations1 } =
+        super::normalize(selcx, param_env, ObligationCause::dummy(), subject);
 
     let predicates = selcx.tcx().predicates_of(impl_def_id);
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
@@ -215,7 +216,7 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
         .chain(normalization_obligations1.into_iter())
         .chain(normalization_obligations2.into_iter());
 
-    (impl_trait_ref, impl_obligations)
+    (subject, impl_obligations)
 }
 
 pub fn predicates_for_generics<'tcx>(
@@ -303,22 +304,24 @@ pub fn get_vtable_index_of_object_method<'tcx, N>(
     tcx: TyCtxt<'tcx>,
     object: &super::ImplSourceObjectData<'tcx, N>,
     method_def_id: DefId,
-) -> usize {
+) -> Option<usize> {
     let existential_trait_ref = object
         .upcast_trait_ref
         .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
     let existential_trait_ref = tcx.erase_regions(existential_trait_ref);
+
     // Count number of methods preceding the one we are selecting and
     // add them to the total offset.
-    let index = tcx
+    if let Some(index) = tcx
         .own_existential_vtable_entries(existential_trait_ref)
         .iter()
         .copied()
         .position(|def_id| def_id == method_def_id)
-        .unwrap_or_else(|| {
-            bug!("get_vtable_index_of_object_method: {:?} was not found", method_def_id);
-        });
-    object.vtable_base + index
+    {
+        Some(object.vtable_base + index)
+    } else {
+        None
+    }
 }
 
 pub fn closure_trait_ref_and_return_type<'tcx>(

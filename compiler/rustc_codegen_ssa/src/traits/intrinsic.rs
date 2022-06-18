@@ -22,6 +22,14 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;
     /// Trait method used to test whether a given pointer is associated with a type identifier.
     fn type_test(&mut self, pointer: Self::Value, typeid: Self::Value) -> Self::Value;
+    /// Trait method used to load a function while testing if it is associated with a type
+    /// identifier.
+    fn type_checked_load(
+        &mut self,
+        llvtable: Self::Value,
+        vtable_byte_offset: u64,
+        typeid: Self::Value,
+    ) -> Self::Value;
     /// Trait method used to inject `va_start` on the "spoofed" `VaListImpl` in
     /// Rust defined C-variadic functions.
     fn va_start(&mut self, val: Self::Value) -> Self::Value;
