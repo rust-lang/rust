@@ -195,10 +195,7 @@ fn lint_if_same_then_else(cx: &LateContext<'_>, conds: &[&Expr<'_>], blocks: &[&
         .array_windows::<2>()
         .enumerate()
         .fold(true, |all_eq, (i, &[lhs, rhs])| {
-            if eq.eq_block(lhs, rhs)
-                && !contains_let(conds[i])
-                && conds.get(i + 1).map_or(true, |e| !contains_let(e))
-            {
+            if eq.eq_block(lhs, rhs) && !contains_let(conds[i]) && conds.get(i + 1).map_or(true, |e| !contains_let(e)) {
                 span_lint_and_note(
                     cx,
                     IF_SAME_THEN_ELSE,
@@ -367,10 +364,6 @@ fn eq_stmts(
         .iter()
         .all(|b| get_stmt(b).map_or(false, |s| eq.eq_stmt(s, stmt)))
 }
-
-
-
-
 
 fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'_>, blocks: &[&Block<'_>]) -> BlockEq {
     let mut eq = SpanlessEq::new(cx);
