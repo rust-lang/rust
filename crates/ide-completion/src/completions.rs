@@ -24,6 +24,7 @@ use std::iter;
 
 use hir::{db::HirDatabase, known, ScopeDef};
 use ide_db::SymbolKind;
+use syntax::ast;
 
 use crate::{
     context::Visible,
@@ -409,11 +410,12 @@ fn enum_variants_with_paths(
     acc: &mut Completions,
     ctx: &CompletionContext,
     enum_: hir::Enum,
+    impl_: &Option<ast::Impl>,
     cb: impl Fn(&mut Completions, &CompletionContext, hir::Variant, hir::ModPath),
 ) {
     let variants = enum_.variants(ctx.db);
 
-    if let Some(impl_) = ctx.impl_def.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
+    if let Some(impl_) = impl_.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
         if impl_.self_ty(ctx.db).as_adt() == Some(hir::Adt::Enum(enum_)) {
             for &variant in &variants {
                 let self_path = hir::ModPath::from_segments(

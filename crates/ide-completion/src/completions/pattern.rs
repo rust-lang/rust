@@ -51,9 +51,15 @@ pub(crate) fn complete_pattern(
         ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
     {
         if refutable || single_variant_enum(e) {
-            super::enum_variants_with_paths(acc, ctx, e, |acc, ctx, variant, path| {
-                acc.add_qualified_variant_pat(ctx, variant, path);
-            });
+            super::enum_variants_with_paths(
+                acc,
+                ctx,
+                e,
+                &patctx.impl_,
+                |acc, ctx, variant, path| {
+                    acc.add_qualified_variant_pat(ctx, variant, path);
+                },
+            );
         }
     }
 

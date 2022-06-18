@@ -389,16 +389,6 @@ impl<'a> CompletionContext<'a> {
                 return Some(());
             }
         };
-        self.impl_def = self
-            .sema
-            .token_ancestors_with_macros(self.token.clone())
-            .take_while(|it| it.kind() != SyntaxKind::SOURCE_FILE)
-            .filter_map(ast::Item::cast)
-            .take(2)
-            .find_map(|it| match it {
-                ast::Item::Impl(impl_) => Some(impl_),
-                _ => None,
-            });
 
         match name_like {
             ast::NameLike::Lifetime(lifetime) => {
@@ -452,7 +442,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_name(
-        _sema: &Semantics<RootDatabase>,
+        sema: &Semantics<RootDatabase>,
         original_file: &SyntaxNode,
         name: ast::Name,
     ) -> Option<NameContext> {
@@ -464,7 +454,7 @@ impl<'a> CompletionContext<'a> {
                 ast::Enum(_) => NameKind::Enum,
                 ast::Fn(_) => NameKind::Function,
                 ast::IdentPat(bind_pat) => {
-                    let mut pat_ctx = pattern_context_for(original_file, bind_pat.into());
+                    let mut pat_ctx = pattern_context_for(sema, original_file, bind_pat.into());
                     if let Some(record_field) = ast::RecordPatField::for_field_name(&name) {
                         pat_ctx.record_pat = find_node_in_file_compensated(original_file, &record_field.parent_record_pat());
                     }
@@ -518,6 +508,7 @@ impl<'a> CompletionContext<'a> {
                     &record_field.parent_record_pat(),
                 ),
                 ..pattern_context_for(
+                    sema,
                     original_file,
                     record_field.parent_record_pat().clone().into(),
                 )
@@ -766,6 +757,7 @@ impl<'a> CompletionContext<'a> {
                 .parent()
                 .and_then(ast::LetStmt::cast)
                 .map_or(false, |it| it.semicolon_token().is_none());
+            let impl_ = fetch_immediate_impl(sema, original_file, &expr);
 
             PathKind::Expr {
                 in_block_expr,
@@ -777,6 +769,7 @@ impl<'a> CompletionContext<'a> {
                 innermost_ret_ty,
                 self_param,
                 incomplete_let,
+                impl_,
             }
         };
         let make_path_kind_type = |ty: ast::Type| {
@@ -804,14 +797,14 @@ impl<'a> CompletionContext<'a> {
                     },
                     ast::TupleStructPat(it) => {
                         path_ctx.has_call_parens = true;
-                        PathKind::Pat { pat_ctx: pattern_context_for(original_file, it.into())}
+                        PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into())}
                     },
                     ast::RecordPat(it) => {
                         path_ctx.has_call_parens = true;
-                        PathKind::Pat { pat_ctx: pattern_context_for(original_file, it.into())}
+                        PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into())}
                     },
                     ast::PathPat(it) => {
-                        PathKind::Pat { pat_ctx: pattern_context_for(original_file, it.into())}
+                        PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into())}
                     },
                     ast::MacroCall(it) => {
                         // A macro call in this position is usually a result of parsing recovery, so check that
@@ -825,7 +818,7 @@ impl<'a> CompletionContext<'a> {
                         match_ast! {
                             match parent {
                                 ast::MacroExpr(expr) => make_path_kind_expr(expr.into()),
-                                ast::MacroPat(it) => PathKind::Pat { pat_ctx: pattern_context_for(original_file, it.into())},
+                                ast::MacroPat(it) => PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into())},
                                 ast::MacroType(ty) => make_path_kind_type(ty.into()),
                                 ast::ItemList(_) => PathKind::Item { kind: ItemListKind::Module },
                                 ast::AssocItemList(_) => PathKind::Item { kind: match parent.parent() {
@@ -833,7 +826,7 @@ impl<'a> CompletionContext<'a> {
                                         match it {
                                             ast::Trait(_) => ItemListKind::Trait,
                                             ast::Impl(it) => if it.trait_().is_some() {
-                                                ItemListKind::TraitImpl
+                                                ItemListKind::TraitImpl(find_node_in_file_compensated(original_file, &it))
                                             } else {
                                                 ItemListKind::Impl
                                             },
@@ -970,7 +963,11 @@ impl<'a> CompletionContext<'a> {
     }
 }
 
-fn pattern_context_for(original_file: &SyntaxNode, pat: ast::Pat) -> PatternContext {
+fn pattern_context_for(
+    sema: &Semantics<RootDatabase>,
+    original_file: &SyntaxNode,
+    pat: ast::Pat,
+) -> PatternContext {
     let mut is_param = None;
     let (refutability, has_type_ascription) =
     pat
@@ -1011,6 +1008,7 @@ fn pattern_context_for(original_file: &SyntaxNode, pat: ast::Pat) -> PatternCont
         ast::Pat::IdentPat(it) => (it.ref_token(), it.mut_token()),
         _ => (None, None),
     };
+
     PatternContext {
         refutability,
         param_ctx: is_param,
@@ -1019,6 +1017,44 @@ fn pattern_context_for(original_file: &SyntaxNode, pat: ast::Pat) -> PatternCont
         mut_token,
         ref_token,
         record_pat: None,
+        impl_: fetch_immediate_impl(sema, original_file, &pat),
+    }
+}
+
+fn fetch_immediate_impl(
+    sema: &Semantics<RootDatabase>,
+    original_file: &SyntaxNode,
+    node: &impl AstNode,
+) -> Option<ast::Impl> {
+    // FIXME: The fallback here could be done better
+    let (f, s) = match find_node_in_file_compensated(original_file, node) {
+        Some(node) => {
+            let mut items = sema
+                .ancestors_with_macros(node.syntax().clone())
+                .filter_map(ast::Item::cast)
+                .filter(|it| !matches!(it, ast::Item::MacroCall(_)))
+                .take(2);
+            (items.next(), items.next())
+        }
+        None => {
+            let mut items = node
+                .syntax()
+                .ancestors()
+                .filter_map(ast::Item::cast)
+                .filter(|it| !matches!(it, ast::Item::MacroCall(_)))
+                .take(2);
+            (items.next(), items.next())
+        }
+    };
+
+    match f? {
+        ast::Item::Const(_) | ast::Item::Fn(_) | ast::Item::TypeAlias(_) => (),
+        ast::Item::Impl(it) => return Some(it),
+        _ => return None,
+    }
+    match s? {
+        ast::Item::Impl(it) => Some(it),
+        _ => None,
     }
 }
 

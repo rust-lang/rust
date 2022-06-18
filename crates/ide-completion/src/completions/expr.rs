@@ -27,6 +27,7 @@ pub(crate) fn complete_expr_path(
         in_condition,
         ty,
         incomplete_let,
+        impl_,
     ) = match path_ctx {
         &PathCompletionCtx {
             kind:
@@ -39,6 +40,7 @@ pub(crate) fn complete_expr_path(
                     ref ref_expr_parent,
                     ref is_func_update,
                     ref innermost_ret_ty,
+                    ref impl_,
                     ..
                 },
             ref qualified,
@@ -53,6 +55,7 @@ pub(crate) fn complete_expr_path(
             in_condition,
             innermost_ret_ty,
             incomplete_let,
+            impl_,
         ),
         _ => return,
     };
@@ -181,8 +184,7 @@ pub(crate) fn complete_expr_path(
             if let Some(adt) =
                 ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
             {
-                let self_ty =
-                    (|| ctx.sema.to_def(ctx.impl_def.as_ref()?)?.self_ty(ctx.db).as_adt())();
+                let self_ty = (|| ctx.sema.to_def(impl_.as_ref()?)?.self_ty(ctx.db).as_adt())();
                 let complete_self = self_ty == Some(adt);
 
                 match adt {
@@ -210,9 +212,15 @@ pub(crate) fn complete_expr_path(
                         }
                     }
                     hir::Adt::Enum(e) => {
-                        super::enum_variants_with_paths(acc, ctx, e, |acc, ctx, variant, path| {
-                            acc.add_qualified_enum_variant(ctx, variant, path)
-                        });
+                        super::enum_variants_with_paths(
+                            acc,
+                            ctx,
+                            e,
+                            impl_,
+                            |acc, ctx, variant, path| {
+                                acc.add_qualified_enum_variant(ctx, variant, path)
+                            },
+                        );
                     }
                 }
             }
