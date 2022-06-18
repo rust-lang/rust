@@ -97,7 +97,8 @@ pub const REPLACEMENT_CHARACTER: char = char::REPLACEMENT_CHARACTER;
 #[stable(feature = "unicode_version", since = "1.45.0")]
 pub const UNICODE_VERSION: (u8, u8, u8) = char::UNICODE_VERSION;
 
-/// Maximum length required to store a UTF8 byte.
+/// The maximum number of bytes required to [encode](char::encode_utf8) a
+/// `char` in UTF-8. Use [`char::MAX_UTF8_LEN`] instead.
 #[stable(feature = "max_len", since = "1.63.0")]
 pub const MAX_UTF8_LEN: usize = char::MAX_UTF8_LEN;
 
