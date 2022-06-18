@@ -2183,7 +2183,7 @@ impl Target {
             TargetTriple::TargetTriple(ref target_triple) => {
                 load_builtin(target_triple).expect("built-in target")
             }
-            TargetTriple::TargetPath(..) => {
+            TargetTriple::TargetJson { .. } => {
                 panic!("built-in targets doens't support target-paths")
             }
         }
@@ -2248,11 +2248,9 @@ impl Target {
 
                 Err(format!("Could not find specification for target {:?}", target_triple))
             }
-            TargetTriple::TargetPath(ref target_path) => {
-                if target_path.is_file() {
-                    return load_file(&target_path);
-                }
-                Err(format!("Target path {:?} is not a valid file", target_path))
+            TargetTriple::TargetJson { triple: _, ref contents } => {
+                let obj = serde_json::from_str(contents).map_err(|e| e.to_string())?;
+                Target::from_json(obj)
             }
         }
     }
@@ -2424,7 +2422,7 @@ impl ToJson for Target {
 #[derive(PartialEq, Clone, Debug, Hash, Encodable, Decodable)]
 pub enum TargetTriple {
     TargetTriple(String),
-    TargetPath(PathBuf),
+    TargetJson { triple: String, contents: String },
 }
 
 impl TargetTriple {
@@ -2436,7 +2434,19 @@ impl TargetTriple {
     /// Creates a target triple from the passed target path.
     pub fn from_path(path: &Path) -> Result<Self, io::Error> {
         let canonicalized_path = path.canonicalize()?;
-        Ok(TargetTriple::TargetPath(canonicalized_path))
+        let contents = std::fs::read_to_string(&canonicalized_path).map_err(|err| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("Target path {:?} is not a valid file: {}", canonicalized_path, err),
+            )
+        })?;
+        let triple = canonicalized_path
+            .file_stem()
+            .expect("target path must not be empty")
+            .to_str()
+            .expect("target path must be valid unicode")
+            .to_owned();
+        Ok(TargetTriple::TargetJson { triple, contents })
     }
 
     /// Returns a string triple for this target.
@@ -2444,12 +2454,8 @@ impl TargetTriple {
     /// If this target is a path, the file name (without extension) is returned.
     pub fn triple(&self) -> &str {
         match *self {
-            TargetTriple::TargetTriple(ref triple) => triple,
-            TargetTriple::TargetPath(ref path) => path
-                .file_stem()
-                .expect("target path must not be empty")
-                .to_str()
-                .expect("target path must be valid unicode"),
+            TargetTriple::TargetTriple(ref triple)
+            | TargetTriple::TargetJson { ref triple, contents: _ } => triple,
         }
     }
 
@@ -2461,14 +2467,14 @@ impl TargetTriple {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
-        let triple = self.triple();
-        if let TargetTriple::TargetPath(ref path) = *self {
-            let mut hasher = DefaultHasher::new();
-            path.hash(&mut hasher);
-            let hash = hasher.finish();
-            format!("{}-{}", triple, hash)
-        } else {
-            triple.into()
+        match self {
+            TargetTriple::TargetTriple(triple) => triple.to_owned(),
+            TargetTriple::TargetJson { triple, contents: content } => {
+                let mut hasher = DefaultHasher::new();
+                content.hash(&mut hasher);
+                let hash = hasher.finish();
+                format!("{}-{}", triple, hash)
+            }
         }
     }
 }
