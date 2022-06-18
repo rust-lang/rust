@@ -692,6 +692,7 @@ macro_rules! tool_extended {
        stable = $stable:expr,
        $(in_tree = $in_tree:expr,)?
        $(submodule = $submodule:literal,)?
+       $(tool_std = $tool_std:literal,)?
        $extra_deps:block;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -740,7 +741,7 @@ macro_rules! tool_extended {
                     compiler: $sel.compiler,
                     target: $sel.target,
                     tool: $tool_name,
-                    mode: Mode::ToolRustc,
+                    mode: if false $(|| $tool_std)? { Mode::ToolStd } else { Mode::ToolRustc },
                     path: $path,
                     extra_features: $sel.extra_features,
                     is_optional_tool: true,
@@ -774,7 +775,10 @@ tool_extended!((self, builder),
         });
         self.extra_features.push("clippy".to_owned());
     };
-    RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, {};
+    // FIXME: tool_std is not quite right, we shouldn't allow nightly features.
+    // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,
+    // and this is close enough for now.
+    RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, tool_std=true, {};
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
     RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, submodule="rust-analyzer", {};
 );
