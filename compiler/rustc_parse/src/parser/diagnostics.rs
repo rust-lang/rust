@@ -606,7 +606,9 @@ impl<'a> Parser<'a> {
             && expected.iter().any(|tok| matches!(tok, TokenType::Token(TokenKind::Gt)))
         {
             err.span_label(self.prev_token.span, "maybe try to close unmatched angle bracket");
-        } else if self.token == token::FatArrow {
+        } else if self.token == token::FatArrow
+            && expected.iter().any(|tok| matches!(tok, TokenType::Operator))
+        {
             err.help("closures are written `|a, b| a + b` and greater-than-or-equal is `>=`.");
         }
 
