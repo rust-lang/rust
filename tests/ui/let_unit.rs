@@ -2,8 +2,7 @@
 
 #![feature(lint_reasons)]
 #![warn(clippy::let_unit_value)]
-#![allow(clippy::no_effect)]
-#![allow(unused)]
+#![allow(unused, clippy::no_effect, clippy::needless_late_init, path_statements)]
 
 macro_rules! let_and_return {
     ($n:expr) => {{
@@ -73,8 +72,8 @@ fn _returns_generic() {
     fn f3<T>(x: T) -> T {
         x
     }
-    fn f4<T>(mut x: Vec<T>) -> T {
-        x.pop().unwrap()
+    fn f5<T: Default>(x: bool) -> Option<T> {
+        x.then(|| T::default())
     }
 
     let _: () = f(); // Ok
@@ -86,8 +85,12 @@ fn _returns_generic() {
     let _: () = f3(()); // Lint
     let x: () = f3(()); // Lint
 
-    let _: () = f4(vec![()]); // Lint
-    let x: () = f4(vec![()]); // Lint
+    // Should lint:
+    // fn f4<T>(mut x: Vec<T>) -> T {
+    //    x.pop().unwrap()
+    // }
+    // let _: () = f4(vec![()]);
+    // let x: () = f4(vec![()]);
 
     // Ok
     let _: () = {
@@ -113,6 +116,53 @@ fn _returns_generic() {
         Some(1) => f2(3),
         Some(_) => (),
     };
+
+    let _: () = f5(true).unwrap();
+
+    #[allow(clippy::let_unit_value)]
+    {
+        let x = f();
+        let y;
+        let z;
+        match 0 {
+            0 => {
+                y = f();
+                z = f();
+            },
+            1 => {
+                println!("test");
+                y = f();
+                z = f3(());
+            },
+            _ => panic!(),
+        }
+
+        let x1;
+        let x2;
+        if true {
+            x1 = f();
+            x2 = x1;
+        } else {
+            x2 = f();
+            x1 = x2;
+        }
+
+        let opt;
+        match f5(true) {
+            Some(x) => opt = x,
+            None => panic!(),
+        };
+
+        #[warn(clippy::let_unit_value)]
+        {
+            let _: () = x;
+            let _: () = y;
+            let _: () = z;
+            let _: () = x1;
+            let _: () = x2;
+            let _: () = opt;
+        }
+    }
 }
 
 fn attributes() {
