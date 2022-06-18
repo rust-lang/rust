@@ -1,5 +1,6 @@
 use crate::consts::constant_simple;
 use crate::source::snippet_opt;
+use crate::macros::macro_backtrace;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
 use rustc_hir::def::Res;
@@ -12,7 +13,7 @@ use rustc_hir::{
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
-use rustc_span::Symbol;
+use rustc_span::{sym, Symbol};
 use std::hash::{Hash, Hasher};
 
 /// Type used to check whether two ast are the same. This is different from the
@@ -65,7 +66,9 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 
     pub fn eq_block(&mut self, left: &Block<'_>, right: &Block<'_>) -> bool {
-        self.inter_expr().eq_block(left, right)
+        !self.cannot_be_compared_block(left)
+            && !self.cannot_be_compared_block(right)
+            && self.inter_expr().eq_block(left, right)
     }
 
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
@@ -82,6 +85,38 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     pub fn eq_path_segments(&mut self, left: &[PathSegment<'_>], right: &[PathSegment<'_>]) -> bool {
         self.inter_expr().eq_path_segments(left, right)
+    }
+
+    fn cannot_be_compared_block(&mut self, block: &Block<'_>) -> bool {
+        if block.stmts.first().map_or(false, |stmt|
+            matches!(
+                stmt.kind,
+                StmtKind::Semi(semi_expr) if self.should_ignore(semi_expr)
+            )
+        ) {
+            return true;
+        }
+
+        if let Some(block_expr) = block.expr
+            && self.should_ignore(block_expr)
+        {
+            return true
+        }
+
+        false
+    }
+
+    fn should_ignore(&mut self, expr: &Expr<'_>) -> bool {
+        if macro_backtrace(expr.span).last().map_or(false, |macro_call|
+            matches!(
+                &self.cx.tcx.get_diagnostic_name(macro_call.def_id),
+                Some(sym::todo_macro | sym::unimplemented_macro)
+            )
+        ) {
+            return true;
+        }
+
+        false
     }
 }
 

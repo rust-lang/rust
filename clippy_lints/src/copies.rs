@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
-use clippy_utils::macros::macro_backtrace;
 use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, snippet_opt};
 use clippy_utils::{
     eq_expr_value, get_enclosing_block, hash_expr, hash_stmt, if_sequence, is_else_clause, is_lint_allowed,
@@ -13,7 +12,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{sym, BytePos, Span, Symbol};
+use rustc_span::{BytePos, Span, Symbol};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -197,8 +196,6 @@ fn lint_if_same_then_else(cx: &LateContext<'_>, conds: &[&Expr<'_>], blocks: &[&
         .enumerate()
         .fold(true, |all_eq, (i, &[lhs, rhs])| {
             if eq.eq_block(lhs, rhs)
-                && !contains_acceptable_macro(cx, lhs)
-                && !contains_acceptable_macro(cx, rhs)
                 && !contains_let(conds[i])
                 && conds.get(i + 1).map_or(true, |e| !contains_let(e))
             {
@@ -371,37 +368,9 @@ fn eq_stmts(
         .all(|b| get_stmt(b).map_or(false, |s| eq.eq_stmt(s, stmt)))
 }
 
-fn contains_acceptable_macro(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
-    if block.stmts.first().map_or(false, |stmt|
-        matches!(
-            stmt.kind,
-            StmtKind::Semi(semi_expr) if acceptable_macro(cx, semi_expr)
-        )
-    ) {
-        return true;
-    }
 
-    if let Some(block_expr) = block.expr
-        && acceptable_macro(cx, block_expr)
-    {
-        return true
-    }
 
-    false
-}
 
-fn acceptable_macro(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if macro_backtrace(expr.span).last().map_or(false, |macro_call|
-        matches!(
-            &cx.tcx.get_diagnostic_name(macro_call.def_id),
-            Some(sym::todo_macro | sym::unimplemented_macro)
-        )
-    ) {
-        return true;
-    }
-
-    false
-}
 
 fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'_>, blocks: &[&Block<'_>]) -> BlockEq {
     let mut eq = SpanlessEq::new(cx);
