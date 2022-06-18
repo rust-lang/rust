@@ -201,7 +201,8 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
                 types::ItemEnum::Method(_)
                 | types::ItemEnum::AssocConst { .. }
-                | types::ItemEnum::AssocType { .. } => true,
+                | types::ItemEnum::AssocType { .. }
+                | types::ItemEnum::PrimitiveType(_) => true,
                 types::ItemEnum::Module(_)
                 | types::ItemEnum::ExternCrate { .. }
                 | types::ItemEnum::Import(_)
@@ -216,8 +217,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::Static(_)
                 | types::ItemEnum::ForeignType
                 | types::ItemEnum::Macro(_)
-                | types::ItemEnum::ProcMacro(_)
-                | types::ItemEnum::PrimitiveType(_) => false,
+                | types::ItemEnum::ProcMacro(_) => false,
             };
             let removed = self
                 .index
