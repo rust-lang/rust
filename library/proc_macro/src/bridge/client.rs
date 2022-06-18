@@ -9,24 +9,6 @@ macro_rules! define_handles {
         'owned: $($oty:ident,)*
         'interned: $($ity:ident,)*
     ) => {
-        #[repr(C)]
-        #[allow(non_snake_case)]
-        pub struct HandleCounters {
-            $($oty: AtomicUsize,)*
-            $($ity: AtomicUsize,)*
-        }
-
-        impl HandleCounters {
-            // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
-            // a wrapper `fn` pointer, once `const fn` can reference `static`s.
-            extern "C" fn get() -> &'static Self {
-                static COUNTERS: HandleCounters = HandleCounters {
-                    $($oty: AtomicUsize::new(1),)*
-                    $($ity: AtomicUsize::new(1),)*
-                };
-                &COUNTERS
-            }
-        }
 
         // FIXME(eddyb) generate the definition of `HandleStore` in `server.rs`.
         #[repr(C)]
@@ -37,10 +19,22 @@ macro_rules! define_handles {
         }
 
         impl<S: server::Types> HandleStore<S> {
-            pub(super) fn new(handle_counters: &'static HandleCounters) -> Self {
+            pub(super) fn new() -> Self {
+                // FIXME(eddyb) these counters are server-side, so they don't
+                // protect against the same proc macro dylib being used with
+                // multiple servers - however, that's very unlikely, and should
+                // be protected against through other means (e.g. forcing a
+                // specific proc macro dylib to always talk to the same server
+                // that initially loaded it).
                 HandleStore {
-                    $($oty: handle::OwnedStore::new(&handle_counters.$oty),)*
-                    $($ity: handle::InternedStore::new(&handle_counters.$ity),)*
+                    $($oty: handle::OwnedStore::new({
+                        static COUNTER: AtomicUsize = AtomicUsize::new(1);
+                        &COUNTER
+                    }),)*
+                    $($ity: handle::InternedStore::new({
+                        static COUNTER: AtomicUsize = AtomicUsize::new(1);
+                        &COUNTER
+                    }),)*
                 }
             }
         }
@@ -370,10 +364,6 @@ impl Bridge<'_> {
 /// and forcing the use of APIs that take/return `S::TokenStream`, server-side.
 #[repr(C)]
 pub struct Client<I, O> {
-    // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
-    // a wrapper `fn` pointer, once `const fn` can reference `static`s.
-    pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
-
     pub(super) run: extern "C" fn(Bridge<'_>) -> Buffer,
 
     pub(super) _marker: PhantomData<fn(I) -> O>,
@@ -433,7 +423,6 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
 impl Client<crate::TokenStream, crate::TokenStream> {
     pub const fn expand1(f: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy) -> Self {
         Client {
-            get_handle_counters: HandleCounters::get,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |input| f(crate::TokenStream(input)).0)
             }),
@@ -447,7 +436,6 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
         f: impl Fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
         Client {
-            get_handle_counters: HandleCounters::get,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |(input, input2)| {
                     f(crate::TokenStream(input), crate::TokenStream(input2)).0

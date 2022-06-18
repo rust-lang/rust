@@ -257,14 +257,13 @@ fn run_server<
     O: for<'a, 's> DecodeMut<'a, 's, HandleStore<MarkedTypes<S>>>,
 >(
     strategy: &impl ExecutionStrategy,
-    handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
     run_client: extern "C" fn(Bridge<'_>) -> Buffer,
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {
     let mut dispatcher =
-        Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
+        Dispatcher { handle_store: HandleStore::new(), server: MarkedTypes(server) };
 
     let mut buf = Buffer::new();
     input.encode(&mut buf, &mut dispatcher.handle_store);
@@ -282,10 +281,9 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
         input: S::TokenStream,
         force_show_panics: bool,
     ) -> Result<S::TokenStream, PanicMessage> {
-        let client::Client { get_handle_counters, run, _marker } = *self;
+        let client::Client { run, _marker } = *self;
         run_server(
             strategy,
-            get_handle_counters(),
             server,
             <MarkedTypes<S> as Types>::TokenStream::mark(input),
             run,
@@ -304,10 +302,9 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
         input2: S::TokenStream,
         force_show_panics: bool,
     ) -> Result<S::TokenStream, PanicMessage> {
-        let client::Client { get_handle_counters, run, _marker } = *self;
+        let client::Client { run, _marker } = *self;
         run_server(
             strategy,
-            get_handle_counters(),
             server,
             (
                 <MarkedTypes<S> as Types>::TokenStream::mark(input),
