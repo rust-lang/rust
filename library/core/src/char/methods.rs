@@ -45,7 +45,8 @@ impl char {
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const UNICODE_VERSION: (u8, u8, u8) = crate::unicode::UNICODE_VERSION;
 
-    /// Maximum length required to store a UTF8 byte.
+    /// The maximum number of bytes required to [encode](char::encode_utf8) a
+    /// `char` in UTF-8.
     #[stable(feature = "max_len", since = "1.63.0")]
     pub const MAX_UTF8_LEN: usize = 4;
 
