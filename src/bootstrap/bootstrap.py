@@ -1043,7 +1043,7 @@ def bootstrap(help_triggered):
     build.checksums_sha256 = data["checksums_sha256"]
     build.stage0_compiler = Stage0Toolchain(data["compiler"])
 
-    build.set_dist_environment(data["dist_server"])
+    build.set_dist_environment(data["config"]["dist_server"])
 
     build.build = args.build or build.build_triple()
 
