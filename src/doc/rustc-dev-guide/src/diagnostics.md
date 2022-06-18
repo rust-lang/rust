@@ -888,7 +888,7 @@ For example, the `Iterator` trait can be annotated in the following way:
 #[rustc_on_unimplemented(
     on(
         _Self="&str",
-        note="call `.chars()` or `.as_bytes()` on `{Self}"
+        note="call `.chars()` or `.as_bytes()` on `{Self}`"
     ),
     message="`{Self}` is not an iterator",
     label="`{Self}` is not an iterator",
