@@ -73,9 +73,9 @@ macro_rules! with_api {
                 ) -> $S::TokenStream;
                 fn concat_streams(
                     base: Option<$S::TokenStream>,
-                    trees: Vec<$S::TokenStream>,
+                    streams: Vec<$S::TokenStream>,
                 ) -> $S::TokenStream;
-                fn into_iter(
+                fn into_trees(
                     $self: $S::TokenStream
                 ) -> Vec<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>;
             },
@@ -307,32 +307,6 @@ impl<'a, T, M> Unmark for &'a mut Marked<T, M> {
     }
 }
 
-impl<T: Mark> Mark for Option<T> {
-    type Unmarked = Option<T::Unmarked>;
-    fn mark(unmarked: Self::Unmarked) -> Self {
-        unmarked.map(T::mark)
-    }
-}
-impl<T: Unmark> Unmark for Option<T> {
-    type Unmarked = Option<T::Unmarked>;
-    fn unmark(self) -> Self::Unmarked {
-        self.map(T::unmark)
-    }
-}
-
-impl<T: Mark, E: Mark> Mark for Result<T, E> {
-    type Unmarked = Result<T::Unmarked, E::Unmarked>;
-    fn mark(unmarked: Self::Unmarked) -> Self {
-        unmarked.map(T::mark).map_err(E::mark)
-    }
-}
-impl<T: Unmark, E: Unmark> Unmark for Result<T, E> {
-    type Unmarked = Result<T::Unmarked, E::Unmarked>;
-    fn unmark(self) -> Self::Unmarked {
-        self.map(T::unmark).map_err(E::unmark)
-    }
-}
-
 impl<T: Mark> Mark for Vec<T> {
     type Unmarked = Vec<T::Unmarked>;
     fn mark(unmarked: Self::Unmarked) -> Self {
@@ -378,7 +352,6 @@ mark_noop! {
     Level,
     LineColumn,
     Spacing,
-    Bound<usize>,
 }
 
 rpc_encode_decode!(
@@ -437,6 +410,28 @@ macro_rules! compound_traits {
         mark_compound!($($t)*);
     };
 }
+
+compound_traits!(
+    enum Bound<T> {
+        Included(x),
+        Excluded(x),
+        Unbounded,
+    }
+);
+
+compound_traits!(
+    enum Option<T> {
+        Some(t),
+        None,
+    }
+);
+
+compound_traits!(
+    enum Result<T, E> {
+        Ok(t),
+        Err(e),
+    }
+);
 
 #[derive(Clone)]
 pub enum TokenTree<G, P, I, L> {

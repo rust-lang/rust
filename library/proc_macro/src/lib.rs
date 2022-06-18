@@ -235,7 +235,7 @@ impl From<TokenTree> for TokenStream {
 
 /// Non-generic helper for implementing `FromIterator<TokenTree>` and
 /// `Extend<TokenTree>` with less monomorphization in calling crates.
-struct ExtendStreamWithTreesHelper {
+struct ConcatTreesHelper {
     trees: Vec<
         bridge::TokenTree<
             bridge::client::Group,
@@ -246,9 +246,9 @@ struct ExtendStreamWithTreesHelper {
     >,
 }
 
-impl ExtendStreamWithTreesHelper {
+impl ConcatTreesHelper {
     fn new(capacity: usize) -> Self {
-        ExtendStreamWithTreesHelper { trees: Vec::with_capacity(capacity) }
+        ConcatTreesHelper { trees: Vec::with_capacity(capacity) }
     }
 
     fn push(&mut self, tree: TokenTree) {
@@ -263,7 +263,7 @@ impl ExtendStreamWithTreesHelper {
         }
     }
 
-    fn extend(self, stream: &mut TokenStream) {
+    fn append_to(self, stream: &mut TokenStream) {
         if self.trees.is_empty() {
             return;
         }
@@ -273,13 +273,13 @@ impl ExtendStreamWithTreesHelper {
 
 /// Non-generic helper for implementing `FromIterator<TokenStream>` and
 /// `Extend<TokenStream>` with less monomorphization in calling crates.
-struct ExtendStreamWithStreamsHelper {
+struct ConcatStreamsHelper {
     streams: Vec<bridge::client::TokenStream>,
 }
 
-impl ExtendStreamWithStreamsHelper {
+impl ConcatStreamsHelper {
     fn new(capacity: usize) -> Self {
-        ExtendStreamWithStreamsHelper { streams: Vec::with_capacity(capacity) }
+        ConcatStreamsHelper { streams: Vec::with_capacity(capacity) }
     }
 
     fn push(&mut self, stream: TokenStream) {
@@ -296,7 +296,7 @@ impl ExtendStreamWithStreamsHelper {
         }
     }
 
-    fn extend(mut self, stream: &mut TokenStream) {
+    fn append_to(mut self, stream: &mut TokenStream) {
         if self.streams.is_empty() {
             return;
         }
@@ -314,7 +314,7 @@ impl ExtendStreamWithStreamsHelper {
 impl iter::FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
         let iter = trees.into_iter();
-        let mut builder = ExtendStreamWithTreesHelper::new(iter.size_hint().0);
+        let mut builder = ConcatTreesHelper::new(iter.size_hint().0);
         iter.for_each(|tree| builder.push(tree));
         builder.build()
     }
@@ -326,7 +326,7 @@ impl iter::FromIterator<TokenTree> for TokenStream {
 impl iter::FromIterator<TokenStream> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
         let iter = streams.into_iter();
-        let mut builder = ExtendStreamWithStreamsHelper::new(iter.size_hint().0);
+        let mut builder = ConcatStreamsHelper::new(iter.size_hint().0);
         iter.for_each(|stream| builder.push(stream));
         builder.build()
     }
@@ -336,9 +336,9 @@ impl iter::FromIterator<TokenStream> for TokenStream {
 impl Extend<TokenTree> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, trees: I) {
         let iter = trees.into_iter();
-        let mut builder = ExtendStreamWithTreesHelper::new(iter.size_hint().0);
+        let mut builder = ConcatTreesHelper::new(iter.size_hint().0);
         iter.for_each(|tree| builder.push(tree));
-        builder.extend(self);
+        builder.append_to(self);
     }
 }
 
@@ -346,9 +346,9 @@ impl Extend<TokenTree> for TokenStream {
 impl Extend<TokenStream> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) {
         let iter = streams.into_iter();
-        let mut builder = ExtendStreamWithStreamsHelper::new(iter.size_hint().0);
+        let mut builder = ConcatStreamsHelper::new(iter.size_hint().0);
         iter.for_each(|stream| builder.push(stream));
-        builder.extend(self);
+        builder.append_to(self);
     }
 }
 
@@ -393,7 +393,7 @@ pub mod token_stream {
         type IntoIter = IntoIter;
 
         fn into_iter(self) -> IntoIter {
-            IntoIter(self.0.map(|v| v.into_iter()).unwrap_or_default().into_iter())
+            IntoIter(self.0.map(|v| v.into_trees()).unwrap_or_default().into_iter())
         }
     }
 }

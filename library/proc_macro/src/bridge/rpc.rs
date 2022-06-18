@@ -4,7 +4,6 @@ use std::any::Any;
 use std::char;
 use std::io::Write;
 use std::num::NonZeroU32;
-use std::ops::Bound;
 use std::str;
 
 pub(super) type Writer = super::buffer::Buffer;
@@ -185,28 +184,6 @@ impl<'a, S, A: for<'s> DecodeMut<'a, 's, S>, B: for<'s> DecodeMut<'a, 's, S>> De
         (DecodeMut::decode(r, s), DecodeMut::decode(r, s))
     }
 }
-
-rpc_encode_decode!(
-    enum Bound<T> {
-        Included(x),
-        Excluded(x),
-        Unbounded,
-    }
-);
-
-rpc_encode_decode!(
-    enum Option<T> {
-        None,
-        Some(x),
-    }
-);
-
-rpc_encode_decode!(
-    enum Result<T, E> {
-        Ok(x),
-        Err(e),
-    }
-);
 
 impl<S> Encode<S> for &[u8] {
     fn encode(self, w: &mut Writer, s: &mut S) {
