@@ -66,7 +66,7 @@ fn add_keywords(acc: &mut Completions, ctx: &CompletionContext, kind: Option<&It
     let in_assoc_non_trait_impl = matches!(kind, Some(ItemListKind::Impl | ItemListKind::Trait));
     let in_extern_block = matches!(kind, Some(ItemListKind::ExternBlock));
     let in_trait = matches!(kind, Some(ItemListKind::Trait));
-    let in_trait_impl = matches!(kind, Some(ItemListKind::TraitImpl));
+    let in_trait_impl = matches!(kind, Some(ItemListKind::TraitImpl(_)));
     let in_inherent_impl = matches!(kind, Some(ItemListKind::Impl));
     let no_qualifiers = ctx.qualifier_ctx.vis_node.is_none();
     let in_block = matches!(kind, None);

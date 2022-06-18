@@ -93,8 +93,12 @@ pub(super) enum PathKind {
         after_if_expr: bool,
         /// Whether this expression is the direct condition of an if or while expression
         in_condition: bool,
+        incomplete_let: bool,
         ref_expr_parent: Option<ast::RefExpr>,
         is_func_update: Option<ast::RecordExpr>,
+        self_param: Option<hir::SelfParam>,
+        innermost_ret_ty: Option<hir::Type>,
+        impl_: Option<ast::Impl>,
     },
     Type {
         location: TypeLocation,
@@ -140,12 +144,12 @@ pub(crate) enum TypeAscriptionTarget {
 }
 
 /// The kind of item list a [`PathKind::Item`] belongs to.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(super) enum ItemListKind {
     SourceFile,
     Module,
     Impl,
-    TraitImpl,
+    TraitImpl(Option<ast::Impl>),
     Trait,
     ExternBlock,
 }
@@ -176,6 +180,7 @@ pub(super) struct PatternContext {
     pub(super) mut_token: Option<SyntaxToken>,
     /// The record pattern this name or ref is a field of
     pub(super) record_pat: Option<ast::RecordPat>,
+    pub(super) impl_: Option<ast::Impl>,
 }
 
 /// The state of the lifetime we are completing.
@@ -316,16 +321,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) expected_name: Option<NameOrNameRef>,
     /// The expected type of what we are completing.
     pub(super) expected_type: Option<Type>,
-
-    /// The parent function of the cursor position if it exists.
-    // FIXME: This probably doesn't belong here
-    pub(super) function_def: Option<ast::Fn>,
-    /// The parent impl of the cursor position if it exists.
-    // FIXME: This probably doesn't belong here
-    pub(super) impl_def: Option<ast::Impl>,
-    /// Are we completing inside a let statement with a missing semicolon?
-    // FIXME: This should be part of PathKind::Expr
-    pub(super) incomplete_let: bool,
 
     // FIXME: This shouldn't exist
     pub(super) previous_token: Option<SyntaxToken>,
@@ -500,9 +495,6 @@ impl<'a> CompletionContext<'a> {
             module,
             expected_name: None,
             expected_type: None,
-            function_def: None,
-            impl_def: None,
-            incomplete_let: false,
             previous_token: None,
             // dummy value, will be overwritten
             ident_ctx: IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: None },

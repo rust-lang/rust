@@ -24,6 +24,7 @@ use std::iter;
 
 use hir::{db::HirDatabase, known, ScopeDef};
 use ide_db::SymbolKind;
+use syntax::ast;
 
 use crate::{
     context::Visible,
@@ -110,12 +111,18 @@ impl Completions {
         ["self", "super", "crate"].into_iter().for_each(|kw| self.add_keyword(ctx, kw));
     }
 
-    pub(crate) fn add_keyword_snippet(&mut self, ctx: &CompletionContext, kw: &str, snippet: &str) {
+    pub(crate) fn add_keyword_snippet_expr(
+        &mut self,
+        ctx: &CompletionContext,
+        kw: &str,
+        snippet: &str,
+        incomplete_let: bool,
+    ) {
         let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
 
         match ctx.config.snippet_cap {
             Some(cap) => {
-                if snippet.ends_with('}') && ctx.incomplete_let {
+                if snippet.ends_with('}') && incomplete_let {
                     // complete block expression snippets with a trailing semicolon, if inside an incomplete let
                     cov_mark::hit!(let_semi);
                     item.insert_snippet(cap, format!("{};", snippet));
@@ -126,6 +133,16 @@ impl Completions {
             None => {
                 item.insert_text(if snippet.contains('$') { kw } else { snippet });
             }
+        };
+        item.add_to(self);
+    }
+
+    pub(crate) fn add_keyword_snippet(&mut self, ctx: &CompletionContext, kw: &str, snippet: &str) {
+        let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
+
+        match ctx.config.snippet_cap {
+            Some(cap) => item.insert_snippet(cap, snippet),
+            None => item.insert_text(if snippet.contains('$') { kw } else { snippet }),
         };
         item.add_to(self);
     }
@@ -393,11 +410,12 @@ fn enum_variants_with_paths(
     acc: &mut Completions,
     ctx: &CompletionContext,
     enum_: hir::Enum,
+    impl_: &Option<ast::Impl>,
     cb: impl Fn(&mut Completions, &CompletionContext, hir::Variant, hir::ModPath),
 ) {
     let variants = enum_.variants(ctx.db);
 
-    if let Some(impl_) = ctx.impl_def.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
+    if let Some(impl_) = impl_.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
         if impl_.self_ty(ctx.db).as_adt() == Some(hir::Adt::Enum(enum_)) {
             for &variant in &variants {
                 let self_path = hir::ModPath::from_segments(

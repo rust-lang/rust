@@ -81,7 +81,7 @@ pub(crate) fn complete_trait_impl_name(
         kind,
         replacement_range(ctx, &item),
         // item -> ASSOC_ITEM_LIST -> IMPL
-        ast::Impl::cast(item.parent()?.parent()?)?,
+        &ast::Impl::cast(item.parent()?.parent()?)?,
     );
     Some(())
 }
@@ -97,7 +97,7 @@ pub(crate) fn complete_trait_impl_name_ref(
             kind:
                 NameRefKind::Path(
                     path_ctx @ PathCompletionCtx {
-                        kind: PathKind::Item { kind: ItemListKind::TraitImpl },
+                        kind: PathKind::Item { kind: ItemListKind::TraitImpl(Some(impl_)) },
                         ..
                     },
                 ),
@@ -109,7 +109,7 @@ pub(crate) fn complete_trait_impl_name_ref(
                 Some(name) => name.syntax().text_range(),
                 None => ctx.source_range(),
             },
-            ctx.impl_def.clone()?,
+            impl_,
         ),
         _ => (),
     }
@@ -121,10 +121,10 @@ fn complete_trait_impl(
     ctx: &CompletionContext,
     kind: ImplCompletionKind,
     replacement_range: TextRange,
-    impl_def: ast::Impl,
+    impl_def: &ast::Impl,
 ) {
-    if let Some(hir_impl) = ctx.sema.to_def(&impl_def) {
-        get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| {
+    if let Some(hir_impl) = ctx.sema.to_def(impl_def) {
+        get_missing_assoc_items(&ctx.sema, impl_def).into_iter().for_each(|item| {
             use self::ImplCompletionKind::*;
             match (item, kind) {
                 (hir::AssocItem::Function(func), All | Fn) => {

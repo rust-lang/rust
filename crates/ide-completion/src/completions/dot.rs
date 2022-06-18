@@ -46,27 +46,26 @@ pub(crate) fn complete_undotted_self(
     if !ctx.config.enable_self_on_the_fly {
         return;
     }
-    match path_ctx {
-        PathCompletionCtx { qualified: Qualified::No, kind: PathKind::Expr { .. }, .. }
-            if path_ctx.is_trivial_path() && ctx.qualifier_ctx.none() => {}
+    let self_param = match path_ctx {
+        PathCompletionCtx {
+            qualified: Qualified::No,
+            kind: PathKind::Expr { self_param: Some(self_param), .. },
+            ..
+        } if path_ctx.is_trivial_path() && ctx.qualifier_ctx.none() => self_param,
         _ => return,
-    }
+    };
 
-    if let Some(func) = ctx.function_def.as_ref().and_then(|fn_| ctx.sema.to_def(fn_)) {
-        if let Some(self_) = func.self_param(ctx.db) {
-            let ty = self_.ty(ctx.db);
-            complete_fields(
-                acc,
-                ctx,
-                &ty,
-                |acc, field, ty| acc.add_field(ctx, Some(hir::known::SELF_PARAM), field, &ty),
-                |acc, field, ty| acc.add_tuple_field(ctx, Some(hir::known::SELF_PARAM), field, &ty),
-            );
-            complete_methods(ctx, &ty, |func| {
-                acc.add_method(ctx, func, Some(hir::known::SELF_PARAM), None)
-            });
-        }
-    }
+    let ty = self_param.ty(ctx.db);
+    complete_fields(
+        acc,
+        ctx,
+        &ty,
+        |acc, field, ty| acc.add_field(ctx, Some(hir::known::SELF_PARAM), field, &ty),
+        |acc, field, ty| acc.add_tuple_field(ctx, Some(hir::known::SELF_PARAM), field, &ty),
+    );
+    complete_methods(ctx, &ty, |func| {
+        acc.add_method(ctx, func, Some(hir::known::SELF_PARAM), None)
+    });
 }
 
 fn complete_fields(
