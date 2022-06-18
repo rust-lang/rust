@@ -92,6 +92,7 @@ rustc_queries! {
     /// Avoid calling this query directly.
     query hir_owner_nodes(key: LocalDefId) -> hir::MaybeOwner<&'tcx hir::OwnerNodes<'tcx>> {
         desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
+        no_hash
     }
 
     /// Gives access to the HIR attributes inside the HIR owner `key`.
