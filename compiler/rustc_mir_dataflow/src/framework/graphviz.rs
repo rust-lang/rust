@@ -1,7 +1,7 @@
 //! A helpful diagram for debugging dataflow problems.
 
 use std::borrow::Cow;
-use std::lazy::SyncOnceCell;
+use std::sync::OnceLock;
 use std::{io, ops, str};
 
 use regex::Regex;
@@ -590,7 +590,7 @@ where
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{
-        static RE: SyncOnceCell<regex::Regex> = SyncOnceCell::new();
+        static RE: OnceLock<regex::Regex> = OnceLock::new();
         RE.get_or_init(|| Regex::new($re).unwrap())
     }};
 }

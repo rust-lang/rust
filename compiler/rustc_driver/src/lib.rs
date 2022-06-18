@@ -47,11 +47,11 @@ use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Read, Write};
-use std::lazy::SyncLazy;
 use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
+use std::sync::LazyLock;
 use std::time::Instant;
 
 pub mod args;
@@ -1141,8 +1141,8 @@ pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
     }
 }
 
-static DEFAULT_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
-    SyncLazy::new(|| {
+static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
+    LazyLock::new(|| {
         let hook = panic::take_hook();
         panic::set_hook(Box::new(|info| {
             // Invoke the default handler, which prints the actual panic message and optionally a backtrace
@@ -1237,7 +1237,7 @@ pub fn install_ice_hook() {
     if std::env::var("RUST_BACKTRACE").is_err() {
         std::env::set_var("RUST_BACKTRACE", "full");
     }
-    SyncLazy::force(&DEFAULT_HOOK);
+    LazyLock::force(&DEFAULT_HOOK);
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's

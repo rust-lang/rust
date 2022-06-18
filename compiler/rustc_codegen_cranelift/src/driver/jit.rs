@@ -13,7 +13,7 @@ use rustc_span::Symbol;
 
 use cranelift_jit::{JITBuilder, JITModule};
 
-// FIXME use std::lazy::SyncOnceCell once it stabilizes
+// FIXME use std::sync::OnceLock once it stabilizes
 use once_cell::sync::OnceCell;
 
 use crate::{prelude::*, BackendConfig};

@@ -1,8 +1,12 @@
 #![feature(once_cell)]
 
-use std::{io::ErrorKind, lazy::SyncOnceCell, thread::{self, Builder, ThreadId}};
+use std::{
+    io::ErrorKind,
+    sync::OnceLock,
+    thread::{self, Builder, ThreadId},
+};
 
-static THREAD_ID: SyncOnceCell<ThreadId> = SyncOnceCell::new();
+static THREAD_ID: OnceLock<ThreadId> = OnceLock::new();
 
 #[test]
 fn spawn_thread_would_block() {
