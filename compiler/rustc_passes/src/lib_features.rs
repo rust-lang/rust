@@ -120,7 +120,7 @@ impl<'tcx> Visitor<'tcx> for LibFeatureCollector<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_attribute(&mut self, _: rustc_hir::HirId, attr: &'tcx Attribute) {
+    fn visit_attribute(&mut self, attr: &'tcx Attribute) {
         if let Some((feature, stable, span)) = self.extract(attr) {
             self.collect_feature(feature, stable, span);
         }

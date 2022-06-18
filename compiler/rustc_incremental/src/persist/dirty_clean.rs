@@ -21,7 +21,6 @@
 
 use rustc_ast::{self as ast, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
 use rustc_hir::Node as HirNode;
@@ -473,7 +472,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_attribute(&mut self, _: hir::HirId, attr: &'tcx Attribute) {
+    fn visit_attribute(&mut self, attr: &'tcx Attribute) {
         if self.is_active_attr(attr) {
             self.found_attrs.push(attr);
         }

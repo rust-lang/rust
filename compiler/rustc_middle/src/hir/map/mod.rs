@@ -577,12 +577,11 @@ impl<'hir> Map<'hir> {
     /// Walks the attributes in a crate.
     pub fn walk_attributes(self, visitor: &mut impl Visitor<'hir>) {
         let krate = self.krate();
-        for (owner, info) in krate.owners.iter_enumerated() {
+        for info in krate.owners.iter() {
             if let MaybeOwner::Owner(info) = info {
-                for (local_id, attrs) in info.attrs.map.iter() {
-                    let id = HirId { owner, local_id: *local_id };
+                for attrs in info.attrs.map.values() {
                     for a in *attrs {
-                        visitor.visit_attribute(id, a)
+                        visitor.visit_attribute(a)
                     }
                 }
             }
