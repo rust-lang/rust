@@ -39,11 +39,13 @@ use crate::json::{Json, ToJson};
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::{sym, Symbol};
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
+use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
@@ -2248,7 +2250,7 @@ impl Target {
 
                 Err(format!("Could not find specification for target {:?}", target_triple))
             }
-            TargetTriple::TargetJson { triple: _, ref contents } => {
+            TargetTriple::TargetJson { ref contents, .. } => {
                 let obj = serde_json::from_str(contents).map_err(|e| e.to_string())?;
                 Target::from_json(obj)
             }
@@ -2419,10 +2421,77 @@ impl ToJson for Target {
 }
 
 /// Either a target triple string or a path to a JSON file.
-#[derive(PartialEq, Clone, Debug, Hash, Encodable, Decodable)]
+#[derive(Clone, Debug)]
 pub enum TargetTriple {
     TargetTriple(String),
-    TargetJson { triple: String, contents: String },
+    TargetJson {
+        /// Warning: This field may only be used by rustdoc. Using it anywhere else will lead to
+        /// inconsistencies as it is discarded during serialization.
+        path_for_rustdoc: PathBuf,
+        triple: String,
+        contents: String,
+    },
+}
+
+// Use a manual implementation to ignore the path field
+impl PartialEq for TargetTriple {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::TargetTriple(l0), Self::TargetTriple(r0)) => l0 == r0,
+            (
+                Self::TargetJson { path_for_rustdoc: _, triple: l_triple, contents: l_contents },
+                Self::TargetJson { path_for_rustdoc: _, triple: r_triple, contents: r_contents },
+            ) => l_triple == r_triple && l_contents == r_contents,
+            _ => false,
+        }
+    }
+}
+
+// Use a manual implementation to ignore the path field
+impl Hash for TargetTriple {
+    fn hash<H: Hasher>(&self, state: &mut H) -> () {
+        match self {
+            TargetTriple::TargetTriple(triple) => {
+                0u8.hash(state);
+                triple.hash(state)
+            }
+            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => {
+                1u8.hash(state);
+                triple.hash(state);
+                contents.hash(state)
+            }
+        }
+    }
+}
+
+// Use a manual implementation to prevent encoding the target json file path in the crate metadata
+impl<S: Encoder> Encodable<S> for TargetTriple {
+    fn encode(&self, s: &mut S) {
+        match self {
+            TargetTriple::TargetTriple(triple) => s.emit_enum_variant(0, |s| s.emit_str(triple)),
+            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => s
+                .emit_enum_variant(1, |s| {
+                    s.emit_str(triple);
+                    s.emit_str(contents)
+                }),
+        }
+    }
+}
+
+impl<D: Decoder> Decodable<D> for TargetTriple {
+    fn decode(d: &mut D) -> Self {
+        match d.read_usize() {
+            0 => TargetTriple::TargetTriple(d.read_str().to_owned()),
+            1 => TargetTriple::TargetJson {
+                path_for_rustdoc: PathBuf::new(),
+                triple: d.read_str().to_owned(),
+                contents: d.read_str().to_owned(),
+            },
+            _ => {
+                panic!("invalid enum variant tag while decoding `TargetTriple`, expected 0..2");
+            }
+        }
+    }
 }
 
 impl TargetTriple {
@@ -2437,7 +2506,7 @@ impl TargetTriple {
         let contents = std::fs::read_to_string(&canonicalized_path).map_err(|err| {
             io::Error::new(
                 io::ErrorKind::InvalidInput,
-                format!("Target path {:?} is not a valid file: {}", canonicalized_path, err),
+                format!("target path {:?} is not a valid file: {}", canonicalized_path, err),
             )
         })?;
         let triple = canonicalized_path
@@ -2446,7 +2515,7 @@ impl TargetTriple {
             .to_str()
             .expect("target path must be valid unicode")
             .to_owned();
-        Ok(TargetTriple::TargetJson { triple, contents })
+        Ok(TargetTriple::TargetJson { path_for_rustdoc: canonicalized_path, triple, contents })
     }
 
     /// Returns a string triple for this target.
@@ -2455,7 +2524,7 @@ impl TargetTriple {
     pub fn triple(&self) -> &str {
         match *self {
             TargetTriple::TargetTriple(ref triple)
-            | TargetTriple::TargetJson { ref triple, contents: _ } => triple,
+            | TargetTriple::TargetJson { ref triple, .. } => triple,
         }
     }
 
@@ -2465,11 +2534,10 @@ impl TargetTriple {
     /// by `triple()`.
     pub fn debug_triple(&self) -> String {
         use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
 
         match self {
             TargetTriple::TargetTriple(triple) => triple.to_owned(),
-            TargetTriple::TargetJson { triple, contents: content } => {
+            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents: content } => {
                 let mut hasher = DefaultHasher::new();
                 content.hash(&mut hasher);
                 let hash = hasher.finish();
