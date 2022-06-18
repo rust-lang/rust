@@ -299,7 +299,7 @@ pub(crate) fn print_src(
         None,
         edition,
         Some(line_numbers),
-        Some(highlight::ContextInfo { context, file_span, root_path }),
+        Some(highlight::HrefContext { context, file_span, root_path }),
         decoration_info,
     );
 }

@@ -26,7 +26,7 @@ use super::format::{self, Buffer};
 use super::render::LinkFromSrc;
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
-pub(crate) struct ContextInfo<'a, 'b, 'c> {
+pub(crate) struct HrefContext<'a, 'b, 'c> {
     pub(crate) context: &'a Context<'b>,
     /// This span contains the current file we're going through.
     pub(crate) file_span: Span,
@@ -48,7 +48,7 @@ pub(crate) fn render_with_highlighting(
     tooltip: Option<(Option<Edition>, &str)>,
     edition: Edition,
     extra_content: Option<Buffer>,
-    context_info: Option<ContextInfo<'_, '_, '_>>,
+    href_context: Option<HrefContext<'_, '_, '_>>,
     decoration_info: Option<DecorationInfo>,
 ) {
     debug!("highlighting: ================\n{}\n==============", src);
@@ -66,7 +66,7 @@ pub(crate) fn render_with_highlighting(
     }
 
     write_header(out, class, extra_content);
-    write_code(out, src, edition, context_info, decoration_info);
+    write_code(out, src, edition, href_context, decoration_info);
     write_footer(out, playground_button);
 }
 
@@ -89,8 +89,8 @@ fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buf
 ///
 /// Some explanations on the last arguments:
 ///
-/// In case we are rendering a code block and not a source code file, `context_info` will be `None`.
-/// To put it more simply: if `context_info` is `None`, the code won't try to generate links to an
+/// In case we are rendering a code block and not a source code file, `href_context` will be `None`.
+/// To put it more simply: if `href_context` is `None`, the code won't try to generate links to an
 /// item definition.
 ///
 /// More explanations about spans and how we use them here are provided in the
@@ -98,7 +98,7 @@ fn write_code(
     out: &mut Buffer,
     src: &str,
     edition: Edition,
-    context_info: Option<ContextInfo<'_, '_, '_>>,
+    href_context: Option<HrefContext<'_, '_, '_>>,
     decoration_info: Option<DecorationInfo>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
@@ -107,13 +107,13 @@ fn write_code(
     Classifier::new(
         &src,
         edition,
-        context_info.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
+        href_context.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
         decoration_info,
     )
     .highlight(&mut |highlight| {
         match highlight {
-            Highlight::Token { text, class } => string(out, Escape(text), class, &context_info),
-            Highlight::EnterSpan { class } => closing_tag = enter_span(out, class, &context_info),
+            Highlight::Token { text, class } => string(out, Escape(text), class, &href_context),
+            Highlight::EnterSpan { class } => closing_tag = enter_span(out, class, &href_context),
             Highlight::ExitSpan => exit_span(out, &closing_tag),
         };
     });
@@ -680,9 +680,9 @@ impl<'a> Classifier<'a> {
 fn enter_span(
     out: &mut Buffer,
     klass: Class,
-    context_info: &Option<ContextInfo<'_, '_, '_>>,
+    href_context: &Option<HrefContext<'_, '_, '_>>,
 ) -> &'static str {
-    string_without_closing_tag(out, "", Some(klass), context_info)
+    string_without_closing_tag(out, "", Some(klass), href_context)
         .expect("no closing tag to close wrapper...")
 }
 
@@ -711,9 +711,9 @@ fn string<T: Display>(
     out: &mut Buffer,
     text: T,
     klass: Option<Class>,
-    context_info: &Option<ContextInfo<'_, '_, '_>>,
+    href_context: &Option<HrefContext<'_, '_, '_>>,
 ) {
-    if let Some(closing_tag) = string_without_closing_tag(out, text, klass, context_info) {
+    if let Some(closing_tag) = string_without_closing_tag(out, text, klass, href_context) {
         out.write_str(closing_tag);
     }
 }
@@ -722,7 +722,7 @@ fn string_without_closing_tag<T: Display>(
     out: &mut Buffer,
     text: T,
     klass: Option<Class>,
-    context_info: &Option<ContextInfo<'_, '_, '_>>,
+    href_context: &Option<HrefContext<'_, '_, '_>>,
 ) -> Option<&'static str> {
     let Some(klass) = klass
     else {
@@ -754,10 +754,10 @@ fn string_without_closing_tag<T: Display>(
             path
         });
     }
-    if let Some(context_info) = context_info {
+    if let Some(href_context) = href_context {
         if let Some(href) =
-            context_info.context.shared.span_correspondance_map.get(&def_span).and_then(|href| {
-                let context = context_info.context;
+            href_context.context.shared.span_correspondance_map.get(&def_span).and_then(|href| {
+                let context = href_context.context;
                 // FIXME: later on, it'd be nice to provide two links (if possible) for all items:
                 // one to the documentation page and one to the source definition.
                 // FIXME: currently, external items only generate a link to their documentation,
@@ -766,15 +766,15 @@ fn string_without_closing_tag<T: Display>(
                 match href {
                     LinkFromSrc::Local(span) => context
                         .href_from_span(*span, true)
-                        .map(|s| format!("{}{}", context_info.root_path, s)),
+                        .map(|s| format!("{}{}", href_context.root_path, s)),
                     LinkFromSrc::External(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(context_info.root_path))
+                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
                             .map(|(url, _, _)| url)
                             .or_else(|e| {
                                 if e == format::HrefError::NotInExternalCache
                                     && matches!(klass, Class::Macro(_))
                                 {
-                                    Ok(generate_macro_def_id_path(context_info, *def_id))
+                                    Ok(generate_macro_def_id_path(href_context, *def_id))
                                 } else {
                                     Err(e)
                                 }
@@ -784,7 +784,7 @@ fn string_without_closing_tag<T: Display>(
                     LinkFromSrc::Primitive(prim) => format::href_with_root_path(
                         PrimitiveType::primitive_locations(context.tcx())[prim],
                         context,
-                        Some(context_info.root_path),
+                        Some(href_context.root_path),
                     )
                     .ok()
                     .map(|(url, _, _)| url),
@@ -801,10 +801,10 @@ fn string_without_closing_tag<T: Display>(
 
 /// This function is to get the external macro path because they are not in the cache used n
 /// `href_with_root_path`.
-fn generate_macro_def_id_path(context_info: &ContextInfo<'_, '_, '_>, def_id: DefId) -> String {
-    let tcx = context_info.context.shared.tcx;
+fn generate_macro_def_id_path(href_context: &HrefContext<'_, '_, '_>, def_id: DefId) -> String {
+    let tcx = href_context.context.shared.tcx;
     let crate_name = tcx.crate_name(def_id.krate).to_string();
-    let cache = &context_info.context.cache();
+    let cache = &href_context.context.cache();
 
     let relative = tcx.def_path(def_id).data.into_iter().filter_map(|elem| {
         // extern blocks have an empty name
@@ -825,7 +825,7 @@ fn generate_macro_def_id_path(context_info: &ContextInfo<'_, '_, '_>, def_id: De
 
     let url_parts = match cache.extern_locations[&def_id.krate] {
         ExternalLocation::Remote(ref s) => vec![s.trim_end_matches('/')],
-        ExternalLocation::Local => vec![context_info.root_path.trim_end_matches('/'), &crate_name],
+        ExternalLocation::Local => vec![href_context.root_path.trim_end_matches('/'), &crate_name],
         ExternalLocation::Unknown => panic!("unknown crate"),
     };
 
