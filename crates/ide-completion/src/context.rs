@@ -93,6 +93,7 @@ pub(super) enum PathKind {
         after_if_expr: bool,
         /// Whether this expression is the direct condition of an if or while expression
         in_condition: bool,
+        incomplete_let: bool,
         ref_expr_parent: Option<ast::RefExpr>,
         is_func_update: Option<ast::RecordExpr>,
         self_param: Option<hir::SelfParam>,
@@ -322,9 +323,6 @@ pub(crate) struct CompletionContext<'a> {
     /// The parent impl of the cursor position if it exists.
     // FIXME: This probably doesn't belong here
     pub(super) impl_def: Option<ast::Impl>,
-    /// Are we completing inside a let statement with a missing semicolon?
-    // FIXME: This should be part of PathKind::Expr
-    pub(super) incomplete_let: bool,
 
     // FIXME: This shouldn't exist
     pub(super) previous_token: Option<SyntaxToken>,
@@ -500,7 +498,6 @@ impl<'a> CompletionContext<'a> {
             expected_name: None,
             expected_type: None,
             impl_def: None,
-            incomplete_let: false,
             previous_token: None,
             // dummy value, will be overwritten
             ident_ctx: IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: None },

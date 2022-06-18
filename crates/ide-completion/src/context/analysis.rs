@@ -330,11 +330,6 @@ impl<'a> CompletionContext<'a> {
         self.previous_token =
             syntax_element.clone().into_token().and_then(previous_non_trivia_token);
 
-        self.incomplete_let =
-            syntax_element.ancestors().take(6).find_map(ast::LetStmt::cast).map_or(false, |it| {
-                it.syntax().text_range().end() == syntax_element.text_range().end()
-            });
-
         (self.expected_type, self.expected_name) = self.expected_type_and_name();
 
         // Overwrite the path kind for derives
@@ -767,6 +762,10 @@ impl<'a> CompletionContext<'a> {
             };
             let is_func_update = func_update_record(it);
             let in_condition = is_in_condition(&expr);
+            let incomplete_let = it
+                .parent()
+                .and_then(ast::LetStmt::cast)
+                .map_or(false, |it| it.semicolon_token().is_none());
 
             PathKind::Expr {
                 in_block_expr,
@@ -777,6 +776,7 @@ impl<'a> CompletionContext<'a> {
                 is_func_update,
                 innermost_ret_ty,
                 self_param,
+                incomplete_let,
             }
         };
         let make_path_kind_type = |ty: ast::Type| {

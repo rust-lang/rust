@@ -26,6 +26,7 @@ pub(crate) fn complete_expr_path(
         wants_mut_token,
         in_condition,
         ty,
+        incomplete_let,
     ) = match path_ctx {
         &PathCompletionCtx {
             kind:
@@ -34,6 +35,7 @@ pub(crate) fn complete_expr_path(
                     in_loop_body,
                     after_if_expr,
                     in_condition,
+                    incomplete_let,
                     ref ref_expr_parent,
                     ref is_func_update,
                     ref innermost_ret_ty,
@@ -50,6 +52,7 @@ pub(crate) fn complete_expr_path(
             ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false),
             in_condition,
             innermost_ret_ty,
+            incomplete_let,
         ),
         _ => return,
     };
@@ -220,7 +223,8 @@ pub(crate) fn complete_expr_path(
             });
 
             if !is_func_update {
-                let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
+                let mut add_keyword =
+                    |kw, snippet| acc.add_keyword_snippet_expr(ctx, kw, snippet, incomplete_let);
 
                 if !in_block_expr {
                     add_keyword("unsafe", "unsafe {\n    $0\n}");
