@@ -100,7 +100,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         Ok(())
     }
 
-    fn build(mut self) {
+    fn build(mut self) -> bool {
         use std::process::Command;
 
         fn add_file_using_ar(archive: &Path, file: &Path) {
@@ -132,6 +132,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         } else {
             BuilderKind::Bsd(ar::Builder::new(File::create(&self.config.dst).unwrap()))
         };
+
+        let any_members = !self.entries.is_empty();
 
         // Add all files
         for (entry_name, entry) in self.entries.into_iter() {
@@ -193,6 +195,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         if !status.success() {
             self.config.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
         }
+
+        any_members
     }
 
     fn inject_dll_import_lib(&mut self, _lib_name: &str, _dll_imports: &[DllImport], _tmpdir: &MaybeTempDir) {
