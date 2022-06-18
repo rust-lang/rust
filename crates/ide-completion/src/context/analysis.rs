@@ -343,9 +343,9 @@ impl<'a> CompletionContext<'a> {
                 find_node_at_offset(&file_with_fake_ident, offset)
             {
                 let parent = name_ref.syntax().parent()?;
-                let (mut nameref_ctx, _, _) =
-                    Self::classify_name_ref(&self.sema, &original_file, name_ref, parent);
-                if let Some(NameRefKind::Path(path_ctx)) = &mut nameref_ctx.kind {
+                let (mut nameref_ctx, _) =
+                    Self::classify_name_ref(&self.sema, &original_file, name_ref, parent)?;
+                if let NameRefKind::Path(path_ctx) = &mut nameref_ctx.kind {
                     path_ctx.kind = PathKind::Derive {
                         existing_derives: self
                             .sema
@@ -427,19 +427,14 @@ impl<'a> CompletionContext<'a> {
             }
             ast::NameLike::NameRef(name_ref) => {
                 let parent = name_ref.syntax().parent()?;
-                let (nameref_ctx, pat_ctx, qualifier_ctx) =
-                    Self::classify_name_ref(&self.sema, &original_file, name_ref, parent.clone());
+                let (nameref_ctx, qualifier_ctx) =
+                    Self::classify_name_ref(&self.sema, &original_file, name_ref, parent.clone())?;
 
-                if !matches!(nameref_ctx.kind, Some(NameRefKind::Path(_))) {
-                    // FIXME: Pattern context should probably be part of ident_ctx
-                    self.pattern_ctx = pat_ctx;
-                }
                 self.qualifier_ctx = qualifier_ctx;
                 self.ident_ctx = IdentContext::NameRef(nameref_ctx);
             }
             ast::NameLike::Name(name) => {
-                let (name_ctx, pat_ctx) = Self::classify_name(&self.sema, original_file, name)?;
-                self.pattern_ctx = pat_ctx;
+                let name_ctx = Self::classify_name(&self.sema, original_file, name)?;
                 self.ident_ctx = IdentContext::Name(name_ctx);
             }
         }
@@ -477,9 +472,8 @@ impl<'a> CompletionContext<'a> {
         _sema: &Semantics<RootDatabase>,
         original_file: &SyntaxNode,
         name: ast::Name,
-    ) -> Option<(NameContext, Option<PatternContext>)> {
+    ) -> Option<NameContext> {
         let parent = name.syntax().parent()?;
-        let mut pat_ctx = None;
         let kind = match_ast! {
             match parent {
                 ast::Const(_) => NameKind::Const,
@@ -487,15 +481,12 @@ impl<'a> CompletionContext<'a> {
                 ast::Enum(_) => NameKind::Enum,
                 ast::Fn(_) => NameKind::Function,
                 ast::IdentPat(bind_pat) => {
-                    pat_ctx = Some({
-                        let mut pat_ctx = pattern_context_for(original_file, bind_pat.into());
-                        if let Some(record_field) = ast::RecordPatField::for_field_name(&name) {
-                            pat_ctx.record_pat = find_node_in_file_compensated(original_file, &record_field.parent_record_pat());
-                        }
-                        pat_ctx
-                    });
+                    let mut pat_ctx = pattern_context_for(original_file, bind_pat.into());
+                    if let Some(record_field) = ast::RecordPatField::for_field_name(&name) {
+                        pat_ctx.record_pat = find_node_in_file_compensated(original_file, &record_field.parent_record_pat());
+                    }
 
-                    NameKind::IdentPat
+                    NameKind::IdentPat(pat_ctx)
                 },
                 ast::MacroDef(_) => NameKind::MacroDef,
                 ast::MacroRules(_) => NameKind::MacroRules,
@@ -514,7 +505,7 @@ impl<'a> CompletionContext<'a> {
             }
         };
         let name = find_node_at_offset(&original_file, name.syntax().text_range().start());
-        Some((NameContext { name, kind }, pat_ctx))
+        Some(NameContext { name, kind })
     }
 
     fn classify_name_ref(
@@ -522,20 +513,19 @@ impl<'a> CompletionContext<'a> {
         original_file: &SyntaxNode,
         name_ref: ast::NameRef,
         parent: SyntaxNode,
-    ) -> (NameRefContext, Option<PatternContext>, QualifierCtx) {
+    ) -> Option<(NameRefContext, QualifierCtx)> {
         let nameref = find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
 
-        let mut res = (NameRefContext { nameref, kind: None }, None, QualifierCtx::default());
-        let (nameref_ctx, pattern_ctx, qualifier_ctx) = &mut res;
+        let make_res =
+            |kind| (NameRefContext { nameref: nameref.clone(), kind }, Default::default());
 
         if let Some(record_field) = ast::RecordExprField::for_field_name(&name_ref) {
-            nameref_ctx.kind =
-                find_node_in_file_compensated(original_file, &record_field.parent_record_lit())
-                    .map(NameRefKind::RecordExpr);
-            return res;
+            return find_node_in_file_compensated(original_file, &record_field.parent_record_lit())
+                .map(NameRefKind::RecordExpr)
+                .map(make_res);
         }
         if let Some(record_field) = ast::RecordPatField::for_field_name_ref(&name_ref) {
-            *pattern_ctx = Some(PatternContext {
+            let kind = NameRefKind::Pattern(PatternContext {
                 param_ctx: None,
                 has_type_ascription: false,
                 ref_token: None,
@@ -549,7 +539,7 @@ impl<'a> CompletionContext<'a> {
                     record_field.parent_record_pat().clone().into(),
                 )
             });
-            return res;
+            return Some(make_res(kind));
         }
 
         let segment = match_ast! {
@@ -564,23 +554,23 @@ impl<'a> CompletionContext<'a> {
                         },
                         _ => false,
                     };
-                    nameref_ctx.kind = Some(NameRefKind::DotAccess(DotAccess {
+                    let kind = NameRefKind::DotAccess(DotAccess {
                         receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                         kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal },
                         receiver
-                    }));
-                    return res;
+                    });
+                    return Some(make_res(kind));
                 },
                 ast::MethodCallExpr(method) => {
                     let receiver = find_opt_node_in_file(original_file, method.receiver());
-                    nameref_ctx.kind = Some(NameRefKind::DotAccess(DotAccess {
+                    let kind = NameRefKind::DotAccess(DotAccess {
                         receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                         kind: DotAccessKind::Method { has_parens: method.arg_list().map_or(false, |it| it.l_paren_token().is_some()) },
                         receiver
-                    }));
-                    return res;
+                    });
+                    return Some(make_res(kind));
                 },
-                _ => return res,
+                _ => return None,
             }
         };
 
@@ -755,52 +745,47 @@ impl<'a> CompletionContext<'a> {
         };
 
         // Infer the path kind
-        let kind = path.syntax().parent().and_then(|it| {
-            match_ast! {
-                match it {
-                    ast::PathType(it) => Some(make_path_kind_type(it.into())),
+        let parent = path.syntax().parent()?;
+        let kind = match_ast! {
+                match parent {
+                    ast::PathType(it) => make_path_kind_type(it.into()),
                     ast::PathExpr(it) => {
                         if let Some(p) = it.syntax().parent() {
                             if ast::ExprStmt::can_cast(p.kind()) {
                                 if let Some(kind) = inbetween_body_and_decl_check(p) {
-                                    nameref_ctx.kind = Some(NameRefKind::Keyword(kind));
-                                    return None;
+                                    return Some(make_res(NameRefKind::Keyword(kind)));
                                 }
                             }
                         }
 
                         path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
 
-                        Some(make_path_kind_expr(it.into()))
+                        make_path_kind_expr(it.into())
                     },
                     ast::TupleStructPat(it) => {
                         path_ctx.has_call_parens = true;
-                        *pattern_ctx = Some(pattern_context_for(original_file, it.into()));
-                        Some(PathKind::Pat)
+                        PathKind::Pat { pat_ctx: pattern_context_for(original_file, it.into())}
                     },
                     ast::RecordPat(it) => {
                         path_ctx.has_call_parens = true;
-                        *pattern_ctx = Some(pattern_context_for(original_file, it.into()));
-                        Some(PathKind::Pat)
+                        PathKind::Pat { pat_ctx: pattern_context_for(original_file, it.into())}
                     },
                     ast::PathPat(it) => {
-                        *pattern_ctx = Some(pattern_context_for(original_file, it.into()));
-                        Some(PathKind::Pat)
+                        PathKind::Pat { pat_ctx: pattern_context_for(original_file, it.into())}
                     },
                     ast::MacroCall(it) => {
                         // A macro call in this position is usually a result of parsing recovery, so check that
                         if let Some(kind) = inbetween_body_and_decl_check(it.syntax().clone()) {
-                            nameref_ctx.kind = Some(NameRefKind::Keyword(kind));
-                            return None;
+                            return Some(make_res(NameRefKind::Keyword(kind)));
                         }
 
                         path_ctx.has_macro_bang = it.excl_token().is_some();
                         let parent = it.syntax().parent()?;
                         // Any path in an item list will be treated as a macro call by the parser
-                        let res = match_ast! {
+                        match_ast! {
                             match parent {
                                 ast::MacroExpr(expr) => make_path_kind_expr(expr.into()),
-                                ast::MacroPat(_) => PathKind::Pat,
+                                ast::MacroPat(it) => PathKind::Pat { pat_ctx: pattern_context_for(original_file, it.into())},
                                 ast::MacroType(ty) => make_path_kind_type(ty.into()),
                                 ast::ItemList(_) => PathKind::Item { kind: ItemListKind::Module },
                                 ast::AssocItemList(_) => PathKind::Item { kind: match parent.parent() {
@@ -821,10 +806,9 @@ impl<'a> CompletionContext<'a> {
                                 ast::SourceFile(_) => PathKind::Item { kind: ItemListKind::SourceFile },
                                 _ => return None,
                             }
-                        };
-                        Some(res)
+                        }
                     },
-                    ast::Meta(meta) => (|| {
+                    ast::Meta(meta) => {
                         let attr = meta.parent_attr()?;
                         let kind = attr.kind();
                         let attached = attr.syntax().parent()?;
@@ -835,24 +819,19 @@ impl<'a> CompletionContext<'a> {
                         } else {
                             Some(attached.kind())
                         };
-                        Some(PathKind::Attr {
+                        PathKind::Attr {
                             kind,
                             annotated_item_kind,
-                        })
-                    })(),
-                    ast::Visibility(it) => Some(PathKind::Vis { has_in_token: it.in_token().is_some() }),
-                    ast::UseTree(_) => Some(PathKind::Use),
+                        }
+                    },
+                    ast::Visibility(it) => PathKind::Vis { has_in_token: it.in_token().is_some() },
+                    ast::UseTree(_) => PathKind::Use,
                     _ => return None,
-                }
-            }
-        });
 
-        match kind {
-            Some(kind) => path_ctx.kind = kind,
-            // unresolved path kind, so this isn't really a path we should be completing,
-            // just some random identifier which might be in keyword position
-            None => return res,
-        }
+            }
+        };
+
+        path_ctx.kind = kind;
         path_ctx.has_type_args = segment.generic_arg_list().is_some();
 
         // calculate the qualifier context
@@ -893,6 +872,7 @@ impl<'a> CompletionContext<'a> {
             }
         }
 
+        let mut qualifier_ctx = QualifierCtx::default();
         if path_ctx.is_trivial_path() {
             // fetch the full expression that may have qualifiers attached to it
             let top_node = match path_ctx.kind {
@@ -937,8 +917,8 @@ impl<'a> CompletionContext<'a> {
                                 if ![T![;], T!['}'], T!['{']].contains(&prev.kind()) {
                                     // This was inferred to be an item position path, but it seems
                                     // to be part of some other broken node which leaked into an item
-                                    // list, so return without setting the path context
-                                    return res;
+                                    // list
+                                    return None;
                                 }
                             }
                         }
@@ -946,8 +926,7 @@ impl<'a> CompletionContext<'a> {
                 }
             }
         }
-        nameref_ctx.kind = Some(NameRefKind::Path(path_ctx));
-        res
+        Some((NameRefContext { nameref, kind: NameRefKind::Path(path_ctx) }, qualifier_ctx))
     }
 }
 

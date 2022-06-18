@@ -83,10 +83,10 @@ fn render(
         let qualified_path = matches!(
             ctx.completion.ident_ctx,
             IdentContext::NameRef(NameRefContext {
-                kind: Some(NameRefKind::Path(PathCompletionCtx {
+                kind: NameRefKind::Path(PathCompletionCtx {
                     qualified: Qualified::With { .. },
                     ..
-                })),
+                }),
                 ..
             })
         );
@@ -262,24 +262,24 @@ fn params(
     let has_dot_receiver = match ctx.ident_ctx {
         IdentContext::NameRef(NameRefContext {
             kind:
-                Some(NameRefKind::DotAccess(DotAccess {
+                NameRefKind::DotAccess(DotAccess {
                     kind: DotAccessKind::Method { has_parens: true },
                     ..
-                })),
+                }),
             ..
         }) => return None,
         IdentContext::NameRef(NameRefContext {
-            kind: Some(NameRefKind::DotAccess(DotAccess { .. })),
+            kind: NameRefKind::DotAccess(DotAccess { .. }),
             ..
         }) => true,
         IdentContext::NameRef(NameRefContext {
             kind:
-                Some(NameRefKind::Path(
+                NameRefKind::Path(
                     PathCompletionCtx {
                         kind: PathKind::Expr { .. }, has_call_parens: true, ..
                     }
                     | PathCompletionCtx { kind: PathKind::Use | PathKind::Type { .. }, .. },
-                )),
+                ),
             ..
         }) => return None,
         _ => false,

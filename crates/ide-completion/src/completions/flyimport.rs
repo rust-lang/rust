@@ -123,7 +123,7 @@ pub(crate) fn import_on_the_fly_path(
                 | PathKind::Type { .. }
                 | PathKind::Attr { .. }
                 | PathKind::Derive { .. }
-                | PathKind::Pat),
+                | PathKind::Pat { .. }),
             qualified,
             ..
         } => (Some(kind), qualified),
@@ -183,7 +183,7 @@ pub(crate) fn import_on_the_fly_pat(
         return None;
     }
     let kind = match pat_ctx {
-        PatternContext { record_pat: None, .. } => PathKind::Pat,
+        PatternContext { record_pat: None, .. } => PathKind::Pat { pat_ctx: pat_ctx.clone() },
         _ => return None,
     };
 
@@ -229,15 +229,17 @@ fn import_on_the_fly(
                 PathKind::Expr { .. }
                 | PathKind::Type { .. }
                 | PathKind::Item { .. }
-                | PathKind::Pat,
+                | PathKind::Pat { .. },
                 ItemInNs::Macros(mac),
             ) => mac.is_fn_like(ctx.db),
             (PathKind::Item { .. }, _) => true,
 
             (PathKind::Expr { .. }, ItemInNs::Types(_) | ItemInNs::Values(_)) => true,
 
-            (PathKind::Pat, ItemInNs::Types(_)) => true,
-            (PathKind::Pat, ItemInNs::Values(def)) => matches!(def, hir::ModuleDef::Const(_)),
+            (PathKind::Pat { .. }, ItemInNs::Types(_)) => true,
+            (PathKind::Pat { .. }, ItemInNs::Values(def)) => {
+                matches!(def, hir::ModuleDef::Const(_))
+            }
 
             (PathKind::Type { location }, ItemInNs::Types(ty)) => {
                 if matches!(location, TypeLocation::TypeBound) {

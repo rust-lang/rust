@@ -78,7 +78,7 @@ impl<'a> RenderContext<'a> {
         matches!(
             self.completion.ident_ctx,
             IdentContext::NameRef(NameRefContext {
-                kind: Some(NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. })),
+                kind: NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. }),
                 ..
             })
         )
@@ -218,7 +218,7 @@ fn render_resolution_(
             let ctx = ctx.import_to_add(import_to_add);
             return render_fn(ctx, Some(local_name), func);
         }
-        ScopeDef::ModuleDef(Variant(var)) if ctx.completion.pattern_ctx.is_none() => {
+        ScopeDef::ModuleDef(Variant(var)) => {
             let ctx = ctx.clone().import_to_add(import_to_add.clone());
             if let Some(item) = render_variant_lit(ctx, Some(local_name.clone()), var, None) {
                 return item;
@@ -293,11 +293,11 @@ fn render_resolution_simple_(
     let type_path_no_ty_args = matches!(
         ctx.completion.ident_ctx,
         IdentContext::NameRef(NameRefContext {
-            kind: Some(NameRefKind::Path(PathCompletionCtx {
+            kind: NameRefKind::Path(PathCompletionCtx {
                 kind: PathKind::Type { .. },
                 has_type_args: false,
                 ..
-            })),
+            }),
             ..
         })
     ) && ctx.completion.config.callable.is_some();

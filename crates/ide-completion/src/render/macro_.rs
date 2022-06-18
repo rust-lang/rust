@@ -35,7 +35,7 @@ fn render(
 
     let needs_bang = match &completion.ident_ctx {
         IdentContext::NameRef(NameRefContext {
-            kind: Some(NameRefKind::Path(PathCompletionCtx { kind, has_macro_bang, .. })),
+            kind: NameRefKind::Path(PathCompletionCtx { kind, has_macro_bang, .. }),
             ..
         }) => is_fn_like && *kind != PathKind::Use && !has_macro_bang,
         _ => is_fn_like,

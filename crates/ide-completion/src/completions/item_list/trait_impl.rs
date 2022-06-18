@@ -95,12 +95,12 @@ pub(crate) fn complete_trait_impl_name_ref(
         NameRefContext {
             nameref,
             kind:
-                Some(NameRefKind::Path(
+                NameRefKind::Path(
                     path_ctx @ PathCompletionCtx {
                         kind: PathKind::Item { kind: ItemListKind::TraitImpl },
                         ..
                     },
-                )),
+                ),
         } if path_ctx.is_trivial_path() => complete_trait_impl(
             acc,
             ctx,
