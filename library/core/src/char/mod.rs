@@ -102,7 +102,9 @@ pub const UNICODE_VERSION: (u8, u8, u8) = char::UNICODE_VERSION;
 #[stable(feature = "max_len", since = "1.63.0")]
 pub const MAX_UTF8_LEN: usize = char::MAX_UTF8_LEN;
 
-/// Maximum length required to store a UTF16 byte.
+/// The maximum number of 16-bit code units required to
+/// [encode](char::encode_utf16) a `char` in UTF-16. Use [`char::MAX_UTF16_LEN`]
+/// instead.
 #[stable(feature = "max_len", since = "1.63.0")]
 pub const MAX_UTF16_LEN: usize = char::MAX_UTF16_LEN;
 
