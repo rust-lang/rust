@@ -251,6 +251,11 @@ pub(crate) fn codegen_const_value<'tcx>(
                 .iconst(fx.pointer_type, i64::try_from(end.checked_sub(start).unwrap()).unwrap());
             CValue::by_val_pair(ptr, len, layout)
         }
+        ConstValue::CustomSlice { data, length } => {
+            let ptr = pointer_for_allocation(fx, data).get_addr(fx);
+            let len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(length).unwrap());
+            CValue::by_val_pair(ptr, len, layout)
+        }
     }
 }
 
