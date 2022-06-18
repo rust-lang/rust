@@ -50,7 +50,8 @@ impl char {
     #[stable(feature = "max_len", since = "1.63.0")]
     pub const MAX_UTF8_LEN: usize = 4;
 
-    /// Maximum length required to store a UTF16 byte.
+    /// The maximum number of 16-bit code units required to
+    /// [encode](char::encode_utf16) a `char` in UTF-16.
     #[stable(feature = "max_len", since = "1.63.0")]
     pub const MAX_UTF16_LEN: usize = 2;
 
