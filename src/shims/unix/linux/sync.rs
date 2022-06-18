@@ -132,10 +132,10 @@ pub fn futex<'tcx>(
             // otherwise we will deadlock.
             //
             // There are two scenarios to consider:
-            // 1. If we (FUTEX_WAIT) executes first, we'll push ourselves into
+            // 1. If we (FUTEX_WAIT) execute first, we'll push ourselves into
             //    the waiters queue and go to sleep. They (addr write & FUTEX_WAKE)
             //    will see us in the queue and wake us up.
-            // 2. If they (addr write & FUTEX_WAKE) executes first, we must observe
+            // 2. If they (addr write & FUTEX_WAKE) execute first, we must observe
             //    addr's new value. If we see an outdated value that happens to equal
             //    the expected val, then we'll put ourselves to sleep with no one to wake us
             //    up, so we end up with a deadlock. This is prevented by having a SeqCst
@@ -157,7 +157,9 @@ pub fn futex<'tcx>(
             //    right value. This is useless to us, since we need the read itself
             //    to see an up-to-date value.
             //
-            // It is also critical that the fence, the atomic load, and the comparison
+            // The above case distinction is valid since both FUTEX_WAIT and FUTEX_WAKE
+            // contain a SeqCst fence, therefore inducting a total order between the operations.
+            // It is also critical that the fence, the atomic load, and the comparison in FUTEX_WAIT
             // altogether happen atomically. If the other thread's fence in FUTEX_WAKE
             // gets interleaved after our fence, then we lose the guarantee on the
             // atomic load being up-to-date; if the other thread's write on addr and FUTEX_WAKE
