@@ -1,3 +1,5 @@
+use core::iter::TrustedLen;
+
 use super::*;
 
 #[bench]
@@ -789,6 +791,101 @@ fn test_from_vec() {
     let vd = VecDeque::from(vec.clone());
     assert!(vd.cap().is_power_of_two());
     assert_eq!(vd.len(), vec.len());
+}
+
+#[test]
+fn test_extend_basic() {
+    test_extend_impl(false);
+}
+
+#[test]
+fn test_extend_trusted_len() {
+    test_extend_impl(true);
+}
+
+fn test_extend_impl(trusted_len: bool) {
+    struct VecDequeTester {
+        test: VecDeque<usize>,
+        expected: VecDeque<usize>,
+        trusted_len: bool,
+    }
+
+    impl VecDequeTester {
+        fn new(trusted_len: bool) -> Self {
+            Self { test: VecDeque::new(), expected: VecDeque::new(), trusted_len }
+        }
+
+        fn test_extend<I>(&mut self, iter: I)
+        where
+            I: Iterator<Item = usize> + TrustedLen + Clone,
+        {
+            struct BasicIterator<I>(I);
+            impl<I> Iterator for BasicIterator<I>
+            where
+                I: Iterator<Item = usize>,
+            {
+                type Item = usize;
+
+                fn next(&mut self) -> Option<Self::Item> {
+                    self.0.next()
+                }
+            }
+
+            if self.trusted_len {
+                self.test.extend(iter.clone());
+            } else {
+                self.test.extend(BasicIterator(iter.clone()));
+            }
+
+            for item in iter {
+                self.expected.push_back(item)
+            }
+
+            assert_eq!(self.test, self.expected);
+            let (a1, b1) = self.test.as_slices();
+            let (a2, b2) = self.expected.as_slices();
+            assert_eq!(a1, a2);
+            assert_eq!(b1, b2);
+        }
+
+        fn drain<R: RangeBounds<usize> + Clone>(&mut self, range: R) {
+            self.test.drain(range.clone());
+            self.expected.drain(range);
+
+            assert_eq!(self.test, self.expected);
+        }
+
+        fn clear(&mut self) {
+            self.test.clear();
+            self.expected.clear();
+        }
+
+        fn remaining_capacity(&self) -> usize {
+            self.test.capacity() - self.test.len()
+        }
+    }
+
+    let mut tester = VecDequeTester::new(trusted_len);
+
+    // Initial capacity
+    tester.test_extend(0..tester.remaining_capacity() - 1);
+
+    // Grow
+    tester.test_extend(1024..2048);
+
+    // Wrap around
+    tester.drain(..128);
+
+    tester.test_extend(0..tester.remaining_capacity() - 1);
+
+    // Continue
+    tester.drain(256..);
+    tester.test_extend(4096..8196);
+
+    tester.clear();
+
+    // Start again
+    tester.test_extend(0..32);
 }
 
 #[test]

@@ -4,8 +4,11 @@ use crate::ops::Try;
 ///
 /// Ideally this will no longer be required, eventually, but as can be seen in
 /// the benchmarks (as of Feb 2022 at least) `by_ref` can have performance cost.
-pub(crate) struct ByRefSized<'a, I>(pub &'a mut I);
+#[unstable(feature = "std_internals", issue = "none")]
+#[derive(Debug)]
+pub struct ByRefSized<'a, I>(pub &'a mut I);
 
+#[unstable(feature = "std_internals", issue = "none")]
 impl<I: Iterator> Iterator for ByRefSized<'_, I> {
     type Item = I::Item;
 
@@ -47,6 +50,7 @@ impl<I: Iterator> Iterator for ByRefSized<'_, I> {
     }
 }
 
+#[unstable(feature = "std_internals", issue = "none")]
 impl<I: DoubleEndedIterator> DoubleEndedIterator for ByRefSized<'_, I> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {

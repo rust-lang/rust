@@ -453,6 +453,25 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
+    /// Writes all values from `iter` to `dst`.
+    ///
+    /// # Safety
+    ///
+    /// Assumes no wrapping around happens.
+    /// Assumes capacity is sufficient.
+    #[inline]
+    unsafe fn write_iter(
+        &mut self,
+        dst: usize,
+        iter: impl Iterator<Item = T>,
+        written: &mut usize,
+    ) {
+        iter.enumerate().for_each(|(i, element)| unsafe {
+            self.buffer_write(dst + i, element);
+            *written += 1;
+        });
+    }
+
     /// Frobs the head and tail sections around to handle the fact that we
     /// just reallocated. Unsafe because it trusts old_capacity.
     #[inline]
