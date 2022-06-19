@@ -311,6 +311,9 @@ pub struct FilePermissions {
     mode: mode_t,
 }
 
+#[derive(Copy, Clone)]
+pub struct FileTimes([libc::timespec; 2]);
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType {
     mode: mode_t,
@@ -500,6 +503,43 @@ impl FilePermissions {
     }
     pub fn mode(&self) -> u32 {
         self.mode as u32
+    }
+}
+
+impl FileTimes {
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.0[0] = t.t.to_timespec().expect("Invalid system time");
+    }
+
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.0[1] = t.t.to_timespec().expect("Invalid system time");
+    }
+}
+
+struct TimespecDebugAdapter<'a>(&'a libc::timespec);
+
+impl fmt::Debug for TimespecDebugAdapter<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("timespec")
+            .field("tv_sec", &self.0.tv_sec)
+            .field("tv_nsec", &self.0.tv_nsec)
+            .finish()
+    }
+}
+
+impl fmt::Debug for FileTimes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FileTimes")
+            .field("accessed", &TimespecDebugAdapter(&self.0[0]))
+            .field("modified", &TimespecDebugAdapter(&self.0[1]))
+            .finish()
+    }
+}
+
+impl Default for FileTimes {
+    fn default() -> Self {
+        let omit = libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ };
+        Self([omit; 2])
     }
 }
 
@@ -1019,6 +1059,30 @@ impl File {
 
     pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
         cvt_r(|| unsafe { libc::fchmod(self.as_raw_fd(), perm.mode) })?;
+        Ok(())
+    }
+
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        cfg_if::cfg_if! {
+            // futimens requires macOS 10.13
+            if #[cfg(target_os = "macos")] {
+                fn ts_to_tv(ts: &libc::timespec) -> libc::timeval {
+                    libc::timeval { tv_sec: ts.tv_sec, tv_usec: (ts.tv_nsec / 1000) as _ }
+                }
+                cvt(unsafe {
+                    weak!(fn futimens(c_int, *const libc::timespec) -> c_int);
+                    futimens.get()
+                        .map(|futimens| futimens(self.as_raw_fd(), times.0.as_ptr()))
+                        .unwrap_or_else(|| {
+                            let timevals = [ts_to_tv(&times.0[0]), ts_to_tv(&times.0[1])];
+                            libc::futimes(self.as_raw_fd(), timevals.as_ptr())
+                        })
+                })?;
+            } else {
+                cvt(unsafe { libc::futimens(self.as_raw_fd(), times.0.as_ptr()) })?;
+            }
+        }
+
         Ok(())
     }
 }
