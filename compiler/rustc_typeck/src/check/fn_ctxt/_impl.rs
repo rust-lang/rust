@@ -193,7 +193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         substs: InternalSubsts::for_item(self.tcx, method.def_id, |param, _| {
                             let i = param.index as usize;
                             if i < method_generics.parent_count {
-                                self.infcx.var_for_def(DUMMY_SP, param)
+                                self.infcx.var_for_def(DUMMY_SP, param, Some(self.constness))
                             } else {
                                 *method.substs.get(i).unwrap_or_else(|| {
                                     span_bug!(
@@ -1431,7 +1431,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // This case also occurs as a result of some malformed input, e.g.
                             // a lifetime argument being given instead of a type parameter.
                             // Using inference instead of `Error` gives better error messages.
-                            self.fcx.var_for_def(self.span, param)
+                            self.fcx.var_for_def(self.span, param, None)
                         }
                     }
                     GenericParamDefKind::Const { has_default } => {
@@ -1440,11 +1440,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .subst(tcx, substs.unwrap())
                                 .into()
                         } else {
-                            self.fcx.var_for_def(self.span, param)
+                            self.fcx.var_for_def(self.span, param, None)
                         }
                     }
                     GenericParamDefKind::Constness => match constness {
-                        None => self.fcx.var_for_def(self.span, param),
+                        None => self.fcx.constness().into(),
                         Some(constness) => constness.into(),
                     },
                 }

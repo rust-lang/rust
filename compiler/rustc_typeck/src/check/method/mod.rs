@@ -295,7 +295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            self.var_for_def(span, param)
+            self.var_for_def(span, param, Some(self.constness()))
         });
 
         let trait_ref = ty::TraitRef::new(trait_def_id, substs);
@@ -336,7 +336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            self.var_for_def(span, param)
+            self.var_for_def(span, param, Some(self.constness()))
         });
 
         let trait_ref = ty::TraitRef::new(trait_def_id, substs);

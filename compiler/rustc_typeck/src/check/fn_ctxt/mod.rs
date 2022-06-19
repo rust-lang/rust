@@ -148,7 +148,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return_type_has_opaque: false,
             constness: {
                 fn get_constness(tcx: TyCtxt<'_>, did: DefId) -> ty::ConstnessArg {
-                    if tcx.is_const_fn_raw(did) || tcx.is_const_default_method(did) || tcx.def_kind(did) == hir::def::DefKind::Const {
+                    if tcx.is_const_fn_raw(did)
+                        || tcx.is_const_default_method(did)
+                        || tcx.def_kind(did) == hir::def::DefKind::Const
+                    {
                         trace!("const");
                         ty::ConstnessArg::Const
                     } else {
@@ -159,7 +162,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if body_id.is_owner() {
                     let did = body_id.expect_owner();
                     get_constness(inh.tcx, did.to_def_id())
-                } else if let Some(hir::Node::Expr(hir::Expr { kind, .. })) = inh.tcx.hir().find(body_id) {
+                } else if let Some(hir::Node::Expr(hir::Expr { kind, .. })) =
+                    inh.tcx.hir().find(body_id)
+                {
                     if let hir::ExprKind::Closure { .. } = kind {
                         ty::ConstnessArg::Not
                     } else {
@@ -253,7 +258,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
         if let Some(param) = param {
-            if let GenericArgKind::Type(ty) = self.var_for_def(span, param).unpack() {
+            if let GenericArgKind::Type(ty) = self.var_for_def(span, param, None).unpack() {
                 return ty;
             }
             unreachable!()
@@ -272,7 +277,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         span: Span,
     ) -> Const<'tcx> {
         if let Some(param) = param {
-            if let GenericArgKind::Const(ct) = self.var_for_def(span, param).unpack() {
+            if let GenericArgKind::Const(ct) = self.var_for_def(span, param, None).unpack() {
                 return ct;
             }
             unreachable!()

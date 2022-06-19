@@ -405,10 +405,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     } else {
                         self.cfcx.fcx.constness()
                     };
-                    debug!("inferred_kind constness={constness:?}");
+                    debug!(?constness);
                     constness.into()
                 } else {
-                    self.cfcx.var_for_def(self.cfcx.span, param)
+                    self.cfcx.var_for_def(self.cfcx.span, param, None)
                 }
             }
         }
