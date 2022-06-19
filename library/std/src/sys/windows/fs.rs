@@ -82,6 +82,12 @@ pub struct FilePermissions {
     attrs: c::DWORD,
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {
+    accessed: c::FILETIME,
+    modified: c::FILETIME,
+}
+
 #[derive(Debug)]
 pub struct DirBuilder;
 
@@ -550,6 +556,14 @@ impl File {
         })?;
         Ok(())
     }
+
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        cvt(unsafe {
+            c::SetFileTime(self.as_handle(), None, Some(&times.accessed), Some(&times.modified))
+        })?;
+        Ok(())
+    }
+
     /// Get only basic file information such as attributes and file times.
     fn basic_info(&self) -> io::Result<c::FILE_BASIC_INFO> {
         unsafe {
@@ -892,6 +906,16 @@ impl FilePermissions {
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_READONLY;
         }
+    }
+}
+
+impl FileTimes {
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.accessed = t.into_inner();
+    }
+
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.modified = t.into_inner();
     }
 }
 
