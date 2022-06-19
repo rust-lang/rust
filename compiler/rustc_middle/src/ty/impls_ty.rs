@@ -11,7 +11,6 @@ use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_query_system::ich::StableHashingContext;
 use std::cell::RefCell;
-use std::mem;
 
 impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for &'tcx ty::List<T>
 where
@@ -102,43 +101,12 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArgKin
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
+impl<'a> HashStable<StableHashingContext<'a>> for ty::EarlyBoundRegion {
+    #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            ty::ReErased | ty::ReStatic => {
-                // No variant fields to hash for these ...
-            }
-            ty::ReEmpty(universe) => {
-                universe.hash_stable(hcx, hasher);
-            }
-            ty::ReLateBound(db, ty::BoundRegion { kind: ty::BrAnon(i), .. }) => {
-                db.hash_stable(hcx, hasher);
-                i.hash_stable(hcx, hasher);
-            }
-            ty::ReLateBound(db, ty::BoundRegion { kind: ty::BrNamed(def_id, name), .. }) => {
-                db.hash_stable(hcx, hasher);
-                def_id.hash_stable(hcx, hasher);
-                name.hash_stable(hcx, hasher);
-            }
-            ty::ReLateBound(db, ty::BoundRegion { kind: ty::BrEnv, .. }) => {
-                db.hash_stable(hcx, hasher);
-            }
-            ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }) => {
-                def_id.hash_stable(hcx, hasher);
-                index.hash_stable(hcx, hasher);
-                name.hash_stable(hcx, hasher);
-            }
-            ty::ReFree(ref free_region) => {
-                free_region.hash_stable(hcx, hasher);
-            }
-            ty::RePlaceholder(p) => {
-                p.hash_stable(hcx, hasher);
-            }
-            ty::ReVar(reg) => {
-                reg.hash_stable(hcx, hasher);
-            }
-        }
+        self.def_id.hash_stable(hcx, hasher);
+        self.index.hash_stable(hcx, hasher);
+        self.name.hash_stable(hcx, hasher);
     }
 }
 

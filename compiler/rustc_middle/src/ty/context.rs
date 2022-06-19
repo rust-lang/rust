@@ -114,6 +114,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type DelaySpanBugEmitted = DelaySpanBugEmitted;
     type PredicateKind = ty::PredicateKind<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
+
+    type EarlyBoundRegion = ty::EarlyBoundRegion;
+    type BoundRegion = ty::BoundRegion;
+    type FreeRegion = ty::FreeRegion;
+    type RegionVid = ty::RegionVid;
+    type PlaceholderRegion = ty::PlaceholderRegion;
 }
 
 /// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
@@ -136,7 +142,7 @@ pub struct CtxtInterners<'tcx> {
     type_: InternedSet<'tcx, WithStableHash<TyS<'tcx>>>,
     substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
-    region: InternedSet<'tcx, RegionKind>,
+    region: InternedSet<'tcx, RegionKind<'tcx>>,
     poly_existential_predicates:
         InternedSet<'tcx, List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>>,
     predicate: InternedSet<'tcx, PredicateS<'tcx>>,
@@ -2175,7 +2181,7 @@ macro_rules! direct_interners {
 }
 
 direct_interners! {
-    region: mk_region(RegionKind): Region -> Region<'tcx>,
+    region: mk_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: mk_const(ConstS<'tcx>): Const -> Const<'tcx>,
     const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: intern_layout(LayoutS<'tcx>): Layout -> Layout<'tcx>,
@@ -2274,7 +2280,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Same a `self.mk_region(kind)`, but avoids accessing the interners if
     /// `*r == kind`.
     #[inline]
-    pub fn reuse_or_mk_region(self, r: Region<'tcx>, kind: RegionKind) -> Region<'tcx> {
+    pub fn reuse_or_mk_region(self, r: Region<'tcx>, kind: RegionKind<'tcx>) -> Region<'tcx> {
         if *r == kind { r } else { self.mk_region(kind) }
     }
 

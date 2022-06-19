@@ -81,30 +81,6 @@ impl fmt::Debug for ty::BoundRegionKind {
     }
 }
 
-impl fmt::Debug for ty::RegionKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            ty::ReEarlyBound(ref data) => write!(f, "ReEarlyBound({}, {})", data.index, data.name),
-
-            ty::ReLateBound(binder_id, ref bound_region) => {
-                write!(f, "ReLateBound({:?}, {:?})", binder_id, bound_region)
-            }
-
-            ty::ReFree(ref fr) => fr.fmt(f),
-
-            ty::ReStatic => write!(f, "ReStatic"),
-
-            ty::ReVar(ref vid) => vid.fmt(f),
-
-            ty::RePlaceholder(placeholder) => write!(f, "RePlaceholder({:?})", placeholder),
-
-            ty::ReEmpty(ui) => write!(f, "ReEmpty({:?})", ui),
-
-            ty::ReErased => write!(f, "ReErased"),
-        }
-    }
-}
-
 impl fmt::Debug for ty::FreeRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ReFree({:?}, {:?})", self.scope, self.bound_region)

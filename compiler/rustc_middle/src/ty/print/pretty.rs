@@ -182,7 +182,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
     }
 
     /// Returns `Some(n)` with the number to use for the given region, if any.
-    fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
+    fn region_highlighted(&self, region: ty::Region<'tcx>) -> Option<usize> {
         self.highlight_regions.iter().find_map(|h| match h {
             Some((r, n)) if *r == region => Some(*n),
             _ => None,
@@ -276,7 +276,7 @@ pub trait PrettyPrinter<'tcx>:
     /// Returns `true` if the region should be printed in
     /// optional positions, e.g., `&'a T` or `dyn Tr + 'b`.
     /// This is typically the case for all non-`'_` regions.
-    fn should_print_region(&self, region: ty::Region<'_>) -> bool;
+    fn should_print_region(&self, region: ty::Region<'tcx>) -> bool;
 
     // Defaults (should not be overridden):
 
@@ -1706,7 +1706,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         self.default_print_def_path(def_id, substs)
     }
 
-    fn print_region(self, region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
+    fn print_region(self, region: ty::Region<'tcx>) -> Result<Self::Region, Self::Error> {
         self.pretty_print_region(region)
     }
 
@@ -1911,7 +1911,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         Ok(inner)
     }
 
-    fn should_print_region(&self, region: ty::Region<'_>) -> bool {
+    fn should_print_region(&self, region: ty::Region<'tcx>) -> bool {
         let highlight = self.region_highlight_mode;
         if highlight.region_highlighted(region).is_some() {
             return true;
@@ -1978,8 +1978,8 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
 }
 
 // HACK(eddyb) limited to `FmtPrinter` because of `region_highlight_mode`.
-impl FmtPrinter<'_, '_> {
-    pub fn pretty_print_region(mut self, region: ty::Region<'_>) -> Result<Self, fmt::Error> {
+impl<'tcx> FmtPrinter<'_, 'tcx> {
+    pub fn pretty_print_region(mut self, region: ty::Region<'tcx>) -> Result<Self, fmt::Error> {
         define_scoped_cx!(self);
 
         // Watch out for region highlights.
@@ -2383,15 +2383,6 @@ macro_rules! define_print_and_forward_display {
     };
 }
 
-// HACK(eddyb) this is separate because `ty::RegionKind` doesn't need lifting.
-impl<'tcx> fmt::Display for ty::Region<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| {
-            f.write_str(&self.print(FmtPrinter::new(tcx, Namespace::TypeNS))?.into_buffer())
-        })
-    }
-}
-
 /// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
 /// the trait path. That is, it will print `Trait<U>` instead of
 /// `<T as Trait<U>>`.
@@ -2456,6 +2447,7 @@ impl<'tcx> ty::PolyTraitPredicate<'tcx> {
 }
 
 forward_display_to_print! {
+    ty::Region<'tcx>,
     Ty<'tcx>,
     &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ty::Const<'tcx>,
