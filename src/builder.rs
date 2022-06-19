@@ -213,7 +213,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
                 let actual_ty = actual_val.get_type();
                 if expected_ty != actual_ty {
-                    if !actual_ty.is_vector() && !expected_ty.is_vector() && actual_ty.is_integral() && expected_ty.is_integral() {
+                    if !actual_ty.is_vector() && !expected_ty.is_vector() && (actual_ty.is_integral() && expected_ty.is_integral()) || (actual_ty.get_pointee().is_some() && expected_ty.get_pointee().is_some()) {
                         self.context.new_cast(None, actual_val, expected_ty)
                     }
                     else if on_stack_param_indices.contains(&index) {

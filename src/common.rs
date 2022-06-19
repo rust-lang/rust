@@ -177,8 +177,18 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
 
                 let value = self.const_uint_big(self.type_ix(bitsize), data);
-                // TODO(bjorn3): assert size is correct
-                self.const_bitcast(value, ty)
+                let bytesize = layout.size(self).bytes();
+                if bitsize > 1 && ty.is_integral() && bytesize as u32 == ty.get_size() {
+                    // NOTE: since the intrinsic _xabort is called with a bitcast, which
+                    // is non-const, but expects a constant, do a normal cast instead of a bitcast.
+                    // FIXME(antoyo): fix bitcast to work in constant contexts.
+                    // TODO: perhaps only use bitcast for pointers?
+                    self.context.new_cast(None, value, ty)
+                }
+                else {
+                    // TODO(bjorn3): assert size is correct
+                    self.const_bitcast(value, ty)
+                }
             }
             Scalar::Ptr(ptr, _size) => {
                 let (alloc_id, offset) = ptr.into_parts();
