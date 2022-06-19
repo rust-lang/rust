@@ -285,20 +285,33 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     let def = self.tcx.adt_def(item.def_id);
                     self.repr_has_repr_c = def.repr().c();
 
-                    intravisit::walk_item(self, &item);
-                }
-                hir::ItemKind::Enum(..) => {
-                    intravisit::walk_item(self, &item);
+                    intravisit::walk_item(self, &item)
                 }
                 hir::ItemKind::ForeignMod { .. } => {}
-                _ => {
-                    intravisit::walk_item(self, &item);
-                }
+                _ => intravisit::walk_item(self, &item),
             },
             Node::TraitItem(trait_item) => {
                 intravisit::walk_trait_item(self, trait_item);
             }
             Node::ImplItem(impl_item) => {
+                let item = self.tcx.local_parent(impl_item.def_id);
+                if self.tcx.impl_trait_ref(item).is_none() {
+                    //// If it's a type whose items are live, then it's live, too.
+                    //// This is done to handle the case where, for example, the static
+                    //// method of a private type is used, but the type itself is never
+                    //// called directly.
+                    let self_ty = self.tcx.type_of(item);
+                    match *self_ty.kind() {
+                        ty::Adt(def, _) => self.check_def_id(def.did()),
+                        ty::Foreign(did) => self.check_def_id(did),
+                        ty::Dynamic(data, ..) => {
+                            if let Some(def_id) = data.principal_def_id() {
+                                self.check_def_id(def_id)
+                            }
+                        }
+                        _ => {}
+                    }
+                }
                 intravisit::walk_impl_item(self, impl_item);
             }
             Node::ForeignItem(foreign_item) => {
@@ -671,24 +684,7 @@ impl<'tcx> DeadVisitor<'tcx> {
 
     // id := HIR id of an item's definition.
     fn symbol_is_live(&mut self, def_id: LocalDefId) -> bool {
-        if self.live_symbols.contains(&def_id) {
-            return true;
-        }
-        // If it's a type whose items are live, then it's live, too.
-        // This is done to handle the case where, for example, the static
-        // method of a private type is used, but the type itself is never
-        // called directly.
-        let inherent_impls = self.tcx.inherent_impls(def_id);
-        for &impl_did in inherent_impls.iter() {
-            for item_did in self.tcx.associated_item_def_ids(impl_did) {
-                if let Some(def_id) = item_did.as_local()
-                    && self.live_symbols.contains(&def_id)
-                {
-                    return true;
-                }
-            }
-        }
-        false
+        self.live_symbols.contains(&def_id)
     }
 
     fn warn_multiple_dead_codes(
