@@ -386,7 +386,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     RegionResolutionError::UpperBoundUniverseConflict(
                         _,
                         _,
-                        var_universe,
+                        _,
                         sup_origin,
                         sup_r,
                     ) => {
@@ -397,7 +397,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // placeholder. In practice, we expect more
                         // tailored errors that don't really use this
                         // value.
-                        let sub_r = self.tcx.mk_region(ty::ReEmpty(var_universe));
+                        let sub_r = self.tcx.lifetimes.re_erased;
 
                         self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit();
                     }
