@@ -17,6 +17,10 @@ union U23<T> { // OK
     a: (ManuallyDrop<T>, i32),
 }
 
+union U24<T> { // OK
+    a: [ManuallyDrop<T>; 2],
+}
+
 union U3 {
     a: String, //~ ERROR unions cannot contain fields that may need dropping
 }

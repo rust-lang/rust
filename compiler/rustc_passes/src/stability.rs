@@ -785,7 +785,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                             // allow tuples of allowed types
                             tys.iter().all(|ty| allowed_union_field(tcx, param_env, ty))
                         }
+                        ty::Array(elem, _len) => {
+                            // Like `Copy`, we do *not* special-case length 0.
+                            allowed_union_field(tcx, param_env, *elem)
+                        }
                         _ => {
+                            // Fallback case: allow `ManuallyDrop` and things that are `Copy`.
                             ty.ty_adt_def().map_or(false, |adt_def| adt_def.is_manually_drop())
                                 || ty.is_copy_modulo_regions(tcx.at(DUMMY_SP), param_env)
                         }
