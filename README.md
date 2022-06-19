@@ -21,11 +21,14 @@ for example:
 * **Experimental**: Violations of the [Stacked Borrows] rules governing aliasing
   for reference types
 * **Experimental**: Data races
-* **Experimental**: Emulation of weak memory effects (i.e., reads can return outdated values)
 
 On top of that, Miri will also tell you about memory leaks: when there is memory
 still allocated at the end of the execution, and that memory is not reachable
 from a global `static`, Miri will raise an error.
+
+Miri supports almost all Rust language features; in particular, unwinding and
+concurrency are properly supported (including some experimental emulation of
+weak memory effects, i.e., reads can return outdated values).
 
 You can use Miri to emulate programs on other targets, e.g. to ensure that
 byte-level data manipulation works correctly both on little-endian and
@@ -62,8 +65,6 @@ in your program, and cannot run all programs:
   not support networking. System API support varies between targets; if you run
   on Windows it is a good idea to use `--target x86_64-unknown-linux-gnu` to get
   better support.
-* Threading support is not finished yet. E.g. spin loops (without syscalls) just
-  loop forever. There is no threading support on Windows.
 * Weak memory emulation may produce weak behaivours unobservable by compiled
   programs running on real hardware when `SeqCst` fences are used, and it cannot
   produce all behaviors possibly observable on real hardware.
