@@ -522,10 +522,10 @@ impl server::TokenStream for Rustc<'_, '_> {
                     // FIXME: It needs to be removed, but there are some
                     // compatibility issues (see #73345).
                     if group.flatten {
-                        cursor.append(group.stream);
-                        continue;
+                        tts.append(&mut self.into_trees(group.stream));
+                    } else {
+                        tts.push(TokenTree::Group(group));
                     }
-                    tts.push(TokenTree::Group(group));
                 }
                 Some(tt) => tts.push(tt),
                 None => return tts,

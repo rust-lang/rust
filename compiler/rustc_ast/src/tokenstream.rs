@@ -25,7 +25,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
-use std::{fmt, iter, mem};
+use std::{fmt, iter};
 
 /// When the main Rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token tree. This is a very
@@ -681,16 +681,6 @@ impl Cursor {
 
     pub fn index(&self) -> usize {
         self.index
-    }
-
-    pub fn append(&mut self, new_stream: TokenStream) {
-        if new_stream.is_empty() {
-            return;
-        }
-        let index = self.index;
-        let stream = mem::take(&mut self.stream);
-        *self = TokenStream::from_streams(smallvec![stream, new_stream]).into_trees();
-        self.index = index;
     }
 
     pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
