@@ -618,7 +618,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>> {
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>> {
         if ecx.machine.tracked_alloc_ids.contains(&id) {
             register_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id));
         }
@@ -653,9 +653,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 data_race: race_alloc,
                 weak_memory: buffer_alloc,
             },
-            |ptr| Evaluator::tag_alloc_base_pointer(ecx, ptr),
-        );
-        Cow::Owned(alloc)
+            |ptr| ecx.global_base_pointer(ptr),
+        )?;
+        Ok(Cow::Owned(alloc))
     }
 
     fn tag_alloc_base_pointer(
