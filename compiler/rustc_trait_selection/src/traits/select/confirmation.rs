@@ -15,6 +15,7 @@ use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst,
 use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
 use rustc_span::def_id::DefId;
+use rustc_span::sym;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type, predicate_for_trait_def};
@@ -44,6 +45,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
         // let new_obligation;
 
+        // when const_trait_impl not enabled, all const predicates are unimplemented
+        if obligation.predicate.constness() == ty::ConstnessArg::Const {
+            if !self.tcx().features().enabled(sym::const_trait_impl) {
+                return Err(SelectionError::Unimplemented)
+            }
+        }
+        // TODO rm
         // HACK(const_trait_impl): the surrounding environment is remapped to a non-const context
         // because nested obligations might be actually `~const` then (incorrectly) requiring
         // const impls. for example:
@@ -1233,10 +1241,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         .rebind(ty::TraitPredicate {
                             trait_ref: ty::TraitRef {
                                 def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
-                                substs: self.tcx().mk_substs_trait(
-                                    nested_ty,
-                                    &[ty::ConstnessArg::Const.into()],
-                                ),
+                                substs: self
+                                    .tcx()
+                                    .mk_substs_trait(nested_ty, &[ty::ConstnessArg::Const.into()]),
                             },
                             polarity: ty::ImplPolarity::Positive,
                         })
