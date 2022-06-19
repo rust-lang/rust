@@ -1120,8 +1120,6 @@ impl<'a> Linker for EmLinker<'a> {
             OptLevel::Size => "-Os",
             OptLevel::SizeMin => "-Oz",
         });
-        // Unusable until https://github.com/rust-lang/rust/issues/38454 is resolved
-        self.cmd.args(&["--memory-init-file", "0"]);
     }
 
     fn pgo_gen(&mut self) {
