@@ -679,10 +679,6 @@ impl Cursor {
         })
     }
 
-    pub fn index(&self) -> usize {
-        self.index
-    }
-
     pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
         self.stream.0[self.index..].get(n).map(|(tree, _)| tree)
     }
