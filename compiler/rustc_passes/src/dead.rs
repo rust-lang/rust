@@ -82,8 +82,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn handle_res(&mut self, res: Res) {
         match res {
-            Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::TyAlias, _) => {
-                self.check_def_id(res.def_id());
+            Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::TyAlias, def_id) => {
+                self.check_def_id(def_id);
             }
             _ if self.in_pat => {}
             Res::PrimTy(..) | Res::SelfCtor(..) | Res::Local(..) => {}
@@ -102,6 +102,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     self.check_def_id(variant_id);
                 }
             }
+            Res::Def(_, def_id) => self.check_def_id(def_id),
             Res::SelfTy { trait_: t, alias_to: i } => {
                 if let Some(t) = t {
                     self.check_def_id(t);
@@ -111,9 +112,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 }
             }
             Res::ToolMod | Res::NonMacroAttr(..) | Res::Err => {}
-            _ => {
-                self.check_def_id(res.def_id());
-            }
         }
     }
 
