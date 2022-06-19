@@ -29,7 +29,6 @@ macro_rules! define_handles {
         }
 
         // FIXME(eddyb) generate the definition of `HandleStore` in `server.rs`.
-        #[repr(C)]
         #[allow(non_snake_case)]
         pub(super) struct HandleStore<S: server::Types> {
             $($oty: handle::OwnedStore<S::$oty>,)*
@@ -46,7 +45,6 @@ macro_rules! define_handles {
         }
 
         $(
-            #[repr(C)]
             pub(crate) struct $oty {
                 handle: handle::Handle,
                 // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual
@@ -131,7 +129,6 @@ macro_rules! define_handles {
         )*
 
         $(
-            #[repr(C)]
             #[derive(Copy, Clone, PartialEq, Eq, Hash)]
             pub(crate) struct $ity {
                 handle: handle::Handle,
