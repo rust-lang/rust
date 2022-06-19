@@ -184,6 +184,11 @@ pub struct DirEntry(fs_imp::DirEntry);
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OpenOptions(fs_imp::OpenOptions);
 
+/// Representation of the various timestamps on a file.
+#[derive(Copy, Clone, Debug, Default)]
+#[unstable(feature = "file_set_times", issue = "98245")]
+pub struct FileTimes(fs_imp::FileTimes);
+
 /// Representation of the various permissions on a file.
 ///
 /// This module only currently provides one bit of information,
@@ -589,6 +594,49 @@ impl File {
     #[stable(feature = "set_permissions_atomic", since = "1.16.0")]
     pub fn set_permissions(&self, perm: Permissions) -> io::Result<()> {
         self.inner.set_permissions(perm.0)
+    }
+
+    /// Changes the timestamps of the underlying file.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `futimens` function on Unix (falling back to
+    /// `futimes` on macOS before 10.13) and the `SetFileTime` function on Windows. Note that this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the user lacks permission to change timestamps on the
+    /// underlying file. It may also return an error in other os-specific unspecified cases.
+    ///
+    /// This function may return an error if the operating system lacks support to change one or
+    /// more of the timestamps set in the `FileTimes` structure.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_set_times)]
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     use std::fs::{self, File, FileTimes};
+    ///
+    ///     let src = fs::metadata("src")?;
+    ///     let dest = File::options().write(true).open("dest")?;
+    ///     let times = FileTimes::new()
+    ///         .set_accessed(src.accessed()?)
+    ///         .set_modified(src.modified()?);
+    ///     dest.set_times(times)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    #[doc(alias = "futimens")]
+    #[doc(alias = "futimes")]
+    #[doc(alias = "SetFileTime")]
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        self.inner.set_times(times.0)
     }
 }
 
@@ -1243,6 +1291,30 @@ impl AsInner<fs_imp::FileAttr> for Metadata {
 impl FromInner<fs_imp::FileAttr> for Metadata {
     fn from_inner(attr: fs_imp::FileAttr) -> Metadata {
         Metadata(attr)
+    }
+}
+
+impl FileTimes {
+    /// Create a new `FileTimes` with no times set.
+    ///
+    /// Using the resulting `FileTimes` in [`File::set_times`] will not modify any timestamps.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the last access time of a file.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    pub fn set_accessed(mut self, t: SystemTime) -> Self {
+        self.0.set_accessed(t.into_inner());
+        self
+    }
+
+    /// Set the last modified time of a file.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    pub fn set_modified(mut self, t: SystemTime) -> Self {
+        self.0.set_modified(t.into_inner());
+        self
     }
 }
 
