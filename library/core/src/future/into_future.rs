@@ -2,7 +2,7 @@ use crate::future::Future;
 
 /// Conversion into a `Future`.
 ///
-/// By implementing `Intofuture` for a type, you define how it will be
+/// By implementing `IntoFuture` for a type, you define how it will be
 /// converted to a future.
 ///
 /// # `.await` desugaring
@@ -29,7 +29,7 @@ use crate::future::Future;
 /// When implementing futures manually there will often be a choice between
 /// implementing `Future` or `IntoFuture` for a type. Implementing `Future` is a
 /// good choice in most cases. But implementing `IntoFuture` is most useful when
-/// implementing "async builder" types, which allows the type to be modified
+/// implementing "async builder" types, which allow their values to be modified
 /// multiple times before being `.await`ed.
 ///
 /// ```rust
