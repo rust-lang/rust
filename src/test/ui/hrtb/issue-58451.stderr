@@ -11,8 +11,8 @@ LL | fn f<I>(i: I)
    |    ^    ----
 help: provide the argument
    |
-LL |     f(&[f({_})]);
-   |         ~~~~~~
+LL |     f(&[f(/* value */)]);
+   |         ~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 
