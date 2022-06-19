@@ -753,7 +753,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 callee = did;
                             }
 
-                            if let hir::Constness::NotConst = tcx.impl_constness(data.impl_def_id) {
+                            if let hir::Constness::NotConst = tcx.constness(data.impl_def_id) {
                                 self.check_op(ops::FnCallNonConst {
                                     caller,
                                     callee,

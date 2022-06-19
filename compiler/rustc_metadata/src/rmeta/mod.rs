@@ -364,7 +364,7 @@ define_tables! {
     thir_abstract_const: Table<DefIndex, LazyValue<&'static [thir::abstract_const::Node<'static>]>>,
     impl_parent: Table<DefIndex, RawDefId>,
     impl_polarity: Table<DefIndex, ty::ImplPolarity>,
-    impl_constness: Table<DefIndex, hir::Constness>,
+    constness: Table<DefIndex, hir::Constness>,
     is_intrinsic: Table<DefIndex, ()>,
     impl_defaultness: Table<DefIndex, hir::Defaultness>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?

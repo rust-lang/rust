@@ -1644,11 +1644,11 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
         &mut self,
     ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
         if self.length == 0 {
-            self.range.deallocating_end(&self.alloc);
+            self.range.deallocating_end(self.alloc.clone());
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.range.deallocating_next_unchecked(&self.alloc) })
+            Some(unsafe { self.range.deallocating_next_unchecked(self.alloc.clone()) })
         }
     }
 
@@ -1658,11 +1658,11 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
         &mut self,
     ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
         if self.length == 0 {
-            self.range.deallocating_end(&self.alloc);
+            self.range.deallocating_end(self.alloc.clone());
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.range.deallocating_next_back_unchecked(&self.alloc) })
+            Some(unsafe { self.range.deallocating_next_back_unchecked(self.alloc.clone()) })
         }
     }
 }
@@ -1849,7 +1849,7 @@ where
     type Item = (K, V);
 
     fn next(&mut self) -> Option<(K, V)> {
-        self.inner.next(&mut self.pred, &self.alloc)
+        self.inner.next(&mut self.pred, self.alloc.clone())
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
