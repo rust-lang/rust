@@ -1,4 +1,3 @@
-// ignore-tidy-filelength
 //! Resolution of early vs late bound lifetimes.
 //!
 //! Name resolution for lifetimes is performed on the AST and embedded into HIR.  From this
