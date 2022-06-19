@@ -10,5 +10,6 @@ use std::sync::RwLockReadGuard;
 
 // CHECK-LABEL: @maybe_aliased(
 // CHECK-NOT: noalias
+// CHECK-SAME: %_data
 #[no_mangle]
 pub unsafe fn maybe_aliased(_: RwLockReadGuard<'_, i32>, _data: &UnsafeCell<i32>) {}
