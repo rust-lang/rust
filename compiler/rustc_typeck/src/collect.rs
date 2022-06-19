@@ -1624,7 +1624,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     };
 
     let has_self = opt_self.is_some();
-    let has_constness = tcx.has_attr(def_id, sym::const_trait);
+    let has_constness = tcx.has_attr(def_id, sym::const_trait) || (tcx.def_kind(def_id) == DefKind::Impl && tcx.impl_constness(def_id) == hir::Constness::Const);
     let mut parent_has_self = false;
     let mut parent_has_constness = false;
     let mut own_start = has_self as u32;
