@@ -3,7 +3,7 @@ use super::{ErrorHandled, EvalToConstValueResult, EvalToValTreeResult, GlobalId}
 use crate::mir;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::InternalSubsts;
-use crate::ty::{self, query::TyCtxtAt, TyCtxt};
+use crate::ty::{self, query::TyCtxtAt, query::TyCtxtEnsure, TyCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -168,6 +168,39 @@ impl<'tcx> TyCtxtAt<'tcx> {
         trace!("eval_to_allocation: Need to compute {:?}", gid);
         let raw_const = self.eval_to_allocation_raw(param_env.and(gid))?;
         Ok(self.global_alloc(raw_const.alloc_id).unwrap_memory())
+    }
+}
+
+impl<'tcx> TyCtxtEnsure<'tcx> {
+    /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts
+    /// that can't take any generic arguments like statics, const items or enum discriminants. If a
+    /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
+    #[instrument(skip(self), level = "debug")]
+    pub fn const_eval_poly(self, def_id: DefId) {
+        // In some situations def_id will have substitutions within scope, but they aren't allowed
+        // to be used. So we can't use `Instance::mono`, instead we feed unresolved substitutions
+        // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
+        // encountered.
+        let substs = InternalSubsts::identity_for_item(self.tcx, def_id);
+        let instance = ty::Instance::new(def_id, substs);
+        let cid = GlobalId { instance, promoted: None };
+        let param_env =
+            self.tcx.param_env(def_id).with_reveal_all_normalized(self.tcx).with_const();
+        // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
+        // improve caching of queries.
+        let inputs = self.tcx.erase_regions(param_env.and(cid));
+        self.eval_to_const_value_raw(inputs)
+    }
+
+    /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
+    pub fn eval_static_initializer(self, def_id: DefId) {
+        trace!("eval_static_initializer: Need to compute {:?}", def_id);
+        assert!(self.tcx.is_static(def_id));
+        let instance = ty::Instance::mono(self.tcx, def_id);
+        let gid = GlobalId { instance, promoted: None };
+        let param_env = ty::ParamEnv::reveal_all().with_const();
+        trace!("eval_to_allocation: Need to compute {:?}", gid);
+        self.eval_to_allocation_raw(param_env.and(gid))
     }
 }
 
