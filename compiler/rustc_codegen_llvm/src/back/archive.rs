@@ -90,11 +90,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
     fn build(mut self) -> bool {
-        let kind = self.llvm_archive_kind().unwrap_or_else(|kind| {
-            self.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
-        });
-
-        match self.build_with_llvm(kind) {
+        match self.build_with_llvm() {
             Ok(any_members) => any_members,
             Err(e) => self.sess.fatal(&format!("failed to build archive: {}", e)),
         }
@@ -249,12 +245,12 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 }
 
 impl<'a> LlvmArchiveBuilder<'a> {
-    fn llvm_archive_kind(&self) -> Result<ArchiveKind, &str> {
+    fn build_with_llvm(&mut self) -> io::Result<bool> {
         let kind = &*self.sess.target.archive_format;
-        kind.parse().map_err(|_| kind)
-    }
+        let kind = kind.parse::<ArchiveKind>().map_err(|_| kind).unwrap_or_else(|kind| {
+            self.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
+        });
 
-    fn build_with_llvm(&mut self, kind: ArchiveKind) -> io::Result<bool> {
         let mut additions = mem::take(&mut self.additions);
         let mut strings = Vec::new();
         let mut members = Vec::new();
