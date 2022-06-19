@@ -448,6 +448,10 @@ impl server::TokenStream for Rustc<'_, '_> {
         // We don't use `TokenStream::from_ast` as the tokenstream currently cannot
         // be recovered in the general case.
         match &expr.kind {
+            ast::ExprKind::Lit(l) if l.token.kind == token::Bool => {
+                Ok(tokenstream::TokenTree::token(token::Ident(l.token.symbol, false), l.span)
+                    .into())
+            }
             ast::ExprKind::Lit(l) => {
                 Ok(tokenstream::TokenTree::token(token::Literal(l.token), l.span).into())
             }
