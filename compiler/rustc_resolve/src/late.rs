@@ -758,7 +758,10 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 // We don't need to deal with patterns in parameters, because
                 // they are not possible for foreign or bodiless functions.
                 self.with_lifetime_rib(
-                    LifetimeRibKind::AnonymousPassThrough(fn_id, false),
+                    LifetimeRibKind::AnonymousCreateParameter {
+                        binder: fn_id,
+                        report_in_path: false,
+                    },
                     |this| walk_list!(this, visit_param, &sig.decl.inputs),
                 );
                 self.with_lifetime_rib(
@@ -792,18 +795,13 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         // generic parameters.  This is especially useful for `async fn`, where
                         // these fresh generic parameters can be applied to the opaque `impl Trait`
                         // return type.
-                        let rib = if async_node_id.is_some() {
-                            // Only emit a hard error for `async fn`, since this kind of
-                            // elision has always been allowed in regular `fn`s.
+                        this.with_lifetime_rib(
                             LifetimeRibKind::AnonymousCreateParameter {
                                 binder: fn_id,
-                                report_in_path: true,
-                            }
-                        } else {
-                            LifetimeRibKind::AnonymousPassThrough(fn_id, false)
-                        };
-                        this.with_lifetime_rib(
-                            rib,
+                                // Only emit a hard error for `async fn`, since this kind of
+                                // elision has always been allowed in regular `fn`s.
+                                report_in_path: async_node_id.is_some(),
+                            },
                             // Add each argument to the rib.
                             |this| this.resolve_params(&declaration.inputs),
                         );

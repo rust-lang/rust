@@ -11,7 +11,10 @@ trait Foo {
 fn foo(x: &impl Foo<Item<'_> = u32>) { }
                        //~^ ERROR `'_` cannot be used here [E0637]
 
+// Ok: the anonymous lifetime is bound to the function.
 fn bar(x: &impl for<'a> Foo<Item<'a> = &'_ u32>) { }
-                                      //~^ ERROR missing lifetime specifier
+
+// Ok: the anonymous lifetime is bound to the function.
+fn baz(x: &impl for<'a> Foo<Item<'a> = &u32>) { }
 
 fn main() {}
