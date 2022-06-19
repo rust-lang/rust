@@ -122,8 +122,10 @@ impl Condvar {
     /// let condvar = Condvar::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     #[must_use]
-    pub fn new() -> Condvar {
+    #[inline]
+    pub const fn new() -> Condvar {
         Condvar { inner: sys::Condvar::new() }
     }
 
