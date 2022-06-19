@@ -1119,8 +1119,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             if obligation.is_const() {
                 match candidate {
                     // const impl
-                    ImplCandidate(def_id)
-                        if tcx.impl_constness(def_id) == hir::Constness::Const => {}
+                    ImplCandidate(def_id) if tcx.constness(def_id) == hir::Constness::Const => {}
                     // const param
                     ParamCandidate(trait_pred) if trait_pred.is_const_if_const() => {}
                     // auto trait impl
