@@ -36,7 +36,15 @@ impl flags::Release {
 
         let today = date_iso(sh)?;
         let commit = cmd!(sh, "git rev-parse HEAD").read()?;
-        let changelog_n = sh.read_dir(changelog_dir.as_path())?.len();
+        let changelog_n = sh
+            .read_dir(changelog_dir.as_path())?
+            .into_iter()
+            .filter_map(|p| p.file_stem().map(|s| s.to_string_lossy().to_string()))
+            .filter_map(|s| s.splitn(5, '-').last().map(|n| n.replace('-', ".")))
+            .filter_map(|s| s.parse::<f32>().ok())
+            .map(|n| 1 + n.floor() as usize)
+            .max()
+            .unwrap_or_default();
 
         for adoc in [
             "manual.adoc",
