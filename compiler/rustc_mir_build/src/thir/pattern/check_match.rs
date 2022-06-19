@@ -803,7 +803,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     let mut suggestion = None;
     let sm = cx.tcx.sess.source_map();
     match arms {
-        [] if sp.ctxt() == expr_span.ctxt() => {
+        [] if sp.eq_ctxt(expr_span) => {
             // Get the span for the empty match body `{}`.
             let (indentation, more) = if let Some(snippet) = sm.indentation_before(sp) {
                 (format!("\n{}", snippet), "    ")
@@ -830,7 +830,7 @@ fn non_exhaustive_match<'p, 'tcx>(
                 " ".to_string()
             };
             let comma = if matches!(only.body.kind, hir::ExprKind::Block(..))
-                && only.span.ctxt() == only.body.span.ctxt()
+                && only.span.eq_ctxt(only.body.span)
             {
                 ""
             } else {
@@ -841,10 +841,10 @@ fn non_exhaustive_match<'p, 'tcx>(
                 format!("{}{}{} => todo!()", comma, pre_indentation, pattern),
             ));
         }
-        [.., prev, last] if prev.span.ctxt() == last.span.ctxt() => {
+        [.., prev, last] if prev.span.eq_ctxt(last.span) => {
             if let Ok(snippet) = sm.span_to_snippet(prev.span.between(last.span)) {
                 let comma = if matches!(last.body.kind, hir::ExprKind::Block(..))
-                    && last.span.ctxt() == last.body.span.ctxt()
+                    && last.span.eq_ctxt(last.body.span)
                 {
                     ""
                 } else {
