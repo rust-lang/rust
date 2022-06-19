@@ -236,6 +236,7 @@ dependencies = [
  "sysinfo",
  "tar",
  "toml",
+ "walkdir",
  "winapi",
  "xz2",
 ]
