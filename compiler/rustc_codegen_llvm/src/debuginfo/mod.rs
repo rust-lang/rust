@@ -36,9 +36,9 @@ use rustc_target::abi::Size;
 
 use libc::c_uint;
 use smallvec::SmallVec;
+use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::iter;
-use std::lazy::OnceCell;
 use tracing::debug;
 
 mod create_scope_map;

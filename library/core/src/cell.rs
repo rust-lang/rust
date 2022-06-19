@@ -199,6 +199,14 @@ use crate::mem;
 use crate::ops::{CoerceUnsized, Deref, DerefMut};
 use crate::ptr::{self, NonNull};
 
+mod lazy;
+mod once;
+
+#[unstable(feature = "once_cell", issue = "74465")]
+pub use lazy::LazyCell;
+#[unstable(feature = "once_cell", issue = "74465")]
+pub use once::OnceCell;
+
 /// A mutable memory location.
 ///
 /// # Examples

@@ -18,9 +18,9 @@ use std::path::{Path, PathBuf};
 use tracing::{instrument, trace};
 
 #[cfg(not(parallel_compiler))]
-use std::lazy::Lazy;
+use std::cell::LazyCell as Lazy;
 #[cfg(parallel_compiler)]
-use std::lazy::SyncLazy as Lazy;
+use std::sync::LazyLock as Lazy;
 
 #[cfg(parallel_compiler)]
 use intl_memoizer::concurrent::IntlLangMemoizer;

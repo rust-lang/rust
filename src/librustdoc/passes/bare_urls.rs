@@ -9,8 +9,8 @@ use core::ops::Range;
 use pulldown_cmark::{Event, Parser, Tag};
 use regex::Regex;
 use rustc_errors::Applicability;
-use std::lazy::SyncLazy;
 use std::mem;
+use std::sync::LazyLock;
 
 pub(crate) const CHECK_BARE_URLS: Pass = Pass {
     name: "check-bare-urls",
@@ -18,7 +18,7 @@ pub(crate) const CHECK_BARE_URLS: Pass = Pass {
     description: "detects URLs that are not hyperlinks",
 };
 
-static URL_REGEX: SyncLazy<Regex> = SyncLazy::new(|| {
+static URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
         r"https?://",                          // url scheme
         r"([-a-zA-Z0-9@:%._\+~#=]{2,256}\.)+", // one or more subdomains

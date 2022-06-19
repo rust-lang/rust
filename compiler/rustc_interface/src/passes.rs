@@ -44,11 +44,11 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
-use std::lazy::SyncLazy;
 use std::marker::PhantomPinned;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::rc::Rc;
+use std::sync::LazyLock;
 use std::{env, fs, iter};
 
 pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
@@ -774,7 +774,7 @@ pub fn prepare_outputs(
     Ok(outputs)
 }
 
-pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
+pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
     proc_macro_decls::provide(providers);
@@ -799,7 +799,7 @@ pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     *providers
 });
 
-pub static DEFAULT_EXTERN_QUERY_PROVIDERS: SyncLazy<ExternProviders> = SyncLazy::new(|| {
+pub static DEFAULT_EXTERN_QUERY_PROVIDERS: LazyLock<ExternProviders> = LazyLock::new(|| {
     let mut extern_providers = ExternProviders::default();
     rustc_metadata::provide_extern(&mut extern_providers);
     rustc_codegen_ssa::provide_extern(&mut extern_providers);
