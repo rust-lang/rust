@@ -57,7 +57,7 @@ pub trait Printer<'tcx>: Sized {
         self.default_print_impl_path(impl_def_id, substs, self_ty, trait_ref)
     }
 
-    fn print_region(self, region: ty::Region<'_>) -> Result<Self::Region, Self::Error>;
+    fn print_region(self, region: ty::Region<'tcx>) -> Result<Self::Region, Self::Error>;
 
     fn print_type(self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error>;
 
@@ -291,7 +291,7 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
     characteristic_def_id_of_type_cached(ty, &mut SsoHashSet::new())
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Region<'_> {
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Region<'tcx> {
     type Output = P::Region;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {

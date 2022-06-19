@@ -82,7 +82,7 @@ impl<'tcx> GenericArgKind<'tcx> {
             GenericArgKind::Lifetime(lt) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*lt.0.0) & TAG_MASK, 0);
-                (REGION_TAG, lt.0.0 as *const ty::RegionKind as usize)
+                (REGION_TAG, lt.0.0 as *const ty::RegionKind<'tcx> as usize)
             }
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
@@ -153,7 +153,7 @@ impl<'tcx> GenericArg<'tcx> {
         unsafe {
             match ptr & TAG_MASK {
                 REGION_TAG => GenericArgKind::Lifetime(ty::Region(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const ty::RegionKind),
+                    &*((ptr & !TAG_MASK) as *const ty::RegionKind<'tcx>),
                 ))),
                 TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const WithStableHash<ty::TyS<'tcx>>),
