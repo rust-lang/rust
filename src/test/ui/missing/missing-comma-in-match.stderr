@@ -5,6 +5,8 @@ LL |         &None => 1
    |                   - help: missing a comma here to end this `match` arm
 LL |         &Some(2) => { 3 }
    |                  ^^ expected one of `,`, `.`, `?`, `}`, or an operator
+   |
+   = help: closures are written `|a, b| a + b` and greater-than-or-equal is `>=`.
 
 error: aborting due to previous error
 
