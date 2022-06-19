@@ -32,9 +32,9 @@ LL | enum ABC {
 error: fields `b` and `c` are never read
   --> $DIR/lint-dead-code-4.rs:39:9
    |
-LL | enum IJK {
-   |      --- fields in this enum
-...
+LL |     J {
+   |     - fields in this variant
+LL |         a: String,
 LL |         b: i32,
    |         ^
 LL |         c: i32,

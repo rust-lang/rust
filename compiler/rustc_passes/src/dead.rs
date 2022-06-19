@@ -10,14 +10,12 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Node, PatKind, TyKind};
-use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
 use std::mem;
 
 // Any local node that may call something in its body block should be
@@ -647,41 +645,16 @@ struct DeadVisitor<'tcx> {
 }
 
 impl<'tcx> DeadVisitor<'tcx> {
-    fn should_warn_about_item(&mut self, item: &hir::Item<'_>) -> bool {
-        let should_warn = matches!(
-            item.kind,
-            hir::ItemKind::Static(..)
-                | hir::ItemKind::Const(..)
-                | hir::ItemKind::Fn(..)
-                | hir::ItemKind::TyAlias(..)
-                | hir::ItemKind::Enum(..)
-                | hir::ItemKind::Struct(..)
-                | hir::ItemKind::Union(..)
-        );
-        should_warn && !self.symbol_is_live(item.def_id)
-    }
-
-    fn should_warn_about_field(&mut self, field: &hir::FieldDef<'_>) -> bool {
-        let def_id = self.tcx.hir().local_def_id(field.hir_id);
-        let field_type = self.tcx.type_of(def_id);
-        !field.is_positional()
-            && !self.symbol_is_live(def_id)
-            && !field_type.is_phantom_data()
-            && !has_allow_dead_code_or_lang_attr(self.tcx, field.hir_id)
-    }
-
-    fn should_warn_about_variant(&mut self, variant: &hir::Variant<'_>) -> bool {
-        let def_id = self.tcx.hir().local_def_id(variant.id);
-        !self.symbol_is_live(def_id) && !has_allow_dead_code_or_lang_attr(self.tcx, variant.id)
-    }
-
-    fn should_warn_about_foreign_item(&mut self, fi: &hir::ForeignItem<'_>) -> bool {
-        !self.symbol_is_live(fi.def_id) && !has_allow_dead_code_or_lang_attr(self.tcx, fi.hir_id())
-    }
-
-    // id := HIR id of an item's definition.
-    fn symbol_is_live(&mut self, def_id: LocalDefId) -> bool {
-        self.live_symbols.contains(&def_id)
+    fn should_warn_about_field(&mut self, field: &ty::FieldDef) -> bool {
+        if self.live_symbols.contains(&field.did.expect_local()) {
+            return false;
+        }
+        let is_positional = field.name.as_str().starts_with(|c: char| c.is_ascii_digit());
+        if is_positional {
+            return false;
+        }
+        let field_type = self.tcx.type_of(field.did);
+        !field_type.is_phantom_data()
     }
 
     fn warn_multiple_dead_codes(
@@ -790,143 +763,36 @@ impl<'tcx> DeadVisitor<'tcx> {
     }
 
     fn warn_dead_code(&mut self, id: LocalDefId, participle: &str) {
-        if self.tcx.item_name(id.to_def_id()).as_str().starts_with('_') {
-            return;
-        }
         self.warn_multiple_dead_codes(&[id], participle, None);
     }
-}
 
-impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
-    type NestedFilter = nested_filter::All;
-
-    /// Walk nested items in place so that we don't report dead-code
-    /// on inner functions when the outer function is already getting
-    /// an error. We could do this also by checking the parents, but
-    /// this is how the code is setup and it seems harmless enough.
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        if self.should_warn_about_item(item) {
-            // For most items, we want to highlight its identifier
-            let participle = match item.kind {
-                hir::ItemKind::Struct(..) => "constructed", // Issue #52325
-                _ => "used",
-            };
-            self.warn_dead_code(item.def_id, participle);
-        } else {
-            // Only continue if we didn't warn
-            intravisit::walk_item(self, item);
+    fn check_definition(&mut self, def_id: LocalDefId) {
+        if self.live_symbols.contains(&def_id) {
+            return;
         }
-    }
-
-    // This visitor should only visit a single module at a time.
-    fn visit_mod(&mut self, _: &'tcx hir::Mod<'tcx>, _: Span, _: hir::HirId) {}
-
-    fn visit_enum_def(
-        &mut self,
-        enum_definition: &'tcx hir::EnumDef<'tcx>,
-        generics: &'tcx hir::Generics<'tcx>,
-        item_id: hir::HirId,
-        _: Span,
-    ) {
-        intravisit::walk_enum_def(self, enum_definition, generics, item_id);
-        let dead_variants = enum_definition
-            .variants
-            .iter()
-            .filter_map(|variant| {
-                if self.should_warn_about_variant(&variant) {
-                    Some(DeadVariant {
-                        def_id: self.tcx.hir().local_def_id(variant.id),
-                        name: variant.ident.name,
-                        level: self.tcx.lint_level_at_node(lint::builtin::DEAD_CODE, variant.id).0,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect();
-        self.warn_dead_fields_and_variants(item_id.expect_owner(), "constructed", dead_variants)
-    }
-
-    fn visit_variant(
-        &mut self,
-        variant: &'tcx hir::Variant<'tcx>,
-        g: &'tcx hir::Generics<'tcx>,
-        id: hir::HirId,
-    ) {
-        if !self.should_warn_about_variant(&variant) {
-            intravisit::walk_variant(self, variant, g, id);
+        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+        if has_allow_dead_code_or_lang_attr(self.tcx, hir_id) {
+            return;
         }
-    }
-
-    fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem<'tcx>) {
-        if self.should_warn_about_foreign_item(fi) {
-            self.warn_dead_code(fi.def_id, "used");
+        let Some(name) = self.tcx.opt_item_name(def_id.to_def_id()) else {
+            return
+        };
+        if name.as_str().starts_with('_') {
+            return;
         }
-        intravisit::walk_foreign_item(self, fi);
-    }
-
-    fn visit_variant_data(
-        &mut self,
-        def: &'tcx hir::VariantData<'tcx>,
-        _: Symbol,
-        _: &hir::Generics<'_>,
-        id: hir::HirId,
-        _: rustc_span::Span,
-    ) {
-        intravisit::walk_struct_def(self, def);
-        let dead_fields = def
-            .fields()
-            .iter()
-            .filter_map(|field| {
-                if self.should_warn_about_field(&field) {
-                    Some(DeadVariant {
-                        def_id: self.tcx.hir().local_def_id(field.hir_id),
-                        name: field.ident.name,
-                        level: self
-                            .tcx
-                            .lint_level_at_node(lint::builtin::DEAD_CODE, field.hir_id)
-                            .0,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect();
-        self.warn_dead_fields_and_variants(self.tcx.hir().local_def_id(id), "read", dead_fields)
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        match impl_item.kind {
-            hir::ImplItemKind::Const(_, body_id) => {
-                if !self.symbol_is_live(impl_item.def_id) {
-                    self.warn_dead_code(impl_item.def_id, "used");
-                }
-                self.visit_nested_body(body_id)
-            }
-            hir::ImplItemKind::Fn(_, body_id) => {
-                if !self.symbol_is_live(impl_item.def_id) {
-                    self.warn_dead_code(impl_item.def_id, "used");
-                }
-                self.visit_nested_body(body_id)
-            }
-            hir::ImplItemKind::TyAlias(..) => {}
-        }
-    }
-
-    // Overwrite so that we don't warn the trait item itself.
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        match trait_item.kind {
-            hir::TraitItemKind::Const(_, Some(body_id))
-            | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) => {
-                self.visit_nested_body(body_id)
-            }
-            hir::TraitItemKind::Const(_, None)
-            | hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
-            | hir::TraitItemKind::Type(..) => {}
+        match self.tcx.def_kind(def_id) {
+            DefKind::AssocConst
+            | DefKind::AssocFn
+            | DefKind::Fn
+            | DefKind::Static(_)
+            | DefKind::Const
+            | DefKind::TyAlias
+            | DefKind::Enum
+            | DefKind::Union
+            | DefKind::ForeignTy => self.warn_dead_code(def_id, "used"),
+            DefKind::Struct => self.warn_dead_code(def_id, "constructed"),
+            DefKind::Variant | DefKind::Field => bug!("should be handled specially"),
+            _ => {}
         }
     }
 }
@@ -934,10 +800,65 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
 fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
     let (live_symbols, ignored_derived_traits) = tcx.live_symbols_and_ignored_derived_traits(());
     let mut visitor = DeadVisitor { tcx, live_symbols, ignored_derived_traits };
-    let (module, _, module_id) = tcx.hir().get_module(module);
-    // Do not use an ItemLikeVisitor since we may want to skip visiting some items
-    // when a surrounding one is warned against or `_`.
-    intravisit::walk_mod(&mut visitor, module, module_id);
+
+    let module_items = tcx.hir_module_items(module);
+
+    for item in module_items.items() {
+        if !live_symbols.contains(&item.def_id) {
+            let parent = tcx.local_parent(item.def_id);
+            if parent != module && !live_symbols.contains(&parent) {
+                // We already have diagnosed something.
+                continue;
+            }
+            visitor.check_definition(item.def_id);
+            continue;
+        }
+
+        let def_kind = tcx.def_kind(item.def_id);
+        if let DefKind::Struct | DefKind::Union | DefKind::Enum = def_kind {
+            let adt = tcx.adt_def(item.def_id);
+            let mut dead_variants = Vec::new();
+
+            for variant in adt.variants() {
+                let def_id = variant.def_id.expect_local();
+                if !live_symbols.contains(&def_id) {
+                    // Record to group diagnostics.
+                    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+                    let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
+                    dead_variants.push(DeadVariant { def_id, name: variant.name, level });
+                    continue;
+                }
+
+                let dead_fields = variant
+                    .fields
+                    .iter()
+                    .filter_map(|field| {
+                        let def_id = field.did.expect_local();
+                        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+                        if visitor.should_warn_about_field(&field) {
+                            let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
+                            Some(DeadVariant { def_id, name: field.name, level })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                visitor.warn_dead_fields_and_variants(def_id, "read", dead_fields)
+            }
+
+            visitor.warn_dead_fields_and_variants(item.def_id, "constructed", dead_variants);
+        }
+    }
+
+    for impl_item in module_items.impl_items() {
+        visitor.check_definition(impl_item.def_id);
+    }
+
+    for foreign_item in module_items.foreign_items() {
+        visitor.check_definition(foreign_item.def_id);
+    }
+
+    // We do not warn trait items.
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
