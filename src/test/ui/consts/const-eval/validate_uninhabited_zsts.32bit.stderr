@@ -1,3 +1,15 @@
+warning: the type `!` does not permit zero-initialization
+  --> $DIR/validate_uninhabited_zsts.rs:4:14
+   |
+LL |     unsafe { std::mem::transmute(()) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              this code causes undefined behavior when executed
+   |              help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: `#[warn(invalid_value)]` on by default
+   = note: the `!` type has no valid value
+
 error[E0080]: evaluation of constant value failed
   --> $DIR/validate_uninhabited_zsts.rs:4:14
    |
@@ -18,18 +30,6 @@ LL | const BAR: [empty::Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 0, align: 1) {}
-
-warning: the type `!` does not permit zero-initialization
-  --> $DIR/validate_uninhabited_zsts.rs:4:14
-   |
-LL |     unsafe { std::mem::transmute(()) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^
-   |              |
-   |              this code causes undefined behavior when executed
-   |              help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
-   |
-   = note: `#[warn(invalid_value)]` on by default
-   = note: the `!` type has no valid value
 
 warning: the type `empty::Empty` does not permit zero-initialization
   --> $DIR/validate_uninhabited_zsts.rs:23:42

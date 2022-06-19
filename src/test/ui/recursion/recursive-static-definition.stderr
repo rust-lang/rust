@@ -10,7 +10,14 @@ note: ...which requires const-evaluating + checking `FOO`...
 LL | pub static FOO: u32 = FOO;
    |                       ^^^
    = note: ...which again requires const-evaluating + checking `FOO`, completing the cycle
-   = note: cycle used when running analysis passes on this crate
+note: cycle used when linting top-level module
+  --> $DIR/recursive-static-definition.rs:1:1
+   |
+LL | / pub static FOO: u32 = FOO;
+LL | |
+LL | |
+LL | | fn main() {}
+   | |____________^
 
 error: aborting due to previous error
 

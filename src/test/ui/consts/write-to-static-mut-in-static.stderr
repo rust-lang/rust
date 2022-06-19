@@ -16,7 +16,17 @@ note: ...which requires const-evaluating + checking `C`...
 LL | pub static mut C: u32 = unsafe { C = 1; 0 };
    |                                  ^^^^^
    = note: ...which again requires const-evaluating + checking `C`, completing the cycle
-   = note: cycle used when running analysis passes on this crate
+note: cycle used when linting top-level module
+  --> $DIR/write-to-static-mut-in-static.rs:1:1
+   |
+LL | / pub static mut A: u32 = 0;
+LL | | pub static mut B: () = unsafe { A = 1; };
+LL | |
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
 
 error: aborting due to 2 previous errors
 
