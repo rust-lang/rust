@@ -821,16 +821,17 @@ fn non_exhaustive_match<'p, 'tcx>(
             ));
         }
         [only] => {
-            let pre_indentation = if let (Some(snippet), true) = (
-                sm.indentation_before(only.span),
-                sm.is_multiline(sp.shrink_to_hi().with_hi(only.span.lo())),
-            ) {
-                format!("\n{}", snippet)
+            let (pre_indentation, is_multiline) = if let Some(snippet) = sm.indentation_before(only.span)
+                && let Ok(with_trailing) = sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
+                && sm.is_multiline(with_trailing)
+            {
+                (format!("\n{}", snippet), true)
             } else {
-                " ".to_string()
+                (" ".to_string(), false)
             };
             let comma = if matches!(only.body.kind, hir::ExprKind::Block(..))
                 && only.span.eq_ctxt(only.body.span)
+                && is_multiline
             {
                 ""
             } else {
