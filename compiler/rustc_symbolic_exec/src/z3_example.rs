@@ -11,7 +11,7 @@ pub fn example_sat_z3() -> () {
 
     // Create three logical expressions we want to create a conjunction with
     let xand1 = z3_builder.gen_eq("x1", "x2");
-    z3_builder.gen_const("x_const", 5);
+    z3_builder.gen_const_int("x_const", 5);
     let xand2 = z3_builder.gen_eq("x1", "x_const");
     let xge1 = z3_builder.gen_ge("x1", "x2");
 
@@ -39,7 +39,7 @@ pub fn example_unsat_z3() -> () {
 
     // Create three logical expressions we want to create a conjunction with
     let xand1 = z3_builder.gen_eq("x1", "x2");
-    z3_builder.gen_const("x_const", 5);
+    z3_builder.gen_const_int("x_const", 5);
     let xand2 = z3_builder.gen_eq("x1", "x_const");
     let xge1 = z3_builder.gen_gt("x1", "x2");
 

@@ -16,6 +16,10 @@ impl Z3Builder<'_> {
         Z3Builder { i_bool: 0, i_int: 0, i_const: 0, solver }
     }
 
+    pub fn gen_bool_var<'a>(&'a self, x_name: &'a str) -> ast::Bool<'a> {
+        ast::Bool::new_const(self.solver.get_context(), x_name)
+    }
+
     pub fn gen_land<'a>(&'a self, x1_name: &'a str, x2_name: &'a str) -> ast::Bool<'a> {
         let x1 = ast::Bool::new_const(self.solver.get_context(), x1_name);
         let x2 = ast::Bool::new_const(self.solver.get_context(), x2_name);
@@ -88,24 +92,31 @@ impl Z3Builder<'_> {
         ast::Int::add(self.solver.get_context(), &[&x1, &x2])
     }
 
-    pub fn gen_const<'a>(&'a self, x1_name: &'a str, x2: i32) -> () {
-        let x1 = ast::Int::new_const(self.solver.get_context(), x1_name);
+    pub fn gen_const_int<'a>(&'a self, x_name: &'a str, x_int: i32) -> () {
+        let x = ast::Int::new_const(self.solver.get_context(), x_name);
         let unnamed_const =
-            ast::Int::from_bv(&ast::BV::from_i64(self.solver.get_context(), x2.into(), 32), true);
+            ast::Int::from_bv(&ast::BV::from_i64(self.solver.get_context(), x_int.into(), 32), true);
 
-        self.add_assertion(&x1._eq(&unnamed_const));
+        self.add_assertion(&x._eq(&unnamed_const));
     }
 
-    pub fn gen_int<'a>(&'a self, x1_name: &'a str, x1_bool: ast::Int<'a>) -> () {
-        let x1 = ast::Int::new_const(self.solver.get_context(), x1_name);
+    pub fn gen_const_bool<'a>(&'a self, x_name: &'a str, x_bool: bool) -> () {
+        let x = ast::Bool::new_const(self.solver.get_context(), x_name);
+        let unnamed_const = ast::Bool::from_bool(self.solver.get_context(), x_bool);
 
-        self.add_assertion(&x1._eq(&x1_bool));
+        self.add_assertion(&x._eq(&unnamed_const));
     }
 
-    pub fn gen_bool<'a>(&'a self, x1_name: &'a str, x1_bool: ast::Bool<'a>) -> () {
-        let x1 = ast::Bool::new_const(self.solver.get_context(), x1_name);
+    pub fn gen_int<'a>(&'a self, x_name: &'a str, x_int: ast::Int<'a>) -> () {
+        let x = ast::Int::new_const(self.solver.get_context(), x_name);
 
-        self.add_assertion(&x1._eq(&x1_bool));
+        self.add_assertion(&x._eq(&x_int));
+    }
+
+    pub fn gen_bool<'a>(&'a self, x_name: &'a str, x_bool: ast::Bool<'a>) -> () {
+        let x = ast::Bool::new_const(self.solver.get_context(), x_name);
+
+        self.add_assertion(&x._eq(&x_bool));
     }
 
     pub fn check_bounds<'a>(&'a self, x1: &ast::Int<'a>) -> ast::Bool<'a> {
