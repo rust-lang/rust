@@ -121,7 +121,7 @@ fn complete_methods(
     receiver.iterate_method_candidates(
         ctx.db,
         &ctx.scope,
-        &ctx.traits_in_scope().0,
+        &ctx.traits_in_scope(),
         Some(ctx.module),
         None,
         |func| {

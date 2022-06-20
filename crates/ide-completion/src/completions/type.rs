@@ -1,7 +1,6 @@
 //! Completion of names from the current scope in type position.
 
 use hir::{HirDisplay, ScopeDef};
-use ide_db::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{
@@ -52,9 +51,8 @@ pub(crate) fn complete_type_path(
     match qualified {
         Qualified::Infer => ctx
             .traits_in_scope()
-            .0
-            .into_iter()
-            .flat_map(|it| hir::Trait::from(it).items(ctx.sema.db))
+            .iter()
+            .flat_map(|&it| hir::Trait::from(it).items(ctx.sema.db))
             .for_each(|item| add_assoc_item(acc, item)),
         Qualified::With { resolution: None, .. } => {}
         Qualified::With { resolution: Some(resolution), .. } => {
@@ -88,17 +86,9 @@ pub(crate) fn complete_type_path(
                     // XXX: For parity with Rust bug #22519, this does not complete Ty::AssocType.
                     // (where AssocType is defined on a trait, not an inherent impl)
 
-                    ty.iterate_path_candidates(
-                        ctx.db,
-                        &ctx.scope,
-                        &ctx.traits_in_scope().0,
-                        Some(ctx.module),
-                        None,
-                        |item| {
-                            add_assoc_item(acc, item);
-                            None::<()>
-                        },
-                    );
+                    ctx.iterate_path_candidates(&ty, |item| {
+                        add_assoc_item(acc, item);
+                    });
 
                     // Iterate assoc types separately
                     ty.iterate_assoc_items(ctx.db, ctx.krate, |item| {
@@ -121,22 +111,9 @@ pub(crate) fn complete_type_path(
                         _ => return,
                     };
 
-                    let mut seen = FxHashSet::default();
-                    ty.iterate_path_candidates(
-                        ctx.db,
-                        &ctx.scope,
-                        &ctx.traits_in_scope().0,
-                        Some(ctx.module),
-                        None,
-                        |item| {
-                            // We might iterate candidates of a trait multiple times here, so deduplicate
-                            // them.
-                            if seen.insert(item) {
-                                add_assoc_item(acc, item);
-                            }
-                            None::<()>
-                        },
-                    );
+                    ctx.iterate_path_candidates(&ty, |item| {
+                        add_assoc_item(acc, item);
+                    });
                 }
                 _ => (),
             }

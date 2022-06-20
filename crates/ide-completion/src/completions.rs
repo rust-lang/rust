@@ -36,7 +36,7 @@ use crate::{
         const_::render_const,
         function::{render_fn, render_method},
         literal::{render_struct_literal, render_variant_lit},
-        macro_::{render_macro, render_macro_pat},
+        macro_::render_macro,
         pattern::{render_struct_pat, render_variant_pat},
         render_field, render_path_resolution, render_pattern_resolution, render_tuple_field,
         type_alias::{render_type_alias, render_type_alias_with_eq},
@@ -101,15 +101,15 @@ impl Completions {
     pub(crate) fn add_keyword_snippet_expr(
         &mut self,
         ctx: &CompletionContext,
+        incomplete_let: bool,
         kw: &str,
         snippet: &str,
-        incomplete_let: bool,
     ) {
         let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
 
         match ctx.config.snippet_cap {
             Some(cap) => {
-                if snippet.ends_with('}') && incomplete_let {
+                if incomplete_let && snippet.ends_with('}') {
                     // complete block expression snippets with a trailing semicolon, if inside an incomplete let
                     cov_mark::hit!(let_semi);
                     item.insert_snippet(cap, format!("{};", snippet));
@@ -181,6 +181,17 @@ impl Completions {
         );
     }
 
+    pub(crate) fn add_enum_variants(
+        &mut self,
+        ctx: &CompletionContext,
+        path_ctx: &PathCompletionCtx,
+        e: hir::Enum,
+    ) {
+        e.variants(ctx.db)
+            .into_iter()
+            .for_each(|variant| self.add_enum_variant(ctx, path_ctx, variant, None));
+    }
+
     pub(crate) fn add_module(
         &mut self,
         ctx: &CompletionContext,
@@ -212,29 +223,6 @@ impl Completions {
             render_macro(
                 RenderContext::new(ctx).private_editable(is_private_editable),
                 path_ctx,
-                local_name,
-                mac,
-            )
-            .build(),
-        );
-    }
-
-    pub(crate) fn add_macro_pat(
-        &mut self,
-        ctx: &CompletionContext,
-        pattern_ctx: &PatternContext,
-        mac: hir::Macro,
-        local_name: hir::Name,
-    ) {
-        let is_private_editable = match ctx.is_visible(&mac) {
-            Visible::Yes => false,
-            Visible::Editable => true,
-            Visible::No => return,
-        };
-        self.add(
-            render_macro_pat(
-                RenderContext::new(ctx).private_editable(is_private_editable),
-                pattern_ctx,
                 local_name,
                 mac,
             )

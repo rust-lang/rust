@@ -371,7 +371,9 @@ impl<'a> CompletionContext<'a> {
     where
         I: hir::HasVisibility + hir::HasAttrs + hir::HasCrate + Copy,
     {
-        self.is_visible_impl(&item.visibility(self.db), &item.attrs(self.db), item.krate(self.db))
+        let vis = item.visibility(self.db);
+        let attrs = item.attrs(self.db);
+        self.is_visible_impl(&vis, &attrs, item.krate(self.db))
     }
 
     pub(crate) fn is_scope_def_hidden(&self, scope_def: ScopeDef) -> bool {
@@ -391,6 +393,7 @@ impl<'a> CompletionContext<'a> {
             _ => false,
         }
     }
+
     /// Whether the given trait is an operator trait or not.
     pub(crate) fn is_ops_trait(&self, trait_: hir::Trait) -> bool {
         match trait_.attrs(self.db).lang() {
@@ -406,6 +409,29 @@ impl<'a> CompletionContext<'a> {
             traits_in_scope.0.remove(&drop.into());
         }
         traits_in_scope
+    }
+
+    pub(crate) fn iterate_path_candidates(
+        &self,
+        ty: &hir::Type,
+        mut cb: impl FnMut(hir::AssocItem),
+    ) {
+        let mut seen = FxHashSet::default();
+        ty.iterate_path_candidates(
+            self.db,
+            &self.scope,
+            &self.traits_in_scope(),
+            Some(self.module),
+            None,
+            |item| {
+                // We might iterate candidates of a trait multiple times here, so deduplicate
+                // them.
+                if seen.insert(item) {
+                    cb(item)
+                }
+                None::<()>
+            },
+        );
     }
 
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items.

@@ -9,12 +9,6 @@ use crate::{
     CompletionContext, CompletionItem, CompletionItemKind, Completions, SnippetScope,
 };
 
-fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str) -> Builder {
-    let mut item = CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label);
-    item.insert_snippet(cap, snippet);
-    item
-}
-
 pub(crate) fn complete_expr_snippet(
     acc: &mut Completions,
     ctx: &CompletionContext,
@@ -122,6 +116,12 @@ macro_rules! $1 {
         );
         item.add_to(acc);
     }
+}
+
+fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str) -> Builder {
+    let mut item = CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label);
+    item.insert_snippet(cap, snippet);
+    item
 }
 
 fn add_custom_completions(
