@@ -249,7 +249,7 @@ pub(crate) fn rewrite_comment(
     shape: Shape,
     config: &Config,
 ) -> RewriteResult {
-    identify_comment(orig, block_style, shape, config, false)
+    identify_comment(orig.trim_start(), block_style, shape, config, false)
 }
 
 fn identify_comment(
