@@ -195,6 +195,11 @@ const RETURNED: usize = GeneratorSubsts::RETURNED;
 /// Generator has panicked and is poisoned.
 const POISONED: usize = GeneratorSubsts::POISONED;
 
+/// Number of variants to reserve in generator state. Corresponds to
+/// `UNRESUMED` (beginning of a generator) and `RETURNED`/`POISONED`
+/// (end of a generator) states.
+const RESERVED_VARIANTS: usize = 3;
+
 /// A `yield` point in the generator.
 struct SuspensionPoint<'tcx> {
     /// State discriminant used when suspending or resuming at this point.
@@ -345,7 +350,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
             data.statements.extend(self.make_state(state_idx, v, source_info));
             let state = if let Some((resume, mut resume_arg)) = resume {
                 // Yield
-                let state = 3 + self.suspension_points.len();
+                let state = RESERVED_VARIANTS + self.suspension_points.len();
 
                 // The resume arg target location might itself be remapped if its base local is
                 // live across a yield.
@@ -792,7 +797,6 @@ fn compute_layout<'tcx>(
     // Leave empty variants for the UNRESUMED, RETURNED, and POISONED states.
     // In debuginfo, these will correspond to the beginning (UNRESUMED) or end
     // (RETURNED, POISONED) of the function.
-    const RESERVED_VARIANTS: usize = 3;
     let body_span = body.source_scopes[OUTERMOST_SOURCE_SCOPE].span;
     let mut variant_source_info: IndexVec<VariantIdx, SourceInfo> = [
         SourceInfo::outermost(body_span.shrink_to_lo()),
