@@ -90,6 +90,11 @@ pub fn is_terminal(h: &impl AsHandle) -> bool {
 unsafe fn handle_is_console(handle: BorrowedHandle<'_>) -> bool {
     let handle = handle.as_raw_handle();
 
+    // A null handle means the process has no console.
+    if handle.is_null() {
+        return false;
+    }
+
     let mut out = 0;
     if c::GetConsoleMode(handle, &mut out) != 0 {
         // False positives aren't possible. If we got a console then we definitely have a console.
@@ -102,7 +107,10 @@ unsafe fn handle_is_console(handle: BorrowedHandle<'_>) -> bool {
     // trust the negative.
     for std_handle in [c::STD_INPUT_HANDLE, c::STD_OUTPUT_HANDLE, c::STD_ERROR_HANDLE] {
         let std_handle = c::GetStdHandle(std_handle);
-        if std_handle != handle && c::GetConsoleMode(std_handle, &mut out) != 0 {
+        if !std_handle.is_null()
+            && std_handle != handle
+            && c::GetConsoleMode(std_handle, &mut out) != 0
+        {
             return false;
         }
     }
