@@ -523,46 +523,7 @@ impl TokenStreamBuilder {
     }
 
     pub fn push<T: Into<TokenStream>>(&mut self, stream: T) {
-        let mut stream = stream.into();
-
-        // If `self` is not empty and the last tree within the last stream is a
-        // token tree marked with `Joint`...
-        if let Some(TokenStream(ref mut last_stream_lrc)) = self.0.last_mut()
-            && let Some((TokenTree::Token(last_token), Spacing::Joint)) = last_stream_lrc.last()
-            // ...and `stream` is not empty and the first tree within it is
-            // a token tree...
-            && let TokenStream(ref mut stream_lrc) = stream
-            && let Some((TokenTree::Token(token), spacing)) = stream_lrc.first()
-            // ...and the two tokens can be glued together...
-            && let Some(glued_tok) = last_token.glue(&token)
-        {
-            // ...then do so, by overwriting the last token
-            // tree in `self` and removing the first token tree
-            // from `stream`. This requires using `make_mut()`
-            // on the last stream in `self` and on `stream`,
-            // and in practice this doesn't cause cloning 99.9%
-            // of the time.
-
-            // Overwrite the last token tree with the merged
-            // token.
-            let last_vec_mut = Lrc::make_mut(last_stream_lrc);
-            *last_vec_mut.last_mut().unwrap() = (TokenTree::Token(glued_tok), *spacing);
-
-            // Remove the first token tree from `stream`. (This
-            // is almost always the only tree in `stream`.)
-            let stream_vec_mut = Lrc::make_mut(stream_lrc);
-            stream_vec_mut.remove(0);
-
-            // Don't push `stream` if it's empty -- that could
-            // block subsequent token gluing, by getting
-            // between two token trees that should be glued
-            // together.
-            if !stream.is_empty() {
-                self.0.push(stream);
-            }
-            return;
-        }
-        self.0.push(stream);
+        self.0.push(stream.into());
     }
 
     pub fn build(self) -> TokenStream {
@@ -571,9 +532,9 @@ impl TokenStreamBuilder {
             0 => TokenStream::default(),
             1 => streams.pop().unwrap(),
             _ => {
-                // We are going to extend the first stream in `streams` with
-                // the elements from the subsequent streams. This requires
-                // using `make_mut()` on the first stream, and in practice this
+                // We will extend the first stream in `streams` with the
+                // elements from the subsequent streams. This requires using
+                // `make_mut()` on the first stream, and in practice this
                 // doesn't cause cloning 99.9% of the time.
                 //
                 // One very common use case is when `streams` has two elements,
@@ -586,21 +547,39 @@ impl TokenStreamBuilder {
                 // reallocations (#57735).
                 let num_appends = streams.iter().skip(1).map(|ts| ts.len()).sum();
 
-                // Get the first stream. If it's `None`, create an empty
-                // stream.
+                // Get the first stream, which will become the result stream.
+                // If it's `None`, create an empty stream.
                 let mut iter = streams.drain(..);
-                let mut first_stream_lrc = iter.next().unwrap().0;
+                let mut res_stream_lrc = iter.next().unwrap().0;
 
-                // Append the elements to the first stream, after reserving
-                // space for them.
-                let first_vec_mut = Lrc::make_mut(&mut first_stream_lrc);
-                first_vec_mut.reserve(num_appends);
+                // Append the subsequent elements to the result stream, after
+                // reserving space for them.
+                let res_vec_mut = Lrc::make_mut(&mut res_stream_lrc);
+                res_vec_mut.reserve(num_appends);
                 for stream in iter {
-                    first_vec_mut.extend(stream.0.iter().cloned());
+                    let stream_iter = stream.0.iter().cloned();
+
+                    // If (a) `res_mut_vec` is not empty and the last tree
+                    // within it is a token tree marked with `Joint`, and (b)
+                    // `stream` is not empty and the first tree within it is a
+                    // token tree, and (c) the two tokens can be glued
+                    // together...
+                    if let Some((TokenTree::Token(last_tok), Spacing::Joint)) = res_vec_mut.last()
+                        && let Some((TokenTree::Token(tok), spacing)) = stream.0.first()
+                        && let Some(glued_tok) = last_tok.glue(&tok)
+                    {
+                        // ...then overwrite the last token tree in
+                        // `res_vec_mut` with the glued token, and skip the
+                        // first token tree from `stream`.
+                        *res_vec_mut.last_mut().unwrap() = (TokenTree::Token(glued_tok), *spacing);
+                        res_vec_mut.extend(stream_iter.skip(1));
+                    } else {
+                        // Append all of `stream`.
+                        res_vec_mut.extend(stream_iter);
+                    }
                 }
 
-                // Create the final `TokenStream`.
-                TokenStream(first_stream_lrc)
+                TokenStream(res_stream_lrc)
             }
         }
     }
