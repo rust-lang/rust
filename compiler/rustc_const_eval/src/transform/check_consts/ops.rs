@@ -10,7 +10,8 @@ use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    suggest_constraining_type_param, Adt, Closure, FnDef, FnPtr, Param, TraitPredicate, Ty,
+    suggest_constraining_type_param, Adt, Closure, DefIdTree, FnDef, FnPtr, Param, TraitPredicate,
+    Ty,
 };
 use rustc_middle::ty::{Binder, BoundConstness, ImplPolarity, TraitRef};
 use rustc_session::parse::feature_err;
@@ -299,6 +300,15 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 
                 diag_trait(&mut err, self_ty, tcx.lang_items().deref_trait().unwrap());
                 err
+            }
+            _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentV1Methods) => {
+                struct_span_err!(
+                    ccx.tcx.sess,
+                    span,
+                    E0015,
+                    "cannot call non-const formatting macro in {}s",
+                    ccx.const_kind(),
+                )
             }
             _ => struct_span_err!(
                 ccx.tcx.sess,
