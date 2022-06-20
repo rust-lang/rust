@@ -1,16 +1,27 @@
-error[E0599]: no method named `plus` found for type `u32` in the current scope
+error[E0277]: the trait bound `u32: Plus<Const>` is not satisfied
   --> $DIR/call-const-trait-method-fail.rs:25:7
    |
 LL |     a.plus(b)
-   |       ^^^^ method not found in `u32`
+   |       ^^^^^^^ the trait `Plus<Const>` is not implemented for `u32`
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
-note: `Plus` defines an item `plus`, perhaps you need to implement it
-  --> $DIR/call-const-trait-method-fail.rs:4:1
+note: the trait `Plus<Not>` is implemented for `u32`, but that implementation is not `const`
+  --> $DIR/call-const-trait-method-fail.rs:25:7
    |
-LL | pub trait Plus {
-   | ^^^^^^^^^^^^^^
+LL |     a.plus(b)
+   |       ^^^^^^^
+   = help: the following other types implement trait `Plus<Not>`:
+             <i32 as Plus<Const>>
+             <u32 as Plus<Not>>
+
+error[E0015]: cannot call non-const fn `<u32 as Plus<Const>>::plus` in constant functions
+  --> $DIR/call-const-trait-method-fail.rs:25:7
+   |
+LL |     a.plus(b)
+   |       ^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0599`.
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

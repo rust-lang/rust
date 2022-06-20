@@ -1833,20 +1833,10 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
             let /* mut */ pred = fcx.normalize_associated_types_in(span, pred);
             let hir_node = fcx.tcx.hir().find(id);
 
-            if fcx.constness() == ty::ConstnessArg::Not {
-                struct NotConstFolder<'tcx>(TyCtxt<'tcx>); // TODO justify this hack
-
-                impl<'tcx> ty::TypeFolder<'tcx> for NotConstFolder<'tcx> {
-                    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
-                        self.0
-                    }
-                    fn fold_constness(&mut self, _: ty::ConstnessArg) -> ty::ConstnessArg {
-                        ty::ConstnessArg::Not
-                    }
-                }
-
-                pred = pred.fold_with(&mut NotConstFolder(fcx.tcx))
-            }
+            // TODO
+            /*if fcx.constness() == ty::ConstnessArg::Not {
+                pred = pred.without_const(fcx.tcx)
+            }*/
 
             // only use the span of the predicate clause (#90869)
 

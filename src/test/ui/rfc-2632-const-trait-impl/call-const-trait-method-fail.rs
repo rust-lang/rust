@@ -23,7 +23,8 @@ pub const fn add_i32(a: i32, b: i32) -> i32 {
 
 pub const fn add_u32(a: u32, b: u32) -> u32 {
     a.plus(b)
-    //~^ ERROR no method named `plus` found for type `u32` in the current scope
+    //~^ ERROR the trait bound
+    //~| ERROR cannot call
 }
 
 fn main() {}

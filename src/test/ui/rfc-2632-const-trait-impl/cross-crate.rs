@@ -12,10 +12,10 @@ fn non_const_context() {
 }
 
 const fn const_context() {
-    NonConst.func(); //~ ERROR: cannot call non-const fn
+    NonConst.func(); //~ ERROR: cannot call
     //[gated]~^ ERROR: the trait bound
     Const.func();
-    //[stock]~^ ERROR: cannot call non-const fn
+    //[stock]~^ ERROR: cannot call
 }
 
 fn main() {}

@@ -2155,10 +2155,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.infcx().replace_bound_vars_with_placeholders(obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
 
-        let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
+        let mut impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
 
-        let mut impl_trait_ref = impl_trait_ref.subst(self.tcx(), impl_substs);
-        placeholder_obligation_trait_ref.normalize_constness_equate(self.tcx(), &mut impl_trait_ref);
+        placeholder_obligation_trait_ref.normalize_constness_equate(self.tcx(), &mut impl_substs);
+
+        let impl_trait_ref = impl_trait_ref.subst(self.tcx(), impl_substs);
 
         debug!(?impl_trait_ref);
 

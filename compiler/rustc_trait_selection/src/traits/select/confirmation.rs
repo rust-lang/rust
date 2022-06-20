@@ -48,7 +48,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // when const_trait_impl not enabled, all const predicates are unimplemented
         if obligation.predicate.constness() == ty::ConstnessArg::Const {
             if !self.tcx().features().enabled(sym::const_trait_impl) {
-                return Err(SelectionError::Unimplemented)
+                return Err(SelectionError::Unimplemented);
             }
         }
         // TODO rm

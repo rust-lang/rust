@@ -1843,7 +1843,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 };
                 self.next_const_var(self.tcx.type_of(param.def_id), origin).into()
             }
-            GenericParamDefKind::Constness => self.fcx.constness().into(),
+            // there is no need to require constness even when we are in a const context.
+            // just check if the trait is implemented.
+            GenericParamDefKind::Constness => ty::ConstnessArg::Not.into(),
         })
     }
 

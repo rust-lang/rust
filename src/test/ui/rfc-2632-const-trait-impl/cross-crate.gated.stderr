@@ -1,15 +1,25 @@
-error[E0599]: no method named `func` found for struct `cross_crate::NonConst` in the current scope
-  --> $DIR/cross-crate.rs:10:14
-   |
-LL |     NonConst.func();
-   |              ^^^^ method not found in `cross_crate::NonConst`
-
-error[E0599]: no method named `func` found for struct `cross_crate::NonConst` in the current scope
+error[E0277]: the trait bound `NonConst: MyTrait<Const>` is not satisfied
   --> $DIR/cross-crate.rs:15:14
    |
 LL |     NonConst.func();
-   |              ^^^^ method not found in `cross_crate::NonConst`
+   |              ^^^^^^ the trait `MyTrait<Const>` is not implemented for `NonConst`
+   |
+note: the trait `MyTrait<Not>` is implemented for `NonConst`, but that implementation is not `const`
+  --> $DIR/cross-crate.rs:15:14
+   |
+LL |     NonConst.func();
+   |              ^^^^^^
+   = help: the trait `MyTrait<Not>` is implemented for `NonConst`
+
+error[E0015]: cannot call non-const fn `<NonConst as MyTrait<Const>>::func` in constant functions
+  --> $DIR/cross-crate.rs:15:14
+   |
+LL |     NonConst.func();
+   |              ^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0599`.
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

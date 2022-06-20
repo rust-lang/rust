@@ -816,7 +816,7 @@ impl<'tcx> TraitRef<'tcx> {
     }
 
     // TODO remove this hack!
-    pub fn normalize_constness_equate(&self, tcx: TyCtxt<'tcx>, actual: &mut Self) {
+    pub fn normalize_constness_equate(&self, tcx: TyCtxt<'tcx>, actual: &mut SubstsRef<'tcx>) {
         if self.constness() == ty::ConstnessArg::Not {
             *actual = tcx.mk_substs(actual.iter().filter(|arg| match arg.unpack() {
                 ty::subst::GenericArgKind::Constness(_) => false,
