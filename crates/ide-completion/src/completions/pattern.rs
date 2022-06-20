@@ -88,6 +88,8 @@ pub(crate) fn complete_pattern(
                             has_call_parens: false,
                             has_macro_bang: false,
                             qualified: Qualified::No,
+                            // FIXME
+                            path: syntax::ast::make::ext::ident_path("dummy__"),
                             parent: None,
                             kind: crate::context::PathKind::Pat { pat_ctx: pattern_ctx.clone() },
                             has_type_args: false,
@@ -95,7 +97,7 @@ pub(crate) fn complete_pattern(
                         },
                         mac,
                         name,
-                    )
+                    );
                 }
                 _ => false,
             },

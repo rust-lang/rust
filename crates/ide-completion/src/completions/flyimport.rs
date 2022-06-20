@@ -169,6 +169,8 @@ pub(crate) fn import_on_the_fly_pat(
             has_macro_bang: false,
             qualified: Qualified::No,
             parent: None,
+            // FIXME
+            path: syntax::ast::make::ext::ident_path("dummy__"),
             kind: crate::context::PathKind::Pat { pat_ctx: pat_ctx.clone() },
             has_type_args: false,
             use_tree_parent: false,

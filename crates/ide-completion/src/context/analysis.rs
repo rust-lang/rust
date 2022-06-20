@@ -556,6 +556,7 @@ impl<'a> CompletionContext<'a> {
             has_macro_bang: false,
             qualified: Qualified::No,
             parent: path.parent_path(),
+            path: path.clone(),
             kind: PathKind::Item { kind: ItemListKind::SourceFile },
             has_type_args: false,
             use_tree_parent: false,

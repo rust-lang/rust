@@ -4,20 +4,19 @@ use hir::{db::HirDatabase, AsAssocItem, HirDisplay};
 use ide_db::{SnippetCap, SymbolKind};
 use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
-use syntax::SmolStr;
+use syntax::{AstNode, SmolStr};
 
 use crate::{
-    context::{
-        CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind, Qualified,
-    },
+    context::{CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind},
     item::{Builder, CompletionItem, CompletionItemKind, CompletionRelevance},
     render::{compute_exact_name_match, compute_ref_match, compute_type_match, RenderContext},
     CallableSnippets,
 };
 
-enum FuncKind {
-    Function,
-    Method(Option<hir::Name>),
+#[derive(Debug)]
+enum FuncKind<'ctx> {
+    Function(&'ctx PathCompletionCtx),
+    Method(&'ctx DotAccess, Option<hir::Name>),
 }
 
 pub(crate) fn render_fn(
@@ -27,29 +26,7 @@ pub(crate) fn render_fn(
     func: hir::Function,
 ) -> Builder {
     let _p = profile::span("render_fn");
-    let func_kind = FuncKind::Function;
-    let params = match ctx.completion.config.snippet_cap {
-        Some(_) => {
-            if !matches!(
-                path_ctx,
-                PathCompletionCtx { kind: PathKind::Expr { .. }, has_call_parens: true, .. }
-                    | PathCompletionCtx { kind: PathKind::Use | PathKind::Type { .. }, .. }
-            ) {
-                params(ctx.completion, func, &func_kind, false)
-            } else {
-                None
-            }
-        }
-        _ => None,
-    };
-    render(
-        ctx,
-        local_name,
-        func,
-        func_kind,
-        params,
-        matches!(path_ctx.qualified, Qualified::With { .. }),
-    )
+    render(ctx, local_name, func, FuncKind::Function(path_ctx))
 }
 
 pub(crate) fn render_method(
@@ -60,16 +37,7 @@ pub(crate) fn render_method(
     func: hir::Function,
 ) -> Builder {
     let _p = profile::span("render_method");
-    let func_kind = FuncKind::Method(receiver);
-    let params = match ctx.completion.config.snippet_cap {
-        Some(_) => match dot_access {
-            DotAccess { kind: DotAccessKind::Method { has_parens: true }, .. } => None,
-            _ => params(ctx.completion, func, &func_kind, true),
-        },
-        _ => None,
-    };
-
-    render(ctx, local_name, func, func_kind, params, false)
+    render(ctx, local_name, func, FuncKind::Method(dot_access, receiver))
 }
 
 fn render(
@@ -77,15 +45,13 @@ fn render(
     local_name: Option<hir::Name>,
     func: hir::Function,
     func_kind: FuncKind,
-    params: Option<(Option<hir::SelfParam>, Vec<hir::Param>)>,
-    qualified_path: bool,
 ) -> Builder {
     let db = completion.db;
 
     let name = local_name.unwrap_or_else(|| func.name(db));
 
     let call = match &func_kind {
-        FuncKind::Method(Some(receiver)) => format!("{}.{}", receiver, &name).into(),
+        FuncKind::Method(_, Some(receiver)) => format!("{}.{}", receiver, &name).into(),
         _ => name.to_smol_str(),
     };
     let mut item = CompletionItem::new(
@@ -111,11 +77,14 @@ fn render(
     });
 
     if let Some(ref_match) = compute_ref_match(completion, &ret_type) {
-        // FIXME For now we don't properly calculate the edits for ref match
-        // completions on methods or qualified paths, so we've disabled them.
-        // See #8058.
-        if matches!(func_kind, FuncKind::Function) && !qualified_path {
-            item.ref_match(ref_match);
+        match func_kind {
+            FuncKind::Function(path_ctx) => {
+                item.ref_match(ref_match, path_ctx.path.syntax().text_range().start());
+            }
+            FuncKind::Method(DotAccess { receiver: Some(receiver), .. }, _) => {
+                item.ref_match(ref_match, receiver.syntax().text_range().start());
+            }
+            _ => (),
         }
     }
 
@@ -124,12 +93,34 @@ fn render(
         .detail(detail(db, func))
         .lookup_by(name.to_smol_str());
 
-    match completion.config.snippet_cap.zip(params) {
-        Some((cap, (self_param, params))) => {
-            add_call_parens(&mut item, completion, cap, call, self_param, params);
+    match ctx.completion.config.snippet_cap {
+        Some(cap) => {
+            let complete_params = match func_kind {
+                FuncKind::Function(PathCompletionCtx {
+                    kind: PathKind::Expr { .. },
+                    has_call_parens: false,
+                    ..
+                }) => Some(false),
+                FuncKind::Method(
+                    DotAccess {
+                        kind:
+                            DotAccessKind::Method { has_parens: false } | DotAccessKind::Field { .. },
+                        ..
+                    },
+                    _,
+                ) => Some(true),
+                _ => None,
+            };
+            if let Some(has_dot_receiver) = complete_params {
+                if let Some((self_param, params)) =
+                    params(ctx.completion, func, &func_kind, has_dot_receiver)
+                {
+                    add_call_parens(&mut item, completion, cap, call, self_param, params);
+                }
+            }
         }
         _ => (),
-    }
+    };
 
     match ctx.import_to_add {
         Some(import_to_add) => {
@@ -291,7 +282,7 @@ fn params(
         }
     }
 
-    let self_param = if has_dot_receiver || matches!(func_kind, FuncKind::Method(Some(_))) {
+    let self_param = if has_dot_receiver || matches!(func_kind, FuncKind::Method(_, Some(_))) {
         None
     } else {
         func.self_param(ctx.db)

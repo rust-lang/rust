@@ -14,7 +14,7 @@ use hir::{AsAssocItem, HasAttrs, HirDisplay, ScopeDef};
 use ide_db::{
     helpers::item_name, imports::import_assets::LocatedImport, RootDatabase, SnippetCap, SymbolKind,
 };
-use syntax::{SmolStr, SyntaxKind, TextRange};
+use syntax::{AstNode, SmolStr, SyntaxKind, TextRange};
 
 use crate::{
     context::{PathCompletionCtx, PathKind},
@@ -167,7 +167,7 @@ pub(crate) fn render_resolution_simple(
     local_name: hir::Name,
     resolution: ScopeDef,
 ) -> Builder {
-    render_resolution_simple_(ctx, local_name, None, resolution)
+    render_resolution_simple_(ctx, None, local_name, None, resolution)
 }
 
 pub(crate) fn render_resolution_with_import(
@@ -235,7 +235,8 @@ fn render_resolution_simple_type(
     let db = ctx.completion.db;
     let config = ctx.completion.config;
     let name = local_name.to_smol_str();
-    let mut item = render_resolution_simple_(ctx, local_name, import_to_add, resolution);
+    let mut item =
+        render_resolution_simple_(ctx, Some(path_ctx), local_name, import_to_add, resolution);
     // Add `<>` for generic types
     let type_path_no_ty_args = matches!(
         path_ctx,
@@ -264,6 +265,7 @@ fn render_resolution_simple_type(
 
 fn render_resolution_simple_(
     ctx: RenderContext<'_>,
+    path_ctx: Option<&PathCompletionCtx>,
     local_name: hir::Name,
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
@@ -317,8 +319,10 @@ fn render_resolution_simple_(
             ..CompletionRelevance::default()
         });
 
-        if let Some(ref_match) = compute_ref_match(ctx.completion, &ty) {
-            item.ref_match(ref_match);
+        if let Some(path_ctx) = path_ctx {
+            if let Some(ref_match) = compute_ref_match(ctx.completion, &ty) {
+                item.ref_match(ref_match, path_ctx.path.syntax().text_range().start());
+            }
         }
     };
 
@@ -455,7 +459,7 @@ mod tests {
                 let relevance = display_relevance(it.relevance());
                 items.push(format!("{} {} {}\n", tag, it.label(), relevance));
 
-                if let Some((mutability, relevance)) = it.ref_match() {
+                if let Some((mutability, _offset, relevance)) = it.ref_match() {
                     let label = format!("&{}{}", mutability.as_keyword_for_ref(), it.label());
                     let relevance = display_relevance(relevance);
 
@@ -1495,7 +1499,7 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
 "#,
             &[CompletionItemKind::Method, CompletionItemKind::SymbolKind(SymbolKind::Field)],
             // FIXME
-            // Ideally we'd also suggest &f.bar and &f.baz() as exact
+            // Ideally we'd also suggest &f.bar as exact
             // type matches. See #8058.
             expect![[r#"
                 [
@@ -1507,6 +1511,7 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                         kind: Method,
                         lookup: "baz",
                         detail: "fn(&self) -> u32",
+                        ref_match: "&@96",
                     },
                     CompletionItem {
                         label: "bar",
@@ -1525,7 +1530,6 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
 
     #[test]
     fn qualified_path_ref() {
-        // disabled right now because it doesn't render correctly, #8058
         check_kinds(
             r#"
 struct S;
@@ -1554,6 +1558,7 @@ fn main() {
                         ),
                         lookup: "foo",
                         detail: "fn() -> S",
+                        ref_match: "&@92",
                     },
                 ]
             "#]],
