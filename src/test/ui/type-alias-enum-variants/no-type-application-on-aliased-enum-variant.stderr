@@ -4,7 +4,7 @@ error[E0109]: type arguments are not allowed on this type
 LL |     let _ = Alias::None::<u8>;
    |                    ----   ^^ type argument not allowed
    |                    |
-   |                    not allowed on this
+   |                    not allowed on this type
 
 error: aborting due to previous error
 

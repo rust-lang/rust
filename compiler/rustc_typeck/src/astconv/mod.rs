@@ -2195,8 +2195,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "{kind} arguments are not allowed on {this_type}",
             );
             err.span_label(last_span, format!("{kind} argument{s} not allowed"));
-            for (_, span) in types_and_spans {
-                err.span_label(span, "not allowed on this");
+            for (what, span) in types_and_spans {
+                err.span_label(span, format!("not allowed on {what}"));
             }
             extend(&mut err);
             err.emit();

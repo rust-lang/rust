@@ -4,7 +4,7 @@ error[E0109]: type arguments are not allowed on module `marker`
 LL | fn is_copy<T: ::std::marker<i32>::Copy>() {}
    |                      ------ ^^^ type argument not allowed
    |                      |
-   |                      not allowed on this
+   |                      not allowed on module `marker`
 
 error: aborting due to previous error
 
