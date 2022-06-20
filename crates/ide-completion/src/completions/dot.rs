@@ -3,10 +3,7 @@
 use ide_db::FxHashSet;
 
 use crate::{
-    context::{
-        CompletionContext, DotAccess, DotAccessKind, ExprCtx, PathCompletionCtx, PathKind,
-        Qualified,
-    },
+    context::{CompletionContext, DotAccess, DotAccessKind, ExprCtx, PathCompletionCtx, Qualified},
     CompletionItem, CompletionItemKind, Completions,
 };
 
@@ -43,16 +40,22 @@ pub(crate) fn complete_undotted_self(
     acc: &mut Completions,
     ctx: &CompletionContext,
     path_ctx: &PathCompletionCtx,
+    expr_ctx: &ExprCtx,
 ) {
     if !ctx.config.enable_self_on_the_fly {
         return;
     }
-    let self_param = match path_ctx {
-        PathCompletionCtx {
-            qualified: Qualified::No,
-            kind: PathKind::Expr { expr_ctx: ExprCtx { self_param: Some(self_param), .. } },
-            ..
-        } if path_ctx.is_trivial_path() && ctx.qualifier_ctx.none() => self_param,
+    if !path_ctx.is_trivial_path() {
+        return;
+    }
+    if !ctx.qualifier_ctx.none() {
+        return;
+    }
+    if !matches!(path_ctx.qualified, Qualified::No) {
+        return;
+    }
+    let self_param = match expr_ctx {
+        ExprCtx { self_param: Some(self_param), .. } => self_param,
         _ => return,
     };
 

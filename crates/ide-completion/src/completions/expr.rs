@@ -4,39 +4,31 @@ use hir::ScopeDef;
 use ide_db::FxHashSet;
 
 use crate::{
-    context::{ExprCtx, PathCompletionCtx, PathKind, Qualified},
+    context::{ExprCtx, PathCompletionCtx, Qualified},
     CompletionContext, Completions,
 };
 
 pub(crate) fn complete_expr_path(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    path_ctx: &PathCompletionCtx,
+    PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    &ExprCtx {
+        in_block_expr,
+        in_loop_body,
+        after_if_expr,
+        in_condition,
+        incomplete_let,
+        ref ref_expr_parent,
+        ref is_func_update,
+        ref innermost_ret_ty,
+        ref impl_,
+        ..
+    }: &ExprCtx,
 ) {
     let _p = profile::span("complete_expr_path");
     if !ctx.qualifier_ctx.none() {
         return;
     }
-    let (
-        qualified,
-        &ExprCtx {
-            in_block_expr,
-            in_loop_body,
-            after_if_expr,
-            in_condition,
-            incomplete_let,
-            ref ref_expr_parent,
-            ref is_func_update,
-            ref innermost_ret_ty,
-            ref impl_,
-            ..
-        },
-    ) = match path_ctx {
-        PathCompletionCtx { kind: PathKind::Expr { expr_ctx }, qualified, .. } => {
-            (qualified, expr_ctx)
-        }
-        _ => return,
-    };
 
     let wants_mut_token =
         ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false);

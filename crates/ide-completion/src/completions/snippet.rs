@@ -4,7 +4,7 @@ use hir::Documentation;
 use ide_db::{imports::insert_use::ImportScope, SnippetCap};
 
 use crate::{
-    context::{ExprCtx, ItemListKind, PathCompletionCtx, PathKind, Qualified},
+    context::{ExprCtx, ItemListKind, PathCompletionCtx, Qualified},
     item::Builder,
     CompletionContext, CompletionItem, CompletionItemKind, Completions, SnippetScope,
 };
@@ -19,15 +19,14 @@ pub(crate) fn complete_expr_snippet(
     acc: &mut Completions,
     ctx: &CompletionContext,
     path_ctx: &PathCompletionCtx,
+    &ExprCtx { in_block_expr, .. }: &ExprCtx,
 ) {
-    let &can_be_stmt = match path_ctx {
-        PathCompletionCtx {
-            qualified: Qualified::No,
-            kind: PathKind::Expr { expr_ctx: ExprCtx { in_block_expr, .. } },
-            ..
-        } => in_block_expr,
-        _ => return,
-    };
+    if !matches!(path_ctx.qualified, Qualified::No) {
+        return;
+    }
+    if !ctx.qualifier_ctx.none() {
+        return;
+    }
 
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,
@@ -38,9 +37,21 @@ pub(crate) fn complete_expr_snippet(
         add_custom_completions(acc, ctx, cap, SnippetScope::Expr);
     }
 
-    if can_be_stmt {
+    if in_block_expr {
         snippet(ctx, cap, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
         snippet(ctx, cap, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
+        let item = snippet(
+            ctx,
+            cap,
+            "macro_rules",
+            "\
+macro_rules! $1 {
+    ($2) => {
+        $0
+    };
+}",
+        );
+        item.add_to(acc);
     }
 }
 
@@ -48,23 +59,13 @@ pub(crate) fn complete_item_snippet(
     acc: &mut Completions,
     ctx: &CompletionContext,
     path_ctx: &PathCompletionCtx,
+    kind: &ItemListKind,
 ) {
-    let path_kind = match path_ctx {
-        PathCompletionCtx {
-            qualified: Qualified::No,
-            kind:
-                kind @ (PathKind::Item { .. }
-                | PathKind::Expr { expr_ctx: ExprCtx { in_block_expr: true, .. }, .. }),
-            ..
-        } => kind,
-        _ => return,
-    };
-    if !ctx.qualifier_ctx.none() {
+    if !matches!(path_ctx.qualified, Qualified::No) {
         return;
     }
-    if ctx.qualifier_ctx.vis_node.is_some() {
-        return; // technically we could do some of these snippet completions if we were to put the
-                // attributes before the vis node.
+    if !ctx.qualifier_ctx.none() {
+        return;
     }
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,
@@ -76,8 +77,7 @@ pub(crate) fn complete_item_snippet(
     }
 
     // Test-related snippets shouldn't be shown in blocks.
-    if let PathKind::Item { kind: ItemListKind::SourceFile | ItemListKind::Module, .. } = path_kind
-    {
+    if let ItemListKind::SourceFile | ItemListKind::Module = kind {
         let mut item = snippet(
             ctx,
             cap,
@@ -108,10 +108,7 @@ fn ${1:feature}() {
         );
         item.lookup_by("tfn");
         item.add_to(acc);
-    }
-    if let PathKind::Item { kind: ItemListKind::SourceFile | ItemListKind::Module, .. }
-    | PathKind::Expr { .. } = path_kind
-    {
+
         let item = snippet(
             ctx,
             cap,

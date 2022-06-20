@@ -25,7 +25,7 @@ use text_edit::TextEdit;
 use crate::{
     completions::Completions,
     context::{
-        CompletionContext, IdentContext, NameContext, NameKind, NameRefContext, NameRefKind,
+        CompletionContext, IdentContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind,
     },
 };
 
@@ -153,10 +153,13 @@ pub fn completions(
 
     // prevent `(` from triggering unwanted completion noise
     if trigger_character == Some('(') {
-        if let IdentContext::NameRef(NameRefContext { kind: NameRefKind::Path(path_ctx), .. }) =
-            &ctx.ident_ctx
-        {
-            completions::vis::complete_vis_path(&mut completions, ctx, path_ctx);
+        if let IdentContext::NameRef(NameRefContext { kind, .. }) = &ctx.ident_ctx {
+            if let NameRefKind::Path(
+                path_ctx @ PathCompletionCtx { kind: PathKind::Vis { has_in_token }, .. },
+            ) = kind
+            {
+                completions::vis::complete_vis_path(&mut completions, ctx, path_ctx, has_in_token);
+            }
         }
         // prevent `(` from triggering unwanted completion noise
         return Some(completions);
@@ -165,84 +168,11 @@ pub fn completions(
     {
         let acc = &mut completions;
 
-        let mut complete_patterns = |pattern_ctx| {
-            completions::flyimport::import_on_the_fly_pat(acc, ctx, pattern_ctx);
-            completions::fn_param::complete_fn_param(acc, ctx, pattern_ctx);
-            completions::pattern::complete_pattern(acc, ctx, pattern_ctx);
-            completions::record::complete_record_pattern_fields(acc, ctx, pattern_ctx);
-        };
-
         match &ctx.ident_ctx {
-            IdentContext::Name(NameContext { name, kind }) => match kind {
-                NameKind::Const => {
-                    completions::item_list::trait_impl::complete_trait_impl_const(acc, ctx, name);
-                }
-                NameKind::Function => {
-                    completions::item_list::trait_impl::complete_trait_impl_fn(acc, ctx, name);
-                }
-                NameKind::IdentPat(pattern_ctx) => complete_patterns(pattern_ctx),
-                NameKind::Module(mod_under_caret) => {
-                    completions::mod_::complete_mod(acc, ctx, mod_under_caret);
-                }
-                NameKind::TypeAlias => {
-                    completions::item_list::trait_impl::complete_trait_impl_type_alias(
-                        acc, ctx, name,
-                    );
-                }
-                NameKind::RecordField => {
-                    completions::field::complete_field_list_record_variant(acc, ctx);
-                }
-                NameKind::ConstParam
-                | NameKind::Enum
-                | NameKind::MacroDef
-                | NameKind::MacroRules
-                | NameKind::Rename
-                | NameKind::SelfParam
-                | NameKind::Static
-                | NameKind::Struct
-                | NameKind::Trait
-                | NameKind::TypeParam
-                | NameKind::Union
-                | NameKind::Variant => (),
-            },
-            IdentContext::NameRef(NameRefContext { kind, nameref }) => match kind {
-                NameRefKind::Path(path_ctx) => {
-                    completions::attribute::complete_attribute(acc, ctx, path_ctx);
-                    completions::attribute::complete_derive(acc, ctx, path_ctx);
-                    completions::dot::complete_undotted_self(acc, ctx, path_ctx);
-                    completions::expr::complete_expr_path(acc, ctx, path_ctx);
-                    completions::field::complete_field_list_tuple_variant(acc, ctx, path_ctx);
-                    completions::flyimport::import_on_the_fly_path(acc, ctx, path_ctx);
-                    completions::item_list::complete_item_list(acc, ctx, path_ctx);
-                    completions::item_list::trait_impl::complete_trait_impl_name_ref(
-                        acc, ctx, path_ctx, nameref,
-                    );
-                    completions::pattern::pattern_path_completion(acc, ctx, path_ctx);
-                    completions::r#type::complete_inferred_type(acc, ctx, path_ctx);
-                    completions::r#type::complete_type_path(acc, ctx, path_ctx);
-                    completions::record::complete_record_expr_func_update(acc, ctx, path_ctx);
-                    completions::snippet::complete_expr_snippet(acc, ctx, path_ctx);
-                    completions::snippet::complete_item_snippet(acc, ctx, path_ctx);
-                    completions::use_::complete_use_tree(acc, ctx, path_ctx, nameref);
-                    completions::vis::complete_vis_path(acc, ctx, path_ctx);
-                }
-                NameRefKind::DotAccess(dot_access) => {
-                    completions::flyimport::import_on_the_fly_dot(acc, ctx, dot_access);
-                    completions::dot::complete_dot(acc, ctx, dot_access);
-                    completions::postfix::complete_postfix(acc, ctx, dot_access);
-                }
-                NameRefKind::Keyword(item) => {
-                    completions::keyword::complete_special_keywords(acc, ctx, item);
-                }
-                NameRefKind::RecordExpr(record_expr) => {
-                    completions::record::complete_record_expr_fields_record_expr(
-                        acc,
-                        ctx,
-                        record_expr,
-                    );
-                }
-                NameRefKind::Pattern(pattern_ctx) => complete_patterns(pattern_ctx),
-            },
+            IdentContext::Name(name_ctx) => completions::complete_name(acc, ctx, name_ctx),
+            IdentContext::NameRef(name_ref_ctx) => {
+                completions::complete_name_ref(acc, ctx, name_ref_ctx)
+            }
             IdentContext::Lifetime(lifetime_ctx) => {
                 completions::lifetime::complete_label(acc, ctx, lifetime_ctx);
                 completions::lifetime::complete_lifetime(acc, ctx, lifetime_ctx);

@@ -97,7 +97,7 @@ pub(super) enum PathKind {
         attr_ctx: AttrCtx,
     },
     Derive {
-        existing_derives: FxHashSet<hir::Macro>,
+        existing_derives: ExistingDerives,
     },
     /// Path in item position, that is inside an (Assoc)ItemList
     Item {
@@ -111,6 +111,9 @@ pub(super) enum PathKind {
     },
     Use,
 }
+
+pub(crate) type ExistingDerives = FxHashSet<hir::Macro>;
+
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct AttrCtx {
     pub(crate) kind: AttrKind,

@@ -5,7 +5,7 @@ use ide_db::FxHashSet;
 use syntax::ast::Pat;
 
 use crate::{
-    context::{PathCompletionCtx, PathKind, PatternContext, PatternRefutability, Qualified},
+    context::{PathCompletionCtx, PatternContext, PatternRefutability, Qualified},
     CompletionContext, Completions,
 };
 
@@ -108,14 +108,11 @@ pub(crate) fn complete_pattern(
     });
 }
 
-pub(crate) fn pattern_path_completion(
+pub(crate) fn complete_pattern_path(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    PathCompletionCtx { qualified, kind, .. }: &PathCompletionCtx,
+    PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
 ) {
-    if !matches!(kind, PathKind::Pat { .. }) {
-        return;
-    }
     match qualified {
         Qualified::With { resolution: Some(resolution), is_super_chain, .. } => {
             if *is_super_chain {

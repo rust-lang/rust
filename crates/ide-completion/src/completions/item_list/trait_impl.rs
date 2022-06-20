@@ -43,8 +43,8 @@ use syntax::{
 use text_edit::TextEdit;
 
 use crate::{
-    context::{ItemListKind, PathCompletionCtx, PathKind},
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
+    context::PathCompletionCtx, CompletionContext, CompletionItem, CompletionItemKind,
+    CompletionRelevance, Completions,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -102,17 +102,18 @@ fn complete_trait_impl_name(
     Some(())
 }
 
-pub(crate) fn complete_trait_impl_name_ref(
+pub(crate) fn complete_trait_impl_item_by_name(
     acc: &mut Completions,
     ctx: &CompletionContext,
     path_ctx: &PathCompletionCtx,
     name_ref: &Option<ast::NameRef>,
-) -> Option<()> {
-    match path_ctx {
-        PathCompletionCtx {
-            kind: PathKind::Item { kind: ItemListKind::TraitImpl(Some(impl_)) },
-            ..
-        } if path_ctx.is_trivial_path() => complete_trait_impl(
+    impl_: &Option<ast::Impl>,
+) {
+    if !path_ctx.is_trivial_path() {
+        return;
+    }
+    if let Some(impl_) = impl_ {
+        complete_trait_impl(
             acc,
             ctx,
             ImplCompletionKind::All,
@@ -121,10 +122,8 @@ pub(crate) fn complete_trait_impl_name_ref(
                 None => ctx.source_range(),
             },
             impl_,
-        ),
-        _ => (),
+        );
     }
-    Some(())
 }
 
 fn complete_trait_impl(
