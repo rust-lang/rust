@@ -61,6 +61,8 @@ pub(crate) struct PathCompletionCtx {
     pub(super) qualified: Qualified,
     /// The parent of the path we are completing.
     pub(super) parent: Option<ast::Path>,
+    /// The path of which we are completing the segment
+    pub(super) path: ast::Path,
     pub(super) kind: PathKind,
     /// Whether the path segment has type args or not.
     pub(super) has_type_args: bool,

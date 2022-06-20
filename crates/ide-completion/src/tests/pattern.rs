@@ -399,6 +399,7 @@ fn foo() {
 
 #[test]
 fn completes_no_delims_if_existing() {
+    // FIXME: We should not complete functions here
     check_empty(
         r#"
 struct Bar(u32);
@@ -409,7 +410,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            fn foo()   fn()
+            fn foo     fn()
             st Bar
             bt u32
             kw crate::
@@ -427,7 +428,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            fn foo()   fn()
+            fn foo     fn()
             st Foo
             bt u32
             kw crate::

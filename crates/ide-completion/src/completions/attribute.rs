@@ -95,7 +95,7 @@ pub(crate) fn complete_attribute_path(
                         acc.add_macro(ctx, path_ctx, m, name)
                     }
                     hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
-                        acc.add_module(ctx, m, name)
+                        acc.add_module(ctx, path_ctx, m, name)
                     }
                     _ => (),
                 }
@@ -103,14 +103,16 @@ pub(crate) fn complete_attribute_path(
             return;
         }
         // fresh use tree with leading colon2, only show crate roots
-        Qualified::Absolute => acc.add_crate_roots(ctx),
+        Qualified::Absolute => acc.add_crate_roots(ctx, path_ctx),
         // only show modules in a fresh UseTree
         Qualified::No => {
             ctx.process_all_names(&mut |name, def| match def {
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_attr(ctx.db) => {
                     acc.add_macro(ctx, path_ctx, m, name)
                 }
-                hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => acc.add_module(ctx, m, name),
+                hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
+                    acc.add_module(ctx, path_ctx, m, name)
+                }
                 _ => (),
             });
             acc.add_nameref_keywords_with_colon(ctx);

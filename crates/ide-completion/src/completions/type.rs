@@ -141,7 +141,7 @@ pub(crate) fn complete_type_path(
                 _ => (),
             }
         }
-        Qualified::Absolute => acc.add_crate_roots(ctx),
+        Qualified::Absolute => acc.add_crate_roots(ctx, path_ctx),
         Qualified::No => {
             acc.add_nameref_keywords_with_colon(ctx);
             if let TypeLocation::TypeBound = location {

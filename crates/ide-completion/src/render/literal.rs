@@ -2,6 +2,7 @@
 
 use hir::{db::HirDatabase, Documentation, HasAttrs, StructKind};
 use ide_db::SymbolKind;
+use syntax::AstNode;
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx, PathKind},
@@ -117,7 +118,7 @@ fn render(
         ..ctx.completion_relevance()
     });
     if let Some(ref_match) = compute_ref_match(completion, &ty) {
-        item.ref_match(ref_match);
+        item.ref_match(ref_match, path_ctx.path.syntax().text_range().start());
     }
 
     if let Some(import_to_add) = ctx.import_to_add {

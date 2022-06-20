@@ -45,7 +45,7 @@ pub(crate) fn complete_item_list(
                         acc.add_macro(ctx, path_ctx, m, name)
                     }
                     hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
-                        acc.add_module(ctx, m, name)
+                        acc.add_module(ctx, path_ctx, m, name)
                     }
                     _ => (),
                 }
@@ -55,13 +55,15 @@ pub(crate) fn complete_item_list(
                 acc.add_keyword(ctx, "super::");
             }
         }
-        Qualified::Absolute => acc.add_crate_roots(ctx),
+        Qualified::Absolute => acc.add_crate_roots(ctx, path_ctx),
         Qualified::No if ctx.qualifier_ctx.none() => {
             ctx.process_all_names(&mut |name, def| match def {
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_fn_like(ctx.db) => {
                     acc.add_macro(ctx, path_ctx, m, name)
                 }
-                hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => acc.add_module(ctx, m, name),
+                hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
+                    acc.add_module(ctx, path_ctx, m, name)
+                }
                 _ => (),
             });
             acc.add_nameref_keywords_with_colon(ctx);

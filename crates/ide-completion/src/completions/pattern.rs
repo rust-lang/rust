@@ -82,20 +82,7 @@ pub(crate) fn complete_pattern(
                 hir::ModuleDef::Const(..) => refutable,
                 hir::ModuleDef::Module(..) => true,
                 hir::ModuleDef::Macro(mac) if mac.is_fn_like(ctx.db) => {
-                    return acc.add_macro(
-                        ctx,
-                        &PathCompletionCtx {
-                            has_call_parens: false,
-                            has_macro_bang: false,
-                            qualified: Qualified::No,
-                            parent: None,
-                            kind: crate::context::PathKind::Pat { pat_ctx: pattern_ctx.clone() },
-                            has_type_args: false,
-                            use_tree_parent: false,
-                        },
-                        mac,
-                        name,
-                    )
+                    return acc.add_macro_pat(ctx, pattern_ctx, mac, name);
                 }
                 _ => false,
             },
@@ -116,7 +103,7 @@ pub(crate) fn complete_pattern(
             | ScopeDef::Unknown => false,
         };
         if add_simple_path {
-            acc.add_resolution_simple(ctx, name, res);
+            acc.add_pattern_resolution(ctx, pattern_ctx, name, res);
         }
     });
 }
@@ -205,7 +192,7 @@ pub(crate) fn complete_pattern_path(
             }
         }
         // qualifier can only be none here if we are in a TuplePat or RecordPat in which case special characters have to follow the path
-        Qualified::Absolute => acc.add_crate_roots(ctx),
+        Qualified::Absolute => acc.add_crate_roots(ctx, path_ctx),
         Qualified::No => {
             ctx.process_all_names(&mut |name, res| {
                 // FIXME: properly filter here
