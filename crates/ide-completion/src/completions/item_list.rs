@@ -1,7 +1,6 @@
 //! Completion of paths and keywords at item list position.
 
 use crate::{
-    completions::module_or_fn_macro,
     context::{ExprCtx, ItemListKind, PathCompletionCtx, Qualified},
     CompletionContext, Completions,
 };
@@ -41,8 +40,14 @@ pub(crate) fn complete_item_list(
             ..
         } => {
             for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
-                if let Some(def) = module_or_fn_macro(ctx.db, def) {
-                    acc.add_resolution(ctx, name, def);
+                match def {
+                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_fn_like(ctx.db) => {
+                        acc.add_macro(ctx, m, name)
+                    }
+                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
+                        acc.add_module(ctx, m, name)
+                    }
+                    _ => (),
                 }
             }
 
@@ -52,10 +57,12 @@ pub(crate) fn complete_item_list(
         }
         Qualified::Absolute => acc.add_crate_roots(ctx),
         Qualified::No if ctx.qualifier_ctx.none() => {
-            ctx.process_all_names(&mut |name, def| {
-                if let Some(def) = module_or_fn_macro(ctx.db, def) {
-                    acc.add_resolution(ctx, name, def);
+            ctx.process_all_names(&mut |name, def| match def {
+                hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_fn_like(ctx.db) => {
+                    acc.add_macro(ctx, m, name)
                 }
+                hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => acc.add_module(ctx, m, name),
+                _ => (),
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }

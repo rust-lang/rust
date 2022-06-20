@@ -1,7 +1,5 @@
 //! Completion for visibility specifiers.
 
-use hir::ScopeDef;
-
 use crate::{
     context::{CompletionContext, PathCompletionCtx, Qualified},
     Completions,
@@ -25,7 +23,7 @@ pub(crate) fn complete_vis_path(
             if let Some(next) = next_towards_current {
                 if let Some(name) = next.name(ctx.db) {
                     cov_mark::hit!(visibility_qualified);
-                    acc.add_resolution(ctx, name, ScopeDef::ModuleDef(next.into()));
+                    acc.add_module(ctx, next, name);
                 }
             }
 

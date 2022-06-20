@@ -22,7 +22,7 @@ pub(crate) mod vis;
 
 use std::iter;
 
-use hir::{db::HirDatabase, known, ScopeDef};
+use hir::{known, ScopeDef};
 use ide_db::SymbolKind;
 use syntax::ast;
 
@@ -45,22 +45,6 @@ use crate::{
     },
     CompletionContext, CompletionItem, CompletionItemKind,
 };
-
-fn module_or_attr(db: &dyn HirDatabase, def: ScopeDef) -> Option<ScopeDef> {
-    match def {
-        ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_attr(db) => Some(def),
-        ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => Some(def),
-        _ => None,
-    }
-}
-
-fn module_or_fn_macro(db: &dyn HirDatabase, def: ScopeDef) -> Option<ScopeDef> {
-    match def {
-        ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_fn_like(db) => Some(def),
-        ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => Some(def),
-        _ => None,
-    }
-}
 
 /// Represents an in-progress set of completions being built.
 #[derive(Debug, Default)]
@@ -182,6 +166,15 @@ impl Completions {
             return;
         }
         self.add(render_resolution_simple(RenderContext::new(ctx), local_name, resolution).build());
+    }
+
+    pub(crate) fn add_module(
+        &mut self,
+        ctx: &CompletionContext,
+        module: hir::Module,
+        local_name: hir::Name,
+    ) {
+        self.add_resolution(ctx, local_name, hir::ScopeDef::ModuleDef(module.into()));
     }
 
     pub(crate) fn add_macro(
@@ -486,16 +479,19 @@ pub(super) fn complete_name_ref(
     match kind {
         NameRefKind::Path(path_ctx) => {
             flyimport::import_on_the_fly_path(acc, ctx, path_ctx);
+
             match &path_ctx.kind {
                 PathKind::Expr { expr_ctx } => {
-                    dot::complete_undotted_self(acc, ctx, path_ctx, expr_ctx);
                     expr::complete_expr_path(acc, ctx, path_ctx, expr_ctx);
+
+                    dot::complete_undotted_self(acc, ctx, path_ctx, expr_ctx);
                     item_list::complete_item_list_in_expr(acc, ctx, path_ctx, expr_ctx);
                     record::complete_record_expr_func_update(acc, ctx, path_ctx, expr_ctx);
                     snippet::complete_expr_snippet(acc, ctx, path_ctx, expr_ctx);
                 }
                 PathKind::Type { location } => {
                     r#type::complete_type_path(acc, ctx, path_ctx, location);
+
                     match location {
                         TypeLocation::TupleField => {
                             field::complete_field_list_tuple_variant(acc, ctx, path_ctx);
@@ -511,13 +507,14 @@ pub(super) fn complete_name_ref(
                     }
                 }
                 PathKind::Attr { attr_ctx } => {
-                    attribute::complete_attribute(acc, ctx, path_ctx, attr_ctx);
+                    attribute::complete_attribute_path(acc, ctx, path_ctx, attr_ctx);
                 }
                 PathKind::Derive { existing_derives } => {
-                    attribute::complete_derive(acc, ctx, path_ctx, existing_derives);
+                    attribute::complete_derive_path(acc, ctx, path_ctx, existing_derives);
                 }
                 PathKind::Item { kind } => {
                     item_list::complete_item_list(acc, ctx, path_ctx, kind);
+
                     snippet::complete_item_snippet(acc, ctx, path_ctx, kind);
                     if let ItemListKind::TraitImpl(impl_) = kind {
                         item_list::trait_impl::complete_trait_impl_item_by_name(
@@ -532,7 +529,7 @@ pub(super) fn complete_name_ref(
                     vis::complete_vis_path(acc, ctx, path_ctx, has_in_token);
                 }
                 PathKind::Use => {
-                    use_::complete_use_tree(acc, ctx, path_ctx, nameref);
+                    use_::complete_use_path(acc, ctx, path_ctx, nameref);
                 }
             }
         }
