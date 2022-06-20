@@ -8,8 +8,7 @@ use syntax::SmolStr;
 
 use crate::{
     context::{
-        CompletionContext, DotAccess, DotAccessKind, IdentContext, NameRefContext, NameRefKind,
-        PathCompletionCtx, PathKind, Qualified,
+        CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind, Qualified,
     },
     item::{Builder, CompletionItem, CompletionItemKind, CompletionRelevance},
     render::{compute_exact_name_match, compute_ref_match, compute_type_match, RenderContext},
@@ -23,21 +22,54 @@ enum FuncKind {
 
 pub(crate) fn render_fn(
     ctx: RenderContext<'_>,
+    path_ctx: &PathCompletionCtx,
     local_name: Option<hir::Name>,
     func: hir::Function,
 ) -> Builder {
     let _p = profile::span("render_fn");
-    render(ctx, local_name, func, FuncKind::Function)
+    let func_kind = FuncKind::Function;
+    let params = match ctx.completion.config.snippet_cap {
+        Some(_) => {
+            if !matches!(
+                path_ctx,
+                PathCompletionCtx { kind: PathKind::Expr { .. }, has_call_parens: true, .. }
+                    | PathCompletionCtx { kind: PathKind::Use | PathKind::Type { .. }, .. }
+            ) {
+                params(ctx.completion, func, &func_kind, false)
+            } else {
+                None
+            }
+        }
+        _ => None,
+    };
+    render(
+        ctx,
+        local_name,
+        func,
+        func_kind,
+        params,
+        matches!(path_ctx.qualified, Qualified::With { .. }),
+    )
 }
 
 pub(crate) fn render_method(
     ctx: RenderContext<'_>,
+    dot_access: &DotAccess,
     receiver: Option<hir::Name>,
     local_name: Option<hir::Name>,
     func: hir::Function,
 ) -> Builder {
     let _p = profile::span("render_method");
-    render(ctx, local_name, func, FuncKind::Method(receiver))
+    let func_kind = FuncKind::Method(receiver);
+    let params = match ctx.completion.config.snippet_cap {
+        Some(_) => match dot_access {
+            DotAccess { kind: DotAccessKind::Method { has_parens: true }, .. } => None,
+            _ => params(ctx.completion, func, &func_kind, true),
+        },
+        _ => None,
+    };
+
+    render(ctx, local_name, func, func_kind, params, false)
 }
 
 fn render(
@@ -45,6 +77,8 @@ fn render(
     local_name: Option<hir::Name>,
     func: hir::Function,
     func_kind: FuncKind,
+    params: Option<(Option<hir::SelfParam>, Vec<hir::Param>)>,
+    qualified_path: bool,
 ) -> Builder {
     let db = completion.db;
 
@@ -80,16 +114,6 @@ fn render(
         // FIXME For now we don't properly calculate the edits for ref match
         // completions on methods or qualified paths, so we've disabled them.
         // See #8058.
-        let qualified_path = matches!(
-            ctx.completion.ident_ctx,
-            IdentContext::NameRef(NameRefContext {
-                kind: NameRefKind::Path(PathCompletionCtx {
-                    qualified: Qualified::With { .. },
-                    ..
-                }),
-                ..
-            })
-        );
         if matches!(func_kind, FuncKind::Function) && !qualified_path {
             item.ref_match(ref_match);
         }
@@ -100,11 +124,9 @@ fn render(
         .detail(detail(db, func))
         .lookup_by(name.to_smol_str());
 
-    match completion.config.snippet_cap {
-        Some(cap) => {
-            if let Some((self_param, params)) = params(completion, func, &func_kind) {
-                add_call_parens(&mut item, completion, cap, call, self_param, params);
-            }
+    match completion.config.snippet_cap.zip(params) {
+        Some((cap, (self_param, params))) => {
+            add_call_parens(&mut item, completion, cap, call, self_param, params);
         }
         _ => (),
     }
@@ -254,36 +276,11 @@ fn params(
     ctx: &CompletionContext<'_>,
     func: hir::Function,
     func_kind: &FuncKind,
+    has_dot_receiver: bool,
 ) -> Option<(Option<hir::SelfParam>, Vec<hir::Param>)> {
     if ctx.config.callable.is_none() {
         return None;
     }
-
-    let has_dot_receiver = match ctx.ident_ctx {
-        IdentContext::NameRef(NameRefContext {
-            kind:
-                NameRefKind::DotAccess(DotAccess {
-                    kind: DotAccessKind::Method { has_parens: true },
-                    ..
-                }),
-            ..
-        }) => return None,
-        IdentContext::NameRef(NameRefContext {
-            kind: NameRefKind::DotAccess(DotAccess { .. }),
-            ..
-        }) => true,
-        IdentContext::NameRef(NameRefContext {
-            kind:
-                NameRefKind::Path(
-                    PathCompletionCtx {
-                        kind: PathKind::Expr { .. }, has_call_parens: true, ..
-                    }
-                    | PathCompletionCtx { kind: PathKind::Use | PathKind::Type { .. }, .. },
-                ),
-            ..
-        }) => return None,
-        _ => false,
-    };
 
     // Don't add parentheses if the expected type is some function reference.
     if let Some(ty) = &ctx.expected_type {

@@ -17,7 +17,7 @@ use ide_db::{
 use syntax::{SmolStr, SyntaxKind, TextRange};
 
 use crate::{
-    context::{IdentContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind},
+    context::{PathCompletionCtx, PathKind},
     item::{Builder, CompletionRelevanceTypeMatch},
     render::{function::render_fn, literal::render_variant_lit, macro_::render_macro},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
@@ -72,16 +72,6 @@ impl<'a> RenderContext<'a> {
                 .token
                 .parent()
                 .map_or(false, |it| it.kind() == SyntaxKind::MACRO_CALL)
-    }
-
-    pub(crate) fn path_is_call(&self) -> bool {
-        matches!(
-            self.completion.ident_ctx,
-            IdentContext::NameRef(NameRefContext {
-                kind: NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. }),
-                ..
-            })
-        )
     }
 
     fn is_deprecated(&self, def: impl HasAttrs) -> bool {
@@ -163,12 +153,13 @@ pub(crate) fn render_tuple_field(
     item.build()
 }
 
-pub(crate) fn render_resolution(
+pub(crate) fn render_path_resolution(
     ctx: RenderContext<'_>,
+    path_ctx: &PathCompletionCtx,
     local_name: hir::Name,
     resolution: ScopeDef,
 ) -> Builder {
-    render_resolution_(ctx, local_name, None, resolution)
+    render_resolution_(ctx, path_ctx, local_name, None, resolution)
 }
 
 pub(crate) fn render_resolution_simple(
@@ -181,6 +172,7 @@ pub(crate) fn render_resolution_simple(
 
 pub(crate) fn render_resolution_with_import(
     ctx: RenderContext<'_>,
+    path_ctx: &PathCompletionCtx,
     import_edit: LocatedImport,
 ) -> Option<Builder> {
     let resolution = ScopeDef::from(import_edit.original_item);
@@ -190,7 +182,7 @@ pub(crate) fn render_resolution_with_import(
         ScopeDef::ModuleDef(hir::ModuleDef::TypeAlias(t)) => t.name(ctx.completion.db),
         _ => item_name(ctx.db(), import_edit.original_item)?,
     };
-    Some(render_resolution_(ctx, local_name, Some(import_edit), resolution))
+    Some(render_resolution_(ctx, path_ctx, local_name, Some(import_edit), resolution))
 }
 
 pub(crate) fn render_type_inference(ty_string: String, ctx: &CompletionContext) -> CompletionItem {
@@ -202,6 +194,7 @@ pub(crate) fn render_type_inference(ty_string: String, ctx: &CompletionContext) 
 
 fn render_resolution_(
     ctx: RenderContext<'_>,
+    path_ctx: &PathCompletionCtx,
     local_name: hir::Name,
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
@@ -212,21 +205,61 @@ fn render_resolution_(
     match resolution {
         ScopeDef::ModuleDef(Macro(mac)) => {
             let ctx = ctx.import_to_add(import_to_add);
-            return render_macro(ctx, local_name, mac);
+            return render_macro(ctx, path_ctx, local_name, mac);
         }
         ScopeDef::ModuleDef(Function(func)) => {
             let ctx = ctx.import_to_add(import_to_add);
-            return render_fn(ctx, Some(local_name), func);
+            return render_fn(ctx, path_ctx, Some(local_name), func);
         }
         ScopeDef::ModuleDef(Variant(var)) => {
             let ctx = ctx.clone().import_to_add(import_to_add.clone());
-            if let Some(item) = render_variant_lit(ctx, Some(local_name.clone()), var, None) {
+            if let Some(item) =
+                render_variant_lit(ctx, path_ctx, Some(local_name.clone()), var, None)
+            {
                 return item;
             }
         }
         _ => (),
     }
-    render_resolution_simple_(ctx, local_name, import_to_add, resolution)
+    render_resolution_simple_type(ctx, path_ctx, local_name, import_to_add, resolution)
+}
+
+fn render_resolution_simple_type(
+    ctx: RenderContext<'_>,
+    path_ctx: &PathCompletionCtx,
+    local_name: hir::Name,
+    import_to_add: Option<LocatedImport>,
+    resolution: ScopeDef,
+) -> Builder {
+    let cap = ctx.snippet_cap();
+    let db = ctx.completion.db;
+    let config = ctx.completion.config;
+    let name = local_name.to_smol_str();
+    let mut item = render_resolution_simple_(ctx, local_name, import_to_add, resolution);
+    // Add `<>` for generic types
+    let type_path_no_ty_args = matches!(
+        path_ctx,
+        PathCompletionCtx { kind: PathKind::Type { .. }, has_type_args: false, .. }
+    ) && config.callable.is_some();
+    if type_path_no_ty_args {
+        if let Some(cap) = cap {
+            let has_non_default_type_params = match resolution {
+                ScopeDef::ModuleDef(hir::ModuleDef::Adt(it)) => it.has_non_default_type_params(db),
+                ScopeDef::ModuleDef(hir::ModuleDef::TypeAlias(it)) => {
+                    it.has_non_default_type_params(db)
+                }
+                _ => false,
+            };
+            if has_non_default_type_params {
+                cov_mark::hit!(inserts_angle_brackets_for_generics);
+                item.lookup_by(name.clone())
+                    .label(SmolStr::from_iter([&name, "<…>"]))
+                    .trigger_call_info()
+                    .insert_snippet(cap, format!("{}<$0>", name));
+            }
+        }
+    }
+    item
 }
 
 fn render_resolution_simple_(
@@ -289,34 +322,6 @@ fn render_resolution_simple_(
         }
     };
 
-    // Add `<>` for generic types
-    let type_path_no_ty_args = matches!(
-        ctx.completion.ident_ctx,
-        IdentContext::NameRef(NameRefContext {
-            kind: NameRefKind::Path(PathCompletionCtx {
-                kind: PathKind::Type { .. },
-                has_type_args: false,
-                ..
-            }),
-            ..
-        })
-    ) && ctx.completion.config.callable.is_some();
-    if type_path_no_ty_args {
-        if let Some(cap) = ctx.snippet_cap() {
-            let has_non_default_type_params = match resolution {
-                ScopeDef::ModuleDef(Adt(it)) => it.has_non_default_type_params(db),
-                ScopeDef::ModuleDef(TypeAlias(it)) => it.has_non_default_type_params(db),
-                _ => false,
-            };
-            if has_non_default_type_params {
-                cov_mark::hit!(inserts_angle_brackets_for_generics);
-                item.lookup_by(local_name.clone())
-                    .label(SmolStr::from_iter([&local_name, "<…>"]))
-                    .trigger_call_info()
-                    .insert_snippet(cap, format!("{}<$0>", local_name));
-            }
-        }
-    }
     item.set_documentation(scope_def_docs(db, resolution))
         .set_deprecated(scope_def_is_deprecated(&ctx, resolution));
 

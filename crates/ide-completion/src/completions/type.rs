@@ -13,7 +13,7 @@ use crate::{
 pub(crate) fn complete_type_path(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     location: &TypeLocation,
 ) {
     let _p = profile::span("complete_type_path");
@@ -69,7 +69,7 @@ pub(crate) fn complete_type_path(
                     let module_scope = module.scope(ctx.db, Some(ctx.module));
                     for (name, def) in module_scope {
                         if scope_def_applicable(def) {
-                            acc.add_resolution(ctx, name, def);
+                            acc.add_path_resolution(ctx, path_ctx, name, def);
                         }
                     }
                 }
@@ -154,7 +154,7 @@ pub(crate) fn complete_type_path(
                         _ => false,
                     };
                     if add_resolution {
-                        acc.add_resolution(ctx, name, res);
+                        acc.add_path_resolution(ctx, path_ctx, name, res);
                     }
                 });
                 return;
@@ -178,7 +178,7 @@ pub(crate) fn complete_type_path(
             }
             ctx.process_all_names(&mut |name, def| {
                 if scope_def_applicable(def) {
-                    acc.add_resolution(ctx, name, def);
+                    acc.add_path_resolution(ctx, path_ctx, name, def);
                 }
             });
         }

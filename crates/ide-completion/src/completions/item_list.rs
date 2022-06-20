@@ -42,7 +42,7 @@ pub(crate) fn complete_item_list(
             for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
                 match def {
                     hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_fn_like(ctx.db) => {
-                        acc.add_macro(ctx, m, name)
+                        acc.add_macro(ctx, path_ctx, m, name)
                     }
                     hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
                         acc.add_module(ctx, m, name)
@@ -59,7 +59,7 @@ pub(crate) fn complete_item_list(
         Qualified::No if ctx.qualifier_ctx.none() => {
             ctx.process_all_names(&mut |name, def| match def {
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_fn_like(ctx.db) => {
-                    acc.add_macro(ctx, m, name)
+                    acc.add_macro(ctx, path_ctx, m, name)
                 }
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => acc.add_module(ctx, m, name),
                 _ => (),

@@ -4,9 +4,7 @@ use hir::{db::HirDatabase, Documentation, HasAttrs, StructKind};
 use ide_db::SymbolKind;
 
 use crate::{
-    context::{
-        CompletionContext, IdentContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind,
-    },
+    context::{CompletionContext, PathCompletionCtx, PathKind},
     item::{Builder, CompletionItem},
     render::{
         compute_ref_match, compute_type_match,
@@ -21,6 +19,7 @@ use crate::{
 
 pub(crate) fn render_variant_lit(
     ctx: RenderContext<'_>,
+    path_ctx: &PathCompletionCtx,
     local_name: Option<hir::Name>,
     variant: hir::Variant,
     path: Option<hir::ModPath>,
@@ -29,11 +28,12 @@ pub(crate) fn render_variant_lit(
     let db = ctx.db();
 
     let name = local_name.unwrap_or_else(|| variant.name(db));
-    render(ctx, Variant::EnumVariant(variant), name, path)
+    render(ctx, path_ctx, Variant::EnumVariant(variant), name, path)
 }
 
 pub(crate) fn render_struct_literal(
     ctx: RenderContext<'_>,
+    path_ctx: &PathCompletionCtx,
     strukt: hir::Struct,
     path: Option<hir::ModPath>,
     local_name: Option<hir::Name>,
@@ -42,29 +42,21 @@ pub(crate) fn render_struct_literal(
     let db = ctx.db();
 
     let name = local_name.unwrap_or_else(|| strukt.name(db));
-    render(ctx, Variant::Struct(strukt), name, path)
+    render(ctx, path_ctx, Variant::Struct(strukt), name, path)
 }
 
 fn render(
     ctx @ RenderContext { completion, .. }: RenderContext<'_>,
+    path_ctx: &PathCompletionCtx,
     thing: Variant,
     name: hir::Name,
     path: Option<hir::ModPath>,
 ) -> Option<Builder> {
     let db = completion.db;
     let mut kind = thing.kind(db);
-    let should_add_parens = match &completion.ident_ctx {
-        IdentContext::NameRef(NameRefContext {
-            kind: NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. }),
-            ..
-        }) => false,
-        IdentContext::NameRef(NameRefContext {
-            kind:
-                NameRefKind::Path(PathCompletionCtx {
-                    kind: PathKind::Use | PathKind::Type { .. }, ..
-                }),
-            ..
-        }) => false,
+    let should_add_parens = match &path_ctx {
+        PathCompletionCtx { has_call_parens: true, .. } => false,
+        PathCompletionCtx { kind: PathKind::Use | PathKind::Type { .. }, .. } => false,
         _ => true,
     };
 

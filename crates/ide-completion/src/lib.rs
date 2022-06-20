@@ -25,7 +25,8 @@ use text_edit::TextEdit;
 use crate::{
     completions::Completions,
     context::{
-        CompletionContext, IdentContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind,
+        CompletionAnalysis, CompletionContext, NameRefContext, NameRefKind, PathCompletionCtx,
+        PathKind,
     },
 };
 
@@ -148,12 +149,12 @@ pub fn completions(
     position: FilePosition,
     trigger_character: Option<char>,
 ) -> Option<Completions> {
-    let ctx = &CompletionContext::new(db, position, config)?;
+    let (ctx, analysis) = &CompletionContext::new(db, position, config)?;
     let mut completions = Completions::default();
 
     // prevent `(` from triggering unwanted completion noise
     if trigger_character == Some('(') {
-        if let IdentContext::NameRef(NameRefContext { kind, .. }) = &ctx.ident_ctx {
+        if let CompletionAnalysis::NameRef(NameRefContext { kind, .. }) = &analysis {
             if let NameRefKind::Path(
                 path_ctx @ PathCompletionCtx { kind: PathKind::Vis { has_in_token }, .. },
             ) = kind
@@ -168,20 +169,20 @@ pub fn completions(
     {
         let acc = &mut completions;
 
-        match &ctx.ident_ctx {
-            IdentContext::Name(name_ctx) => completions::complete_name(acc, ctx, name_ctx),
-            IdentContext::NameRef(name_ref_ctx) => {
+        match &analysis {
+            CompletionAnalysis::Name(name_ctx) => completions::complete_name(acc, ctx, name_ctx),
+            CompletionAnalysis::NameRef(name_ref_ctx) => {
                 completions::complete_name_ref(acc, ctx, name_ref_ctx)
             }
-            IdentContext::Lifetime(lifetime_ctx) => {
+            CompletionAnalysis::Lifetime(lifetime_ctx) => {
                 completions::lifetime::complete_label(acc, ctx, lifetime_ctx);
                 completions::lifetime::complete_lifetime(acc, ctx, lifetime_ctx);
             }
-            IdentContext::String { original, expanded: Some(expanded) } => {
+            CompletionAnalysis::String { original, expanded: Some(expanded) } => {
                 completions::extern_abi::complete_extern_abi(acc, ctx, expanded);
                 completions::format_string::format_string(acc, ctx, original, expanded);
             }
-            IdentContext::UnexpandedAttrTT {
+            CompletionAnalysis::UnexpandedAttrTT {
                 colon_prefix,
                 fake_attribute_under_caret: Some(attr),
             } => {
@@ -192,7 +193,7 @@ pub fn completions(
                     attr,
                 );
             }
-            IdentContext::UnexpandedAttrTT { .. } | IdentContext::String { .. } => (),
+            CompletionAnalysis::UnexpandedAttrTT { .. } | CompletionAnalysis::String { .. } => (),
         }
     }
 
@@ -204,22 +205,26 @@ pub fn completions(
 pub fn resolve_completion_edits(
     db: &RootDatabase,
     config: &CompletionConfig,
-    position: FilePosition,
+    FilePosition { file_id, offset }: FilePosition,
     imports: impl IntoIterator<Item = (String, String)>,
 ) -> Option<Vec<TextEdit>> {
     let _p = profile::span("resolve_completion_edits");
-    let ctx = CompletionContext::new(db, position, config)?;
-    let position_for_import = &ctx.original_token.parent()?;
-    let scope = ImportScope::find_insert_use_container(position_for_import, &ctx.sema)?;
+    let sema = hir::Semantics::new(db);
 
-    let current_module = ctx.sema.scope(position_for_import)?.module();
+    let original_file = sema.parse(file_id);
+    let original_token =
+        syntax::AstNode::syntax(&original_file).token_at_offset(offset).left_biased()?;
+    let position_for_import = &original_token.parent()?;
+    let scope = ImportScope::find_insert_use_container(position_for_import, &sema)?;
+
+    let current_module = sema.scope(position_for_import)?.module();
     let current_crate = current_module.krate();
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();
 
     imports.into_iter().for_each(|(full_import_path, imported_name)| {
         let items_with_name = items_locator::items_with_name(
-            &ctx.sema,
+            &sema,
             current_crate,
             NameToImport::exact_case_sensitive(imported_name),
             items_locator::AssocItemSearch::Include,

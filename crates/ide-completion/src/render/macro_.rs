@@ -5,18 +5,24 @@ use ide_db::SymbolKind;
 use syntax::SmolStr;
 
 use crate::{
-    context::{IdentContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind},
+    context::{PathCompletionCtx, PathKind},
     item::{Builder, CompletionItem},
     render::RenderContext,
 };
 
-pub(crate) fn render_macro(ctx: RenderContext<'_>, name: hir::Name, macro_: hir::Macro) -> Builder {
+pub(crate) fn render_macro(
+    ctx: RenderContext<'_>,
+    path_ctx: &PathCompletionCtx,
+    name: hir::Name,
+    macro_: hir::Macro,
+) -> Builder {
     let _p = profile::span("render_macro");
-    render(ctx, name, macro_)
+    render(ctx, path_ctx, name, macro_)
 }
 
 fn render(
     ctx @ RenderContext { completion, .. }: RenderContext<'_>,
+    PathCompletionCtx { kind, has_macro_bang, has_call_parens, .. }: &PathCompletionCtx,
     name: hir::Name,
     macro_: hir::Macro,
 ) -> Builder {
@@ -33,13 +39,7 @@ fn render(
     let is_fn_like = macro_.is_fn_like(completion.db);
     let (bra, ket) = if is_fn_like { guess_macro_braces(&name, docs_str) } else { ("", "") };
 
-    let needs_bang = match &completion.ident_ctx {
-        IdentContext::NameRef(NameRefContext {
-            kind: NameRefKind::Path(PathCompletionCtx { kind, has_macro_bang, .. }),
-            ..
-        }) => is_fn_like && *kind != PathKind::Use && !has_macro_bang,
-        _ => is_fn_like,
-    };
+    let needs_bang = is_fn_like && *kind != PathKind::Use && !has_macro_bang;
 
     let mut item = CompletionItem::new(
         SymbolKind::from(macro_.kind(completion.db)),
@@ -53,7 +53,7 @@ fn render(
 
     let name = &*name;
     match ctx.snippet_cap() {
-        Some(cap) if needs_bang && !ctx.path_is_call() => {
+        Some(cap) if needs_bang && !has_call_parens => {
             let snippet = format!("{}!{}$0{}", name, bra, ket);
             let lookup = banged_name(name);
             item.insert_snippet(cap, snippet).lookup_by(lookup);

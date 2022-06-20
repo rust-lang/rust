@@ -269,7 +269,7 @@ pub(super) enum NameRefKind {
 
 /// The identifier we are currently completing.
 #[derive(Debug)]
-pub(super) enum IdentContext {
+pub(super) enum CompletionAnalysis {
     Name(NameContext),
     NameRef(NameRefContext),
     Lifetime(LifetimeContext),
@@ -338,8 +338,6 @@ pub(crate) struct CompletionContext<'a> {
     /// The expected type of what we are completing.
     pub(super) expected_type: Option<Type>,
 
-    // We might wanna split these out of CompletionContext
-    pub(super) ident_ctx: IdentContext,
     pub(super) qualifier_ctx: QualifierCtx,
 
     pub(super) locals: FxHashMap<Name, Local>,
@@ -461,7 +459,7 @@ impl<'a> CompletionContext<'a> {
         db: &'a RootDatabase,
         position @ FilePosition { file_id, offset }: FilePosition,
         config: &'a CompletionConfig,
-    ) -> Option<CompletionContext<'a>> {
+    ) -> Option<(CompletionContext<'a>, CompletionAnalysis)> {
         let _p = profile::span("CompletionContext::new");
         let sema = Semantics::new(db);
 
@@ -503,21 +501,16 @@ impl<'a> CompletionContext<'a> {
             module,
             expected_name: None,
             expected_type: None,
-            // dummy value, will be overwritten
-            ident_ctx: IdentContext::UnexpandedAttrTT {
-                fake_attribute_under_caret: None,
-                colon_prefix: false,
-            },
             qualifier_ctx: Default::default(),
             locals,
         };
-        ctx.expand_and_fill(
+        let ident_ctx = ctx.expand_and_analyze(
             original_file.syntax().clone(),
             file_with_fake_ident.syntax().clone(),
             offset,
             fake_ident_token,
         )?;
-        Some(ctx)
+        Some((ctx, ident_ctx))
     }
 }
 
