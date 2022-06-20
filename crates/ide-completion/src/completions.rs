@@ -489,7 +489,11 @@ pub(super) fn complete_name(
         NameKind::Function => {
             item_list::trait_impl::complete_trait_impl_fn(acc, ctx, name);
         }
-        NameKind::IdentPat(pattern_ctx) => complete_patterns(acc, ctx, pattern_ctx),
+        NameKind::IdentPat(pattern_ctx) => {
+            if ctx.token.kind() != syntax::T![_] {
+                complete_patterns(acc, ctx, pattern_ctx)
+            }
+        }
         NameKind::Module(mod_under_caret) => {
             mod_::complete_mod(acc, ctx, mod_under_caret);
         }

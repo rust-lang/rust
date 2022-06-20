@@ -14,6 +14,18 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[test]
+fn wildcard() {
+    check(
+        r#"
+fn quux() {
+    let _$0
+}
+"#,
+        expect![""],
+    );
+}
+
+#[test]
 fn ident_rebind_pat() {
     check_empty(
         r#"
