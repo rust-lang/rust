@@ -541,8 +541,8 @@ pub(super) fn complete_name_ref(
         NameRefKind::Keyword(item) => {
             keyword::complete_for_and_where(acc, ctx, item);
         }
-        NameRefKind::RecordExpr(record_expr) => {
-            record::complete_record_expr_fields(acc, ctx, record_expr);
+        NameRefKind::RecordExpr { dot_prefix, expr } => {
+            record::complete_record_expr_fields(acc, ctx, expr, dot_prefix);
         }
         NameRefKind::Pattern(pattern_ctx) => complete_patterns(acc, ctx, pattern_ctx),
     }

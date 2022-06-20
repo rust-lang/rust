@@ -254,7 +254,9 @@ impl<'a> CompletionContext<'a> {
                     // match foo { $0 }
                     // match foo { ..., pat => $0 }
                     ast::MatchExpr(it) => {
-                        let ty = if self.previous_token_is(T![=>]) {
+                        let on_arrow = previous_non_trivia_token(self.token.clone()).map_or(false, |it| T![=>] == it.kind());
+
+                        let ty = if on_arrow {
                             // match foo { ..., pat => $0 }
                             cov_mark::hit!(expected_type_match_arm_body_without_leading_char);
                             cov_mark::hit!(expected_type_match_arm_body_with_leading_char);
@@ -327,9 +329,6 @@ impl<'a> CompletionContext<'a> {
             return None;
         }
 
-        self.previous_token =
-            syntax_element.clone().into_token().and_then(previous_non_trivia_token);
-
         (self.expected_type, self.expected_name) = self.expected_type_and_name();
 
         // Overwrite the path kind for derives
@@ -368,19 +367,19 @@ impl<'a> CompletionContext<'a> {
                 } else {
                     // Fix up trailing whitespace problem
                     // #[attr(foo = $0
-                    let token = if self.token.kind() == SyntaxKind::WHITESPACE {
-                        self.previous_token.as_ref()?
-                    } else {
-                        &self.token
-                    };
+                    let token =
+                        syntax::algo::skip_trivia_token(self.token.clone(), Direction::Prev)?;
                     let p = token.parent()?;
                     if p.kind() == SyntaxKind::TOKEN_TREE
                         && p.ancestors().any(|it| it.kind() == SyntaxKind::META)
                     {
+                        let colon_prefix = previous_non_trivia_token(self.token.clone())
+                            .map_or(false, |it| T![:] == it.kind());
                         self.ident_ctx = IdentContext::UnexpandedAttrTT {
                             fake_attribute_under_caret: syntax_element
                                 .ancestors()
                                 .find_map(ast::Attr::cast),
+                            colon_prefix,
                         };
                     } else {
                         return None;
@@ -493,12 +492,15 @@ impl<'a> CompletionContext<'a> {
             |kind| (NameRefContext { nameref: nameref.clone(), kind }, Default::default());
 
         if let Some(record_field) = ast::RecordExprField::for_field_name(&name_ref) {
+            let dot_prefix = previous_non_trivia_token(name_ref.syntax().clone())
+                .map_or(false, |it| T![.] == it.kind());
+
             return find_node_in_file_compensated(
                 sema,
                 original_file,
                 &record_field.parent_record_lit(),
             )
-            .map(NameRefKind::RecordExpr)
+            .map(|expr| NameRefKind::RecordExpr { expr, dot_prefix })
             .map(make_res);
         }
         if let Some(record_field) = ast::RecordPatField::for_field_name_ref(&name_ref) {
@@ -1180,8 +1182,12 @@ pub(crate) fn is_in_loop_body(node: &SyntaxNode) -> bool {
         .is_some()
 }
 
-fn previous_non_trivia_token(token: SyntaxToken) -> Option<SyntaxToken> {
-    let mut token = token.prev_token();
+fn previous_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {
+    let mut token = match e.into() {
+        SyntaxElement::Node(n) => n.first_token()?,
+        SyntaxElement::Token(t) => t,
+    }
+    .prev_token();
     while let Some(inner) = token {
         if !inner.kind().is_trivia() {
             return Some(inner);

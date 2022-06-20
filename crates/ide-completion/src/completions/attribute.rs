@@ -33,6 +33,7 @@ pub(crate) use self::derive::complete_derive_path;
 pub(crate) fn complete_known_attribute_input(
     acc: &mut Completions,
     ctx: &CompletionContext,
+    &colon_prefix: &bool,
     fake_attribute_under_caret: &ast::Attr,
 ) -> Option<()> {
     let attribute = fake_attribute_under_caret;
@@ -47,7 +48,9 @@ pub(crate) fn complete_known_attribute_input(
 
     match path.text().as_str() {
         "repr" => repr::complete_repr(acc, ctx, tt),
-        "feature" => lint::complete_lint(acc, ctx, &parse_tt_as_comma_sep_paths(tt)?, FEATURES),
+        "feature" => {
+            lint::complete_lint(acc, ctx, colon_prefix, &parse_tt_as_comma_sep_paths(tt)?, FEATURES)
+        }
         "allow" | "warn" | "deny" | "forbid" => {
             let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
 
@@ -60,7 +63,7 @@ pub(crate) fn complete_known_attribute_input(
                 .cloned()
                 .collect();
 
-            lint::complete_lint(acc, ctx, &existing_lints, &lints);
+            lint::complete_lint(acc, ctx, colon_prefix, &existing_lints, &lints);
         }
         "cfg" => cfg::complete_cfg(acc, ctx),
         _ => (),

@@ -259,8 +259,11 @@ pub(super) enum NameRefKind {
     DotAccess(DotAccess),
     /// Position where we are only interested in keyword completions
     Keyword(ast::Item),
-    /// The record expression this nameref is a field of
-    RecordExpr(ast::RecordExpr),
+    /// The record expression this nameref is a field of and whether a dot precedes the completion identifier.
+    RecordExpr {
+        dot_prefix: bool,
+        expr: ast::RecordExpr,
+    },
     Pattern(PatternContext),
 }
 
@@ -279,6 +282,7 @@ pub(super) enum IdentContext {
     },
     /// Set if we are currently completing in an unexpanded attribute, this usually implies a builtin attribute like `allow($0)`
     UnexpandedAttrTT {
+        colon_prefix: bool,
         fake_attribute_under_caret: Option<ast::Attr>,
     },
 }
@@ -334,9 +338,6 @@ pub(crate) struct CompletionContext<'a> {
     /// The expected type of what we are completing.
     pub(super) expected_type: Option<Type>,
 
-    // FIXME: This shouldn't exist
-    pub(super) previous_token: Option<SyntaxToken>,
-
     // We might wanna split these out of CompletionContext
     pub(super) ident_ctx: IdentContext,
     pub(super) qualifier_ctx: QualifierCtx,
@@ -359,11 +360,6 @@ impl<'a> CompletionContext<'a> {
             _ if kind.is_keyword() => self.original_token.text_range(),
             _ => TextRange::empty(self.position.offset),
         }
-    }
-
-    // FIXME: This shouldn't exist
-    pub(crate) fn previous_token_is(&self, kind: SyntaxKind) -> bool {
-        self.previous_token.as_ref().map_or(false, |tok| tok.kind() == kind)
     }
 
     pub(crate) fn famous_defs(&self) -> FamousDefs {
@@ -507,9 +503,11 @@ impl<'a> CompletionContext<'a> {
             module,
             expected_name: None,
             expected_type: None,
-            previous_token: None,
             // dummy value, will be overwritten
-            ident_ctx: IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: None },
+            ident_ctx: IdentContext::UnexpandedAttrTT {
+                fake_attribute_under_caret: None,
+                colon_prefix: false,
+            },
             qualifier_ctx: Default::default(),
             locals,
         };

@@ -181,8 +181,16 @@ pub fn completions(
                 completions::extern_abi::complete_extern_abi(acc, ctx, expanded);
                 completions::format_string::format_string(acc, ctx, original, expanded);
             }
-            IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: Some(attr) } => {
-                completions::attribute::complete_known_attribute_input(acc, ctx, attr);
+            IdentContext::UnexpandedAttrTT {
+                colon_prefix,
+                fake_attribute_under_caret: Some(attr),
+            } => {
+                completions::attribute::complete_known_attribute_input(
+                    acc,
+                    ctx,
+                    colon_prefix,
+                    attr,
+                );
             }
             IdentContext::UnexpandedAttrTT { .. } | IdentContext::String { .. } => (),
         }
