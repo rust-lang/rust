@@ -11,8 +11,8 @@ LL |         unsafe { intrinsics::simd_gather(or, ptrs, enable.to_int()) }
 note: inside `main` at $DIR/simd-gather.rs:LL:CC
   --> $DIR/simd-gather.rs:LL:CC
    |
-LL |     let _result = Simd::gather_select_unchecked(&vec, Mask::splat(true), idxs, Simd::splat(0));
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         let _result = Simd::gather_select_unchecked(&vec, Mask::splat(true), idxs, Simd::splat(0));
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
