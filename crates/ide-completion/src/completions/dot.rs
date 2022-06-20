@@ -29,7 +29,7 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext, dot_a
             acc,
             ctx,
             &receiver_ty,
-            |acc, field, ty| acc.add_field(ctx, None, field, &ty),
+            |acc, field, ty| acc.add_field(ctx, dot_access, None, field, &ty),
             |acc, field, ty| acc.add_tuple_field(ctx, None, field, &ty),
         );
     }
@@ -64,7 +64,19 @@ pub(crate) fn complete_undotted_self(
         acc,
         ctx,
         &ty,
-        |acc, field, ty| acc.add_field(ctx, Some(hir::known::SELF_PARAM), field, &ty),
+        |acc, field, ty| {
+            acc.add_field(
+                ctx,
+                &DotAccess {
+                    receiver: None,
+                    receiver_ty: None,
+                    kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
+                },
+                Some(hir::known::SELF_PARAM),
+                field,
+                &ty,
+            )
+        },
         |acc, field, ty| acc.add_tuple_field(ctx, Some(hir::known::SELF_PARAM), field, &ty),
     );
     complete_methods(ctx, &ty, |func| {

@@ -17,7 +17,7 @@ use ide_db::{
 use syntax::{AstNode, SmolStr, SyntaxKind, TextRange};
 
 use crate::{
-    context::{PathCompletionCtx, PathKind, PatternContext},
+    context::{DotAccess, PathCompletionCtx, PathKind, PatternContext},
     item::{Builder, CompletionRelevanceTypeMatch},
     render::{
         function::render_fn,
@@ -110,6 +110,7 @@ impl<'a> RenderContext<'a> {
 
 pub(crate) fn render_field(
     ctx: RenderContext<'_>,
+    dot_access: &DotAccess,
     receiver: Option<hir::Name>,
     field: hir::Field,
     ty: &hir::Type,
@@ -134,10 +135,10 @@ pub(crate) fn render_field(
     if is_keyword && !matches!(name.as_str(), "self" | "crate" | "super" | "Self") {
         item.insert_text(format!("r#{}", name));
     }
-    if let Some(_ref_match) = compute_ref_match(ctx.completion, ty) {
-        // FIXME
-        // For now we don't properly calculate the edits for ref match
-        // completions on struct fields, so we've disabled them. See #8058.
+    if let Some(receiver) = &dot_access.receiver {
+        if let Some(ref_match) = compute_ref_match(ctx.completion, ty) {
+            item.ref_match(ref_match, receiver.syntax().text_range().start());
+        }
     }
     item.build()
 }
@@ -1535,9 +1536,6 @@ impl Foo { fn baz(&self) -> u32 { 0 } }
 fn foo(f: Foo) { let _: &u32 = f.b$0 }
 "#,
             &[CompletionItemKind::Method, CompletionItemKind::SymbolKind(SymbolKind::Field)],
-            // FIXME
-            // Ideally we'd also suggest &f.bar as exact
-            // type matches. See #8058.
             expect![[r#"
                 [
                     CompletionItem {
@@ -1559,6 +1557,7 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                             Field,
                         ),
                         detail: "u32",
+                        ref_match: "&@96",
                     },
                 ]
             "#]],

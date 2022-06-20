@@ -3,7 +3,7 @@ use ide_db::SymbolKind;
 use syntax::ast::{self, Expr};
 
 use crate::{
-    context::{ExprCtx, PathCompletionCtx, PatternContext, Qualified},
+    context::{DotAccess, DotAccessKind, ExprCtx, PathCompletionCtx, PatternContext, Qualified},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
     CompletionRelevancePostfixMatch, Completions,
 };
@@ -107,7 +107,17 @@ fn complete_fields(
     missing_fields: Vec<(hir::Field, hir::Type)>,
 ) {
     for (field, ty) in missing_fields {
-        acc.add_field(ctx, None, field, &ty);
+        acc.add_field(
+            ctx,
+            &DotAccess {
+                receiver: None,
+                receiver_ty: None,
+                kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
+            },
+            None,
+            field,
+            &ty,
+        );
     }
 }
 

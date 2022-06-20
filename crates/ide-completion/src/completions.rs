@@ -379,6 +379,7 @@ impl Completions {
     pub(crate) fn add_field(
         &mut self,
         ctx: &CompletionContext,
+        dot_access: &DotAccess,
         receiver: Option<hir::Name>,
         field: hir::Field,
         ty: &hir::Type,
@@ -390,6 +391,7 @@ impl Completions {
         };
         let item = render_field(
             RenderContext::new(ctx).private_editable(is_private_editable),
+            dot_access,
             receiver,
             field,
             ty,
