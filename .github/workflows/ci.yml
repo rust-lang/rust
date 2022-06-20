@@ -116,8 +116,11 @@ jobs:
           rustup override set nightly
       - name: Formatting (miri, ui_test)
         run: cargo fmt --all --check
-      - name: Formatting (cargo-miri)
-        run: cargo fmt --manifest-path cargo-miri/Cargo.toml --all --check
+      - name: Formatting (everything else)
+        # TODO: Add `tests` (work in progress).
+        # Maybe change to `find . -name '*.rs'`, superseding the previous step.
+        run: find bench-cargo-miri benches cargo-miri test-cargo-miri -name '*.rs'
+          | xargs rustfmt --edition=2021 --config-path ./rustfmt.toml --check
 
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a
