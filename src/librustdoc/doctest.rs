@@ -365,8 +365,8 @@ fn run_test(
     }
     compiler.arg("--target").arg(match target {
         TargetTriple::TargetTriple(s) => s,
-        TargetTriple::TargetPath(path) => {
-            path.to_str().expect("target path must be valid unicode").to_string()
+        TargetTriple::TargetJson { path_for_rustdoc, .. } => {
+            path_for_rustdoc.to_str().expect("target path must be valid unicode").to_string()
         }
     });
     if let ErrorOutputType::HumanReadable(kind) = rustdoc_options.error_format {
