@@ -1355,7 +1355,10 @@ impl<'a> Parser<'a> {
                     s.print_mutability(mut_ty.mutbl, false);
                     s.popen();
                     s.print_type(&mut_ty.ty);
-                    s.print_type_bounds(" +", &bounds);
+                    if !bounds.is_empty() {
+                        s.word(" + ");
+                        s.print_type_bounds(&bounds);
+                    }
                     s.pclose()
                 });
 

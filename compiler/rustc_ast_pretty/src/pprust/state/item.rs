@@ -114,7 +114,10 @@ impl<'a> State<'a> {
         self.word_space("type");
         self.print_ident(ident);
         self.print_generic_params(&generics.params);
-        self.print_type_bounds(":", bounds);
+        if !bounds.is_empty() {
+            self.word_nbsp(":");
+            self.print_type_bounds(bounds);
+        }
         self.print_where_clause_parts(where_clauses.0.0, before_predicates);
         if let Some(ty) = ty {
             self.space();
@@ -320,7 +323,10 @@ impl<'a> State<'a> {
                         real_bounds.push(b.clone());
                     }
                 }
-                self.print_type_bounds(":", &real_bounds);
+                if !real_bounds.is_empty() {
+                    self.word_nbsp(":");
+                    self.print_type_bounds(&real_bounds);
+                }
                 self.print_where_clause(&generics.where_clause);
                 self.word(" ");
                 self.bopen();
@@ -347,7 +353,10 @@ impl<'a> State<'a> {
                     }
                 }
                 self.nbsp();
-                self.print_type_bounds("=", &real_bounds);
+                if !real_bounds.is_empty() {
+                    self.word_nbsp("=");
+                    self.print_type_bounds(&real_bounds);
+                }
                 self.print_where_clause(&generics.where_clause);
                 self.word(";");
                 self.end(); // end inner head-block
@@ -618,14 +627,23 @@ impl<'a> State<'a> {
             }) => {
                 self.print_formal_generic_params(bound_generic_params);
                 self.print_type(bounded_ty);
-                self.print_type_bounds(":", bounds);
+                self.word(":");
+                if !bounds.is_empty() {
+                    self.nbsp();
+                    self.print_type_bounds(bounds);
+                }
             }
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 lifetime,
                 bounds,
                 ..
             }) => {
-                self.print_lifetime_bounds(*lifetime, bounds);
+                self.print_lifetime(*lifetime);
+                self.word(":");
+                if !bounds.is_empty() {
+                    self.nbsp();
+                    self.print_lifetime_bounds(bounds);
+                }
             }
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { lhs_ty, rhs_ty, .. }) => {
                 self.print_type(lhs_ty);
