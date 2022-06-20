@@ -3,7 +3,7 @@ error[E0530]: function parameters cannot shadow statics
    |
 LL | static foo: i32 = 0;
    | -------------------- the static `foo` is defined here
-LL | 
+LL |
 LL | fn bar(foo: i32) {}
    |        ^^^ cannot be named the same as a static
 
@@ -12,7 +12,7 @@ error[E0530]: function parameters cannot shadow statics
    |
 LL | use self::submod::answer;
    |     -------------------- the static `answer` is imported here
-LL | 
+LL |
 LL | fn question(answer: i32) {}
    |             ^^^^^^ cannot be named the same as a static
 

@@ -9,7 +9,7 @@ error[E0412]: cannot find type `Baz` in this scope
    |
 LL | enum Bar { }
    | -------- similarly named enum `Bar` defined here
-LL | 
+LL |
 LL | type A = Baz; // Misspelled type name.
    |          ^^^ help: an enum with a similar name exists: `Bar`
 

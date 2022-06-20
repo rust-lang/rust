@@ -40,7 +40,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
         temp_scope_override: Option<region::Scope>,
         break_scope: region::Scope,
-        variable_scope_span: Span,
+        variable_source_info: SourceInfo,
     ) -> BlockAnd<()> {
         let this = self;
         let expr_span = expr.span;
@@ -52,7 +52,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     &this.thir[lhs],
                     temp_scope_override,
                     break_scope,
-                    variable_scope_span,
+                    variable_source_info,
                 ));
 
                 let rhs_then_block = unpack!(this.then_else_break(
@@ -60,7 +60,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     &this.thir[rhs],
                     temp_scope_override,
                     break_scope,
-                    variable_scope_span,
+                    variable_source_info,
                 ));
 
                 rhs_then_block.unit()
@@ -73,13 +73,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         &this.thir[value],
                         temp_scope_override,
                         break_scope,
-                        variable_scope_span,
+                        variable_source_info,
                     )
                 })
             }
-            ExprKind::Let { expr, ref pat } => {
-                this.lower_let_expr(block, &this.thir[expr], pat, break_scope, variable_scope_span)
-            }
+            ExprKind::Let { expr, ref pat } => this.lower_let_expr(
+                block,
+                &this.thir[expr],
+                pat,
+                break_scope,
+                Some(variable_source_info.scope),
+                variable_source_info.span,
+            ),
             _ => {
                 let temp_scope = temp_scope_override.unwrap_or_else(|| this.local_scope());
                 let mutability = Mutability::Mut;
@@ -1772,6 +1777,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
         pat: &Pat<'tcx>,
         else_target: region::Scope,
+        source_scope: Option<SourceScope>,
         span: Span,
     ) -> BlockAnd<()> {
         let expr_span = expr.span;
@@ -1797,7 +1803,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();
         self.break_for_else(otherwise_post_guard_block, else_target, self.source_info(expr_span));
 
-        self.declare_bindings(None, pat.span.to(span), pat, ArmHasGuard(false), opt_expr_place);
+        self.declare_bindings(
+            source_scope,
+            pat.span.to(span),
+            pat,
+            ArmHasGuard(false),
+            opt_expr_place,
+        );
+
         let post_guard_block = self.bind_pattern(
             self.source_info(pat.span),
             guard_candidate,
@@ -1969,12 +1982,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Guard::If(e) => {
                         let e = &this.thir[e];
                         guard_span = e.span;
-                        this.then_else_break(block, e, None, match_scope, arm_span)
+                        this.then_else_break(
+                            block,
+                            e,
+                            None,
+                            match_scope,
+                            this.source_info(arm_span),
+                        )
                     }
                     Guard::IfLet(ref pat, scrutinee) => {
                         let s = &this.thir[scrutinee];
                         guard_span = s.span;
-                        this.lower_let_expr(block, s, pat, match_scope, arm_span)
+                        this.lower_let_expr(block, s, pat, match_scope, None, arm_span)
                     }
                 });
 

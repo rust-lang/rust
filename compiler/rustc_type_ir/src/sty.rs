@@ -10,7 +10,9 @@ use crate::Interner;
 use crate::TyDecoder;
 use crate::TyEncoder;
 use crate::UintTy;
+use crate::UniverseIndex;
 
+use self::RegionKind::*;
 use self::TyKind::*;
 
 use rustc_data_structures::stable_hasher::HashStable;
@@ -20,8 +22,6 @@ use rustc_serialize::{Decodable, Decoder, Encodable};
 ///
 /// Types written by the user start out as `hir::TyKind` and get
 /// converted to this representation using `AstConv::ast_ty_to_ty`.
-///
-/// The `HashStable` implementation for this type is defined in `rustc_query_system::ich`.
 #[rustc_diagnostic_item = "IrTyKind"]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
@@ -202,7 +202,7 @@ impl<I: Interner> TyKind<I> {
 // This is manually implemented for `TyKind` because `std::mem::discriminant`
 // returns an opaque value that is `PartialEq` but not `PartialOrd`
 #[inline]
-const fn discriminant<I: Interner>(value: &TyKind<I>) -> usize {
+const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
     match value {
         Bool => 0,
         Char => 1,
@@ -273,8 +273,8 @@ impl<I: Interner> Clone for TyKind<I> {
 impl<I: Interner> PartialEq for TyKind<I> {
     #[inline]
     fn eq(&self, other: &TyKind<I>) -> bool {
-        let __self_vi = discriminant(self);
-        let __arg_1_vi = discriminant(other);
+        let __self_vi = tykind_discriminant(self);
+        let __arg_1_vi = tykind_discriminant(other);
         if __self_vi == __arg_1_vi {
             match (&*self, &*other) {
                 (&Int(ref __self_0), &Int(ref __arg_1_0)) => __self_0 == __arg_1_0,
@@ -345,8 +345,8 @@ impl<I: Interner> PartialOrd for TyKind<I> {
 impl<I: Interner> Ord for TyKind<I> {
     #[inline]
     fn cmp(&self, other: &TyKind<I>) -> Ordering {
-        let __self_vi = discriminant(self);
-        let __arg_1_vi = discriminant(other);
+        let __self_vi = tykind_discriminant(self);
+        let __arg_1_vi = tykind_discriminant(other);
         if __self_vi == __arg_1_vi {
             match (&*self, &*other) {
                 (&Int(ref __self_0), &Int(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
@@ -444,109 +444,109 @@ impl<I: Interner> hash::Hash for TyKind<I> {
     fn hash<__H: hash::Hasher>(&self, state: &mut __H) -> () {
         match (&*self,) {
             (&Int(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Uint(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Float(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Adt(ref __self_0, ref __self_1),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state);
                 hash::Hash::hash(__self_1, state)
             }
             (&Foreign(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Array(ref __self_0, ref __self_1),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state);
                 hash::Hash::hash(__self_1, state)
             }
             (&Slice(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&RawPtr(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Ref(ref __self_0, ref __self_1, ref __self_2),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state);
                 hash::Hash::hash(__self_1, state);
                 hash::Hash::hash(__self_2, state)
             }
             (&FnDef(ref __self_0, ref __self_1),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state);
                 hash::Hash::hash(__self_1, state)
             }
             (&FnPtr(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Dynamic(ref __self_0, ref __self_1),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state);
                 hash::Hash::hash(__self_1, state)
             }
             (&Closure(ref __self_0, ref __self_1),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state);
                 hash::Hash::hash(__self_1, state)
             }
             (&Generator(ref __self_0, ref __self_1, ref __self_2),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state);
                 hash::Hash::hash(__self_1, state);
                 hash::Hash::hash(__self_2, state)
             }
             (&GeneratorWitness(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Tuple(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Projection(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Opaque(ref __self_0, ref __self_1),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state);
                 hash::Hash::hash(__self_1, state)
             }
             (&Param(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Bound(ref __self_0, ref __self_1),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state);
                 hash::Hash::hash(__self_1, state)
             }
             (&Placeholder(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Infer(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
             (&Error(ref __self_0),) => {
-                hash::Hash::hash(&discriminant(self), state);
+                hash::Hash::hash(&tykind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
-            _ => hash::Hash::hash(&discriminant(self), state),
+            _ => hash::Hash::hash(&tykind_discriminant(self), state),
         }
     }
 }
@@ -716,7 +716,7 @@ where
     I::AllocId: Encodable<E>,
 {
     fn encode(&self, e: &mut E) {
-        let disc = discriminant(self);
+        let disc = tykind_discriminant(self);
         match self {
             Bool => e.emit_enum_variant(disc, |_| {}),
             Char => e.emit_enum_variant(disc, |_| {}),
@@ -987,6 +987,442 @@ where
             }
             Error(d) => {
                 d.hash_stable(__hcx, __hasher);
+            }
+        }
+    }
+}
+
+/// Representation of regions. Note that the NLL checker uses a distinct
+/// representation of regions. For this reason, it internally replaces all the
+/// regions with inference variables -- the index of the variable is then used
+/// to index into internal NLL data structures. See `rustc_const_eval::borrow_check`
+/// module for more information.
+///
+/// Note: operations are on the wrapper `Region` type, which is interned,
+/// rather than this type.
+///
+/// ## The Region lattice within a given function
+///
+/// In general, the region lattice looks like
+///
+/// ```text
+/// static ----------+-----...------+       (greatest)
+/// |                |              |
+/// early-bound and  |              |
+/// free regions     |              |
+/// |                |              |
+/// |                |              |
+/// empty(root)   placeholder(U1)   |
+/// |            /                  |
+/// |           /         placeholder(Un)
+/// empty(U1) --         /
+/// |                   /
+/// ...                /
+/// |                 /
+/// empty(Un) --------                      (smallest)
+/// ```
+///
+/// Early-bound/free regions are the named lifetimes in scope from the
+/// function declaration. They have relationships to one another
+/// determined based on the declared relationships from the
+/// function.
+///
+/// Note that inference variables and bound regions are not included
+/// in this diagram. In the case of inference variables, they should
+/// be inferred to some other region from the diagram.  In the case of
+/// bound regions, they are excluded because they don't make sense to
+/// include -- the diagram indicates the relationship between free
+/// regions.
+///
+/// ## Inference variables
+///
+/// During region inference, we sometimes create inference variables,
+/// represented as `ReVar`. These will be inferred by the code in
+/// `infer::lexical_region_resolve` to some free region from the
+/// lattice above (the minimal region that meets the
+/// constraints).
+///
+/// During NLL checking, where regions are defined differently, we
+/// also use `ReVar` -- in that case, the index is used to index into
+/// the NLL region checker's data structures. The variable may in fact
+/// represent either a free region or an inference variable, in that
+/// case.
+///
+/// ## Bound Regions
+///
+/// These are regions that are stored behind a binder and must be substituted
+/// with some concrete region before being used. There are two kind of
+/// bound regions: early-bound, which are bound in an item's `Generics`,
+/// and are substituted by an `InternalSubsts`, and late-bound, which are part of
+/// higher-ranked types (e.g., `for<'a> fn(&'a ())`), and are substituted by
+/// the likes of `liberate_late_bound_regions`. The distinction exists
+/// because higher-ranked lifetimes aren't supported in all places. See [1][2].
+///
+/// Unlike `Param`s, bound regions are not supposed to exist "in the wild"
+/// outside their binder, e.g., in types passed to type inference, and
+/// should first be substituted (by placeholder regions, free regions,
+/// or region variables).
+///
+/// ## Placeholder and Free Regions
+///
+/// One often wants to work with bound regions without knowing their precise
+/// identity. For example, when checking a function, the lifetime of a borrow
+/// can end up being assigned to some region parameter. In these cases,
+/// it must be ensured that bounds on the region can't be accidentally
+/// assumed without being checked.
+///
+/// To do this, we replace the bound regions with placeholder markers,
+/// which don't satisfy any relation not explicitly provided.
+///
+/// There are two kinds of placeholder regions in rustc: `ReFree` and
+/// `RePlaceholder`. When checking an item's body, `ReFree` is supposed
+/// to be used. These also support explicit bounds: both the internally-stored
+/// *scope*, which the region is assumed to outlive, as well as other
+/// relations stored in the `FreeRegionMap`. Note that these relations
+/// aren't checked when you `make_subregion` (or `eq_types`), only by
+/// `resolve_regions_and_report_errors`.
+///
+/// When working with higher-ranked types, some region relations aren't
+/// yet known, so you can't just call `resolve_regions_and_report_errors`.
+/// `RePlaceholder` is designed for this purpose. In these contexts,
+/// there's also the risk that some inference variable laying around will
+/// get unified with your placeholder region: if you want to check whether
+/// `for<'a> Foo<'_>: 'a`, and you substitute your bound region `'a`
+/// with a placeholder region `'%a`, the variable `'_` would just be
+/// instantiated to the placeholder region `'%a`, which is wrong because
+/// the inference variable is supposed to satisfy the relation
+/// *for every value of the placeholder region*. To ensure that doesn't
+/// happen, you can use `leak_check`. This is more clearly explained
+/// by the [rustc dev guide].
+///
+/// [1]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
+/// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
+/// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+pub enum RegionKind<I: Interner> {
+    /// Region bound in a type or fn declaration which will be
+    /// substituted 'early' -- that is, at the same time when type
+    /// parameters are substituted.
+    ReEarlyBound(I::EarlyBoundRegion),
+
+    /// Region bound in a function scope, which will be substituted when the
+    /// function is called.
+    ReLateBound(DebruijnIndex, I::BoundRegion),
+
+    /// When checking a function body, the types of all arguments and so forth
+    /// that refer to bound region parameters are modified to refer to free
+    /// region parameters.
+    ReFree(I::FreeRegion),
+
+    /// Static data that has an "infinite" lifetime. Top in the region lattice.
+    ReStatic,
+
+    /// A region variable. Should not exist outside of type inference.
+    ReVar(I::RegionVid),
+
+    /// A placeholder region -- basically, the higher-ranked version of `ReFree`.
+    /// Should not exist outside of type inference.
+    RePlaceholder(I::PlaceholderRegion),
+
+    /// Empty lifetime is for data that is never accessed.  We tag the
+    /// empty lifetime with a universe -- the idea is that we don't
+    /// want `exists<'a> { forall<'b> { 'b: 'a } }` to be satisfiable.
+    /// Therefore, the `'empty` in a universe `U` is less than all
+    /// regions visible from `U`, but not less than regions not visible
+    /// from `U`.
+    ReEmpty(UniverseIndex),
+
+    /// Erased region, used by trait selection, in MIR and during codegen.
+    ReErased,
+}
+
+// This is manually implemented for `RegionKind` because `std::mem::discriminant`
+// returns an opaque value that is `PartialEq` but not `PartialOrd`
+#[inline]
+const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
+    match value {
+        ReEarlyBound(_) => 0,
+        ReLateBound(_, _) => 1,
+        ReFree(_) => 2,
+        ReStatic => 3,
+        ReVar(_) => 4,
+        RePlaceholder(_) => 5,
+        ReEmpty(_) => 6,
+        ReErased => 7,
+    }
+}
+
+// This is manually implemented because a derive would require `I: Copy`
+impl<I: Interner> Copy for RegionKind<I>
+where
+    I::EarlyBoundRegion: Copy,
+    I::BoundRegion: Copy,
+    I::FreeRegion: Copy,
+    I::RegionVid: Copy,
+    I::PlaceholderRegion: Copy,
+{
+}
+
+// This is manually implemented because a derive would require `I: Clone`
+impl<I: Interner> Clone for RegionKind<I> {
+    fn clone(&self) -> Self {
+        match self {
+            ReEarlyBound(a) => ReEarlyBound(a.clone()),
+            ReLateBound(a, b) => ReLateBound(a.clone(), b.clone()),
+            ReFree(a) => ReFree(a.clone()),
+            ReStatic => ReStatic,
+            ReVar(a) => ReVar(a.clone()),
+            RePlaceholder(a) => RePlaceholder(a.clone()),
+            ReEmpty(a) => ReEmpty(a.clone()),
+            ReErased => ReErased,
+        }
+    }
+}
+
+// This is manually implemented because a derive would require `I: PartialEq`
+impl<I: Interner> PartialEq for RegionKind<I> {
+    #[inline]
+    fn eq(&self, other: &RegionKind<I>) -> bool {
+        let __self_vi = regionkind_discriminant(self);
+        let __arg_1_vi = regionkind_discriminant(other);
+        if __self_vi == __arg_1_vi {
+            match (&*self, &*other) {
+                (&ReEarlyBound(ref __self_0), &ReEarlyBound(ref __arg_1_0)) => {
+                    __self_0 == __arg_1_0
+                }
+                (
+                    &ReLateBound(ref __self_0, ref __self_1),
+                    &ReLateBound(ref __arg_1_0, ref __arg_1_1),
+                ) => __self_0 == __arg_1_0 && __self_1 == __arg_1_1,
+                (&ReFree(ref __self_0), &ReFree(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&ReStatic, &ReStatic) => true,
+                (&ReVar(ref __self_0), &ReVar(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&RePlaceholder(ref __self_0), &RePlaceholder(ref __arg_1_0)) => {
+                    __self_0 == __arg_1_0
+                }
+                (&ReEmpty(ref __self_0), &ReEmpty(ref __arg_1_0)) => __self_0 == __arg_1_0,
+                (&ReErased, &ReErased) => true,
+                _ => true,
+            }
+        } else {
+            false
+        }
+    }
+}
+
+// This is manually implemented because a derive would require `I: Eq`
+impl<I: Interner> Eq for RegionKind<I> {}
+
+// This is manually implemented because a derive would require `I: PartialOrd`
+impl<I: Interner> PartialOrd for RegionKind<I> {
+    #[inline]
+    fn partial_cmp(&self, other: &RegionKind<I>) -> Option<Ordering> {
+        Some(Ord::cmp(self, other))
+    }
+}
+
+// This is manually implemented because a derive would require `I: Ord`
+impl<I: Interner> Ord for RegionKind<I> {
+    #[inline]
+    fn cmp(&self, other: &RegionKind<I>) -> Ordering {
+        let __self_vi = regionkind_discriminant(self);
+        let __arg_1_vi = regionkind_discriminant(other);
+        if __self_vi == __arg_1_vi {
+            match (&*self, &*other) {
+                (&ReEarlyBound(ref __self_0), &ReEarlyBound(ref __arg_1_0)) => {
+                    Ord::cmp(__self_0, __arg_1_0)
+                }
+                (
+                    &ReLateBound(ref __self_0, ref __self_1),
+                    &ReLateBound(ref __arg_1_0, ref __arg_1_1),
+                ) => match Ord::cmp(__self_0, __arg_1_0) {
+                    Ordering::Equal => Ord::cmp(__self_1, __arg_1_1),
+                    cmp => cmp,
+                },
+                (&ReFree(ref __self_0), &ReFree(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&ReStatic, &ReStatic) => Ordering::Equal,
+                (&ReVar(ref __self_0), &ReVar(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&RePlaceholder(ref __self_0), &RePlaceholder(ref __arg_1_0)) => {
+                    Ord::cmp(__self_0, __arg_1_0)
+                }
+                (&ReEmpty(ref __self_0), &ReEmpty(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
+                (&ReErased, &ReErased) => Ordering::Equal,
+                _ => Ordering::Equal,
+            }
+        } else {
+            Ord::cmp(&__self_vi, &__arg_1_vi)
+        }
+    }
+}
+
+// This is manually implemented because a derive would require `I: Hash`
+impl<I: Interner> hash::Hash for RegionKind<I> {
+    fn hash<__H: hash::Hasher>(&self, state: &mut __H) -> () {
+        match (&*self,) {
+            (&ReEarlyBound(ref __self_0),) => {
+                hash::Hash::hash(&regionkind_discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&ReLateBound(ref __self_0, ref __self_1),) => {
+                hash::Hash::hash(&regionkind_discriminant(self), state);
+                hash::Hash::hash(__self_0, state);
+                hash::Hash::hash(__self_1, state)
+            }
+            (&ReFree(ref __self_0),) => {
+                hash::Hash::hash(&regionkind_discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&ReStatic,) => {
+                hash::Hash::hash(&regionkind_discriminant(self), state);
+            }
+            (&ReVar(ref __self_0),) => {
+                hash::Hash::hash(&regionkind_discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&RePlaceholder(ref __self_0),) => {
+                hash::Hash::hash(&regionkind_discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&ReEmpty(ref __self_0),) => {
+                hash::Hash::hash(&regionkind_discriminant(self), state);
+                hash::Hash::hash(__self_0, state)
+            }
+            (&ReErased,) => {
+                hash::Hash::hash(&regionkind_discriminant(self), state);
+            }
+        }
+    }
+}
+
+// This is manually implemented because a derive would require `I: Debug`
+impl<I: Interner> fmt::Debug for RegionKind<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ReEarlyBound(ref data) => write!(f, "ReEarlyBound({:?})", data),
+
+            ReLateBound(binder_id, ref bound_region) => {
+                write!(f, "ReLateBound({:?}, {:?})", binder_id, bound_region)
+            }
+
+            ReFree(ref fr) => fr.fmt(f),
+
+            ReStatic => write!(f, "ReStatic"),
+
+            ReVar(ref vid) => vid.fmt(f),
+
+            RePlaceholder(placeholder) => write!(f, "RePlaceholder({:?})", placeholder),
+
+            ReEmpty(ui) => write!(f, "ReEmpty({:?})", ui),
+
+            ReErased => write!(f, "ReErased"),
+        }
+    }
+}
+
+// This is manually implemented because a derive would require `I: Encodable`
+impl<I: Interner, E: TyEncoder> Encodable<E> for RegionKind<I>
+where
+    I::EarlyBoundRegion: Encodable<E>,
+    I::BoundRegion: Encodable<E>,
+    I::FreeRegion: Encodable<E>,
+    I::RegionVid: Encodable<E>,
+    I::PlaceholderRegion: Encodable<E>,
+{
+    fn encode(&self, e: &mut E) {
+        let disc = regionkind_discriminant(self);
+        match self {
+            ReEarlyBound(a) => e.emit_enum_variant(disc, |e| {
+                a.encode(e);
+            }),
+            ReLateBound(a, b) => e.emit_enum_variant(disc, |e| {
+                a.encode(e);
+                b.encode(e);
+            }),
+            ReFree(a) => e.emit_enum_variant(disc, |e| {
+                a.encode(e);
+            }),
+            ReStatic => e.emit_enum_variant(disc, |_| {}),
+            ReVar(a) => e.emit_enum_variant(disc, |e| {
+                a.encode(e);
+            }),
+            RePlaceholder(a) => e.emit_enum_variant(disc, |e| {
+                a.encode(e);
+            }),
+            ReEmpty(a) => e.emit_enum_variant(disc, |e| {
+                a.encode(e);
+            }),
+            ReErased => e.emit_enum_variant(disc, |_| {}),
+        }
+    }
+}
+
+// This is manually implemented because a derive would require `I: Decodable`
+impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for RegionKind<I>
+where
+    I::EarlyBoundRegion: Decodable<D>,
+    I::BoundRegion: Decodable<D>,
+    I::FreeRegion: Decodable<D>,
+    I::RegionVid: Decodable<D>,
+    I::PlaceholderRegion: Decodable<D>,
+{
+    fn decode(d: &mut D) -> Self {
+        match Decoder::read_usize(d) {
+            0 => ReEarlyBound(Decodable::decode(d)),
+            1 => ReLateBound(Decodable::decode(d), Decodable::decode(d)),
+            2 => ReFree(Decodable::decode(d)),
+            3 => ReStatic,
+            4 => ReVar(Decodable::decode(d)),
+            5 => RePlaceholder(Decodable::decode(d)),
+            6 => ReEmpty(Decodable::decode(d)),
+            7 => ReErased,
+            _ => panic!(
+                "{}",
+                format!(
+                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
+                    "RegionKind", 8,
+                )
+            ),
+        }
+    }
+}
+
+// This is not a derived impl because a derive would require `I: HashStable`
+impl<CTX, I: Interner> HashStable<CTX> for RegionKind<I>
+where
+    I::EarlyBoundRegion: HashStable<CTX>,
+    I::BoundRegion: HashStable<CTX>,
+    I::FreeRegion: HashStable<CTX>,
+    I::RegionVid: HashStable<CTX>,
+    I::PlaceholderRegion: HashStable<CTX>,
+{
+    #[inline]
+    fn hash_stable(
+        &self,
+        hcx: &mut CTX,
+        hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
+    ) {
+        std::mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            ReErased | ReStatic => {
+                // No variant fields to hash for these ...
+            }
+            ReEmpty(universe) => {
+                universe.hash_stable(hcx, hasher);
+            }
+            ReLateBound(db, br) => {
+                db.hash_stable(hcx, hasher);
+                br.hash_stable(hcx, hasher);
+            }
+            ReEarlyBound(eb) => {
+                eb.hash_stable(hcx, hasher);
+            }
+            ReFree(ref free_region) => {
+                free_region.hash_stable(hcx, hasher);
+            }
+            RePlaceholder(p) => {
+                p.hash_stable(hcx, hasher);
+            }
+            ReVar(reg) => {
+                reg.hash_stable(hcx, hasher);
             }
         }
     }

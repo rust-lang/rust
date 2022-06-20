@@ -271,8 +271,6 @@ rustc_queries! {
     }
 
     query expn_that_defined(key: DefId) -> rustc_span::ExpnId {
-        // This query reads from untracked data in definitions.
-        eval_always
         desc { |tcx| "expansion that defined `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }
@@ -592,9 +590,9 @@ rustc_queries! {
     /// not have the feature gate active).
     ///
     /// **Do not call this function manually.** It is only meant to cache the base data for the
-    /// `is_const_fn` function.
-    query impl_constness(key: DefId) -> hir::Constness {
-        desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
+    /// `is_const_fn` function. Consider using `is_const_fn` or `is_const_fn_raw` instead.
+    query constness(key: DefId) -> hir::Constness {
+        desc { |tcx| "checking if item is const: `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }

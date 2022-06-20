@@ -1120,8 +1120,6 @@ impl<'a> Linker for EmLinker<'a> {
             OptLevel::Size => "-Os",
             OptLevel::SizeMin => "-Oz",
         });
-        // Unusable until https://github.com/rust-lang/rust/issues/38454 is resolved
-        self.cmd.args(&["--memory-init-file", "0"]);
     }
 
     fn pgo_gen(&mut self) {
@@ -1134,8 +1132,8 @@ impl<'a> Linker for EmLinker<'a> {
         // Preserve names or generate source maps depending on debug info
         self.cmd.arg(match self.sess.opts.debuginfo {
             DebugInfo::None => "-g0",
-            DebugInfo::Limited => "-g3",
-            DebugInfo::Full => "-g4",
+            DebugInfo::Limited => "--profiling-funcs",
+            DebugInfo::Full => "-g",
         });
     }
 

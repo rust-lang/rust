@@ -3,7 +3,7 @@ warning: unreachable expression
    |
 LL |           return;
    |           ------ any code following this expression is unreachable
-LL | 
+LL |
 LL | /         try {
 LL | |             loop {
 LL | |                 err()?;
@@ -32,7 +32,7 @@ LL | /         loop {
 LL | |             err()?;
 LL | |         }
    | |_________- any code following this expression is unreachable
-LL | 
+LL |
 LL |           42
    |           ^^ unreachable expression
 

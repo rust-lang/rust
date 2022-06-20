@@ -12,7 +12,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - struct S1<X: ?Sized> {
 LL + struct S1<X> {
-   | 
+   |
 help: borrowed types always have a statically known size
    |
 LL |     f1: &X,
@@ -37,7 +37,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - struct S2<X: ?Sized> {
 LL + struct S2<X> {
-   | 
+   |
 help: borrowed types always have a statically known size
    |
 LL |     g: &X,
@@ -97,7 +97,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - enum E<X: ?Sized> {
 LL + enum E<X> {
-   | 
+   |
 help: borrowed types always have a statically known size
    |
 LL |     V1(&X, isize),
@@ -121,7 +121,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - enum F<X: ?Sized> {
 LL + enum F<X> {
-   | 
+   |
 help: borrowed types always have a statically known size
    |
 LL |     V2{f1: &X, f: isize},

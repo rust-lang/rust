@@ -29,9 +29,9 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, WellFormedLoc};
 
+use std::cell::LazyCell;
 use std::convert::TryInto;
 use std::iter;
-use std::lazy::Lazy;
 use std::ops::ControlFlow;
 
 /// Helper type of a temporary returned by `.for_item(...)`.
@@ -490,7 +490,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
     // The bounds we that we would require from `to_check`
     let mut bounds = FxHashSet::default();
 
-    let (regions, types) = GATSubstCollector::visit(tcx, gat_def_id.to_def_id(), to_check);
+    let (regions, types) = GATSubstCollector::visit(gat_def_id.to_def_id(), to_check);
 
     // If both regions and types are empty, then this GAT isn't in the
     // set of types we are checking, and we shouldn't try to do clause analysis
@@ -664,7 +664,6 @@ fn resolve_regions_with_wf_tys<'tcx>(
 /// the two vectors, `regions` and `types` (depending on their kind). For each
 /// parameter `Pi` also track the index `i`.
 struct GATSubstCollector<'tcx> {
-    tcx: TyCtxt<'tcx>,
     gat: DefId,
     // Which region appears and which parameter index its substituted for
     regions: FxHashSet<(ty::Region<'tcx>, usize)>,
@@ -674,16 +673,11 @@ struct GATSubstCollector<'tcx> {
 
 impl<'tcx> GATSubstCollector<'tcx> {
     fn visit<T: TypeFoldable<'tcx>>(
-        tcx: TyCtxt<'tcx>,
         gat: DefId,
         t: T,
     ) -> (FxHashSet<(ty::Region<'tcx>, usize)>, FxHashSet<(Ty<'tcx>, usize)>) {
-        let mut visitor = GATSubstCollector {
-            tcx,
-            gat,
-            regions: FxHashSet::default(),
-            types: FxHashSet::default(),
-        };
+        let mut visitor =
+            GATSubstCollector { gat, regions: FxHashSet::default(), types: FxHashSet::default() };
         t.visit_with(&mut visitor);
         (visitor.regions, visitor.types)
     }
@@ -692,19 +686,12 @@ impl<'tcx> GATSubstCollector<'tcx> {
 impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {
     type BreakTy = !;
 
-    fn visit_binder<T: TypeFoldable<'tcx>>(
-        &mut self,
-        t: &ty::Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
-        self.tcx.liberate_late_bound_regions(self.gat, t.clone()).visit_with(self)
-    }
-
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Projection(p) if p.item_def_id == self.gat => {
                 for (idx, subst) in p.substs.iter().enumerate() {
                     match subst.unpack() {
-                        GenericArgKind::Lifetime(lt) => {
+                        GenericArgKind::Lifetime(lt) if !lt.is_late_bound() => {
                             self.regions.insert((lt, idx));
                         }
                         GenericArgKind::Type(t) => {
@@ -1728,7 +1715,7 @@ fn check_variances_for_type_defn<'tcx>(
     identify_constrained_generic_params(tcx, ty_predicates, None, &mut constrained_parameters);
 
     // Lazily calculated because it is only needed in case of an error.
-    let explicitly_bounded_params = Lazy::new(|| {
+    let explicitly_bounded_params = LazyCell::new(|| {
         let icx = crate::collect::ItemCtxt::new(tcx, item.def_id.to_def_id());
         hir_generics
             .predicates

@@ -11,7 +11,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn test1<T: ?Sized + Foo>(t: &T) {
 LL + fn test1<T: Foo>(t: &T) {
-   | 
+   |
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/dst-object-from-unsized-type.rs:13:23
@@ -26,7 +26,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn test2<T: ?Sized + Foo>(t: &T) {
 LL + fn test2<T: Foo>(t: &T) {
-   | 
+   |
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/dst-object-from-unsized-type.rs:18:28

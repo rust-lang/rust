@@ -102,6 +102,7 @@ pub(crate) struct Tarball<'a> {
 
     include_target_in_component_name: bool,
     is_preview: bool,
+    permit_symlinks: bool,
 }
 
 impl<'a> Tarball<'a> {
@@ -141,6 +142,7 @@ impl<'a> Tarball<'a> {
 
             include_target_in_component_name: false,
             is_preview: false,
+            permit_symlinks: false,
         }
     }
 
@@ -158,6 +160,10 @@ impl<'a> Tarball<'a> {
 
     pub(crate) fn is_preview(&mut self, is: bool) {
         self.is_preview = is;
+    }
+
+    pub(crate) fn permit_symlinks(&mut self, flag: bool) {
+        self.permit_symlinks = flag;
     }
 
     pub(crate) fn image_dir(&self) -> &Path {
@@ -316,6 +322,18 @@ impl<'a> Tarball<'a> {
         }
         self.builder.run(&mut cmd);
 
+        // Ensure there are no symbolic links in the tarball. In particular,
+        // rustup-toolchain-install-master and most versions of Windows can't handle symbolic links.
+        let decompressed_output = self.temp_dir.join(&package_name);
+        if !self.builder.config.dry_run && !self.permit_symlinks {
+            for entry in walkdir::WalkDir::new(&decompressed_output) {
+                let entry = t!(entry);
+                if entry.path_is_symlink() {
+                    panic!("generated a symlink in a tarball: {}", entry.path().display());
+                }
+            }
+        }
+
         // Use either the first compression format defined, or "gz" as the default.
         let ext = self
             .builder
@@ -328,7 +346,7 @@ impl<'a> Tarball<'a> {
 
         GeneratedTarball {
             path: crate::dist::distdir(self.builder).join(format!("{}.tar.{}", package_name, ext)),
-            decompressed_output: self.temp_dir.join(package_name),
+            decompressed_output,
             work: self.temp_dir,
         }
     }

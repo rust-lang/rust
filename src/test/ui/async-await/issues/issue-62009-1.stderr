@@ -37,7 +37,7 @@ help: remove the `.await`
    |
 LL -     (|_| 2333).await;
 LL +     (|_| 2333);
-   | 
+   |
 
 error: aborting due to 4 previous errors
 

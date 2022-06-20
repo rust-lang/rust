@@ -262,7 +262,7 @@ LL | trait _5 = Obj + Send;
    |            |
    |            additional non-auto trait
    |            first non-auto trait
-LL | 
+LL |
 LL | type _T20 = dyn _5 + _5;
    |                 --   ^^ trait alias used in trait object type (additional use)
    |                 |
@@ -326,7 +326,7 @@ LL | trait _6 = _5 + _5; // ==> Obj + Send + Obj + Send
    |            --   -- referenced here (additional use)
    |            |
    |            referenced here (first use)
-LL | 
+LL |
 LL | type _T30 = dyn _6;
    |                 ^^
    |                 |
@@ -392,7 +392,7 @@ LL | trait _7 = _5 + Sync;
    |            -- referenced here (first use)
 LL | trait _8 = Unpin + _7;
    |                    -- referenced here (first use)
-LL | 
+LL |
 LL | type _T40 = dyn _8 + Obj;
    |                 --   ^^^ additional non-auto trait
    |                 |

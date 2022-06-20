@@ -14,7 +14,8 @@ pub struct Condvar {
 
 impl Condvar {
     /// Creates a new condition variable for use.
-    pub fn new() -> Self {
+    #[inline]
+    pub const fn new() -> Self {
         Self { inner: imp::MovableCondvar::new(), check: CondvarCheck::new() }
     }
 

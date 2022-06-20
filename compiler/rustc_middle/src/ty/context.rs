@@ -50,6 +50,7 @@ use rustc_middle::mir::FakeReadCause;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{CrateType, OutputFilenames};
+use rustc_session::cstore::CrateStoreDyn;
 use rustc_session::lint::{Level, Lint};
 use rustc_session::Limit;
 use rustc_session::Session;
@@ -113,6 +114,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type DelaySpanBugEmitted = DelaySpanBugEmitted;
     type PredicateKind = ty::PredicateKind<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
+
+    type EarlyBoundRegion = ty::EarlyBoundRegion;
+    type BoundRegion = ty::BoundRegion;
+    type FreeRegion = ty::FreeRegion;
+    type RegionVid = ty::RegionVid;
+    type PlaceholderRegion = ty::PlaceholderRegion;
 }
 
 /// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
@@ -135,7 +142,7 @@ pub struct CtxtInterners<'tcx> {
     type_: InternedSet<'tcx, WithStableHash<TyS<'tcx>>>,
     substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
-    region: InternedSet<'tcx, RegionKind>,
+    region: InternedSet<'tcx, RegionKind<'tcx>>,
     poly_existential_predicates:
         InternedSet<'tcx, List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>>,
     predicate: InternedSet<'tcx, PredicateS<'tcx>>,
@@ -177,7 +184,9 @@ impl<'tcx> CtxtInterners<'tcx> {
         &self,
         kind: TyKind<'tcx>,
         sess: &Session,
-        resolutions: &ty::ResolverOutputs,
+        definitions: &rustc_hir::definitions::Definitions,
+        cstore: &CrateStoreDyn,
+        source_span: &IndexVec<LocalDefId, Span>,
     ) -> Ty<'tcx> {
         Ty(Interned::new_unchecked(
             self.type_
@@ -194,8 +203,9 @@ impl<'tcx> CtxtInterners<'tcx> {
                         let mut hasher = StableHasher::new();
                         let mut hcx = StableHashingContext::ignore_spans(
                             sess,
-                            &resolutions.definitions,
-                            &*resolutions.cstore,
+                            definitions,
+                            cstore,
+                            source_span,
                         );
                         kind.hash_stable(&mut hcx, &mut hasher);
                         hasher.finish()
@@ -934,9 +944,11 @@ impl<'tcx> CommonTypes<'tcx> {
     fn new(
         interners: &CtxtInterners<'tcx>,
         sess: &Session,
-        resolutions: &ty::ResolverOutputs,
+        definitions: &rustc_hir::definitions::Definitions,
+        cstore: &CrateStoreDyn,
+        source_span: &IndexVec<LocalDefId, Span>,
     ) -> CommonTypes<'tcx> {
-        let mk = |ty| interners.intern_ty(ty, sess, resolutions);
+        let mk = |ty| interners.intern_ty(ty, sess, definitions, cstore, source_span);
 
         CommonTypes {
             unit: mk(Tuple(List::empty())),
@@ -1056,6 +1068,9 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Common consts, pre-interned for your convenience.
     pub consts: CommonConsts<'tcx>,
+
+    definitions: rustc_hir::definitions::Definitions,
+    cstore: Box<CrateStoreDyn>,
 
     /// Output of the resolver.
     pub(crate) untracked_resolutions: ty::ResolverOutputs,
@@ -1218,7 +1233,9 @@ impl<'tcx> TyCtxt<'tcx> {
         s: &'tcx Session,
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
-        resolutions: ty::ResolverOutputs,
+        definitions: rustc_hir::definitions::Definitions,
+        cstore: Box<CrateStoreDyn>,
+        untracked_resolutions: ty::ResolverOutputs,
         krate: &'tcx hir::Crate<'tcx>,
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
@@ -1231,7 +1248,14 @@ impl<'tcx> TyCtxt<'tcx> {
             s.fatal(&err);
         });
         let interners = CtxtInterners::new(arena);
-        let common_types = CommonTypes::new(&interners, s, &resolutions);
+        let common_types = CommonTypes::new(
+            &interners,
+            s,
+            &definitions,
+            &*cstore,
+            // This is only used to create a stable hashing context.
+            &untracked_resolutions.source_span,
+        );
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
 
@@ -1241,7 +1265,9 @@ impl<'tcx> TyCtxt<'tcx> {
             arena,
             interners,
             dep_graph,
-            untracked_resolutions: resolutions,
+            definitions,
+            cstore,
+            untracked_resolutions,
             prof: s.prof.clone(),
             types: common_types,
             lifetimes: common_lifetimes,
@@ -1342,9 +1368,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_key(self, id: DefId) -> rustc_hir::definitions::DefKey {
         // Accessing the DefKey is ok, since it is part of DefPathHash.
         if let Some(id) = id.as_local() {
-            self.untracked_resolutions.definitions.def_key(id)
+            self.definitions.def_key(id)
         } else {
-            self.untracked_resolutions.cstore.def_key(id)
+            self.cstore.def_key(id)
         }
     }
 
@@ -1356,9 +1382,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_path(self, id: DefId) -> rustc_hir::definitions::DefPath {
         // Accessing the DefPath is ok, since it is part of DefPathHash.
         if let Some(id) = id.as_local() {
-            self.untracked_resolutions.definitions.def_path(id)
+            self.definitions.def_path(id)
         } else {
-            self.untracked_resolutions.cstore.def_path(id)
+            self.cstore.def_path(id)
         }
     }
 
@@ -1366,9 +1392,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_path_hash(self, def_id: DefId) -> rustc_hir::definitions::DefPathHash {
         // Accessing the DefPathHash is ok, it is incr. comp. stable.
         if let Some(def_id) = def_id.as_local() {
-            self.untracked_resolutions.definitions.def_path_hash(def_id)
+            self.definitions.def_path_hash(def_id)
         } else {
-            self.untracked_resolutions.cstore.def_path_hash(def_id)
+            self.cstore.def_path_hash(def_id)
         }
     }
 
@@ -1377,7 +1403,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if crate_num == LOCAL_CRATE {
             self.sess.local_stable_crate_id()
         } else {
-            self.untracked_resolutions.cstore.stable_crate_id(crate_num)
+            self.cstore.stable_crate_id(crate_num)
         }
     }
 
@@ -1388,7 +1414,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if stable_crate_id == self.sess.local_stable_crate_id() {
             LOCAL_CRATE
         } else {
-            self.untracked_resolutions.cstore.stable_crate_id_to_crate_num(stable_crate_id)
+            self.cstore.stable_crate_id_to_crate_num(stable_crate_id)
         }
     }
 
@@ -1403,16 +1429,12 @@ impl<'tcx> TyCtxt<'tcx> {
         // If this is a DefPathHash from the local crate, we can look up the
         // DefId in the tcx's `Definitions`.
         if stable_crate_id == self.sess.local_stable_crate_id() {
-            self.untracked_resolutions
-                .definitions
-                .local_def_path_hash_to_def_id(hash, err)
-                .to_def_id()
+            self.definitions.local_def_path_hash_to_def_id(hash, err).to_def_id()
         } else {
             // If this is a DefPathHash from an upstream crate, let the CrateStore map
             // it to a DefId.
-            let cstore = &self.untracked_resolutions.cstore;
-            let cnum = cstore.stable_crate_id_to_crate_num(stable_crate_id);
-            cstore.def_path_hash_to_def_id(cnum, hash)
+            let cnum = self.cstore.stable_crate_id_to_crate_num(stable_crate_id);
+            self.cstore.def_path_hash_to_def_id(cnum, hash)
         }
     }
 
@@ -1424,7 +1446,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let (crate_name, stable_crate_id) = if def_id.is_local() {
             (self.crate_name, self.sess.local_stable_crate_id())
         } else {
-            let cstore = &self.untracked_resolutions.cstore;
+            let cstore = &self.cstore;
             (cstore.crate_name(def_id.krate), cstore.stable_crate_id(def_id.krate))
         };
 
@@ -1440,29 +1462,40 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
-    pub fn cstore_untracked(self) -> &'tcx ty::CrateStoreDyn {
-        &*self.untracked_resolutions.cstore
+    pub fn cstore_untracked(self) -> &'tcx CrateStoreDyn {
+        &*self.cstore
     }
 
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
     pub fn definitions_untracked(self) -> &'tcx hir::definitions::Definitions {
-        &self.untracked_resolutions.definitions
+        &self.definitions
+    }
+
+    /// Note that this is *untracked* and should only be used within the query
+    /// system if the result is otherwise tracked through queries
+    #[inline]
+    pub fn source_span_untracked(self, def_id: LocalDefId) -> Span {
+        self.untracked_resolutions.source_span.get(def_id).copied().unwrap_or(DUMMY_SP)
     }
 
     #[inline(always)]
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        let resolutions = &self.gcx.untracked_resolutions;
-        StableHashingContext::new(self.sess, &resolutions.definitions, &*resolutions.cstore)
+        StableHashingContext::new(
+            self.sess,
+            &self.definitions,
+            &*self.cstore,
+            &self.untracked_resolutions.source_span,
+        )
     }
 
     #[inline(always)]
     pub fn create_no_span_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        let resolutions = &self.gcx.untracked_resolutions;
         StableHashingContext::ignore_spans(
             self.sess,
-            &resolutions.definitions,
-            &*resolutions.cstore,
+            &self.definitions,
+            &*self.cstore,
+            &self.untracked_resolutions.source_span,
         )
     }
 
@@ -2148,7 +2181,7 @@ macro_rules! direct_interners {
 }
 
 direct_interners! {
-    region: mk_region(RegionKind): Region -> Region<'tcx>,
+    region: mk_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: mk_const(ConstS<'tcx>): Const -> Const<'tcx>,
     const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: intern_layout(LayoutS<'tcx>): Layout -> Layout<'tcx>,
@@ -2247,14 +2280,21 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Same a `self.mk_region(kind)`, but avoids accessing the interners if
     /// `*r == kind`.
     #[inline]
-    pub fn reuse_or_mk_region(self, r: Region<'tcx>, kind: RegionKind) -> Region<'tcx> {
+    pub fn reuse_or_mk_region(self, r: Region<'tcx>, kind: RegionKind<'tcx>) -> Region<'tcx> {
         if *r == kind { r } else { self.mk_region(kind) }
     }
 
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     pub fn mk_ty(self, st: TyKind<'tcx>) -> Ty<'tcx> {
-        self.interners.intern_ty(st, self.sess, &self.gcx.untracked_resolutions)
+        self.interners.intern_ty(
+            st,
+            self.sess,
+            &self.definitions,
+            &*self.cstore,
+            // This is only used to create a stable hashing context.
+            &self.untracked_resolutions.source_span,
+        )
     }
 
     #[inline]

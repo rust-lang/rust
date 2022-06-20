@@ -1333,10 +1333,7 @@ function initSearch(rawSearchIndex) {
             if (searchWord.indexOf(elem.pathLast) > -1 ||
                 row.normalizedName.indexOf(elem.pathLast) > -1
             ) {
-                // filter type: ... queries
-                if (!results_others[fullId] !== undefined) {
-                    index = row.normalizedName.indexOf(elem.pathLast);
-                }
+                index = row.normalizedName.indexOf(elem.pathLast);
             }
             lev = levenshtein(searchWord, elem.pathLast);
             if (lev > 0 && elem.pathLast.length > 2 && searchWord.indexOf(elem.pathLast) > -1) {

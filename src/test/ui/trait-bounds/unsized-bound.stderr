@@ -16,7 +16,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, B: ?Sized, {}
 LL + impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, {}
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Trait<A: ?Sized> {}
@@ -35,7 +35,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, B: ?Sized, {}
 LL + impl<A, B> Trait<(A, B)> for (A, B) where B: ?Sized, {}
-   | 
+   |
 
 error[E0277]: the size for values of type `C` cannot be known at compilation time
   --> $DIR/unsized-bound.rs:5:31
@@ -55,7 +55,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
 LL + impl<A, B: ?Sized, C> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Trait<A: ?Sized> {}
@@ -74,7 +74,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
 LL + impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C)  {}
-   | 
+   |
 
 error[E0277]: the size for values of type `B` cannot be known at compilation time
   --> $DIR/unsized-bound.rs:5:52
@@ -89,7 +89,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
 LL + impl<A, B, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Sized, {}
-   | 
+   |
 
 error[E0277]: the size for values of type `B` cannot be known at compilation time
   --> $DIR/unsized-bound.rs:10:28
@@ -109,7 +109,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
 LL + impl<A: ?Sized, B> Trait2<(A, B)> for (A, B) {}
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Trait2<A: ?Sized> {}
@@ -128,7 +128,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
 LL + impl<A, B: ?Sized> Trait2<(A, B)> for (A, B) {}
-   | 
+   |
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/unsized-bound.rs:14:9
@@ -147,7 +147,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A> Trait3<A> for A where A: ?Sized {}
 LL + impl<A> Trait3<A> for A  {}
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Trait3<A: ?Sized> {}
@@ -170,7 +170,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<A: ?Sized> Trait4<A> for A {}
 LL + impl<A> Trait4<A> for A {}
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Trait4<A: ?Sized> {}
@@ -193,7 +193,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<X, Y> Trait5<X, Y> for X where X: ?Sized {}
 LL + impl<X, Y> Trait5<X, Y> for X  {}
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Trait5<A: ?Sized, B> {}
@@ -216,7 +216,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<X: ?Sized, Y> Trait6<X, Y> for X {}
 LL + impl<X, Y> Trait6<X, Y> for X {}
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Trait6<A: ?Sized, B> {}
@@ -239,7 +239,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<X, Y> Trait7<X, Y> for X where Y: ?Sized {}
 LL + impl<X, Y> Trait7<X, Y> for X  {}
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Trait7<A, B: ?Sized> {}
@@ -262,7 +262,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - impl<X, Y: ?Sized> Trait8<X, Y> for X {}
 LL + impl<X, Y> Trait8<X, Y> for X {}
-   | 
+   |
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Trait8<A, B: ?Sized> {}

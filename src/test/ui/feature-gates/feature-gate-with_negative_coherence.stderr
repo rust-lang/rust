@@ -3,7 +3,7 @@ error[E0119]: conflicting implementations of trait `Foo` for type `&_`
    |
 LL | impl<T: std::ops::DerefMut> Foo for T { }
    | ------------------------------------- first implementation here
-LL | 
+LL |
 LL | impl<T> Foo for &T { }
    | ^^^^^^^^^^^^^^^^^^ conflicting implementation for `&_`
 

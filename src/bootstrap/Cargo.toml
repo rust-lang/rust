@@ -51,6 +51,7 @@ ignore = "0.4.10"
 opener = "0.5"
 once_cell = "1.7.2"
 xz2 = "0.1"
+walkdir = "2"
 
 # Dependencies needed by the build-metrics feature
 sysinfo = { version = "0.24.1", optional = true }

@@ -13,7 +13,7 @@ help: remove these parentheses
    |
 LL -         while let Some(_) = ({yield}) {}
 LL +         while let Some(_) = {yield} {}
-   | 
+   |
 
 error: unnecessary parentheses around `let` scrutinee expression
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:15:29
@@ -25,7 +25,7 @@ help: remove these parentheses
    |
 LL -         while let Some(_) = ((yield)) {}
 LL +         while let Some(_) = (yield) {}
-   | 
+   |
 
 error: unnecessary braces around block return value
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:16:10
@@ -42,7 +42,7 @@ help: remove these braces
    |
 LL -         {{yield}};
 LL +         {yield};
-   | 
+   |
 
 error: unnecessary parentheses around block return value
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:17:10
@@ -54,7 +54,7 @@ help: remove these parentheses
    |
 LL -         {( yield )};
 LL +         {yield};
-   | 
+   |
 
 error: unnecessary parentheses around block return value
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:18:30
@@ -66,7 +66,7 @@ help: remove these parentheses
    |
 LL -         while let Some(_) = {(yield)} {}
 LL +         while let Some(_) = {yield} {}
-   | 
+   |
 
 error: unnecessary braces around block return value
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:19:30
@@ -78,7 +78,7 @@ help: remove these braces
    |
 LL -         while let Some(_) = {{yield}} {}
 LL +         while let Some(_) = {yield} {}
-   | 
+   |
 
 error: aborting due to 6 previous errors
 

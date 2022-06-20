@@ -8,7 +8,7 @@ help: consider removing the label
    |
 LL -     let _ = 'label: 1 + 1;
 LL +     let _ = 1 + 1;
-   | 
+   |
 
 error: expected `while`, `for`, `loop` or `{` after a label
   --> $DIR/recover-labeled-non-block-expr.rs:6:13
@@ -20,7 +20,7 @@ help: consider removing the label
    |
 LL -     'label: match () { () => {}, };
 LL +     match () { () => {}, };
-   | 
+   |
 
 error: expected `while`, `for`, `loop` or `{` after a label
   --> $DIR/recover-labeled-non-block-expr.rs:7:13
@@ -54,11 +54,10 @@ help: consider enclosing expression in a block
    |
 LL ~     let _i = 'label: { match x {
 LL |         0 => 42,
-LL |         1 if false => break 'label 17,
-LL |         1 => {
-LL |             if true {
-LL |                 break 'label 13
  ...
+LL |         _ => 1,
+LL ~     } };
+   |
 
 error: expected `while`, `for`, `loop` or `{` after a label
   --> $DIR/recover-labeled-non-block-expr.rs:26:24

@@ -25,7 +25,7 @@ LL |     fn fold<B, F>(mut self, init: B, mut f: F) -> B
 help: provide the argument
    |
 LL ~     needlesArr.iter().fold(|x, y| {
-LL ~     }, {_});
+LL ~     }, /* value */);
    |
 
 error: aborting due to 2 previous errors

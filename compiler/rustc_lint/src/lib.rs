@@ -159,28 +159,16 @@ macro_rules! late_lint_passes {
         $macro!(
             $args,
             [
-                // FIXME: Look into regression when this is used as a module lint
-                // May Depend on constants elsewhere
-                UnusedBrokenConst: UnusedBrokenConst,
-                // Needs to run after UnusedAttributes as it marks all `feature` attributes as used.
-                UnstableFeatures: UnstableFeatures,
                 // Tracks state across modules
                 UnnameableTestItems: UnnameableTestItems::new(),
                 // Tracks attributes of parents
                 MissingDoc: MissingDoc::new(),
-                // Depends on access levels
+                // Builds a global list of all impls of `Debug`.
                 // FIXME: Turn the computation of types which implement Debug into a query
                 // and change this to a module lint pass
                 MissingDebugImplementations: MissingDebugImplementations::default(),
-                ArrayIntoIter: ArrayIntoIter::default(),
+                // Keeps a global list of foreign declarations.
                 ClashingExternDeclarations: ClashingExternDeclarations::new(),
-                DropTraitConstraints: DropTraitConstraints,
-                TemporaryCStringAsPtr: TemporaryCStringAsPtr,
-                NonPanicFmt: NonPanicFmt,
-                NoopMethodCall: NoopMethodCall,
-                EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
-                InvalidAtomicOrdering: InvalidAtomicOrdering,
-                NamedAsmLabels: NamedAsmLabels,
             ]
         );
     };
@@ -216,6 +204,17 @@ macro_rules! late_lint_mod_passes {
                 ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
                 InvalidValue: InvalidValue,
                 DerefNullPtr: DerefNullPtr,
+                // May Depend on constants elsewhere
+                UnusedBrokenConst: UnusedBrokenConst,
+                UnstableFeatures: UnstableFeatures,
+                ArrayIntoIter: ArrayIntoIter::default(),
+                DropTraitConstraints: DropTraitConstraints,
+                TemporaryCStringAsPtr: TemporaryCStringAsPtr,
+                NonPanicFmt: NonPanicFmt,
+                NoopMethodCall: NoopMethodCall,
+                EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
+                InvalidAtomicOrdering: InvalidAtomicOrdering,
+                NamedAsmLabels: NamedAsmLabels,
             ]
         );
     };

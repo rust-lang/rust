@@ -3,9 +3,9 @@ use std::fmt::Write;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
-use std::lazy::SyncLazy as Lazy;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
+use std::sync::LazyLock as Lazy;
 
 use itertools::Itertools;
 use rustc_data_structures::flock;

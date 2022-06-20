@@ -8,8 +8,7 @@ help: try placing this code inside a block
    |
 LL ~     let Some(_) = Some(()) else { if true {
 LL |
-LL |         return;
-LL |     } else {
+ ...
 LL |         return;
 LL ~     } };
    |

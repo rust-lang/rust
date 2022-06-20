@@ -18,13 +18,10 @@ use std::sync::Arc;
 /// is pervasive and has non-trivial cost. Instead, impls of this trait must
 /// implement a delayed error handling strategy. If a failure occurs, they
 /// should record this internally, and all subsequent encoding operations can
-/// be processed or ignored, whichever is appropriate. Then when `finish()` is
-/// called, an error result should be returned to indicate the failure. If no
-/// failures occurred, then `finish()` should return a success result.
+/// be processed or ignored, whichever is appropriate. Then they should provide
+/// a `finish` method that finishes up encoding. If the encoder is fallible,
+/// `finish` should return a `Result` that indicates success or failure.
 pub trait Encoder {
-    type Ok;
-    type Err;
-
     // Primitive types:
     fn emit_usize(&mut self, v: usize);
     fn emit_u128(&mut self, v: u128);
@@ -64,9 +61,6 @@ pub trait Encoder {
     fn emit_fieldless_enum_variant<const ID: usize>(&mut self) {
         self.emit_usize(ID)
     }
-
-    // Consume the encoder, getting the result.
-    fn finish(self) -> Result<Self::Ok, Self::Err>;
 }
 
 // Note: all the methods in this trait are infallible, which may be surprising.

@@ -3,10 +3,10 @@ error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immuta
    |
 LL |     let y = &x;
    |             -- immutable borrow occurs here
-LL | 
+LL |
 LL |     let q = &raw mut x;
    |             ^^^^^^^^^^ mutable borrow occurs here
-LL | 
+LL |
 LL |     drop(y);
    |          - immutable borrow later used here
 
@@ -15,7 +15,7 @@ error[E0502]: cannot borrow `x` as immutable because it is also borrowed as muta
    |
 LL |     let y = &mut x;
    |             ------ mutable borrow occurs here
-LL | 
+LL |
 LL |     let p = &raw const x;
    |             ^^^^^^^^^^^^ immutable borrow occurs here
 ...
@@ -30,7 +30,7 @@ LL |     let y = &mut x;
 ...
 LL |     let q = &raw mut x;
    |             ^^^^^^^^^^ second mutable borrow occurs here
-LL | 
+LL |
 LL |     drop(y);
    |          - first borrow later used here
 

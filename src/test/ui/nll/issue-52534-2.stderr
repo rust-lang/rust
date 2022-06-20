@@ -6,7 +6,7 @@ LL |         y = &x
 LL |
 LL |     }
    |     - `x` dropped here while still borrowed
-LL | 
+LL |
 LL |     println!("{}", y);
    |                    - borrow later used here
 

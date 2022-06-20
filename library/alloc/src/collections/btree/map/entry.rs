@@ -21,7 +21,7 @@ pub enum Entry<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
 > {
     /// A vacant entry.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -33,7 +33,7 @@ pub enum Entry<
 }
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
-impl<K: Debug + Ord, V: Debug, A: Allocator> Debug for Entry<'_, K, V, A> {
+impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for Entry<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
@@ -49,21 +49,22 @@ pub struct VacantEntry<
     'a,
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
 > {
     pub(super) key: K,
     /// `None` for a (empty) map without root
     pub(super) handle: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
     pub(super) dormant_map: DormantMutRef<'a, BTreeMap<K, V, A>>,
 
-    pub(super) alloc: &'a A,
+    /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
+    pub(super) alloc: A,
 
     // Be invariant in `K` and `V`
     pub(super) _marker: PhantomData<&'a mut (K, V)>,
 }
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
-impl<K: Debug + Ord, V, A: Allocator> Debug for VacantEntry<'_, K, V, A> {
+impl<K: Debug + Ord, V, A: Allocator + Clone> Debug for VacantEntry<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry").field(self.key()).finish()
     }
@@ -76,19 +77,20 @@ pub struct OccupiedEntry<
     'a,
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
 > {
     pub(super) handle: Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV>,
     pub(super) dormant_map: DormantMutRef<'a, BTreeMap<K, V, A>>,
 
-    pub(super) alloc: &'a A,
+    /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
+    pub(super) alloc: A,
 
     // Be invariant in `K` and `V`
     pub(super) _marker: PhantomData<&'a mut (K, V)>,
 }
 
 #[stable(feature = "debug_btree_map", since = "1.12.0")]
-impl<K: Debug + Ord, V: Debug, A: Allocator> Debug for OccupiedEntry<'_, K, V, A> {
+impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for OccupiedEntry<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry").field("key", self.key()).field("value", self.get()).finish()
     }
@@ -98,7 +100,7 @@ impl<K: Debug + Ord, V: Debug, A: Allocator> Debug for OccupiedEntry<'_, K, V, A
 ///
 /// Contains the occupied entry, and the value that was not inserted.
 #[unstable(feature = "map_try_insert", issue = "82766")]
-pub struct OccupiedError<'a, K: 'a, V: 'a, A: Allocator = Global> {
+pub struct OccupiedError<'a, K: 'a, V: 'a, A: Allocator + Clone = Global> {
     /// The entry in the map that was already occupied.
     pub entry: OccupiedEntry<'a, K, V, A>,
     /// The value which was not inserted, because the entry was already occupied.
@@ -106,7 +108,7 @@ pub struct OccupiedError<'a, K: 'a, V: 'a, A: Allocator = Global> {
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
-impl<K: Debug + Ord, V: Debug, A: Allocator> Debug for OccupiedError<'_, K, V, A> {
+impl<K: Debug + Ord, V: Debug, A: Allocator + Clone> Debug for OccupiedError<'_, K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedError")
             .field("key", self.entry.key())
@@ -117,7 +119,9 @@ impl<K: Debug + Ord, V: Debug, A: Allocator> Debug for OccupiedError<'_, K, V, A
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
-impl<'a, K: Debug + Ord, V: Debug, A: Allocator> fmt::Display for OccupiedError<'a, K, V, A> {
+impl<'a, K: Debug + Ord, V: Debug, A: Allocator + Clone> fmt::Display
+    for OccupiedError<'a, K, V, A>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -129,7 +133,7 @@ impl<'a, K: Debug + Ord, V: Debug, A: Allocator> fmt::Display for OccupiedError<
     }
 }
 
-impl<'a, K: Ord, V, A: Allocator> Entry<'a, K, V, A> {
+impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     ///
@@ -257,7 +261,7 @@ impl<'a, K: Ord, V, A: Allocator> Entry<'a, K, V, A> {
     }
 }
 
-impl<'a, K: Ord, V: Default, A: Allocator> Entry<'a, K, V, A> {
+impl<'a, K: Ord, V: Default, A: Allocator + Clone> Entry<'a, K, V, A> {
     #[stable(feature = "entry_or_default", since = "1.28.0")]
     /// Ensures a value is in the entry by inserting the default value if empty,
     /// and returns a mutable reference to the value in the entry.
@@ -280,7 +284,7 @@ impl<'a, K: Ord, V: Default, A: Allocator> Entry<'a, K, V, A> {
     }
 }
 
-impl<'a, K: Ord, V, A: Allocator> VacantEntry<'a, K, V, A> {
+impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the VacantEntry.
     ///
@@ -338,13 +342,13 @@ impl<'a, K: Ord, V, A: Allocator> VacantEntry<'a, K, V, A> {
             None => {
                 // SAFETY: There is no tree yet so no reference to it exists.
                 let map = unsafe { self.dormant_map.awaken() };
-                let mut root = NodeRef::new_leaf(self.alloc);
+                let mut root = NodeRef::new_leaf(self.alloc.clone());
                 let val_ptr = root.borrow_mut().push(self.key, value) as *mut V;
                 map.root = Some(root.forget_type());
                 map.length = 1;
                 val_ptr
             }
-            Some(handle) => match handle.insert_recursing(self.key, value, self.alloc) {
+            Some(handle) => match handle.insert_recursing(self.key, value, self.alloc.clone()) {
                 (None, val_ptr) => {
                     // SAFETY: We have consumed self.handle.
                     let map = unsafe { self.dormant_map.awaken() };
@@ -369,7 +373,7 @@ impl<'a, K: Ord, V, A: Allocator> VacantEntry<'a, K, V, A> {
     }
 }
 
-impl<'a, K: Ord, V, A: Allocator> OccupiedEntry<'a, K, V, A> {
+impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
     /// Gets a reference to the key in the entry.
     ///
     /// # Examples
@@ -538,13 +542,13 @@ impl<'a, K: Ord, V, A: Allocator> OccupiedEntry<'a, K, V, A> {
     pub(super) fn remove_kv(self) -> (K, V) {
         let mut emptied_internal_root = false;
         let (old_kv, _) =
-            self.handle.remove_kv_tracking(|| emptied_internal_root = true, self.alloc);
+            self.handle.remove_kv_tracking(|| emptied_internal_root = true, self.alloc.clone());
         // SAFETY: we consumed the intermediate root borrow, `self.handle`.
         let map = unsafe { self.dormant_map.awaken() };
         map.length -= 1;
         if emptied_internal_root {
             let root = map.root.as_mut().unwrap();
-            root.pop_internal_level(&*self.alloc);
+            root.pop_internal_level(self.alloc);
         }
         old_kv
     }

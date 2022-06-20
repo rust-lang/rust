@@ -316,8 +316,6 @@ fn check_item<'tcx>(
         item.kind
     {
         if !access_levels.is_reachable(item.def_id) {
-            // FIXME(#53488) remove `let`
-            let tcx = tcx;
             worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
 
             let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res else {

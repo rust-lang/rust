@@ -11,7 +11,6 @@ use rustc_ast::{
     self as ast, AssocItemKind, Expr, ExprKind, GenericParam, GenericParamKind, Item, ItemKind,
     NodeId, Path, Ty, TyKind,
 };
-use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust::path_segment_to_string;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{

@@ -12,7 +12,7 @@ help: if you import `bar`, refer to it directly
    |
 LL -     a::bar();
 LL +     bar();
-   | 
+   |
 
 error: aborting due to previous error
 

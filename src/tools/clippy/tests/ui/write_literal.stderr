@@ -9,7 +9,7 @@ help: try this
    |
 LL -     write!(v, "Hello {}", "world");
 LL +     write!(v, "Hello world");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal.rs:31:39
@@ -21,7 +21,7 @@ help: try this
    |
 LL -     writeln!(v, "Hello {} {}", world, "world");
 LL +     writeln!(v, "Hello {} world", world);
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal.rs:32:29
@@ -33,7 +33,7 @@ help: try this
    |
 LL -     writeln!(v, "Hello {}", "world");
 LL +     writeln!(v, "Hello world");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal.rs:37:28
@@ -45,7 +45,7 @@ help: try this
    |
 LL -     writeln!(v, "{0} {1}", "hello", "world");
 LL +     writeln!(v, "hello {1}", "world");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal.rs:37:37
@@ -57,7 +57,7 @@ help: try this
    |
 LL -     writeln!(v, "{0} {1}", "hello", "world");
 LL +     writeln!(v, "{0} world", "hello");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal.rs:38:28
@@ -69,7 +69,7 @@ help: try this
    |
 LL -     writeln!(v, "{1} {0}", "hello", "world");
 LL +     writeln!(v, "{1} hello", "world");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal.rs:38:37
@@ -81,7 +81,7 @@ help: try this
    |
 LL -     writeln!(v, "{1} {0}", "hello", "world");
 LL +     writeln!(v, "world {0}", "hello");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal.rs:41:32
@@ -93,7 +93,7 @@ help: try this
    |
 LL -     writeln!(v, "{foo} {bar}", foo = "hello", bar = "world");
 LL +     writeln!(v, "hello {bar}", bar = "world");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal.rs:41:47
@@ -105,7 +105,7 @@ help: try this
    |
 LL -     writeln!(v, "{foo} {bar}", foo = "hello", bar = "world");
 LL +     writeln!(v, "{foo} world", foo = "hello");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal.rs:42:32
@@ -117,7 +117,7 @@ help: try this
    |
 LL -     writeln!(v, "{bar} {foo}", foo = "hello", bar = "world");
 LL +     writeln!(v, "{bar} hello", bar = "world");
-   | 
+   |
 
 error: literal with an empty format string
   --> $DIR/write_literal.rs:42:47
@@ -129,7 +129,7 @@ help: try this
    |
 LL -     writeln!(v, "{bar} {foo}", foo = "hello", bar = "world");
 LL +     writeln!(v, "world {foo}", foo = "hello");
-   | 
+   |
 
 error: aborting due to 11 previous errors
 

@@ -2141,16 +2141,6 @@ impl Termination for () {
 }
 
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
-impl<E: fmt::Debug> Termination for Result<(), E> {
-    fn report(self) -> ExitCode {
-        match self {
-            Ok(()) => ().report(),
-            Err(err) => Err::<!, _>(err).report(),
-        }
-    }
-}
-
-#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl Termination for ! {
     fn report(self) -> ExitCode {
         self
@@ -2158,21 +2148,9 @@ impl Termination for ! {
 }
 
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
-impl<E: fmt::Debug> Termination for Result<!, E> {
+impl Termination for Infallible {
     fn report(self) -> ExitCode {
-        let Err(err) = self;
-        // Ignore error if the write fails, for example because stderr is
-        // already closed. There is not much point panicking at this point.
-        let _ = writeln!(io::stderr(), "Error: {err:?}");
-        ExitCode::FAILURE
-    }
-}
-
-#[stable(feature = "termination_trait_lib", since = "1.61.0")]
-impl<E: fmt::Debug> Termination for Result<Infallible, E> {
-    fn report(self) -> ExitCode {
-        let Err(err) = self;
-        Err::<!, _>(err).report()
+        match self {}
     }
 }
 
@@ -2181,5 +2159,20 @@ impl Termination for ExitCode {
     #[inline]
     fn report(self) -> ExitCode {
         self
+    }
+}
+
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
+impl<T: Termination, E: fmt::Debug> Termination for Result<T, E> {
+    fn report(self) -> ExitCode {
+        match self {
+            Ok(val) => val.report(),
+            Err(err) => {
+                // Ignore error if the write fails, for example because stderr is
+                // already closed. There is not much point panicking at this point.
+                let _ = writeln!(io::stderr(), "Error: {err:?}");
+                ExitCode::FAILURE
+            }
+        }
     }
 }

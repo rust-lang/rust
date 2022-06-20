@@ -23,6 +23,8 @@ use rustc_span::symbol::kw;
 use rustc_span::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
+use itertools::Itertools;
+
 use crate::clean::{
     self, types::ExternalLocation, utils::find_nearest_parent_module, ExternalCrate, ItemId,
     PrimitiveType,
@@ -874,20 +876,42 @@ fn fmt_type<'cx>(
             match &typs[..] {
                 &[] => primitive_link(f, PrimitiveType::Unit, "()", cx),
                 &[ref one] => {
-                    primitive_link(f, PrimitiveType::Tuple, "(", cx)?;
-                    // Carry `f.alternate()` into this display w/o branching manually.
-                    fmt::Display::fmt(&one.print(cx), f)?;
-                    primitive_link(f, PrimitiveType::Tuple, ",)", cx)
+                    if let clean::Generic(name) = one {
+                        primitive_link(f, PrimitiveType::Tuple, &format!("({name},)"), cx)
+                    } else {
+                        write!(f, "(")?;
+                        // Carry `f.alternate()` into this display w/o branching manually.
+                        fmt::Display::fmt(&one.print(cx), f)?;
+                        write!(f, ",)")
+                    }
                 }
                 many => {
-                    primitive_link(f, PrimitiveType::Tuple, "(", cx)?;
-                    for (i, item) in many.iter().enumerate() {
-                        if i != 0 {
-                            write!(f, ", ")?;
+                    let generic_names: Vec<Symbol> = many
+                        .iter()
+                        .filter_map(|t| match t {
+                            clean::Generic(name) => Some(*name),
+                            _ => None,
+                        })
+                        .collect();
+                    let is_generic = generic_names.len() == many.len();
+                    if is_generic {
+                        primitive_link(
+                            f,
+                            PrimitiveType::Tuple,
+                            &format!("({})", generic_names.iter().map(|s| s.as_str()).join(", ")),
+                            cx,
+                        )
+                    } else {
+                        write!(f, "(")?;
+                        for (i, item) in many.iter().enumerate() {
+                            if i != 0 {
+                                write!(f, ", ")?;
+                            }
+                            // Carry `f.alternate()` into this display w/o branching manually.
+                            fmt::Display::fmt(&item.print(cx), f)?;
                         }
-                        fmt::Display::fmt(&item.print(cx), f)?;
+                        write!(f, ")")
                     }
-                    primitive_link(f, PrimitiveType::Tuple, ")", cx)
                 }
             }
         }

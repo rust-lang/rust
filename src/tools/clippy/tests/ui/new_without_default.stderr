@@ -117,7 +117,8 @@ LL +             Self::new()
 LL +         }
 LL +     }
 LL + 
- ...
+LL ~     impl<T> Foo<T> {
+   |
 
 error: aborting due to 7 previous errors
 

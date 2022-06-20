@@ -13,6 +13,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
+use rustc_hir::definitions::Definitions;
 use rustc_hir::Crate;
 use rustc_lint::{EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
@@ -20,7 +21,7 @@ use rustc_metadata::{encode_metadata, EncodedMetadata};
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::query::{ExternProviders, Providers};
-use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
 use rustc_passes::{self, hir_stats, layout_test};
@@ -28,7 +29,7 @@ use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn};
+use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn};
 use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -43,11 +44,11 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
-use std::lazy::SyncLazy;
 use std::marker::PhantomPinned;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::rc::Rc;
+use std::sync::LazyLock;
 use std::{env, fs, iter};
 
 pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
@@ -136,7 +137,10 @@ mod boxed_resolver {
             f((&mut *resolver).as_mut().unwrap())
         }
 
-        pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
+        pub fn to_resolver_outputs(
+            resolver: Rc<RefCell<BoxedResolver>>,
+        ) -> (Definitions, Box<CrateStoreDyn>, ty::ResolverOutputs, ty::ResolverAstLowering)
+        {
             match Rc::try_unwrap(resolver) {
                 Ok(resolver) => {
                     let mut resolver = resolver.into_inner();
@@ -478,14 +482,25 @@ pub fn configure_and_expand(
     Ok(krate)
 }
 
-pub fn lower_to_hir<'res, 'tcx>(
-    sess: &'tcx Session,
-    resolver: &'res mut Resolver<'_>,
+fn lower_to_hir<'tcx>(
+    sess: &Session,
+    definitions: &mut Definitions,
+    cstore: &CrateStoreDyn,
+    resolutions: &ty::ResolverOutputs,
+    resolver: ty::ResolverAstLowering,
     krate: Rc<ast::Crate>,
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
 ) -> &'tcx Crate<'tcx> {
     // Lower AST to HIR.
-    let hir_crate = rustc_ast_lowering::lower_crate(sess, &*krate, resolver, arena);
+    let hir_crate = rustc_ast_lowering::lower_crate(
+        sess,
+        &krate,
+        definitions,
+        cstore,
+        resolutions,
+        resolver,
+        arena,
+    );
 
     // Drop AST to free memory
     sess.time("drop_ast", || std::mem::drop(krate));
@@ -759,7 +774,7 @@ pub fn prepare_outputs(
     Ok(outputs)
 }
 
-pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
+pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
     proc_macro_decls::provide(providers);
@@ -784,7 +799,7 @@ pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     *providers
 });
 
-pub static DEFAULT_EXTERN_QUERY_PROVIDERS: SyncLazy<ExternProviders> = SyncLazy::new(|| {
+pub static DEFAULT_EXTERN_QUERY_PROVIDERS: LazyLock<ExternProviders> = LazyLock::new(|| {
     let mut extern_providers = ExternProviders::default();
     rustc_metadata::provide_extern(&mut extern_providers);
     rustc_codegen_ssa::provide_extern(&mut extern_providers);
@@ -823,10 +838,21 @@ pub fn create_global_ctxt<'tcx>(
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
+    let (mut definitions, cstore, resolver_outputs, resolver_for_lowering) =
+        BoxedResolver::to_resolver_outputs(resolver);
+
     let sess = &compiler.session();
-    let krate =
-        resolver.borrow_mut().access(|resolver| lower_to_hir(sess, resolver, krate, hir_arena));
-    let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
+
+    // Lower AST to HIR.
+    let krate = lower_to_hir(
+        sess,
+        &mut definitions,
+        &*cstore,
+        &resolver_outputs,
+        resolver_for_lowering,
+        krate,
+        hir_arena,
+    );
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
@@ -851,6 +877,8 @@ pub fn create_global_ctxt<'tcx>(
                 sess,
                 lint_store,
                 arena,
+                definitions,
+                cstore,
                 resolver_outputs,
                 krate,
                 dep_graph,

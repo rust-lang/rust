@@ -3,7 +3,7 @@ use rustc_data_structures::sync::join;
 use rustc_middle::dep_graph::{DepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
-use rustc_serialize::{Encodable as RustcEncodable, Encoder};
+use rustc_serialize::Encodable as RustcEncodable;
 use rustc_session::Session;
 use std::fs;
 

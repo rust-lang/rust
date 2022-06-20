@@ -36,7 +36,6 @@ extern crate tracing;
 // Dependencies listed in Cargo.toml do not need `extern crate`.
 
 extern crate rustc_ast;
-extern crate rustc_ast_lowering;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
 extern crate rustc_const_eval;

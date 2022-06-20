@@ -845,7 +845,12 @@ impl Step for PlainSourceTarball {
 
     /// Creates the plain source tarball
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
-        let tarball = Tarball::new(builder, "rustc", "src");
+        // NOTE: This is a strange component in a lot of ways. It uses `src` as the target, which
+        // means neither rustup nor rustup-toolchain-install-master know how to download it.
+        // It also contains symbolic links, unlike other any other dist tarball.
+        // It's used for distros building rustc from source in a pre-vendored environment.
+        let mut tarball = Tarball::new(builder, "rustc", "src");
+        tarball.permit_symlinks(true);
         let plain_dst_src = tarball.image_dir();
 
         // This is the set of root paths which will become part of the source package
@@ -1847,7 +1852,6 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
 
 /// Maybe add LLVM object files to the given destination lib-dir. Allows either static or dynamic linking.
 ///
-
 /// Returns whether the files were actually copied.
 fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) -> bool {
     if let Some(config) = builder.config.target_config.get(&target) {
@@ -1956,6 +1960,8 @@ impl Step for LlvmTools {
                 return None;
             }
         }
+
+        builder.ensure(crate::native::Llvm { target });
 
         let mut tarball = Tarball::new(builder, "llvm-tools", &target.triple);
         tarball.set_overlay(OverlayKind::LLVM);

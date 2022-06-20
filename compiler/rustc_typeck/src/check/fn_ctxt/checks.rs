@@ -955,8 +955,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let input_ty = self.resolve_vars_if_possible(expected_ty);
                         if input_ty.is_unit() {
                             "()".to_string()
+                        } else if !input_ty.is_ty_var() {
+                            format!("/* {} */", input_ty)
                         } else {
-                            format!("{{{}}}", input_ty)
+                            "/* value */".to_string()
                         }
                     };
                     suggestion += &suggestion_text;

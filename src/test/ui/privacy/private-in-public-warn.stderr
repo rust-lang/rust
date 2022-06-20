@@ -320,7 +320,7 @@ help: the bound will not be checked when the type alias is used, and should be r
    |
 LL -     pub type Alias<T: PrivTr> = T;
 LL +     pub type Alias<T> = T;
-   | 
+   |
 
 warning: where clauses are not enforced in type aliases
   --> $DIR/private-in-public-warn.rs:74:29
@@ -332,7 +332,7 @@ help: the clause will not be checked when the type alias is used, and should be 
    |
 LL -     pub type Alias<T> where T: PrivTr = T;
 LL +     pub type Alias<T>  = T;
-   | 
+   |
 
 error: aborting due to 34 previous errors; 2 warnings emitted
 

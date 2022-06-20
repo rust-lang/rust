@@ -4,7 +4,6 @@ use std::any::Any;
 use std::char;
 use std::io::Write;
 use std::num::NonZeroU32;
-use std::ops::Bound;
 use std::str;
 
 pub(super) type Writer = super::buffer::Buffer;
@@ -43,15 +42,17 @@ macro_rules! rpc_encode_decode {
             }
         }
     };
-    (struct $name:ident { $($field:ident),* $(,)? }) => {
-        impl<S> Encode<S> for $name {
+    (struct $name:ident $(<$($T:ident),+>)? { $($field:ident),* $(,)? }) => {
+        impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
             fn encode(self, w: &mut Writer, s: &mut S) {
                 $(self.$field.encode(w, s);)*
             }
         }
 
-        impl<S> DecodeMut<'_, '_, S> for $name {
-            fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
+        impl<'a, S, $($($T: for<'s> DecodeMut<'a, 's, S>),+)?> DecodeMut<'a, '_, S>
+            for $name $(<$($T),+>)?
+        {
+            fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
                 $name {
                     $($field: DecodeMut::decode(r, s)),*
                 }
@@ -184,28 +185,6 @@ impl<'a, S, A: for<'s> DecodeMut<'a, 's, S>, B: for<'s> DecodeMut<'a, 's, S>> De
     }
 }
 
-rpc_encode_decode!(
-    enum Bound<T> {
-        Included(x),
-        Excluded(x),
-        Unbounded,
-    }
-);
-
-rpc_encode_decode!(
-    enum Option<T> {
-        None,
-        Some(x),
-    }
-);
-
-rpc_encode_decode!(
-    enum Result<T, E> {
-        Ok(x),
-        Err(e),
-    }
-);
-
 impl<S> Encode<S> for &[u8] {
     fn encode(self, w: &mut Writer, s: &mut S) {
         self.len().encode(w, s);
@@ -243,6 +222,26 @@ impl<S> Encode<S> for String {
 impl<S> DecodeMut<'_, '_, S> for String {
     fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
         <&str>::decode(r, s).to_string()
+    }
+}
+
+impl<S, T: Encode<S>> Encode<S> for Vec<T> {
+    fn encode(self, w: &mut Writer, s: &mut S) {
+        self.len().encode(w, s);
+        for x in self {
+            x.encode(w, s);
+        }
+    }
+}
+
+impl<'a, S, T: for<'s> DecodeMut<'a, 's, S>> DecodeMut<'a, '_, S> for Vec<T> {
+    fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
+        let len = usize::decode(r, s);
+        let mut vec = Vec::with_capacity(len);
+        for _ in 0..len {
+            vec.push(T::decode(r, s));
+        }
+        vec
     }
 }
 

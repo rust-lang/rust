@@ -7,10 +7,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
     /// the leaf edge corresponding to that former pair. It's possible this empties
     /// a root node that is internal, which the caller should pop from the map
     /// holding the tree. The caller should also decrement the map's length.
-    pub fn remove_kv_tracking<F: FnOnce(), A: Allocator>(
+    pub fn remove_kv_tracking<F: FnOnce(), A: Allocator + Clone>(
         self,
         handle_emptied_internal_root: F,
-        alloc: &A,
+        alloc: A,
     ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
         match self.force() {
             Leaf(node) => node.remove_leaf_kv(handle_emptied_internal_root, alloc),
@@ -20,10 +20,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> {
-    fn remove_leaf_kv<F: FnOnce(), A: Allocator>(
+    fn remove_leaf_kv<F: FnOnce(), A: Allocator + Clone>(
         self,
         handle_emptied_internal_root: F,
-        alloc: &A,
+        alloc: A,
     ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
         let (old_kv, mut pos) = self.remove();
         let len = pos.reborrow().into_node().len();
@@ -35,7 +35,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
                 Ok(Left(left_parent_kv)) => {
                     debug_assert!(left_parent_kv.right_child_len() == MIN_LEN - 1);
                     if left_parent_kv.can_merge() {
-                        left_parent_kv.merge_tracking_child_edge(Right(idx), alloc)
+                        left_parent_kv.merge_tracking_child_edge(Right(idx), alloc.clone())
                     } else {
                         debug_assert!(left_parent_kv.left_child_len() > MIN_LEN);
                         left_parent_kv.steal_left(idx)
@@ -44,7 +44,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
                 Ok(Right(right_parent_kv)) => {
                     debug_assert!(right_parent_kv.left_child_len() == MIN_LEN - 1);
                     if right_parent_kv.can_merge() {
-                        right_parent_kv.merge_tracking_child_edge(Left(idx), alloc)
+                        right_parent_kv.merge_tracking_child_edge(Left(idx), alloc.clone())
                     } else {
                         debug_assert!(right_parent_kv.right_child_len() > MIN_LEN);
                         right_parent_kv.steal_right(idx)
@@ -73,10 +73,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
-    fn remove_internal_kv<F: FnOnce(), A: Allocator>(
+    fn remove_internal_kv<F: FnOnce(), A: Allocator + Clone>(
         self,
         handle_emptied_internal_root: F,
-        alloc: &A,
+        alloc: A,
     ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
         // Remove an adjacent KV from its leaf and then put it back in place of
         // the element we were asked to remove. Prefer the left adjacent KV,

@@ -143,6 +143,7 @@
 #![feature(unchecked_math)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
+#![feature(std_internals)]
 //
 // Language features:
 #![feature(allocator_internals)]

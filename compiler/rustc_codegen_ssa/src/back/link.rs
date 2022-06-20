@@ -38,11 +38,11 @@ use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
 use std::borrow::Borrow;
+use std::cell::OnceCell;
 use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
-use std::lazy::OnceCell;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};

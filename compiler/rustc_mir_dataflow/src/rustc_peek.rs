@@ -1,7 +1,7 @@
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::ChunkedBitSet;
 use rustc_middle::mir::MirPass;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -271,7 +271,7 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
         &self,
         tcx: TyCtxt<'tcx>,
         place: mir::Place<'tcx>,
-        flow_state: &BitSet<Local>,
+        flow_state: &ChunkedBitSet<Local>,
         call: PeekCall,
     ) {
         info!(?place, "peek_at");

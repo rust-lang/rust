@@ -3,7 +3,7 @@ error: conflicting implementations of trait `Foo` for type `(dyn std::marker::Se
    |
 LL | impl Foo for dyn Send {}
    | --------------------- first implementation here
-LL | 
+LL |
 LL | impl Foo for dyn Send + Send {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + 'static)`
    |
@@ -16,7 +16,7 @@ error: conflicting implementations of trait `Foo` for type `(dyn std::marker::Se
    |
 LL | impl Foo for dyn Send + Sync {}
    | ---------------------------- first implementation here
-LL | 
+LL |
 LL | impl Foo for dyn Sync + Send {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
    |

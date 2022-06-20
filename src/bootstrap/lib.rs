@@ -118,7 +118,6 @@ use std::os::windows::fs::symlink_file;
 
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
-use serde::Deserialize;
 
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
@@ -171,6 +170,7 @@ mod job {
     pub unsafe fn setup(_build: &mut crate::Build) {}
 }
 
+pub use crate::builder::PathSet;
 use crate::cache::{Interned, INTERNER};
 pub use crate::config::Config;
 pub use crate::flags::Subcommand;
@@ -294,8 +294,6 @@ pub struct Build {
     hosts: Vec<TargetSelection>,
     targets: Vec<TargetSelection>,
 
-    // Stage 0 (downloaded) compiler, lld and cargo or their local rust equivalents
-    stage0_metadata: Stage0Metadata,
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
@@ -320,18 +318,6 @@ pub struct Build {
 
     #[cfg(feature = "build-metrics")]
     metrics: metrics::BuildMetrics,
-}
-
-#[derive(Deserialize)]
-struct Stage0Metadata {
-    dist_server: String,
-    checksums_sha256: HashMap<String, String>,
-    rustfmt: Option<RustfmtMetadata>,
-}
-#[derive(Deserialize)]
-struct RustfmtMetadata {
-    date: String,
-    version: String,
 }
 
 #[derive(Debug)]
@@ -482,11 +468,7 @@ impl Build {
             bootstrap_out
         };
 
-        let stage0_json = t!(std::fs::read_to_string(&src.join("src").join("stage0.json")));
-        let stage0_metadata = t!(serde_json::from_str::<Stage0Metadata>(&stage0_json));
-
         let mut build = Build {
-            stage0_metadata,
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             initial_lld,
@@ -1445,6 +1427,10 @@ impl Build {
 
     /// Copies a file from `src` to `dst`
     pub fn copy(&self, src: &Path, dst: &Path) {
+        self.copy_internal(src, dst, false);
+    }
+
+    fn copy_internal(&self, src: &Path, dst: &Path, dereference_symlinks: bool) {
         if self.config.dry_run {
             return;
         }
@@ -1454,15 +1440,22 @@ impl Build {
         }
         let _ = fs::remove_file(&dst);
         let metadata = t!(src.symlink_metadata());
+        let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {
-            let link = t!(fs::read_link(src));
-            t!(symlink_file(link, dst));
-        } else if let Ok(()) = fs::hard_link(src, dst) {
+            if dereference_symlinks {
+                src = t!(fs::canonicalize(src));
+            } else {
+                let link = t!(fs::read_link(src));
+                t!(symlink_file(link, dst));
+                return;
+            }
+        }
+        if let Ok(()) = fs::hard_link(&src, dst) {
             // Attempt to "easy copy" by creating a hard link
             // (symlinks don't work on windows), but if that fails
             // just fall back to a slow `copy` operation.
         } else {
-            if let Err(e) = fs::copy(src, dst) {
+            if let Err(e) = fs::copy(&src, dst) {
                 panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
             }
             t!(fs::set_permissions(dst, metadata.permissions()));
@@ -1534,20 +1527,10 @@ impl Build {
         let dst = dstdir.join(src.file_name().unwrap());
         self.verbose_than(1, &format!("Install {:?} to {:?}", src, dst));
         t!(fs::create_dir_all(dstdir));
-        drop(fs::remove_file(&dst));
-        {
-            if !src.exists() {
-                panic!("Error: File \"{}\" not found!", src.display());
-            }
-            let metadata = t!(src.symlink_metadata());
-            if let Err(e) = fs::copy(&src, &dst) {
-                panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
-            }
-            t!(fs::set_permissions(&dst, metadata.permissions()));
-            let atime = FileTime::from_last_access_time(&metadata);
-            let mtime = FileTime::from_last_modification_time(&metadata);
-            t!(filetime::set_file_times(&dst, atime, mtime));
+        if !src.exists() {
+            panic!("Error: File \"{}\" not found!", src.display());
         }
+        self.copy_internal(src, &dst, true);
         chmod(&dst, perms);
     }
 

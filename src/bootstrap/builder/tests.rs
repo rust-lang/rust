@@ -3,7 +3,11 @@ use crate::config::{Config, TargetSelection};
 use std::thread;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
-    let mut config = Config::parse(&[cmd.to_owned()]);
+    configure_with_args(&[cmd.to_owned()], host, target)
+}
+
+fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config {
+    let mut config = Config::parse(cmd);
     // don't save toolstates
     config.save_toolstates = None;
     config.dry_run = true;
@@ -44,6 +48,41 @@ fn run_build(paths: &[PathBuf], config: Config) -> Cache {
     let builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(kind), paths);
     builder.cache
+}
+
+fn check_cli<const N: usize>(paths: [&str; N]) {
+    run_build(
+        &paths.map(PathBuf::from),
+        configure_with_args(&paths.map(String::from), &["A"], &["A"]),
+    );
+}
+
+#[test]
+fn test_valid() {
+    // make sure multi suite paths are accepted
+    check_cli(["test", "src/test/ui/attr-start.rs", "src/test/ui/attr-shebang.rs"]);
+}
+
+#[test]
+#[should_panic]
+fn test_invalid() {
+    // make sure that invalid paths are caught, even when combined with valid paths
+    check_cli(["test", "library/std", "x"]);
+}
+
+#[test]
+fn test_intersection() {
+    let set = PathSet::Set(
+        ["library/core", "library/alloc", "library/std"].into_iter().map(TaskPath::parse).collect(),
+    );
+    let mut command_paths =
+        vec![Path::new("library/core"), Path::new("library/alloc"), Path::new("library/stdarch")];
+    let subset = set.intersection_removing_matches(&mut command_paths, None);
+    assert_eq!(
+        subset,
+        PathSet::Set(["library/core", "library/alloc"].into_iter().map(TaskPath::parse).collect())
+    );
+    assert_eq!(command_paths, vec![Path::new("library/stdarch")]);
 }
 
 #[test]
@@ -539,7 +578,7 @@ mod dist {
                 target: host,
                 mode: Mode::Std,
                 test_kind: test::TestKind::Test,
-                krate: INTERNER.intern_str("std"),
+                crates: vec![INTERNER.intern_str("std")],
             },]
         );
     }
