@@ -295,7 +295,7 @@ fn get_entry_condition<'a>(solver: &'a Solver<'_>, body: &'a Body<'_>, predecess
                     }
                 }
                 TerminatorKind::Call { .. } => {
-                    // TODO: Revisit assumption of no information about call
+                    // FIXME: Revisit assumption of no information about call
                     // and that the call can go to any successor without any additional constraints
                     // ACTUALLY WE MAY NEED TO ENCODE THE ASSIGNMENT OF THE RETURN IN THE DESTINATION CASE (NON-CLEANUP)
                     // BUT WE PROBABLY WILL NOT SUPPORT UNDERSTANDING RETURN VALUES FOR NOW SINCE IT REQUIRES DOMAIN KNOWLEDGE OF FUNCTION
@@ -363,7 +363,7 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
             node_var = ast::Bool::and(solver.get_context(), &[&panic_var.not(), &node_var]);
         }
 
-        // TODO: handle assignment
+        // FIXME: handle assignment
         if let Ok(i) = node.parse() {
             for j in (0..body.basic_blocks()[BasicBlock::from_usize(i)].statements.len()).rev() {
                 let statement = &body.basic_blocks()[BasicBlock::from_usize(i)].statements[j];
@@ -374,7 +374,7 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
 
                         match rvalue {
                             Rvalue::Use(..) => {
-                                // TODO: Implement support
+                                // FIXME: Implement support
                                 debug!("{:?} is a Use", assignment);
                             },
                             Rvalue::Repeat(..) => {
@@ -396,18 +396,18 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
                                 debug!("{:?} is a Cast which we do not support yet", assignment);
                             },
                             Rvalue::BinaryOp(..) => {
-                                // TODO: Implement support
+                                // FIXME: Implement support
                                 debug!("{:?} is a BinaryOp", assignment);
                             },
                             Rvalue::CheckedBinaryOp(..) => {
-                                // TODO: Implement support
+                                // FIXME: Implement support
                                 debug!("{:?} is a CheckedBinaryOp", assignment);
                             },
                             Rvalue::NullaryOp(..) => {
                                 debug!("{:?} is a NullaryOp which we do not support yet", assignment);
                             },
                             Rvalue::UnaryOp(..) => {
-                                // TODO: Implement support
+                                // FIXME: Implement support
                                 debug!("{:?} is a UnaryOp", assignment);
                             },
                             Rvalue::Discriminant(..) => {
