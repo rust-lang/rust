@@ -813,7 +813,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let cause = ObligationCause::new(
                     obligation.cause.span,
                     obligation.cause.body_id,
-                    ObjectCastObligation(target),
+                    ObjectCastObligation(source, target),
                 );
                 let outlives = ty::OutlivesPredicate(r_a, r_b);
                 nested.push(Obligation::with_depth(
@@ -910,7 +910,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let cause = ObligationCause::new(
                     obligation.cause.span,
                     obligation.cause.body_id,
-                    ObjectCastObligation(target),
+                    ObjectCastObligation(source, target),
                 );
                 let outlives = ty::OutlivesPredicate(r_a, r_b);
                 nested.push(Obligation::with_depth(
@@ -931,7 +931,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let cause = ObligationCause::new(
                     obligation.cause.span,
                     obligation.cause.body_id,
-                    ObjectCastObligation(target),
+                    ObjectCastObligation(source, target),
                 );
 
                 let predicate_to_obligation = |predicate| {
