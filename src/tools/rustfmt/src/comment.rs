@@ -26,7 +26,7 @@ fn is_custom_comment(comment: &str) -> bool {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum CommentStyle<'a> {
     DoubleSlash,
     TripleSlash,
