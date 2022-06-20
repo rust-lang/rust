@@ -803,7 +803,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     let mut suggestion = None;
     let sm = cx.tcx.sess.source_map();
     match arms {
-        [] if sp.ctxt() == expr_span.ctxt() => {
+        [] if sp.eq_ctxt(expr_span) => {
             // Get the span for the empty match body `{}`.
             let (indentation, more) = if let Some(snippet) = sm.indentation_before(sp) {
                 (format!("\n{}", snippet), "    ")
@@ -821,24 +821,36 @@ fn non_exhaustive_match<'p, 'tcx>(
             ));
         }
         [only] => {
-            let pre_indentation = if let (Some(snippet), true) = (
-                sm.indentation_before(only.span),
-                sm.is_multiline(sp.shrink_to_hi().with_hi(only.span.lo())),
-            ) {
-                format!("\n{}", snippet)
+            let (pre_indentation, is_multiline) = if let Some(snippet) = sm.indentation_before(only.span)
+                && let Ok(with_trailing) = sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
+                && sm.is_multiline(with_trailing)
+            {
+                (format!("\n{}", snippet), true)
             } else {
-                " ".to_string()
+                (" ".to_string(), false)
             };
-            let comma = if matches!(only.body.kind, hir::ExprKind::Block(..)) { "" } else { "," };
+            let comma = if matches!(only.body.kind, hir::ExprKind::Block(..))
+                && only.span.eq_ctxt(only.body.span)
+                && is_multiline
+            {
+                ""
+            } else {
+                ","
+            };
             suggestion = Some((
                 only.span.shrink_to_hi(),
                 format!("{}{}{} => todo!()", comma, pre_indentation, pattern),
             ));
         }
-        [.., prev, last] if prev.span.ctxt() == last.span.ctxt() => {
+        [.., prev, last] if prev.span.eq_ctxt(last.span) => {
             if let Ok(snippet) = sm.span_to_snippet(prev.span.between(last.span)) {
-                let comma =
-                    if matches!(last.body.kind, hir::ExprKind::Block(..)) { "" } else { "," };
+                let comma = if matches!(last.body.kind, hir::ExprKind::Block(..))
+                    && last.span.eq_ctxt(last.body.span)
+                {
+                    ""
+                } else {
+                    ","
+                };
                 suggestion = Some((
                     last.span.shrink_to_hi(),
                     format!(

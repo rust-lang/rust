@@ -1894,7 +1894,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let names = rib
             .bindings
             .iter()
-            .filter(|(id, _)| id.span.ctxt() == label.span.ctxt())
+            .filter(|(id, _)| id.span.eq_ctxt(label.span))
             .map(|(id, _)| id.name)
             .collect::<Vec<Symbol>>();
 
