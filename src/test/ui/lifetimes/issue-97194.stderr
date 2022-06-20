@@ -25,11 +25,11 @@ LL |     fn bget(&self, index: [usize; Self::DIM]) -> bool {
    |
    = note: associated functions are those in `impl` or `trait` definitions
 
-error[E0433]: failed to resolve: use of undeclared type `Self`
+error[E0433]: failed to resolve: `Self` is only available in impls, traits, and type definitions
   --> $DIR/issue-97194.rs:2:35
    |
 LL |     fn bget(&self, index: [usize; Self::DIM]) -> bool {
-   |                                   ^^^^ use of undeclared type `Self`
+   |                                   ^^^^ `Self` is only available in impls, traits, and type definitions
 
 error: aborting due to 3 previous errors
 
