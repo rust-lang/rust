@@ -315,7 +315,7 @@ impl<'a, T> IterMut<'a, T> {
     /// Basic usage:
     ///
     /// ```
-    /// # #![feature(slice_iter_mut_as_mut_slice)]
+    /// #![feature(slice_iter_mut_as_mut_slice)]
     ///
     /// let mut slice: &mut [usize] = &mut [1, 2, 3];
     ///
