@@ -228,6 +228,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
     /// type information (in which case, the "fully resolved" key will
     /// be different).
     pub fn ambiguous(&mut self, key: ProjectionCacheKey<'tcx>) {
+        debug!(?key, "ambiguous");
         let fresh = self.map().insert(key, ProjectionCacheEntry::Ambiguous);
         assert!(!fresh, "never started projecting `{:?}`", key);
     }

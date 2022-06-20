@@ -91,7 +91,8 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
     // Returns true if the push was successful, or false if the candidate
     // was discarded -- this could be because of ambiguity, or because
     // a higher-priority candidate is already there.
-    fn push_candidate(&mut self, candidate: ProjectionCandidate<'tcx>) -> bool {
+    #[tracing::instrument(level = "debug", skip(self, tcx))]
+    fn push_candidate(&mut self, tcx: TyCtxt<'tcx>, candidate: ProjectionCandidate<'tcx>) -> bool {
         use self::ProjectionCandidate::*;
         use self::ProjectionCandidateSet::*;
 
@@ -126,6 +127,15 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
                 // clauses are the safer choice. See the comment on
                 // `select::SelectionCandidate` and #21974 for more details.
                 match (current, candidate) {
+                    // HACK(fee1-dead)
+                    // If both candidates are the same, except for the constness argument, it is not an ambiguity
+                    (ParamEnv(a), ParamEnv(b))
+                        if a.required_poly_trait_ref(tcx)
+                            .eq_modulo_constness(&b.required_poly_trait_ref(tcx))
+                            && a.term() == b.term() =>
+                    {
+                        return false;
+                    }
                     (ParamEnv(..), ParamEnv(..)) => convert_to_ambiguous = (),
                     (ParamEnv(..), _) => return false,
                     (_, ParamEnv(..)) => unreachable!(),
@@ -1365,7 +1375,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
 
             match is_match {
                 ProjectionMatchesProjection::Yes => {
-                    candidate_set.push_candidate(ctor(data));
+                    candidate_set.push_candidate(infcx.tcx, ctor(data));
 
                     if potentially_unnormalized_candidates
                         && !obligation.predicate.has_infer_types_or_consts()
@@ -1635,7 +1645,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
         };
 
         if eligible {
-            if candidate_set.push_candidate(ProjectionCandidate::Select(impl_source)) {
+            if candidate_set.push_candidate(selcx.tcx(), ProjectionCandidate::Select(impl_source)) {
                 Ok(())
             } else {
                 Err(())

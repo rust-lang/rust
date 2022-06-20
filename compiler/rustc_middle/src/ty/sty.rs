@@ -32,6 +32,8 @@ use rustc_type_ir::sty::TyKind::*;
 use rustc_type_ir::RegionKind as IrRegionKind;
 use rustc_type_ir::TyKind as IrTyKind;
 
+use super::GenericArgKind;
+
 // Re-export the `TyKind` from `rustc_type_ir` here for convenience
 #[rustc_diagnostic_item = "TyKind"]
 pub type TyKind<'tcx> = IrTyKind<TyCtxt<'tcx>>;
@@ -849,12 +851,18 @@ impl<'tcx> TraitRef<'tcx> {
     pub fn with_const(mut self, tcx: TyCtxt<'tcx>) -> Self {
         if self.constness() != ty::ConstnessArg::Const {
             self.substs = tcx.mk_substs(self.substs.iter().map(|arg| match arg.unpack() {
-                ty::subst::GenericArgKind::Constness(_) => ty::ConstnessArg::Const.into(),
+                GenericArgKind::Constness(_) => ty::ConstnessArg::Const.into(),
                 _ => arg,
             }));
         }
 
         self
+    }
+
+    pub fn eq_modulo_constness(&self, other: &TraitRef<'tcx>) -> bool {
+        let f = |s: &GenericArg<'_>| !matches!(s.unpack(), GenericArgKind::Constness(_));
+        self.def_id == other.def_id
+            && self.substs.iter().filter(f).eq(other.substs.iter().filter(f))
     }
 }
 
@@ -886,6 +894,11 @@ impl<'tcx> PolyTraitRef<'tcx> {
 
     pub fn without_const(self, tcx: TyCtxt<'tcx>) -> Self {
         self.map_bound(|tr| tr.without_const(tcx))
+    }
+
+    pub fn eq_modulo_constness(&self, other: &Self) -> bool {
+        self.bound_vars() == other.bound_vars()
+            && self.skip_binder().eq_modulo_constness(other.as_ref().skip_binder())
     }
 }
 
