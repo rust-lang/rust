@@ -3,9 +3,9 @@
 #![feature(get_mut_unchecked)]
 
 use std::cell::{Cell, RefCell};
+use std::fmt::Debug;
 use std::rc::{Rc, Weak};
 use std::sync::{Arc, Weak as ArcWeak};
-use std::fmt::Debug;
 
 fn rc_refcell() {
     let r = Rc::new(RefCell::new(42));
@@ -30,7 +30,7 @@ fn rc_refcell2() {
     let x = r2.borrow();
     let r3 = r.clone();
     let y = r3.borrow();
-    assert_eq!((*x + *y)/2, 52);
+    assert_eq!((*x + *y) / 2, 52);
 }
 
 fn rc_raw() {
@@ -62,9 +62,9 @@ fn check_unique_rc<T: ?Sized>(mut r: Rc<T>) {
 }
 
 fn rc_from() {
-    check_unique_rc::<[_]>(Rc::from(&[1,2,3] as &[_]));
-    check_unique_rc::<[_]>(Rc::from(vec![1,2,3]));
-    check_unique_rc::<[_]>(Rc::from(Box::new([1,2,3]) as Box<[_]>));
+    check_unique_rc::<[_]>(Rc::from(&[1, 2, 3] as &[_]));
+    check_unique_rc::<[_]>(Rc::from(vec![1, 2, 3]));
+    check_unique_rc::<[_]>(Rc::from(Box::new([1, 2, 3]) as Box<[_]>));
     check_unique_rc::<str>(Rc::from("Hello, World!"));
 }
 

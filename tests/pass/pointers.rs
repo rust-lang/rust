@@ -37,7 +37,7 @@ fn match_ref_mut() -> i8 {
         let opt = Some(&mut t);
         match opt {
             Some(&mut (ref mut x, ref mut y)) => *x += *y,
-            None => {},
+            None => {}
         }
     }
     t.0
@@ -59,7 +59,10 @@ fn main() {
     // Compare even dangling pointers with NULL, and with others in the same allocation, including
     // out-of-bounds.
     assert!(dangling_pointer() != std::ptr::null());
-    assert!(match dangling_pointer() as usize { 0 => false, _ => true });
+    assert!(match dangling_pointer() as usize {
+        0 => false,
+        _ => true,
+    });
     let dangling = dangling_pointer();
     assert!(dangling == dangling);
     assert!(dangling.wrapping_add(1) != dangling);

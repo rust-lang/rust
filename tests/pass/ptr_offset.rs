@@ -8,21 +8,23 @@ fn main() {
     ptr_offset();
 }
 
-fn test_offset_from() { unsafe {
-    let buf = [0u32; 4];
+fn test_offset_from() {
+    unsafe {
+        let buf = [0u32; 4];
 
-    let x = buf.as_ptr() as *const u8;
-    let y = x.offset(12);
+        let x = buf.as_ptr() as *const u8;
+        let y = x.offset(12);
 
-    assert_eq!(y.offset_from(x), 12);
-    assert_eq!(x.offset_from(y), -12);
-    assert_eq!((y as *const u32).offset_from(x as *const u32), 12/4);
-    assert_eq!((x as *const u32).offset_from(y as *const u32), -12/4);
+        assert_eq!(y.offset_from(x), 12);
+        assert_eq!(x.offset_from(y), -12);
+        assert_eq!((y as *const u32).offset_from(x as *const u32), 12 / 4);
+        assert_eq!((x as *const u32).offset_from(y as *const u32), -12 / 4);
 
-    let x = (((x as usize) * 2) / 2) as *const u8;
-    assert_eq!(y.offset_from(x), 12);
-    assert_eq!(x.offset_from(y), -12);
-} }
+        let x = (((x as usize) * 2) / 2) as *const u8;
+        assert_eq!(y.offset_from(x), 12);
+        assert_eq!(x.offset_from(y), -12);
+    }
+}
 
 // This also internally uses offset_from.
 fn test_vec_into_iter() {
@@ -50,7 +52,9 @@ fn ptr_arith_offset_overflow() {
 }
 
 fn ptr_offset() {
-    fn f() -> i32 { 42 }
+    fn f() -> i32 {
+        42
+    }
 
     let v = [1i16, 2];
     let x = &v as *const [i16; 2] as *const i16;

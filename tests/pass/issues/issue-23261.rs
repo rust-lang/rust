@@ -2,7 +2,7 @@
 
 struct Foo<T: ?Sized> {
     a: i32,
-    inner: T
+    inner: T,
 }
 
 trait Get {

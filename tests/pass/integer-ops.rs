@@ -42,7 +42,7 @@ pub fn main() {
     let m = -0xFEDCBA987654322i64;
     assert_eq!(n.rotate_right(4), m);
 
-    let n =  0x0123456789ABCDEFi64;
+    let n = 0x0123456789ABCDEFi64;
     let m = -0x1032547698BADCFFi64;
     assert_eq!(n.swap_bytes(), m);
 
@@ -169,9 +169,9 @@ pub fn main() {
     assert_eq!(0x10i32.overflowing_shr(4), (0x1, false));
     assert_eq!(0x10i32.overflowing_shr(36), (0x1, true));
 
-    assert_eq!(10i8.overflowing_abs(), (10,false));
-    assert_eq!((-10i8).overflowing_abs(), (10,false));
-    assert_eq!((-128i8).overflowing_abs(), (-128,true));
+    assert_eq!(10i8.overflowing_abs(), (10, false));
+    assert_eq!((-10i8).overflowing_abs(), (10, false));
+    assert_eq!((-128i8).overflowing_abs(), (-128, true));
 
     // Logarithms
     macro_rules! test_log {
@@ -180,7 +180,7 @@ pub fn main() {
             assert_eq!($type::MIN.checked_log10(), None);
             assert_eq!($type::MAX.checked_log2(), Some($max_log2));
             assert_eq!($type::MAX.checked_log10(), Some($max_log10));
-        }
+        };
     }
 
     test_log!(i8, 6, 2);

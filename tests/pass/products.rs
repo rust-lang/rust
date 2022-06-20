@@ -11,7 +11,10 @@ fn tuple_5() -> (i16, i16, i16, i16, i16) {
 }
 
 #[derive(Debug, PartialEq)]
-struct Pair { x: i8, y: i8 }
+struct Pair {
+    x: i8,
+    y: i8,
+}
 
 fn pair() -> Pair {
     Pair { x: 10, y: 20 }
@@ -27,6 +30,6 @@ fn main() {
     assert_eq!(tuple(), (1,));
     assert_eq!(tuple_2(), (1, 2));
     assert_eq!(tuple_5(), (1, 2, 3, 4, 5));
-    assert_eq!(pair(), Pair { x: 10, y: 20} );
+    assert_eq!(pair(), Pair { x: 10, y: 20 });
     assert_eq!(field_access(), (15, 20));
 }

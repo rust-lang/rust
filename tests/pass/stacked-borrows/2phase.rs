@@ -21,7 +21,9 @@ fn two_phase3(b: bool) {
     let mut y = vec![];
     x.push((
         {
-            if b { x = &mut y };
+            if b {
+                x = &mut y
+            };
             22
         },
         x.len(),
@@ -31,16 +33,16 @@ fn two_phase3(b: bool) {
 #[allow(unreachable_code)]
 fn two_phase_raw() {
     let x: &mut Vec<i32> = &mut vec![];
-    x.push(
-        {
-            // Unfortunately this does not trigger the problem of creating a
-            // raw ponter from a pointer that had a two-phase borrow derived from
-            // it because of the implicit &mut reborrow.
-            let raw = x as *mut _;
-            unsafe { *raw = vec![1]; }
-            return
+    x.push({
+        // Unfortunately this does not trigger the problem of creating a
+        // raw ponter from a pointer that had a two-phase borrow derived from
+        // it because of the implicit &mut reborrow.
+        let raw = x as *mut _;
+        unsafe {
+            *raw = vec![1];
         }
-    );
+        return;
+    });
 }
 
 fn two_phase_overlapping1() {
@@ -68,13 +70,11 @@ fn with_interior_mutability() {
     let mut x = Cell::new(1);
     let l = &x;
 
-    x
-        .do_the_thing({
-            x.set(3);
-            l.set(4);
-            x.get() + l.get()
-        })
-    ;
+    x.do_the_thing({
+        x.set(3);
+        l.set(4);
+        x.get() + l.get()
+    });
 }
 
 fn main() {

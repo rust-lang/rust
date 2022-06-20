@@ -1,8 +1,8 @@
 fn main() {
     let x = "hello";
     match x {
-        "foo" => {},
-        "bar" => {},
-        _ => {},
+        "foo" => {}
+        "bar" => {}
+        _ => {}
     }
 }

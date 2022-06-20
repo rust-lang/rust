@@ -1,4 +1,7 @@
-enum AB { A = -1, B = 1 }
+enum AB {
+    A = -1,
+    B = 1,
+}
 
 fn main() {
     match AB::A {

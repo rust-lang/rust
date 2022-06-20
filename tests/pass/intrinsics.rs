@@ -20,8 +20,12 @@ fn main() {
     assert_eq!(size_of_val(&[1, 2, 3] as &[i32]), 12);
     assert_eq!(size_of_val("foobar"), 6);
 
-    unsafe { assert_eq!(size_of_val_raw(&[1] as &[i32] as *const [i32]), 4); }
-    unsafe { assert_eq!(size_of_val_raw(0x100 as *const i32), 4); }
+    unsafe {
+        assert_eq!(size_of_val_raw(&[1] as &[i32] as *const [i32]), 4);
+    }
+    unsafe {
+        assert_eq!(size_of_val_raw(0x100 as *const i32), 4);
+    }
 
     assert_eq!(intrinsics::type_name::<Option<i32>>(), "core::option::Option<i32>");
 
@@ -33,7 +37,7 @@ fn main() {
     let _v = intrinsics::discriminant_value(&Some(()));
     let _v = intrinsics::discriminant_value(&0);
     let _v = intrinsics::discriminant_value(&true);
-    let _v = intrinsics::discriminant_value(&vec![1,2,3]);
+    let _v = intrinsics::discriminant_value(&vec![1, 2, 3]);
 
     let addr = &13 as *const i32;
     let addr2 = (addr as usize).wrapping_add(usize::MAX).wrapping_add(1);

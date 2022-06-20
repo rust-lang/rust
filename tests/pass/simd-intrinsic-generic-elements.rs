@@ -11,8 +11,7 @@ struct i32x4(i32, i32, i32, i32);
 #[repr(simd)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[allow(non_camel_case_types)]
-struct i32x8(i32, i32, i32, i32,
-             i32, i32, i32, i32);
+struct i32x8(i32, i32, i32, i32, i32, i32, i32, i32);
 
 fn main() {
     let _x2 = i32x2(20, 21);
@@ -22,5 +21,4 @@ fn main() {
     let _y2 = i32x2(120, 121);
     let _y4 = i32x4(140, 141, 142, 143);
     let _y8 = i32x8(180, 181, 182, 183, 184, 185, 186, 187);
-
 }

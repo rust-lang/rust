@@ -16,7 +16,7 @@ pub fn main() {
             let _never: ! = loop {
                 break loop {
                     break 'outer panic!();
-                }
+                };
             };
         }
     };
@@ -36,19 +36,15 @@ pub fn main() {
     assert_eq!(coerced, &[17u32]);
 
     let trait_unified = loop {
-        break if true {
-            break Default::default()
-        } else {
-            break [13, 14]
-        };
+        break if true { break Default::default() } else { break [13, 14] };
     };
     assert_eq!(trait_unified, [0, 0]);
 
     let trait_unified_2 = loop {
         if false {
-            break [String::from("Hello")]
+            break [String::from("Hello")];
         } else {
-            break Default::default()
+            break Default::default();
         };
     };
     // compare lengths; ptr comparison is not deterministic
@@ -56,11 +52,7 @@ pub fn main() {
     assert_eq!(trait_unified_2[0].len(), 0);
 
     let trait_unified_3 = loop {
-        break if false {
-            break [String::from("Hello")]
-        } else {
-            ["Yes".into()]
-        };
+        break if false { break [String::from("Hello")] } else { ["Yes".into()] };
     };
     assert_eq!(trait_unified_3, ["Yes"]);
 
@@ -87,7 +79,7 @@ pub fn main() {
             Default::default()
         } else {
             break;
-        }
+        };
     };
     assert_eq!(regular_break_3, ());
 

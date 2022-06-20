@@ -1,15 +1,19 @@
 #![feature(generators, generator_trait, never_type)]
 
-use std::ops::{GeneratorState::{self, *}, Generator};
-use std::pin::Pin;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::fmt::Debug;
 use std::mem::ManuallyDrop;
+use std::ops::{
+    Generator,
+    GeneratorState::{self, *},
+};
+use std::pin::Pin;
 use std::ptr;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 fn basic() {
     fn finish<T>(mut amt: usize, mut t: T) -> T::Return
-        where T: Generator<Yield = usize>
+    where
+        T: Generator<Yield = usize>,
     {
         // We are not moving the `t` around until it gets dropped, so this is okay.
         let mut t = unsafe { Pin::new_unchecked(&mut t) };
@@ -23,7 +27,7 @@ fn basic() {
                 }
                 GeneratorState::Complete(ret) => {
                     assert_eq!(amt, 0);
-                    return ret
+                    return ret;
                 }
             }
         }
@@ -46,7 +50,7 @@ fn basic() {
         assert_eq!(x, 2);
     });
 
-    finish(7*8/2, || {
+    finish(7 * 8 / 2, || {
         for i in 0..8 {
             yield i;
         }
@@ -67,7 +71,10 @@ fn basic() {
     });
 
     finish(2, || {
-        if { yield 1; false } {
+        if {
+            yield 1;
+            false
+        } {
             yield 1;
             panic!()
         }
@@ -90,7 +97,9 @@ fn basic() {
     let b = true;
     finish(1, || {
         yield 1;
-        if b { return; }
+        if b {
+            return;
+        }
         #[allow(unused)]
         let x = never();
         #[allow(unreachable_code)]
@@ -101,7 +110,10 @@ fn basic() {
     finish(3, || {
         yield 1;
         #[allow(unreachable_code)]
-        let _x: (String, !) = (String::new(), { yield 2; return });
+        let _x: (String, !) = (String::new(), {
+            yield 2;
+            return;
+        });
     });
 }
 

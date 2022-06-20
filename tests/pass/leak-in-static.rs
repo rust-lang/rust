@@ -1,4 +1,7 @@
-use std::{ptr, sync::atomic::{AtomicPtr, Ordering}};
+use std::{
+    ptr,
+    sync::atomic::{AtomicPtr, Ordering},
+};
 
 static mut LEAKER: Option<Box<Vec<i32>>> = None;
 
