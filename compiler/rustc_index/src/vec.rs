@@ -172,7 +172,9 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn indices(&self) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + 'static {
+    pub fn indices(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
         (0..self.len()).map(|n| I::new(n))
     }
 

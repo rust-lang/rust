@@ -240,14 +240,14 @@
 // cdb-check:struct tuple$<usize (*)(f64),usize> rust_fn_with_return_value = [...]
 // cdb-check:struct tuple$<void (*)(enum$<core::result::Result<char,f64> >),usize> unsafe_fn = [...]
 // cdb-check:struct tuple$<void (*)(isize),usize> extern_c_fn = [...]
-// cdb-check:struct tuple$<void (*)(enum$<core::option::Option<isize> >,enum$<core::option::Option<ref$<type_names::mod1::Struct2> >, 1, [...], Some>),usize> rust_fn = [...]
+// cdb-check:struct tuple$<void (*)(enum$<core::option::Option<isize> >,enum$<core::option::Option<ref$<type_names::mod1::Struct2> > >),usize> rust_fn = [...]
 // cdb-command:dv /t *_function*
 // cdb-check:struct tuple$<isize (*)(ptr_const$<u8>, ...),usize> variadic_function = [...]
 // cdb-check:struct tuple$<type_names::mod1::mod2::Struct3 (*)(type_names::mod1::mod2::Struct3),usize> generic_function_struct3 = [...]
 // cdb-check:struct tuple$<isize (*)(isize),usize> generic_function_int = [...]
 // cdb-command:dx Debugger.State.Scripts.@"type-names.cdb".Contents.getFunctionDetails("rust_fn")
 // cdb-check:Return Type: void
-// cdb-check:Parameter Types: enum$<core::option::Option<isize> >,enum$<core::option::Option<ref$<type_names::mod1::Struct2> >, 1, [...], Some>
+// cdb-check:Parameter Types: enum$<core::option::Option<isize> >,enum$<core::option::Option<ref$<type_names::mod1::Struct2> > >
 // cdb-command:dx Debugger.State.Scripts.@"type-names.cdb".Contents.getFunctionDetails("rust_fn_with_return_value")
 // cdb-check:Return Type: usize
 // cdb-check:Parameter Types: f64

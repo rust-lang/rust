@@ -10,7 +10,6 @@ use rustc_middle::{
     ty::{
         self,
         layout::{IntegerExt, LayoutOf, PrimitiveExt, TyAndLayout},
-        util::Discr,
         AdtDef, GeneratorSubsts, Ty, VariantDef,
     },
 };
@@ -90,8 +89,11 @@ fn build_c_style_enum_di_node<'ll, 'tcx>(
             cx,
             &compute_debuginfo_type_name(cx.tcx, enum_type_and_layout.ty, false),
             tag_base_type(cx, enum_type_and_layout),
-            &mut enum_adt_def.discriminants(cx.tcx).map(|(variant_index, discr)| {
-                (discr, Cow::from(enum_adt_def.variant(variant_index).name.as_str()))
+            enum_adt_def.discriminants(cx.tcx).map(|(variant_index, discr)| {
+                let name = Cow::from(enum_adt_def.variant(variant_index).name.as_str());
+                // Is there anything we can do to support 128-bit C-Style enums?
+                let value = discr.val as u64;
+                (name, value)
             }),
             containing_scope,
         ),
@@ -152,7 +154,7 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     type_name: &str,
     base_type: Ty<'tcx>,
-    variants: &mut dyn Iterator<Item = (Discr<'tcx>, Cow<'tcx, str>)>,
+    enumerators: impl Iterator<Item = (Cow<'tcx, str>, u64)>,
     containing_scope: &'ll DIType,
 ) -> &'ll DIType {
     let is_unsigned = match base_type.kind() {
@@ -161,18 +163,15 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
         _ => bug!("build_enumeration_type_di_node() called with non-integer tag type."),
     };
 
-    let enumerator_di_nodes: SmallVec<Option<&'ll DIType>> = variants
-        .map(|(discr, variant_name)| {
-            unsafe {
-                Some(llvm::LLVMRustDIBuilderCreateEnumerator(
-                    DIB(cx),
-                    variant_name.as_ptr().cast(),
-                    variant_name.len(),
-                    // FIXME: what if enumeration has i128 discriminant?
-                    discr.val as i64,
-                    is_unsigned,
-                ))
-            }
+    let enumerator_di_nodes: SmallVec<Option<&'ll DIType>> = enumerators
+        .map(|(name, value)| unsafe {
+            Some(llvm::LLVMRustDIBuilderCreateEnumerator(
+                DIB(cx),
+                name.as_ptr().cast(),
+                name.len(),
+                value as i64,
+                is_unsigned,
+            ))
         })
         .collect();
 
@@ -247,23 +246,27 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
 /// and a DW_TAG_member for each field (but not the discriminant).
 fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    enum_type: Ty<'tcx>,
+    enum_type_and_layout: TyAndLayout<'tcx>,
     enum_type_di_node: &'ll DIType,
     variant_index: VariantIdx,
     variant_def: &VariantDef,
     variant_layout: TyAndLayout<'tcx>,
 ) -> &'ll DIType {
-    debug_assert_eq!(variant_layout.ty, enum_type);
+    debug_assert_eq!(variant_layout.ty, enum_type_and_layout.ty);
 
     type_map::build_type_with_children(
         cx,
         type_map::stub(
             cx,
             Stub::Struct,
-            UniqueTypeId::for_enum_variant_struct_type(cx.tcx, enum_type, variant_index),
+            UniqueTypeId::for_enum_variant_struct_type(
+                cx.tcx,
+                enum_type_and_layout.ty,
+                variant_index,
+            ),
             variant_def.name.as_str(),
             // NOTE: We use size and align of enum_type, not from variant_layout:
-            cx.size_and_align_of(enum_type),
+            size_and_align_of(enum_type_and_layout),
             Some(enum_type_di_node),
             DIFlags::FlagZero,
         ),
@@ -290,9 +293,9 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                         type_di_node(cx, field_layout.ty),
                     )
                 })
-                .collect()
+                .collect::<SmallVec<_>>()
         },
-        |cx| build_generic_type_param_di_nodes(cx, enum_type),
+        |cx| build_generic_type_param_di_nodes(cx, enum_type_and_layout.ty),
     )
     .di_node
 }
@@ -398,6 +401,19 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
     .di_node
 }
 
+#[derive(Copy, Clone)]
+enum DiscrResult {
+    NoDiscriminant,
+    Value(u128),
+    Range(u128, u128),
+}
+
+impl DiscrResult {
+    fn opt_single_val(&self) -> Option<u128> {
+        if let Self::Value(d) = *self { Some(d) } else { None }
+    }
+}
+
 /// Returns the discriminant value corresponding to the variant index.
 ///
 /// Will return `None` if there is less than two variants (because then the enum won't have)
@@ -407,12 +423,11 @@ fn compute_discriminant_value<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     variant_index: VariantIdx,
-) -> Option<u64> {
+) -> DiscrResult {
     match enum_type_and_layout.layout.variants() {
-        &Variants::Single { .. } => None,
-        &Variants::Multiple { tag_encoding: TagEncoding::Direct, .. } => Some(
-            enum_type_and_layout.ty.discriminant_for_variant(cx.tcx, variant_index).unwrap().val
-                as u64,
+        &Variants::Single { .. } => DiscrResult::NoDiscriminant,
+        &Variants::Multiple { tag_encoding: TagEncoding::Direct, .. } => DiscrResult::Value(
+            enum_type_and_layout.ty.discriminant_for_variant(cx.tcx, variant_index).unwrap().val,
         ),
         &Variants::Multiple {
             tag_encoding: TagEncoding::Niche { ref niche_variants, niche_start, dataful_variant },
@@ -420,17 +435,26 @@ fn compute_discriminant_value<'ll, 'tcx>(
             ..
         } => {
             if variant_index == dataful_variant {
-                None
+                let valid_range = enum_type_and_layout
+                    .for_variant(cx, variant_index)
+                    .largest_niche
+                    .as_ref()
+                    .unwrap()
+                    .valid_range;
+
+                let min = valid_range.start.min(valid_range.end);
+                let min = tag.size(cx).truncate(min);
+
+                let max = valid_range.start.max(valid_range.end);
+                let max = tag.size(cx).truncate(max);
+
+                DiscrResult::Range(min, max)
             } else {
                 let value = (variant_index.as_u32() as u128)
                     .wrapping_sub(niche_variants.start().as_u32() as u128)
                     .wrapping_add(niche_start);
                 let value = tag.size(cx).truncate(value);
-                // NOTE(eddyb) do *NOT* remove this assert, until
-                // we pass the full 128-bit value to LLVM, otherwise
-                // truncation will be silent and remain undetected.
-                assert_eq!(value as u64 as u128, value);
-                Some(value as u64)
+                DiscrResult::Value(value)
             }
         }
     }
