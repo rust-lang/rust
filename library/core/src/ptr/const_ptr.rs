@@ -566,7 +566,7 @@ impl<T: ?Sized> *const T {
     /// For non-`Sized` pointees this operation changes only the data pointer,
     /// leaving the metadata untouched.
     #[cfg(not(bootstrap))]
-    #[unstable(feature = "ptr_mask", issue = "none")]
+    #[unstable(feature = "ptr_mask", issue = "98290")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline(always)]
     pub fn mask(self, mask: usize) -> *const T {
