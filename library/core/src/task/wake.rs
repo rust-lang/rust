@@ -300,7 +300,7 @@ impl Waker {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "noop_waker", issue = "none")]
+    #[unstable(feature = "noop_waker", issue = "98286")]
     pub const fn noop() -> Waker {
         const VTABLE: RawWakerVTable = RawWakerVTable::new(
             // Cloning just returns a new no-op raw waker
