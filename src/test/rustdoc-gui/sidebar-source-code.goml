@@ -8,12 +8,12 @@ assert-css: ("nav.sidebar", {"width": "50px"})
 // We now click on the button to expand the sidebar.
 click: (10, 10)
 // We wait for the sidebar to be expanded.
-wait-for-css: ("nav.sidebar.expanded", {"width": "300px"})
-assert-css: ("nav.sidebar.expanded a", {"font-size": "14px"})
+wait-for-css: (".source-sidebar-expanded nav.sidebar", {"width": "300px"})
+assert-css: (".source-sidebar-expanded nav.sidebar a", {"font-size": "14px"})
 // We collapse the sidebar.
 click: (10, 10)
 // We ensure that the class has been removed.
-wait-for: "nav.sidebar:not(.expanded)"
+wait-for: "html:not(.expanded)"
 assert: "nav.sidebar"
 
 // We now switch to mobile mode.
@@ -22,11 +22,11 @@ size: (600, 600)
 assert-css: ("nav.sidebar", {"width": "1px"})
 // We expand the sidebar.
 click: "#sidebar-toggle"
-assert-css: ("nav.sidebar.expanded", {"width": "600px"})
+assert-css: (".source-sidebar-expanded nav.sidebar", {"width": "600px"})
 // We collapse the sidebar.
 click: (10, 10)
 // We ensure that the class has been removed.
-assert-false: "nav.sidebar.expanded"
+assert-false: ".source-sidebar-expanded"
 assert: "nav.sidebar"
 
 // Check that the topbar is not visible

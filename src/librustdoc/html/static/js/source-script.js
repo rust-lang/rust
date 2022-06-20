@@ -76,14 +76,13 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
 }
 
 function toggleSidebar() {
-    const sidebar = document.querySelector("nav.sidebar");
     const child = this.children[0];
     if (child.innerText === ">") {
-        sidebar.classList.add("expanded");
+        addClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = "<";
         updateLocalStorage("source-sidebar-show", "true");
     } else {
-        sidebar.classList.remove("expanded");
+        removeClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = ">";
         updateLocalStorage("source-sidebar-show", "false");
     }
@@ -119,11 +118,6 @@ function createSourceSidebar() {
 
     const sidebar = document.createElement("div");
     sidebar.id = "source-sidebar";
-    if (getCurrentValue("source-sidebar-show") !== "true") {
-        container.classList.remove("expanded");
-    } else {
-        container.classList.add("expanded");
-    }
 
     const currentFile = getCurrentFilePath();
     let hasFoundFile = false;

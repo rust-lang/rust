@@ -387,16 +387,20 @@ nav.sub {
 	overflow-y: hidden;
 }
 
+.rustdoc.source .sidebar .sidebar-logo {
+	display: none;
+}
+
 .source .sidebar > *:not(#sidebar-toggle) {
 	opacity: 0;
 	visibility: hidden;
 }
 
-.source .sidebar.expanded {
+.source-sidebar-expanded .source .sidebar {
 	overflow-y: auto;
 }
 
-.source .sidebar.expanded > *:not(#sidebar-toggle) {
+.source-sidebar-expanded .source .sidebar > *:not(#sidebar-toggle) {
 	opacity: 1;
 	visibility: visible;
 }
@@ -1682,11 +1686,11 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	/* When we expand the sidebar on the source code page, we hide the logo on the left of the
 	search bar to have more space. */
-	.sidebar.expanded + main .width-limiter .sub-logo-container.rust-logo {
+	.source-sidebar-expanded .source .sidebar + main .width-limiter .sub-logo-container.rust-logo {
 		display: none;
 	}
 
-	.source .sidebar.expanded {
+	.source-sidebar-expanded .source .sidebar {
 		width: 300px;
 	}
 }
@@ -1766,7 +1770,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 
 	.sidebar.shown,
-	.sidebar.expanded,
+	.source-sidebar-expanded .source .sidebar,
 	.sidebar:focus-within {
 		left: 0;
 	}
@@ -1889,11 +1893,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		left: -11px;
 	}
 
-	.sidebar.expanded #sidebar-toggle {
-		font-size: 1.5rem;
-	}
-
-	.sidebar:not(.expanded) #sidebar-toggle {
+	#sidebar-toggle {
 		position: fixed;
 		left: 1px;
 		top: 100px;
@@ -1908,6 +1908,17 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		font-weight: bold;
 		border: 1px solid;
 		border-left: 0;
+	}
+
+	.source-sidebar-expanded #sidebar-toggle {
+		position: unset;
+		left: unset;
+		top: unset;
+		width: unset;
+		border-top-right-radius: unset;
+		border-bottom-right-radius: unset;
+		border: unset;
+		border-bottom: 1px solid;
 	}
 
 	#source-sidebar {
@@ -1952,7 +1963,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		padding-left: 2em;
 	}
 
-	.source .sidebar.expanded {
+	.source-sidebar-expanded .source .sidebar {
 		max-width: 100vw;
 		width: 100vw;
 	}
@@ -2010,8 +2021,11 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		width: 35px;
 	}
 
-	.sidebar:not(.expanded) #sidebar-toggle {
+	#sidebar-toggle {
 		top: 10px;
+	}
+	.source-sidebar-expanded #sidebar-toggle {
+		top: unset;
 	}
 }
 
