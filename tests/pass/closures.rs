@@ -118,7 +118,7 @@ fn main() {
             let x = 13;
             move || x
         })),
-        13
+        13,
     );
 
     box_dyn();
