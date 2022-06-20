@@ -179,6 +179,38 @@ mod issue_8836 {
         } else {
             unimplemented!();
         }
+
+        if true {
+            println!("FOO");
+            todo!();
+        } else {
+            println!("FOO");
+            todo!();
+        }
+
+        if true {
+            println!("FOO");
+            unimplemented!();
+        } else {
+            println!("FOO");
+            unimplemented!();
+        }
+
+        if true {
+            println!("FOO");
+            todo!()
+        } else {
+            println!("FOO");
+            todo!()
+        }
+
+        if true {
+            println!("FOO");
+            unimplemented!()
+        } else {
+            println!("FOO");
+            unimplemented!()
+        }
     }
 }
 

@@ -88,7 +88,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 
     fn cannot_be_compared_block(&mut self, block: &Block<'_>) -> bool {
-        if block.stmts.first().map_or(false, |stmt| {
+        if block.stmts.last().map_or(false, |stmt| {
             matches!(
                 stmt.kind,
                 StmtKind::Semi(semi_expr) if self.should_ignore(semi_expr)
