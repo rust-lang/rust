@@ -161,6 +161,37 @@ pub trait CommandExt: Sealed {
     /// `CommandLineToArgvW` escaping rules.
     #[stable(feature = "windows_process_extensions_raw_arg", since = "1.62.0")]
     fn raw_arg<S: AsRef<OsStr>>(&mut self, text_to_append_as_is: S) -> &mut process::Command;
+
+    /// When [`process::Command`] creates pipes, request that our side is always async.
+    ///
+    /// By default [`process::Command`] may choose to use pipes where both ends
+    /// are opened for synchronous read or write operations. By using
+    /// `async_pipes(true)`, this behavior is overridden so that our side is
+    /// always async.
+    ///
+    /// This is important because if doing async I/O a pipe or a file has to be
+    /// opened for async access.
+    ///
+    /// The end of the pipe sent to the child process will always be synchronous
+    /// regardless of this option.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(windows_process_extensions_async_pipes)]
+    /// use std::os::windows::process::CommandExt;
+    /// use std::process::{Command, Stdio};
+    ///
+    /// # let program = "";
+    ///
+    /// Command::new(program)
+    ///     .async_pipes(true)
+    ///     .stdin(Stdio::piped())
+    ///     .stdout(Stdio::piped())
+    ///     .stderr(Stdio::piped());
+    /// ```
+    #[unstable(feature = "windows_process_extensions_async_pipes", issue = "98289")]
+    fn async_pipes(&mut self, always_async: bool) -> &mut process::Command;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
@@ -177,6 +208,15 @@ impl CommandExt for process::Command {
 
     fn raw_arg<S: AsRef<OsStr>>(&mut self, raw_text: S) -> &mut process::Command {
         self.as_inner_mut().raw_arg(raw_text.as_ref());
+        self
+    }
+
+    fn async_pipes(&mut self, always_async: bool) -> &mut process::Command {
+        // FIXME: This currently has an intentional no-op implementation.
+        // For the time being our side of the pipes will always be async.
+        // Once the ecosystem has adjusted, we may then be able to start making
+        // use of synchronous pipes within the standard library.
+        let _ = always_async;
         self
     }
 }

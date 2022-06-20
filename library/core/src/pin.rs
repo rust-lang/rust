@@ -1006,9 +1006,10 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 ///  // Allow generator to be self-referential (not `Unpin`)
 ///  // vvvvvv        so that locals can cross yield points.
 ///     static || {
-///         let foo = String::from("foo"); // --+
-///         yield 0;                         // | <- crosses yield point!
-///         println!("{}", &foo); // <----------+
+///         let foo = String::from("foo");
+///         let foo_ref = &foo; // ------+
+///         yield 0;                  // | <- crosses yield point!
+///         println!("{foo_ref}"); // <--+
 ///         yield foo.len();
 ///     }
 /// }

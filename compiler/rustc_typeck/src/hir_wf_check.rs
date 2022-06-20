@@ -1,7 +1,7 @@
 use crate::collect::ItemCtxt;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::HirId;
+use rustc_hir::{ForeignItem, ForeignItemKind, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngine;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
@@ -141,6 +141,9 @@ fn diagnostic_hir_wf_check<'tcx>(
                 ref item => bug!("Unexpected item {:?}", item),
             },
             hir::Node::Field(field) => Some(field.ty),
+            hir::Node::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Static(ty, _), ..
+            }) => Some(*ty),
             ref node => bug!("Unexpected node {:?}", node),
         },
         WellFormedLoc::Param { function: _, param_idx } => {
