@@ -884,18 +884,11 @@ fn playground() -> String {
     let ctx = Context::new(&cfg);
     let solver = Solver::new(&ctx);
 
-    let min_int = ast::Int::from_bv(
-        &ast::BV::from_i64(solver.get_context(), i32::MIN.into(), 32),
-        true,
-    );
-    let max_int = ast::Int::from_bv(
-        &ast::BV::from_i64(solver.get_context(), i32::MAX.into(), 32),
-        true,
-    );
-    let ten = ast::Int::from_bv(
-        &ast::BV::from_i64(solver.get_context(), 10.into(), 32),
-        true,
-    );
+    let min_int =
+        ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), i32::MIN.into(), 32), true);
+    let max_int =
+        ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), i32::MAX.into(), 32), true);
+    let ten = ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), 10.into(), 32), true);
     let dx = ast::Int::new_const(solver.get_context(), "dx");
     let dy = ast::Int::new_const(solver.get_context(), "dy");
     solver.assert(&dx._eq(&Int::add(solver.get_context(), &[&max_int, &ten])));
