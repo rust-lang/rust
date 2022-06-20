@@ -8,11 +8,11 @@ use default_body::{Equal, JustTrait};
 struct Type;
 
 impl JustTrait for Type {}
-//~^ ERROR use of unstable library feature 'fun_default_body'
-//~| ERROR use of unstable library feature 'constant_default_body'
+//~^ ERROR not all trait items implemented, missing: `CONSTANT` [E0046]
+//~| ERROR not all trait items implemented, missing: `fun` [E0046]
 
 impl Equal for Type {
-    //~^ ERROR use of unstable library feature 'eq_default_body'
+    //~^ ERROR not all trait items implemented, missing: `eq` [E0046]
     fn neq(&self, other: &Self) -> bool {
         false
     }

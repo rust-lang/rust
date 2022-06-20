@@ -99,7 +99,6 @@ pub use expectation::Expectation;
 pub use fn_ctxt::*;
 use hir::def::CtorOf;
 pub use inherited::{Inherited, InheritedBuilder};
-use rustc_middle::middle::stability::report_unstable;
 
 use crate::astconv::AstConv;
 use crate::check::gather_locals::GatherLocalsVisitor;
@@ -667,19 +666,32 @@ fn missing_items_must_implement_one_of_err(
 fn default_body_is_unstable(
     tcx: TyCtxt<'_>,
     impl_span: Span,
-    _item_did: DefId,
+    item_did: DefId,
     feature: Symbol,
     reason: Option<Symbol>,
     issue: Option<NonZeroU32>,
-    is_soft: bool,
 ) {
-    let soft_handler = |lint, span, msg: &_| {
-        tcx.struct_span_lint_hir(lint, hir::CRATE_HIR_ID, span, |lint| {
-            lint.build(msg).emit();
-        })
+    let missing_item_name = &tcx.associated_item(item_did).name;
+    let use_of_unstable_library_feature_note = match reason {
+        Some(r) => format!("use of unstable library feature '{feature}': {r}"),
+        None => format!("use of unstable library feature '{feature}'"),
     };
 
-    report_unstable(tcx.sess, feature, reason, issue, None, is_soft, impl_span, soft_handler)
+    let mut err = struct_span_err!(
+        tcx.sess,
+        impl_span,
+        E0046,
+        "not all trait items implemented, missing: `{missing_item_name}`",
+    );
+    err.note(format!("default implementation of `{missing_item_name}` is unstable"));
+    err.note(use_of_unstable_library_feature_note);
+    rustc_session::parse::add_feature_diagnostics_for_issue(
+        &mut err,
+        &tcx.sess.parse_sess,
+        feature,
+        rustc_feature::GateIssue::Library(issue),
+    );
+    err.emit();
 }
 
 /// Re-sugar `ty::GenericPredicates` in a way suitable to be used in structured suggestions.

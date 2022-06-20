@@ -1112,17 +1112,14 @@ fn check_impl_items_against_trait<'tcx>(
 
             if !is_implemented_here {
                 match tcx.eval_default_body_stability(trait_item_id, full_impl_span) {
-                    EvalResult::Deny { feature, reason, issue, is_soft, .. } => {
-                        default_body_is_unstable(
-                            tcx,
-                            full_impl_span,
-                            trait_item_id,
-                            feature,
-                            reason,
-                            issue,
-                            is_soft,
-                        )
-                    }
+                    EvalResult::Deny { feature, reason, issue, .. } => default_body_is_unstable(
+                        tcx,
+                        full_impl_span,
+                        trait_item_id,
+                        feature,
+                        reason,
+                        issue,
+                    ),
 
                     // Unmarked default bodies are considered stable (at least for now).
                     EvalResult::Allow | EvalResult::Unmarked => {}
