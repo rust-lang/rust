@@ -64,6 +64,7 @@ fn more_discriminant_overflow() {
     // from the `bool` field of `V1`), overflowing for variants with large enough
     // indices (`V3` and `V4`), causing them to be interpreted as other variants.
     #[allow(dead_code)]
+    #[rustfmt::skip] // rustfmt prefers every variant on its own line
     pub enum E2<X> {
         V1 { f: bool },
 
