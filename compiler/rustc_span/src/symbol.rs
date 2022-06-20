@@ -131,6 +131,7 @@ symbols! {
         Arc,
         Argument,
         ArgumentV1,
+        ArgumentV1Methods,
         Arguments,
         AsMut,
         AsRef,
