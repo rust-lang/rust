@@ -2228,9 +2228,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     err.span_note(tcx.def_span(item_def_id), &descr);
                 }
             }
-            ObligationCauseCode::ObjectCastObligation(_, object_ty) => {
+            ObligationCauseCode::ObjectCastObligation(concrete_ty, object_ty) => {
                 err.note(&format!(
-                    "required for the cast to the object type `{}`",
+                    "required for the cast from `{}` to the object type `{}`",
+                    self.ty_to_string(concrete_ty),
                     self.ty_to_string(object_ty)
                 ));
             }
