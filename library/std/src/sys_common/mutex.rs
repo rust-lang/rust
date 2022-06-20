@@ -46,13 +46,12 @@ impl Drop for StaticMutexGuard {
 
 /// An OS-based mutual exclusion lock.
 ///
-/// This mutex does *not* have a const constructor, cleans up its resources in
-/// its `Drop` implementation, may safely be moved (when not borrowed), and
-/// does not cause UB when used reentrantly.
+/// This mutex cleans up its resources in its `Drop` implementation, may safely
+/// be moved (when not borrowed), and does not cause UB when used reentrantly.
 ///
 /// This mutex does not implement poisoning.
 ///
-/// This is either a wrapper around `Box<imp::Mutex>` or `imp::Mutex`,
+/// This is either a wrapper around `LazyBox<imp::Mutex>` or `imp::Mutex`,
 /// depending on the platform. It is boxed on platforms where `imp::Mutex` may
 /// not be moved.
 pub struct MovableMutex(imp::MovableMutex);
