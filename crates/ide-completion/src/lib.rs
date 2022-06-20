@@ -148,7 +148,7 @@ pub fn completions(
     config: &CompletionConfig,
     position: FilePosition,
     trigger_character: Option<char>,
-) -> Option<Completions> {
+) -> Option<Vec<CompletionItem>> {
     let (ctx, analysis) = &CompletionContext::new(db, position, config)?;
     let mut completions = Completions::default();
 
@@ -163,7 +163,7 @@ pub fn completions(
             }
         }
         // prevent `(` from triggering unwanted completion noise
-        return Some(completions);
+        return Some(completions.into());
     }
 
     {
@@ -197,7 +197,7 @@ pub fn completions(
         }
     }
 
-    Some(completions)
+    Some(completions.into())
 }
 
 /// Resolves additional completion data at the position given.

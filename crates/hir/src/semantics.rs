@@ -2,7 +2,7 @@
 
 mod source_to_def;
 
-use std::{cell::RefCell, fmt, iter};
+use std::{cell::RefCell, fmt, iter, ops};
 
 use base_db::{FileId, FileRange};
 use hir_def::{
@@ -1449,3 +1449,11 @@ impl<'a> SemanticsScope<'a> {
 }
 
 pub struct VisibleTraits(pub FxHashSet<TraitId>);
+
+impl ops::Deref for VisibleTraits {
+    type Target = FxHashSet<TraitId>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}

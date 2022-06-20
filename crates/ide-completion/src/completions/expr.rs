@@ -1,7 +1,6 @@
 //! Completion of names from the current scope in expression position.
 
 use hir::ScopeDef;
-use ide_db::FxHashSet;
 
 use crate::{
     context::{ExprCtx, PathCompletionCtx, Qualified},
@@ -33,24 +32,24 @@ pub(crate) fn complete_expr_path(
     let wants_mut_token =
         ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false);
 
-    let scope_def_applicable = |def| {
-        match def {
-            ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) => {
-                false
-            }
-            // Don't suggest attribute macros and derives.
-            ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => mac.is_fn_like(ctx.db),
-            _ => true,
-        }
+    let scope_def_applicable = |def| match def {
+        ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) => false,
+        ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => mac.is_fn_like(ctx.db),
+        _ => true,
+    };
+
+    let add_assoc_item = |acc: &mut Completions, item| match item {
+        hir::AssocItem::Function(func) => acc.add_function(ctx, path_ctx, func, None),
+        hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
+        hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
     };
 
     match qualified {
         Qualified::Infer => ctx
             .traits_in_scope()
-            .0
-            .into_iter()
-            .flat_map(|it| hir::Trait::from(it).items(ctx.sema.db))
-            .for_each(|item| add_assoc_item(acc, ctx, path_ctx, item)),
+            .iter()
+            .flat_map(|&it| hir::Trait::from(it).items(ctx.sema.db))
+            .for_each(|item| add_assoc_item(acc, item)),
         Qualified::With { resolution: None, .. } => {}
         Qualified::With { resolution: Some(resolution), .. } => {
             // Add associated types on type parameters and `Self`.
@@ -67,46 +66,32 @@ pub(crate) fn complete_expr_path(
                         }
                     }
                 }
-
                 hir::PathResolution::Def(
                     def @ (hir::ModuleDef::Adt(_)
                     | hir::ModuleDef::TypeAlias(_)
                     | hir::ModuleDef::BuiltinType(_)),
                 ) => {
-                    if let &hir::ModuleDef::Adt(hir::Adt::Enum(e)) = def {
-                        add_enum_variants(acc, ctx, path_ctx, e);
-                    }
                     let ty = match def {
                         hir::ModuleDef::Adt(adt) => adt.ty(ctx.db),
-                        hir::ModuleDef::TypeAlias(a) => {
-                            let ty = a.ty(ctx.db);
-                            if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
-                                cov_mark::hit!(completes_variant_through_alias);
-                                add_enum_variants(acc, ctx, path_ctx, e);
-                            }
-                            ty
-                        }
+                        hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
                         hir::ModuleDef::BuiltinType(builtin) => {
                             cov_mark::hit!(completes_primitive_assoc_const);
                             builtin.ty(ctx.db)
                         }
-                        _ => unreachable!(),
+                        _ => return,
                     };
+
+                    if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
+                        cov_mark::hit!(completes_variant_through_alias);
+                        acc.add_enum_variants(ctx, path_ctx, e);
+                    }
 
                     // XXX: For parity with Rust bug #22519, this does not complete Ty::AssocType.
                     // (where AssocType is defined on a trait, not an inherent impl)
 
-                    ty.iterate_path_candidates(
-                        ctx.db,
-                        &ctx.scope,
-                        &ctx.traits_in_scope().0,
-                        Some(ctx.module),
-                        None,
-                        |item| {
-                            add_assoc_item(acc, ctx, path_ctx, item);
-                            None::<()>
-                        },
-                    );
+                    ctx.iterate_path_candidates(&ty, |item| {
+                        add_assoc_item(acc, item);
+                    });
 
                     // Iterate assoc types separately
                     ty.iterate_assoc_items(ctx.db, ctx.krate, |item| {
@@ -119,7 +104,7 @@ pub(crate) fn complete_expr_path(
                 hir::PathResolution::Def(hir::ModuleDef::Trait(t)) => {
                     // Handles `Trait::assoc` as well as `<Ty as Trait>::assoc`.
                     for item in t.items(ctx.db) {
-                        add_assoc_item(acc, ctx, path_ctx, item);
+                        add_assoc_item(acc, item);
                     }
                 }
                 hir::PathResolution::TypeParam(_) | hir::PathResolution::SelfType(_) => {
@@ -130,24 +115,12 @@ pub(crate) fn complete_expr_path(
                     };
 
                     if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
-                        add_enum_variants(acc, ctx, path_ctx, e);
+                        acc.add_enum_variants(ctx, path_ctx, e);
                     }
-                    let mut seen = FxHashSet::default();
-                    ty.iterate_path_candidates(
-                        ctx.db,
-                        &ctx.scope,
-                        &ctx.traits_in_scope().0,
-                        Some(ctx.module),
-                        None,
-                        |item| {
-                            // We might iterate candidates of a trait multiple times here, so deduplicate
-                            // them.
-                            if seen.insert(item) {
-                                add_assoc_item(acc, ctx, path_ctx, item);
-                            }
-                            None::<()>
-                        },
-                    );
+
+                    ctx.iterate_path_candidates(&ty, |item| {
+                        add_assoc_item(acc, item);
+                    });
                 }
                 _ => (),
             }
@@ -212,7 +185,7 @@ pub(crate) fn complete_expr_path(
 
             if is_func_update.is_none() {
                 let mut add_keyword =
-                    |kw, snippet| acc.add_keyword_snippet_expr(ctx, kw, snippet, incomplete_let);
+                    |kw, snippet| acc.add_keyword_snippet_expr(ctx, incomplete_let, kw, snippet);
 
                 if !in_block_expr {
                     add_keyword("unsafe", "unsafe {\n    $0\n}");
@@ -264,28 +237,4 @@ pub(crate) fn complete_expr_path(
             }
         }
     }
-}
-
-fn add_assoc_item(
-    acc: &mut Completions,
-    ctx: &CompletionContext,
-    path_ctx: &PathCompletionCtx,
-    item: hir::AssocItem,
-) {
-    match item {
-        hir::AssocItem::Function(func) => acc.add_function(ctx, path_ctx, func, None),
-        hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
-        hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
-    }
-}
-
-fn add_enum_variants(
-    acc: &mut Completions,
-    ctx: &CompletionContext,
-    path_ctx: &PathCompletionCtx,
-    e: hir::Enum,
-) {
-    e.variants(ctx.db)
-        .into_iter()
-        .for_each(|variant| acc.add_enum_variant(ctx, path_ctx, variant, None));
 }

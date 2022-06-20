@@ -17,6 +17,7 @@ pub(crate) fn complete_record_pattern_fields(
         complete_fields(acc, ctx, ctx.sema.record_pattern_missing_fields(record_pat));
     }
 }
+
 pub(crate) fn complete_record_expr_fields(
     acc: &mut Completions,
     ctx: &CompletionContext,
@@ -41,7 +42,6 @@ pub(crate) fn complete_record_expr_fields(
         }
         _ => {
             let missing_fields = ctx.sema.record_literal_missing_fields(record_expr);
-
             add_default_update(acc, ctx, ty, &missing_fields);
             if dot_prefix {
                 let mut item =
@@ -56,29 +56,7 @@ pub(crate) fn complete_record_expr_fields(
     complete_fields(acc, ctx, missing_fields);
 }
 
-fn add_default_update(
-    acc: &mut Completions,
-    ctx: &CompletionContext,
-    ty: Option<hir::TypeInfo>,
-    missing_fields: &[(hir::Field, hir::Type)],
-) {
-    let default_trait = ctx.famous_defs().core_default_Default();
-    let impl_default_trait = default_trait
-        .zip(ty.as_ref())
-        .map_or(false, |(default_trait, ty)| ty.original.impls_trait(ctx.db, default_trait, &[]));
-    if impl_default_trait && !missing_fields.is_empty() {
-        let completion_text = "..Default::default()";
-        let mut item = CompletionItem::new(SymbolKind::Field, ctx.source_range(), completion_text);
-        let completion_text =
-            completion_text.strip_prefix(ctx.token.text()).unwrap_or(completion_text);
-        item.insert_text(completion_text).set_relevance(CompletionRelevance {
-            postfix_match: Some(CompletionRelevancePostfixMatch::Exact),
-            ..Default::default()
-        });
-        item.add_to(acc);
-    }
-}
-
+// FIXME: This should probably be part of complete_path_expr
 pub(crate) fn complete_record_expr_func_update(
     acc: &mut Completions,
     ctx: &CompletionContext,
@@ -98,6 +76,30 @@ pub(crate) fn complete_record_expr_func_update(
                 add_default_update(acc, ctx, ty, &missing_fields);
             }
         };
+    }
+}
+
+fn add_default_update(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    ty: Option<hir::TypeInfo>,
+    missing_fields: &[(hir::Field, hir::Type)],
+) {
+    let default_trait = ctx.famous_defs().core_default_Default();
+    let impl_default_trait = default_trait
+        .zip(ty.as_ref())
+        .map_or(false, |(default_trait, ty)| ty.original.impls_trait(ctx.db, default_trait, &[]));
+    if impl_default_trait && !missing_fields.is_empty() {
+        // FIXME: This should make use of scope_def like completions so we get all the other goodies
+        let completion_text = "..Default::default()";
+        let mut item = CompletionItem::new(SymbolKind::Field, ctx.source_range(), completion_text);
+        let completion_text =
+            completion_text.strip_prefix(ctx.token.text()).unwrap_or(completion_text);
+        item.insert_text(completion_text).set_relevance(CompletionRelevance {
+            postfix_match: Some(CompletionRelevancePostfixMatch::Exact),
+            ..Default::default()
+        });
+        item.add_to(acc);
     }
 }
 
