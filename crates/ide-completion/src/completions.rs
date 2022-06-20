@@ -36,9 +36,9 @@ use crate::{
         const_::render_const,
         function::{render_fn, render_method},
         literal::{render_struct_literal, render_variant_lit},
-        macro_::render_macro,
+        macro_::{render_macro, render_macro_pat},
         pattern::{render_struct_pat, render_variant_pat},
-        render_field, render_path_resolution, render_resolution_simple, render_tuple_field,
+        render_field, render_path_resolution, render_pattern_resolution, render_tuple_field,
         type_alias::{render_type_alias, render_type_alias_with_eq},
         union_literal::render_union_literal,
         RenderContext,
@@ -134,10 +134,14 @@ impl Completions {
         item.add_to(self);
     }
 
-    pub(crate) fn add_crate_roots(&mut self, ctx: &CompletionContext) {
+    pub(crate) fn add_crate_roots(
+        &mut self,
+        ctx: &CompletionContext,
+        path_ctx: &PathCompletionCtx,
+    ) {
         ctx.process_all_names(&mut |name, res| match res {
             ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {
-                self.add_module(ctx, m, name);
+                self.add_module(ctx, path_ctx, m, name);
             }
             _ => (),
         });
@@ -160,25 +164,36 @@ impl Completions {
         );
     }
 
-    pub(crate) fn add_resolution_simple(
+    pub(crate) fn add_pattern_resolution(
         &mut self,
         ctx: &CompletionContext,
+        pattern_ctx: &PatternContext,
         local_name: hir::Name,
         resolution: hir::ScopeDef,
     ) {
         if ctx.is_scope_def_hidden(resolution) {
+            cov_mark::hit!(qualified_path_doc_hidden);
             return;
         }
-        self.add(render_resolution_simple(RenderContext::new(ctx), local_name, resolution).build());
+        self.add(
+            render_pattern_resolution(RenderContext::new(ctx), pattern_ctx, local_name, resolution)
+                .build(),
+        );
     }
 
     pub(crate) fn add_module(
         &mut self,
         ctx: &CompletionContext,
+        path_ctx: &PathCompletionCtx,
         module: hir::Module,
         local_name: hir::Name,
     ) {
-        self.add_resolution_simple(ctx, local_name, hir::ScopeDef::ModuleDef(module.into()));
+        self.add_path_resolution(
+            ctx,
+            path_ctx,
+            local_name,
+            hir::ScopeDef::ModuleDef(module.into()),
+        );
     }
 
     pub(crate) fn add_macro(
@@ -197,6 +212,29 @@ impl Completions {
             render_macro(
                 RenderContext::new(ctx).private_editable(is_private_editable),
                 path_ctx,
+                local_name,
+                mac,
+            )
+            .build(),
+        );
+    }
+
+    pub(crate) fn add_macro_pat(
+        &mut self,
+        ctx: &CompletionContext,
+        pattern_ctx: &PatternContext,
+        mac: hir::Macro,
+        local_name: hir::Name,
+    ) {
+        let is_private_editable = match ctx.is_visible(&mac) {
+            Visible::Yes => false,
+            Visible::Editable => true,
+            Visible::No => return,
+        };
+        self.add(
+            render_macro_pat(
+                RenderContext::new(ctx).private_editable(is_private_editable),
+                pattern_ctx,
                 local_name,
                 mac,
             )

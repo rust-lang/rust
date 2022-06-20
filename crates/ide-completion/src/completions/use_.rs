@@ -89,7 +89,7 @@ pub(crate) fn complete_use_path(
         // fresh use tree with leading colon2, only show crate roots
         Qualified::Absolute => {
             cov_mark::hit!(use_tree_crate_roots_only);
-            acc.add_crate_roots(ctx);
+            acc.add_crate_roots(ctx, path_ctx);
         }
         // only show modules and non-std enum in a fresh UseTree
         Qualified::No => {
@@ -97,7 +97,7 @@ pub(crate) fn complete_use_path(
             ctx.process_all_names(&mut |name, res| {
                 match res {
                     ScopeDef::ModuleDef(hir::ModuleDef::Module(module)) => {
-                        acc.add_module(ctx, module, name);
+                        acc.add_module(ctx, path_ctx, module, name);
                     }
                     ScopeDef::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(e))) => {
                         // exclude prelude enum

@@ -5,24 +5,37 @@ use ide_db::SymbolKind;
 use syntax::SmolStr;
 
 use crate::{
-    context::{PathCompletionCtx, PathKind},
+    context::{PathCompletionCtx, PathKind, PatternContext},
     item::{Builder, CompletionItem},
     render::RenderContext,
 };
 
 pub(crate) fn render_macro(
     ctx: RenderContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    PathCompletionCtx { kind, has_macro_bang, has_call_parens, .. }: &PathCompletionCtx,
+
     name: hir::Name,
     macro_: hir::Macro,
 ) -> Builder {
     let _p = profile::span("render_macro");
-    render(ctx, path_ctx, name, macro_)
+    render(ctx, *kind == PathKind::Use, *has_macro_bang, *has_call_parens, name, macro_)
+}
+
+pub(crate) fn render_macro_pat(
+    ctx: RenderContext<'_>,
+    _pattern_ctx: &PatternContext,
+    name: hir::Name,
+    macro_: hir::Macro,
+) -> Builder {
+    let _p = profile::span("render_macro");
+    render(ctx, false, false, false, name, macro_)
 }
 
 fn render(
     ctx @ RenderContext { completion, .. }: RenderContext<'_>,
-    PathCompletionCtx { kind, has_macro_bang, has_call_parens, .. }: &PathCompletionCtx,
+    is_use_path: bool,
+    has_macro_bang: bool,
+    has_call_parens: bool,
     name: hir::Name,
     macro_: hir::Macro,
 ) -> Builder {
@@ -39,7 +52,7 @@ fn render(
     let is_fn_like = macro_.is_fn_like(completion.db);
     let (bra, ket) = if is_fn_like { guess_macro_braces(&name, docs_str) } else { ("", "") };
 
-    let needs_bang = is_fn_like && *kind != PathKind::Use && !has_macro_bang;
+    let needs_bang = is_fn_like && !is_use_path && !has_macro_bang;
 
     let mut item = CompletionItem::new(
         SymbolKind::from(macro_.kind(completion.db)),
