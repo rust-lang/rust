@@ -143,16 +143,8 @@ const char *KnownInactiveFunctionsContains[] = {
     "__enzyme_pointer"};
 
 const std::set<std::string> InactiveGlobals = {
-    "ompi_request_null",
-    "ompi_mpi_double",
-    "ompi_mpi_comm_world",
-    "stderr",
-    "stdout",
-    "stdin",
-    "_ZSt3cin",
-    "_ZSt4cout",
-    "_ZSt5wcout",
-    "_ZSt4cerr",
+    "ompi_request_null", "ompi_mpi_double", "ompi_mpi_comm_world", "stderr",
+    "stdout", "stdin", "_ZSt3cin", "_ZSt4cout", "_ZSt5wcout", "_ZSt4cerr",
     "_ZTVNSt7__cxx1115basic_stringbufIcSt11char_traitsIcESaIcEEE",
     "_ZTVSt15basic_streambufIcSt11char_traitsIcEE",
     "_ZTVSt9basic_iosIcSt11char_traitsIcEE",
@@ -166,8 +158,7 @@ const std::set<std::string> InactiveGlobals = {
     "_ZTVNSt7__cxx1118basic_stringstreamIcSt11char_traitsIcESaIcEEE",
     "_ZTTNSt7__cxx1118basic_stringstreamIcSt11char_traitsIcESaIcEEE",
     // vtable for __cxxabiv1::__si_class_type_info
-    "_ZTVN10__cxxabiv120__si_class_type_infoE"
-};
+    "_ZTVN10__cxxabiv120__si_class_type_infoE"};
 
 const std::map<std::string, size_t> MPIInactiveCommAllocators = {
     {"MPI_Graph_create", 5},
