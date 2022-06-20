@@ -304,7 +304,7 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
             // Probably using the equivalent of __builtin_cpu_supports.
             #[cfg(feature="master")]
             {
-                _feature.contains("sse") || _feature.contains("avx")
+                (_feature.contains("sse") || _feature.contains("avx")) && !_feature.contains("avx512")
             }
             #[cfg(not(feature="master"))]
             {
