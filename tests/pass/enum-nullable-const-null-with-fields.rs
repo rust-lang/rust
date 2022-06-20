@@ -1,4 +1,3 @@
-
 use std::result::Result;
 use std::result::Result::Ok;
 

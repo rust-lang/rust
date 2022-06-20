@@ -1,6 +1,6 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
-use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread;
 
 static FLAG: AtomicUsize = AtomicUsize::new(0);
 

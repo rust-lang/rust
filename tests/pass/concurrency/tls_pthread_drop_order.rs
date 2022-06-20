@@ -7,13 +7,13 @@ use std::mem;
 
 pub type Key = libc::pthread_key_t;
 
-static mut RECORD : usize = 0;
-static mut KEYS : [Key; 2] = [0; 2];
-static mut GLOBALS : [u64; 2] = [1, 0];
+static mut RECORD: usize = 0;
+static mut KEYS: [Key; 2] = [0; 2];
+static mut GLOBALS: [u64; 2] = [1, 0];
 
-static mut CANNARY : *mut u64 = 0 as *mut _; // this serves as a cannary: if TLS dtors are not run properly, this will not get deallocated, making the test fail.
+static mut CANNARY: *mut u64 = 0 as *mut _; // this serves as a cannary: if TLS dtors are not run properly, this will not get deallocated, making the test fail.
 
-pub unsafe fn create(dtor: Option<unsafe extern fn(*mut u8)>) -> Key {
+pub unsafe fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
     let mut key = 0;
     assert_eq!(libc::pthread_key_create(&mut key, mem::transmute(dtor)), 0);
     key
@@ -26,18 +26,19 @@ pub unsafe fn set(key: Key, value: *mut u8) {
 
 pub fn record(r: usize) {
     assert!(r < 10);
-    unsafe { RECORD = RECORD*10 + r };
+    unsafe { RECORD = RECORD * 10 + r };
 }
 
-unsafe extern fn dtor(ptr: *mut u64) {
+unsafe extern "C" fn dtor(ptr: *mut u64) {
     assert!(CANNARY != 0 as *mut _); // make sure we do not get run too often
     let val = *ptr;
 
-    let which_key = GLOBALS.iter().position(|global| global as *const _ == ptr).expect("Should find my global");
+    let which_key =
+        GLOBALS.iter().position(|global| global as *const _ == ptr).expect("Should find my global");
     record(which_key);
 
     if val > 0 {
-        *ptr = val-1;
+        *ptr = val - 1;
         set(KEYS[which_key], ptr as *mut _);
     }
 
@@ -57,7 +58,7 @@ fn main() {
 
         // Initialize the keys we use to check destructor ordering
         for (key, global) in KEYS.iter_mut().zip(GLOBALS.iter_mut()) {
-            *key = create(Some(mem::transmute(dtor as unsafe extern fn(*mut u64))));
+            *key = create(Some(mem::transmute(dtor as unsafe extern "C" fn(*mut u64))));
             set(*key, global as *mut _ as *mut u8);
         }
 

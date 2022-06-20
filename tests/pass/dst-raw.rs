@@ -1,12 +1,11 @@
 // Test DST raw pointers
 
-
 trait Trait {
     fn foo(&self) -> isize;
 }
 
 struct A {
-    f: isize
+    f: isize,
 }
 impl Trait for A {
     fn foo(&self) -> isize {
@@ -15,24 +14,20 @@ impl Trait for A {
 }
 
 struct Foo<T: ?Sized> {
-    f: T
+    f: T,
 }
 
 pub fn main() {
     // raw trait object
     let x = A { f: 42 };
     let z: *const dyn Trait = &x;
-    let r = unsafe {
-        (&*z).foo()
-    };
+    let r = unsafe { (&*z).foo() };
     assert_eq!(r, 42);
 
     // raw DST struct
-    let p = Foo {f: A { f: 42 }};
+    let p = Foo { f: A { f: 42 } };
     let o: *const Foo<dyn Trait> = &p;
-    let r = unsafe {
-        (&*o).f.foo()
-    };
+    let r = unsafe { (&*o).f.foo() };
     assert_eq!(r, 42);
 
     // raw slice
@@ -54,7 +49,7 @@ pub fn main() {
     }
 
     // raw DST struct with slice
-    let c: *const Foo<[_]> = &Foo {f: [1, 2, 3]};
+    let c: *const Foo<[_]> = &Foo { f: [1, 2, 3] };
     unsafe {
         let b = (&*c).f[0];
         assert_eq!(b, 1);
@@ -65,16 +60,12 @@ pub fn main() {
     // all of the above with *mut
     let mut x = A { f: 42 };
     let z: *mut dyn Trait = &mut x;
-    let r = unsafe {
-        (&*z).foo()
-    };
+    let r = unsafe { (&*z).foo() };
     assert_eq!(r, 42);
 
-    let mut p = Foo {f: A { f: 42 }};
+    let mut p = Foo { f: A { f: 42 } };
     let o: *mut Foo<dyn Trait> = &mut p;
-    let r = unsafe {
-        (&*o).f.foo()
-    };
+    let r = unsafe { (&*o).f.foo() };
     assert_eq!(r, 42);
 
     let a: *mut [_] = &mut [1, 2, 3];
@@ -93,7 +84,7 @@ pub fn main() {
         assert_eq!(len, 3);
     }
 
-    let c: *mut Foo<[_]> = &mut Foo {f: [1, 2, 3]};
+    let c: *mut Foo<[_]> = &mut Foo { f: [1, 2, 3] };
     unsafe {
         let b = (&*c).f[0];
         assert_eq!(b, 1);

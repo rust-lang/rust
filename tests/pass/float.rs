@@ -26,60 +26,110 @@ trait FloatToInt<Int>: Copy {
 }
 
 impl FloatToInt<i8> for f32 {
-    fn cast(self) -> i8 { self as _ }
-    unsafe fn cast_unchecked(self) -> i8 { self.to_int_unchecked() }
+    fn cast(self) -> i8 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> i8 {
+        self.to_int_unchecked()
+    }
 }
 impl FloatToInt<i32> for f32 {
-    fn cast(self) -> i32 { self as _ }
-    unsafe fn cast_unchecked(self) -> i32 { self.to_int_unchecked() }
+    fn cast(self) -> i32 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> i32 {
+        self.to_int_unchecked()
+    }
 }
 impl FloatToInt<u32> for f32 {
-    fn cast(self) -> u32 { self as _ }
-    unsafe fn cast_unchecked(self) -> u32 { self.to_int_unchecked() }
+    fn cast(self) -> u32 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> u32 {
+        self.to_int_unchecked()
+    }
 }
 impl FloatToInt<i64> for f32 {
-    fn cast(self) -> i64 { self as _ }
-    unsafe fn cast_unchecked(self) -> i64 { self.to_int_unchecked() }
+    fn cast(self) -> i64 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> i64 {
+        self.to_int_unchecked()
+    }
 }
 impl FloatToInt<u64> for f32 {
-    fn cast(self) -> u64 { self as _ }
-    unsafe fn cast_unchecked(self) -> u64 { self.to_int_unchecked() }
+    fn cast(self) -> u64 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> u64 {
+        self.to_int_unchecked()
+    }
 }
 
 impl FloatToInt<i8> for f64 {
-    fn cast(self) -> i8 { self as _ }
-    unsafe fn cast_unchecked(self) -> i8 { self.to_int_unchecked() }
+    fn cast(self) -> i8 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> i8 {
+        self.to_int_unchecked()
+    }
 }
 impl FloatToInt<i32> for f64 {
-    fn cast(self) -> i32 { self as _ }
-    unsafe fn cast_unchecked(self) -> i32 { self.to_int_unchecked() }
+    fn cast(self) -> i32 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> i32 {
+        self.to_int_unchecked()
+    }
 }
 impl FloatToInt<u32> for f64 {
-    fn cast(self) -> u32 { self as _ }
-    unsafe fn cast_unchecked(self) -> u32 { self.to_int_unchecked() }
+    fn cast(self) -> u32 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> u32 {
+        self.to_int_unchecked()
+    }
 }
 impl FloatToInt<i64> for f64 {
-    fn cast(self) -> i64 { self as _ }
-    unsafe fn cast_unchecked(self) -> i64 { self.to_int_unchecked() }
+    fn cast(self) -> i64 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> i64 {
+        self.to_int_unchecked()
+    }
 }
 impl FloatToInt<u64> for f64 {
-    fn cast(self) -> u64 { self as _ }
-    unsafe fn cast_unchecked(self) -> u64 { self.to_int_unchecked() }
+    fn cast(self) -> u64 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> u64 {
+        self.to_int_unchecked()
+    }
 }
 impl FloatToInt<i128> for f64 {
-    fn cast(self) -> i128 { self as _ }
-    unsafe fn cast_unchecked(self) -> i128 { self.to_int_unchecked() }
+    fn cast(self) -> i128 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> i128 {
+        self.to_int_unchecked()
+    }
 }
 impl FloatToInt<u128> for f64 {
-    fn cast(self) -> u128 { self as _ }
-    unsafe fn cast_unchecked(self) -> u128 { self.to_int_unchecked() }
+    fn cast(self) -> u128 {
+        self as _
+    }
+    unsafe fn cast_unchecked(self) -> u128 {
+        self.to_int_unchecked()
+    }
 }
 
 /// Test this cast both via `as` and via `approx_unchecked` (i.e., it must not saturate).
 #[track_caller]
 #[inline(never)]
 fn test_both_cast<F, I>(x: F, y: I)
-    where F: FloatToInt<I>, I: PartialEq + Debug
+where
+    F: FloatToInt<I>,
+    I: PartialEq + Debug,
 {
     assert_eq!(x.cast(), y);
     assert_eq!(unsafe { x.cast_unchecked() }, y);
@@ -87,15 +137,15 @@ fn test_both_cast<F, I>(x: F, y: I)
 
 fn basic() {
     // basic arithmetic
-    assert_eq(6.0_f32*6.0_f32, 36.0_f32);
-    assert_eq(6.0_f64*6.0_f64, 36.0_f64);
-    assert_eq(-{5.0_f32}, -5.0_f32);
-    assert_eq(-{5.0_f64}, -5.0_f64);
+    assert_eq(6.0_f32 * 6.0_f32, 36.0_f32);
+    assert_eq(6.0_f64 * 6.0_f64, 36.0_f64);
+    assert_eq(-{ 5.0_f32 }, -5.0_f32);
+    assert_eq(-{ 5.0_f64 }, -5.0_f64);
     // infinities, NaN
-    assert!((5.0_f32/0.0).is_infinite());
-    assert_ne!({5.0_f32/0.0}, {-5.0_f32/0.0});
-    assert!((5.0_f64/0.0).is_infinite());
-    assert_ne!({5.0_f64/0.0}, {5.0_f64/-0.0});
+    assert!((5.0_f32 / 0.0).is_infinite());
+    assert_ne!({ 5.0_f32 / 0.0 }, { -5.0_f32 / 0.0 });
+    assert!((5.0_f64 / 0.0).is_infinite());
+    assert_ne!({ 5.0_f64 / 0.0 }, { 5.0_f64 / -0.0 });
     assert!((-5.0_f32).sqrt().is_nan());
     assert!((-5.0_f64).sqrt().is_nan());
     assert_ne!(f32::NAN, f32::NAN);
@@ -161,9 +211,9 @@ fn casts() {
     test_both_cast::<f32, u32>(4294967040.0, 0u32.wrapping_sub(256));
     test_both_cast::<f32, u32>(/*-0x1.ccccccp-1*/ f32::from_bits(0xbf666666), 0);
     test_both_cast::<f32, u32>(/*-0x1.fffffep-1*/ f32::from_bits(0xbf7fffff), 0);
-    test_both_cast::<f32, u32>((u32::MAX-128) as f32, u32::MAX-255); // rounding loss
+    test_both_cast::<f32, u32>((u32::MAX - 128) as f32, u32::MAX - 255); // rounding loss
     // unrepresentable casts
-    assert_eq::<u32>((u32::MAX-127) as f32 as u32, u32::MAX); // rounds up and then becomes unrepresentable
+    assert_eq::<u32>((u32::MAX - 127) as f32 as u32, u32::MAX); // rounds up and then becomes unrepresentable
     assert_eq::<u32>(4294967296.0f32 as u32, u32::MAX);
     assert_eq::<u32>(-5.0f32 as u32, 0);
     assert_eq::<u32>(f32::MAX as u32, u32::MAX);
@@ -187,7 +237,10 @@ fn casts() {
     test_both_cast::<f64, i32>(0.0, 0);
     test_both_cast::<f64, i32>(-0.0, 0);
     test_both_cast::<f64, i32>(/*0x1.199999999999ap+0*/ f64::from_bits(0x3ff199999999999a), 1);
-    test_both_cast::<f64, i32>(/*-0x1.199999999999ap+0*/ f64::from_bits(0xbff199999999999a), -1);
+    test_both_cast::<f64, i32>(
+        /*-0x1.199999999999ap+0*/ f64::from_bits(0xbff199999999999a),
+        -1,
+    );
     test_both_cast::<f64, i32>(1.9, 1);
     test_both_cast::<f64, i32>(-1.9, -1);
     test_both_cast::<f64, i32>(1e8, 100_000_000);
@@ -201,9 +254,15 @@ fn casts() {
     test_both_cast::<f64, i64>(0.0, 0);
     test_both_cast::<f64, i64>(-0.0, 0);
     test_both_cast::<f64, i64>(/*0x0.0000000000001p-1022*/ f64::from_bits(0x1), 0);
-    test_both_cast::<f64, i64>(/*-0x0.0000000000001p-1022*/ f64::from_bits(0x8000000000000001), 0);
+    test_both_cast::<f64, i64>(
+        /*-0x0.0000000000001p-1022*/ f64::from_bits(0x8000000000000001),
+        0,
+    );
     test_both_cast::<f64, i64>(/*0x1.199999999999ap+0*/ f64::from_bits(0x3ff199999999999a), 1);
-    test_both_cast::<f64, i64>(/*-0x1.199999999999ap+0*/ f64::from_bits(0xbff199999999999a), -1);
+    test_both_cast::<f64, i64>(
+        /*-0x1.199999999999ap+0*/ f64::from_bits(0xbff199999999999a),
+        -1,
+    );
     test_both_cast::<f64, i64>(5.0, 5);
     test_both_cast::<f64, i64>(5.9, 5);
     test_both_cast::<f64, i64>(-5.0, -5);
@@ -228,11 +287,11 @@ fn casts() {
     test_both_cast::<f64, u64>(-0.99999999999, 0);
     test_both_cast::<f64, u64>(5.0, 5);
     test_both_cast::<f64, u64>(1e16, 10000000000000000);
-    test_both_cast::<f64, u64>((u64::MAX-1024) as f64, u64::MAX-2047); // rounding loss
+    test_both_cast::<f64, u64>((u64::MAX - 1024) as f64, u64::MAX - 2047); // rounding loss
     test_both_cast::<f64, u64>(9223372036854775808.0, 9223372036854775808);
     // unrepresentable casts
     assert_eq::<u64>(-5.0f64 as u64, 0);
-    assert_eq::<u64>((u64::MAX-1023) as f64 as u64, u64::MAX); // rounds up and then becomes unrepresentable
+    assert_eq::<u64>((u64::MAX - 1023) as f64 as u64, u64::MAX); // rounds up and then becomes unrepresentable
     assert_eq::<u64>(18446744073709551616.0f64 as u64, u64::MAX);
     assert_eq::<u64>(f64::MAX as u64, u64::MAX);
     assert_eq::<u64>(f64::MIN as u64, 0);
@@ -258,10 +317,22 @@ fn casts() {
     assert_eq::<f32>((-16777217i32) as f32, -16777216.0);
     assert_eq::<f32>(16777219i32 as f32, 16777220.0);
     assert_eq::<f32>((-16777219i32) as f32, -16777220.0);
-    assert_eq::<f32>(0x7fffff4000000001i64 as f32, /*0x1.fffffep+62*/ f32::from_bits(0x5effffff));
-    assert_eq::<f32>(0x8000004000000001u64 as i64 as f32, /*-0x1.fffffep+62*/ f32::from_bits(0xdeffffff));
-    assert_eq::<f32>(0x0020000020000001i64 as f32, /*0x1.000002p+53*/ f32::from_bits(0x5a000001));
-    assert_eq::<f32>(0xffdfffffdfffffffu64 as i64 as f32, /*-0x1.000002p+53*/ f32::from_bits(0xda000001));
+    assert_eq::<f32>(
+        0x7fffff4000000001i64 as f32,
+        /*0x1.fffffep+62*/ f32::from_bits(0x5effffff),
+    );
+    assert_eq::<f32>(
+        0x8000004000000001u64 as i64 as f32,
+        /*-0x1.fffffep+62*/ f32::from_bits(0xdeffffff),
+    );
+    assert_eq::<f32>(
+        0x0020000020000001i64 as f32,
+        /*0x1.000002p+53*/ f32::from_bits(0x5a000001),
+    );
+    assert_eq::<f32>(
+        0xffdfffffdfffffffu64 as i64 as f32,
+        /*-0x1.000002p+53*/ f32::from_bits(0xda000001),
+    );
     assert_eq::<f32>(i128::MIN as f32, -170141183460469231731687303715884105728.0f32);
     assert_eq::<f32>(u128::MAX as f32, f32::INFINITY); // saturation
 
@@ -284,12 +355,30 @@ fn casts() {
     assert_eq::<u64>((0.0f32 as f64).to_bits(), 0.0f64.to_bits());
     assert_eq::<u64>(((-0.0f32) as f64).to_bits(), (-0.0f64).to_bits());
     assert_eq::<f64>(5.0f32 as f64, 5.0f64);
-    assert_eq::<f64>(/*0x1p-149*/ f32::from_bits(0x1) as f64, /*0x1p-149*/ f64::from_bits(0x36a0000000000000));
-    assert_eq::<f64>(/*-0x1p-149*/ f32::from_bits(0x80000001) as f64, /*-0x1p-149*/ f64::from_bits(0xb6a0000000000000));
-    assert_eq::<f64>(/*0x1.fffffep+127*/ f32::from_bits(0x7f7fffff) as f64, /*0x1.fffffep+127*/ f64::from_bits(0x47efffffe0000000));
-    assert_eq::<f64>(/*-0x1.fffffep+127*/ (-f32::from_bits(0x7f7fffff)) as f64, /*-0x1.fffffep+127*/ -f64::from_bits(0x47efffffe0000000));
-    assert_eq::<f64>(/*0x1p-119*/ f32::from_bits(0x4000000) as f64, /*0x1p-119*/ f64::from_bits(0x3880000000000000));
-    assert_eq::<f64>(/*0x1.8f867ep+125*/ f32::from_bits(0x7e47c33f) as f64, 6.6382536710104395e+37);
+    assert_eq::<f64>(
+        /*0x1p-149*/ f32::from_bits(0x1) as f64,
+        /*0x1p-149*/ f64::from_bits(0x36a0000000000000),
+    );
+    assert_eq::<f64>(
+        /*-0x1p-149*/ f32::from_bits(0x80000001) as f64,
+        /*-0x1p-149*/ f64::from_bits(0xb6a0000000000000),
+    );
+    assert_eq::<f64>(
+        /*0x1.fffffep+127*/ f32::from_bits(0x7f7fffff) as f64,
+        /*0x1.fffffep+127*/ f64::from_bits(0x47efffffe0000000),
+    );
+    assert_eq::<f64>(
+        /*-0x1.fffffep+127*/ (-f32::from_bits(0x7f7fffff)) as f64,
+        /*-0x1.fffffep+127*/ -f64::from_bits(0x47efffffe0000000),
+    );
+    assert_eq::<f64>(
+        /*0x1p-119*/ f32::from_bits(0x4000000) as f64,
+        /*0x1p-119*/ f64::from_bits(0x3880000000000000),
+    );
+    assert_eq::<f64>(
+        /*0x1.8f867ep+125*/ f32::from_bits(0x7e47c33f) as f64,
+        6.6382536710104395e+37,
+    );
     assert_eq::<f64>(f32::INFINITY as f64, f64::INFINITY);
     assert_eq::<f64>(f32::NEG_INFINITY as f64, f64::NEG_INFINITY);
 
@@ -299,8 +388,14 @@ fn casts() {
     assert_eq::<f32>(5.0f64 as f32, 5.0f32);
     assert_eq::<f32>(/*0x0.0000000000001p-1022*/ f64::from_bits(0x1) as f32, 0.0);
     assert_eq::<f32>(/*-0x0.0000000000001p-1022*/ (-f64::from_bits(0x1)) as f32, -0.0);
-    assert_eq::<f32>(/*0x1.fffffe0000000p-127*/ f64::from_bits(0x380fffffe0000000) as f32, /*0x1p-149*/ f32::from_bits(0x800000));
-    assert_eq::<f32>(/*0x1.4eae4f7024c7p+108*/ f64::from_bits(0x46b4eae4f7024c70) as f32, /*0x1.4eae5p+108*/ f32::from_bits(0x75a75728));
+    assert_eq::<f32>(
+        /*0x1.fffffe0000000p-127*/ f64::from_bits(0x380fffffe0000000) as f32,
+        /*0x1p-149*/ f32::from_bits(0x800000),
+    );
+    assert_eq::<f32>(
+        /*0x1.4eae4f7024c7p+108*/ f64::from_bits(0x46b4eae4f7024c70) as f32,
+        /*0x1.4eae5p+108*/ f32::from_bits(0x75a75728),
+    );
     assert_eq::<f32>(f64::MAX as f32, f32::INFINITY);
     assert_eq::<f32>(f64::MIN as f32, f32::NEG_INFINITY);
     assert_eq::<f32>(f64::INFINITY as f32, f32::INFINITY);

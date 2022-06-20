@@ -56,21 +56,18 @@ struct P {
 }
 
 fn p(x: isize, y: isize) -> P {
-    P {
-        x: x,
-        y: y
-    }
+    P { x: x, y: y }
 }
 
 fn test_class() {
-  let q = p(1, 2);
-  let mut r = p(1, 2);
+    let q = p(1, 2);
+    let mut r = p(1, 2);
 
-  assert_eq!(q, r);
-  r.y = 17;
-  assert!((r.y != q.y));
-  assert_eq!(r.y, 17);
-  assert!((q != r));
+    assert_eq!(q, r);
+    r.y = 17;
+    assert!((r.y != q.y));
+    assert_eq!(r.y, 17);
+    assert!((q != r));
 }
 
 pub fn main() {

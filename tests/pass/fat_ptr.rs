@@ -3,7 +3,7 @@
 struct Wrapper<T: ?Sized>(u32, T);
 
 struct FatPtrContainer<'a> {
-    ptr: &'a [u8]
+    ptr: &'a [u8],
 }
 
 fn fat_ptr_project(a: &Wrapper<[u8]>) -> &[u8] {
@@ -36,14 +36,14 @@ fn fat_ptr_constant() -> &'static str {
 }
 
 fn main() {
-    let a = Wrapper(4, [7,6,5]);
+    let a = Wrapper(4, [7, 6, 5]);
 
     let p = fat_ptr_project(&a);
     let p = fat_ptr_simple(p);
     let p = fat_ptr_via_local(p);
     let p = fat_ptr_from_struct(fat_ptr_to_struct(p));
 
-    let mut target : &[u8] = &[42];
+    let mut target: &[u8] = &[42];
     fat_ptr_store_to(p, &mut target);
     assert_eq!(target, &a.1);
 

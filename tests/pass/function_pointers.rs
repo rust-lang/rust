@@ -16,7 +16,7 @@ fn f<T: Answer>() -> T {
 }
 
 fn g(i: i32) -> i32 {
-    i*42
+    i * 42
 }
 
 fn h(i: i32, j: i32) -> i32 {
@@ -31,17 +31,35 @@ fn call_fn_ptr() -> i32 {
     return_fn_ptr(f)()
 }
 
-fn indirect<F: Fn() -> i32>(f: F) -> i32 { f() }
-fn indirect_mut<F: FnMut() -> i32>(mut f: F) -> i32 { f() }
-fn indirect_once<F: FnOnce() -> i32>(f: F) -> i32 { f() }
+fn indirect<F: Fn() -> i32>(f: F) -> i32 {
+    f()
+}
+fn indirect_mut<F: FnMut() -> i32>(mut f: F) -> i32 {
+    f()
+}
+fn indirect_once<F: FnOnce() -> i32>(f: F) -> i32 {
+    f()
+}
 
-fn indirect2<F: Fn(i32) -> i32>(f: F) -> i32 { f(10) }
-fn indirect_mut2<F: FnMut(i32) -> i32>(mut f: F) -> i32 { f(10) }
-fn indirect_once2<F: FnOnce(i32) -> i32>(f: F) -> i32 { f(10) }
+fn indirect2<F: Fn(i32) -> i32>(f: F) -> i32 {
+    f(10)
+}
+fn indirect_mut2<F: FnMut(i32) -> i32>(mut f: F) -> i32 {
+    f(10)
+}
+fn indirect_once2<F: FnOnce(i32) -> i32>(f: F) -> i32 {
+    f(10)
+}
 
-fn indirect3<F: Fn(i32, i32) -> i32>(f: F) -> i32 { f(10, 3) }
-fn indirect_mut3<F: FnMut(i32, i32) -> i32>(mut f: F) -> i32 { f(10, 3) }
-fn indirect_once3<F: FnOnce(i32, i32) -> i32>(f: F) -> i32 { f(10, 3) }
+fn indirect3<F: Fn(i32, i32) -> i32>(f: F) -> i32 {
+    f(10, 3)
+}
+fn indirect_mut3<F: FnMut(i32, i32) -> i32>(mut f: F) -> i32 {
+    f(10, 3)
+}
+fn indirect_once3<F: FnOnce(i32, i32) -> i32>(f: F) -> i32 {
+    f(10, 3)
+}
 
 fn main() {
     assert_eq!(call_fn_ptr(), 42);

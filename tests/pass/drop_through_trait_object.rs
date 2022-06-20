@@ -6,7 +6,9 @@ static mut DROP_CALLED: bool = false;
 
 impl Drop for Bar {
     fn drop(&mut self) {
-        unsafe { DROP_CALLED = true; }
+        unsafe {
+            DROP_CALLED = true;
+        }
     }
 }
 

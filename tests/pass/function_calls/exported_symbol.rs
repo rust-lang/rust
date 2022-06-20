@@ -24,7 +24,6 @@ impl AssocFn {
     }
 }
 
-
 fn main() {
     // Repeat calls to make sure the `Instance` cache is not broken.
     for _ in 0..3 {
@@ -69,9 +68,8 @@ fn main() {
             }
 
             unsafe {
-                let transmute = |f| {
-                    std::mem::transmute::<unsafe extern "C" fn() -> i32, unsafe fn() -> i32>(f)
-                };
+                let transmute =
+                    |f| std::mem::transmute::<unsafe extern "C" fn() -> i32, unsafe fn() -> i32>(f);
                 assert_eq!(transmute(bar)(), -2);
                 assert_eq!(transmute(baz)(), -3);
                 assert_eq!(transmute(qux)(), -4);

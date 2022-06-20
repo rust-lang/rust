@@ -19,11 +19,7 @@ fn pin_box_dyn() {
 }
 
 fn stdlib_pointers() {
-    use std::{
-        rc::Rc,
-        sync::Arc,
-        pin::Pin,
-    };
+    use std::{pin::Pin, rc::Rc, sync::Arc};
 
     trait Trait {
         fn by_rc(self: Rc<Self>) -> i64;
@@ -63,8 +59,8 @@ fn stdlib_pointers() {
 
 fn pointers_and_wrappers() {
     use std::{
-        ops::{Deref, CoerceUnsized, DispatchFromDyn},
         marker::Unsize,
+        ops::{CoerceUnsized, Deref, DispatchFromDyn},
     };
 
     struct Ptr<T: ?Sized>(Box<T>);
@@ -92,7 +88,6 @@ fn pointers_and_wrappers() {
 
     impl<T: CoerceUnsized<U>, U> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
     impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Wrapper<U>> for Wrapper<T> {}
-
 
     trait Trait {
         // This method isn't object-safe yet. Unsized by-value `self` is object-safe (but not callable
@@ -125,7 +120,6 @@ fn pointers_and_wrappers() {
     let wpw = Wrapper(Ptr(Box::new(Wrapper(7)))) as Wrapper<Ptr<Wrapper<dyn Trait>>>;
     assert_eq!(wpw.wrapper_ptr_wrapper(), 7);
 }
-
 
 fn main() {
     pin_box_dyn();

@@ -39,7 +39,6 @@ fn ref_box_dyn() {
     y.box_method();
 }
 
-
 fn box_box_trait() {
     struct DroppableStruct;
 
@@ -47,17 +46,23 @@ fn box_box_trait() {
 
     impl Drop for DroppableStruct {
         fn drop(&mut self) {
-            unsafe { DROPPED = true; }
+            unsafe {
+                DROPPED = true;
+            }
         }
     }
 
-    trait MyTrait { fn dummy(&self) { } }
+    trait MyTrait {
+        fn dummy(&self) {}
+    }
     impl MyTrait for Box<DroppableStruct> {}
 
-    struct Whatever { w: Box<dyn MyTrait+'static> }
+    struct Whatever {
+        w: Box<dyn MyTrait + 'static>,
+    }
 
-    impl  Whatever {
-        fn new(w: Box<dyn MyTrait+'static>) -> Whatever {
+    impl Whatever {
+        fn new(w: Box<dyn MyTrait + 'static>) -> Whatever {
             Whatever { w: w }
         }
     }

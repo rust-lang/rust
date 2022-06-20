@@ -42,31 +42,25 @@ fn create_move_in() {
 }
 
 fn create_move_out() {
-    let result = thread::spawn(|| {
-        String::from("Hello!")
-    })
-    .join()
-    .unwrap();
+    let result = thread::spawn(|| String::from("Hello!")).join().unwrap();
     assert_eq!(result.len(), 6);
 }
 
 fn panic() {
-    let result = thread::spawn(|| {
-        panic!("Hello!")
-    })
-    .join()
-    .unwrap_err();
+    let result = thread::spawn(|| panic!("Hello!")).join().unwrap_err();
     let msg = result.downcast_ref::<&'static str>().unwrap();
     assert_eq!(*msg, "Hello!");
 }
 
 fn panic_named() {
-    thread::Builder::new().name("childthread".to_string()).spawn(move || {
-        panic!("Hello, world!");
-    })
-    .unwrap()
-    .join()
-    .unwrap_err();
+    thread::Builder::new()
+        .name("childthread".to_string())
+        .spawn(move || {
+            panic!("Hello, world!");
+        })
+        .unwrap()
+        .join()
+        .unwrap_err();
 }
 
 fn main() {

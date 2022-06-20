@@ -17,9 +17,10 @@ fn main() {
         // this closure never by val uses its captures
         // so it's basically a fn(&self)
         // the shim used to not drop the `x`
-        let x = move || { let _val = x; };
+        let x = move || {
+            let _val = x;
+        };
         f(x);
     }
     assert!(ran_drop);
 }
-

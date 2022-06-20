@@ -1,8 +1,7 @@
 // As dst-struct.rs, but the unsized field is the only field in the struct.
 
-
 struct Fat<T: ?Sized> {
-    ptr: T
+    ptr: T,
 }
 
 // x is a fat pointer
@@ -13,7 +12,7 @@ fn foo(x: &Fat<[isize]>) {
     assert_eq!(x.ptr[1], 2);
 }
 
-fn foo2<T:ToBar>(x: &Fat<[T]>) {
+fn foo2<T: ToBar>(x: &Fat<[T]>) {
     let y = &x.ptr;
     let bar = Bar;
     assert_eq!(x.ptr.len(), 3);

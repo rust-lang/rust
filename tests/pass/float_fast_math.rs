@@ -1,6 +1,6 @@
 #![feature(core_intrinsics)]
 
-use std::intrinsics::{fadd_fast, fsub_fast, fmul_fast, fdiv_fast, frem_fast};
+use std::intrinsics::{fadd_fast, fdiv_fast, fmul_fast, frem_fast, fsub_fast};
 
 #[inline(never)]
 pub fn test_operations_f64(a: f64, b: f64) {

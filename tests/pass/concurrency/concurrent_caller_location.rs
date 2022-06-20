@@ -1,7 +1,7 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 
-use std::thread::spawn;
 use std::panic::Location;
+use std::thread::spawn;
 
 fn initialize() {
     let _ignore = initialize_inner();

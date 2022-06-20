@@ -7,9 +7,9 @@
 extern crate libc;
 
 use std::ffi::CString;
-use std::os::unix;
 use std::fs::{self, File};
 use std::io::{Error, ErrorKind};
+use std::os::unix;
 
 fn main() {
     // test `open`
@@ -25,7 +25,10 @@ fn main() {
     assert_eq!(fs::remove_file("foo.txt").unwrap_err().kind(), ErrorKind::PermissionDenied);
 
     // test `symlink`
-    assert_eq!(unix::fs::symlink("foo.txt", "foo_link.txt").unwrap_err().kind(), ErrorKind::PermissionDenied);
+    assert_eq!(
+        unix::fs::symlink("foo.txt", "foo_link.txt").unwrap_err().kind(),
+        ErrorKind::PermissionDenied
+    );
 
     // test `readlink`
     let symlink_c_str = CString::new("foo.txt").unwrap();

@@ -26,7 +26,7 @@ fn drain() {
     for x in heap.drain() {
         sum += x;
     }
-    assert_eq!(sum, 127*128/2);
+    assert_eq!(sum, 127 * 128 / 2);
 
     assert!(heap.is_empty());
 }
