@@ -957,7 +957,7 @@ impl<T> MaybeUninit<T> {
             (&array as *const _ as *const [T; N]).read()
         };
 
-        // FIXME: required to avoid `Destruct` bound
+        // FIXME: required to avoid `~const Destruct` bound
         super::forget(array);
         ret
     }

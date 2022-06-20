@@ -82,7 +82,8 @@ use super::Utf8Error;
 /// assert_eq!("💖", sparkle_heart);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
+#[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
+pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     // FIXME: This should use `?` again, once it's `const`
     match run_utf8_validation(v) {
         Ok(_) => {
@@ -124,7 +125,8 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// See the docs for [`Utf8Error`] for more details on the kinds of
 /// errors that can be returned.
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
-pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
+#[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
+pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     // This should use `?` again, once it's `const`
     match run_utf8_validation(v) {
         Ok(_) => {

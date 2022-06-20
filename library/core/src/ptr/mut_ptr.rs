@@ -1539,7 +1539,8 @@ impl<T: ?Sized> *mut T {
     /// # } }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
-    pub fn align_offset(self, align: usize) -> usize
+    #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
+    pub const fn align_offset(self, align: usize) -> usize
     where
         T: Sized,
     {
@@ -1552,12 +1553,16 @@ impl<T: ?Sized> *mut T {
             unsafe { align_offset(p, align) }
         }
 
+        const fn ctfe_impl<T>(_: *mut T, _: usize) -> usize {
+            usize::MAX
+        }
+
         // SAFETY:
         // It is permissible for `align_offset` to always return `usize::MAX`,
         // algorithm correctness can not depend on `align_offset` returning non-max values.
         //
         // As such the behaviour can't change after replacing `align_offset` with `usize::MAX`, only performance can.
-        rt_impl(self, align)
+        unsafe { intrinsics::const_eval_select((self, align), ctfe_impl, rt_impl) }
     }
 
     /// Returns whether the pointer is properly aligned for `T`.
@@ -1776,10 +1781,11 @@ impl<T> *mut [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline(always)]
-    pub unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
+    pub const unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
     where
-        I: SliceIndex<[T]>,
+        I: ~const SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         unsafe { index.get_unchecked_mut(self) }

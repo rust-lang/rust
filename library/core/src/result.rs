@@ -633,10 +633,16 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ok(self) -> Option<T> {
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
+    pub const fn ok(self) -> Option<T>
+    where
+        E: ~const Destruct,
+    {
         match self {
             Ok(x) => Some(x),
-            Err(_) => None,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Err(x) => None,
         }
     }
 
@@ -658,9 +664,15 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn err(self) -> Option<E> {
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
+    pub const fn err(self) -> Option<E>
+    where
+        T: ~const Destruct,
+    {
         match self {
-            Ok(_) => None,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Ok(x) => None,
             Err(x) => Some(x),
         }
     }
@@ -719,7 +731,8 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_mut(&mut self) -> Result<&mut T, &mut E> {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn as_mut(&mut self) -> Result<&mut T, &mut E> {
         match *self {
             Ok(ref mut x) => Ok(x),
             Err(ref mut x) => Err(x),
@@ -1286,13 +1299,18 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.and(y), Ok("different result type"));
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn and<U>(self, res: Result<U, E>) -> Result<U, E>
+    pub const fn and<U>(self, res: Result<U, E>) -> Result<U, E>
     where
-        U: Destruct,
+        T: ~const Destruct,
+        U: ~const Destruct,
+        E: ~const Destruct,
     {
         match self {
-            Ok(_) => res,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Ok(x) => res,
             Err(e) => Err(e),
         }
     }
@@ -1366,14 +1384,19 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.or(y), Ok(2));
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn or<F>(self, res: Result<T, F>) -> Result<T, F>
+    pub const fn or<F>(self, res: Result<T, F>) -> Result<T, F>
     where
-        F: Destruct,
+        T: ~const Destruct,
+        E: ~const Destruct,
+        F: ~const Destruct,
     {
         match self {
             Ok(v) => Ok(v),
-            Err(_) => res,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Err(e) => res,
         }
     }
 
@@ -1425,11 +1448,18 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.unwrap_or(default), default);
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or(self, default: T) -> T {
+    pub const fn unwrap_or(self, default: T) -> T
+    where
+        T: ~const Destruct,
+        E: ~const Destruct,
+    {
         match self {
             Ok(t) => t,
-            Err(_) => default,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Err(e) => default,
         }
     }
 
@@ -1793,10 +1823,10 @@ fn unwrap_failed<T>(_msg: &str, _error: &T) -> ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
-impl<T, E> Clone for Result<T, E>
+impl<T, E> const Clone for Result<T, E>
 where
-    T: Clone,
-    E: Clone,
+    T: ~const Clone + ~const Destruct,
+    E: ~const Clone + ~const Destruct,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -2064,7 +2094,8 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T, E> ops::Try for Result<T, E> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T, E> const ops::Try for Result<T, E> {
     type Output = T;
     type Residual = Result<convert::Infallible, E>;
 
@@ -2083,7 +2114,10 @@ impl<T, E> ops::Try for Result<T, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible, E>>
+    for Result<T, F>
+{
     #[inline]
     #[track_caller]
     fn from_residual(residual: Result<convert::Infallible, E>) -> Self {

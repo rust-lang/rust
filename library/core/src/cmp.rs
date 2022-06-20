@@ -214,6 +214,7 @@ use self::Ordering::*;
         append_const_msg,
     )
 )]
+#[cfg_attr(not(bootstrap), const_trait)]
 #[rustc_diagnostic_item = "PartialEq"]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     /// This method tests for `self` and `other` values to be equal, and is used
@@ -1052,6 +1053,7 @@ impl PartialOrd for Ordering {
         append_const_msg,
     )
 )]
+#[cfg_attr(not(bootstrap), const_trait)]
 #[rustc_diagnostic_item = "PartialOrd"]
 pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// This method returns an ordering between `self` and `other` values if one exists.

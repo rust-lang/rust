@@ -70,7 +70,7 @@ impl<T: Sized> Unique<T> {
     #[must_use]
     #[inline]
     pub const fn dangling() -> Self {
-        Self { pointer: NonNull::dangling(), _marker: PhantomData }
+        Self::from(NonNull::dangling())
     }
 }
 
@@ -133,14 +133,14 @@ impl<T: ?Sized> Unique<T> {
     /// Casts to a pointer of another type.
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn cast<U>(self) -> Unique<U> {
+    pub const fn cast<U>(self) -> Unique<U> {
         Unique::from(self.pointer.cast())
     }
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
 #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
-impl<T: ?Sized> Clone for Unique<T> {
+impl<T: ?Sized> const Clone for Unique<T> {
     #[inline]
     fn clone(&self) -> Self {
         *self
@@ -171,7 +171,7 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> From<&mut T> for Unique<T> {
+impl<T: ?Sized> const From<&mut T> for Unique<T> {
     /// Converts a `&mut T` to a `Unique<T>`.
     ///
     /// This conversion is infallible since references cannot be null.
@@ -182,7 +182,7 @@ impl<T: ?Sized> From<&mut T> for Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> From<NonNull<T>> for Unique<T> {
+impl<T: ?Sized> const From<NonNull<T>> for Unique<T> {
     /// Converts a `NonNull<T>` to a `Unique<T>`.
     ///
     /// This conversion is infallible since `NonNull` cannot be null.

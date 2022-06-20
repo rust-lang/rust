@@ -134,7 +134,8 @@ impl TryFromSliceError {
 }
 
 #[stable(feature = "try_from_slice_error", since = "1.36.0")]
-impl From<Infallible> for TryFromSliceError {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl const From<Infallible> for TryFromSliceError {
     fn from(x: Infallible) -> TryFromSliceError {
         match x {}
     }
@@ -157,14 +158,16 @@ impl<T, const N: usize> AsMut<[T]> for [T; N] {
 }
 
 #[stable(feature = "array_borrow", since = "1.4.0")]
-impl<T, const N: usize> Borrow<[T]> for [T; N] {
+#[rustc_const_unstable(feature = "const_borrow", issue = "91522")]
+impl<T, const N: usize> const Borrow<[T]> for [T; N] {
     fn borrow(&self) -> &[T] {
         self
     }
 }
 
 #[stable(feature = "array_borrow", since = "1.4.0")]
-impl<T, const N: usize> BorrowMut<[T]> for [T; N] {
+#[rustc_const_unstable(feature = "const_borrow", issue = "91522")]
+impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
     fn borrow_mut(&mut self) -> &mut [T] {
         self
     }
@@ -271,9 +274,10 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N] {
 }
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
-impl<T, I, const N: usize> Index<I> for [T; N]
+#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
+impl<T, I, const N: usize> const Index<I> for [T; N]
 where
-    [T]: Index<I>,
+    [T]: ~const Index<I>,
 {
     type Output = <[T] as Index<I>>::Output;
 
@@ -284,9 +288,10 @@ where
 }
 
 #[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
-impl<T, I, const N: usize> IndexMut<I> for [T; N]
+#[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
+impl<T, I, const N: usize> const IndexMut<I> for [T; N]
 where
-    [T]: IndexMut<I>,
+    [T]: ~const IndexMut<I>,
 {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
@@ -379,7 +384,8 @@ macro_rules! array_impl_default {
     };
     {$n:expr,} => {
         #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] {
+        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+        impl<T> const Default for [T; $n] {
             fn default() -> [T; $n] { [] }
         }
     };

@@ -79,7 +79,23 @@ use iter::{MatchesInternal, SplitNInternal};
 #[inline(never)]
 #[cold]
 #[track_caller]
-fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
+#[rustc_allow_const_fn_unstable(const_eval_select)]
+const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
+    // SAFETY: panics for both branches
+    unsafe {
+        crate::intrinsics::const_eval_select(
+            (s, begin, end),
+            slice_error_fail_ct,
+            slice_error_fail_rt,
+        )
+    }
+}
+
+const fn slice_error_fail_ct(_: &str, _: usize, _: usize) -> ! {
+    panic!("failed to slice string");
+}
+
+fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     const MAX_DISPLAY_LENGTH: usize = 256;
     let trunc_len = s.floor_char_boundary(MAX_DISPLAY_LENGTH);
     let s_trunc = &s[..trunc_len];
@@ -188,8 +204,9 @@ impl str {
     /// ```
     #[must_use]
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
+    #[rustc_const_unstable(feature = "const_is_char_boundary", issue = "none")]
     #[inline]
-    pub fn is_char_boundary(&self, index: usize) -> bool {
+    pub const fn is_char_boundary(&self, index: usize) -> bool {
         // 0 is always ok.
         // Test for 0 explicitly so that it can optimize out the check
         // easily and skip reading string data for that case.
@@ -417,8 +434,9 @@ impl str {
     /// assert!(v.get(..42).is_none());
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
+    pub const fn get<I: ~const SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
         i.get(self)
     }
 
@@ -449,8 +467,9 @@ impl str {
     /// assert_eq!("HEllo", v);
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
+    pub const fn get_mut<I: ~const SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
         i.get_mut(self)
     }
 
@@ -481,8 +500,9 @@ impl str {
     /// }
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output {
+    pub const unsafe fn get_unchecked<I: ~const SliceIndex<str>>(&self, i: I) -> &I::Output {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked`;
         // the slice is dereferenceable because `self` is a safe reference.
         // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
@@ -516,8 +536,12 @@ impl str {
     /// }
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output {
+    pub const unsafe fn get_unchecked_mut<I: ~const SliceIndex<str>>(
+        &mut self,
+        i: I,
+    ) -> &mut I::Output {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`;
         // the slice is dereferenceable because `self` is a safe reference.
         // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
@@ -2542,7 +2566,8 @@ impl AsRef<[u8]> for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Default for &str {
+#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+impl const Default for &str {
     /// Creates an empty str
     #[inline]
     fn default() -> Self {

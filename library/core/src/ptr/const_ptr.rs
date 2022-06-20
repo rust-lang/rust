@@ -737,7 +737,7 @@ impl<T: ?Sized> *const T {
     {
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
-        assert_unsafe_precondition!(self >= origin);
+        unsafe { assert_unsafe_precondition!(self >= origin) };
 
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
@@ -1269,7 +1269,8 @@ impl<T: ?Sized> *const T {
     /// # } }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
-    pub fn align_offset(self, align: usize) -> usize
+    #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
+    pub const fn align_offset(self, align: usize) -> usize
     where
         T: Sized,
     {
@@ -1282,12 +1283,16 @@ impl<T: ?Sized> *const T {
             unsafe { align_offset(p, align) }
         }
 
+        const fn ctfe_impl<T>(_: *const T, _: usize) -> usize {
+            usize::MAX
+        }
+
         // SAFETY:
         // It is permissible for `align_offset` to always return `usize::MAX`,
         // algorithm correctness can not depend on `align_offset` returning non-max values.
         //
         // As such the behaviour can't change after replacing `align_offset` with `usize::MAX`, only performance can.
-        rt_impl(self, align)
+        unsafe { intrinsics::const_eval_select((self, align), ctfe_impl, rt_impl) }
     }
 
     /// Returns whether the pointer is properly aligned for `T`.
@@ -1390,10 +1395,11 @@ impl<T> *const [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
+    pub const unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
     where
-        I: SliceIndex<[T]>,
+        I: ~const SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         unsafe { index.get_unchecked(self) }

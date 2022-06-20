@@ -1,7 +1,7 @@
 //! Free functions to create `&[T]` and `&mut [T]`.
 
 use crate::array;
-use crate::intrinsics::assert_unsafe_precondition;
+use crate::intrinsics::{assert_unsafe_precondition, is_aligned_and_not_null};
 use crate::ops::Range;
 use crate::ptr;
 
