@@ -140,21 +140,21 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         ty::Never
         | ty::Error(_)
         | ty::Foreign(..)
-        | ty::Infer(ty::FreshIntTy(_))
-        | ty::Infer(ty::FreshFloatTy(_))
-        | ty::Projection(..)
-        | ty::Param(_)
-        | ty::Bound(..)
-        | ty::Placeholder(..)
         // FIXME(oli-obk): we could look behind opaque types
         | ty::Opaque(..)
-        | ty::Infer(_)
         // FIXME(oli-obk): we can probably encode closures just like structs
         | ty::Closure(..)
         | ty::Generator(..)
-        // FIXME: we could look behind type aliases.
-        | ty::TyAlias(..)
         | ty::GeneratorWitness(..) => Err(ValTreeCreationError::NonSupportedType),
+
+        ty::Infer(_)
+        | ty::TyAlias(..)
+        | ty::Projection(..)
+        | ty::Param(_)
+        | ty::Bound(..)
+        | ty::Placeholder(..) => {
+            bug!("{:?} should have errored and never gotten converted to valtree", ty.kind())
+        }
     }
 }
 
