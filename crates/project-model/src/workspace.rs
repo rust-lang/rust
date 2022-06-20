@@ -541,8 +541,6 @@ fn cargo_to_crate_graph(
 
     let mut pkg_to_lib_crate = FxHashMap::default();
 
-    // Add test cfg for non-sysroot crates
-    cfg_options.insert_atom("test".into());
     cfg_options.insert_atom("debug_assertions".into());
 
     let mut pkg_crates = FxHashMap::default();
@@ -557,6 +555,13 @@ fn cargo_to_crate_graph(
             CfgOverrides::Wildcard(cfg_diff) => Some(cfg_diff),
             CfgOverrides::Selective(cfg_overrides) => cfg_overrides.get(&cargo[pkg].name),
         };
+
+        // Add test cfg for local crates
+        if cargo[pkg].is_local {
+            replaced_cfg_options = cfg_options.clone();
+            replaced_cfg_options.insert_atom("test".into());
+            cfg_options = &replaced_cfg_options;
+        }
 
         if let Some(overrides) = overrides {
             // FIXME: this is sort of a hack to deal with #![cfg(not(test))] vanishing such as seen
