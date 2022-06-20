@@ -548,8 +548,7 @@ fn cargo_to_crate_graph(
     let mut has_private = false;
     // Next, create crates for each package, target pair
     for pkg in cargo.packages() {
-        let mut cfg_options = &cfg_options;
-        let mut replaced_cfg_options;
+        let mut cfg_options = cfg_options.clone();
 
         let overrides = match override_cfg {
             CfgOverrides::Wildcard(cfg_diff) => Some(cfg_diff),
@@ -558,9 +557,7 @@ fn cargo_to_crate_graph(
 
         // Add test cfg for local crates
         if cargo[pkg].is_local {
-            replaced_cfg_options = cfg_options.clone();
-            replaced_cfg_options.insert_atom("test".into());
-            cfg_options = &replaced_cfg_options;
+            cfg_options.insert_atom("test".into());
         }
 
         if let Some(overrides) = overrides {
@@ -571,9 +568,7 @@ fn cargo_to_crate_graph(
             // A more ideal solution might be to reanalyze crates based on where the cursor is and
             // figure out the set of cfgs that would have to apply to make it active.
 
-            replaced_cfg_options = cfg_options.clone();
-            replaced_cfg_options.apply_diff(overrides.clone());
-            cfg_options = &replaced_cfg_options;
+            cfg_options.apply_diff(overrides.clone());
         };
 
         has_private |= cargo[pkg].metadata.rustc_private;
@@ -593,7 +588,7 @@ fn cargo_to_crate_graph(
                     &mut crate_graph,
                     &cargo[pkg],
                     build_scripts.get_output(pkg),
-                    cfg_options,
+                    cfg_options.clone(),
                     &mut |path| load_proc_macro(&cargo[tgt].name, path),
                     file_id,
                     &cargo[tgt].name,
@@ -758,8 +753,7 @@ fn handle_rustc_crates(
                 queue.push_back(dep.pkg);
             }
 
-            let mut cfg_options = cfg_options;
-            let mut replaced_cfg_options;
+            let mut cfg_options = cfg_options.clone();
 
             let overrides = match override_cfg {
                 CfgOverrides::Wildcard(cfg_diff) => Some(cfg_diff),
@@ -776,9 +770,7 @@ fn handle_rustc_crates(
                 // A more ideal solution might be to reanalyze crates based on where the cursor is and
                 // figure out the set of cfgs that would have to apply to make it active.
 
-                replaced_cfg_options = cfg_options.clone();
-                replaced_cfg_options.apply_diff(overrides.clone());
-                cfg_options = &replaced_cfg_options;
+                cfg_options.apply_diff(overrides.clone());
             };
 
             for &tgt in rustc_workspace[pkg].targets.iter() {
@@ -790,7 +782,7 @@ fn handle_rustc_crates(
                         crate_graph,
                         &rustc_workspace[pkg],
                         build_scripts.get_output(pkg),
-                        cfg_options,
+                        cfg_options.clone(),
                         &mut |path| load_proc_macro(&rustc_workspace[tgt].name, path),
                         file_id,
                         &rustc_workspace[tgt].name,
@@ -845,15 +837,21 @@ fn add_target_crate_root(
     crate_graph: &mut CrateGraph,
     pkg: &PackageData,
     build_data: Option<&BuildScriptOutput>,
-    cfg_options: &CfgOptions,
+    cfg_options: CfgOptions,
     load_proc_macro: &mut dyn FnMut(&AbsPath) -> ProcMacroLoadResult,
     file_id: FileId,
     cargo_name: &str,
     is_proc_macro: bool,
 ) -> CrateId {
     let edition = pkg.edition;
+    let mut potential_cfg_options = cfg_options.clone();
+    potential_cfg_options.extend(
+        pkg.features
+            .iter()
+            .map(|feat| CfgFlag::KeyValue { key: "feature".into(), value: feat.0.into() }),
+    );
     let cfg_options = {
-        let mut opts = cfg_options.clone();
+        let mut opts = cfg_options;
         for feature in pkg.active_features.iter() {
             opts.insert_key_value("feature".into(), feature.into());
         }
@@ -878,12 +876,6 @@ fn add_target_crate_root(
     };
 
     let display_name = CrateDisplayName::from_canonical_name(cargo_name.to_string());
-    let mut potential_cfg_options = cfg_options.clone();
-    potential_cfg_options.extend(
-        pkg.features
-            .iter()
-            .map(|feat| CfgFlag::KeyValue { key: "feature".into(), value: feat.0.into() }),
-    );
     crate_graph.add_crate_root(
         file_id,
         edition,
