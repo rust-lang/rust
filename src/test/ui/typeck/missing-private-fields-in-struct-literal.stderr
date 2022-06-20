@@ -1,0 +1,23 @@
+error: cannot construct `S` with struct literal syntax due to private fields
+  --> $DIR/missing-private-fields-in-struct-literal.rs:13:13
+   |
+LL |     let _ = m::S {
+   |             ^^^^
+LL |         visible: true,
+LL |         a: (),
+   |         ----- private field
+LL |         b: (),
+   |         ----- private field
+   |
+note: missing fields `c`, `d` and `e` are private
+  --> $DIR/missing-private-fields-in-struct-literal.rs:6:9
+   |
+LL |         c: (),
+   |         ^^^^^
+LL |         d: (),
+   |         ^^^^^
+LL |         e: (),
+   |         ^^^^^
+
+error: aborting due to previous error
+

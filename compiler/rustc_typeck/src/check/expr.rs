@@ -23,13 +23,14 @@ use crate::type_error_struct;
 
 use super::suggest_call_constructor;
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
+use itertools::{Either, Itertools};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::Diagnostic;
-use rustc_errors::EmissionGuarantee;
-use rustc_errors::ErrorGuaranteed;
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
+use rustc_errors::{
+    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId,
+    EmissionGuarantee, ErrorGuaranteed, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -1672,12 +1673,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             self.typeck_results.borrow_mut().fru_field_types_mut().insert(expr_id, fru_tys);
         } else if adt_kind != AdtKind::Union && !remaining_fields.is_empty() {
-            let inaccessible_remaining_fields = remaining_fields.iter().any(|(_, (_, field))| {
-                !field.vis.is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
-            });
+            debug!(?remaining_fields);
+            let private_fields: Vec<&ty::FieldDef> = variant
+                .fields
+                .iter()
+                .filter(|field| {
+                    !field.vis.is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
+                })
+                .collect();
 
-            if inaccessible_remaining_fields {
-                self.report_inaccessible_fields(adt_ty, span);
+            if !private_fields.is_empty()
+                && tcx
+                    .visibility(variant.def_id)
+                    .is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
+            {
+                self.report_private_fields(adt_ty, span, private_fields, ast_fields);
             } else {
                 self.report_missing_fields(
                     adt_ty,
@@ -1801,7 +1811,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Report an error for a struct field expression when there are invisible fields.
     ///
     /// ```text
-    /// error: cannot construct `Foo` with struct literal syntax due to inaccessible fields
+    /// error: cannot construct `Foo` with struct literal syntax due to private fields
     ///  --> src/main.rs:8:5
     ///   |
     /// 8 |     foo::Foo {};
@@ -1809,13 +1819,57 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// error: aborting due to previous error
     /// ```
-    fn report_inaccessible_fields(&self, adt_ty: Ty<'tcx>, span: Span) {
-        self.tcx.sess.span_err(
+    fn report_private_fields(
+        &self,
+        adt_ty: Ty<'tcx>,
+        span: Span,
+        private_fields: Vec<&ty::FieldDef>,
+        used_fields: &'tcx [hir::ExprField<'tcx>],
+    ) {
+        let field_names = |fields: Vec<Symbol>, len: usize| match &fields
+            .iter()
+            .map(|field| field.to_string())
+            .collect::<Vec<_>>()[..]
+        {
+            _ if len > 6 => String::new(),
+            [name] => format!("`{name}` "),
+            [names @ .., last] => {
+                let names = names.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
+                format!("{} and `{last}` ", names.join(", "))
+            }
+            [] => unreachable!(),
+        };
+
+        let mut err = self.tcx.sess.struct_span_err(
             span,
             &format!(
-                "cannot construct `{adt_ty}` with struct literal syntax due to inaccessible fields",
+                "cannot construct `{adt_ty}` with struct literal syntax due to private fields",
             ),
         );
+        let (used_private_fields, remaining_private_fields): (
+            Vec<(Symbol, Span)>,
+            Vec<(Symbol, Span)>,
+        ) = private_fields.iter().partition_map(|field| {
+            match used_fields.iter().find(|used_field| field.name == used_field.ident.name) {
+                Some(used_field) => Either::Left((field.name, used_field.span)),
+                None => Either::Right((field.name, self.tcx.def_span(field.did))),
+            }
+        });
+        let remaining_private_fields_len = remaining_private_fields.len();
+        err.span_labels(used_private_fields.iter().map(|(_, span)| *span), "private field");
+        err.span_note(
+            MultiSpan::from_spans(remaining_private_fields.iter().map(|(_, span)| *span).collect()),
+            format!(
+                "missing field{s} {names}{are} private",
+                s = pluralize!(remaining_private_fields_len),
+                are = pluralize!("is", remaining_private_fields_len),
+                names = field_names(
+                    remaining_private_fields.iter().map(|(name, _)| *name).collect(),
+                    remaining_private_fields_len
+                )
+            ),
+        );
+        err.emit();
     }
 
     fn report_unknown_field(

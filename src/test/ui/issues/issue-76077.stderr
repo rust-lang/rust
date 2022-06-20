@@ -1,8 +1,14 @@
-error: cannot construct `Foo` with struct literal syntax due to inaccessible fields
+error: cannot construct `Foo` with struct literal syntax due to private fields
   --> $DIR/issue-76077.rs:8:5
    |
 LL |     foo::Foo {};
    |     ^^^^^^^^
+   |
+note: missing field `you_cant_use_this_field` is private
+  --> $DIR/issue-76077.rs:3:9
+   |
+LL |         you_cant_use_this_field: bool,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
