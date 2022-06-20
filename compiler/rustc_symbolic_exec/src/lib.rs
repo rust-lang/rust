@@ -21,6 +21,7 @@ use rustc_data_structures::graph::WithSuccessors;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::terminator::TerminatorKind;
 use rustc_middle::mir::BasicBlock;
+use rustc_middle::mir::BinOp;
 use rustc_middle::mir::Body;
 use rustc_middle::mir::Local;
 use rustc_middle::mir::Operand;
@@ -29,7 +30,6 @@ use rustc_middle::mir::ProjectionElem;
 use rustc_middle::mir::Rvalue;
 use rustc_middle::mir::StatementKind;
 use rustc_middle::mir::UnOp;
-use rustc_middle::mir::BinOp;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -263,7 +263,9 @@ fn get_entry_condition<'a>(
                         }
                     }
                     if targets.iter().len() != 1 {
-                        debug!("SwitchInt with more than 1 non-other value is not currently supported")
+                        debug!(
+                            "SwitchInt with more than 1 non-other value is not currently supported"
+                        )
                     }
                     match discr {
                         Operand::Copy(place) => {
@@ -407,7 +409,10 @@ fn get_entry_condition<'a>(
     return entry_condition;
 }
 
-fn get_var_for_int_operand<'a>(solver: &'a Solver<'_>, operand: &'a Operand<'_>) -> Option<Int<'a>> {
+fn get_var_for_int_operand<'a>(
+    solver: &'a Solver<'_>,
+    operand: &'a Operand<'_>,
+) -> Option<Int<'a>> {
     let operand_var;
     match operand {
         Operand::Copy(rvalue_place) => {
@@ -436,7 +441,10 @@ fn get_var_for_int_operand<'a>(solver: &'a Solver<'_>, operand: &'a Operand<'_>)
     return operand_var;
 }
 
-fn get_var_for_bool_operand<'a>(solver: &'a Solver<'_>, operand: &'a Operand<'_>) -> Option<Bool<'a>> {
+fn get_var_for_bool_operand<'a>(
+    solver: &'a Solver<'_>,
+    operand: &'a Operand<'_>,
+) -> Option<Bool<'a>> {
     let operand_var;
     match operand {
         Operand::Copy(rvalue_place) => {
@@ -499,15 +507,27 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
                             Rvalue::Use(operand) => {
                                 debug!("{:?} is a Use", assignment);
                                 if body.local_decls[lvalue_place.local].ty.to_string() == "i32" {
-                                    let lvalue_var = ast::Int::new_const(solver.get_context(), get_var_name_from_place(lvalue_place));
-                                    if let Some(operand_var) = get_var_for_int_operand(&solver, operand) {
+                                    let lvalue_var = ast::Int::new_const(
+                                        solver.get_context(),
+                                        get_var_name_from_place(lvalue_place),
+                                    );
+                                    if let Some(operand_var) =
+                                        get_var_for_int_operand(&solver, operand)
+                                    {
                                         let rvalue_var = operand_var;
                                         let assignment = lvalue_var._eq(&rvalue_var);
                                         node_var = assignment.implies(&node_var);
                                     }
-                                } else if body.local_decls[lvalue_place.local].ty.to_string() == "bool" {
-                                    let lvalue_var = ast::Bool::new_const(solver.get_context(), get_var_name_from_place(lvalue_place));
-                                    if let Some(operand_var) = get_var_for_bool_operand(&solver, operand) {
+                                } else if body.local_decls[lvalue_place.local].ty.to_string()
+                                    == "bool"
+                                {
+                                    let lvalue_var = ast::Bool::new_const(
+                                        solver.get_context(),
+                                        get_var_name_from_place(lvalue_place),
+                                    );
+                                    if let Some(operand_var) =
+                                        get_var_for_bool_operand(&solver, operand)
+                                    {
                                         let rvalue_var = operand_var;
                                         let assignment = lvalue_var._eq(&rvalue_var);
                                         node_var = assignment.implies(&node_var);
@@ -518,7 +538,6 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
                                         body.local_decls[lvalue_place.local].ty.to_string()
                                     );
                                 }
-
                             }
                             Rvalue::Repeat(..) => {
                                 debug!("{:?} is a Repeat which we do not support yet", assignment);
@@ -552,19 +571,19 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
                                     match bin_op {
                                         BinOp::Add => {
                                             let lvalue_var = ast::Int::new_const(solver.get_context(), get_var_name_from_place(lvalue_place));
-                                            let rvalue_var = Int::add(solver.get_context(), &[&operand1_var, &operand2_var]);
+                                            let rvalue_var = ast::Int::add(solver.get_context(), &[&operand1_var, &operand2_var]);
                                             let assignment = lvalue_var._eq(&rvalue_var);
                                             node_var = assignment.implies(&node_var);
                                         }
                                         BinOp::Sub => {
                                             let lvalue_var = ast::Int::new_const(solver.get_context(), get_var_name_from_place(lvalue_place));
-                                            let rvalue_var = Int::sub(solver.get_context(), &[&operand1_var, &operand2_var]);
+                                            let rvalue_var = ast::Int::sub(solver.get_context(), &[&operand1_var, &operand2_var]);
                                             let assignment = lvalue_var._eq(&rvalue_var);
                                             node_var = assignment.implies(&node_var);
                                         }
                                         BinOp::Mul => {
                                             let lvalue_var = ast::Int::new_const(solver.get_context(), get_var_name_from_place(lvalue_place));
-                                            let rvalue_var = Int::mul(solver.get_context(), &[&operand1_var, &operand2_var]);
+                                            let rvalue_var = ast::Int::mul(solver.get_context(), &[&operand1_var, &operand2_var]);
                                             let assignment = lvalue_var._eq(&rvalue_var);
                                             node_var = assignment.implies(&node_var);
                                         }
@@ -620,7 +639,7 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
                                     match bin_op {
                                         BinOp::Add => {
                                             let lvalue_var1 = ast::Int::new_const(solver.get_context(), format!("{}_0", get_var_name_from_place(lvalue_place)));
-                                            let rvalue_var1 = Int::add(solver.get_context(), &[&operand1_var, &operand2_var]);
+                                            let rvalue_var1 = ast::Int::add(solver.get_context(), &[&operand1_var, &operand2_var]);
                                             let assignment1 = lvalue_var1._eq(&rvalue_var1);
 
                                             let lvalue_var2 = ast::Bool::new_const(solver.get_context(), format!("{}_1", get_var_name_from_place(lvalue_place)));
@@ -641,7 +660,7 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
                                         }
                                         BinOp::Sub => {
                                             let lvalue_var1 = ast::Int::new_const(solver.get_context(), format!("{}_0", get_var_name_from_place(lvalue_place)));
-                                            let rvalue_var1 = Int::sub(solver.get_context(), &[&operand1_var, &operand2_var]);
+                                            let rvalue_var1 = ast::Int::sub(solver.get_context(), &[&operand1_var, &operand2_var]);
                                             let assignment1 = lvalue_var1._eq(&rvalue_var1);
 
                                             let lvalue_var2 = ast::Bool::new_const(solver.get_context(), format!("{}_1", get_var_name_from_place(lvalue_place)));
@@ -662,7 +681,7 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
                                         }
                                         BinOp::Mul => {
                                             let lvalue_var1 = ast::Int::new_const(solver.get_context(), format!("{}_0", get_var_name_from_place(lvalue_place)));
-                                            let rvalue_var1 = Int::mul(solver.get_context(), &[&operand1_var, &operand2_var]);
+                                            let rvalue_var1 = ast::Int::mul(solver.get_context(), &[&operand1_var, &operand2_var]);
                                             let assignment1 = lvalue_var1._eq(&rvalue_var1);
 
                                             let lvalue_var2 = ast::Bool::new_const(solver.get_context(), format!("{}_1", get_var_name_from_place(lvalue_place)));
@@ -699,31 +718,59 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
                                 debug!("{:?} is a UnaryOp", assignment);
                                 match unary_op {
                                     UnOp::Not => {
-                                        if body.local_decls[lvalue_place.local].ty.to_string() == "bool" {
-                                            let lvalue_var = ast::Bool::new_const(solver.get_context(), get_var_name_from_place(lvalue_place));
-                                            if let Some(operand_var) = get_var_for_bool_operand(&solver, operand) {
+                                        if body.local_decls[lvalue_place.local].ty.to_string()
+                                            == "bool"
+                                        {
+                                            let lvalue_var = ast::Bool::new_const(
+                                                solver.get_context(),
+                                                get_var_name_from_place(lvalue_place),
+                                            );
+                                            if let Some(operand_var) =
+                                                get_var_for_bool_operand(&solver, operand)
+                                            {
                                                 let rvalue_var = operand_var.not();
                                                 let assignment = lvalue_var._eq(&rvalue_var);
                                                 node_var = assignment.implies(&node_var);
                                             }
                                         } else {
-                                            debug!("Not operator is only supported on bool types and not on {} types", body.local_decls[lvalue_place.local].ty.to_string());
+                                            debug!(
+                                                "Not operator is only supported on bool types and not on {} types",
+                                                body.local_decls[lvalue_place.local].ty.to_string()
+                                            );
                                         }
-                                    },
+                                    }
+                                    // FIXME: Why is there no checked negation? Also, Z3 has unary_minus
                                     UnOp::Neg => {
-                                        if body.local_decls[lvalue_place.local].ty.to_string() == "i32" {
-                                            let lvalue_var = ast::Int::new_const(solver.get_context(), get_var_name_from_place(lvalue_place));
+                                        if body.local_decls[lvalue_place.local].ty.to_string()
+                                            == "i32"
+                                        {
+                                            let lvalue_var = ast::Int::new_const(
+                                                solver.get_context(),
+                                                get_var_name_from_place(lvalue_place),
+                                            );
                                             let neg_one = ast::Int::from_bv(
-                                                &ast::BV::from_i64(solver.get_context(), (-1).into(), 32),
+                                                &ast::BV::from_i64(
+                                                    solver.get_context(),
+                                                    (-1).into(),
+                                                    32,
+                                                ),
                                                 true,
                                             );
-                                            if let Some(operand_var) = get_var_for_int_operand(&solver, operand) {
-                                                let rvalue_var = ast::Int::mul(solver.get_context(), &[&neg_one, &operand_var]);
+                                            if let Some(operand_var) =
+                                                get_var_for_int_operand(&solver, operand)
+                                            {
+                                                let rvalue_var = ast::Int::mul(
+                                                    solver.get_context(),
+                                                    &[&neg_one, &operand_var],
+                                                );
                                                 let assignment = lvalue_var._eq(&rvalue_var);
                                                 node_var = assignment.implies(&node_var);
                                             }
                                         } else {
-                                            debug!("Not operator is only supported on i32 types and not on {} types", body.local_decls[lvalue_place.local].ty.to_string());
+                                            debug!(
+                                                "Not operator is only supported on i32 types and not on {} types",
+                                                body.local_decls[lvalue_place.local].ty.to_string()
+                                            );
                                         }
                                     }
                                 }
@@ -794,6 +841,20 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
         solver.assert(&named_node_var._eq(&node_var));
     }
 
+    // FIXME: constrain int inputs
+    // for i in 0..body.arg_count {
+    //     let arg = ast::Int::new_const(&solver.get_context(), format!("_{}", (i + 1).to_string()));
+    //     let min_int = ast::Int::from_bv(
+    //         &ast::BV::from_i64(solver.get_context(), i32::MIN.into(), 32),
+    //         true,
+    //     );
+    //     let max_int = ast::Int::from_bv(
+    //         &ast::BV::from_i64(solver.get_context(), i32::MAX.into(), 32),
+    //         true,
+    //     );
+    //     solver.assert(&ast::Bool::and(solver.get_context(), &[&arg.ge(&min_int), &arg.le(&max_int)]));
+    // }
+
     // let panic_var = ast::Bool::new_const(solver.get_context(), PANIC_VAR_NAME);
     // let panic_value = ast::Bool::from_bool(solver.get_context(), false);
     // let panic_assignment = panic_var._eq(&panic_value);
@@ -816,6 +877,48 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
         debug!("{}: {:?}", arg, arg_value);
     }
     "Done backward symbolic exec\n".to_string()
+}
+
+fn playground() -> String {
+    let cfg = Config::new();
+    let ctx = Context::new(&cfg);
+    let solver = Solver::new(&ctx);
+
+    let min_int = ast::Int::from_bv(
+        &ast::BV::from_i64(solver.get_context(), i32::MIN.into(), 32),
+        true,
+    );
+    let max_int = ast::Int::from_bv(
+        &ast::BV::from_i64(solver.get_context(), i32::MAX.into(), 32),
+        true,
+    );
+    let ten = ast::Int::from_bv(
+        &ast::BV::from_i64(solver.get_context(), 10.into(), 32),
+        true,
+    );
+    let dx = ast::Int::new_const(solver.get_context(), "dx");
+    let dy = ast::Int::new_const(solver.get_context(), "dy");
+    solver.assert(&dx._eq(&Int::add(solver.get_context(), &[&max_int, &ten])));
+    solver.assert(&dy._eq(&Int::sub(solver.get_context(), &[&min_int, &ten])));
+
+    debug!("Resolved value: {:?}", solver.check());
+    let dx_val = if solver.check() == SatResult::Sat {
+        let model = solver.get_model().unwrap();
+        Some(model.eval(&dx, true).unwrap().as_i64().unwrap())
+    } else {
+        None
+    };
+    debug!("{}: {:?}", dx, dx_val);
+
+    let dy_val = if solver.check() == SatResult::Sat {
+        let model = solver.get_model().unwrap();
+        Some(model.eval(&dy, true).unwrap().as_i64().unwrap())
+    } else {
+        None
+    };
+    debug!("{}: {:?}", dy, dy_val);
+
+    return "playground done".to_string();
 }
 
 fn mir_symbolic_exec<'tcx>(tcx: TyCtxt<'tcx>, _def: ty::WithOptConstParam<LocalDefId>) -> () {
@@ -842,4 +945,6 @@ fn mir_symbolic_exec<'tcx>(tcx: TyCtxt<'tcx>, _def: ty::WithOptConstParam<LocalD
     // debug!("running unsatisfiable example Z3");
     // example_unsat_z3();
     // debug!("example Z3 done");
+
+    debug!("{}", playground());    
 }
