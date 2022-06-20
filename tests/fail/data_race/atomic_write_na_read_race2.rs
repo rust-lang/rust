@@ -16,7 +16,9 @@ pub fn main() {
     let b = &mut a as *mut AtomicUsize;
     let c = EvilSend(b);
     unsafe {
-        let j1 = spawn(move || *(c.0 as *mut usize));
+        let j1 = spawn(move || {
+            let _val = *(c.0 as *mut usize);
+        });
 
         let j2 = spawn(move || {
             //Equivalent to: (&*c.0).store(32, Ordering::SeqCst)
