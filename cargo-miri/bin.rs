@@ -957,7 +957,10 @@ fn phase_runner(binary: &Path, binary_args: env::Args, phase: RunnerPhase) {
             // to emit the diagnostic structure that Cargo would consume from rustc to emit colored
             // diagnostics, and ask rustc to emit them.
             // See https://github.com/rust-lang/miri/issues/2037
-            if arg.split(',').any(|a| a == "diagnostic-rendered-ansi") {
+            // First skip over the leading `=`, then check for diagnostic-rendered-ansi in the
+            // comma-separated list
+            if suffix.strip_prefix('=').unwrap().split(',').any(|a| a == "diagnostic-rendered-ansi")
+            {
                 cmd.arg("--color=always");
             }
             // But aside from remembering that colored output was requested, drop this argument.
