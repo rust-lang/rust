@@ -4,7 +4,7 @@ error[E0109]: type arguments are not allowed on type parameter `Irrelevant`
 LL | #[derive(Debug)]
    |          -----
    |          |
-   |          not allowed on this
+   |          not allowed on type parameter `Irrelevant`
    |          in this derive macro expansion
 LL | pub struct Irrelevant<Irrelevant> {
    |                       ^^^^^^^^^^ type argument not allowed
