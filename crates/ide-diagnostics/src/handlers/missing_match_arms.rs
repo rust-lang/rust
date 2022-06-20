@@ -11,7 +11,7 @@ pub(crate) fn missing_match_arms(
 ) -> Diagnostic {
     Diagnostic::new(
         "missing-match-arm",
-        "missing match arm",
+        format!("missing match arm: {}", d.uncovered_patterns),
         ctx.sema.diagnostics_display_range(InFile::new(d.file, d.match_expr.clone().into())).range,
     )
 }
@@ -31,9 +31,9 @@ mod tests {
             r#"
 fn main() {
     match () { }
-        //^^ error: missing match arm
+        //^^ error: missing match arm: type `()` is non-empty
     match (()) { }
-        //^^^^ error: missing match arm
+        //^^^^ error: missing match arm: type `()` is non-empty
 
     match () { _ => (), }
     match () { () => (), }
@@ -49,7 +49,7 @@ fn main() {
             r#"
 fn main() {
     match ((), ()) { }
-        //^^^^^^^^ error: missing match arm
+        //^^^^^^^^ error: missing match arm: type `((), ())` is non-empty
 
     match ((), ()) { ((), ()) => (), }
 }
@@ -63,21 +63,21 @@ fn main() {
             r#"
 fn test_main() {
     match false { }
-        //^^^^^ error: missing match arm
+        //^^^^^ error: missing match arm: type `bool` is non-empty
     match false { true => (), }
-        //^^^^^ error: missing match arm
+        //^^^^^ error: missing match arm: `false` not covered
     match (false, true) {}
-        //^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^ error: missing match arm: type `(bool, bool)` is non-empty
     match (false, true) { (true, true) => (), }
-        //^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^ error: missing match arm: `(false, _)` not covered
     match (false, true) {
-        //^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^ error: missing match arm: `(true, true)` not covered
         (false, true) => (),
         (false, false) => (),
         (true, false) => (),
     }
     match (false, true) { (true, _x) => (), }
-        //^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^ error: missing match arm: `(false, _)` not covered
 
     match false { true => (), false => (), }
     match (false, true) {
@@ -116,11 +116,11 @@ fn test_main() {
             r#"
 fn main() {
     match (false, ((), false)) {}
-        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm: type `(bool, ((), bool))` is non-empty
     match (false, ((), false)) { (true, ((), true)) => (), }
-        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm: `(false, _)` not covered
     match (false, ((), false)) { (true, _) => (), }
-        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm: `(false, _)` not covered
 
     match (false, ((), false)) {
         (true, ((), true)) => (),
@@ -146,12 +146,12 @@ enum Either { A, B, }
 
 fn main() {
     match Either::A { }
-        //^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^ error: missing match arm: `A` and `B` not covered
     match Either::B { Either::A => (), }
-        //^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^ error: missing match arm: `B` not covered
 
     match &Either::B {
-        //^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^ error: missing match arm: `&B` not covered
         Either::A => (),
     }
 
@@ -174,9 +174,9 @@ enum Either { A(bool), B }
 
 fn main() {
     match Either::B { }
-        //^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^ error: missing match arm: `A(_)` and `B` not covered
     match Either::B {
-        //^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^ error: missing match arm: `A(false)` not covered
         Either::A(true) => (), Either::B => ()
     }
 
@@ -207,7 +207,7 @@ enum Either { A(bool), B(bool, bool) }
 
 fn main() {
     match Either::A(false) {
-        //^^^^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^^^^ error: missing match arm: `B(true, _)` not covered
         Either::A(_) => (),
         Either::B(false, _) => (),
     }
@@ -353,7 +353,7 @@ fn main() {
         Either::A => (),
     }
     match loop { break Foo::A } {
-        //^^^^^^^^^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^^^^^^^^^ error: missing match arm: `B` not covered
         Either::A => (),
     }
     match loop { break Foo::A } {
@@ -391,9 +391,9 @@ enum Either { A { foo: bool }, B }
 fn main() {
     let a = Either::A { foo: true };
     match a { }
-        //^ error: missing match arm
+        //^ error: missing match arm: `A { .. }` and `B` not covered
     match a { Either::A { foo: true } => () }
-        //^ error: missing match arm
+        //^ error: missing match arm: `B` not covered
     match a {
         Either::A { } => (),
       //^^^^^^^^^ 💡 error: missing structure fields:
@@ -401,7 +401,7 @@ fn main() {
         Either::B => (),
     }
     match a {
-        //^ error: missing match arm
+        //^ error: missing match arm: `B` not covered
         Either::A { } => (),
     } //^^^^^^^^^ 💡 error: missing structure fields:
       //        | - foo
@@ -432,7 +432,7 @@ enum Either {
 fn main() {
     let a = Either::A { foo: true, bar: () };
     match a {
-        //^ error: missing match arm
+        //^ error: missing match arm: `B` not covered
         Either::A { bar: (), foo: false } => (),
         Either::A { foo: true, bar: () } => (),
     }
@@ -459,12 +459,12 @@ enum Either {
 fn main() {
     let a = Either::B;
     match a {
-        //^ error: missing match arm
+        //^ error: missing match arm: `A { foo: false, .. }` not covered
         Either::A { foo: true, .. } => (),
         Either::B => (),
     }
     match a {
-        //^ error: missing match arm
+        //^ error: missing match arm: `B` not covered
         Either::A { .. } => (),
     }
 
@@ -494,14 +494,14 @@ enum Either {
 
 fn main() {
     match Either::B {
-        //^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^ error: missing match arm: `A(false, _, _, true)` not covered
         Either::A(true, .., true) => (),
         Either::A(true, .., false) => (),
         Either::A(false, .., false) => (),
         Either::B => (),
     }
     match Either::B {
-        //^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^ error: missing match arm: `A(false, _, _, false)` not covered
         Either::A(true, .., true) => (),
         Either::A(true, .., false) => (),
         Either::A(.., true) => (),
@@ -538,7 +538,7 @@ fn enum_(never: Never) {
 }
 fn enum_ref(never: &Never) {
     match never {}
-        //^^^^^ error: missing match arm
+        //^^^^^ error: missing match arm: type `&Never` is non-empty
 }
 fn bang(never: !) {
     match never {}
@@ -562,7 +562,7 @@ fn main() {
         Some(never) => match never {},
     }
     match Option::<Never>::None {
-        //^^^^^^^^^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^^^^^^^^^ error: missing match arm: `None` not covered
         Option::Some(_never) => {},
     }
 }
@@ -576,7 +576,7 @@ fn main() {
             r#"
 fn main() {
     match (false, true, false) {
-        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm: `(true, _, _)` not covered
         (false, ..) => (),
     }
 }"#,
@@ -589,7 +589,7 @@ fn main() {
             r#"
 fn main() {
     match (false, true, false) {
-        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm: `(_, _, true)` not covered
         (.., false) => (),
     }
 }"#,
@@ -602,7 +602,7 @@ fn main() {
             r#"
 fn main() {
     match (false, true, false) {
-        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^^^^^^^^^^^^ error: missing match arm: `(false, _, _)` not covered
         (true, .., false) => (),
     }
 }"#,
@@ -615,11 +615,11 @@ fn main() {
             r#"struct Foo { a: bool }
 fn main(f: Foo) {
     match f {}
-        //^ error: missing match arm
+        //^ error: missing match arm: type `Foo` is non-empty
     match f { Foo { a: true } => () }
-        //^ error: missing match arm
+        //^ error: missing match arm: `Foo { a: false }` not covered
     match &f { Foo { a: true } => () }
-        //^^ error: missing match arm
+        //^^ error: missing match arm: `&Foo { a: false }` not covered
     match f { Foo { a: _ } => () }
     match f {
         Foo { a: true } => (),
@@ -640,9 +640,9 @@ fn main(f: Foo) {
             r#"struct Foo(bool);
 fn main(f: Foo) {
     match f {}
-        //^ error: missing match arm
+        //^ error: missing match arm: type `Foo` is non-empty
     match f { Foo(true) => () }
-        //^ error: missing match arm
+        //^ error: missing match arm: `Foo(false)` not covered
     match f {
         Foo(true) => (),
         Foo(false) => (),
@@ -658,7 +658,7 @@ fn main(f: Foo) {
             r#"struct Foo;
 fn main(f: Foo) {
     match f {}
-        //^ error: missing match arm
+        //^ error: missing match arm: type `Foo` is non-empty
     match f { Foo => () }
 }
 "#,
@@ -671,9 +671,9 @@ fn main(f: Foo) {
             r#"struct Foo { foo: bool, bar: bool }
 fn main(f: Foo) {
     match f { Foo { foo: true, .. } => () }
-        //^ error: missing match arm
+        //^ error: missing match arm: `Foo { foo: false, .. }` not covered
     match f {
-        //^ error: missing match arm
+        //^ error: missing match arm: `Foo { foo: false, bar: true }` not covered
         Foo { foo: true, .. } => (),
         Foo { bar: false, .. } => ()
     }
@@ -694,7 +694,7 @@ fn main(f: Foo) {
 fn main() {
     enum Either { A(bool), B }
     match Either::B {
-        //^^^^^^^^^ error: missing match arm
+        //^^^^^^^^^ error: missing match arm: `B` not covered
         Either::A(true | false) => (),
     }
 }
@@ -716,7 +716,7 @@ fn main(v: S) {
     match v { S{..}       => {} }
     match v { _           => {} }
     match v { }
-        //^ error: missing match arm
+        //^ error: missing match arm: type `S` is non-empty
 }
 "#,
         );
@@ -732,7 +732,7 @@ fn main() {
         false     => {}
     }
     match true { _x @ true => {} }
-        //^^^^ error: missing match arm
+        //^^^^ error: missing match arm: `false` not covered
 }
 "#,
         );
@@ -787,12 +787,12 @@ use lib::E;
 fn main() {
     match E::A { _ => {} }
     match E::A {
-        //^^^^ error: missing match arm
+        //^^^^ error: missing match arm: `_` not covered
         E::A => {}
         E::B => {}
     }
     match E::A {
-        //^^^^ error: missing match arm
+        //^^^^ error: missing match arm: `_` not covered
         E::A | E::B => {}
     }
 }
@@ -811,7 +811,7 @@ fn main() {
         false         => {}
     }
     match true {
-        //^^^^ error: missing match arm
+        //^^^^ error: missing match arm: `true` not covered
         true if false => {}
         false         => {}
     }
@@ -876,7 +876,7 @@ struct Next<T: Trait>(T::Projection);
 static __: () = {
     let n: Next<A> = Next(E::Foo);
     match n { Next(E::Foo) => {} }
-    //    ^ error: missing match arm
+    //    ^ error: missing match arm: `Next(Bar)` not covered
     match n { Next(E::Foo | E::Bar) => {} }
     match n { Next(E::Foo | _     ) => {} }
     match n { Next(_      | E::Bar) => {} }
@@ -919,7 +919,7 @@ enum Enum {
 
 fn f(ty: Enum) {
     match ty {
-        //^^ error: missing match arm
+        //^^ error: missing match arm: `Type3` not covered
         m!() => (),
     }
 
