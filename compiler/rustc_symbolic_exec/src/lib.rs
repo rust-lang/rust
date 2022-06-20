@@ -24,21 +24,21 @@ use rustc_middle::mir::terminator::TerminatorKind;
 use rustc_middle::mir::BasicBlock;
 use rustc_middle::mir::Body;
 use rustc_middle::mir::Local;
-use rustc_middle::mir::StatementKind;
 use rustc_middle::mir::Operand;
 use rustc_middle::mir::Place;
 use rustc_middle::mir::ProjectionElem;
 use rustc_middle::mir::Rvalue;
+use rustc_middle::mir::StatementKind;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 
 // use z3_example::{example_sat_z3, example_unsat_z3};
 // use crate::z3_builder::Z3Builder;
-use z3::{Config, Context, Solver};
 use z3::{
     ast::{self, Ast, Bool},
     SatResult,
 };
+use z3::{Config, Context, Solver};
 
 pub mod z3_builder;
 pub mod z3_example;
@@ -233,9 +233,7 @@ fn get_var_name_from_place<'a>(place: &'a Place<'_>) -> String {
     let mut var_name = format!("_{}", place.local.index().to_string());
     for projection in place.projection {
         match projection {
-            ProjectionElem::Field(field, _) => {
-                var_name = format!("{}_{}", var_name, field.index())
-            }
+            ProjectionElem::Field(field, _) => var_name = format!("{}_{}", var_name, field.index()),
             _ => {
                 debug!("Projection type {:?} not supported yet", projection);
             }
@@ -244,7 +242,12 @@ fn get_var_name_from_place<'a>(place: &'a Place<'_>) -> String {
     return var_name;
 }
 
-fn get_entry_condition<'a>(solver: &'a Solver<'_>, body: &'a Body<'_>, predecessor: &str, node: &str) -> Bool<'a> {
+fn get_entry_condition<'a>(
+    solver: &'a Solver<'_>,
+    body: &'a Body<'_>,
+    predecessor: &str,
+    node: &str,
+) -> Bool<'a> {
     let mut entry_condition = ast::Bool::from_bool(solver.get_context(), true);
     if let Ok(n) = predecessor.parse() {
         if let Some(terminator) = &body.basic_blocks()[BasicBlock::from_usize(n)].terminator {
@@ -260,34 +263,82 @@ fn get_entry_condition<'a>(solver: &'a Solver<'_>, body: &'a Body<'_>, predecess
                     match discr {
                         Operand::Copy(place) => {
                             if body.local_decls[place.local].ty.to_string() == "i32" {
-                                let typed_switch_value = ast::Int::from_bv(&ast::BV::from_u64(solver.get_context(), switch_value.try_into().unwrap(), 32), true);
-                                let switch_var = ast::Int::new_const(solver.get_context(), get_var_name_from_place(place));
+                                let typed_switch_value = ast::Int::from_bv(
+                                    &ast::BV::from_u64(
+                                        solver.get_context(),
+                                        switch_value.try_into().unwrap(),
+                                        32,
+                                    ),
+                                    true,
+                                );
+                                let switch_var = ast::Int::new_const(
+                                    solver.get_context(),
+                                    get_var_name_from_place(place),
+                                );
                                 entry_condition = switch_var._eq(&typed_switch_value);
                             } else if body.local_decls[place.local].ty.to_string() == "bool" {
-                                let typed_switch_value = ast::Bool::from_bool(solver.get_context(), switch_value != 0);
-                                let switch_var = ast::Bool::new_const(solver.get_context(), get_var_name_from_place(place));
+                                let typed_switch_value =
+                                    ast::Bool::from_bool(solver.get_context(), switch_value != 0);
+                                let switch_var = ast::Bool::new_const(
+                                    solver.get_context(),
+                                    get_var_name_from_place(place),
+                                );
                                 entry_condition = switch_var._eq(&typed_switch_value);
                             } else {
-                                debug!("Local Decl type {} not supported yet", body.local_decls[place.local].ty.to_string());
+                                debug!(
+                                    "Local Decl type {} not supported yet",
+                                    body.local_decls[place.local].ty.to_string()
+                                );
                             }
                         }
                         Operand::Move(place) => {
                             if body.local_decls[place.local].ty.to_string() == "i32" {
-                                let typed_switch_value = ast::Int::from_bv(&ast::BV::from_u64(solver.get_context(), switch_value.try_into().unwrap(), 32), true);
-                                let switch_var = ast::Int::new_const(solver.get_context(), get_var_name_from_place(place));
+                                let typed_switch_value = ast::Int::from_bv(
+                                    &ast::BV::from_u64(
+                                        solver.get_context(),
+                                        switch_value.try_into().unwrap(),
+                                        32,
+                                    ),
+                                    true,
+                                );
+                                let switch_var = ast::Int::new_const(
+                                    solver.get_context(),
+                                    get_var_name_from_place(place),
+                                );
                                 entry_condition = switch_var._eq(&typed_switch_value);
                             } else if body.local_decls[place.local].ty.to_string() == "bool" {
-                                let typed_switch_value = ast::Bool::from_bool(solver.get_context(), switch_value != 0);
-                                let switch_var = ast::Bool::new_const(solver.get_context(), get_var_name_from_place(place));
+                                let typed_switch_value =
+                                    ast::Bool::from_bool(solver.get_context(), switch_value != 0);
+                                let switch_var = ast::Bool::new_const(
+                                    solver.get_context(),
+                                    get_var_name_from_place(place),
+                                );
                                 entry_condition = switch_var._eq(&typed_switch_value);
                             } else {
-                                debug!("Local Decl type {} not supported yet", body.local_decls[place.local].ty.to_string());
+                                debug!(
+                                    "Local Decl type {} not supported yet",
+                                    body.local_decls[place.local].ty.to_string()
+                                );
                             }
                         }
-                        Operand::Constant( constant ) => {
+                        Operand::Constant(constant) => {
                             if let Some(value) = constant.literal.try_to_bits(Size::from_bits(16)) {
-                                let typed_switch_value = ast::Int::from_bv(&ast::BV::from_u64(solver.get_context(), switch_value.try_into().unwrap(), 32), true);
-                                let switch_var = ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), value.try_into().unwrap(), 32), true);
+                                let typed_switch_value = ast::Int::from_bv(
+                                    &ast::BV::from_u64(
+                                        solver.get_context(),
+                                        switch_value.try_into().unwrap(),
+                                        32,
+                                    ),
+                                    true,
+                                );
+                                let switch_var = ast::Int::from_bv(
+                                    &ast::BV::from_i64(
+                                        solver.get_context(),
+                                        value.try_into().unwrap(),
+                                        32,
+                                    ),
+                                    true,
+                                );
                                 entry_condition = switch_var._eq(&typed_switch_value);
                                 debug!("Found constant {}", value);
                             }
@@ -307,28 +358,38 @@ fn get_entry_condition<'a>(solver: &'a Solver<'_>, body: &'a Body<'_>, predecess
                     }
                     match cond {
                         Operand::Copy(place) => {
-                            let typed_switch_value = ast::Bool::from_bool(solver.get_context(), should_assert_hold);
-                            let switch_var = ast::Bool::new_const(solver.get_context(), get_var_name_from_place(place));
+                            let typed_switch_value =
+                                ast::Bool::from_bool(solver.get_context(), should_assert_hold);
+                            let switch_var = ast::Bool::new_const(
+                                solver.get_context(),
+                                get_var_name_from_place(place),
+                            );
                             // debug!("HELLO {:?}", get_var_name_from_place(place));
                             entry_condition = switch_var._eq(&typed_switch_value);
                         }
                         Operand::Move(place) => {
-                            let typed_switch_value = ast::Bool::from_bool(solver.get_context(), should_assert_hold);
-                            let switch_var = ast::Bool::new_const(solver.get_context(), get_var_name_from_place(place));
+                            let typed_switch_value =
+                                ast::Bool::from_bool(solver.get_context(), should_assert_hold);
+                            let switch_var = ast::Bool::new_const(
+                                solver.get_context(),
+                                get_var_name_from_place(place),
+                            );
                             // debug!("HELLO {:?}", get_var_name_from_place(place));
                             entry_condition = switch_var._eq(&typed_switch_value);
                         }
-                        Operand::Constant( constant ) => {
+                        Operand::Constant(constant) => {
                             if let Some(value) = constant.literal.try_to_bits(Size::from_bits(16)) {
-                                let typed_switch_value = ast::Bool::from_bool(solver.get_context(), should_assert_hold);
-                                let switch_var = ast::Bool::from_bool(solver.get_context(), value != 0);
+                                let typed_switch_value =
+                                    ast::Bool::from_bool(solver.get_context(), should_assert_hold);
+                                let switch_var =
+                                    ast::Bool::from_bool(solver.get_context(), value != 0);
                                 entry_condition = switch_var._eq(&typed_switch_value);
                                 debug!("found constant {}", value);
                             }
                         }
                     }
                 }
-                _ => ()
+                _ => (),
             }
         } else {
             debug!("\tNo terminator");
@@ -352,8 +413,10 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
         let mut successor_conditions = ast::Bool::from_bool(solver.get_context(), true);
         if let Some(successors) = forward_edges.get(&node) {
             for successor in successors {
-                let successor_var = ast::Bool::new_const(solver.get_context(), format!("node_{}", successor));
-                successor_conditions = ast::Bool::and(solver.get_context(), &[&successor_conditions, &successor_var]);
+                let successor_var =
+                    ast::Bool::new_const(solver.get_context(), format!("node_{}", successor));
+                successor_conditions =
+                    ast::Bool::and(solver.get_context(), &[&successor_conditions, &successor_var]);
             }
         }
         let mut node_var = successor_conditions;
@@ -376,53 +439,70 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
                             Rvalue::Use(..) => {
                                 // FIXME: Implement support
                                 debug!("{:?} is a Use", assignment);
-                            },
+                            }
                             Rvalue::Repeat(..) => {
                                 debug!("{:?} is a Repeat which we do not support yet", assignment);
-                            },
+                            }
                             Rvalue::Ref(..) => {
                                 debug!("{:?} is a Ref which we do not support yet", assignment);
-                            },
+                            }
                             Rvalue::ThreadLocalRef(..) => {
-                                debug!("{:?} is a ThreadLocalRef which we do not support yet", assignment);
-                            },
+                                debug!(
+                                    "{:?} is a ThreadLocalRef which we do not support yet",
+                                    assignment
+                                );
+                            }
                             Rvalue::AddressOf(..) => {
-                                debug!("{:?} is a AddressOf which we do not support yet", assignment);
-                            },
+                                debug!(
+                                    "{:?} is a AddressOf which we do not support yet",
+                                    assignment
+                                );
+                            }
                             Rvalue::Len(..) => {
                                 debug!("{:?} is a Len which we do not support yet", assignment);
-                            },
+                            }
                             Rvalue::Cast(..) => {
                                 debug!("{:?} is a Cast which we do not support yet", assignment);
-                            },
+                            }
                             Rvalue::BinaryOp(..) => {
                                 // FIXME: Implement support
                                 debug!("{:?} is a BinaryOp", assignment);
-                            },
+                            }
                             Rvalue::CheckedBinaryOp(..) => {
                                 // FIXME: Implement support
                                 debug!("{:?} is a CheckedBinaryOp", assignment);
-                            },
+                            }
                             Rvalue::NullaryOp(..) => {
-                                debug!("{:?} is a NullaryOp which we do not support yet", assignment);
-                            },
+                                debug!(
+                                    "{:?} is a NullaryOp which we do not support yet",
+                                    assignment
+                                );
+                            }
                             Rvalue::UnaryOp(..) => {
                                 // FIXME: Implement support
                                 debug!("{:?} is a UnaryOp", assignment);
-                            },
+                            }
                             Rvalue::Discriminant(..) => {
-                                debug!("{:?} is a Discriminant which we do not support yet", assignment);
-                            },
+                                debug!(
+                                    "{:?} is a Discriminant which we do not support yet",
+                                    assignment
+                                );
+                            }
                             Rvalue::Aggregate(..) => {
-                                debug!("{:?} is a Aggregate which we do not support yet", assignment);
-                            },
+                                debug!(
+                                    "{:?} is a Aggregate which we do not support yet",
+                                    assignment
+                                );
+                            }
                             Rvalue::ShallowInitBox(..) => {
-                                debug!("{:?} is a ShallowInitBox which we do not support yet", assignment);
-                            },
+                                debug!(
+                                    "{:?} is a ShallowInitBox which we do not support yet",
+                                    assignment
+                                );
+                            }
                         }
-
-                    },
-                    _ => ()
+                    }
+                    _ => (),
                 }
                 // if matches!(statement.kind, StatementKind::Assign(box)) {
                 //     let panic_var = ast::Bool::new_const(solver.get_context(), PANIC_VAR_NAME);
@@ -432,7 +512,6 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
                 // }
             }
         }
-
 
         // handle assign panic
         if let Ok(n) = node.parse() && body.basic_blocks()[BasicBlock::from_usize(n)].is_cleanup {

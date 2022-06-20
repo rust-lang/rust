@@ -94,8 +94,10 @@ impl Z3Builder<'_> {
 
     pub fn gen_const_int<'a>(&'a self, x_name: &'a str, x_int: i32) -> () {
         let x = ast::Int::new_const(self.solver.get_context(), x_name);
-        let unnamed_const =
-            ast::Int::from_bv(&ast::BV::from_i64(self.solver.get_context(), x_int.into(), 32), true);
+        let unnamed_const = ast::Int::from_bv(
+            &ast::BV::from_i64(self.solver.get_context(), x_int.into(), 32),
+            true,
+        );
 
         self.add_assertion(&x._eq(&unnamed_const));
     }
