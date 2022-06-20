@@ -4,7 +4,7 @@ error[E0109]: const arguments are not allowed on this type
 LL |     let x: usize<foo>;
    |            ----- ^^^ const argument not allowed
    |            |
-   |            not allowed on this
+   |            not allowed on this type
    |
 help: primitive type `usize` doesn't have generic parameters
    |

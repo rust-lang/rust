@@ -588,7 +588,7 @@ impl<K, V, S> HashMap<K, V, S> {
     ///
     /// If the returned iterator is dropped before being fully consumed, it
     /// drops the remaining key-value pairs. The returned iterator keeps a
-    /// mutable borrow on the vector to optimize its implementation.
+    /// mutable borrow on the map to optimize its implementation.
     ///
     /// # Examples
     ///
