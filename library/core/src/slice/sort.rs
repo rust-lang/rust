@@ -188,22 +188,25 @@ where
     // This binary heap respects the invariant `parent >= child`.
     let mut sift_down = |v: &mut [T], mut node| {
         loop {
-            // Children of `node`:
-            let left = 2 * node + 1;
-            let right = 2 * node + 2;
+            // Children of `node`.
+            let mut child = 2 * node + 1;
+            if child >= v.len() {
+                break;
+            }
 
             // Choose the greater child.
-            let greater =
-                if right < v.len() && is_less(&v[left], &v[right]) { right } else { left };
+            if child + 1 < v.len() && is_less(&v[child], &v[child + 1]) {
+                child += 1;
+            }
 
             // Stop if the invariant holds at `node`.
-            if greater >= v.len() || !is_less(&v[node], &v[greater]) {
+            if !is_less(&v[node], &v[child]) {
                 break;
             }
 
             // Swap `node` with the greater child, move one step down, and continue sifting.
-            v.swap(node, greater);
-            node = greater;
+            v.swap(node, child);
+            node = child;
         }
     };
 
