@@ -537,7 +537,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     return EvalResult::Allow;
                 }
 
-                //let suggestion = suggestion_for_allocator_api(self, def_id, span, feature);
                 EvalResult::Deny {
                     feature,
                     reason: reason.to_opt_reason(),
