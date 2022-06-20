@@ -133,27 +133,16 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
 
         let mut errors = Vec::new();
 
-        loop {
-            debug!("select: starting another iteration");
+        // Process pending obligations.
+        let outcome: Outcome<_, _> = self.predicates.process_obligations(&mut FulfillProcessor {
+            selcx,
+            register_region_obligations: self.register_region_obligations,
+        });
 
-            // Process pending obligations.
-            let outcome: Outcome<_, _> =
-                self.predicates.process_obligations(&mut FulfillProcessor {
-                    selcx,
-                    register_region_obligations: self.register_region_obligations,
-                });
-            debug!("select: outcome={:#?}", outcome);
+        // FIXME: if we kept the original cache key, we could mark projection
+        // obligations as complete for the projection cache here.
 
-            // FIXME: if we kept the original cache key, we could mark projection
-            // obligations as complete for the projection cache here.
-
-            errors.extend(outcome.errors.into_iter().map(to_fulfillment_error));
-
-            // If nothing new was added, no need to keep looping.
-            if outcome.stalled {
-                break;
-            }
-        }
+        errors.extend(outcome.errors.into_iter().map(to_fulfillment_error));
 
         debug!(
             "select({} predicates remaining, {} errors) done",
@@ -264,22 +253,16 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     type Obligation = PendingPredicateObligation<'tcx>;
     type Error = FulfillmentErrorCode<'tcx>;
 
-    /// Processes a predicate obligation and returns either:
-    /// - `Changed(v)` if the predicate is true, presuming that `v` are also true
-    /// - `Unchanged` if we don't have enough info to be sure
-    /// - `Error(e)` if the predicate does not hold
+    /// Identifies whether a predicate obligation needs processing.
     ///
     /// This is always inlined, despite its size, because it has a single
     /// callsite and it is called *very* frequently.
     #[inline(always)]
-    fn process_obligation(
-        &mut self,
-        pending_obligation: &mut Self::Obligation,
-    ) -> ProcessResult<Self::Obligation, Self::Error> {
+    fn needs_process_obligation(&self, pending_obligation: &Self::Obligation) -> bool {
         // If we were stalled on some unresolved variables, first check whether
         // any of them have been resolved; if not, don't bother doing more work
         // yet.
-        let change = match pending_obligation.stalled_on.len() {
+        match pending_obligation.stalled_on.len() {
             // Match arms are in order of frequency, which matters because this
             // code is so hot. 1 and 0 dominate; 2+ is fairly rare.
             1 => {
@@ -302,42 +285,18 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     false
                 })()
             }
-        };
-
-        if !change {
-            debug!(
-                "process_predicate: pending obligation {:?} still stalled on {:?}",
-                self.selcx.infcx().resolve_vars_if_possible(pending_obligation.obligation.clone()),
-                pending_obligation.stalled_on
-            );
-            return ProcessResult::Unchanged;
-        }
-
-        self.process_changed_obligations(pending_obligation)
-    }
-
-    fn process_backedge<'c, I>(
-        &mut self,
-        cycle: I,
-        _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>,
-    ) where
-        I: Clone + Iterator<Item = &'c PendingPredicateObligation<'tcx>>,
-    {
-        if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
-            debug!("process_child_obligations: coinductive match");
-        } else {
-            let cycle: Vec<_> = cycle.map(|c| c.obligation.clone()).collect();
-            self.selcx.infcx().report_overflow_error_cycle(&cycle);
         }
     }
-}
 
-impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
-    // The code calling this method is extremely hot and only rarely
-    // actually uses this, so move this part of the code
-    // out of that loop.
+    /// Processes a predicate obligation and returns either:
+    /// - `Changed(v)` if the predicate is true, presuming that `v` are also true
+    /// - `Unchanged` if we don't have enough info to be sure
+    /// - `Error(e)` if the predicate does not hold
+    ///
+    /// This is called much less often than `needs_process_obligation`, so we
+    /// never inline it.
     #[inline(never)]
-    fn process_changed_obligations(
+    fn process_obligation(
         &mut self,
         pending_obligation: &mut PendingPredicateObligation<'tcx>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
@@ -351,6 +310,8 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
             obligation.predicate =
                 self.selcx.infcx().resolve_vars_if_possible(obligation.predicate);
         }
+
+        let obligation = &pending_obligation.obligation;
 
         debug!(?obligation, ?obligation.cause, "process_obligation");
 
@@ -668,6 +629,23 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         }
     }
 
+    fn process_backedge<'c, I>(
+        &mut self,
+        cycle: I,
+        _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>,
+    ) where
+        I: Clone + Iterator<Item = &'c PendingPredicateObligation<'tcx>>,
+    {
+        if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
+            debug!("process_child_obligations: coinductive match");
+        } else {
+            let cycle: Vec<_> = cycle.map(|c| c.obligation.clone()).collect();
+            self.selcx.infcx().report_overflow_error_cycle(&cycle);
+        }
+    }
+}
+
+impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
     #[instrument(level = "debug", skip(self, obligation, stalled_on))]
     fn process_trait_obligation(
         &mut self,
