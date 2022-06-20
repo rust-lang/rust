@@ -3,8 +3,8 @@ error[E0599]: the method `f` exists for struct `S`, but its trait bounds were no
    |
 LL | struct S;
    | ---------
-   | |
-   | method `f` not found for this
+   | |      |
+   | |      method `f` not found for this struct
    | doesn't satisfy `<S as X>::Y<i32> = i32`
    | doesn't satisfy `S: M`
 ...

@@ -346,19 +346,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
 
-                if let Some(def) = actual.ty_adt_def() {
-                    if let Some(full_sp) = tcx.hir().span_if_local(def.did()) {
-                        let def_sp = tcx.sess.source_map().guess_head_span(full_sp);
-                        err.span_label(
-                            def_sp,
-                            format!(
-                                "{} `{}` not found {}",
-                                item_kind,
-                                item_name,
-                                if def.is_enum() && !is_method { "here" } else { "for this" }
-                            ),
-                        );
+                let ty_span = match actual.kind() {
+                    ty::Param(param_type) => {
+                        let generics = self.tcx.generics_of(self.body_id.owner.to_def_id());
+                        let type_param = generics.type_param(param_type, self.tcx);
+                        Some(self.tcx.def_span(type_param.def_id))
                     }
+                    ty::Adt(def, _) if def.did().is_local() => {
+                        tcx.def_ident_span(def.did()).map(|span| span)
+                    }
+                    _ => None,
+                };
+
+                if let Some(span) = ty_span {
+                    err.span_label(
+                        span,
+                        format!(
+                            "{item_kind} `{item_name}` not found for this {}",
+                            actual.prefix_string(self.tcx)
+                        ),
+                    );
                 }
 
                 if self.is_fn_ty(rcvr_ty, span) {
@@ -1951,9 +1958,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             };
             // Obtain the span for `param` and use it for a structured suggestion.
-            if let (Some(param), Some(table)) = (param_type, self.in_progress_typeck_results) {
-                let table_owner = table.borrow().hir_owner;
-                let generics = self.tcx.generics_of(table_owner.to_def_id());
+            if let Some(param) = param_type {
+                let generics = self.tcx.generics_of(self.body_id.owner.to_def_id());
                 let type_param = generics.type_param(param, self.tcx);
                 let hir = self.tcx.hir();
                 if let Some(def_id) = type_param.def_id.as_local() {

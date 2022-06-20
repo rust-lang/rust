@@ -3,8 +3,8 @@ error[E0599]: the method `clone` exists for struct `Bar<NotClone>`, but its trai
    |
 LL | struct Bar<T: Foo> {
    | ------------------
-   | |
-   | method `clone` not found for this
+   | |      |
+   | |      method `clone` not found for this struct
    | doesn't satisfy `Bar<NotClone>: Clone`
 ...
 LL | struct NotClone;
