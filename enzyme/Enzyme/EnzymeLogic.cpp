@@ -4027,25 +4027,6 @@ Function *EnzymeLogic::CreateForwardDiff(
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
                                   unnecessaryInstructions, gutils, TLI);
 
-  // set derivative of function arguments
-  auto newArgs = gutils->newFunc->arg_begin();
-
-  for (size_t i = 0; i < constant_args.size(); ++i) {
-    auto arg = constant_args[i];
-    switch (arg) {
-    case DIFFE_TYPE::DUP_ARG:
-    case DIFFE_TYPE::DUP_NONEED: {
-      newArgs += 1;
-      break;
-    }
-    case DIFFE_TYPE::CONSTANT:
-      break;
-    case DIFFE_TYPE::OUT_DIFF:
-      report_fatal_error("unsupported DIFFE_TYPE");
-    }
-    newArgs += 1;
-  }
-
   AdjointGenerator<const AugmentedReturn *> *maker;
 
   std::unique_ptr<const std::map<Instruction *, bool>> can_modref_map;
