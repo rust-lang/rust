@@ -2,8 +2,6 @@
 //!
 //! Actual logic is implemented in [`crate::completions::postfix`] and [`crate::completions::snippet`] respectively.
 
-use std::ops::Deref;
-
 // Feature: User Snippet Completions
 //
 // rust-analyzer allows the user to define custom (postfix)-snippets that may depend on items to be accessible for the current scope to be applicable.
@@ -146,8 +144,8 @@ impl Snippet {
         let (requires, snippet, description) = validate_snippet(snippet, description, requires)?;
         Some(Snippet {
             // Box::into doesn't work as that has a Copy bound 😒
-            postfix_triggers: postfix_triggers.iter().map(Deref::deref).map(Into::into).collect(),
-            prefix_triggers: prefix_triggers.iter().map(Deref::deref).map(Into::into).collect(),
+            postfix_triggers: postfix_triggers.iter().map(String::as_str).map(Into::into).collect(),
+            prefix_triggers: prefix_triggers.iter().map(String::as_str).map(Into::into).collect(),
             scope,
             snippet,
             description,

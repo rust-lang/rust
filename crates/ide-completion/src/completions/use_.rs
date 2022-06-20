@@ -5,9 +5,7 @@ use ide_db::{FxHashSet, SymbolKind};
 use syntax::{ast, AstNode};
 
 use crate::{
-    context::{
-        CompletionContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind, Qualified,
-    },
+    context::{CompletionContext, PathCompletionCtx, PathKind, Qualified},
     item::Builder,
     CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
@@ -15,20 +13,13 @@ use crate::{
 pub(crate) fn complete_use_tree(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    name_ref_ctx: &NameRefContext,
+    path_ctx: &PathCompletionCtx,
+    name_ref: &Option<ast::NameRef>,
 ) {
-    let (qualified, name_ref, use_tree_parent) = match name_ref_ctx {
-        NameRefContext {
-            kind:
-                NameRefKind::Path(PathCompletionCtx {
-                    kind: PathKind::Use,
-                    qualified,
-                    use_tree_parent,
-                    ..
-                }),
-            nameref,
-            ..
-        } => (qualified, nameref, use_tree_parent),
+    let (qualified, name_ref, use_tree_parent) = match path_ctx {
+        PathCompletionCtx { kind: PathKind::Use, qualified, use_tree_parent, .. } => {
+            (qualified, name_ref, use_tree_parent)
+        }
         _ => return,
     };
 
