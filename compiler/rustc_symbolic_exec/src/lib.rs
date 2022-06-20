@@ -946,5 +946,5 @@ fn mir_symbolic_exec<'tcx>(tcx: TyCtxt<'tcx>, _def: ty::WithOptConstParam<LocalD
     // example_unsat_z3();
     // debug!("example Z3 done");
 
-    debug!("{}", playground());    
+    debug!("{}", playground());
 }
