@@ -22,12 +22,15 @@ pub(crate) mod vis;
 
 use std::iter;
 
-use hir::{db::HirDatabase, known, ScopeDef};
+use hir::{known, ScopeDef};
 use ide_db::SymbolKind;
 use syntax::ast;
 
 use crate::{
-    context::Visible,
+    context::{
+        ItemListKind, NameContext, NameKind, NameRefContext, NameRefKind, PathKind, PatternContext,
+        TypeLocation, Visible,
+    },
     item::Builder,
     render::{
         const_::render_const,
@@ -42,22 +45,6 @@ use crate::{
     },
     CompletionContext, CompletionItem, CompletionItemKind,
 };
-
-fn module_or_attr(db: &dyn HirDatabase, def: ScopeDef) -> Option<ScopeDef> {
-    match def {
-        ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_attr(db) => Some(def),
-        ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => Some(def),
-        _ => None,
-    }
-}
-
-fn module_or_fn_macro(db: &dyn HirDatabase, def: ScopeDef) -> Option<ScopeDef> {
-    match def {
-        ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_fn_like(db) => Some(def),
-        ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => Some(def),
-        _ => None,
-    }
-}
 
 /// Represents an in-progress set of completions being built.
 #[derive(Debug, Default)]
@@ -179,6 +166,15 @@ impl Completions {
             return;
         }
         self.add(render_resolution_simple(RenderContext::new(ctx), local_name, resolution).build());
+    }
+
+    pub(crate) fn add_module(
+        &mut self,
+        ctx: &CompletionContext,
+        module: hir::Module,
+        local_name: hir::Name,
+    ) {
+        self.add_resolution(ctx, local_name, hir::ScopeDef::ModuleDef(module.into()));
     }
 
     pub(crate) fn add_macro(
@@ -436,4 +432,125 @@ fn enum_variants_with_paths(
             }
         }
     }
+}
+
+pub(super) fn complete_name(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    NameContext { name, kind }: &NameContext,
+) {
+    match kind {
+        NameKind::Const => {
+            item_list::trait_impl::complete_trait_impl_const(acc, ctx, name);
+        }
+        NameKind::Function => {
+            item_list::trait_impl::complete_trait_impl_fn(acc, ctx, name);
+        }
+        NameKind::IdentPat(pattern_ctx) => complete_patterns(acc, ctx, pattern_ctx),
+        NameKind::Module(mod_under_caret) => {
+            mod_::complete_mod(acc, ctx, mod_under_caret);
+        }
+        NameKind::TypeAlias => {
+            item_list::trait_impl::complete_trait_impl_type_alias(acc, ctx, name);
+        }
+        NameKind::RecordField => {
+            field::complete_field_list_record_variant(acc, ctx);
+        }
+        NameKind::ConstParam
+        | NameKind::Enum
+        | NameKind::MacroDef
+        | NameKind::MacroRules
+        | NameKind::Rename
+        | NameKind::SelfParam
+        | NameKind::Static
+        | NameKind::Struct
+        | NameKind::Trait
+        | NameKind::TypeParam
+        | NameKind::Union
+        | NameKind::Variant => (),
+    }
+}
+
+pub(super) fn complete_name_ref(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    NameRefContext { nameref, kind }: &NameRefContext,
+) {
+    match kind {
+        NameRefKind::Path(path_ctx) => {
+            flyimport::import_on_the_fly_path(acc, ctx, path_ctx);
+
+            match &path_ctx.kind {
+                PathKind::Expr { expr_ctx } => {
+                    expr::complete_expr_path(acc, ctx, path_ctx, expr_ctx);
+
+                    dot::complete_undotted_self(acc, ctx, path_ctx, expr_ctx);
+                    item_list::complete_item_list_in_expr(acc, ctx, path_ctx, expr_ctx);
+                    record::complete_record_expr_func_update(acc, ctx, path_ctx, expr_ctx);
+                    snippet::complete_expr_snippet(acc, ctx, path_ctx, expr_ctx);
+                }
+                PathKind::Type { location } => {
+                    r#type::complete_type_path(acc, ctx, path_ctx, location);
+
+                    match location {
+                        TypeLocation::TupleField => {
+                            field::complete_field_list_tuple_variant(acc, ctx, path_ctx);
+                        }
+                        TypeLocation::TypeAscription(ascription) => {
+                            r#type::complete_ascribed_type(acc, ctx, path_ctx, ascription);
+                        }
+                        TypeLocation::GenericArgList(_)
+                        | TypeLocation::TypeBound
+                        | TypeLocation::ImplTarget
+                        | TypeLocation::ImplTrait
+                        | TypeLocation::Other => (),
+                    }
+                }
+                PathKind::Attr { attr_ctx } => {
+                    attribute::complete_attribute_path(acc, ctx, path_ctx, attr_ctx);
+                }
+                PathKind::Derive { existing_derives } => {
+                    attribute::complete_derive_path(acc, ctx, path_ctx, existing_derives);
+                }
+                PathKind::Item { kind } => {
+                    item_list::complete_item_list(acc, ctx, path_ctx, kind);
+
+                    snippet::complete_item_snippet(acc, ctx, path_ctx, kind);
+                    if let ItemListKind::TraitImpl(impl_) = kind {
+                        item_list::trait_impl::complete_trait_impl_item_by_name(
+                            acc, ctx, path_ctx, nameref, impl_,
+                        );
+                    }
+                }
+                PathKind::Pat { .. } => {
+                    pattern::complete_pattern_path(acc, ctx, path_ctx);
+                }
+                PathKind::Vis { has_in_token } => {
+                    vis::complete_vis_path(acc, ctx, path_ctx, has_in_token);
+                }
+                PathKind::Use => {
+                    use_::complete_use_path(acc, ctx, path_ctx, nameref);
+                }
+            }
+        }
+        NameRefKind::DotAccess(dot_access) => {
+            flyimport::import_on_the_fly_dot(acc, ctx, dot_access);
+            dot::complete_dot(acc, ctx, dot_access);
+            postfix::complete_postfix(acc, ctx, dot_access);
+        }
+        NameRefKind::Keyword(item) => {
+            keyword::complete_for_and_where(acc, ctx, item);
+        }
+        NameRefKind::RecordExpr(record_expr) => {
+            record::complete_record_expr_fields(acc, ctx, record_expr);
+        }
+        NameRefKind::Pattern(pattern_ctx) => complete_patterns(acc, ctx, pattern_ctx),
+    }
+}
+
+fn complete_patterns(acc: &mut Completions, ctx: &CompletionContext, pattern_ctx: &PatternContext) {
+    flyimport::import_on_the_fly_pat(acc, ctx, pattern_ctx);
+    fn_param::complete_fn_param(acc, ctx, pattern_ctx);
+    pattern::complete_pattern(acc, ctx, pattern_ctx);
+    record::complete_record_pattern_fields(acc, ctx, pattern_ctx);
 }

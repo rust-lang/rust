@@ -4,61 +4,34 @@ use hir::ScopeDef;
 use ide_db::FxHashSet;
 
 use crate::{
-    context::{PathCompletionCtx, PathKind, Qualified},
+    context::{ExprCtx, PathCompletionCtx, Qualified},
     CompletionContext, Completions,
 };
 
 pub(crate) fn complete_expr_path(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    path_ctx: &PathCompletionCtx,
+    PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    &ExprCtx {
+        in_block_expr,
+        in_loop_body,
+        after_if_expr,
+        in_condition,
+        incomplete_let,
+        ref ref_expr_parent,
+        ref is_func_update,
+        ref innermost_ret_ty,
+        ref impl_,
+        ..
+    }: &ExprCtx,
 ) {
     let _p = profile::span("complete_expr_path");
     if !ctx.qualifier_ctx.none() {
         return;
     }
-    let (
-        qualified,
-        in_block_expr,
-        in_loop_body,
-        is_func_update,
-        after_if_expr,
-        wants_mut_token,
-        in_condition,
-        ty,
-        incomplete_let,
-        impl_,
-    ) = match path_ctx {
-        &PathCompletionCtx {
-            kind:
-                PathKind::Expr {
-                    in_block_expr,
-                    in_loop_body,
-                    after_if_expr,
-                    in_condition,
-                    incomplete_let,
-                    ref ref_expr_parent,
-                    ref is_func_update,
-                    ref innermost_ret_ty,
-                    ref impl_,
-                    ..
-                },
-            ref qualified,
-            ..
-        } => (
-            qualified,
-            in_block_expr,
-            in_loop_body,
-            is_func_update.is_some(),
-            after_if_expr,
-            ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false),
-            in_condition,
-            innermost_ret_ty,
-            incomplete_let,
-            impl_,
-        ),
-        _ => return,
-    };
+
+    let wants_mut_token =
+        ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false);
 
     let scope_def_applicable = |def| {
         use hir::{GenericParam::*, ModuleDef::*};
@@ -230,7 +203,7 @@ pub(crate) fn complete_expr_path(
                 }
             });
 
-            if !is_func_update {
+            if is_func_update.is_none() {
                 let mut add_keyword =
                     |kw, snippet| acc.add_keyword_snippet_expr(ctx, kw, snippet, incomplete_let);
 
@@ -270,7 +243,7 @@ pub(crate) fn complete_expr_path(
                     }
                 }
 
-                if let Some(ty) = ty {
+                if let Some(ty) = innermost_ret_ty {
                     add_keyword(
                         "return",
                         match (in_block_expr, ty.is_unit()) {

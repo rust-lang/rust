@@ -88,27 +88,16 @@ impl PathCompletionCtx {
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum PathKind {
     Expr {
-        in_block_expr: bool,
-        in_loop_body: bool,
-        after_if_expr: bool,
-        /// Whether this expression is the direct condition of an if or while expression
-        in_condition: bool,
-        incomplete_let: bool,
-        ref_expr_parent: Option<ast::RefExpr>,
-        is_func_update: Option<ast::RecordExpr>,
-        self_param: Option<hir::SelfParam>,
-        innermost_ret_ty: Option<hir::Type>,
-        impl_: Option<ast::Impl>,
+        expr_ctx: ExprCtx,
     },
     Type {
         location: TypeLocation,
     },
     Attr {
-        kind: AttrKind,
-        annotated_item_kind: Option<SyntaxKind>,
+        attr_ctx: AttrCtx,
     },
     Derive {
-        existing_derives: FxHashSet<hir::Macro>,
+        existing_derives: ExistingDerives,
     },
     /// Path in item position, that is inside an (Assoc)ItemList
     Item {
@@ -121,6 +110,29 @@ pub(super) enum PathKind {
         has_in_token: bool,
     },
     Use,
+}
+
+pub(crate) type ExistingDerives = FxHashSet<hir::Macro>;
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct AttrCtx {
+    pub(crate) kind: AttrKind,
+    pub(crate) annotated_item_kind: Option<SyntaxKind>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct ExprCtx {
+    pub(crate) in_block_expr: bool,
+    pub(crate) in_loop_body: bool,
+    pub(crate) after_if_expr: bool,
+    /// Whether this expression is the direct condition of an if or while expression
+    pub(crate) in_condition: bool,
+    pub(crate) incomplete_let: bool,
+    pub(crate) ref_expr_parent: Option<ast::RefExpr>,
+    pub(crate) is_func_update: Option<ast::RecordExpr>,
+    pub(crate) self_param: Option<hir::SelfParam>,
+    pub(crate) innermost_ret_ty: Option<hir::Type>,
+    pub(crate) impl_: Option<ast::Impl>,
 }
 
 /// Original file ast nodes

@@ -11,10 +11,10 @@ use syntax::{
 };
 
 use crate::context::{
-    CompletionContext, DotAccess, DotAccessKind, IdentContext, ItemListKind, LifetimeContext,
-    LifetimeKind, NameContext, NameKind, NameRefContext, NameRefKind, ParamKind, PathCompletionCtx,
-    PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx, TypeAscriptionTarget,
-    TypeLocation, COMPLETION_MARKER,
+    AttrCtx, CompletionContext, DotAccess, DotAccessKind, ExprCtx, IdentContext, ItemListKind,
+    LifetimeContext, LifetimeKind, NameContext, NameKind, NameRefContext, NameRefKind, ParamKind,
+    PathCompletionCtx, PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
+    TypeAscriptionTarget, TypeLocation, COMPLETION_MARKER,
 };
 
 impl<'a> CompletionContext<'a> {
@@ -765,16 +765,18 @@ impl<'a> CompletionContext<'a> {
             let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
 
             PathKind::Expr {
-                in_block_expr,
-                in_loop_body,
-                after_if_expr,
-                in_condition,
-                ref_expr_parent,
-                is_func_update,
-                innermost_ret_ty,
-                self_param,
-                incomplete_let,
-                impl_,
+                expr_ctx: ExprCtx {
+                    in_block_expr,
+                    in_loop_body,
+                    after_if_expr,
+                    in_condition,
+                    ref_expr_parent,
+                    is_func_update,
+                    innermost_ret_ty,
+                    self_param,
+                    incomplete_let,
+                    impl_,
+                },
             }
         };
         let make_path_kind_type = |ty: ast::Type| {
@@ -858,8 +860,10 @@ impl<'a> CompletionContext<'a> {
                             Some(attached.kind())
                         };
                         PathKind::Attr {
-                            kind,
-                            annotated_item_kind,
+                            attr_ctx: AttrCtx {
+                                kind,
+                                annotated_item_kind,
+                            }
                         }
                     },
                     ast::Visibility(it) => PathKind::Vis { has_in_token: it.in_token().is_some() },
@@ -914,7 +918,7 @@ impl<'a> CompletionContext<'a> {
         if path_ctx.is_trivial_path() {
             // fetch the full expression that may have qualifiers attached to it
             let top_node = match path_ctx.kind {
-                PathKind::Expr { in_block_expr: true, .. } => {
+                PathKind::Expr { expr_ctx: ExprCtx { in_block_expr: true, .. } } => {
                     parent.ancestors().find(|it| ast::PathExpr::can_cast(it.kind())).and_then(|p| {
                         let parent = p.parent()?;
                         if ast::StmtList::can_cast(parent.kind()) {

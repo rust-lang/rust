@@ -4,7 +4,7 @@ use syntax::ast::{self, Item};
 
 use crate::{CompletionContext, Completions};
 
-pub(crate) fn complete_special_keywords(
+pub(crate) fn complete_for_and_where(
     acc: &mut Completions,
     ctx: &CompletionContext,
     keyword_item: &ast::Item,
@@ -60,8 +60,6 @@ mod tests {
                 kw fn
                 kw impl
                 kw trait
-                sn pd
-                sn ppd
             "#]],
         );
     }

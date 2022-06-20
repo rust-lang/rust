@@ -1,34 +1,37 @@
 //! Completion of paths and keywords at item list position.
 
 use crate::{
-    completions::module_or_fn_macro,
-    context::{ItemListKind, PathCompletionCtx, PathKind, Qualified},
+    context::{ExprCtx, ItemListKind, PathCompletionCtx, Qualified},
     CompletionContext, Completions,
 };
 
 pub(crate) mod trait_impl;
 
-pub(crate) fn complete_item_list(
+pub(crate) fn complete_item_list_in_expr(
     acc: &mut Completions,
     ctx: &CompletionContext,
     path_ctx: &PathCompletionCtx,
+    expr_ctx: &ExprCtx,
+) {
+    if !expr_ctx.in_block_expr {
+        return;
+    }
+    if !path_ctx.is_trivial_path() {
+        return;
+    }
+    add_keywords(acc, ctx, None);
+}
+
+pub(crate) fn complete_item_list(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    kind: &ItemListKind,
 ) {
     let _p = profile::span("complete_item_list");
-    let qualified = match path_ctx {
-        PathCompletionCtx { kind: PathKind::Item { kind }, qualified, .. } => {
-            if path_ctx.is_trivial_path() {
-                add_keywords(acc, ctx, Some(kind));
-            }
-            qualified
-        }
-        PathCompletionCtx { kind: PathKind::Expr { in_block_expr: true, .. }, .. }
-            if path_ctx.is_trivial_path() =>
-        {
-            add_keywords(acc, ctx, None);
-            return;
-        }
-        _ => return,
-    };
+    if path_ctx.is_trivial_path() {
+        add_keywords(acc, ctx, Some(kind));
+    }
 
     match qualified {
         Qualified::With {
@@ -37,8 +40,14 @@ pub(crate) fn complete_item_list(
             ..
         } => {
             for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
-                if let Some(def) = module_or_fn_macro(ctx.db, def) {
-                    acc.add_resolution(ctx, name, def);
+                match def {
+                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_fn_like(ctx.db) => {
+                        acc.add_macro(ctx, m, name)
+                    }
+                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
+                        acc.add_module(ctx, m, name)
+                    }
+                    _ => (),
                 }
             }
 
@@ -48,10 +57,12 @@ pub(crate) fn complete_item_list(
         }
         Qualified::Absolute => acc.add_crate_roots(ctx),
         Qualified::No if ctx.qualifier_ctx.none() => {
-            ctx.process_all_names(&mut |name, def| {
-                if let Some(def) = module_or_fn_macro(ctx.db, def) {
-                    acc.add_resolution(ctx, name, def);
+            ctx.process_all_names(&mut |name, def| match def {
+                hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_fn_like(ctx.db) => {
+                    acc.add_macro(ctx, m, name)
                 }
+                hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => acc.add_module(ctx, m, name),
+                _ => (),
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }

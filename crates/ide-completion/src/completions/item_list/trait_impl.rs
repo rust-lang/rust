@@ -43,11 +43,8 @@ use syntax::{
 use text_edit::TextEdit;
 
 use crate::{
-    context::{
-        ItemListKind, NameContext, NameKind, NameRefContext, NameRefKind, PathCompletionCtx,
-        PathKind,
-    },
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
+    context::PathCompletionCtx, CompletionContext, CompletionItem, CompletionItemKind,
+    CompletionRelevance, Completions,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -58,17 +55,36 @@ enum ImplCompletionKind {
     Const,
 }
 
-pub(crate) fn complete_trait_impl_name(
+pub(crate) fn complete_trait_impl_const(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    NameContext { name, kind, .. }: &NameContext,
+    name: &Option<ast::Name>,
 ) -> Option<()> {
-    let kind = match kind {
-        NameKind::Const => ImplCompletionKind::Const,
-        NameKind::Function => ImplCompletionKind::Fn,
-        NameKind::TypeAlias => ImplCompletionKind::TypeAlias,
-        _ => return None,
-    };
+    complete_trait_impl_name(acc, ctx, name, ImplCompletionKind::Const)
+}
+
+pub(crate) fn complete_trait_impl_type_alias(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    name: &Option<ast::Name>,
+) -> Option<()> {
+    complete_trait_impl_name(acc, ctx, name, ImplCompletionKind::TypeAlias)
+}
+
+pub(crate) fn complete_trait_impl_fn(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    name: &Option<ast::Name>,
+) -> Option<()> {
+    complete_trait_impl_name(acc, ctx, name, ImplCompletionKind::Fn)
+}
+
+fn complete_trait_impl_name(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    name: &Option<ast::Name>,
+    kind: ImplCompletionKind,
+) -> Option<()> {
     let token = ctx.token.clone();
     let item = match name {
         Some(name) => name.syntax().parent(),
@@ -86,34 +102,28 @@ pub(crate) fn complete_trait_impl_name(
     Some(())
 }
 
-pub(crate) fn complete_trait_impl_name_ref(
+pub(crate) fn complete_trait_impl_item_by_name(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    name_ref_ctx: &NameRefContext,
-) -> Option<()> {
-    match name_ref_ctx {
-        NameRefContext {
-            nameref,
-            kind:
-                NameRefKind::Path(
-                    path_ctx @ PathCompletionCtx {
-                        kind: PathKind::Item { kind: ItemListKind::TraitImpl(Some(impl_)) },
-                        ..
-                    },
-                ),
-        } if path_ctx.is_trivial_path() => complete_trait_impl(
+    path_ctx: &PathCompletionCtx,
+    name_ref: &Option<ast::NameRef>,
+    impl_: &Option<ast::Impl>,
+) {
+    if !path_ctx.is_trivial_path() {
+        return;
+    }
+    if let Some(impl_) = impl_ {
+        complete_trait_impl(
             acc,
             ctx,
             ImplCompletionKind::All,
-            match nameref {
+            match name_ref {
                 Some(name) => name.syntax().text_range(),
                 None => ctx.source_range(),
             },
             impl_,
-        ),
-        _ => (),
+        );
     }
-    Some(())
 }
 
 fn complete_trait_impl(

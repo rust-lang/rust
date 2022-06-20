@@ -17,8 +17,7 @@ use syntax::{
 };
 
 use crate::{
-    completions::module_or_attr,
-    context::{CompletionContext, PathCompletionCtx, PathKind, Qualified},
+    context::{AttrCtx, CompletionContext, PathCompletionCtx, Qualified},
     item::CompletionItem,
     Completions,
 };
@@ -28,7 +27,7 @@ mod derive;
 mod lint;
 mod repr;
 
-pub(crate) use self::derive::complete_derive;
+pub(crate) use self::derive::complete_derive_path;
 
 /// Complete inputs to known builtin attributes as well as derive attributes
 pub(crate) fn complete_known_attribute_input(
@@ -69,19 +68,13 @@ pub(crate) fn complete_known_attribute_input(
     Some(())
 }
 
-pub(crate) fn complete_attribute(
+pub(crate) fn complete_attribute_path(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    path_ctx: &PathCompletionCtx,
+    PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    &AttrCtx { kind, annotated_item_kind }: &AttrCtx,
 ) {
-    let (qualified, is_inner, annotated_item_kind) = match path_ctx {
-        &PathCompletionCtx {
-            kind: PathKind::Attr { kind, annotated_item_kind },
-            ref qualified,
-            ..
-        } => (qualified, kind == AttrKind::Inner, annotated_item_kind),
-        _ => return,
-    };
+    let is_inner = kind == AttrKind::Inner;
 
     match qualified {
         Qualified::With {
@@ -94,8 +87,14 @@ pub(crate) fn complete_attribute(
             }
 
             for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
-                if let Some(def) = module_or_attr(ctx.db, def) {
-                    acc.add_resolution(ctx, name, def);
+                match def {
+                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_attr(ctx.db) => {
+                        acc.add_macro(ctx, m, name)
+                    }
+                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
+                        acc.add_module(ctx, m, name)
+                    }
+                    _ => (),
                 }
             }
             return;
@@ -104,10 +103,12 @@ pub(crate) fn complete_attribute(
         Qualified::Absolute => acc.add_crate_roots(ctx),
         // only show modules in a fresh UseTree
         Qualified::No => {
-            ctx.process_all_names(&mut |name, def| {
-                if let Some(def) = module_or_attr(ctx.db, def) {
-                    acc.add_resolution(ctx, name, def);
+            ctx.process_all_names(&mut |name, def| match def {
+                hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_attr(ctx.db) => {
+                    acc.add_macro(ctx, m, name)
                 }
+                hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => acc.add_module(ctx, m, name),
+                _ => (),
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }

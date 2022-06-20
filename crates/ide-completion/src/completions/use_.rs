@@ -5,33 +5,17 @@ use ide_db::{FxHashSet, SymbolKind};
 use syntax::{ast, AstNode};
 
 use crate::{
-    context::{
-        CompletionContext, NameRefContext, NameRefKind, PathCompletionCtx, PathKind, Qualified,
-    },
+    context::{CompletionContext, PathCompletionCtx, Qualified},
     item::Builder,
     CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
 
-pub(crate) fn complete_use_tree(
+pub(crate) fn complete_use_path(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    name_ref_ctx: &NameRefContext,
+    PathCompletionCtx { qualified, use_tree_parent, .. }: &PathCompletionCtx,
+    name_ref: &Option<ast::NameRef>,
 ) {
-    let (qualified, name_ref, use_tree_parent) = match name_ref_ctx {
-        NameRefContext {
-            kind:
-                NameRefKind::Path(PathCompletionCtx {
-                    kind: PathKind::Use,
-                    qualified,
-                    use_tree_parent,
-                    ..
-                }),
-            nameref,
-            ..
-        } => (qualified, nameref, use_tree_parent),
-        _ => return,
-    };
-
     match qualified {
         Qualified::With { path, resolution: Some(resolution), is_super_chain } => {
             if *is_super_chain {
@@ -112,8 +96,8 @@ pub(crate) fn complete_use_tree(
             cov_mark::hit!(unqualified_path_selected_only);
             ctx.process_all_names(&mut |name, res| {
                 match res {
-                    ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => {
-                        acc.add_resolution(ctx, name, res);
+                    ScopeDef::ModuleDef(hir::ModuleDef::Module(module)) => {
+                        acc.add_module(ctx, module, name);
                     }
                     ScopeDef::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(e))) => {
                         // exclude prelude enum

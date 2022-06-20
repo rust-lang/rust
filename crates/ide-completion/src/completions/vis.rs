@@ -1,24 +1,16 @@
 //! Completion for visibility specifiers.
 
-use hir::ScopeDef;
-
 use crate::{
-    context::{CompletionContext, PathCompletionCtx, PathKind, Qualified},
+    context::{CompletionContext, PathCompletionCtx, Qualified},
     Completions,
 };
 
 pub(crate) fn complete_vis_path(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    path_ctx: &PathCompletionCtx,
+    PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    &has_in_token: &bool,
 ) {
-    let (qualified, &has_in_token) = match path_ctx {
-        PathCompletionCtx { kind: PathKind::Vis { has_in_token }, qualified, .. } => {
-            (qualified, has_in_token)
-        }
-        _ => return,
-    };
-
     match qualified {
         Qualified::With {
             resolution: Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))),
@@ -31,7 +23,7 @@ pub(crate) fn complete_vis_path(
             if let Some(next) = next_towards_current {
                 if let Some(name) = next.name(ctx.db) {
                     cov_mark::hit!(visibility_qualified);
-                    acc.add_resolution(ctx, name, ScopeDef::ModuleDef(next.into()));
+                    acc.add_module(ctx, next, name);
                 }
             }
 
