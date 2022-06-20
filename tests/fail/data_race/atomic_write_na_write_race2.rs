@@ -1,8 +1,8 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 
-use std::thread::spawn;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
+use std::thread::spawn;
 
 #[derive(Copy, Clone)]
 struct EvilSend<T>(pub T);

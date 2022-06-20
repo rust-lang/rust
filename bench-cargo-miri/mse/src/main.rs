@@ -30,4 +30,3 @@ fn mse(samples: usize, frame_buf: &[i16], buf_ref: &[u8]) -> f64 {
     }
     mse / max_samples as f64
 }
-

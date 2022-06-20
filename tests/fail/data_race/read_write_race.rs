@@ -13,9 +13,7 @@ pub fn main() {
     let b = &mut a as *mut u32;
     let c = EvilSend(b);
     unsafe {
-        let j1 = spawn(move || {
-            *c.0
-        });
+        let j1 = spawn(move || *c.0);
 
         let j2 = spawn(move || {
             *c.0 = 64; //~ ERROR Data race detected between Write on Thread(id = 2) and Read on Thread(id = 1)

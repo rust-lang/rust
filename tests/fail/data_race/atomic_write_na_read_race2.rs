@@ -1,9 +1,9 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 #![feature(core_intrinsics)]
 
-use std::thread::spawn;
-use std::sync::atomic::AtomicUsize;
 use std::intrinsics::atomic_store;
+use std::sync::atomic::AtomicUsize;
+use std::thread::spawn;
 
 #[derive(Copy, Clone)]
 struct EvilSend<T>(pub T);
@@ -16,9 +16,7 @@ pub fn main() {
     let b = &mut a as *mut AtomicUsize;
     let c = EvilSend(b);
     unsafe {
-        let j1 = spawn(move || {
-            *(c.0 as *mut usize)
-        });
+        let j1 = spawn(move || *(c.0 as *mut usize));
 
         let j2 = spawn(move || {
             //Equivalent to: (&*c.0).store(32, Ordering::SeqCst)

@@ -1,17 +1,15 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 // compile-flags: -Zmiri-disable-isolation
 
-use std::thread::{spawn, sleep};
-use std::time::Duration;
 use std::mem;
-
+use std::thread::{sleep, spawn};
+use std::time::Duration;
 
 #[derive(Copy, Clone)]
 struct EvilSend<T>(pub T);
 
 unsafe impl<T> Send for EvilSend<T> {}
 unsafe impl<T> Sync for EvilSend<T> {}
-
 
 fn main() {
     let mut a = 0u32;

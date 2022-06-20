@@ -8,7 +8,7 @@ fn main() {
     assert_eq!(env!("MIRITESTVAR"), "testval");
 
     // Exercise external crate, printing to stdout.
-    let buf = &[1,2,3,4];
+    let buf = &[1, 2, 3, 4];
     let n = <BigEndian as ByteOrder>::read_u32(buf);
     assert_eq!(n, 0x01020304);
     println!("{:#010x}", n);
@@ -32,7 +32,7 @@ fn main() {
         #[cfg(unix)]
         for line in io::stdin().lock().lines() {
             let num: i32 = line.unwrap().parse().unwrap();
-            println!("{}", 2*num);
+            println!("{}", 2 * num);
         }
         // On non-Unix, reading from stdin is not supported. So we hard-code the right answer.
         #[cfg(not(unix))]
