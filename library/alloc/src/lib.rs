@@ -108,7 +108,6 @@
 #![feature(const_refs_to_cell)]
 #![feature(core_c_str)]
 #![feature(core_intrinsics)]
-#![feature(core_ffi_c)]
 #![feature(const_eval_select)]
 #![feature(const_pin)]
 #![feature(cstr_from_bytes_until_nul)]
