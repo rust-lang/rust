@@ -15,8 +15,8 @@ LL |     pub fn push(&mut self, value: T) {
    |            ^^^^
 help: remove the extra argument
    |
-LL |         groups.push({(Vec<String>, Vec<Process>)});
-   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |         groups.push(/* (Vec<String>, Vec<Process>) */);
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

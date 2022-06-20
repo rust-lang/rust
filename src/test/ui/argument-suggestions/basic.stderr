@@ -41,8 +41,8 @@ LL | fn missing(_i: u32) {}
    |    ^^^^^^^ -------
 help: provide the argument
    |
-LL |     missing({u32});
-   |     ~~~~~~~~~~~~~~
+LL |     missing(/* u32 */);
+   |     ~~~~~~~~~~~~~~~~~~
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/basic.rs:23:5
@@ -94,8 +94,8 @@ LL |     let closure = |x| x;
    |                   ^^^
 help: provide the argument
    |
-LL |     closure({_});
-   |     ~~~~~~~~~~~~
+LL |     closure(/* value */);
+   |     ~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 6 previous errors
 

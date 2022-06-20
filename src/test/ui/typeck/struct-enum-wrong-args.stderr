@@ -45,8 +45,8 @@ LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     ^^
 help: provide the argument
    |
-LL |     let _ = Ok({_});
-   |             ~~~~~~~
+LL |     let _ = Ok(/* value */);
+   |             ~~~~~~~~~~~~~~~
 
 error[E0061]: this struct takes 1 argument but 0 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:9:13
@@ -61,8 +61,8 @@ LL | struct Wrapper(i32);
    |        ^^^^^^^
 help: provide the argument
    |
-LL |     let _ = Wrapper({i32});
-   |             ~~~~~~~~~~~~~~
+LL |     let _ = Wrapper(/* i32 */);
+   |             ~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this struct takes 1 argument but 2 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:10:13
@@ -93,8 +93,8 @@ LL | struct DoubleWrapper(i32, i32);
    |        ^^^^^^^^^^^^^
 help: provide the arguments
    |
-LL |     let _ = DoubleWrapper({i32}, {i32});
-   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let _ = DoubleWrapper(/* i32 */, /* i32 */);
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this struct takes 2 arguments but 1 argument was supplied
   --> $DIR/struct-enum-wrong-args.rs:12:13
@@ -109,8 +109,8 @@ LL | struct DoubleWrapper(i32, i32);
    |        ^^^^^^^^^^^^^
 help: provide the argument
    |
-LL |     let _ = DoubleWrapper(5, {i32});
-   |             ~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let _ = DoubleWrapper(5, /* i32 */);
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this struct takes 2 arguments but 3 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:13:13
