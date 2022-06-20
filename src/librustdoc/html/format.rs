@@ -565,7 +565,7 @@ fn generate_macro_def_id_path(
     def_id: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
-) -> (String, ItemType, Vec<Symbol>) {
+) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     let tcx = cx.shared.tcx;
     let crate_name = tcx.crate_name(def_id.krate).to_string();
     let cache = cx.cache();
@@ -583,9 +583,15 @@ fn generate_macro_def_id_path(
         })
         .collect();
     let relative = fqp.iter().map(|elem| elem.to_string());
+    let cstore = CStore::from_tcx(tcx);
+    // We need this to prevent a `panic` when this function is used from intra doc links...
+    if !cstore.has_crate_data(def_id.krate) {
+        debug!("No data for crate {}", crate_name);
+        return Err(HrefError::NotInExternalCache);
+    }
     // Check to see if it is a macro 2.0 or built-in macro.
     // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
-    let is_macro_2 = match CStore::from_tcx(tcx).load_macro_untracked(def_id, tcx.sess) {
+    let is_macro_2 = match cstore.load_macro_untracked(def_id, tcx.sess) {
         LoadedMacro::MacroDef(def, _) => {
             // If `ast_def.macro_rules` is `true`, then it's not a macro 2.0.
             matches!(&def.kind, ast::ItemKind::MacroDef(ast_def) if !ast_def.macro_rules)
@@ -601,7 +607,8 @@ fn generate_macro_def_id_path(
     if path.len() < 2 {
         // The minimum we can have is the crate name followed by the macro name. If shorter, then
         // it means that that `relative` was empty, which is an error.
-        panic!("macro path cannot be empty!");
+        debug!("macro path cannot be empty!");
+        return Err(HrefError::NotInExternalCache);
     }
 
     if let Some(last) = path.last_mut() {
@@ -618,10 +625,11 @@ fn generate_macro_def_id_path(
             format!("{}{}/{}", root_path.unwrap_or(""), crate_name, path.join("/"))
         }
         ExternalLocation::Unknown => {
-            panic!("crate {} not in cache when linkifying macros", crate_name)
+            debug!("crate {} not in cache when linkifying macros", crate_name);
+            return Err(HrefError::NotInExternalCache);
         }
     };
-    (url, ItemType::Macro, fqp)
+    Ok((url, ItemType::Macro, fqp))
 }
 
 pub(crate) fn href_with_root_path(
@@ -680,7 +688,7 @@ pub(crate) fn href_with_root_path(
                     },
                 )
             } else if matches!(def_kind, DefKind::Macro(_)) {
-                return Ok(generate_macro_def_id_path(did, cx, root_path));
+                return generate_macro_def_id_path(did, cx, root_path);
             } else {
                 return Err(HrefError::NotInExternalCache);
             }
