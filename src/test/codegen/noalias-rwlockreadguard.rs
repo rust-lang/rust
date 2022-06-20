@@ -2,14 +2,13 @@
 
 #![crate_type = "lib"]
 
-use std::cell::UnsafeCell;
-use std::sync::RwLockReadGuard;
+use std::sync::{RwLock, RwLockReadGuard};
 
 // Make sure that `RwLockReadGuard` does not get a `noalias` attribute, because
-// the `UnsafeCell` might alias writes after it is dropped.
+// the `RwLock` might alias writes after it is dropped.
 
 // CHECK-LABEL: @maybe_aliased(
 // CHECK-NOT: noalias
 // CHECK-SAME: %_data
 #[no_mangle]
-pub unsafe fn maybe_aliased(_: RwLockReadGuard<'_, i32>, _data: &UnsafeCell<i32>) {}
+pub unsafe fn maybe_aliased(_: RwLockReadGuard<'_, i32>, _data: &RwLock<i32>) {}
