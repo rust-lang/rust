@@ -1502,6 +1502,7 @@ impl<'a> Resolver<'a> {
                         return PathResult::NonModule(PartialRes::new(Res::Err));
                     } else if opt_ns.is_some() && (is_last || maybe_assoc) {
                         self.lint_if_path_starts_with_module(finalize, path, second_binding);
+                        record_segment_res(self, res);
                         return PathResult::NonModule(PartialRes::with_unresolved_segments(
                             res,
                             path.len() - i - 1,
