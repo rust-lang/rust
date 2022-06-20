@@ -1041,7 +1041,6 @@ fn cargo_hello_world_project_model() {
                                 "debug_assertions",
                                 "feature=default",
                                 "feature=std",
-                                "test",
                             ],
                         ),
                         potential_cfg_options: CfgOptions(
@@ -1054,7 +1053,6 @@ fn cargo_hello_world_project_model() {
                                 "feature=rustc-dep-of-std",
                                 "feature=std",
                                 "feature=use_std",
-                                "test",
                             ],
                         ),
                         env: Env {
