@@ -5,19 +5,15 @@
 //!
 //! Use the `render_with_highlighting` to highlight some rust code.
 
-use crate::clean::{ExternalLocation, PrimitiveType};
+use crate::clean::PrimitiveType;
 use crate::html::escape::Escape;
 use crate::html::render::Context;
 
 use std::collections::VecDeque;
 use std::fmt::{Display, Write};
-use std::iter::once;
 
-use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefId;
 use rustc_lexer::{LiteralKind, TokenKind};
-use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Span, DUMMY_SP};
@@ -784,17 +780,8 @@ fn string_without_closing_tag<T: Display>(
                         .map(|s| format!("{}{}", href_context.root_path, s)),
                     LinkFromSrc::External(def_id) => {
                         format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                            .map(|(url, _, _)| url)
-                            .or_else(|e| {
-                                if e == format::HrefError::NotInExternalCache
-                                    && matches!(klass, Class::Macro(_))
-                                {
-                                    Ok(generate_macro_def_id_path(href_context, *def_id))
-                                } else {
-                                    Err(e)
-                                }
-                            })
                             .ok()
+                            .map(|(url, _, _)| url)
                     }
                     LinkFromSrc::Primitive(prim) => format::href_with_root_path(
                         PrimitiveType::primitive_locations(context.tcx())[prim],
@@ -812,58 +799,6 @@ fn string_without_closing_tag<T: Display>(
     }
     write!(out, "<span class=\"{}\">{}", klass.as_html(), text_s);
     Some("</span>")
-}
-
-/// This function is to get the external macro path because they are not in the cache used in
-/// `href_with_root_path`.
-fn generate_macro_def_id_path(href_context: &HrefContext<'_, '_, '_>, def_id: DefId) -> String {
-    let tcx = href_context.context.shared.tcx;
-    let crate_name = tcx.crate_name(def_id.krate).to_string();
-    let cache = href_context.context.cache();
-
-    let relative = tcx.def_path(def_id).data.into_iter().filter_map(|elem| {
-        // extern blocks have an empty name
-        let s = elem.data.to_string();
-        if !s.is_empty() { Some(s) } else { None }
-    });
-    // Check to see if it is a macro 2.0 or built-in macro.
-    // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
-    let is_macro_2 = match CStore::from_tcx(tcx).load_macro_untracked(def_id, tcx.sess) {
-        LoadedMacro::MacroDef(def, _) => {
-            // If `ast_def.macro_rules` is `true`, then it's not a macro 2.0.
-            matches!(&def.kind, ast::ItemKind::MacroDef(ast_def) if !ast_def.macro_rules)
-        }
-        _ => false,
-    };
-
-    let mut path = if is_macro_2 {
-        once(crate_name.clone()).chain(relative).collect()
-    } else {
-        vec![crate_name.clone(), relative.last().unwrap()]
-    };
-    if path.len() < 2 {
-        // The minimum we can have is the crate name followed by the macro name. If shorter, then
-        // it means that that `relative` was empty, which is an error.
-        panic!("macro path cannot be empty!");
-    }
-
-    if let Some(last) = path.last_mut() {
-        *last = format!("macro.{}.html", last);
-    }
-
-    match cache.extern_locations[&def_id.krate] {
-        ExternalLocation::Remote(ref s) => {
-            // `ExternalLocation::Remote` always end with a `/`.
-            format!("{}{}", s, path.join("/"))
-        }
-        ExternalLocation::Local => {
-            // `href_context.root_path` always end with a `/`.
-            format!("{}{}/{}", href_context.root_path, crate_name, path.join("/"))
-        }
-        ExternalLocation::Unknown => {
-            panic!("crate {} not in cache when linkifying macros", crate_name)
-        }
-    }
 }
 
 #[cfg(test)]

@@ -8,14 +8,16 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
-use std::iter;
+use std::iter::{self, once};
 
+use rustc_ast as ast;
 use rustc_attr::{ConstStability, StabilityLevel};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty;
 use rustc_middle::ty::DefIdTree;
 use rustc_middle::ty::TyCtxt;
@@ -557,6 +559,71 @@ pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
     s
 }
 
+/// This function is to get the external macro path because they are not in the cache used in
+/// `href_with_root_path`.
+fn generate_macro_def_id_path(
+    def_id: DefId,
+    cx: &Context<'_>,
+    root_path: Option<&str>,
+) -> (String, ItemType, Vec<Symbol>) {
+    let tcx = cx.shared.tcx;
+    let crate_name = tcx.crate_name(def_id.krate).to_string();
+    let cache = cx.cache();
+
+    let fqp: Vec<Symbol> = tcx
+        .def_path(def_id)
+        .data
+        .into_iter()
+        .filter_map(|elem| {
+            // extern blocks (and a few others things) have an empty name.
+            match elem.data.get_opt_name() {
+                Some(s) if !s.is_empty() => Some(s),
+                _ => None,
+            }
+        })
+        .collect();
+    let relative = fqp.iter().map(|elem| elem.to_string());
+    // Check to see if it is a macro 2.0 or built-in macro.
+    // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
+    let is_macro_2 = match CStore::from_tcx(tcx).load_macro_untracked(def_id, tcx.sess) {
+        LoadedMacro::MacroDef(def, _) => {
+            // If `ast_def.macro_rules` is `true`, then it's not a macro 2.0.
+            matches!(&def.kind, ast::ItemKind::MacroDef(ast_def) if !ast_def.macro_rules)
+        }
+        _ => false,
+    };
+
+    let mut path = if is_macro_2 {
+        once(crate_name.clone()).chain(relative).collect()
+    } else {
+        vec![crate_name.clone(), relative.last().unwrap()]
+    };
+    if path.len() < 2 {
+        // The minimum we can have is the crate name followed by the macro name. If shorter, then
+        // it means that that `relative` was empty, which is an error.
+        panic!("macro path cannot be empty!");
+    }
+
+    if let Some(last) = path.last_mut() {
+        *last = format!("macro.{}.html", last);
+    }
+
+    let url = match cache.extern_locations[&def_id.krate] {
+        ExternalLocation::Remote(ref s) => {
+            // `ExternalLocation::Remote` always end with a `/`.
+            format!("{}{}", s, path.join("/"))
+        }
+        ExternalLocation::Local => {
+            // `root_path` always end with a `/`.
+            format!("{}{}/{}", root_path.unwrap_or(""), crate_name, path.join("/"))
+        }
+        ExternalLocation::Unknown => {
+            panic!("crate {} not in cache when linkifying macros", crate_name)
+        }
+    };
+    (url, ItemType::Macro, fqp)
+}
+
 pub(crate) fn href_with_root_path(
     did: DefId,
     cx: &Context<'_>,
@@ -612,6 +679,8 @@ pub(crate) fn href_with_root_path(
                         ExternalLocation::Unknown => return Err(HrefError::DocumentationNotBuilt),
                     },
                 )
+            } else if matches!(def_kind, DefKind::Macro(_)) {
+                return Ok(generate_macro_def_id_path(did, cx, root_path));
             } else {
                 return Err(HrefError::NotInExternalCache);
             }
