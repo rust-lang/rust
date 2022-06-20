@@ -22,7 +22,7 @@ macro_rules! features {
                 };
             )*
             $(
-                ($bind_feature) => { $macro_name!($feature_impl) };
+                ($bind_feature) => { $crate::$macro_name!($feature_impl) };
             )*
             $(
                 ($nort_feature) => {
@@ -35,7 +35,7 @@ macro_rules! features {
                 };
             )*
             ($t:tt,) => {
-                    $macro_name!($t);
+                    $crate::$macro_name!($t);
             };
             ($t:tt) => {
                 compile_error!(
@@ -66,7 +66,7 @@ macro_rules! features {
                 };
             )*
             $(
-                ($bind_feature) => { $macro_name!($feature_impl) };
+                ($bind_feature) => { $crate::$macro_name!($feature_impl) };
             )*
             $(
                 ($nort_feature) => {
@@ -79,7 +79,7 @@ macro_rules! features {
                 };
             )*
             ($t:tt,) => {
-                    $macro_name!($t);
+                    $crate::$macro_name!($t);
             };
             ($t:tt) => {
                 compile_error!(
