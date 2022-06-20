@@ -14,7 +14,7 @@ use rustc_target::spec::abi::Abi;
 
 pub(crate) fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
     let mut collector = Collector { tcx, libs: Vec::new() };
-    for id in tcx.hir().items() {
+    for id in tcx.hir().item_ids() {
         collector.process_item(id);
     }
     collector.process_command_line();

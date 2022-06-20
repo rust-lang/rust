@@ -84,7 +84,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
     // Collect all the extern crates (in a reliable order).
     let mut crates_to_lint = vec![];
 
-    for id in tcx.hir().items() {
+    for id in tcx.hir().item_ids() {
         if matches!(tcx.def_kind(id.def_id), DefKind::ExternCrate) {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::ExternCrate(orig_name) = item.kind {

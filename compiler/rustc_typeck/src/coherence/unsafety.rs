@@ -8,7 +8,7 @@ use rustc_hir::Unsafety;
 use rustc_middle::ty::TyCtxt;
 
 pub fn check(tcx: TyCtxt<'_>) {
-    for id in tcx.hir().items() {
+    for id in tcx.hir().item_ids() {
         if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::Impl(ref impl_) = item.kind {

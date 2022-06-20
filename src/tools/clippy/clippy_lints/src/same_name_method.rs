@@ -51,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         let mut map = FxHashMap::<Res, ExistingName>::default();
 
-        for id in cx.tcx.hir().items() {
+        for id in cx.tcx.hir().item_ids() {
             if matches!(cx.tcx.def_kind(id.def_id), DefKind::Impl)
                 && let item = cx.tcx.hir().item(id)
                 && let ItemKind::Impl(Impl {

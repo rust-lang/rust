@@ -3,7 +3,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
 pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
-    for id in tcx.hir().items() {
+    for id in tcx.hir().item_ids() {
         // For unit testing: check for a special "rustc_outlives"
         // attribute and report an error with various results if found.
         if tcx.has_attr(id.def_id.to_def_id(), sym::rustc_outlives) {

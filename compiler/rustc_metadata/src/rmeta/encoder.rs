@@ -1810,7 +1810,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut fx_hash_map: FxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
             FxHashMap::default();
 
-        for id in tcx.hir().items() {
+        for id in tcx.hir().item_ids() {
             if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
                 if let Some(trait_ref) = tcx.impl_trait_ref(id.def_id.to_def_id()) {
                     let simplified_self_ty = fast_reject::simplify_type(
@@ -2231,7 +2231,7 @@ pub fn provide(providers: &mut Providers) {
             assert_eq!(cnum, LOCAL_CRATE);
 
             let mut traits = Vec::new();
-            for id in tcx.hir().items() {
+            for id in tcx.hir().item_ids() {
                 if matches!(tcx.def_kind(id.def_id), DefKind::Trait | DefKind::TraitAlias) {
                     traits.push(id.def_id.to_def_id())
                 }

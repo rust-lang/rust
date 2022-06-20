@@ -40,7 +40,7 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     let mut ctxt =
         EntryContext { tcx, attr_main_fn: None, start_fn: None, non_main_fns: Vec::new() };
 
-    for id in tcx.hir().items() {
+    for id in tcx.hir().item_ids() {
         find_item(id, &mut ctxt);
     }
 

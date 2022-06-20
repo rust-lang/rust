@@ -10,7 +10,7 @@ use rustc_target::abi::{HasDataLayout, TargetDataLayout};
 pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
-        for id in tcx.hir().items() {
+        for id in tcx.hir().item_ids() {
             if matches!(
                 tcx.def_kind(id.def_id),
                 DefKind::TyAlias | DefKind::Enum | DefKind::Struct | DefKind::Union

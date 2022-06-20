@@ -156,7 +156,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn items(self) -> impl Iterator<Item = ItemId> + 'hir {
+    pub fn item_ids(self) -> impl Iterator<Item = ItemId> + 'hir {
         self.tcx.hir_crate_items(()).items.iter().copied()
     }
 

@@ -13,7 +13,7 @@ use std::collections::hash_map::Entry;
 
 pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, (): ()) {
     let mut inherent_overlap_checker = InherentOverlapChecker { tcx };
-    for id in tcx.hir().items() {
+    for id in tcx.hir().item_ids() {
         inherent_overlap_checker.check_item(id);
     }
 }

@@ -2092,7 +2092,7 @@ fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
             .collect(),
     };
 
-    for id in tcx.hir().items() {
+    for id in tcx.hir().item_ids() {
         checker.check_item(id);
     }
 }
