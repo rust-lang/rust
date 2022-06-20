@@ -1048,6 +1048,10 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn link_staticlib(&mut self, lib: Symbol, _verbatim: bool) {
+        //  remove -lc: the compiler driver emcc will add it if its needed.
+        if lib.as_str() == "c" {
+            return;
+        }
         self.cmd.arg("-l").sym_arg(lib);
     }
 
