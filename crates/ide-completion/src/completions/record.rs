@@ -6,7 +6,7 @@ use syntax::{
 };
 
 use crate::{
-    context::{PathCompletionCtx, PathKind, PatternContext, Qualified},
+    context::{ExprCtx, PathCompletionCtx, PathKind, PatternContext, Qualified},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
     CompletionRelevancePostfixMatch, Completions,
 };
@@ -87,7 +87,7 @@ pub(crate) fn complete_record_expr_func_update(
     path_ctx: &PathCompletionCtx,
 ) {
     if let PathCompletionCtx {
-        kind: PathKind::Expr { is_func_update: Some(record_expr), .. },
+        kind: PathKind::Expr { expr_ctx: ExprCtx { is_func_update: Some(record_expr), .. } },
         qualified: Qualified::No,
         ..
     } = path_ctx

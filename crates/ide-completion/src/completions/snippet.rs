@@ -4,7 +4,7 @@ use hir::Documentation;
 use ide_db::{imports::insert_use::ImportScope, SnippetCap};
 
 use crate::{
-    context::{ItemListKind, PathCompletionCtx, PathKind, Qualified},
+    context::{ExprCtx, ItemListKind, PathCompletionCtx, PathKind, Qualified},
     item::Builder,
     CompletionContext, CompletionItem, CompletionItemKind, Completions, SnippetScope,
 };
@@ -23,7 +23,7 @@ pub(crate) fn complete_expr_snippet(
     let &can_be_stmt = match path_ctx {
         PathCompletionCtx {
             qualified: Qualified::No,
-            kind: PathKind::Expr { in_block_expr, .. },
+            kind: PathKind::Expr { expr_ctx: ExprCtx { in_block_expr, .. } },
             ..
         } => in_block_expr,
         _ => return,
@@ -52,7 +52,9 @@ pub(crate) fn complete_item_snippet(
     let path_kind = match path_ctx {
         PathCompletionCtx {
             qualified: Qualified::No,
-            kind: kind @ (PathKind::Item { .. } | PathKind::Expr { in_block_expr: true, .. }),
+            kind:
+                kind @ (PathKind::Item { .. }
+                | PathKind::Expr { expr_ctx: ExprCtx { in_block_expr: true, .. }, .. }),
             ..
         } => kind,
         _ => return,

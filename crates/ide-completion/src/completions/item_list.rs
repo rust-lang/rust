@@ -2,7 +2,7 @@
 
 use crate::{
     completions::module_or_fn_macro,
-    context::{ItemListKind, PathCompletionCtx, PathKind, Qualified},
+    context::{ExprCtx, ItemListKind, PathCompletionCtx, PathKind, Qualified},
     CompletionContext, Completions,
 };
 
@@ -21,9 +21,10 @@ pub(crate) fn complete_item_list(
             }
             qualified
         }
-        PathCompletionCtx { kind: PathKind::Expr { in_block_expr: true, .. }, .. }
-            if path_ctx.is_trivial_path() =>
-        {
+        PathCompletionCtx {
+            kind: PathKind::Expr { expr_ctx: ExprCtx { in_block_expr: true, .. } },
+            ..
+        } if path_ctx.is_trivial_path() => {
             add_keywords(acc, ctx, None);
             return;
         }

@@ -165,6 +165,13 @@ pub fn completions(
     {
         let acc = &mut completions;
 
+        let mut complete_patterns = |pattern_ctx| {
+            completions::flyimport::import_on_the_fly_pat(acc, ctx, pattern_ctx);
+            completions::fn_param::complete_fn_param(acc, ctx, pattern_ctx);
+            completions::pattern::complete_pattern(acc, ctx, pattern_ctx);
+            completions::record::complete_record_pattern_fields(acc, ctx, pattern_ctx);
+        };
+
         match &ctx.ident_ctx {
             IdentContext::Name(NameContext { name, kind }) => match kind {
                 NameKind::Const => {
@@ -173,12 +180,7 @@ pub fn completions(
                 NameKind::Function => {
                     completions::item_list::trait_impl::complete_trait_impl_fn(acc, ctx, name);
                 }
-                NameKind::IdentPat(pattern_ctx) => {
-                    completions::flyimport::import_on_the_fly_pat(acc, ctx, pattern_ctx);
-                    completions::fn_param::complete_fn_param(acc, ctx, pattern_ctx);
-                    completions::pattern::complete_pattern(acc, ctx, pattern_ctx);
-                    completions::record::complete_record_pattern_fields(acc, ctx, pattern_ctx);
-                }
+                NameKind::IdentPat(pattern_ctx) => complete_patterns(pattern_ctx),
                 NameKind::Module(mod_under_caret) => {
                     completions::mod_::complete_mod(acc, ctx, mod_under_caret);
                 }
@@ -239,12 +241,7 @@ pub fn completions(
                         record_expr,
                     );
                 }
-                NameRefKind::Pattern(pattern_ctx) => {
-                    completions::flyimport::import_on_the_fly_pat(acc, ctx, pattern_ctx);
-                    completions::fn_param::complete_fn_param(acc, ctx, pattern_ctx);
-                    completions::pattern::complete_pattern(acc, ctx, pattern_ctx);
-                    completions::record::complete_record_pattern_fields(acc, ctx, pattern_ctx);
-                }
+                NameRefKind::Pattern(pattern_ctx) => complete_patterns(pattern_ctx),
             },
             IdentContext::Lifetime(lifetime_ctx) => {
                 completions::lifetime::complete_label(acc, ctx, lifetime_ctx);

@@ -4,7 +4,8 @@ use ide_db::FxHashSet;
 
 use crate::{
     context::{
-        CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind, Qualified,
+        CompletionContext, DotAccess, DotAccessKind, ExprCtx, PathCompletionCtx, PathKind,
+        Qualified,
     },
     CompletionItem, CompletionItemKind, Completions,
 };
@@ -49,7 +50,7 @@ pub(crate) fn complete_undotted_self(
     let self_param = match path_ctx {
         PathCompletionCtx {
             qualified: Qualified::No,
-            kind: PathKind::Expr { self_param: Some(self_param), .. },
+            kind: PathKind::Expr { expr_ctx: ExprCtx { self_param: Some(self_param), .. } },
             ..
         } if path_ctx.is_trivial_path() && ctx.qualifier_ctx.none() => self_param,
         _ => return,

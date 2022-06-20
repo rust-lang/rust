@@ -18,7 +18,7 @@ use syntax::{
 
 use crate::{
     completions::module_or_attr,
-    context::{CompletionContext, PathCompletionCtx, PathKind, Qualified},
+    context::{AttrCtx, CompletionContext, PathCompletionCtx, PathKind, Qualified},
     item::CompletionItem,
     Completions,
 };
@@ -76,7 +76,7 @@ pub(crate) fn complete_attribute(
 ) {
     let (qualified, is_inner, annotated_item_kind) = match path_ctx {
         &PathCompletionCtx {
-            kind: PathKind::Attr { kind, annotated_item_kind },
+            kind: PathKind::Attr { attr_ctx: AttrCtx { kind, annotated_item_kind } },
             ref qualified,
             ..
         } => (qualified, kind == AttrKind::Inner, annotated_item_kind),
