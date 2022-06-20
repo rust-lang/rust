@@ -241,58 +241,37 @@ pub trait TypeSuperFoldable<'tcx>: TypeFoldable<'tcx> {
 /// a blanket implementation of [`FallibleTypeFolder`] will defer to
 /// the infallible methods of this trait to ensure that the two APIs
 /// are coherent.
-pub trait TypeFolder<'tcx>: Sized {
-    type Error = !;
-
+pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
     fn fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T>
     where
         T: TypeFoldable<'tcx>,
-        Self: TypeFolder<'tcx, Error = !>,
     {
         t.super_fold_with(self)
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         t.super_fold_with(self)
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         r.super_fold_with(self)
     }
 
-    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
         c.super_fold_with(self)
     }
 
-    fn fold_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ty::Unevaluated<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ty::Unevaluated<'tcx> {
         uv.super_fold_with(self)
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         p.super_fold_with(self)
     }
 
-    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
         bug!("most type folders should not be folding MIR datastructures: {:?}", c)
     }
 }
@@ -304,7 +283,11 @@ pub trait TypeFolder<'tcx>: Sized {
 /// A blanket implementation of this trait (that defers to the relevant
 /// method of [`TypeFolder`]) is provided for all infallible folders in
 /// order to ensure the two APIs are coherent.
-pub trait FallibleTypeFolder<'tcx>: TypeFolder<'tcx> {
+pub trait FallibleTypeFolder<'tcx>: Sized {
+    type Error;
+
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
+
     fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
     where
         T: TypeFoldable<'tcx>,
@@ -350,8 +333,14 @@ pub trait FallibleTypeFolder<'tcx>: TypeFolder<'tcx> {
 // delegates to infallible methods to ensure coherence.
 impl<'tcx, F> FallibleTypeFolder<'tcx> for F
 where
-    F: TypeFolder<'tcx, Error = !>,
+    F: TypeFolder<'tcx>,
 {
+    type Error = !;
+
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+        TypeFolder::tcx(self)
+    }
+
     fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
     where
         T: TypeFoldable<'tcx>,
