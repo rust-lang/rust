@@ -10,31 +10,31 @@ fn main() {
                 libc::SYS_getrandom,
                 0 as *mut libc::c_void,
                 0 as libc::size_t,
-                0 as libc::c_uint
+                0 as libc::c_uint,
             ),
-            0
+            0,
         );
         assert_eq!(
             libc::syscall(
                 libc::SYS_getrandom,
                 buf.as_mut_ptr() as *mut libc::c_void,
                 5 as libc::size_t,
-                0 as libc::c_uint
+                0 as libc::c_uint,
             ),
-            5
+            5,
         );
 
         assert_eq!(
             libc::getrandom(0 as *mut libc::c_void, 0 as libc::size_t, 0 as libc::c_uint),
-            0
+            0,
         );
         assert_eq!(
             libc::getrandom(
                 buf.as_mut_ptr() as *mut libc::c_void,
                 5 as libc::size_t,
-                0 as libc::c_uint
+                0 as libc::c_uint,
             ),
-            5
+            5,
         );
     }
 }

@@ -3,7 +3,7 @@ fn main() {
         match [0u8; 16 * 1024] {
             _ => 42_usize,
         },
-        42_usize
+        42_usize,
     );
 
     assert_eq!(
@@ -12,6 +12,6 @@ fn main() {
             [0, ..] => 1_usize,
             _ => 2_usize,
         },
-        1_usize
+        1_usize,
     );
 }

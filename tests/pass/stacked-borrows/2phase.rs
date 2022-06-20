@@ -22,8 +22,8 @@ fn two_phase3(b: bool) {
     x.push((
         {
             if b {
-                x = &mut y
-            };
+                x = &mut y;
+            }
             22
         },
         x.len(),

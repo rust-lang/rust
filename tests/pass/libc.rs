@@ -95,7 +95,7 @@ fn test_mutex_libc_init_recursive() {
         assert_eq!(libc::pthread_mutexattr_init(&mut attr as *mut _), 0);
         assert_eq!(
             libc::pthread_mutexattr_settype(&mut attr as *mut _, libc::PTHREAD_MUTEX_RECURSIVE),
-            0
+            0,
         );
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mut attr as *mut _), 0);
@@ -118,11 +118,11 @@ fn test_mutex_libc_init_normal() {
         let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();
         assert_eq!(
             libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, 0x12345678),
-            libc::EINVAL
+            libc::EINVAL,
         );
         assert_eq!(
             libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, libc::PTHREAD_MUTEX_NORMAL),
-            0
+            0,
         );
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);
@@ -141,9 +141,9 @@ fn test_mutex_libc_init_errorcheck() {
         assert_eq!(
             libc::pthread_mutexattr_settype(
                 &mut mutexattr as *mut _,
-                libc::PTHREAD_MUTEX_ERRORCHECK
+                libc::PTHREAD_MUTEX_ERRORCHECK,
             ),
-            0
+            0,
         );
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);
@@ -216,7 +216,7 @@ fn test_prctl_thread_name() {
         let mut buf = [255; 10];
         assert_eq!(
             libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long),
-            0
+            0,
         );
         assert_eq!(b"<unnamed>\0", &buf);
         let thread_name = CString::new("hello").expect("CString::new failed");
@@ -226,14 +226,14 @@ fn test_prctl_thread_name() {
                 thread_name.as_ptr(),
                 0 as c_long,
                 0 as c_long,
-                0 as c_long
+                0 as c_long,
             ),
-            0
+            0,
         );
         let mut buf = [255; 6];
         assert_eq!(
             libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long),
-            0
+            0,
         );
         assert_eq!(b"hello\0", &buf);
         let long_thread_name = CString::new("01234567890123456789").expect("CString::new failed");
@@ -243,14 +243,14 @@ fn test_prctl_thread_name() {
                 long_thread_name.as_ptr(),
                 0 as c_long,
                 0 as c_long,
-                0 as c_long
+                0 as c_long,
             ),
-            0
+            0,
         );
         let mut buf = [255; 16];
         assert_eq!(
             libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long),
-            0
+            0,
         );
         assert_eq!(b"012345678901234\0", &buf);
     }
