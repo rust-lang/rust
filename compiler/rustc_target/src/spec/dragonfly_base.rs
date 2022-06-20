@@ -9,7 +9,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
-        dwarf_version: Some(2),
+        default_dwarf_version: 2,
         ..Default::default()
     }
 }

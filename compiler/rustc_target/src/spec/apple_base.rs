@@ -28,7 +28,7 @@ pub fn opts(os: &'static str) -> TargetOptions {
         executables: true,
         families: cvs!["unix"],
         is_like_osx: true,
-        dwarf_version: Some(2),
+        default_dwarf_version: 2,
         frame_pointer: FramePointer::Always,
         has_rpath: true,
         dll_suffix: ".dylib".into(),

@@ -103,14 +103,14 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             // for macOS to understand. For more info see #11352
             // This can be overridden using --llvm-opts -dwarf-version,N.
             // Android has the same issue (#22398)
-            if let Some(version) = sess.target.dwarf_version {
-                llvm::LLVMRustAddModuleFlag(
-                    self.llmod,
-                    llvm::LLVMModFlagBehavior::Warning,
-                    "Dwarf Version\0".as_ptr().cast(),
-                    version,
-                )
-            }
+            let dwarf_version =
+                sess.opts.debugging_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
+            llvm::LLVMRustAddModuleFlag(
+                self.llmod,
+                llvm::LLVMModFlagBehavior::Warning,
+                "Dwarf Version\0".as_ptr().cast(),
+                dwarf_version,
+            );
 
             // Indicate that we want CodeView debug information on MSVC
             if sess.target.is_like_msvc {
