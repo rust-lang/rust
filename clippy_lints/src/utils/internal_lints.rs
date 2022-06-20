@@ -668,6 +668,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             let body = cx.tcx.hir().body(*body);
             let only_expr = peel_blocks_with_stmt(&body.value);
             if let ExprKind::MethodCall(ps, span_call_args, _) = &only_expr.kind;
+            if let ExprKind::Path(..) = span_call_args[0].kind;
             then {
                 let and_then_snippets = get_and_then_snippets(cx, and_then_args);
                 let mut sle = SpanlessEq::new(cx).deny_side_effects();
