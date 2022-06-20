@@ -259,14 +259,17 @@ pub(super) enum NameRefKind {
     DotAccess(DotAccess),
     /// Position where we are only interested in keyword completions
     Keyword(ast::Item),
-    /// The record expression this nameref is a field of
-    RecordExpr(ast::RecordExpr),
+    /// The record expression this nameref is a field of and whether a dot precedes the completion identifier.
+    RecordExpr {
+        dot_prefix: bool,
+        expr: ast::RecordExpr,
+    },
     Pattern(PatternContext),
 }
 
 /// The identifier we are currently completing.
 #[derive(Debug)]
-pub(super) enum IdentContext {
+pub(super) enum CompletionAnalysis {
     Name(NameContext),
     NameRef(NameRefContext),
     Lifetime(LifetimeContext),
@@ -279,6 +282,7 @@ pub(super) enum IdentContext {
     },
     /// Set if we are currently completing in an unexpanded attribute, this usually implies a builtin attribute like `allow($0)`
     UnexpandedAttrTT {
+        colon_prefix: bool,
         fake_attribute_under_caret: Option<ast::Attr>,
     },
 }
@@ -334,11 +338,6 @@ pub(crate) struct CompletionContext<'a> {
     /// The expected type of what we are completing.
     pub(super) expected_type: Option<Type>,
 
-    // FIXME: This shouldn't exist
-    pub(super) previous_token: Option<SyntaxToken>,
-
-    // We might wanna split these out of CompletionContext
-    pub(super) ident_ctx: IdentContext,
     pub(super) qualifier_ctx: QualifierCtx,
 
     pub(super) locals: FxHashMap<Name, Local>,
@@ -359,11 +358,6 @@ impl<'a> CompletionContext<'a> {
             _ if kind.is_keyword() => self.original_token.text_range(),
             _ => TextRange::empty(self.position.offset),
         }
-    }
-
-    // FIXME: This shouldn't exist
-    pub(crate) fn previous_token_is(&self, kind: SyntaxKind) -> bool {
-        self.previous_token.as_ref().map_or(false, |tok| tok.kind() == kind)
     }
 
     pub(crate) fn famous_defs(&self) -> FamousDefs {
@@ -465,7 +459,7 @@ impl<'a> CompletionContext<'a> {
         db: &'a RootDatabase,
         position @ FilePosition { file_id, offset }: FilePosition,
         config: &'a CompletionConfig,
-    ) -> Option<CompletionContext<'a>> {
+    ) -> Option<(CompletionContext<'a>, CompletionAnalysis)> {
         let _p = profile::span("CompletionContext::new");
         let sema = Semantics::new(db);
 
@@ -507,19 +501,16 @@ impl<'a> CompletionContext<'a> {
             module,
             expected_name: None,
             expected_type: None,
-            previous_token: None,
-            // dummy value, will be overwritten
-            ident_ctx: IdentContext::UnexpandedAttrTT { fake_attribute_under_caret: None },
             qualifier_ctx: Default::default(),
             locals,
         };
-        ctx.expand_and_fill(
+        let ident_ctx = ctx.expand_and_analyze(
             original_file.syntax().clone(),
             file_with_fake_ident.syntax().clone(),
             offset,
             fake_ident_token,
         )?;
-        Some(ctx)
+        Some((ctx, ident_ctx))
     }
 }
 

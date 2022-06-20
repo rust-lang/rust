@@ -10,8 +10,8 @@ use syntax::{SmolStr, TextRange};
 use text_edit::TextEdit;
 
 use crate::{
-    context::CompletionContext,
-    render::{render_resolution, RenderContext},
+    context::{CompletionContext, PathCompletionCtx},
+    render::{render_path_resolution, RenderContext},
 };
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
@@ -434,10 +434,11 @@ pub(crate) struct Builder {
 impl Builder {
     pub(crate) fn from_resolution(
         ctx: &CompletionContext,
+        path_ctx: &PathCompletionCtx,
         local_name: hir::Name,
         resolution: hir::ScopeDef,
     ) -> Self {
-        render_resolution(RenderContext::new(ctx), local_name, resolution)
+        render_path_resolution(RenderContext::new(ctx), path_ctx, local_name, resolution)
     }
 
     pub(crate) fn build(self) -> CompletionItem {

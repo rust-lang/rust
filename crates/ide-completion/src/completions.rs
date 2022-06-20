@@ -23,13 +23,13 @@ pub(crate) mod vis;
 use std::iter;
 
 use hir::{known, ScopeDef};
-use ide_db::SymbolKind;
+use ide_db::{imports::import_assets::LocatedImport, SymbolKind};
 use syntax::ast;
 
 use crate::{
     context::{
-        ItemListKind, NameContext, NameKind, NameRefContext, NameRefKind, PathKind, PatternContext,
-        TypeLocation, Visible,
+        DotAccess, ItemListKind, NameContext, NameKind, NameRefContext, NameRefKind,
+        PathCompletionCtx, PathKind, PatternContext, TypeLocation, Visible,
     },
     item::Builder,
     render::{
@@ -38,7 +38,7 @@ use crate::{
         literal::{render_struct_literal, render_variant_lit},
         macro_::render_macro,
         pattern::{render_struct_pat, render_variant_pat},
-        render_field, render_resolution, render_resolution_simple, render_tuple_field,
+        render_field, render_path_resolution, render_resolution_simple, render_tuple_field,
         type_alias::{render_type_alias, render_type_alias_with_eq},
         union_literal::render_union_literal,
         RenderContext,
@@ -137,15 +137,16 @@ impl Completions {
     pub(crate) fn add_crate_roots(&mut self, ctx: &CompletionContext) {
         ctx.process_all_names(&mut |name, res| match res {
             ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {
-                self.add_resolution(ctx, name, res);
+                self.add_module(ctx, m, name);
             }
             _ => (),
         });
     }
 
-    pub(crate) fn add_resolution(
+    pub(crate) fn add_path_resolution(
         &mut self,
         ctx: &CompletionContext,
+        path_ctx: &PathCompletionCtx,
         local_name: hir::Name,
         resolution: hir::ScopeDef,
     ) {
@@ -153,7 +154,10 @@ impl Completions {
             cov_mark::hit!(qualified_path_doc_hidden);
             return;
         }
-        self.add(render_resolution(RenderContext::new(ctx), local_name, resolution).build());
+        self.add(
+            render_path_resolution(RenderContext::new(ctx), path_ctx, local_name, resolution)
+                .build(),
+        );
     }
 
     pub(crate) fn add_resolution_simple(
@@ -174,12 +178,13 @@ impl Completions {
         module: hir::Module,
         local_name: hir::Name,
     ) {
-        self.add_resolution(ctx, local_name, hir::ScopeDef::ModuleDef(module.into()));
+        self.add_resolution_simple(ctx, local_name, hir::ScopeDef::ModuleDef(module.into()));
     }
 
     pub(crate) fn add_macro(
         &mut self,
         ctx: &CompletionContext,
+        path_ctx: &PathCompletionCtx,
         mac: hir::Macro,
         local_name: hir::Name,
     ) {
@@ -191,6 +196,7 @@ impl Completions {
         self.add(
             render_macro(
                 RenderContext::new(ctx).private_editable(is_private_editable),
+                path_ctx,
                 local_name,
                 mac,
             )
@@ -201,6 +207,7 @@ impl Completions {
     pub(crate) fn add_function(
         &mut self,
         ctx: &CompletionContext,
+        path_ctx: &PathCompletionCtx,
         func: hir::Function,
         local_name: Option<hir::Name>,
     ) {
@@ -212,6 +219,7 @@ impl Completions {
         self.add(
             render_fn(
                 RenderContext::new(ctx).private_editable(is_private_editable),
+                path_ctx,
                 local_name,
                 func,
             )
@@ -222,6 +230,7 @@ impl Completions {
     pub(crate) fn add_method(
         &mut self,
         ctx: &CompletionContext,
+        dot_access: &DotAccess,
         func: hir::Function,
         receiver: Option<hir::Name>,
         local_name: Option<hir::Name>,
@@ -234,8 +243,35 @@ impl Completions {
         self.add(
             render_method(
                 RenderContext::new(ctx).private_editable(is_private_editable),
+                dot_access,
                 receiver,
                 local_name,
+                func,
+            )
+            .build(),
+        );
+    }
+
+    pub(crate) fn add_method_with_import(
+        &mut self,
+        ctx: &CompletionContext,
+        dot_access: &DotAccess,
+        func: hir::Function,
+        import: LocatedImport,
+    ) {
+        let is_private_editable = match ctx.is_visible(&func) {
+            Visible::Yes => false,
+            Visible::Editable => true,
+            Visible::No => return,
+        };
+        self.add(
+            render_method(
+                RenderContext::new(ctx)
+                    .private_editable(is_private_editable)
+                    .import_to_add(Some(import)),
+                dot_access,
+                None,
+                None,
                 func,
             )
             .build(),
@@ -277,11 +313,12 @@ impl Completions {
     pub(crate) fn add_qualified_enum_variant(
         &mut self,
         ctx: &CompletionContext,
+        path_ctx: &PathCompletionCtx,
         variant: hir::Variant,
         path: hir::ModPath,
     ) {
         if let Some(builder) =
-            render_variant_lit(RenderContext::new(ctx), None, variant, Some(path))
+            render_variant_lit(RenderContext::new(ctx), path_ctx, None, variant, Some(path))
         {
             self.add(builder.build());
         }
@@ -290,11 +327,12 @@ impl Completions {
     pub(crate) fn add_enum_variant(
         &mut self,
         ctx: &CompletionContext,
+        path_ctx: &PathCompletionCtx,
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
         if let Some(builder) =
-            render_variant_lit(RenderContext::new(ctx), local_name, variant, None)
+            render_variant_lit(RenderContext::new(ctx), path_ctx, local_name, variant, None)
         {
             self.add(builder.build());
         }
@@ -324,12 +362,13 @@ impl Completions {
     pub(crate) fn add_struct_literal(
         &mut self,
         ctx: &CompletionContext,
+        path_ctx: &PathCompletionCtx,
         strukt: hir::Struct,
         path: Option<hir::ModPath>,
         local_name: Option<hir::Name>,
     ) {
         if let Some(builder) =
-            render_struct_literal(RenderContext::new(ctx), strukt, path, local_name)
+            render_struct_literal(RenderContext::new(ctx), path_ctx, strukt, path, local_name)
         {
             self.add(builder.build());
         }
@@ -369,11 +408,13 @@ impl Completions {
     pub(crate) fn add_variant_pat(
         &mut self,
         ctx: &CompletionContext,
+        pattern_ctx: &PatternContext,
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
         self.add_opt(render_variant_pat(
             RenderContext::new(ctx),
+            pattern_ctx,
             variant,
             local_name.clone(),
             None,
@@ -383,20 +424,22 @@ impl Completions {
     pub(crate) fn add_qualified_variant_pat(
         &mut self,
         ctx: &CompletionContext,
+        pattern_ctx: &PatternContext,
         variant: hir::Variant,
         path: hir::ModPath,
     ) {
         let path = Some(&path);
-        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, None, path));
+        self.add_opt(render_variant_pat(RenderContext::new(ctx), pattern_ctx, variant, None, path));
     }
 
     pub(crate) fn add_struct_pat(
         &mut self,
         ctx: &CompletionContext,
+        pattern_ctx: &PatternContext,
         strukt: hir::Struct,
         local_name: Option<hir::Name>,
     ) {
-        self.add_opt(render_struct_pat(RenderContext::new(ctx), strukt, local_name));
+        self.add_opt(render_struct_pat(RenderContext::new(ctx), pattern_ctx, strukt, local_name));
     }
 }
 
@@ -541,8 +584,8 @@ pub(super) fn complete_name_ref(
         NameRefKind::Keyword(item) => {
             keyword::complete_for_and_where(acc, ctx, item);
         }
-        NameRefKind::RecordExpr(record_expr) => {
-            record::complete_record_expr_fields(acc, ctx, record_expr);
+        NameRefKind::RecordExpr { dot_prefix, expr } => {
+            record::complete_record_expr_fields(acc, ctx, expr, dot_prefix);
         }
         NameRefKind::Pattern(pattern_ctx) => complete_patterns(acc, ctx, pattern_ctx),
     }

@@ -13,7 +13,7 @@ use crate::{
 pub(crate) fn complete_use_path(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    PathCompletionCtx { qualified, use_tree_parent, .. }: &PathCompletionCtx,
+    path_ctx @ PathCompletionCtx { qualified, use_tree_parent, .. }: &PathCompletionCtx,
     name_ref: &Option<ast::NameRef>,
 ) {
     match qualified {
@@ -68,7 +68,7 @@ pub(crate) fn complete_use_path(
                         };
 
                         if add_resolution {
-                            let mut builder = Builder::from_resolution(ctx, name, def);
+                            let mut builder = Builder::from_resolution(ctx, path_ctx, name, def);
                             builder.set_relevance(CompletionRelevance {
                                 is_name_already_imported,
                                 ..Default::default()
@@ -81,7 +81,7 @@ pub(crate) fn complete_use_path(
                     cov_mark::hit!(enum_plain_qualified_use_tree);
                     e.variants(ctx.db)
                         .into_iter()
-                        .for_each(|variant| acc.add_enum_variant(ctx, variant, None));
+                        .for_each(|variant| acc.add_enum_variant(ctx, path_ctx, variant, None));
                 }
                 _ => {}
             }

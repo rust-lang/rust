@@ -1,9 +1,6 @@
 //! Complete fields in record literals and patterns.
 use ide_db::SymbolKind;
-use syntax::{
-    ast::{self, Expr},
-    T,
-};
+use syntax::ast::{self, Expr};
 
 use crate::{
     context::{ExprCtx, PathCompletionCtx, PatternContext, Qualified},
@@ -24,6 +21,7 @@ pub(crate) fn complete_record_expr_fields(
     acc: &mut Completions,
     ctx: &CompletionContext,
     record_expr: &ast::RecordExpr,
+    &dot_prefix: &bool,
 ) {
     let ty = ctx.sema.type_of_expr(&Expr::RecordExpr(record_expr.clone()));
 
@@ -45,7 +43,7 @@ pub(crate) fn complete_record_expr_fields(
             let missing_fields = ctx.sema.record_literal_missing_fields(record_expr);
 
             add_default_update(acc, ctx, ty, &missing_fields);
-            if ctx.previous_token_is(T![.]) {
+            if dot_prefix {
                 let mut item =
                     CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), "..");
                 item.insert_text(".");

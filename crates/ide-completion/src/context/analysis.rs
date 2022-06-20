@@ -11,23 +11,23 @@ use syntax::{
 };
 
 use crate::context::{
-    AttrCtx, CompletionContext, DotAccess, DotAccessKind, ExprCtx, IdentContext, ItemListKind,
-    LifetimeContext, LifetimeKind, NameContext, NameKind, NameRefContext, NameRefKind, ParamKind,
-    PathCompletionCtx, PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
-    TypeAscriptionTarget, TypeLocation, COMPLETION_MARKER,
+    AttrCtx, CompletionAnalysis, CompletionContext, DotAccess, DotAccessKind, ExprCtx,
+    ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind, NameRefContext,
+    NameRefKind, ParamKind, PathCompletionCtx, PathKind, PatternContext, PatternRefutability,
+    Qualified, QualifierCtx, TypeAscriptionTarget, TypeLocation, COMPLETION_MARKER,
 };
 
 impl<'a> CompletionContext<'a> {
     /// Expand attributes and macro calls at the current cursor position for both the original file
     /// and fake file repeatedly. As soon as one of the two expansions fail we stop so the original
     /// and speculative states stay in sync.
-    pub(super) fn expand_and_fill(
+    pub(super) fn expand_and_analyze(
         &mut self,
         mut original_file: SyntaxNode,
         mut speculative_file: SyntaxNode,
         mut offset: TextSize,
         mut fake_ident_token: SyntaxToken,
-    ) -> Option<()> {
+    ) -> Option<CompletionAnalysis> {
         let _p = profile::span("CompletionContext::expand_and_fill");
         let mut derive_ctx = None;
 
@@ -157,7 +157,7 @@ impl<'a> CompletionContext<'a> {
             break 'expansion;
         }
 
-        self.fill(&original_file, speculative_file, offset, derive_ctx)
+        self.analyze(&original_file, speculative_file, offset, derive_ctx)
     }
 
     /// Calculate the expected type and name of the cursor position.
@@ -254,7 +254,9 @@ impl<'a> CompletionContext<'a> {
                     // match foo { $0 }
                     // match foo { ..., pat => $0 }
                     ast::MatchExpr(it) => {
-                        let ty = if self.previous_token_is(T![=>]) {
+                        let on_arrow = previous_non_trivia_token(self.token.clone()).map_or(false, |it| T![=>] == it.kind());
+
+                        let ty = if on_arrow {
                             // match foo { ..., pat => $0 }
                             cov_mark::hit!(expected_type_match_arm_body_without_leading_char);
                             cov_mark::hit!(expected_type_match_arm_body_with_leading_char);
@@ -309,13 +311,13 @@ impl<'a> CompletionContext<'a> {
 
     /// Fill the completion context, this is what does semantic reasoning about the surrounding context
     /// of the completion location.
-    fn fill(
+    fn analyze(
         &mut self,
         original_file: &SyntaxNode,
         file_with_fake_ident: SyntaxNode,
         offset: TextSize,
         derive_ctx: Option<(SyntaxNode, SyntaxNode, TextSize, ast::Attr)>,
-    ) -> Option<()> {
+    ) -> Option<CompletionAnalysis> {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased()?;
         let syntax_element = NodeOrToken::Token(fake_ident_token);
         if is_in_token_of_for_loop(syntax_element.clone()) {
@@ -326,9 +328,6 @@ impl<'a> CompletionContext<'a> {
             // such that this special case becomes unnecessary
             return None;
         }
-
-        self.previous_token =
-            syntax_element.clone().into_token().and_then(previous_non_trivia_token);
 
         (self.expected_type, self.expected_name) = self.expected_type_and_name();
 
@@ -351,8 +350,7 @@ impl<'a> CompletionContext<'a> {
                             .collect(),
                     };
                 }
-                self.ident_ctx = IdentContext::NameRef(nameref_ctx);
-                return Some(());
+                return Some(CompletionAnalysis::NameRef(nameref_ctx));
             }
             return None;
         }
@@ -360,58 +358,54 @@ impl<'a> CompletionContext<'a> {
         let name_like = match find_node_at_offset(&file_with_fake_ident, offset) {
             Some(it) => it,
             None => {
-                if let Some(original) = ast::String::cast(self.original_token.clone()) {
-                    self.ident_ctx = IdentContext::String {
-                        original,
-                        expanded: ast::String::cast(self.token.clone()),
-                    };
-                } else {
-                    // Fix up trailing whitespace problem
-                    // #[attr(foo = $0
-                    let token = if self.token.kind() == SyntaxKind::WHITESPACE {
-                        self.previous_token.as_ref()?
+                let analysis =
+                    if let Some(original) = ast::String::cast(self.original_token.clone()) {
+                        CompletionAnalysis::String {
+                            original,
+                            expanded: ast::String::cast(self.token.clone()),
+                        }
                     } else {
-                        &self.token
+                        // Fix up trailing whitespace problem
+                        // #[attr(foo = $0
+                        let token =
+                            syntax::algo::skip_trivia_token(self.token.clone(), Direction::Prev)?;
+                        let p = token.parent()?;
+                        if p.kind() == SyntaxKind::TOKEN_TREE
+                            && p.ancestors().any(|it| it.kind() == SyntaxKind::META)
+                        {
+                            let colon_prefix = previous_non_trivia_token(self.token.clone())
+                                .map_or(false, |it| T![:] == it.kind());
+                            CompletionAnalysis::UnexpandedAttrTT {
+                                fake_attribute_under_caret: syntax_element
+                                    .ancestors()
+                                    .find_map(ast::Attr::cast),
+                                colon_prefix,
+                            }
+                        } else {
+                            return None;
+                        }
                     };
-                    let p = token.parent()?;
-                    if p.kind() == SyntaxKind::TOKEN_TREE
-                        && p.ancestors().any(|it| it.kind() == SyntaxKind::META)
-                    {
-                        self.ident_ctx = IdentContext::UnexpandedAttrTT {
-                            fake_attribute_under_caret: syntax_element
-                                .ancestors()
-                                .find_map(ast::Attr::cast),
-                        };
-                    } else {
-                        return None;
-                    }
-                }
-                return Some(());
+                return Some(analysis);
             }
         };
-
-        match name_like {
-            ast::NameLike::Lifetime(lifetime) => {
-                self.ident_ctx = IdentContext::Lifetime(Self::classify_lifetime(
-                    &self.sema,
-                    original_file,
-                    lifetime,
-                )?);
-            }
+        let analysis = match name_like {
+            ast::NameLike::Lifetime(lifetime) => CompletionAnalysis::Lifetime(
+                Self::classify_lifetime(&self.sema, original_file, lifetime)?,
+            ),
             ast::NameLike::NameRef(name_ref) => {
                 let parent = name_ref.syntax().parent()?;
                 let (nameref_ctx, qualifier_ctx) =
                     Self::classify_name_ref(&self.sema, &original_file, name_ref, parent.clone())?;
 
                 self.qualifier_ctx = qualifier_ctx;
-                self.ident_ctx = IdentContext::NameRef(nameref_ctx);
+                CompletionAnalysis::NameRef(nameref_ctx)
             }
             ast::NameLike::Name(name) => {
                 let name_ctx = Self::classify_name(&self.sema, original_file, name)?;
-                self.ident_ctx = IdentContext::Name(name_ctx);
+                CompletionAnalysis::Name(name_ctx)
             }
-        }
-        Some(())
+        };
+        Some(analysis)
     }
 
     fn classify_lifetime(
@@ -493,12 +487,15 @@ impl<'a> CompletionContext<'a> {
             |kind| (NameRefContext { nameref: nameref.clone(), kind }, Default::default());
 
         if let Some(record_field) = ast::RecordExprField::for_field_name(&name_ref) {
+            let dot_prefix = previous_non_trivia_token(name_ref.syntax().clone())
+                .map_or(false, |it| T![.] == it.kind());
+
             return find_node_in_file_compensated(
                 sema,
                 original_file,
                 &record_field.parent_record_lit(),
             )
-            .map(NameRefKind::RecordExpr)
+            .map(|expr| NameRefKind::RecordExpr { expr, dot_prefix })
             .map(make_res);
         }
         if let Some(record_field) = ast::RecordPatField::for_field_name_ref(&name_ref) {
@@ -1180,8 +1177,12 @@ pub(crate) fn is_in_loop_body(node: &SyntaxNode) -> bool {
         .is_some()
 }
 
-fn previous_non_trivia_token(token: SyntaxToken) -> Option<SyntaxToken> {
-    let mut token = token.prev_token();
+fn previous_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {
+    let mut token = match e.into() {
+        SyntaxElement::Node(n) => n.first_token()?,
+        SyntaxElement::Token(t) => t,
+    }
+    .prev_token();
     while let Some(inner) = token {
         if !inner.kind().is_trivia() {
             return Some(inner);

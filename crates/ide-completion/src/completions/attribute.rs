@@ -33,6 +33,7 @@ pub(crate) use self::derive::complete_derive_path;
 pub(crate) fn complete_known_attribute_input(
     acc: &mut Completions,
     ctx: &CompletionContext,
+    &colon_prefix: &bool,
     fake_attribute_under_caret: &ast::Attr,
 ) -> Option<()> {
     let attribute = fake_attribute_under_caret;
@@ -47,7 +48,9 @@ pub(crate) fn complete_known_attribute_input(
 
     match path.text().as_str() {
         "repr" => repr::complete_repr(acc, ctx, tt),
-        "feature" => lint::complete_lint(acc, ctx, &parse_tt_as_comma_sep_paths(tt)?, FEATURES),
+        "feature" => {
+            lint::complete_lint(acc, ctx, colon_prefix, &parse_tt_as_comma_sep_paths(tt)?, FEATURES)
+        }
         "allow" | "warn" | "deny" | "forbid" => {
             let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
 
@@ -60,7 +63,7 @@ pub(crate) fn complete_known_attribute_input(
                 .cloned()
                 .collect();
 
-            lint::complete_lint(acc, ctx, &existing_lints, &lints);
+            lint::complete_lint(acc, ctx, colon_prefix, &existing_lints, &lints);
         }
         "cfg" => cfg::complete_cfg(acc, ctx),
         _ => (),
@@ -71,7 +74,7 @@ pub(crate) fn complete_known_attribute_input(
 pub(crate) fn complete_attribute_path(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     &AttrCtx { kind, annotated_item_kind }: &AttrCtx,
 ) {
     let is_inner = kind == AttrKind::Inner;
@@ -89,7 +92,7 @@ pub(crate) fn complete_attribute_path(
             for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
                 match def {
                     hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_attr(ctx.db) => {
-                        acc.add_macro(ctx, m, name)
+                        acc.add_macro(ctx, path_ctx, m, name)
                     }
                     hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
                         acc.add_module(ctx, m, name)
@@ -105,7 +108,7 @@ pub(crate) fn complete_attribute_path(
         Qualified::No => {
             ctx.process_all_names(&mut |name, def| match def {
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_attr(ctx.db) => {
-                    acc.add_macro(ctx, m, name)
+                    acc.add_macro(ctx, path_ctx, m, name)
                 }
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => acc.add_module(ctx, m, name),
                 _ => (),

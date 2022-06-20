@@ -9,7 +9,7 @@ use crate::{
 fn check_expected_type_and_name(ra_fixture: &str, expect: Expect) {
     let (db, pos) = position(ra_fixture);
     let config = TEST_CONFIG;
-    let completion_context = CompletionContext::new(&db, pos, &config).unwrap();
+    let (completion_context, _analysis) = CompletionContext::new(&db, pos, &config).unwrap();
 
     let ty = completion_context
         .expected_type

@@ -6,16 +6,14 @@ use itertools::Itertools;
 use syntax::SmolStr;
 
 use crate::{
-    context::{
-        IdentContext, NameContext, NameKind, NameRefContext, NameRefKind, ParamKind,
-        PathCompletionCtx, PathKind, PatternContext,
-    },
+    context::{ParamKind, PatternContext},
     render::{variant::visible_fields, RenderContext},
     CompletionItem, CompletionItemKind,
 };
 
 pub(crate) fn render_struct_pat(
     ctx: RenderContext<'_>,
+    pattern_ctx: &PatternContext,
     strukt: hir::Struct,
     local_name: Option<Name>,
 ) -> Option<CompletionItem> {
@@ -30,13 +28,21 @@ pub(crate) fn render_struct_pat(
     }
 
     let name = local_name.unwrap_or_else(|| strukt.name(ctx.db())).to_smol_str();
-    let pat = render_pat(&ctx, &name, strukt.kind(ctx.db()), &visible_fields, fields_omitted)?;
+    let pat = render_pat(
+        &ctx,
+        pattern_ctx,
+        &name,
+        strukt.kind(ctx.db()),
+        &visible_fields,
+        fields_omitted,
+    )?;
 
     Some(build_completion(ctx, name, pat, strukt))
 }
 
 pub(crate) fn render_variant_pat(
     ctx: RenderContext<'_>,
+    pattern_ctx: &PatternContext,
     variant: hir::Variant,
     local_name: Option<Name>,
     path: Option<&hir::ModPath>,
@@ -50,7 +56,14 @@ pub(crate) fn render_variant_pat(
         Some(path) => path.to_string().into(),
         None => local_name.unwrap_or_else(|| variant.name(ctx.db())).to_smol_str(),
     };
-    let pat = render_pat(&ctx, &name, variant.kind(ctx.db()), &visible_fields, fields_omitted)?;
+    let pat = render_pat(
+        &ctx,
+        pattern_ctx,
+        &name,
+        variant.kind(ctx.db()),
+        &visible_fields,
+        fields_omitted,
+    )?;
 
     Some(build_completion(ctx, name, pat, variant))
 }
@@ -75,49 +88,28 @@ fn build_completion(
 
 fn render_pat(
     ctx: &RenderContext<'_>,
+    pattern_ctx: &PatternContext,
     name: &str,
     kind: StructKind,
     fields: &[hir::Field],
     fields_omitted: bool,
 ) -> Option<String> {
-    let has_call_parens = matches!(
-        ctx.completion.ident_ctx,
-        IdentContext::NameRef(NameRefContext {
-            kind: NameRefKind::Path(PathCompletionCtx { has_call_parens: true, .. }),
-            ..
-        })
-    );
     let mut pat = match kind {
-        StructKind::Tuple if !has_call_parens => {
-            render_tuple_as_pat(ctx.snippet_cap(), fields, name, fields_omitted)
-        }
-        StructKind::Record if !has_call_parens => {
+        StructKind::Tuple => render_tuple_as_pat(ctx.snippet_cap(), fields, name, fields_omitted),
+        StructKind::Record => {
             render_record_as_pat(ctx.db(), ctx.snippet_cap(), fields, name, fields_omitted)
         }
         StructKind::Unit => return None,
-        _ => name.to_owned(),
     };
 
-    let needs_ascription = !has_call_parens
-        && matches!(
-            &ctx.completion.ident_ctx,
-            IdentContext::NameRef(NameRefContext {
-                kind: NameRefKind::Path(PathCompletionCtx {
-                    kind: PathKind::Pat {
-                        pat_ctx
-                    },
-                    ..
-                }),
-                ..
-            }) | IdentContext::Name(NameContext {
-                kind: NameKind::IdentPat(pat_ctx), ..}
-            )
-            if matches!(pat_ctx, PatternContext {
-                param_ctx: Some((.., ParamKind::Function(_))),
-                has_type_ascription: false,
-                ..
-            })
-        );
+    let needs_ascription = matches!(
+        pattern_ctx,
+        PatternContext {
+            param_ctx: Some((.., ParamKind::Function(_))),
+            has_type_ascription: false,
+            ..
+        }
+    );
     if needs_ascription {
         pat.push(':');
         pat.push(' ');

@@ -1,16 +1,16 @@
 //! Completion for lints
 use ide_db::{generated::lints::Lint, SymbolKind};
-use syntax::{ast, T};
+use syntax::ast;
 
 use crate::{context::CompletionContext, item::CompletionItem, Completions};
 
 pub(super) fn complete_lint(
     acc: &mut Completions,
     ctx: &CompletionContext,
+    is_qualified: bool,
     existing_lints: &[ast::Path],
     lints_completions: &[Lint],
 ) {
-    let is_qualified = ctx.previous_token_is(T![:]);
     for &Lint { label, description } in lints_completions {
         let (qual, name) = {
             // FIXME: change `Lint`'s label to not store a path in it but split the prefix off instead?

@@ -13,7 +13,7 @@ use crate::{
 pub(crate) fn complete_derive_path(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
+    path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     existing_derives: &ExistingDerives,
 ) {
     let core = ctx.famous_defs().core();
@@ -33,7 +33,7 @@ pub(crate) fn complete_derive_path(
                     ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac))
                         if !existing_derives.contains(&mac) && mac.is_derive(ctx.db) =>
                     {
-                        acc.add_macro(ctx, mac, name)
+                        acc.add_macro(ctx, path_ctx, mac, name)
                     }
                     ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => acc.add_module(ctx, m, name),
                     _ => (),
@@ -59,7 +59,7 @@ pub(crate) fn complete_derive_path(
                 match (core, mac.module(ctx.db).krate()) {
                     // show derive dependencies for `core`/`std` derives
                     (Some(core), mac_krate) if core == mac_krate => {}
-                    _ => return acc.add_macro(ctx, mac, name),
+                    _ => return acc.add_macro(ctx, path_ctx, mac, name),
                 };
 
                 let name_ = name.to_smol_str();
@@ -92,7 +92,7 @@ pub(crate) fn complete_derive_path(
                         item.lookup_by(lookup);
                         item.add_to(acc);
                     }
-                    None => acc.add_macro(ctx, mac, name),
+                    None => acc.add_macro(ctx, path_ctx, mac, name),
                 }
             });
             acc.add_nameref_keywords_with_colon(ctx);
