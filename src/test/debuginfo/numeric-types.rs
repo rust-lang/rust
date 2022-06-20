@@ -1,4 +1,3 @@
-// only-cdb
 // compile-flags:-g
 
 // Tests the visualizations for `NonZero{I,U}{8,16,32,64,128,size}`, `Wrapping<T>` and
@@ -152,6 +151,90 @@
 // cdb-command: dx a_usize
 // cdb-check:a_usize          : 0x400 [Type: core::sync::atomic::AtomicUsize]
 // cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicUsize]
+
+
+// === GDB TESTS ===================================================================================
+
+// gdb-command:run
+
+// gdb-command:print nz_i8
+// gdbg-check:[...]$1 = 11
+
+// gdb-command:print nz_i16
+// gdbg-check:[...]$2 = 22
+
+// gdb-command:print nz_i32
+// gdbg-check:[...]$3 = 33
+
+// gdb-command:print nz_i64
+// gdbg-check:[...]$4 = 44
+
+// gdb-command:print nz_i128
+// gdbg-check:[...]$5 = 55
+
+// gdb-command:print nz_isize
+// gdbg-check:[...]$6 = 66
+
+// gdb-command:print nz_u8
+// gdbg-check:[...]$7 = 77
+
+// gdb-command:print nz_u16
+// gdbg-check:[...]$8 = 88
+
+// gdb-command:print nz_u32
+// gdbg-check:[...]$9 = 99
+
+// gdb-command:print nz_u64
+// gdbg-check:[...]$10 = 100
+
+// gdb-command:print nz_u128
+// gdbg-check:[...]$11 = 111
+
+// gdb-command:print nz_usize
+// gdbg-check:[...]$12 = 122
+
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print nz_i8
+// lldb-check:[...]$0 = 11
+
+// lldb-command:print nz_i16
+// lldb-check:[...]$1 = 22
+
+// lldb-command:print nz_i32
+// lldb-check:[...]$2 = 33
+
+// lldb-command:print nz_i64
+// lldb-check:[...]$3 = 44
+
+// lldb-command:print nz_i128
+// lldb-check:[...]$4 = 55
+
+// lldb-command:print nz_isize
+// lldb-check:[...]$5 = 66
+
+// lldb-command:print nz_u8
+// lldb-check:[...]$6 = 77
+
+// lldb-command:print nz_u16
+// lldb-check:[...]$7 = 88
+
+// lldb-command:print nz_u32
+// lldb-check:[...]$8 = 99
+
+// lldb-command:print nz_u64
+// lldb-check:[...]$9 = 100
+
+// lldb-command:print nz_u128
+// lldb-check:[...]$10 = 111
+
+// lldb-command:print nz_usize
+// lldb-check:[...]$11 = 122
+
 
 use std::num::*;
 use std::sync::atomic::*;
