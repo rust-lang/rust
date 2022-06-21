@@ -273,19 +273,20 @@ There are two main ways to find where a given error is emitted:
 
 - `grep` for either a sub-part of the error message/label or error code. This
   usually works well and is straightforward, but there are some cases where
-  the error emitting code is removed from the code where the error is
+  the code emitting the error is removed from the code where the error is
   constructed behind a relatively deep call-stack. Even then, it is a good way
   to get your bearings.
-- Invoking `rustc` with the nightly-only flag `-Z treat-err-as-bug=1`, which
+- Invoking `rustc` with the nightly-only flag `-Z treat-err-as-bug=1`
   will treat the first error being emitted as an Internal Compiler Error, which
-  allows you to use the environment variable `RUST_BACKTRACE=full` to get a
+  allows you to get a
   stack trace at the point the error has been emitted. Change the `1` to
-  something else if you whish to trigger on a later error. Some limitations
-  with this approach is that some calls get elided from the stack trace because
-  they get inlined in the compiled `rustc`, and the same problem we faced with
-  the prior approach, where the _construction_ of the error is far away from
-  where it is _emitted_. In some cases we buffer multiple errors in order to
-  emit them in order.
+  something else if you wish to trigger on a later error.
+
+  There are limitations with this approach:
+  - Some calls get elided from the stack trace because they get inlined in the compiled `rustc`.
+  - The _construction_ of the error is far away from where it is _emitted_,
+    a problem similar to the one we faced with the `grep` approach.
+    In some cases, we buffer multiple errors in order to emit them in order.
 
 The regular development practices apply: judicious use of `debug!()` statements
 and use of a debugger to trigger break points in order to figure out in what
