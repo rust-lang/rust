@@ -8,6 +8,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_attr as attr;
 use rustc_errors::PResult;
 use rustc_expand::base::{self, *};
+use rustc_macros::SessionDiagnostic;
 use rustc_span::Span;
 
 pub fn expand_cfg(
@@ -34,13 +35,19 @@ pub fn expand_cfg(
     }
 }
 
-fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, ast::MetaItem> {
+#[derive(SessionDiagnostic)]
+#[error(slug = "builtin-macros-requires-cfg-pattern")]
+struct RequiresCfgPattern {
+    #[primary_span]
+    #[label]
+    span: Span,
+}
+
+fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<'a, ast::MetaItem> {
     let mut p = cx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        let mut err = cx.struct_span_err(sp, "macro requires a cfg-pattern as an argument");
-        err.span_label(sp, "cfg-pattern required");
-        return Err(err);
+        return Err(cx.create_err(RequiresCfgPattern { span }));
     }
 
     let cfg = p.parse_meta_item()?;
@@ -48,7 +55,7 @@ fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a
     let _ = p.eat(&token::Comma);
 
     if !p.eat(&token::Eof) {
-        return Err(cx.struct_span_err(sp, "expected 1 cfg-pattern"));
+        return Err(cx.struct_span_err(span, "expected 1 cfg-pattern"));
     }
 
     Ok(cfg)

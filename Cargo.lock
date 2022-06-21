@@ -3669,6 +3669,7 @@ dependencies = [
  "rustc_feature",
  "rustc_lexer",
  "rustc_lint_defs",
+ "rustc_macros",
  "rustc_parse",
  "rustc_parse_format",
  "rustc_session",
