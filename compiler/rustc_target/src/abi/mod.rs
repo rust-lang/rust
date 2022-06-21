@@ -1352,13 +1352,17 @@ pub enum PointerKind {
     /// Most general case, we know no restrictions to tell LLVM.
     SharedMutable,
 
-    /// `&T` where `T` contains no `UnsafeCell`, is `noalias` and `readonly`.
+    /// `&T` where `T` contains no `UnsafeCell`, is `dereferenceable`, `noalias` and `readonly`.
     Frozen,
 
-    /// `&mut T` which is `noalias` but not `readonly`.
+    /// `&mut T` which is `dereferenceable` and `noalias` but not `readonly`.
     UniqueBorrowed,
 
-    /// `Box<T>`, unlike `UniqueBorrowed`, it also has `noalias` on returns.
+    /// `&mut !Unpin`, which is `dereferenceable` but neither `noalias` nor `readonly`.
+    UniqueBorrowedPinned,
+
+    /// `Box<T>`, which is `noalias` (even on return types, unlike the above) but neither `readonly`
+    /// nor `dereferenceable`.
     UniqueOwned,
 }
 
