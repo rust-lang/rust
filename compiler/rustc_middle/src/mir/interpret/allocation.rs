@@ -244,12 +244,12 @@ impl<Tag> Allocation<Tag> {
 
 impl Allocation {
     /// Convert Tag and add Extra fields
-    pub fn convert_tag_add_extra<Tag, Extra>(
+    pub fn convert_tag_add_extra<Tag, Extra, Err>(
         self,
         cx: &impl HasDataLayout,
         extra: Extra,
-        mut tagger: impl FnMut(Pointer<AllocId>) -> Pointer<Tag>,
-    ) -> Allocation<Tag, Extra> {
+        mut tagger: impl FnMut(Pointer<AllocId>) -> Result<Pointer<Tag>, Err>,
+    ) -> Result<Allocation<Tag, Extra>, Err> {
         // Compute new pointer tags, which also adjusts the bytes.
         let mut bytes = self.bytes;
         let mut new_relocations = Vec::with_capacity(self.relocations.0.len());
@@ -260,19 +260,19 @@ impl Allocation {
             let ptr_bytes = &mut bytes[idx..idx + ptr_size];
             let bits = read_target_uint(endian, ptr_bytes).unwrap();
             let (ptr_tag, ptr_offset) =
-                tagger(Pointer::new(alloc_id, Size::from_bytes(bits))).into_parts();
+                tagger(Pointer::new(alloc_id, Size::from_bytes(bits)))?.into_parts();
             write_target_uint(endian, ptr_bytes, ptr_offset.bytes().into()).unwrap();
             new_relocations.push((offset, ptr_tag));
         }
         // Create allocation.
-        Allocation {
+        Ok(Allocation {
             bytes,
             relocations: Relocations::from_presorted(new_relocations),
             init_mask: self.init_mask,
             align: self.align,
             mutability: self.mutability,
             extra,
-        }
+        })
     }
 }
 
