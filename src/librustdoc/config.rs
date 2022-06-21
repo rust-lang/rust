@@ -311,7 +311,10 @@ impl RenderOptions {
 impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
-    pub(crate) fn from_matches(matches: &getopts::Matches, args: Vec<String>) -> Result<Options, i32> {
+    pub(crate) fn from_matches(
+        matches: &getopts::Matches,
+        args: Vec<String>,
+    ) -> Result<Options, i32> {
         let args = &args[1..];
         // Check for unstable options.
         nightly_options::check_nightly_options(matches, &opts());
@@ -432,7 +435,6 @@ impl Options {
             }
             return Err(0);
         }
-        let (_lint_opts, _describe_lints, _lint_cap) = get_cmd_lint_options(matches, error_format);
 
         if matches.free.is_empty() {
             diag.struct_err("missing file operand").emit();

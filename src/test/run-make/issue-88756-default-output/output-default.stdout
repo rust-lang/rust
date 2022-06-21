@@ -190,4 +190,4 @@ Options:
 
     @path               Read newline separated options from `path`
 
-More information available at https://doc.rust-lang.org/nightly/rustdoc/what-is-rustdoc.html
+More information available at https://doc.rust-lang.org/$CHANNEL/rustdoc/what-is-rustdoc.html
