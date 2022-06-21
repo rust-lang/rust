@@ -416,7 +416,6 @@ impl Step for Llvm {
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
             let host_bin = builder.llvm_out(builder.config.build).join("bin");
-            cfg.define("CMAKE_CROSSCOMPILING", "True");
             cfg.define("LLVM_TABLEGEN", host_bin.join("llvm-tblgen").with_extension(EXE_EXTENSION));
             cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
             cfg.define(
@@ -513,6 +512,8 @@ fn configure_cmake(
     cfg.target(&target.triple).host(&builder.config.build.triple);
 
     if target != builder.config.build {
+        cfg.define("CMAKE_CROSSCOMPILING", "True");
+
         if target.contains("netbsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
         } else if target.contains("freebsd") {
@@ -530,6 +531,17 @@ fn configure_cmake(
         // Since, the LLVM itself makes rather limited use of version checks in
         // CMakeFiles (and then only in tests), and so far no issues have been
         // reported, the system version is currently left unset.
+
+        if target.contains("darwin") {
+            // Make sure that CMake does not build universal binaries on macOS.
+            // Explicitly specifiy the one single target architecture.
+            if target.starts_with("aarch64") {
+                // macOS uses a different name for building arm64
+                cfg.define("CMAKE_OSX_ARCHITECTURES", "arm64");
+            } else {
+                cfg.define("CMAKE_OSX_ARCHITECTURES", target.triple.split('-').next().unwrap());
+            }
+        }
     }
 
     let sanitize_cc = |cc: &Path| {
