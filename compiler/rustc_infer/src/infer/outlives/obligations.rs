@@ -390,7 +390,8 @@ where
         // Compute the bounds we can derive from the trait definition.
         // These are guaranteed to apply, no matter the inference
         // results.
-        let trait_bounds: Vec<_> = self.verify_bound.bounds(def_id, substs).collect();
+        let trait_bounds: Vec<_> =
+            self.verify_bound.declared_region_bounds(def_id, substs).collect();
 
         debug!(?trait_bounds);
 
@@ -413,7 +414,7 @@ where
             // will be invoked with `['b => ^1]` and so we will get `^1` returned.
             let bound = bound_outlives.skip_binder();
             let (def_id, substs) = filter(bound.0);
-            self.verify_bound.bounds(def_id, substs).all(|r| r != bound.1)
+            self.verify_bound.declared_region_bounds(def_id, substs).all(|r| r != bound.1)
         });
 
         // If declared bounds list is empty, the only applicable rule is

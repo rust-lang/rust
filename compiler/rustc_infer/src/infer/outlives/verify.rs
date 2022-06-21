@@ -2,7 +2,6 @@ use crate::infer::outlives::components::{compute_components_recursive, Component
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
 use crate::infer::{GenericKind, VerifyBound};
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::GenericArg;
@@ -128,7 +127,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 }
             });
         // Extend with bounds that we can find from the trait.
-        let trait_bounds = self.bounds(def_id, substs).map(|r| VerifyBound::OutlivedBy(r));
+        let trait_bounds =
+            self.declared_region_bounds(def_id, substs).map(|r| VerifyBound::OutlivedBy(r));
 
         // see the extensive comment in projection_must_outlive
         let recursive_bound = {
@@ -279,30 +279,6 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// }
     /// ```
     ///
-    /// then this function would return `'x`. This is subject to the
-    /// limitations around higher-ranked bounds described in
-    /// `declared_region_bounds`.
-    #[instrument(level = "debug", skip(self))]
-    pub fn bounds(
-        &self,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>,
-    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'cx + Captures<'tcx> {
-        let tcx = self.tcx;
-        self.declared_region_bounds(def_id).map(move |r| EarlyBinder(r).subst(tcx, substs))
-    }
-
-    /// Given the `DefId` of an associated item, returns any region
-    /// bounds attached to that associated item from the trait definition.
-    ///
-    /// For example:
-    ///
-    /// ```rust
-    /// trait Foo<'a> {
-    ///     type Bar: 'a;
-    /// }
-    /// ```
-    ///
     /// If we were given the `DefId` of `Foo::Bar`, we would return
     /// `'a`. You could then apply the substitutions from the
     /// projection to convert this into your namespace. This also
@@ -322,7 +298,11 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ///
     /// This is for simplicity, and because we are not really smart
     /// enough to cope with such bounds anywhere.
-    fn declared_region_bounds(&self, def_id: DefId) -> impl Iterator<Item = ty::Region<'tcx>> {
+    pub fn declared_region_bounds(
+        &self,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> impl Iterator<Item = ty::Region<'tcx>> {
         let tcx = self.tcx;
         let bounds = tcx.item_bounds(def_id);
         trace!("{:#?}", bounds);
@@ -331,6 +311,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             .filter_map(|p| p.to_opt_type_outlives())
             .filter_map(|p| p.no_bound_vars())
             .map(|b| b.1)
+            .map(move |r| EarlyBinder(r).subst(tcx, substs))
     }
 
     /// Searches through a predicate list for a predicate `T: 'a`.
