@@ -21,6 +21,7 @@ use rustc_middle::ty::{
     self, subst::Subst, suggest_constraining_type_params, EarlyBinder, PredicateKind, Ty,
 };
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
+use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -331,7 +332,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             spans.push(span);
         }
 
-        let (item_msg, name, desc) =
+        let (binding, name, desc) =
             match self.describe_place_with_options(used_place, IncludingDowncast(true)) {
                 Some(name) => (format!("`{name}`"), format!("`{name}`"), format!("`{name}` ")),
                 None => ("value".to_string(), "the variable".to_string(), String::new()),
@@ -351,7 +352,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         } else {
             "initialized in all conditions"
         };
-        let mut err = struct_span_err!(self, span, E0381, "binding {desc}isn't {initialized}");
+        let used = desired_action.as_general_verb_in_past_tense();
+        let mut err =
+            struct_span_err!(self, span, E0381, "{used} binding {desc}isn't {initialized}");
         use_spans.var_span_label_path_only(
             &mut err,
             format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
@@ -359,12 +362,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         if let InitializationRequiringAction::PartialAssignment = desired_action {
             err.help(
-                "partial initialization isn't supported, fully initialize the binding with \
-                a default value and mutate, or use `std::mem::MaybeUninit`",
+                "partial initialization isn't supported, fully initialize the binding with a \
+                 default value and mutate it, or use `std::mem::MaybeUninit`",
             );
         }
-        let verb = desired_action.as_verb_in_past_tense();
-        err.span_label(span, format!("{item_msg} {verb} here but it isn't {initialized}",));
+        err.span_label(span, format!("{binding} {used} here but it isn't {initialized}"));
 
         // We use the statements were the binding was initialized, and inspect the HIR to look
         // for the branching codepaths that aren't covered, to point at them.
@@ -400,7 +402,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 err.span_label(sp, &label);
             }
         }
-        err.span_label(decl_span, "variable declared here");
+        err.span_label(decl_span, "binding declared here but left uninitialized");
         err
     }
 
@@ -2559,10 +2561,10 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                 v.visit_expr(body);
                 if v.1 {
                     self.errors.push((
-                        cond.span,
+                        ex.span.to(cond.span),
                         format!(
-                            "this `if` expression might be missing an `else` arm where {} is \
-                             initialized",
+                            "this `if` expression might be missing an `else` arm that initializes \
+                             {}",
                             self.name,
                         ),
                     ));
@@ -2578,10 +2580,24 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                 match (a.1, b.1) {
                     (true, true) | (false, false) => {}
                     (true, false) => {
-                        self.errors.push((
-                            cond.span,
-                            format!("{} is uninitialized if this condition isn't met", self.name,),
-                        ));
+                        if other.span.is_desugaring(DesugaringKind::WhileLoop) {
+                            self.errors.push((
+                                cond.span,
+                                format!(
+                                    "{} is uninitialized if this condition isn't met and the \
+                                     `while` loop runs 0 times",
+                                    self.name
+                                ),
+                            ));
+                        } else {
+                            self.errors.push((
+                                body.span.shrink_to_hi().until(other.span),
+                                format!(
+                                    "{} is uninitialized if this `else` arm is executed",
+                                    self.name
+                                ),
+                            ));
+                        }
                     }
                     (false, true) => {
                         self.errors.push((
@@ -2591,7 +2607,7 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                     }
                 }
             }
-            hir::ExprKind::Match(_, arms, _) => {
+            hir::ExprKind::Match(e, arms, loop_desugar) => {
                 // If the binding is initialized in one of the match arms, then the other match
                 // arms might be missing an initialization.
                 let results: Vec<bool> = arms
@@ -2605,13 +2621,32 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                 if results.iter().any(|x| *x) && !results.iter().all(|x| *x) {
                     for (arm, seen) in arms.iter().zip(results) {
                         if !seen {
-                            self.errors.push((
-                                arm.pat.span,
-                                format!(
-                                    "{} is uninitialized if this pattern is matched",
-                                    self.name
-                                ),
-                            ));
+                            if loop_desugar == hir::MatchSource::ForLoopDesugar {
+                                self.errors.push((
+                                    e.span,
+                                    format!(
+                                        "{} is uninitialized if the `for` loop runs 0 times",
+                                        self.name
+                                    ),
+                                ));
+                            } else if let Some(guard) = &arm.guard {
+                                self.errors.push((
+                                    arm.pat.span.to(guard.body().span),
+                                    format!(
+                                        "{} is uninitialized if this pattern and condition are \
+                                         matched",
+                                        self.name
+                                    ),
+                                ));
+                            } else {
+                                self.errors.push((
+                                    arm.pat.span,
+                                    format!(
+                                        "{} is uninitialized if this pattern is matched",
+                                        self.name
+                                    ),
+                                ));
+                            }
                         }
                     }
                 }
@@ -2619,8 +2654,7 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
             // FIXME: should we also account for binops, particularly `&&` and `||`? `try` should
             // also be accounted for. For now it is fine, as if we don't find *any* relevant
             // branching code paths, we point at the places where the binding *is* initialized for
-            // *some* context. We should also specialize the output for `while` and `for` loops,
-            // but for now we can rely on their desugaring to provide appropriate output.
+            // *some* context.
             _ => {}
         }
         walk_expr(self, ex);

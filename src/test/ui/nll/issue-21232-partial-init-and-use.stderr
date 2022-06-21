@@ -1,22 +1,22 @@
-error[E0381]: binding `s` isn't fully initialized
+error[E0381]: partially assigned binding `s` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:97:5
    |
 LL |     let s: S<B>;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 LL |     s.x = 10; s.y = Box::new(20);
    |     ^^^^^^^^ `s` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: binding `t` isn't fully initialized
+error[E0381]: partially assigned binding `t` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:103:5
    |
 LL |     let t: T;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 LL |     t.0 = 10; t.1 = Box::new(20);
    |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign to part of moved value: `s`
   --> $DIR/issue-21232-partial-init-and-use.rs:109:5
@@ -38,25 +38,25 @@ LL |     let mut t: T = (0, Box::new(0)); drop(t);
 LL |     t.0 = 10; t.1 = Box::new(20);
    |     ^^^^^^^^ value partially assigned here after move
 
-error[E0381]: binding `s` isn't fully initialized
+error[E0381]: partially assigned binding `s` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:123:5
    |
 LL |     let s: S<B>;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 LL |     s.x = 10;
    |     ^^^^^^^^ `s` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: binding `t` isn't fully initialized
+error[E0381]: partially assigned binding `t` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:129:5
    |
 LL |     let t: T;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 LL |     t.0 = 10;
    |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign to part of moved value: `s`
   --> $DIR/issue-21232-partial-init-and-use.rs:135:5
@@ -78,45 +78,45 @@ LL |     let mut t: T = (0, Box::new(0)); drop(t);
 LL |     t.0 = 10;
    |     ^^^^^^^^ value partially assigned here after move
 
-error[E0381]: binding `s` isn't fully initialized
+error[E0381]: partially assigned binding `s` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:149:5
    |
 LL |     let s: S<Void>;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 LL |     s.x = 10;
    |     ^^^^^^^^ `s` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: binding `t` isn't fully initialized
+error[E0381]: partially assigned binding `t` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:155:5
    |
 LL |     let t: Tvoid;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 LL |     t.0 = 10;
    |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: binding `q.r.f` isn't fully initialized
+error[E0381]: partially assigned binding `q.r.f` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:170:5
    |
 LL |     let q: Q<S<B>>;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 LL |     q.r.f.x = 10; q.r.f.y = Box::new(20);
    |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: binding `q.r.f` isn't fully initialized
+error[E0381]: partially assigned binding `q.r.f` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:176:5
    |
 LL |     let q: Q<T>;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 LL |     q.r.f.0 = 10; q.r.f.1 = Box::new(20);
    |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign to part of moved value: `q.r`
   --> $DIR/issue-21232-partial-init-and-use.rs:182:5
@@ -138,25 +138,25 @@ LL |     q.r.f.0 = 10; q.r.f.1 = Box::new(20);
    |
    = note: move occurs because `q.r` has type `R<(u32, Box<u32>)>`, which does not implement the `Copy` trait
 
-error[E0381]: binding `q.r.f` isn't fully initialized
+error[E0381]: partially assigned binding `q.r.f` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:196:5
    |
 LL |     let q: Q<S<B>>;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 LL |     q.r.f.x = 10;
    |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: binding `q.r.f` isn't fully initialized
+error[E0381]: partially assigned binding `q.r.f` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:202:5
    |
 LL |     let q: Q<T>;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 LL |     q.r.f.0 = 10;
    |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign to part of moved value: `q.r`
   --> $DIR/issue-21232-partial-init-and-use.rs:208:5
@@ -178,25 +178,25 @@ LL |     q.r.f.0 = 10;
    |
    = note: move occurs because `q.r` has type `R<(u32, Box<u32>)>`, which does not implement the `Copy` trait
 
-error[E0381]: binding `q.r.f` isn't fully initialized
+error[E0381]: partially assigned binding `q.r.f` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:222:5
    |
 LL |     let mut q: Q<S<Void>>;
-   |         ----- variable declared here
+   |         ----- binding declared here but left uninitialized
 LL |     q.r.f.x = 10;
    |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: binding `q.r.f` isn't fully initialized
+error[E0381]: partially assigned binding `q.r.f` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-use.rs:228:5
    |
 LL |     let mut q: Q<Tvoid>;
-   |         ----- variable declared here
+   |         ----- binding declared here but left uninitialized
 LL |     q.r.f.0 = 10;
    |     ^^^^^^^^^^^^ `q.r.f` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign to part of moved value: `c`
   --> $DIR/issue-21232-partial-init-and-use.rs:245:13

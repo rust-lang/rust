@@ -1,10 +1,10 @@
-error[E0381]: binding `x` isn't initialized
+error[E0381]: used binding `x` isn't initialized
   --> $DIR/move-of-addr-of-mut.rs:8:5
    |
 LL |     let mut x: S;
-   |         ----- variable declared here
+   |         ----- binding declared here but left uninitialized
 LL |     std::ptr::addr_of_mut!(x);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ `x` borrowed here but it isn't initialized
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ `x` used here but it isn't initialized
    |
    = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
 

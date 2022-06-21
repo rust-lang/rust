@@ -1,10 +1,10 @@
-error[E0381]: binding `y` isn't initialized in all conditions
+error[E0381]: used binding `y` isn't initialized in all conditions
   --> $DIR/no-non-guaranteed-initialization.rs:9:5
    |
 LL |     let y;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 LL |     if x > 5 {
-   |        ----- this `if` expression might be missing an `else` arm where `y` is initialized
+   |        ----- this `if` expression might be missing an `else` arm that initializes `y`
 ...
 LL |     y
    |     ^ `y` used here but it isn't initialized in all conditions

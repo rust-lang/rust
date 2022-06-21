@@ -1,11 +1,9 @@
-error[E0381]: binding `x` isn't initialized in all conditions
+error[E0381]: used binding `x` isn't initialized in all conditions
   --> $DIR/match-cfg-fake-edges.rs:21:13
    |
 LL |     let x;
-   |         - variable declared here
+   |         - binding declared here but left uninitialized
 ...
-LL |         _ if {
-   |         - `x` is uninitialized if this pattern is matched
 LL |             x;
    |             ^ `x` used here but it isn't initialized in all conditions
 
