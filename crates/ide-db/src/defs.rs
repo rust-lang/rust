@@ -438,29 +438,23 @@ impl NameRefClass {
         name_ref: ast::NameRef,
     ) -> Option<NameRefClass> {
         let parent = name_ref.syntax().parent()?;
-        match_ast! {
-           match parent {
-               ast::MethodCallExpr(method_call) => {
-                   sema.resolve_impl_method(&ast::Expr::MethodCallExpr(method_call))
-                       .map(Definition::Function)
-                       .map(NameRefClass::Definition)
-               },
-               ast::PathSegment(ps) => {
-                   ps.syntax().parent().and_then(ast::Path::cast)
-                   .map(|p|
-                       p.syntax()
-                       .parent()
-                       .and_then(ast::PathExpr::cast)
-                       .map(|pe|
-                           sema.resolve_impl_method(&ast::Expr::PathExpr(pe))
-                           .map(Definition::Function)
-                           .map(NameRefClass::Definition)
-                       ).flatten()
-                   ).flatten()
-               },
-               _=> None
-           }
-        }
+        let expr = match_ast! {
+            match parent {
+                ast::MethodCallExpr(method_call) => {
+                    Some(ast::Expr::MethodCallExpr(method_call))
+                },
+                ast::PathSegment(..) => {
+                    parent.ancestors()
+                    .find_map(ast::PathExpr::cast)
+                    .map(ast::Expr::PathExpr)
+                },
+                _=> None
+            }
+        };
+        expr.as_ref()
+            .and_then(|e| sema.resolve_impl_method(e))
+            .map(Definition::Function)
+            .map(NameRefClass::Definition)
     }
     pub fn classify_lifetime(
         sema: &Semantics<RootDatabase>,

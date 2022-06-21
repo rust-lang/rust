@@ -997,33 +997,38 @@ pub fn resolve_indexing_op(
 struct Valid;
 impl Valid {
     fn valid_impl(
-        impls: impl Iterator<Item = ImplId>,
+        mut impls: impl Iterator<Item = ImplId>,
         table: &mut InferenceTable,
         self_ty: &Ty,
     ) -> Option<Arc<ImplData>> {
         let db = table.db;
-        for impl_ in impls {
-            let impl_data = db.impl_data(impl_);
-            let substs =
-                TyBuilder::subst_for_def(db, impl_).fill_with_inference_vars(table).build();
-            let impl_ty =
-                substs.apply(db.impl_self_ty(impl_).into_value_and_skipped_binders().0, Interner);
+        loop {
+            let impl_ = impls.next()?;
+            let r = table.run_in_snapshot(|table| {
+                let impl_data = db.impl_data(impl_);
+                let substs =
+                    TyBuilder::subst_for_def(db, impl_).fill_with_inference_vars(table).build();
+                let impl_ty = substs
+                    .apply(db.impl_self_ty(impl_).into_value_and_skipped_binders().0, Interner);
 
-            if !table.unify(self_ty, &impl_ty) {
-                continue;
-            }
+                table
+                    .unify(self_ty, &impl_ty)
+                    .then(|| {
+                        let wh_goals =
+                            crate::chalk_db::convert_where_clauses(db, impl_.into(), &substs)
+                                .into_iter()
+                                .map(|b| b.into_well_formed_goal(Interner).cast(Interner));
 
-            let wh_goals = crate::chalk_db::convert_where_clauses(db, impl_.into(), &substs)
-                .into_iter()
-                .map(|b| b.into_well_formed_goal(Interner).cast(Interner));
+                        let goal = crate::Goal::all(Interner, wh_goals);
 
-            let goal = crate::Goal::all(Interner, wh_goals);
-
-            if table.try_obligation(goal).is_some() {
-                return Some(impl_data);
+                        table.try_obligation(goal).map(|_| impl_data)
+                    })
+                    .flatten()
+            });
+            if r.is_some() {
+                break r;
             }
         }
-        None
     }
 
     fn is_valid_item(
