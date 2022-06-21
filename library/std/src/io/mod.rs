@@ -1240,8 +1240,8 @@ impl<'a> IoSlice<'a> {
     /// use std::io::IoSlice;
     /// use std::ops::Deref;
     ///
-    /// let mut data = [1; 8];
-    /// let mut buf = IoSlice::new(&mut data);
+    /// let data = [1; 8];
+    /// let mut buf = IoSlice::new(&data);
     ///
     /// // Mark 3 bytes as read.
     /// buf.advance(3);
@@ -1435,10 +1435,10 @@ pub trait Write {
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let mut data1 = [1; 8];
-    ///     let mut data2 = [15; 8];
-    ///     let io_slice1 = IoSlice::new(&mut data1);
-    ///     let io_slice2 = IoSlice::new(&mut data2);
+    ///     let data1 = [1; 8];
+    ///     let data2 = [15; 8];
+    ///     let io_slice1 = IoSlice::new(&data1);
+    ///     let io_slice2 = IoSlice::new(&data2);
     ///
     ///     let mut buffer = File::create("foo.txt")?;
     ///
