@@ -52,7 +52,7 @@ fn main() {
     // Tuple struct variant
 
     Enum::<()>::TSVariant::<()>(());
-    //~^ ERROR type arguments are not allowed on this type [E0109]
+    //~^ ERROR type arguments are not allowed on tuple variant `TSVariant` [E0109]
 
     Alias::TSVariant::<()>(());
     //~^ ERROR type arguments are not allowed on this type [E0109]
@@ -70,7 +70,7 @@ fn main() {
     // Struct variant
 
     Enum::<()>::SVariant::<()> { v: () };
-    //~^ ERROR type arguments are not allowed on this type [E0109]
+    //~^ ERROR type arguments are not allowed on variant `SVariant` [E0109]
 
     Alias::SVariant::<()> { v: () };
     //~^ ERROR type arguments are not allowed on this type [E0109]
@@ -88,7 +88,7 @@ fn main() {
     // Unit variant
 
     Enum::<()>::UVariant::<()>;
-    //~^ ERROR type arguments are not allowed on this type [E0109]
+    //~^ ERROR type arguments are not allowed on unit variant `UVariant` [E0109]
 
     Alias::UVariant::<()>;
     //~^ ERROR type arguments are not allowed on this type [E0109]
