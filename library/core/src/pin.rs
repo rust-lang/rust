@@ -602,7 +602,7 @@ impl<P: Deref> Pin<P> {
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[inline(always)]
     pub const fn as_inner_ref(&self) -> &P {
-        &self.p
+        &self.pointer
     }
 
     /// Unwraps this `Pin<P>` returning the underlying pointer.
