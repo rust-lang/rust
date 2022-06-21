@@ -382,13 +382,21 @@ fn map_links<'e>(
             ))
         }
         Event::Text(s) if in_link => {
-            let (_, link_target_s, link_name) = callback(&end_link_target.take().unwrap(), &s);
+            let (link_type, link_target_s, link_name) =
+                callback(&end_link_target.take().unwrap(), &s);
             end_link_target = Some(CowStr::Boxed(link_target_s.into()));
+            if !matches!(end_link_type, Some(link) if link == LinkType::Autolink) {
+                end_link_type = link_type;
+            }
             Event::Text(CowStr::Boxed(link_name.into()))
         }
         Event::Code(s) if in_link => {
-            let (_, link_target_s, link_name) = callback(&end_link_target.take().unwrap(), &s);
+            let (link_type, link_target_s, link_name) =
+                callback(&end_link_target.take().unwrap(), &s);
             end_link_target = Some(CowStr::Boxed(link_target_s.into()));
+            if !matches!(end_link_type, Some(link) if link == LinkType::Autolink) {
+                end_link_type = link_type;
+            }
             Event::Code(CowStr::Boxed(link_name.into()))
         }
         _ => evt,
