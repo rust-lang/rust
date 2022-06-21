@@ -371,6 +371,13 @@ where
         Ok(self.fold_const(c))
     }
 
+    fn try_fold_unevaluated(
+        &mut self,
+        c: ty::Unevaluated<'tcx>,
+    ) -> Result<ty::Unevaluated<'tcx>, Self::Error> {
+        Ok(self.fold_unevaluated(c))
+    }
+
     fn try_fold_predicate(
         &mut self,
         p: ty::Predicate<'tcx>,
