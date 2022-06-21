@@ -3480,16 +3480,16 @@ impl<'hir> Node<'hir> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Block<'static>, 48);
-    rustc_data_structures::static_assert_size!(super::Expr<'static>, 56);
+    rustc_data_structures::static_assert_size!(super::Expr<'static>, 64);
     rustc_data_structures::static_assert_size!(super::Pat<'static>, 88);
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
-    rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
+    rustc_data_structures::static_assert_size!(super::Ty<'static>, 80);
     rustc_data_structures::static_assert_size!(super::GenericBound<'_>, 48);
     rustc_data_structures::static_assert_size!(super::Generics<'static>, 56);
-    rustc_data_structures::static_assert_size!(super::Impl<'static>, 80);
+    rustc_data_structures::static_assert_size!(super::Impl<'static>, 72);
 
-    rustc_data_structures::static_assert_size!(super::Item<'static>, 80);
-    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 88);
-    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 80);
-    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 72);
+    rustc_data_structures::static_assert_size!(super::Item<'static>, 88);
+    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 96);
+    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 88);
+    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 80);
 }

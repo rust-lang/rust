@@ -1076,7 +1076,7 @@ pub struct LocalDecl<'tcx> {
 
 // `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(LocalDecl<'_>, 56);
+static_assert_size!(LocalDecl<'_>, 64);
 
 /// Extra information about a some locals that's used for diagnostics and for
 /// classifying variables into local variables, statics, etc, which is needed e.g.
