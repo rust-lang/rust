@@ -4,7 +4,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{meets_msrv, msrvs, path_to_local};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
+use rustc_hir::{BinOpKind, Expr, ExprKind, Node, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -19,12 +19,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// let x = 24;
+    /// let x: i32 = 24;
     /// let rem = ((x % 4) + 4) % 4;
     /// ```
     /// Use instead:
     /// ```rust
-    /// let x = 24;
+    /// let x: i32 = 24;
     /// let rem = x.rem_euclid(4);
     /// ```
     #[clippy::version = "1.63.0"]
@@ -63,7 +63,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             if op3.node == BinOpKind::Rem;
             if let Some((const3, expr3)) = check_for_positive_int_constant(cx, expr2);
             if const1 == const2 && const2 == const3;
-            if path_to_local(expr3).is_some();
+            // Only apply if we see an explicit type annotation on the local.
+            if let Some(hir_id) = path_to_local(expr3);
+            let hir = cx.tcx.hir();
+            if let Some(Node::Binding(_)) = hir.find(hir_id);
+            let parent = hir.get_parent_node(hir_id);
+            if let Some(Node::Local(local)) = hir.find(parent);
+            if let Some(ty) = local.ty;
+            if !matches!(ty.kind, TyKind::Infer);
             then {
                 let mut app = Applicability::MachineApplicable;
                 let rem_of = snippet_with_applicability(cx, expr3.span, "_", &mut app);
