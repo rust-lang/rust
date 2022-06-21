@@ -10,7 +10,7 @@ fn main() {
     assert_eq!(x, y | 1);
     assert_eq!(
         0xFAFF_0000_FF8F_0000__FFFF_0000_FFFF_FFFE,
-        y & 0xFAFF_0000_FF8F_0000__FFFF_0000_FFFF_FFFF
+        y & 0xFAFF_0000_FF8F_0000__FFFF_0000_FFFF_FFFF,
     );
     let z: u128 = 0xABCD_EF;
     assert_eq!(z * z, 0x734C_C2F2_A521);
@@ -22,7 +22,7 @@ fn main() {
     assert_eq!(0x1234_5678_9ABC_DEFF_EDCB_A987_5A86_421, k - z);
     assert_eq!(
         0x1000_0000_0000_0000_0000_0000_0000_000,
-        k - 0x234_5678_9ABC_DEFF_EDCB_A987_6543_210
+        k - 0x234_5678_9ABC_DEFF_EDCB_A987_6543_210,
     );
     assert_eq!(0x6EF5_DE4C_D3BC_2AAA_3BB4_CC5D_D6EE_8, k / 42);
     assert_eq!(0, k % 42);
@@ -51,7 +51,7 @@ fn main() {
     assert_eq!("20000000000000000000000", format!("{:o}", j));
     assert_eq!(
         "10000000000000000000000000000000000000000000000000000000000000000000",
-        format!("{:b}", j)
+        format!("{:b}", j),
     );
     assert_eq!("340282366920938463463374607431768211455", format!("{}", u128::MAX));
     assert_eq!("147573952589676412928", format!("{:?}", j));

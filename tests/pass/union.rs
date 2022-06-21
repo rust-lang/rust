@@ -86,9 +86,7 @@ fn d() {
     unsafe {
         match u {
             MyUnion { f1: 10 } => {}
-            MyUnion { f2: _f2 } => {
-                panic!("foo");
-            }
+            MyUnion { f2: _f2 } => panic!("foo"),
         }
     }
 }
