@@ -1,16 +1,16 @@
-error[E0381]: binding `x` isn't initialized
+error[E0381]: used binding `x` isn't initialized
   --> $DIR/type-check-5.rs:15:28
    |
 LL |         let x: u64;
-   |             - variable declared here
+   |             - binding declared here but left uninitialized
 LL |         asm!("{}", in(reg) x);
    |                            ^ `x` used here but it isn't initialized
 
-error[E0381]: binding `y` isn't initialized
+error[E0381]: used binding `y` isn't initialized
   --> $DIR/type-check-5.rs:18:9
    |
 LL |         let mut y: u64;
-   |             ----- variable declared here
+   |             ----- binding declared here but left uninitialized
 LL |         asm!("{}", inout(reg) y);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ `y` used here but it isn't initialized
 

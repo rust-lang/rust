@@ -1,8 +1,8 @@
-error[E0381]: binding `a.x` isn't initialized
+error[E0381]: used binding `a.x` isn't initialized
   --> $DIR/borrowck-uninit-field-access.rs:21:13
    |
 LL |     let mut a: Point;
-   |         ----- variable declared here
+   |         ----- binding declared here but left uninitialized
 LL |     let _ = a.x + 1;
    |             ^^^ `a.x` used here but it isn't initialized
 

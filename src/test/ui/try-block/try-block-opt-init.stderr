@@ -1,14 +1,14 @@
-error[E0381]: binding `cfg_res` isn't initialized in all conditions
+error[E0381]: used binding `cfg_res` isn't initialized in all conditions
   --> $DIR/try-block-opt-init.rs:15:5
    |
 LL |     let cfg_res;
-   |         ------- variable declared here
+   |         ------- binding declared here but left uninitialized
 ...
 LL |         cfg_res = 5;
    |         ----------- binding initialized here in some conditions
 ...
 LL |     assert_eq!(cfg_res, 5);
-   |     ^^^^^^^^^^^^^^^^^^^^^^ `cfg_res` borrowed here but it isn't initialized in all conditions
+   |     ^^^^^^^^^^^^^^^^^^^^^^ `cfg_res` used here but it isn't initialized in all conditions
    |
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 

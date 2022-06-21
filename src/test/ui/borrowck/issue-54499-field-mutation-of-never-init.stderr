@@ -1,32 +1,32 @@
-error[E0381]: binding `t` isn't fully initialized
+error[E0381]: partially assigned binding `t` isn't fully initialized
   --> $DIR/issue-54499-field-mutation-of-never-init.rs:12:9
    |
 LL |         let t: Tuple;
-   |             - variable declared here
+   |             - binding declared here but left uninitialized
 LL |         t.0 = S(1);
    |         ^^^^^^^^^^ `t` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: binding `u` isn't fully initialized
+error[E0381]: partially assigned binding `u` isn't fully initialized
   --> $DIR/issue-54499-field-mutation-of-never-init.rs:20:9
    |
 LL |         let u: Tpair;
-   |             - variable declared here
+   |             - binding declared here but left uninitialized
 LL |         u.0 = S(1);
    |         ^^^^^^^^^^ `u` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: binding `v` isn't fully initialized
+error[E0381]: partially assigned binding `v` isn't fully initialized
   --> $DIR/issue-54499-field-mutation-of-never-init.rs:28:9
    |
 LL |         let v: Spair;
-   |             - variable declared here
+   |             - binding declared here but left uninitialized
 LL |         v.x = S(1);
    |         ^^^^^^^^^^ `v` partially assigned here but it isn't fully initialized
    |
-   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error: aborting due to 3 previous errors
 
