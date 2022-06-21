@@ -1754,7 +1754,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             && let Some(def_id) = def_id.as_local()
         {
             let span = self.tcx.def_span(def_id);
-            diag.span_note(span, "this closure does not fulfill the lifetime requirements");
+            diag.span_note(span, "this closure does not fulfil the lifetime requirements");
         }
 
         // It reads better to have the error origin as the final

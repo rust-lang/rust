@@ -33,7 +33,7 @@ LL |     take_foo(|a| a);
    |
    = note: expected trait `for<'r> Fn<(&'r i32,)>`
               found trait `Fn<(&i32,)>`
-note: this closure does not fulfill the lifetime requirements
+note: this closure does not fulfil the lifetime requirements
   --> $DIR/issue-79187-2.rs:8:14
    |
 LL |     take_foo(|a| a);

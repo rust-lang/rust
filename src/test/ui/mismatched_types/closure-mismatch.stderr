@@ -15,7 +15,7 @@ LL |     baz(|_| ());
    |
    = note: expected trait `for<'r> Fn<(&'r (),)>`
               found trait `Fn<(&(),)>`
-note: this closure does not fulfill the lifetime requirements
+note: this closure does not fulfil the lifetime requirements
   --> $DIR/closure-mismatch.rs:8:9
    |
 LL |     baz(|_| ());
