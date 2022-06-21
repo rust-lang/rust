@@ -2,17 +2,17 @@
 
 // === GDB TESTS ===================================================================================
 // gdb-command:run
-// gdb-command:whatis TEST
-// gdb-check:type = u64
-// gdb-command:whatis no_mangle_info::namespace::OTHER_TEST
-// gdb-check:type = u64
+// gdb-command:p TEST
+// gdb-check:$1 = 3735928559
+// gdb-command:p no_mangle_info::namespace::OTHER_TEST
+// gdb-check:$2 = 42
 
 // === LLDB TESTS ==================================================================================
 // lldb-command:run
-// lldb-command:expr TEST
+// lldb-command:p TEST
 // lldb-check: (unsigned long) $0 = 3735928559
-// lldb-command:expr no_mangle_test::namespace::OTHER_TEST
-// lldb-check: (unsigned long) $0 = 42
+// lldb-command:p OTHER_TEST
+// lldb-check: (unsigned long) $1 = 42
 
 // === CDB TESTS ==================================================================================
 // cdb-command: g
