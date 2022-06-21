@@ -1628,16 +1628,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// ```
     ///
     /// Returns `true` if an async-await specific note was added to the diagnostic.
+    #[instrument(level = "debug", skip_all, fields(?obligation.predicate, ?obligation.cause.span))]
     fn maybe_note_obligation_cause_for_async_await(
         &self,
         err: &mut Diagnostic,
         obligation: &PredicateObligation<'tcx>,
     ) -> bool {
-        debug!(
-            "maybe_note_obligation_cause_for_async_await: obligation.predicate={:?} \
-                obligation.cause.span={:?}",
-            obligation.predicate, obligation.cause.span
-        );
         let hir = self.tcx.hir();
 
         // Attempt to detect an async-await error by looking at the obligation causes, looking
@@ -1677,7 +1673,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut seen_upvar_tys_infer_tuple = false;
 
         while let Some(code) = next_code {
-            debug!("maybe_note_obligation_cause_for_async_await: code={:?}", code);
+            debug!(?code);
             match code {
                 ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
                     next_code = Some(parent_code);
@@ -1685,10 +1681,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 ObligationCauseCode::ImplDerivedObligation(cause) => {
                     let ty = cause.derived.parent_trait_pred.skip_binder().self_ty();
                     debug!(
-                        "maybe_note_obligation_cause_for_async_await: ImplDerived \
-                         parent_trait_ref={:?} self_ty.kind={:?}",
-                        cause.derived.parent_trait_pred,
-                        ty.kind()
+                        parent_trait_ref = ?cause.derived.parent_trait_pred,
+                        self_ty.kind = ?ty.kind(),
+                        "ImplDerived",
                     );
 
                     match *ty.kind() {
@@ -1717,10 +1712,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation) => {
                     let ty = derived_obligation.parent_trait_pred.skip_binder().self_ty();
                     debug!(
-                        "maybe_note_obligation_cause_for_async_await: \
-                         parent_trait_ref={:?} self_ty.kind={:?}",
-                        derived_obligation.parent_trait_pred,
-                        ty.kind()
+                        parent_trait_ref = ?derived_obligation.parent_trait_pred,
+                        self_ty.kind = ?ty.kind(),
                     );
 
                     match *ty.kind() {
@@ -1750,7 +1743,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         // Only continue if a generator was found.
-        debug!(?generator, ?trait_ref, ?target_ty, "maybe_note_obligation_cause_for_async_await");
+        debug!(?generator, ?trait_ref, ?target_ty);
         let (Some(generator_did), Some(trait_ref), Some(target_ty)) = (generator, trait_ref, target_ty) else {
             return false;
         };
@@ -1760,12 +1753,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let in_progress_typeck_results = self.in_progress_typeck_results.map(|t| t.borrow());
         let generator_did_root = self.tcx.typeck_root_def_id(generator_did);
         debug!(
-            "maybe_note_obligation_cause_for_async_await: generator_did={:?} \
-             generator_did_root={:?} in_progress_typeck_results.hir_owner={:?} span={:?}",
-            generator_did,
-            generator_did_root,
-            in_progress_typeck_results.as_ref().map(|t| t.hir_owner),
-            span
+            ?generator_did,
+            ?generator_did_root,
+            in_progress_typeck_results.hir_owner = ?in_progress_typeck_results.as_ref().map(|t| t.hir_owner),
+            ?span,
         );
 
         let generator_body = generator_did
@@ -1788,7 +1779,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         if let Some(body) = generator_body {
             visitor.visit_body(body);
         }
-        debug!("maybe_note_obligation_cause_for_async_await: awaits = {:?}", visitor.awaits);
+        debug!(awaits = ?visitor.awaits);
 
         // Look for a type inside the generator interior that matches the target type to get
         // a span.
@@ -1809,11 +1800,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             let ty_erased = self.tcx.erase_late_bound_regions(ty);
             let ty_erased = self.tcx.erase_regions(ty_erased);
             let eq = ty_erased == target_ty_erased;
-            debug!(
-                "maybe_note_obligation_cause_for_async_await: ty_erased={:?} \
-                    target_ty_erased={:?} eq={:?}",
-                ty_erased, target_ty_erased, eq
-            );
+            debug!(?ty_erased, ?target_ty_erased, ?eq);
             eq
         };
 
@@ -1888,6 +1875,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
     /// Unconditionally adds the diagnostic note described in
     /// `maybe_note_obligation_cause_for_async_await`'s documentation comment.
+    #[instrument(level = "debug", skip_all)]
     fn note_obligation_cause_for_async_await(
         &self,
         err: &mut Diagnostic,
@@ -2037,8 +2025,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     } else {
                         // Look at the last interior type to get a span for the `.await`.
                         debug!(
-                            "note_obligation_cause_for_async_await generator_interior_types: {:#?}",
-                            typeck_results.as_ref().map(|t| &t.generator_interior_types)
+                            generator_interior_types = ?format_args!(
+                                "{:#?}", typeck_results.as_ref().map(|t| &t.generator_interior_types)
+                            ),
                         );
                         explain_yield(interior_span, yield_span, scope_span);
                     }
@@ -2073,7 +2062,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             // bar(Foo(std::ptr::null())).await;
                             //     ^^^^^^^^^^^^^^^^^^^^^ raw-ptr `*T` created inside this struct ctor.
                             // ```
-                            debug!("parent_def_kind: {:?}", self.tcx.def_kind(parent_did));
+                            debug!(parent_def_kind = ?self.tcx.def_kind(parent_did));
                             let is_raw_borrow_inside_fn_like_call =
                                 match self.tcx.def_kind(parent_did) {
                                     DefKind::Fn | DefKind::Ctor(..) => target_ty.is_unsafe_ptr(),
@@ -2131,7 +2120,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         // Add a note for the item obligation that remains - normally a note pointing to the
         // bound that introduced the obligation (e.g. `T: Send`).
-        debug!("note_obligation_cause_for_async_await: next_code={:?}", next_code);
+        debug!(?next_code);
         self.note_obligation_cause_code(
             err,
             &obligation.predicate,
@@ -2688,6 +2677,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         ));
     }
 
+    #[instrument(
+        level = "debug", skip(self, err), fields(trait_pred.self_ty = ?trait_pred.self_ty())
+    )]
     fn suggest_await_before_try(
         &self,
         err: &mut Diagnostic,
@@ -2695,13 +2687,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         span: Span,
     ) {
-        debug!(
-            "suggest_await_before_try: obligation={:?}, span={:?}, trait_pred={:?}, trait_pred_self_ty={:?}",
-            obligation,
-            span,
-            trait_pred,
-            trait_pred.self_ty()
-        );
         let body_hir_id = obligation.cause.body_id;
         let item_id = self.tcx.hir().get_parent_node(body_hir_id);
 
@@ -2739,14 +2724,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 );
 
                 debug!(
-                    "suggest_await_before_try: normalized_projection_type {:?}",
-                    self.resolve_vars_if_possible(projection_ty)
+                    normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)
                 );
                 let try_obligation = self.mk_trait_obligation_with_new_self_ty(
                     obligation.param_env,
                     trait_pred.map_bound(|trait_pred| (trait_pred, projection_ty.skip_binder())),
                 );
-                debug!("suggest_await_before_try: try_trait_obligation {:?}", try_obligation);
+                debug!(try_trait_obligation = ?try_obligation);
                 if self.predicate_may_hold(&try_obligation)
                     && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
                     && snippet.ends_with('?')

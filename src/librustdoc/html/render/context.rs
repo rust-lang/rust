@@ -211,8 +211,6 @@ impl<'tcx> Context<'tcx> {
                 description: &desc,
                 keywords: &keywords,
                 resource_suffix: &clone_shared.resource_suffix,
-                extra_scripts: &[],
-                static_extra_scripts: &[],
             };
             let mut page_buffer = Buffer::html();
             print_item(self, it, &mut page_buffer, &page);
@@ -568,8 +566,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             description: "List of all items in this crate",
             keywords: BASIC_KEYWORDS,
             resource_suffix: &shared.resource_suffix,
-            extra_scripts: &[],
-            static_extra_scripts: &[],
         };
         let sidebar = if shared.cache.crate_version.is_some() {
             format!("<h2 class=\"location\">Crate {}</h2>", crate_name)
@@ -693,7 +689,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             else { unreachable!() };
             let items = self.build_sidebar_items(module);
             let js_dst = self.dst.join(&format!("sidebar-items{}.js", self.shared.resource_suffix));
-            let v = format!("initSidebarItems({});", serde_json::to_string(&items).unwrap());
+            let v = format!("window.SIDEBAR_ITEMS = {};", serde_json::to_string(&items).unwrap());
             self.shared.fs.write(js_dst, v)?;
         }
         Ok(())

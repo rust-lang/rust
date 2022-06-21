@@ -259,7 +259,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let cycle = self.resolve_vars_if_possible(cycle.to_owned());
         assert!(!cycle.is_empty());
 
-        debug!("report_overflow_error_cycle: cycle={:?}", cycle);
+        debug!(?cycle, "report_overflow_error_cycle");
 
         // The 'deepest' obligation is most likely to have a useful
         // cause 'backtrace'
@@ -1513,6 +1513,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn report_projection_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -1551,15 +1552,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     &mut obligations,
                 );
 
-                debug!(
-                    "report_projection_error obligation.cause={:?} obligation.param_env={:?}",
-                    obligation.cause, obligation.param_env
-                );
+                debug!(?obligation.cause, ?obligation.param_env);
 
-                debug!(
-                    "report_projection_error normalized_ty={:?} data.ty={:?}",
-                    normalized_ty, data.term,
-                );
+                debug!(?normalized_ty, data.ty = ?data.term);
 
                 let is_normalized_ty_expected = !matches!(
                     obligation.cause.code().peel_derives(),
@@ -2346,6 +2341,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn suggest_unsized_bound_if_applicable(
         &self,
         err: &mut Diagnostic,
@@ -2360,10 +2356,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         )  else {
             return;
         };
-        debug!(
-            "suggest_unsized_bound_if_applicable: pred={:?} item_def_id={:?} span={:?}",
-            pred, item_def_id, span
-        );
+        debug!(?pred, ?item_def_id, ?span);
 
         let (Some(node), true) = (
             self.tcx.hir().get_if_local(item_def_id),
@@ -2374,6 +2367,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         self.maybe_suggest_unsized_generics(err, span, node);
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn maybe_suggest_unsized_generics<'hir>(
         &self,
         err: &mut Diagnostic,
@@ -2384,8 +2378,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             return;
         };
         let sized_trait = self.tcx.lang_items().sized_trait();
-        debug!("maybe_suggest_unsized_generics: generics.params={:?}", generics.params);
-        debug!("maybe_suggest_unsized_generics: generics.predicates={:?}", generics.predicates);
+        debug!(?generics.params);
+        debug!(?generics.predicates);
         let Some(param) = generics.params.iter().find(|param| param.span == span) else {
             return;
         };
@@ -2399,7 +2393,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         if explicitly_sized {
             return;
         }
-        debug!("maybe_suggest_unsized_generics: param={:?}", param);
+        debug!(?param);
         match node {
             hir::Node::Item(
                 item @ hir::Item {
@@ -2517,7 +2511,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
                 if path.segments.len() == 1 && path.segments[0].ident.name == self.param =>
             {
                 if !self.nested {
-                    debug!("FindTypeParam::visit_ty: ty={:?}", ty);
+                    debug!(?ty, "FindTypeParam::visit_ty");
                     self.invalid_spans.push(ty.span);
                 }
             }
