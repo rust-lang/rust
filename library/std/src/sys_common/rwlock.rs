@@ -62,12 +62,12 @@ impl Drop for StaticRwLockWriteGuard {
 
 /// An OS-based reader-writer lock.
 ///
-/// This rwlock does *not* have a const constructor, cleans up its resources in
-/// its `Drop` implementation and may safely be moved (when not borrowed).
+/// This rwlock cleans up its resources in its `Drop` implementation and may
+/// safely be moved (when not borrowed).
 ///
 /// This rwlock does not implement poisoning.
 ///
-/// This is either a wrapper around `Box<imp::RwLock>` or `imp::RwLock`,
+/// This is either a wrapper around `LazyBox<imp::RwLock>` or `imp::RwLock`,
 /// depending on the platform. It is boxed on platforms where `imp::RwLock` may
 /// not be moved.
 pub struct MovableRwLock(imp::MovableRwLock);
