@@ -1,7 +1,7 @@
 error: Undefined Behavior: trying to reborrow <TAG> for Unique permission at ALLOC[0x4], but that tag does not exist in the borrow stack for this location
   --> $DIR/return_invalid_mut_option.rs:LL:CC
    |
-LL |         Some(_x) => {},
+LL |         Some(_x) => {}
    |              ^^
    |              |
    |              trying to reborrow <TAG> for Unique permission at ALLOC[0x4], but that tag does not exist in the borrow stack for this location
