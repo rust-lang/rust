@@ -1,10 +1,10 @@
+use crate::xxhash::Xxh3Hasher;
 use rustc_index::bit_set;
 use rustc_index::vec;
 use smallvec::SmallVec;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
-use crate::xxhash::Xxh3Hasher;
 
 #[cfg(test)]
 mod tests;
@@ -17,7 +17,7 @@ mod tests;
 /// hashing and the architecture dependent `isize` and `usize` types are
 /// extended to 64 bits if needed.
 pub struct StableHasher {
-    state: Xxh3Hasher
+    state: Xxh3Hasher,
 }
 
 impl ::std::fmt::Debug for StableHasher {

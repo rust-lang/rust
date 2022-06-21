@@ -4,8 +4,8 @@
 
 mod pointers;
 
-use std::hash::Hasher;
 use pointers::{Ptr, PtrMut};
+use std::hash::Hasher;
 
 #[cfg(test)]
 mod tests;
@@ -137,11 +137,7 @@ impl std::fmt::Debug for Xxh3Hasher {
 
         writeln!(f, "  num_stripes_so_far = {}", self.num_stripes_so_far)?;
         writeln!(f, "  total_len = {}", self.total_len)?;
-        writeln!(
-            f,
-            "  num_stripes_per_block = {}",
-            self.num_stripes_per_block
-        )?;
+        writeln!(f, "  num_stripes_per_block = {}", self.num_stripes_per_block)?;
         writeln!(f, "  secret_limit = {}", self.secret_limit)?;
         writeln!(f, "  seed         = {}", self.seed)?;
         writeln!(f, "  buffered_size = {}", self.buffered_size)?;
@@ -219,11 +215,7 @@ impl Xxh3Hasher {
         if self.buffered_size + input_len <= XXH3_INTERNALBUFFER_SIZE {
             let input: Ptr<u8> = input[..].into();
 
-            checked_memcpy(
-                self.buffer.as_mut_ptr().offset(self.buffered_size),
-                input,
-                input_len,
-            );
+            checked_memcpy(self.buffer.as_mut_ptr().offset(self.buffered_size), input, input_len);
             self.buffered_size += input_len;
 
             return;
@@ -245,11 +237,7 @@ impl Xxh3Hasher {
         if self.buffered_size + INPUT_SIZE <= XXH3_INTERNALBUFFER_SIZE {
             let input: Ptr<u8> = input[..].into();
 
-            checked_memcpy(
-                self.buffer.as_mut_ptr().offset(self.buffered_size),
-                input,
-                INPUT_SIZE,
-            );
+            checked_memcpy(self.buffer.as_mut_ptr().offset(self.buffered_size), input, INPUT_SIZE);
             self.buffered_size += INPUT_SIZE;
 
             return;
@@ -332,11 +320,7 @@ impl Xxh3Hasher {
         // Complete it, then consume it.
         if self.buffered_size > 0 {
             let loadSize = XXH3_INTERNALBUFFER_SIZE - self.buffered_size;
-            checked_memcpy(
-                self.buffer.as_mut_ptr().offset(self.buffered_size),
-                input,
-                loadSize,
-            );
+            checked_memcpy(self.buffer.as_mut_ptr().offset(self.buffered_size), input, loadSize);
             input = input.offset(loadSize);
 
             XXH3_consumeStripes(
@@ -378,13 +362,7 @@ impl Xxh3Hasher {
 
             // consume per entire blocks
             while num_stripes >= self.num_stripes_per_block {
-                XXH3_accumulate(
-                    &mut self.acc,
-                    input,
-                    secret,
-                    self.num_stripes_per_block,
-                    f_acc512,
-                );
+                XXH3_accumulate(&mut self.acc, input, secret, self.num_stripes_per_block, f_acc512);
                 f_scramble(&mut self.acc, secret.offset(self.secret_limit));
                 input = input.offset(self.num_stripes_per_block * XXH_STRIPE_LEN);
                 num_stripes -= self.num_stripes_per_block;
@@ -398,9 +376,7 @@ impl Xxh3Hasher {
 
             // buffer predecessor of last partial stripe
             checked_memcpy(
-                self.buffer
-                    .as_mut_ptr()
-                    .offset(size_of::<Buffer>() - XXH_STRIPE_LEN),
+                self.buffer.as_mut_ptr().offset(size_of::<Buffer>() - XXH_STRIPE_LEN),
                 input.negative_offset(XXH_STRIPE_LEN),
                 XXH_STRIPE_LEN,
             );
@@ -432,9 +408,7 @@ impl Xxh3Hasher {
 
                 // buffer predecessor of last partial stripe
                 checked_memcpy(
-                    self.buffer
-                        .as_mut_ptr()
-                        .offset(size_of::<Buffer>() - XXH_STRIPE_LEN),
+                    self.buffer.as_mut_ptr().offset(size_of::<Buffer>() - XXH_STRIPE_LEN),
                     input.negative_offset(XXH_STRIPE_LEN),
                     XXH_STRIPE_LEN,
                 );
@@ -468,9 +442,7 @@ impl Xxh3Hasher {
             /* last stripe */
             XXH3_accumulate_512(
                 &mut self.acc,
-                self.buffer
-                    .as_ptr()
-                    .offset(self.buffered_size - XXH_STRIPE_LEN),
+                self.buffer.as_ptr().offset(self.buffered_size - XXH_STRIPE_LEN),
                 secret.offset(self.secret_limit - XXH_SECRET_LASTACC_START),
             );
         } else {
@@ -481,9 +453,7 @@ impl Xxh3Hasher {
             debug_assert!(self.buffered_size > 0); /* there is always some input buffered */
             checked_memcpy(
                 lastStripe,
-                self.buffer
-                    .as_ptr()
-                    .offset(size_of::<Buffer>() - catchupSize),
+                self.buffer.as_ptr().offset(size_of::<Buffer>() - catchupSize),
                 catchupSize,
             );
 
@@ -739,8 +709,7 @@ fn XXH3_scrambleAcc_sse2(acc: &mut Acc, secret: Ptr<u8>) {
             let data_key_hi = _mm_shuffle_epi32(data_key, _mm_shuffle(0, 3, 0, 1));
             let prod_lo = _mm_mul_epu32(data_key, prime32);
             let prod_hi = _mm_mul_epu32(data_key_hi, prime32);
-            acc.offset(i)
-                .write(_mm_add_epi64(prod_lo, _mm_slli_epi64(prod_hi, 32)));
+            acc.offset(i).write(_mm_add_epi64(prod_lo, _mm_slli_epi64(prod_hi, 32)));
         }
     }
 }
@@ -787,10 +756,7 @@ fn XXH3_mul128_fold64(lhs: u64, rhs: u64) -> u64 {
 #[inline]
 fn XXH_mult64to128(lhs: u64, rhs: u64) -> Hash128 {
     let product = (lhs as u128).wrapping_mul(rhs as u128);
-    Hash128 {
-        low64: product as u64,
-        high64: (product >> 64) as u64,
-    }
+    Hash128 { low64: product as u64, high64: (product >> 64) as u64 }
 }
 
 #[inline(never)]
@@ -940,9 +906,7 @@ fn XXH3_len_9to16_128b(input: &[u8], secret: &[u8], seed: u64) -> Hash128 {
 
         /* 128x64 multiply: h128 = m128 * XXH_PRIME64_2; */
         let mut h128 = XXH_mult64to128(m128.low64, XXH_PRIME64_2);
-        h128.high64 = h128
-            .high64
-            .wrapping_add(m128.high64.wrapping_mul(XXH_PRIME64_2));
+        h128.high64 = h128.high64.wrapping_add(m128.high64.wrapping_mul(XXH_PRIME64_2));
 
         h128.low64 = XXH3_avalanche(h128.low64);
         h128.high64 = XXH3_avalanche(h128.high64);
@@ -1002,10 +966,7 @@ fn XXH3_len_1to3_128b(input: &[u8], secret: &[u8], seed: u64) -> Hash128 {
         .wrapping_sub(seed);
     let keyed_lo: u64 = combinedl as u64 ^ bitflipl;
     let keyed_hi: u64 = combinedh as u64 ^ bitfliph;
-    Hash128 {
-        low64: XXH64_avalanche(keyed_lo),
-        high64: XXH64_avalanche(keyed_hi),
-    }
+    Hash128 { low64: XXH64_avalanche(keyed_lo), high64: XXH64_avalanche(keyed_hi) }
 }
 
 #[inline]
@@ -1019,10 +980,7 @@ fn XXH3_len_17to128_128b(input: &[u8], secret: &[u8], seed: u64) -> Hash128 {
     debug_assert!(16 < input_len && input_len <= 128);
 
     {
-        let mut acc = Hash128 {
-            low64: (input_len as u64).wrapping_mul(XXH_PRIME64_1),
-            high64: 0,
-        };
+        let mut acc = Hash128 { low64: (input_len as u64).wrapping_mul(XXH_PRIME64_1), high64: 0 };
 
         if input_len > 32 {
             if input_len > 64 {
@@ -1077,9 +1035,7 @@ fn XXH128_mix32B(
 ) -> Hash128 {
     acc.low64 = acc.low64.wrapping_add(XXH3_mix16B(input_1, secret, seed));
     acc.low64 ^= XXH_readLE64(input_2).wrapping_add(XXH_readLE64(input_2.offset(8)));
-    acc.high64 = acc
-        .high64
-        .wrapping_add(XXH3_mix16B(input_2, secret.offset(16), seed));
+    acc.high64 = acc.high64.wrapping_add(XXH3_mix16B(input_2, secret.offset(16), seed));
     acc.high64 ^= XXH_readLE64(input_1).wrapping_add(XXH_readLE64(input_1.offset(8)));
     return acc;
 }
@@ -1108,10 +1064,7 @@ fn XXH3_len_129to240_128b(input: &[u8], secret: &[u8], seed: u64) -> Hash128 {
 
     {
         let num_rounds = input_len / 32;
-        let mut acc = Hash128 {
-            low64: (input_len as u64).wrapping_mul(XXH_PRIME64_1),
-            high64: 0,
-        };
+        let mut acc = Hash128 { low64: (input_len as u64).wrapping_mul(XXH_PRIME64_1), high64: 0 };
 
         for i in 0..4 {
             acc = XXH128_mix32B(
@@ -1223,13 +1176,7 @@ fn XXH3_hashLong_internal_loop(
     debug_assert!(secret_len >= XXH3_SECRET_SIZE_MIN);
 
     for n in 0..nb_blocks {
-        XXH3_accumulate(
-            acc,
-            input.offset(n * block_len),
-            secret,
-            num_stripes_per_block,
-            f_acc512,
-        );
+        XXH3_accumulate(acc, input.offset(n * block_len), secret, num_stripes_per_block, f_acc512);
         f_scramble(acc, secret.offset(secret_len - XXH_STRIPE_LEN));
     }
 
@@ -1238,23 +1185,13 @@ fn XXH3_hashLong_internal_loop(
     {
         let num_stripes = ((input_len - 1) - (block_len * nb_blocks)) / XXH_STRIPE_LEN;
         debug_assert!(num_stripes <= (secret_len / XXH_SECRET_CONSUME_RATE));
-        XXH3_accumulate(
-            acc,
-            input.offset(nb_blocks * block_len),
-            secret,
-            num_stripes,
-            f_acc512,
-        );
+        XXH3_accumulate(acc, input.offset(nb_blocks * block_len), secret, num_stripes, f_acc512);
 
         /* last stripe */
         {
             let p = input.offset(input_len - XXH_STRIPE_LEN);
             // #define XXH_SECRET_LASTACC_START 7  /* not aligned on 8, last secret is different from acc & scrambler */
-            f_acc512(
-                acc,
-                p,
-                secret.offset(secret_len - XXH_STRIPE_LEN - XXH_SECRET_LASTACC_START),
-            );
+            f_acc512(acc, p, secret.offset(secret_len - XXH_STRIPE_LEN - XXH_SECRET_LASTACC_START));
         }
     }
 }
