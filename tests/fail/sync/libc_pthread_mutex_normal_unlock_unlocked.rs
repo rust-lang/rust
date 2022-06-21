@@ -9,7 +9,7 @@ fn main() {
         let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();
         assert_eq!(
             libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, libc::PTHREAD_MUTEX_NORMAL),
-            0
+            0,
         );
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);
