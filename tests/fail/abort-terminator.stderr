@@ -3,8 +3,10 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 error: abnormal termination: the program aborted execution
   --> $DIR/abort-terminator.rs:LL:CC
    |
-LL | extern "C" fn panic_abort() { panic!() }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the program aborted execution
+LL | / extern "C" fn panic_abort() {
+LL | |     panic!()
+LL | | }
+   | |_^ the program aborted execution
    |
    = note: inside `panic_abort` at $DIR/abort-terminator.rs:LL:CC
 note: inside `main` at $DIR/abort-terminator.rs:LL:CC

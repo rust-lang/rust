@@ -1,8 +1,8 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 // compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
 
-use std::thread::spawn;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread::spawn;
 
 #[derive(Copy, Clone)]
 struct EvilSend<T>(pub T);

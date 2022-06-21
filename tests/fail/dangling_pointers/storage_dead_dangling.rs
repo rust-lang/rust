@@ -4,7 +4,9 @@
 static mut LEAK: usize = 0;
 
 fn fill(v: &mut i32) {
-    unsafe { LEAK = v as *mut _ as usize; }
+    unsafe {
+        LEAK = v as *mut _ as usize;
+    }
 }
 
 fn evil() {

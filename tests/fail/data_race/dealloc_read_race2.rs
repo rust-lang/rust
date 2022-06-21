@@ -19,7 +19,11 @@ pub fn main() {
 
     unsafe {
         let j1 = spawn(move || {
-            __rust_dealloc(ptr.0 as *mut _, std::mem::size_of::<usize>(), std::mem::align_of::<usize>())
+            __rust_dealloc(
+                ptr.0 as *mut _,
+                std::mem::size_of::<usize>(),
+                std::mem::align_of::<usize>(),
+            )
         });
 
         let j2 = spawn(move || {

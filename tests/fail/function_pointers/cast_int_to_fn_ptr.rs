@@ -2,9 +2,7 @@
 // compile-flags: -Zmiri-disable-validation
 
 fn main() {
-    let g = unsafe {
-        std::mem::transmute::<usize, fn(i32)>(42)
-    };
+    let g = unsafe { std::mem::transmute::<usize, fn(i32)>(42) };
 
     g(42) //~ ERROR not a valid pointer
 }

@@ -1,10 +1,10 @@
 // We want to control preemption here.
 // compile-flags: -Zmiri-disable-isolation -Zmiri-preemption-rate=0
 // ignore-windows: Concurrency on Windows is not supported yet.
+use std::sync::atomic::{fence, AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering, fence};
-use std::time::Duration;
 use std::thread;
+use std::time::Duration;
 
 fn main() {
     static mut V: u32 = 0;

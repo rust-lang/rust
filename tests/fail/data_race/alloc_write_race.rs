@@ -2,9 +2,9 @@
 // compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
 #![feature(new_uninit)]
 
-use std::thread::spawn;
 use std::ptr::null_mut;
-use std::sync::atomic::{Ordering, AtomicPtr};
+use std::sync::atomic::{AtomicPtr, Ordering};
+use std::thread::spawn;
 
 #[derive(Copy, Clone)]
 struct EvilSend<T>(pub T);
@@ -30,7 +30,8 @@ pub fn main() {
             // Uses relaxed semantics to not generate
             // a release sequence.
             let pointer = &*ptr.0;
-            pointer.store(Box::into_raw(Box::<usize>::new_uninit()) as *mut usize, Ordering::Relaxed);
+            pointer
+                .store(Box::into_raw(Box::<usize>::new_uninit()) as *mut usize, Ordering::Relaxed);
         });
 
         let j2 = spawn(move || {

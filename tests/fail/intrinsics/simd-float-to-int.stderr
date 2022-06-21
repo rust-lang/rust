@@ -11,8 +11,8 @@ LL | implement! { f32 }
 note: inside `main` at $DIR/simd-float-to-int.rs:LL:CC
   --> $DIR/simd-float-to-int.rs:LL:CC
    |
-LL |     let _x : i32x2 = f32x2::from_array([f32::MAX, f32::MIN]).to_int_unchecked();
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         let _x: i32x2 = f32x2::from_array([f32::MAX, f32::MIN]).to_int_unchecked();
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `implement` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

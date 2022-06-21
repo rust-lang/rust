@@ -3,7 +3,7 @@
 // Regression test for https://github.com/rust-lang/rust/issues/86261:
 // `#[no_mangle]` on a `use` item.
 #[no_mangle]
-use std::{thread,panic, io, boxed, any, string};
+use std::{any, boxed, io, panic, string, thread};
 
 // `#[no_mangle]` on a struct has a similar problem.
 #[no_mangle]

@@ -1,9 +1,9 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 // compile-flags: -Zmiri-disable-isolation -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
 
-use std::thread::{spawn, sleep};
 use std::ptr::null_mut;
-use std::sync::atomic::{Ordering, AtomicPtr};
+use std::sync::atomic::{AtomicPtr, Ordering};
+use std::thread::{sleep, spawn};
 use std::time::Duration;
 
 #[derive(Copy, Clone)]
@@ -36,7 +36,6 @@ pub fn main() {
                 sleep(Duration::from_millis(200));
 
                 // Now `stack_var` gets deallocated.
-
             } //~ ERROR Data race detected between Deallocate on Thread(id = 1) and Write on Thread(id = 2)
         });
 

@@ -1,14 +1,14 @@
 // ignore-windows: Windows does not have a global environ list that the program can access directly
 
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 fn get_environ() -> *const *const u8 {
-  extern "C" {
-    static mut environ: *const *const u8;
-  }
-  unsafe { environ }
+    extern "C" {
+        static mut environ: *const *const u8;
+    }
+    unsafe { environ }
 }
 
-#[cfg(target_os="macos")]
+#[cfg(target_os = "macos")]
 fn get_environ() -> *const *const u8 {
     extern "C" {
         fn _NSGetEnviron() -> *mut *const *const u8;

@@ -14,7 +14,7 @@ pub fn main() {
     let c = EvilSend(b);
     unsafe {
         let j1 = spawn(move || {
-            *c.0
+            let _val = *c.0;
         });
 
         let j2 = spawn(move || {

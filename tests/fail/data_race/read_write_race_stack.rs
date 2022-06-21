@@ -4,9 +4,9 @@
 // Note: mir-opt-level set to 0 to prevent the read of stack_var in thread 1
 // from being optimized away and preventing the detection of the data-race.
 
-use std::thread::{spawn, sleep};
 use std::ptr::null_mut;
-use std::sync::atomic::{Ordering, AtomicPtr};
+use std::sync::atomic::{AtomicPtr, Ordering};
+use std::thread::{sleep, spawn};
 use std::time::Duration;
 
 #[derive(Copy, Clone)]
