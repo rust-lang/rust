@@ -1,0 +1,34 @@
+error: manual `rem_euclid` implementation
+  --> $DIR/manual_rem_euclid.rs:8:18
+   |
+LL |     let _: i32 = ((value % 4) + 4) % 4;
+   |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
+   |
+   = note: `-D clippy::manual-rem-euclid` implied by `-D warnings`
+
+error: manual `rem_euclid` implementation
+  --> $DIR/manual_rem_euclid.rs:9:18
+   |
+LL |     let _: i32 = (4 + (value % 4)) % 4;
+   |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
+
+error: manual `rem_euclid` implementation
+  --> $DIR/manual_rem_euclid.rs:10:18
+   |
+LL |     let _: i32 = (value % 4 + 4) % 4;
+   |                  ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
+
+error: manual `rem_euclid` implementation
+  --> $DIR/manual_rem_euclid.rs:11:18
+   |
+LL |     let _: i32 = (4 + value % 4) % 4;
+   |                  ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
+
+error: manual `rem_euclid` implementation
+  --> $DIR/manual_rem_euclid.rs:12:22
+   |
+LL |     let _: i32 = 1 + (4 + value % 4) % 4;
+   |                      ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
+
+error: aborting due to 5 previous errors
+

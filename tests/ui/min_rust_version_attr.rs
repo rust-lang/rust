@@ -155,6 +155,11 @@ fn cast_abs_to_unsigned() {
     assert_eq!(10u32, x.abs() as u32);
 }
 
+fn manual_rem_euclid() {
+    let x: i32 = 10;
+    let _: i32 = ((x % 4) + 4) % 4;
+}
+
 fn main() {
     filter_map_next();
     checked_conversion();
@@ -174,6 +179,7 @@ fn main() {
     int_from_bool();
     err_expect();
     cast_abs_to_unsigned();
+    manual_rem_euclid();
 }
 
 mod just_under_msrv {
