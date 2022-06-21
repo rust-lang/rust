@@ -11,17 +11,17 @@
 use std::mem;
 
 enum Tag<A> {
-    Tag2(A)
+    Tag2(A),
 }
 
 #[allow(dead_code)]
 struct Rec {
     c8: u8,
-    t: Tag<u64>
+    t: Tag<u64>,
 }
 
 fn mk_rec() -> Rec {
-    return Rec { c8:0, t:Tag::Tag2(0) };
+    return Rec { c8: 0, t: Tag::Tag2(0) };
 }
 
 fn is_u64_aligned(u: &Tag<u64>) -> bool {

@@ -7,16 +7,22 @@ trait Id {
 impl<'a> Id for &'a mut i32 {
     type Out = &'a mut i32;
 
-    fn id(self) -> Self { self }
+    fn id(self) -> Self {
+        self
+    }
 }
 
 impl<'a> Id for &'a mut u32 {
     type Out = &'a mut u32;
 
-    fn id(self) -> Self { self }
+    fn id(self) -> Self {
+        self
+    }
 }
 
-fn foo<T>(mut x: T) where for<'a> &'a mut T: Id
+fn foo<T>(mut x: T)
+where
+    for<'a> &'a mut T: Id,
 {
     let x = &mut x;
     let _y = x.id();

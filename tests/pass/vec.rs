@@ -33,51 +33,37 @@ fn make_vec_macro_repeat_zeroed() -> Vec<u8> {
 }
 
 fn vec_into_iter() -> u8 {
-    vec![1, 2, 3, 4]
-        .into_iter()
-        .map(|x| x * x)
-        .fold(0, |x, y| x + y)
+    vec![1, 2, 3, 4].into_iter().map(|x| x * x).fold(0, |x, y| x + y)
 }
 
 fn vec_into_iter_rev() -> u8 {
-    vec![1, 2, 3, 4]
-        .into_iter()
-        .map(|x| x * x)
-        .fold(0, |x, y| x + y)
+    vec![1, 2, 3, 4].into_iter().map(|x| x * x).fold(0, |x, y| x + y)
 }
 
 fn vec_into_iter_zst() -> usize {
-    vec![[0u64; 0], [0u64; 0]]
-        .into_iter()
-        .rev()
-        .map(|x| x.len())
-        .sum()
+    vec![[0u64; 0], [0u64; 0]].into_iter().rev().map(|x| x.len()).sum()
 }
 
 fn vec_into_iter_rev_zst() -> usize {
-    vec![[0u64; 0], [0u64; 0]]
-        .into_iter()
-        .rev()
-        .map(|x| x.len())
-        .sum()
+    vec![[0u64; 0], [0u64; 0]].into_iter().rev().map(|x| x.len()).sum()
 }
 
 fn vec_iter_and_mut() {
-    let mut v = vec![1,2,3,4];
+    let mut v = vec![1, 2, 3, 4];
     for i in v.iter_mut() {
         *i += 1;
     }
-    assert_eq!(v.iter().sum::<i32>(), 2+3+4+5);
+    assert_eq!(v.iter().sum::<i32>(), 2 + 3 + 4 + 5);
 
     test_all_refs(&mut 13, v.iter_mut());
 }
 
 fn vec_iter_and_mut_rev() {
-    let mut v = vec![1,2,3,4];
+    let mut v = vec![1, 2, 3, 4];
     for i in v.iter_mut().rev() {
         *i += 1;
     }
-    assert_eq!(v.iter().sum::<i32>(), 2+3+4+5);
+    assert_eq!(v.iter().sum::<i32>(), 2 + 3 + 4 + 5);
 }
 
 fn vec_reallocate() -> Vec<u8> {

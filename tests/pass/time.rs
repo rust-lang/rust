@@ -1,6 +1,6 @@
 // compile-flags: -Zmiri-disable-isolation
 
-use std::time::{SystemTime, Instant, Duration};
+use std::time::{Duration, Instant, SystemTime};
 
 fn duration_sanity(diff: Duration) {
     // On my laptop, I observed times around 15-40ms. Add 10x lee-way both ways.
@@ -25,7 +25,9 @@ fn main() {
     let year = 1970 + years_since_epoch;
     assert!(2020 <= year && year < 2100);
     // Do some work to make time pass.
-    for _ in 0..10 { drop(vec![42]); }
+    for _ in 0..10 {
+        drop(vec![42]);
+    }
     let now2 = SystemTime::now();
     assert!(now2 > now1);
     // Sanity-check the difference we got.
@@ -37,7 +39,9 @@ fn main() {
     // Check `Instant`.
     let now1 = Instant::now();
     // Do some work to make time pass.
-    for _ in 0..10 { drop(vec![42]); }
+    for _ in 0..10 {
+        drop(vec![42]);
+    }
     let now2 = Instant::now();
     assert!(now2 > now1);
     // Sanity-check the difference we got.

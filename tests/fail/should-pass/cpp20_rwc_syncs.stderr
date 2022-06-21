@@ -11,8 +11,8 @@ LL |     unsafe { intrinsics::unreachable() }
 note: inside `test_cpp20_rwc_syncs` at $DIR/cpp20_rwc_syncs.rs:LL:CC
   --> $DIR/cpp20_rwc_syncs.rs:LL:CC
    |
-LL |         unsafe { std::hint::unreachable_unchecked(); }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             std::hint::unreachable_unchecked();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `main` at $DIR/cpp20_rwc_syncs.rs:LL:CC
   --> $DIR/cpp20_rwc_syncs.rs:LL:CC
    |

@@ -12,8 +12,8 @@ LL |     let _val = *target_alias;
 help: <TAG> was created by a retag at offsets [0x0..0x4]
   --> $DIR/alias_through_mutation.rs:LL:CC
    |
-LL |     unsafe { *x = &mut *(target as *mut _); }
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         *x = &mut *(target as *mut _);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
 help: <TAG> was later invalidated at offsets [0x0..0x4]
   --> $DIR/alias_through_mutation.rs:LL:CC
    |

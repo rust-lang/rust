@@ -12,13 +12,13 @@ LL |     let (a, b) = safe::split_at_mut(&mut array, 0);
 help: <TAG> was created by a retag at offsets [0x0..0x10]
   --> $DIR/buggy_split_at_mut.rs:LL:CC
    |
-LL |             (from_raw_parts_mut(ptr, len - mid), // BUG: should be "mid" instead of "len - mid"
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |                 from_raw_parts_mut(ptr, len - mid), // BUG: should be "mid" instead of "len - mid"
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: <TAG> was later invalidated at offsets [0x0..0x10]
   --> $DIR/buggy_split_at_mut.rs:LL:CC
    |
-LL |             from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |                 from_raw_parts_mut(ptr.offset(mid as isize), len - mid),
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: inside `main` at $DIR/buggy_split_at_mut.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

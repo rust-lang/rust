@@ -76,7 +76,9 @@ fn test_cpp20_rwc_syncs() {
     // Our ui_test does not yet support overriding failure status codes.
     if (b, c) == (0, 0) {
         // This *should* be unreachable, but Miri will reach it.
-        unsafe { std::hint::unreachable_unchecked(); }
+        unsafe {
+            std::hint::unreachable_unchecked();
+        }
     }
 }
 

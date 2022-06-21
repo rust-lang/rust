@@ -17,8 +17,8 @@ LL |     let v1 = safe::as_mut_slice(&v);
 help: <TAG> was later invalidated at offsets [0x0..0xc]
   --> $DIR/buggy_as_mut_slice.rs:LL:CC
    |
-LL |             from_raw_parts_mut(self_.as_ptr() as *mut T, self_.len())
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         unsafe { from_raw_parts_mut(self_.as_ptr() as *mut T, self_.len()) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: inside `main` at $DIR/buggy_as_mut_slice.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

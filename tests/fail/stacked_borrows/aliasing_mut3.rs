@@ -8,8 +8,7 @@ fn main() {
     let xraw: *mut i32 = unsafe { mem::transmute_copy(&xref) };
     let xshr = &*xref;
     // transmute fn ptr around so that we can avoid retagging
-    let safe_raw: fn(x: *mut i32, y: *const i32) = unsafe {
-        mem::transmute::<fn(&mut i32, &i32), _>(safe)
-    };
+    let safe_raw: fn(x: *mut i32, y: *const i32) =
+        unsafe { mem::transmute::<fn(&mut i32, &i32), _>(safe) };
     safe_raw(xraw, xshr);
 }

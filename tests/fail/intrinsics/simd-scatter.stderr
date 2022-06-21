@@ -11,8 +11,12 @@ LL |             intrinsics::simd_scatter(self, ptrs, enable.to_int())
 note: inside `main` at $DIR/simd-scatter.rs:LL:CC
   --> $DIR/simd-scatter.rs:LL:CC
    |
-LL |     Simd::from_array([-27, 82, -41, 124]).scatter_select_unchecked(&mut vec, Mask::splat(true), idxs);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | /         Simd::from_array([-27, 82, -41, 124]).scatter_select_unchecked(
+LL | |             &mut vec,
+LL | |             Mask::splat(true),
+LL | |             idxs,
+LL | |         );
+   | |_________^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

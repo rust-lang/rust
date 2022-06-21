@@ -1,4 +1,4 @@
-use std::cell::{RefCell, Ref, RefMut};
+use std::cell::{Ref, RefCell, RefMut};
 
 fn main() {
     basic();
@@ -70,8 +70,8 @@ fn ref_mut_protector() {
 
 /// Make sure we do not have bad enum layout optimizations.
 fn rust_issue_68303() {
-    let optional=Some(RefCell::new(false));
-    let mut handle=optional.as_ref().unwrap().borrow_mut();
+    let optional = Some(RefCell::new(false));
+    let mut handle = optional.as_ref().unwrap().borrow_mut();
     assert!(optional.is_some());
-    *handle=true;
+    *handle = true;
 }

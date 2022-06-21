@@ -13,7 +13,7 @@ struct Wrapper {
     data: Data,
 }
 
-static G : i32 = 0;
+static G: i32 = 0;
 
 fn main() {
     let mut w = Wrapper { align: 0, data: Data { pad: 0, ptr: &G } };

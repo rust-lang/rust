@@ -8,9 +8,10 @@ fn main() {
     let y: u128 = 0xFFFF_FFFF_FFFF_FFFF__FFFF_FFFF_FFFF_FFFE;
     assert_eq!(!1, y);
     assert_eq!(x, y | 1);
-    assert_eq!(0xFAFF_0000_FF8F_0000__FFFF_0000_FFFF_FFFE,
-               y &
-               0xFAFF_0000_FF8F_0000__FFFF_0000_FFFF_FFFF);
+    assert_eq!(
+        0xFAFF_0000_FF8F_0000__FFFF_0000_FFFF_FFFE,
+        y & 0xFAFF_0000_FF8F_0000__FFFF_0000_FFFF_FFFF,
+    );
     let z: u128 = 0xABCD_EF;
     assert_eq!(z * z, 0x734C_C2F2_A521);
     assert_eq!(z * z * z * z, 0x33EE_0E2A_54E2_59DA_A0E7_8E41);
@@ -19,8 +20,10 @@ fn main() {
     assert_eq!(k + k, 0x2468_ACF1_3579_BDFF_DB97_530E_CA86_420);
     assert_eq!(0, k - k);
     assert_eq!(0x1234_5678_9ABC_DEFF_EDCB_A987_5A86_421, k - z);
-    assert_eq!(0x1000_0000_0000_0000_0000_0000_0000_000,
-               k - 0x234_5678_9ABC_DEFF_EDCB_A987_6543_210);
+    assert_eq!(
+        0x1000_0000_0000_0000_0000_0000_0000_000,
+        k - 0x234_5678_9ABC_DEFF_EDCB_A987_6543_210,
+    );
     assert_eq!(0x6EF5_DE4C_D3BC_2AAA_3BB4_CC5D_D6EE_8, k / 42);
     assert_eq!(0, k % 42);
     assert_eq!(15, z % 42);
@@ -38,7 +41,7 @@ fn main() {
     assert_eq!((z as f32) as u128, z);
     assert_eq!((z as f64 * 16.0) as u128, z * 16);
     assert_eq!((z as f32 * 16.0) as u128, z * 16);
-    let l :u128 = 432 << 100;
+    let l: u128 = 432 << 100;
     assert_eq!((l as f32) as u128, l);
     assert_eq!((l as f64) as u128, l);
     // formatting
@@ -46,10 +49,11 @@ fn main() {
     assert_eq!("147573952589676412928", format!("{}", j));
     assert_eq!("80000000000000000", format!("{:x}", j));
     assert_eq!("20000000000000000000000", format!("{:o}", j));
-    assert_eq!("10000000000000000000000000000000000000000000000000000000000000000000",
-               format!("{:b}", j));
-    assert_eq!("340282366920938463463374607431768211455",
-        format!("{}", u128::MAX));
+    assert_eq!(
+        "10000000000000000000000000000000000000000000000000000000000000000000",
+        format!("{:b}", j),
+    );
+    assert_eq!("340282366920938463463374607431768211455", format!("{}", u128::MAX));
     assert_eq!("147573952589676412928", format!("{:?}", j));
     // common traits
     assert_eq!(x, b(x.clone()));
