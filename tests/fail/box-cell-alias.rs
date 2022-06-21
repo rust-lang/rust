@@ -6,7 +6,9 @@ use std::cell::Cell;
 
 fn helper(val: Box<Cell<u8>>, ptr: *const Cell<u8>) -> u8 {
     val.set(10);
-    unsafe { (*ptr).set(20); } //~ ERROR does not exist in the borrow stack
+    unsafe {
+        (*ptr).set(20);
+    } //~ ERROR does not exist in the borrow stack
     val.get()
 }
 

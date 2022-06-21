@@ -6,5 +6,7 @@ extern "rust-intrinsic" {
 }
 
 fn main() {
-    unsafe { float_to_int_unchecked::<f64, i64>(9223372036854775808.0f64); } //~ ERROR: cannot be represented in target type `i64`
+    unsafe {
+        float_to_int_unchecked::<f64, i64>(9223372036854775808.0f64);
+    } //~ ERROR: cannot be represented in target type `i64`
 }

@@ -11,8 +11,12 @@ fn main() {
     let mut x_box = Box::new(1u8);
     let x = (&mut *x_box as *mut u8).wrapping_offset(1);
     // This one is just "at the edge", but still okay
-    unsafe { *(x as *mut [u8; 0]) = zst_val; }
+    unsafe {
+        *(x as *mut [u8; 0]) = zst_val;
+    }
     // One byte further is OOB.
     let x = x.wrapping_offset(1);
-    unsafe { *(x as *mut [u8; 0]) = zst_val; } //~ ERROR out-of-bounds
+    unsafe {
+        *(x as *mut [u8; 0]) = zst_val;
+    } //~ ERROR out-of-bounds
 }
