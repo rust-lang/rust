@@ -1140,7 +1140,7 @@ impl<'a> Linker for EmLinker<'a> {
     fn no_crt_objects(&mut self) {}
 
     fn no_default_libraries(&mut self) {
-        self.cmd.args(&["-s", "DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[]"]);
+        self.cmd.arg("-nodefaultlibs");
     }
 
     fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
