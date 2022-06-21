@@ -254,7 +254,6 @@ fn get_entry_condition<'a>(
         if let Some(terminator) = &body.basic_blocks()[BasicBlock::from_usize(n)].terminator {
             match &terminator.kind {
                 TerminatorKind::SwitchInt { discr, targets, .. } => {
-                    // FIXME: THIS DOES NOT HANDLE THE DEFAULT NO MATCH CASE
                     let mut switch_value = 1;
                     for switch_target_and_value in targets.iter() {
                         if switch_target_and_value.1.index().to_string() == node {
@@ -360,10 +359,13 @@ fn get_entry_condition<'a>(
                     // ACTUALLY WE MAY NEED TO ENCODE THE ASSIGNMENT OF THE RETURN IN THE DESTINATION CASE (NON-CLEANUP)
                     // BUT WE PROBABLY WILL NOT SUPPORT UNDERSTANDING RETURN VALUES FOR NOW SINCE IT REQUIRES DOMAIN KNOWLEDGE OF FUNCTION
                 }
-                TerminatorKind::Assert { cond, cleanup, .. } => {
+                TerminatorKind::Assert { cond, cleanup, expected, .. } => {
                     let mut should_assert_hold = true;
                     if let Some(cleanup) = cleanup && cleanup.index().to_string() == node {
                         should_assert_hold = false;
+                    }
+                    if !expected {
+                        should_assert_hold = !should_assert_hold;
                     }
                     match cond {
                         Operand::Copy(place) => {
@@ -393,7 +395,7 @@ fn get_entry_condition<'a>(
                                 let switch_var =
                                     ast::Bool::from_bool(solver.get_context(), value != 0);
                                 entry_condition = switch_var._eq(&typed_switch_value);
-                                debug!("found constant {}", value);
+                                debug!("Found constant {}", value);
                             } else {
                                 debug!("Failed to get entry condition for Assert constant");
                             }
@@ -494,7 +496,6 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
             node_var = ast::Bool::and(solver.get_context(), &[&panic_var.not(), &node_var]);
         }
 
-        // FIXME: handle assignment
         if let Ok(i) = node.parse() {
             for j in (0..body.basic_blocks()[BasicBlock::from_usize(i)].statements.len()).rev() {
                 let statement = &body.basic_blocks()[BasicBlock::from_usize(i)].statements[j];
@@ -841,19 +842,19 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
         solver.assert(&named_node_var._eq(&node_var));
     }
 
-    // FIXME: constrain int inputs
-    // for i in 0..body.arg_count {
-    //     let arg = ast::Int::new_const(&solver.get_context(), format!("_{}", (i + 1).to_string()));
-    //     let min_int = ast::Int::from_bv(
-    //         &ast::BV::from_i64(solver.get_context(), i32::MIN.into(), 32),
-    //         true,
-    //     );
-    //     let max_int = ast::Int::from_bv(
-    //         &ast::BV::from_i64(solver.get_context(), i32::MAX.into(), 32),
-    //         true,
-    //     );
-    //     solver.assert(&ast::Bool::and(solver.get_context(), &[&arg.ge(&min_int), &arg.le(&max_int)]));
-    // }
+    // constrain int inputs
+    for i in 0..body.arg_count {
+        let arg = ast::Int::new_const(&solver.get_context(), format!("_{}", (i + 1).to_string()));
+        let min_int = ast::Int::from_bv(
+            &ast::BV::from_i64(solver.get_context(), i32::MIN.into(), 32),
+            true,
+        );
+        let max_int = ast::Int::from_bv(
+            &ast::BV::from_i64(solver.get_context(), i32::MAX.into(), 32),
+            true,
+        );
+        solver.assert(&ast::Bool::and(solver.get_context(), &[&arg.ge(&min_int), &arg.le(&max_int)]));
+    }
 
     // let panic_var = ast::Bool::new_const(solver.get_context(), PANIC_VAR_NAME);
     // let panic_value = ast::Bool::from_bool(solver.get_context(), false);
@@ -866,53 +867,56 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
 
     // Attempt resolving the model (and obtaining the respective arg values if panic found)
     debug!("Resolved value: {:?}", solver.check());
-    for i in 0..body.arg_count {
-        let arg = ast::Int::new_const(&solver.get_context(), format!("_{}", (i + 1).to_string()));
-        let arg_value = if solver.check() == SatResult::Sat {
-            let model = solver.get_model().unwrap();
-            Some(model.eval(&arg, true).unwrap().as_i64().unwrap())
-        } else {
-            None
-        };
-        debug!("{}: {:?}", arg, arg_value);
+    // for i in 0..(body.arg_count + 1) {
+    //     let arg = ast::Int::new_const(&solver.get_context(), format!("_{}", (i).to_string()));
+    //     let arg_value = if solver.check() == SatResult::Sat {
+    //         let model = solver.get_model().unwrap();
+    //         Some(model.eval(&arg, true).unwrap().as_i64().unwrap())
+    //     } else {
+    //         None
+    //     };
+    //     debug!("{}: {:?}", arg, arg_value);
+    // }
+    if solver.check() == SatResult::Sat {
+        debug!("\n{:?}", solver.get_model().unwrap());
     }
     "Done backward symbolic exec\n".to_string()
 }
 
-fn playground() -> String {
-    let cfg = Config::new();
-    let ctx = Context::new(&cfg);
-    let solver = Solver::new(&ctx);
+// fn playground() -> String {
+//     let cfg = Config::new();
+//     let ctx = Context::new(&cfg);
+//     let solver = Solver::new(&ctx);
 
-    let min_int =
-        ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), i32::MIN.into(), 32), true);
-    let max_int =
-        ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), i32::MAX.into(), 32), true);
-    let ten = ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), 10.into(), 32), true);
-    let dx = ast::Int::new_const(solver.get_context(), "dx");
-    let dy = ast::Int::new_const(solver.get_context(), "dy");
-    solver.assert(&dx._eq(&Int::add(solver.get_context(), &[&max_int, &ten])));
-    solver.assert(&dy._eq(&Int::sub(solver.get_context(), &[&min_int, &ten])));
+//     let min_int =
+//         ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), i32::MIN.into(), 32), true);
+//     let max_int =
+//         ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), i32::MAX.into(), 32), true);
+//     let ten = ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), 10.into(), 32), true);
+//     let dx = ast::Int::new_const(solver.get_context(), "dx");
+//     let dy = ast::Int::new_const(solver.get_context(), "dy");
+//     solver.assert(&dx._eq(&Int::add(solver.get_context(), &[&max_int, &ten])));
+//     solver.assert(&dy._eq(&Int::sub(solver.get_context(), &[&min_int, &ten])));
 
-    debug!("Resolved value: {:?}", solver.check());
-    let dx_val = if solver.check() == SatResult::Sat {
-        let model = solver.get_model().unwrap();
-        Some(model.eval(&dx, true).unwrap().as_i64().unwrap())
-    } else {
-        None
-    };
-    debug!("{}: {:?}", dx, dx_val);
+//     debug!("Resolved value: {:?}", solver.check());
+//     let dx_val = if solver.check() == SatResult::Sat {
+//         let model = solver.get_model().unwrap();
+//         Some(model.eval(&dx, true).unwrap().as_i64().unwrap())
+//     } else {
+//         None
+//     };
+//     debug!("{}: {:?}", dx, dx_val);
 
-    let dy_val = if solver.check() == SatResult::Sat {
-        let model = solver.get_model().unwrap();
-        Some(model.eval(&dy, true).unwrap().as_i64().unwrap())
-    } else {
-        None
-    };
-    debug!("{}: {:?}", dy, dy_val);
+//     let dy_val = if solver.check() == SatResult::Sat {
+//         let model = solver.get_model().unwrap();
+//         Some(model.eval(&dy, true).unwrap().as_i64().unwrap())
+//     } else {
+//         None
+//     };
+//     debug!("{}: {:?}", dy, dy_val);
 
-    return "playground done".to_string();
-}
+//     return "playground done".to_string();
+// }
 
 fn mir_symbolic_exec<'tcx>(tcx: TyCtxt<'tcx>, _def: ty::WithOptConstParam<LocalDefId>) -> () {
     let (_input_body, _promoted) = tcx.mir_promoted(_def);
@@ -939,5 +943,5 @@ fn mir_symbolic_exec<'tcx>(tcx: TyCtxt<'tcx>, _def: ty::WithOptConstParam<LocalD
     // example_unsat_z3();
     // debug!("example Z3 done");
 
-    debug!("{}", playground());
+    // debug!("{}", playground());
 }
