@@ -600,6 +600,7 @@ impl<P: Deref> Pin<P> {
     ///
     /// Thus it is safe to call this function.
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[unstable(feature = "pin_as_inner_ref", issue = "none")]
     #[inline(always)]
     pub const fn as_inner_ref(&self) -> &P {
         &self.pointer
