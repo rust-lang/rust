@@ -8,14 +8,16 @@ mod safe {
         unsafe {
             assert!(mid <= len);
 
-            (from_raw_parts_mut(ptr, len - mid), // BUG: should be "mid" instead of "len - mid"
-            from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
+            (
+                from_raw_parts_mut(ptr, len - mid), // BUG: should be "mid" instead of "len - mid"
+                from_raw_parts_mut(ptr.offset(mid as isize), len - mid),
+            )
         }
     }
 }
 
 fn main() {
-    let mut array = [1,2,3,4];
+    let mut array = [1, 2, 3, 4];
     let (a, b) = safe::split_at_mut(&mut array, 0);
     //~^ ERROR borrow stack
     a[1] = 5;

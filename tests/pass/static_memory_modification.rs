@@ -1,4 +1,4 @@
-use std::sync::atomic::{Ordering, AtomicUsize};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 static mut X: usize = 5;
 static Y: AtomicUsize = AtomicUsize::new(5);

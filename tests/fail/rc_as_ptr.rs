@@ -1,8 +1,8 @@
 // This should fail even without validation
 // compile-flags: -Zmiri-disable-validation
 
-use std::rc::{Rc, Weak};
 use std::ptr;
+use std::rc::{Rc, Weak};
 
 /// Taken from the `Weak::as_ptr` doctest.
 fn main() {

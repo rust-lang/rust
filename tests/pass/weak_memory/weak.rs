@@ -94,7 +94,6 @@ fn initialization_write() -> bool {
     r2 == 11
 }
 
-
 // Asserts that the function returns true at least once in 100 runs
 macro_rules! assert_once {
     ($f:ident) => {

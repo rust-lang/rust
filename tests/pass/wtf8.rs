@@ -1,7 +1,7 @@
 // only-windows
 
-use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::ffi::{OsStr, OsString};
+use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
 fn test1() {
     let base = "a\té \u{7f}💩\r";

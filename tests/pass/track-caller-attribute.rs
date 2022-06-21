@@ -16,7 +16,9 @@ fn nested_tracked() -> &'static Location<'static> {
 }
 
 macro_rules! caller_location_from_macro {
-    () => (core::panic::Location::caller());
+    () => {
+        core::panic::Location::caller()
+    };
 }
 
 fn test_fn_ptr() {
@@ -62,7 +64,6 @@ fn test_trait_obj() {
     assert_eq!(location.file(), file!());
     assert_eq!(location.line(), expected_line);
     assert_eq!(location.column(), 28);
-
 }
 
 fn main() {

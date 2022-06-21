@@ -14,8 +14,6 @@ mod m {
 }
 
 fn main() {
-    let v = unsafe {
-        std::mem::transmute::<(), m::Void>(())
-    };
+    let v = unsafe { std::mem::transmute::<(), m::Void>(()) };
     m::f(v); //~ inside `main`
 }

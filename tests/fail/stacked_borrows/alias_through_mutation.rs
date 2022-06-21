@@ -1,6 +1,8 @@
 // This makes a ref that was passed to us via &mut alias with things it should not alias with
 fn retarget(x: &mut &u32, target: &mut u32) {
-    unsafe { *x = &mut *(target as *mut _); }
+    unsafe {
+        *x = &mut *(target as *mut _);
+    }
 }
 
 fn main() {

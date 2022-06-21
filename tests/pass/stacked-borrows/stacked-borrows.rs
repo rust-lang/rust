@@ -50,7 +50,9 @@ fn mut_raw_then_mut_shr() {
     let xraw = &mut *xref as *mut _;
     let xshr = &*xref;
     assert_eq!(*xshr, 2);
-    unsafe { *xraw = 4; }
+    unsafe {
+        *xraw = 4;
+    }
     assert_eq!(x, 4);
 }
 
@@ -60,7 +62,9 @@ fn mut_shr_then_mut_raw() {
     let xref = &mut 2;
     let _xshr = &*xref;
     let xraw = xref as *mut _;
-    unsafe { *xraw = 3; }
+    unsafe {
+        *xraw = 3;
+    }
     assert_eq!(*xref, 3);
 }
 
@@ -75,7 +79,9 @@ fn mut_raw_mut() {
         let xraw = xref1 as *mut _;
         let _xref2 = unsafe { &mut *xraw };
         let _val = *xref1;
-        unsafe { *xraw = 4; }
+        unsafe {
+            *xraw = 4;
+        }
         // we can now use both xraw and xref1, for reading
         assert_eq!(*xref1, 4);
         assert_eq!(unsafe { *xraw }, 4);
@@ -112,23 +118,27 @@ fn direct_mut_to_const_raw() {
 }
 
 // Make sure that we can create two raw pointers from a mutable reference and use them both.
-fn two_raw() { unsafe {
-    let x = &mut 0;
-    let y1 = x as *mut _;
-    let y2 = x as *mut _;
-    *y1 += 2;
-    *y2 += 1;
-} }
+fn two_raw() {
+    unsafe {
+        let x = &mut 0;
+        let y1 = x as *mut _;
+        let y2 = x as *mut _;
+        *y1 += 2;
+        *y2 += 1;
+    }
+}
 
 // Make sure that creating a *mut does not invalidate existing shared references.
-fn shr_and_raw() { unsafe {
-    use std::mem;
-    let x = &mut 0;
-    let y1: &i32 = mem::transmute(&*x); // launder lifetimes
-    let y2 = x as *mut _;
-    let _val = *y1;
-    *y2 += 1;
-} }
+fn shr_and_raw() {
+    unsafe {
+        use std::mem;
+        let x = &mut 0;
+        let y1: &i32 = mem::transmute(&*x); // launder lifetimes
+        let y2 = x as *mut _;
+        let _val = *y1;
+        *y2 += 1;
+    }
+}
 
 fn disjoint_mutable_subborrows() {
     struct Foo {
@@ -136,23 +146,20 @@ fn disjoint_mutable_subborrows() {
         b: Vec<u32>,
     }
 
-    unsafe fn borrow_field_a<'a>(this:*mut Foo) -> &'a mut String {
+    unsafe fn borrow_field_a<'a>(this: *mut Foo) -> &'a mut String {
         &mut (*this).a
     }
 
-    unsafe fn borrow_field_b<'a>(this:*mut Foo) -> &'a mut Vec<u32> {
+    unsafe fn borrow_field_b<'a>(this: *mut Foo) -> &'a mut Vec<u32> {
         &mut (*this).b
     }
 
-    let mut foo = Foo {
-        a: "hello".into(),
-        b: vec![0,1,2],
-    };
+    let mut foo = Foo { a: "hello".into(), b: vec![0, 1, 2] };
 
     let ptr = &mut foo as *mut Foo;
 
-    let a = unsafe{ borrow_field_a(ptr) };
-    let b = unsafe{ borrow_field_b(ptr) };
+    let a = unsafe { borrow_field_a(ptr) };
+    let b = unsafe { borrow_field_b(ptr) };
     b.push(4);
     a.push_str(" world");
     eprintln!("{:?} {:?}", a, b);
@@ -181,7 +188,9 @@ fn raw_ref_to_part() {
 fn array_casts() {
     let mut x: [usize; 2] = [0, 0];
     let p = &mut x as *mut usize;
-    unsafe { *p.add(1) = 1; }
+    unsafe {
+        *p.add(1) = 1;
+    }
 
     let x: [usize; 2] = [0, 1];
     let p = &x as *const usize;
@@ -192,7 +201,7 @@ fn array_casts() {
 fn mut_below_shr() {
     let x = 0;
     let y = &x;
-    let p = unsafe { core::mem::transmute::<&&i32,&&mut i32>(&y) };
+    let p = unsafe { core::mem::transmute::<&&i32, &&mut i32>(&y) };
     let r = &**p;
     let _val = *r;
 }

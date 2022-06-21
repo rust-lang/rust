@@ -23,7 +23,7 @@ fn main() {
     src.push_front(Box::new(2));
     dst.append(&mut src);
     for a in dst.iter() {
-      assert_eq!(**a, 2);
+        assert_eq!(**a, 2);
     }
 
     // Regression test for Debug impl's

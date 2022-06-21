@@ -8,7 +8,10 @@ use std::mem;
 
 #[repr(C)]
 pub enum Foo {
-    A, B, C, D
+    A,
+    B,
+    C,
+    D,
 }
 
 fn main() {

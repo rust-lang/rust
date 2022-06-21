@@ -1,5 +1,5 @@
-use std::mem;
 use std::cell::Cell;
+use std::mem;
 
 // Make sure &mut UnsafeCell also is exclusive
 pub fn safe(_x: &i32, _y: &mut Cell<i32>) {} //~ ERROR protect
@@ -10,8 +10,7 @@ fn main() {
     let xraw: *mut i32 = unsafe { mem::transmute_copy(&xref) };
     let xshr = &*xref;
     // transmute fn ptr around so that we can avoid retagging
-    let safe_raw: fn(x: *const i32, y: *mut Cell<i32>) = unsafe {
-        mem::transmute::<fn(&i32, &mut Cell<i32>), _>(safe)
-    };
+    let safe_raw: fn(x: *const i32, y: *mut Cell<i32>) =
+        unsafe { mem::transmute::<fn(&i32, &mut Cell<i32>), _>(safe) };
     safe_raw(xshr, xraw as *mut _);
 }

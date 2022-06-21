@@ -12,11 +12,7 @@ pub struct Meta {
 
 impl Meta {
     pub fn new() -> Self {
-        Meta {
-            drop_fn: |_| {},
-            size: 0,
-            align: 1,
-        }
+        Meta { drop_fn: |_| {}, size: 0, align: 1 }
     }
 }
 

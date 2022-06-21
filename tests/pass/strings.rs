@@ -22,7 +22,7 @@ fn fat_pointer_on_32_bit() {
 
 fn str_indexing() {
     let mut x = "Hello".to_string();
-    let _v = &mut x[..3];  // Test IndexMut on String.
+    let _v = &mut x[..3]; // Test IndexMut on String.
 }
 
 fn unique_aliasing() {

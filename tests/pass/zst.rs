@@ -19,6 +19,10 @@ fn main() {
     assert_eq!(use_zst(), A);
     let x = 42 as *mut [u8; 0];
     // Reading and writing is ok.
-    unsafe { *x = zst_val; }
-    unsafe { let _y = *x; }
+    unsafe {
+        *x = zst_val;
+    }
+    unsafe {
+        let _y = *x;
+    }
 }

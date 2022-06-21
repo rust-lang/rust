@@ -1,32 +1,30 @@
 use std::fmt::Debug;
 
-fn foldl<T, U, F>(values: &[T],
-                  initial: U,
-                  mut function: F)
-                  -> U where
-    U: Clone+Debug, T:Debug,
+fn foldl<T, U, F>(values: &[T], initial: U, mut function: F) -> U
+where
+    U: Clone + Debug,
+    T: Debug,
     F: FnMut(U, &T) -> U,
-{    match values {
-        [head, tail @ ..] =>
-            foldl(tail, function(initial, head), function),
+{
+    match values {
+        [head, tail @ ..] => foldl(tail, function(initial, head), function),
         [] => {
-            let res = initial.clone(); res
+            let res = initial.clone();
+            res
         }
     }
 }
 
-fn foldr<T, U, F>(values: &[T],
-                  initial: U,
-                  mut function: F)
-                  -> U where
+fn foldr<T, U, F>(values: &[T], initial: U, mut function: F) -> U
+where
     U: Clone,
     F: FnMut(&T, U) -> U,
 {
     match values {
-        [head @ .., tail] =>
-            foldr(head, function(tail, initial), function),
+        [head @ .., tail] => foldr(head, function(tail, initial), function),
         [] => {
-            let res = initial.clone(); res
+            let res = initial.clone();
+            res
         }
     }
 }

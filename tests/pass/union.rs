@@ -45,7 +45,10 @@ fn b() {
 
 fn c() {
     #[repr(u32)]
-    enum Tag { I, F }
+    enum Tag {
+        I,
+        F,
+    }
 
     #[repr(C)]
     union U {
@@ -68,10 +71,10 @@ fn c() {
             }
         }
     }
-    assert!(is_zero(Value { tag: Tag::I, u: U { i: 0 }}));
-    assert!(is_zero(Value { tag: Tag::F, u: U { f: 0.0 }}));
-    assert!(!is_zero(Value { tag: Tag::I, u: U { i: 1 }}));
-    assert!(!is_zero(Value { tag: Tag::F, u: U { f: 42.0 }}));
+    assert!(is_zero(Value { tag: Tag::I, u: U { i: 0 } }));
+    assert!(is_zero(Value { tag: Tag::F, u: U { f: 0.0 } }));
+    assert!(!is_zero(Value { tag: Tag::I, u: U { i: 1 } }));
+    assert!(!is_zero(Value { tag: Tag::F, u: U { f: 42.0 } }));
 }
 
 fn d() {
@@ -82,8 +85,10 @@ fn d() {
     let u = MyUnion { f1: 10 };
     unsafe {
         match u {
-            MyUnion { f1: 10 } => { }
-            MyUnion { f2: _f2 } => { panic!("foo"); }
+            MyUnion { f1: 10 } => {}
+            MyUnion { f2: _f2 } => {
+                panic!("foo");
+            }
         }
     }
 }
