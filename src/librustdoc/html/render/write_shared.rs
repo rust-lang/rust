@@ -475,8 +475,6 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
                 description: "List of crates",
                 keywords: BASIC_KEYWORDS,
                 resource_suffix: &shared.resource_suffix,
-                extra_scripts: &[],
-                static_extra_scripts: &[],
             };
 
             let content = format!(

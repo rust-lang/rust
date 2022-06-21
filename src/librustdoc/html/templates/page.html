@@ -34,17 +34,18 @@
       {%- endfor -%}
     ></script> {#- -#}
     <script src="{{static_root_path|safe}}storage{{page.resource_suffix}}.js"></script> {#- -#}
-    <script src="{{page.root_path|safe}}crates{{page.resource_suffix}}.js"></script> {#- -#}
+    {%- if page.css_class.contains("crate") -%}
+    <script defer src="{{page.root_path|safe}}crates{{page.resource_suffix}}.js"></script> {#- -#}
+    {%- else if page.css_class == "source" -%}
+    <script defer src="{{static_root_path|safe}}source-script{{page.resource_suffix}}.js"></script> {#- -#}
+    <script defer src="{{page.root_path|safe}}source-files{{page.resource_suffix}}.js"></script> {#- -#}
+    {%- else -%}
+    <script defer src="sidebar-items{{page.resource_suffix}}.js"></script> {#- -#}
+    {%- endif -%}
     <script defer src="{{static_root_path|safe}}main{{page.resource_suffix}}.js"></script> {#- -#}
-    {%- for script in page.static_extra_scripts -%}
-    <script defer src="{{static_root_path|safe}}{{script}}.js"></script> {#- -#}
-    {% endfor %}
     {%- if layout.scrape_examples_extension -%}
     <script defer src="{{page.root_path|safe}}scrape-examples{{page.resource_suffix}}.js"></script> {#- -#}
     {%- endif -%}
-    {%- for script in page.extra_scripts -%}
-    <script defer src="{{page.root_path|safe}}{{script}}.js"></script> {#- -#}
-    {% endfor %}
     <noscript> {#- -#}
         <link rel="stylesheet" {# -#}
            href="{{static_root_path|safe}}noscript{{page.resource_suffix}}.css"> {#- -#}

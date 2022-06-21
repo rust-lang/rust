@@ -203,8 +203,6 @@ impl SourceCollector<'_, '_> {
             description: &desc,
             keywords: BASIC_KEYWORDS,
             resource_suffix: &shared.resource_suffix,
-            extra_scripts: &[&format!("source-files{}", shared.resource_suffix)],
-            static_extra_scripts: &[&format!("source-script{}", shared.resource_suffix)],
         };
         let v = layout::render(
             &shared.layout,
