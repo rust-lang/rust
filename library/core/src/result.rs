@@ -551,19 +551,22 @@ impl<T, E> Result<T, E> {
     /// #![feature(is_some_with)]
     ///
     /// let x: Result<u32, &str> = Ok(2);
-    /// assert_eq!(x.is_ok_and(|&x| x > 1), true);
+    /// assert_eq!(x.is_ok_and(|x| x > 1), true);
     ///
     /// let x: Result<u32, &str> = Ok(0);
-    /// assert_eq!(x.is_ok_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_ok_and(|x| x > 1), false);
     ///
     /// let x: Result<u32, &str> = Err("hey");
-    /// assert_eq!(x.is_ok_and(|&x| x > 1), false);
+    /// assert_eq!(x.is_ok_and(|x| x > 1), false);
     /// ```
     #[must_use]
     #[inline]
     #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_ok_and(&self, f: impl FnOnce(&T) -> bool) -> bool {
-        matches!(self, Ok(x) if f(x))
+    pub fn is_ok_and(self, f: impl FnOnce(T) -> bool) -> bool {
+        match self {
+            Err(_) => false,
+            Ok(x) => f(x),
+        }
     }
 
     /// Returns `true` if the result is [`Err`].
@@ -607,8 +610,11 @@ impl<T, E> Result<T, E> {
     #[must_use]
     #[inline]
     #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_err_and(&self, f: impl FnOnce(&E) -> bool) -> bool {
-        matches!(self, Err(x) if f(x))
+    pub fn is_err_and(self, f: impl FnOnce(E) -> bool) -> bool {
+        match self {
+            Ok(_) => false,
+            Err(e) => f(e),
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////
