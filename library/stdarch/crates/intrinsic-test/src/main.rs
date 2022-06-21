@@ -23,13 +23,21 @@ mod intrinsic;
 mod types;
 mod values;
 
+// The number of times each intrinsic will be called.
+const PASSES: u32 = 20;
+
 #[derive(Debug, PartialEq)]
 pub enum Language {
     Rust,
     C,
 }
 
-fn gen_code_c(intrinsic: &Intrinsic, constraints: &[&Argument], name: String) -> String {
+fn gen_code_c(
+    intrinsic: &Intrinsic,
+    constraints: &[&Argument],
+    name: String,
+    p64_armv7_workaround: bool,
+) -> String {
     if let Some((current, constraints)) = constraints.split_last() {
         let range = current
             .constraints
@@ -47,19 +55,25 @@ fn gen_code_c(intrinsic: &Intrinsic, constraints: &[&Argument], name: String) ->
                     name = current.name,
                     ty = current.ty.c_type(),
                     val = i,
-                    pass = gen_code_c(intrinsic, constraints, format!("{}-{}", name, i))
+                    pass = gen_code_c(
+                        intrinsic,
+                        constraints,
+                        format!("{}-{}", name, i),
+                        p64_armv7_workaround
+                    )
                 )
             })
             .collect()
     } else {
-        (1..20)
-            .map(|idx| intrinsic.generate_pass_c(idx, &name))
-            .collect::<Vec<_>>()
-            .join("\n")
+        intrinsic.generate_loop_c(&name, PASSES, p64_armv7_workaround)
     }
 }
 
-fn generate_c_program(header_files: &[&str], intrinsic: &Intrinsic) -> String {
+fn generate_c_program(
+    header_files: &[&str],
+    intrinsic: &Intrinsic,
+    p64_armv7_workaround: bool,
+) -> String {
     let constraints = intrinsic
         .arguments
         .iter()
@@ -75,7 +89,7 @@ fn generate_c_program(header_files: &[&str], intrinsic: &Intrinsic) -> String {
 
 template<typename T1, typename T2> T1 cast(T2 x) {{
   static_assert(sizeof(T1) == sizeof(T2), "sizeof T1 and T2 must be the same");
-  T1 ret = 0;
+  T1 ret{{}};
   memcpy(&ret, &x, sizeof(T1));
   return ret;
 }}
@@ -95,6 +109,8 @@ std::ostream& operator<<(std::ostream& os, poly128_t value) {{
 }}
 #endif
 
+{arglists}
+
 int main(int argc, char **argv) {{
 {passes}
     return 0;
@@ -104,7 +120,13 @@ int main(int argc, char **argv) {{
             .map(|header| format!("#include <{}>", header))
             .collect::<Vec<_>>()
             .join("\n"),
-        passes = gen_code_c(intrinsic, constraints.as_slice(), Default::default()),
+        arglists = intrinsic.arguments.gen_arglists_c(PASSES),
+        passes = gen_code_c(
+            intrinsic,
+            constraints.as_slice(),
+            Default::default(),
+            p64_armv7_workaround
+        ),
     )
 }
 
@@ -131,10 +153,7 @@ fn gen_code_rust(intrinsic: &Intrinsic, constraints: &[&Argument], name: String)
             })
             .collect()
     } else {
-        (1..20)
-            .map(|idx| intrinsic.generate_pass_rust(idx, &name))
-            .collect::<Vec<_>>()
-            .join("\n")
+        intrinsic.generate_loop_rust(&name, PASSES)
     }
 }
 
@@ -153,11 +172,14 @@ fn generate_rust_program(intrinsic: &Intrinsic, a32: bool) -> String {
 #![allow(non_upper_case_globals)]
 use core_arch::arch::{target_arch}::*;
 
+{arglists}
+
 fn main() {{
 {passes}
 }}
 "#,
         target_arch = if a32 { "arm" } else { "aarch64" },
+        arglists = intrinsic.arguments.gen_arglists_rust(PASSES),
         passes = gen_code_rust(intrinsic, &constraints, Default::default())
     )
 }
@@ -203,7 +225,7 @@ fn build_c(intrinsics: &Vec<Intrinsic>, compiler: &str, a32: bool) -> bool {
             let c_filename = format!(r#"c_programs/{}.cpp"#, i.name);
             let mut file = File::create(&c_filename).unwrap();
 
-            let c_code = generate_c_program(&["arm_neon.h", "arm_acle.h"], &i);
+            let c_code = generate_c_program(&["arm_neon.h", "arm_acle.h"], &i, a32);
             file.write_all(c_code.into_bytes().as_slice()).unwrap();
             compile_c(&c_filename, &i, compiler, a32)
         })
@@ -259,7 +281,7 @@ path = "{intrinsic}/main.rs""#,
         .current_dir("rust_programs")
         .arg("-c")
         .arg(format!(
-            "cargo {toolchain} build --target {target}",
+            "cargo {toolchain} build --target {target} --release",
             toolchain = toolchain,
             target = if a32 {
                 "armv7-unknown-linux-gnueabihf"
@@ -407,7 +429,7 @@ fn compare_outputs(intrinsics: &Vec<Intrinsic>, toolchain: &str, runner: &str, a
                 .current_dir("rust_programs")
                 .arg("-c")
                 .arg(format!(
-                    "cargo {toolchain} run --target {target} --bin {intrinsic}",
+                    "cargo {toolchain} run --target {target} --bin {intrinsic} --release",
                     intrinsic = intrinsic.name,
                     toolchain = toolchain,
                     target = if a32 {

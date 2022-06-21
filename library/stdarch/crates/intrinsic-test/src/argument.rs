@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::types::IntrinsicType;
+use crate::types::{IntrinsicType, TypeKind};
 use crate::Language;
 
 /// An argument for the intrinsic.
@@ -90,47 +90,106 @@ impl ArgumentList {
             .join(", ")
     }
 
-    /// Creates a line that initializes this argument for C code.
-    /// e.g. `int32x2_t a = { 0x1, 0x2 };`
-    pub fn init_random_values_c(&self, pass: usize) -> String {
+    /// Creates a line for each argument that initializes an array for C from which `loads` argument
+    /// values can be loaded  as a sliding window.
+    /// e.g `const int32x2_t a_vals = {0x3effffff, 0x3effffff, 0x3f7fffff}`, if loads=2.
+    pub fn gen_arglists_c(&self, loads: u32) -> String {
         self.iter()
             .filter_map(|arg| {
                 (!arg.has_constraint()).then(|| {
                     format!(
-                        "{ty} {name} = {{ {values} }};",
-                        ty = arg.to_c_type(),
+                        "const {ty} {name}_vals[] = {{ {values} }};",
+                        ty = arg.ty.c_scalar_type(),
                         name = arg.name,
-                        values = arg.ty.populate_random(pass, &Language::C)
+                        values = arg.ty.populate_random(loads, &Language::C)
                     )
                 })
             })
             .collect::<Vec<_>>()
-            .join("\n    ")
+            .join("\n")
     }
 
-    /// Creates a line that initializes this argument for Rust code.
-    /// e.g. `let a = transmute([0x1, 0x2]);`
-    pub fn init_random_values_rust(&self, pass: usize) -> String {
+    /// Creates a line for each argument that initializes an array for Rust from which `loads` argument
+    /// values can be loaded as a sliding window, e.g `const A_VALS: [u32; 20]  = [...];`
+    pub fn gen_arglists_rust(&self, loads: u32) -> String {
         self.iter()
             .filter_map(|arg| {
                 (!arg.has_constraint()).then(|| {
-                    if arg.is_simd() {
-                        format!(
-                            "let {name} = ::std::mem::transmute([{values}]);",
-                            name = arg.name,
-                            values = arg.ty.populate_random(pass, &Language::Rust),
-                        )
-                    } else {
-                        format!(
-                            "let {name} = {value};",
-                            name = arg.name,
-                            value = arg.ty.populate_random(pass, &Language::Rust)
-                        )
-                    }
+                    format!(
+                        "const {upper_name}_VALS: [{ty}; {load_size}] = unsafe{{ [{values}] }};",
+                        upper_name = arg.name.to_uppercase(),
+                        ty = arg.ty.rust_scalar_type(),
+                        load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
+                        values = arg.ty.populate_random(loads, &Language::Rust)
+                    )
+                })
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// Creates a line for each argument that initalizes the argument from an array [arg]_vals at
+    /// an offset i using a load intrinsic, in C.
+    /// e.g `uint8x8_t a = vld1_u8(&a_vals[i]);`
+    pub fn load_values_c(&self, p64_armv7_workaround: bool) -> String {
+        self.iter()
+            .filter_map(|arg| {
+                // The ACLE doesn't support 64-bit polynomial loads on Armv7
+                // This and the cast are a workaround for this
+                let armv7_p64 = if let TypeKind::Poly = arg.ty.kind() {
+                    p64_armv7_workaround
+                } else {
+                    false
+                };
+
+                (!arg.has_constraint()).then(|| {
+                    format!(
+                        "{ty} {name} = {open_cast}{load}(&{name}_vals[i]){close_cast};",
+                        ty = arg.to_c_type(),
+                        name = arg.name,
+                        load = if arg.is_simd() {
+                            arg.ty.get_load_function(p64_armv7_workaround)
+                        } else {
+                            "*".to_string()
+                        },
+                        open_cast = if armv7_p64 {
+                            format!("cast<{}>(", arg.to_c_type())
+                        } else {
+                            "".to_string()
+                        },
+                        close_cast = if armv7_p64 {
+                            ")".to_string()
+                        } else {
+                            "".to_string()
+                        }
+                    )
                 })
             })
             .collect::<Vec<_>>()
             .join("\n        ")
+    }
+
+    /// Creates a line for each argument that initalizes the argument from array [ARG]_VALS at
+    /// an offset i using a load intrinsic, in Rust.
+    /// e.g `let a = vld1_u8(A_VALS.as_ptr().offset(i));`
+    pub fn load_values_rust(&self) -> String {
+        self.iter()
+            .filter_map(|arg| {
+                (!arg.has_constraint()).then(|| {
+                    format!(
+                        "let {name} = {load}({upper_name}_VALS.as_ptr().offset(i));",
+                        name = arg.name,
+                        upper_name = arg.name.to_uppercase(),
+                        load = if arg.is_simd() {
+                            arg.ty.get_load_function(false)
+                        } else {
+                            "*".to_string()
+                        },
+                    )
+                })
+            })
+            .collect::<Vec<_>>()
+            .join("\n            ")
     }
 
     pub fn iter(&self) -> std::slice::Iter<'_, Argument> {

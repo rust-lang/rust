@@ -20,8 +20,9 @@ pub struct Intrinsic {
 
 impl Intrinsic {
     /// Generates a std::cout for the intrinsics results that will match the
-    /// rust debug output format for the return type.
-    pub fn print_result_c(&self, index: usize, additional: &str) -> String {
+    /// rust debug output format for the return type. The generated line assumes
+    /// there is an int i in scope which is the current pass number.
+    pub fn print_result_c(&self, additional: &str) -> String {
         let lanes = if self.results.num_vectors() > 1 {
             (0..self.results.num_vectors())
                 .map(|vector| {
@@ -72,7 +73,7 @@ impl Intrinsic {
         };
 
         format!(
-            r#"std::cout << "Result {additional}-{idx}: {ty}" << std::fixed << std::setprecision(150) <<  {lanes} << "{close}" << std::endl;"#,
+            r#"std::cout << "Result {additional}-" << i+1 << ": {ty}" << std::fixed << std::setprecision(150) <<  {lanes} << "{close}" << std::endl;"#,
             ty = if self.results.is_simd() {
                 format!("{}(", self.results.c_type())
             } else {
@@ -81,11 +82,31 @@ impl Intrinsic {
             close = if self.results.is_simd() { ")" } else { "" },
             lanes = lanes,
             additional = additional,
-            idx = index,
         )
     }
 
-    pub fn generate_pass_rust(&self, index: usize, additional: &str) -> String {
+    pub fn generate_loop_c(
+        &self,
+        additional: &str,
+        passes: u32,
+        p64_armv7_workaround: bool,
+    ) -> String {
+        format!(
+            r#"  {{
+    for (int i=0; i<{passes}; i++) {{
+        {loaded_args}
+        auto __return_value = {intrinsic_call}({args});
+        {print_result}
+    }}
+  }}"#,
+            loaded_args = self.arguments.load_values_c(p64_armv7_workaround),
+            intrinsic_call = self.name,
+            args = self.arguments.as_call_param_c(),
+            print_result = self.print_result_c(additional)
+        )
+    }
+
+    pub fn generate_loop_rust(&self, additional: &str, passes: u32) -> String {
         let constraints = self.arguments.as_constraint_parameters_rust();
         let constraints = if !constraints.is_empty() {
             format!("::<{}>", constraints)
@@ -94,32 +115,20 @@ impl Intrinsic {
         };
 
         format!(
-            r#"
-    unsafe {{
-        {initialized_args}
-        let res = {intrinsic_call}{const}({args});
-        println!("Result {additional}-{idx}: {{:.150?}}", res);
-    }}"#,
-            initialized_args = self.arguments.init_random_values_rust(index),
+            r#"  {{
+    for i in 0..{passes} {{
+        unsafe {{
+            {loaded_args}
+            let __return_value = {intrinsic_call}{const}({args});
+            println!("Result {additional}-{{}}: {{:.150?}}", i+1, __return_value);
+        }}
+    }}
+  }}"#,
+            loaded_args = self.arguments.load_values_rust(),
             intrinsic_call = self.name,
+            const = constraints,
             args = self.arguments.as_call_param_rust(),
             additional = additional,
-            idx = index,
-            const = constraints,
-        )
-    }
-
-    pub fn generate_pass_c(&self, index: usize, additional: &str) -> String {
-        format!(
-            r#"  {{
-    {initialized_args}
-    auto __return_value = {intrinsic_call}({args});
-    {print_result}
-  }}"#,
-            initialized_args = self.arguments.init_random_values_c(index),
-            intrinsic_call = self.name,
-            args = self.arguments.as_call_param_c(),
-            print_result = self.print_result_c(index, additional)
         )
     }
 }

@@ -1,7 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::values::values_for_pass;
+use crate::values::value_for_array;
 use crate::Language;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -160,8 +160,7 @@ impl IntrinsicType {
         }
     }
 
-    #[allow(unused)]
-    fn c_scalar_type(&self) -> String {
+    pub fn c_scalar_type(&self) -> String {
         format!(
             "{prefix}{bits}_t",
             prefix = self.kind().c_prefix(),
@@ -169,7 +168,7 @@ impl IntrinsicType {
         )
     }
 
-    fn rust_scalar_type(&self) -> String {
+    pub fn rust_scalar_type(&self) -> String {
         format!(
             "{prefix}{bits}",
             prefix = self.kind().rust_prefix(),
@@ -289,18 +288,19 @@ impl IntrinsicType {
         }
     }
 
-    /// Generates a comma list of values that can be used to initialize an
-    /// argument for the intrinsic call.
+    /// Generates a comma list of values that can be used to initialize the array that
+    /// an argument for the intrinsic call is loaded from.
     /// This is determistic based on the pass number.
     ///
-    /// * `pass`: The pass index, i.e. the iteration index for the call to an intrinsic
+    /// * `loads`: The number of values that need to be loaded from the argument array
+    /// * e.g for argument type uint32x2, loads=2 results in a string representing 4 32-bit values
     ///
     /// Returns a string such as
     /// * `0x1, 0x7F, 0xFF` if `language` is `Language::C`
     /// * `0x1 as _, 0x7F as _, 0xFF as _` if `language` is `Language::Rust`
-    pub fn populate_random(&self, pass: usize, language: &Language) -> String {
+    pub fn populate_random(&self, loads: u32, language: &Language) -> String {
         match self {
-            IntrinsicType::Ptr { child, .. } => child.populate_random(pass, language),
+            IntrinsicType::Ptr { child, .. } => child.populate_random(loads, language),
             IntrinsicType::Type {
                 bit_len: Some(bit_len),
                 kind,
@@ -308,11 +308,11 @@ impl IntrinsicType {
                 vec_len,
                 ..
             } if kind == &TypeKind::Int || kind == &TypeKind::UInt || kind == &TypeKind::Poly => (0
-                ..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1)))
+                ..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
                 .map(|i| {
                     format!(
                         "{}{}",
-                        values_for_pass(*bit_len, i, pass),
+                        value_for_array(*bit_len, i),
                         match language {
                             &Language::Rust => format!(" as {ty} ", ty = self.rust_scalar_type()),
                             &Language::C => String::from(""),
@@ -327,15 +327,15 @@ impl IntrinsicType {
                 simd_len,
                 vec_len,
                 ..
-            } => (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1)))
+            } => (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
                 .map(|i| {
                     format!(
                         "{}({})",
                         match language {
-                            &Language::Rust => "f32::from_bits",
+                            &Language::Rust => "std::mem::transmute",
                             &Language::C => "cast<float, uint32_t>",
                         },
-                        values_for_pass(32, i, pass),
+                        value_for_array(32, i),
                     )
                 })
                 .collect::<Vec<_>>()
@@ -346,15 +346,15 @@ impl IntrinsicType {
                 simd_len,
                 vec_len,
                 ..
-            } => (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1)))
+            } => (0..(simd_len.unwrap_or(1) * vec_len.unwrap_or(1) + loads - 1))
                 .map(|i| {
                     format!(
                         "{}({}{})",
                         match language {
-                            &Language::Rust => "f64::from_bits",
+                            &Language::Rust => "std::mem::transmute",
                             &Language::C => "cast<double, uint64_t>",
                         },
-                        values_for_pass(64, i, pass),
+                        value_for_array(64, i),
                         match language {
                             &Language::Rust => " as u64",
                             &Language::C => "",
@@ -368,10 +368,9 @@ impl IntrinsicType {
     }
 
     /// Determines the load function for this type.
-    #[allow(unused)]
-    pub fn get_load_function(&self) -> String {
+    pub fn get_load_function(&self, armv7_p64_workaround: bool) -> String {
         match self {
-            IntrinsicType::Ptr { child, .. } => child.get_load_function(),
+            IntrinsicType::Ptr { child, .. } => child.get_load_function(armv7_p64_workaround),
             IntrinsicType::Type {
                 kind: k,
                 bit_len: Some(bl),
@@ -379,7 +378,7 @@ impl IntrinsicType {
                 vec_len,
                 ..
             } => {
-                let quad = if (simd_len.unwrap_or(1) * bl) > 64 {
+                let quad = if simd_len.unwrap_or(1) * bl > 64 {
                     "q"
                 } else {
                     ""
@@ -390,7 +389,8 @@ impl IntrinsicType {
                         TypeKind::UInt => "u",
                         TypeKind::Int => "s",
                         TypeKind::Float => "f",
-                        TypeKind::Poly => "p",
+                        // The ACLE doesn't support 64-bit polynomial loads on Armv7
+                        TypeKind::Poly => if armv7_p64_workaround && *bl == 64 {"s"} else {"p"},
                         x => todo!("get_load_function TypeKind: {:#?}", x),
                     },
                     size = bl,

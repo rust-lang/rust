@@ -1,9 +1,8 @@
-/// Gets a hex constant value for a single lane in in a determistic way
+/// Gets a hex constant value for a single value in the argument values array in a determistic way
 /// * `bits`: The number of bits for the type, only 8, 16, 32, 64 are valid values
-/// * `simd`: The index of the simd lane we are generating for
-/// * `pass`: The index of the pass we are generating the values for
-pub fn values_for_pass(bits: u32, simd: u32, pass: usize) -> String {
-    let index = pass + (simd as usize);
+/// * `index`: The position in the array we are generating for
+pub fn value_for_array(bits: u32, index: u32) -> String {
+    let index = index as usize;
 
     if bits == 8 {
         format!("{:#X}", VALUES_8[index % VALUES_8.len()])
