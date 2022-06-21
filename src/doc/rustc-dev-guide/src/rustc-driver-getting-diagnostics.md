@@ -6,7 +6,7 @@
 
 To get diagnostics from the compiler,
 configure `rustc_interface::Config` to output diagnostic to a buffer,
-and run `TyCtxt.analysis`. The following should be compiled
+and run `TyCtxt.analysis`. The following was tested
 with <!-- date: 2022-06 --> `nightly-2022-06-05` (See [here][example]
 for the complete example):
 
