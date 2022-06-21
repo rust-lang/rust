@@ -66,25 +66,17 @@ function showMain() {
 (function() {
     window.rootPath = getVar("root-path");
     window.currentCrate = getVar("current-crate");
-    window.searchJS =  resourcePath("search", ".js");
-    window.searchIndexJS = resourcePath("search-index", ".js");
-    window.settingsJS = resourcePath("settings", ".js");
-    const sidebarVars = document.getElementById("sidebar-vars");
-    if (sidebarVars) {
-        window.sidebarCurrent = {
-            name: sidebarVars.attributes["data-name"].value,
-            ty: sidebarVars.attributes["data-ty"].value,
-            relpath: sidebarVars.attributes["data-relpath"].value,
-        };
-        // FIXME: It would be nicer to generate this text content directly in HTML,
-        // but with the current code it's hard to get the right information in the right place.
-        const mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
-        const locationTitle = document.querySelector(".sidebar h2.location");
-        if (mobileLocationTitle && locationTitle) {
-            mobileLocationTitle.innerHTML = locationTitle.innerHTML;
-        }
-    }
 }());
+
+function setMobileTopbar() {
+    // FIXME: It would be nicer to generate this text content directly in HTML,
+    // but with the current code it's hard to get the right information in the right place.
+    const mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
+    const locationTitle = document.querySelector(".sidebar h2.location");
+    if (mobileLocationTitle && locationTitle) {
+        mobileLocationTitle.innerHTML = locationTitle.innerHTML;
+    }
+}
 
 // Gets the human-readable string for the virtual-key code of the
 // given KeyboardEvent, ev.
@@ -227,7 +219,7 @@ function loadCss(cssFileName) {
         // Sending request for the CSS and the JS files at the same time so it will
         // hopefully be loaded when the JS will generate the settings content.
         loadCss("settings");
-        loadScript(window.settingsJS);
+        loadScript(resourcePath("settings", ".js"));
     };
 
     window.searchState = {
@@ -304,8 +296,8 @@ function loadCss(cssFileName) {
             function loadSearch() {
                 if (!searchLoaded) {
                     searchLoaded = true;
-                    loadScript(window.searchJS);
-                    loadScript(window.searchIndexJS);
+                    loadScript(resourcePath("search", ".js"));
+                    loadScript(resourcePath("search-index", ".js"));
                 }
             }
 
@@ -485,40 +477,11 @@ function loadCss(cssFileName) {
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
 
-    // delayed sidebar rendering.
-    window.initSidebarItems = items => {
-        const sidebar = document.getElementsByClassName("sidebar-elems")[0];
-        let others;
-        const current = window.sidebarCurrent;
-
-        function addSidebarCrates(crates) {
-            if (!hasClass(document.body, "crate")) {
-                // We only want to list crates on the crate page.
-                return;
-            }
-            // Draw a convenient sidebar of known crates if we have a listing
-            const div = document.createElement("div");
-            div.className = "block crate";
-            div.innerHTML = "<h3>Crates</h3>";
-            const ul = document.createElement("ul");
-            div.appendChild(ul);
-
-            for (const crate of crates) {
-                let klass = "crate";
-                if (window.rootPath !== "./" && crate === window.currentCrate) {
-                    klass += " current";
-                }
-                const link = document.createElement("a");
-                link.href = window.rootPath + crate + "/index.html";
-                link.className = klass;
-                link.textContent = crate;
-
-                const li = document.createElement("li");
-                li.appendChild(link);
-                ul.appendChild(li);
-            }
-            others.appendChild(div);
+    function addSidebarItems() {
+        if (!window.SIDEBAR_ITEMS) {
+            return;
         }
+        const sidebar = document.getElementsByClassName("sidebar-elems")[0];
 
         /**
          * Append to the sidebar a "block" of links - a heading along with a list (`<ul>`) of items.
@@ -529,7 +492,7 @@ function loadCss(cssFileName) {
          *                          "Modules", or "Macros".
          */
         function block(shortty, id, longty) {
-            const filtered = items[shortty];
+            const filtered = window.SIDEBAR_ITEMS[shortty];
             if (!filtered) {
                 return;
             }
@@ -546,17 +509,18 @@ function loadCss(cssFileName) {
                 const desc = item[1]; // can be null
 
                 let klass = shortty;
-                if (name === current.name && shortty === current.ty) {
-                    klass += " current";
-                }
                 let path;
                 if (shortty === "mod") {
                     path = name + "/index.html";
                 } else {
                     path = shortty + "." + name + ".html";
                 }
+                const current_page = document.location.href.split("/").pop();
+                if (path === current_page) {
+                    klass += " current";
+                }
                 const link = document.createElement("a");
-                link.href = current.relpath + path;
+                link.href = path;
                 link.title = desc;
                 link.className = klass;
                 link.textContent = name;
@@ -565,14 +529,10 @@ function loadCss(cssFileName) {
                 ul.appendChild(li);
             }
             div.appendChild(ul);
-            others.appendChild(div);
+            sidebar.appendChild(div);
         }
 
         if (sidebar) {
-            others = document.createElement("div");
-            others.className = "others";
-            sidebar.appendChild(others);
-
             const isModule = hasClass(document.body, "mod");
             if (!isModule) {
                 block("primitive", "primitives", "Primitive Types");
@@ -590,12 +550,8 @@ function loadCss(cssFileName) {
                 block("keyword", "keywords", "Keywords");
                 block("traitalias", "trait-aliases", "Trait Aliases");
             }
-
-            // `crates{version}.js` should always be loaded before this script, so we can use
-            // it safely.
-            addSidebarCrates(window.ALL_CRATES);
         }
-    };
+    }
 
     window.register_implementors = imp => {
         const implementors = document.getElementById("implementors-list");
@@ -679,6 +635,39 @@ function loadCss(cssFileName) {
     if (window.pending_implementors) {
         window.register_implementors(window.pending_implementors);
     }
+
+    function addSidebarCrates() {
+        if (!window.ALL_CRATES) {
+            return;
+        }
+        const sidebarElems = document.getElementsByClassName("sidebar-elems")[0];
+        if (!sidebarElems) {
+            return;
+        }
+        // Draw a convenient sidebar of known crates if we have a listing
+        const div = document.createElement("div");
+        div.className = "block crate";
+        div.innerHTML = "<h3>Crates</h3>";
+        const ul = document.createElement("ul");
+        div.appendChild(ul);
+
+        for (const crate of window.ALL_CRATES) {
+            let klass = "crate";
+            if (window.rootPath !== "./" && crate === window.currentCrate) {
+                klass += " current";
+            }
+            const link = document.createElement("a");
+            link.href = window.rootPath + crate + "/index.html";
+            link.className = klass;
+            link.textContent = crate;
+
+            const li = document.createElement("li");
+            li.appendChild(link);
+            ul.appendChild(li);
+        }
+        sidebarElems.appendChild(div);
+    }
+
 
     function labelForToggleButton(sectionIsCollapsed) {
         if (sectionIsCollapsed) {
@@ -924,6 +913,9 @@ function loadCss(cssFileName) {
         buildHelperPopup = () => {};
     };
 
+    setMobileTopbar();
+    addSidebarItems();
+    addSidebarCrates();
     onHashChange(null);
     window.addEventListener("hashchange", onHashChange);
     searchState.setup();
