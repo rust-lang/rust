@@ -5,6 +5,6 @@ enum Foo {
 
 fn main() {
     match Foo::Foo(1) {
-        _ => ()
+        _ => (),
     }
 }

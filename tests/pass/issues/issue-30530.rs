@@ -21,7 +21,8 @@ pub enum Handler {
 }
 
 fn main() {
-    #[allow(unused_must_use)] {
+    #[allow(unused_must_use)]
+    {
         take(Handler::Default, Box::new(main));
     }
 }

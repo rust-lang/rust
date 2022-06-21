@@ -8,7 +8,7 @@
 // use std::ops::*;
 
 fn main() {
-    assert_eq!(-{-0x80i8}, -0x80);
+    assert_eq!(-{ -0x80i8 }, -0x80);
 
     assert_eq!(0xffu8 + 1, 0_u8);
     assert_eq!(0u8 - 1, 0xff_u8);

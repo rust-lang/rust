@@ -4,7 +4,7 @@
 
 extern crate libc;
 
-use core::{slice, ptr};
+use core::{ptr, slice};
 
 fn main() {
     // Test that small allocations sometimes *are* not very aligned.

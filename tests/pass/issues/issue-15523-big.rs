@@ -27,7 +27,6 @@ fn main() {
     assert!(Eu64::Pos2 < Eu64::PosMax);
     assert!(Eu64::Pos1 < Eu64::PosMax);
 
-
     assert!(Ei64::Pos2 > Ei64::Pos1);
     assert!(Ei64::Pos2 > Ei64::Neg1);
     assert!(Ei64::Pos1 > Ei64::Neg1);

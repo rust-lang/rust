@@ -7,7 +7,9 @@ extern crate libc;
 
 #[cfg(target_os = "linux")]
 fn tmp() -> std::path::PathBuf {
-    std::env::var("MIRI_TEMP").map(std::path::PathBuf::from).unwrap_or_else(|_| std::env::temp_dir())
+    std::env::var("MIRI_TEMP")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::env::temp_dir())
 }
 
 #[cfg(target_os = "linux")]
@@ -91,7 +93,10 @@ fn test_mutex_libc_init_recursive() {
     unsafe {
         let mut attr: libc::pthread_mutexattr_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutexattr_init(&mut attr as *mut _), 0);
-        assert_eq!(libc::pthread_mutexattr_settype(&mut attr as *mut _, libc::PTHREAD_MUTEX_RECURSIVE), 0);
+        assert_eq!(
+            libc::pthread_mutexattr_settype(&mut attr as *mut _, libc::PTHREAD_MUTEX_RECURSIVE),
+            0,
+        );
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mut attr as *mut _), 0);
         assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), 0);
@@ -111,8 +116,14 @@ fn test_mutex_libc_init_recursive() {
 fn test_mutex_libc_init_normal() {
     unsafe {
         let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();
-        assert_eq!(libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, 0x12345678), libc::EINVAL);
-        assert_eq!(libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, libc::PTHREAD_MUTEX_NORMAL), 0);
+        assert_eq!(
+            libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, 0x12345678),
+            libc::EINVAL,
+        );
+        assert_eq!(
+            libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, libc::PTHREAD_MUTEX_NORMAL),
+            0,
+        );
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);
         assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), 0);
@@ -127,7 +138,13 @@ fn test_mutex_libc_init_normal() {
 fn test_mutex_libc_init_errorcheck() {
     unsafe {
         let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();
-        assert_eq!(libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, libc::PTHREAD_MUTEX_ERRORCHECK), 0);
+        assert_eq!(
+            libc::pthread_mutexattr_settype(
+                &mut mutexattr as *mut _,
+                libc::PTHREAD_MUTEX_ERRORCHECK,
+            ),
+            0,
+        );
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();
         assert_eq!(libc::pthread_mutex_init(&mut mutex as *mut _, &mutexattr as *const _), 0);
         assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), 0);
@@ -193,21 +210,48 @@ fn test_rwlock_libc_static_initializer() {
 /// Note: `prctl` exists only on Linux.
 #[cfg(target_os = "linux")]
 fn test_prctl_thread_name() {
-    use std::ffi::CString;
     use libc::c_long;
+    use std::ffi::CString;
     unsafe {
         let mut buf = [255; 10];
-        assert_eq!(libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long), 0);
+        assert_eq!(
+            libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long),
+            0,
+        );
         assert_eq!(b"<unnamed>\0", &buf);
         let thread_name = CString::new("hello").expect("CString::new failed");
-        assert_eq!(libc::prctl(libc::PR_SET_NAME, thread_name.as_ptr(), 0 as c_long, 0 as c_long, 0 as c_long), 0);
+        assert_eq!(
+            libc::prctl(
+                libc::PR_SET_NAME,
+                thread_name.as_ptr(),
+                0 as c_long,
+                0 as c_long,
+                0 as c_long,
+            ),
+            0,
+        );
         let mut buf = [255; 6];
-        assert_eq!(libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long), 0);
+        assert_eq!(
+            libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long),
+            0,
+        );
         assert_eq!(b"hello\0", &buf);
         let long_thread_name = CString::new("01234567890123456789").expect("CString::new failed");
-        assert_eq!(libc::prctl(libc::PR_SET_NAME, long_thread_name.as_ptr(), 0 as c_long, 0 as c_long, 0 as c_long), 0);
+        assert_eq!(
+            libc::prctl(
+                libc::PR_SET_NAME,
+                long_thread_name.as_ptr(),
+                0 as c_long,
+                0 as c_long,
+                0 as c_long,
+            ),
+            0,
+        );
         let mut buf = [255; 16];
-        assert_eq!(libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long), 0);
+        assert_eq!(
+            libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long),
+            0,
+        );
         assert_eq!(b"012345678901234\0", &buf);
     }
 }
@@ -225,7 +269,9 @@ fn test_thread_local_errno() {
             assert_eq!(*__errno_location(), 0);
             *__errno_location() = 0xBAD1DEA;
             assert_eq!(*__errno_location(), 0xBAD1DEA);
-        }).join().unwrap();
+        })
+        .join()
+        .unwrap();
         assert_eq!(*__errno_location(), 0xBEEF);
     }
 }
@@ -234,21 +280,13 @@ fn test_thread_local_errno() {
 #[cfg(target_os = "linux")]
 fn test_clocks() {
     let mut tp = std::mem::MaybeUninit::<libc::timespec>::uninit();
-    let is_error = unsafe {
-        libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr())
-    };
+    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr()) };
     assert_eq!(is_error, 0);
-    let is_error = unsafe {
-        libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr())
-    };
+    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr()) };
     assert_eq!(is_error, 0);
-     let is_error = unsafe {
-        libc::clock_gettime(libc::CLOCK_MONOTONIC, tp.as_mut_ptr())
-    };
+    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, tp.as_mut_ptr()) };
     assert_eq!(is_error, 0);
-    let is_error = unsafe {
-        libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr())
-    };
+    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr()) };
     assert_eq!(is_error, 0);
 }
 

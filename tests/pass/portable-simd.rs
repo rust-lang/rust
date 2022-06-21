@@ -16,10 +16,10 @@ fn simd_ops_f32() {
     assert_eq!(a.max(b * f32x4::splat(4.0)), f32x4::from_array([10.0, 10.0, 12.0, 10.0]));
     assert_eq!(a.min(b * f32x4::splat(4.0)), f32x4::from_array([4.0, 8.0, 10.0, -16.0]));
 
-    assert_eq!(a.mul_add(b, a), (a*b)+a);
-    assert_eq!(b.mul_add(b, a), (b*b)+a);
-    assert_eq!((a*a).sqrt(), a);
-    assert_eq!((b*b).sqrt(), b.abs());
+    assert_eq!(a.mul_add(b, a), (a * b) + a);
+    assert_eq!(b.mul_add(b, a), (b * b) + a);
+    assert_eq!((a * a).sqrt(), a);
+    assert_eq!((b * b).sqrt(), b.abs());
 
     assert_eq!(a.lanes_eq(f32x4::splat(5.0) * b), Mask::from_array([false, true, false, false]));
     assert_eq!(a.lanes_ne(f32x4::splat(5.0) * b), Mask::from_array([true, false, true, true]));
@@ -65,10 +65,10 @@ fn simd_ops_f64() {
     assert_eq!(a.max(b * f64x4::splat(4.0)), f64x4::from_array([10.0, 10.0, 12.0, 10.0]));
     assert_eq!(a.min(b * f64x4::splat(4.0)), f64x4::from_array([4.0, 8.0, 10.0, -16.0]));
 
-    assert_eq!(a.mul_add(b, a), (a*b)+a);
-    assert_eq!(b.mul_add(b, a), (b*b)+a);
-    assert_eq!((a*a).sqrt(), a);
-    assert_eq!((b*b).sqrt(), b.abs());
+    assert_eq!(a.mul_add(b, a), (a * b) + a);
+    assert_eq!(b.mul_add(b, a), (b * b) + a);
+    assert_eq!((a * a).sqrt(), a);
+    assert_eq!((b * b).sqrt(), b.abs());
 
     assert_eq!(a.lanes_eq(f64x4::splat(5.0) * b), Mask::from_array([false, true, false, false]));
     assert_eq!(a.lanes_ne(f64x4::splat(5.0) * b), Mask::from_array([true, false, true, true]));

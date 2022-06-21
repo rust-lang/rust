@@ -8,11 +8,8 @@ struct Foo {
     j: char,
 }
 
-fn foo(i:isize, j: char) -> Foo {
-    Foo {
-        i: i,
-        j: j
-    }
+fn foo(i: isize, j: char) -> Foo {
+    Foo { i: i, j: j }
 }
 
 pub fn main() {

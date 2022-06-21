@@ -4,17 +4,12 @@ struct S<U, V> {
     _u: U,
     size_of_u: usize,
     _v: V,
-    size_of_v: usize
+    size_of_v: usize,
 }
 
 impl<U, V> S<U, V> {
     fn new(u: U, v: V) -> Self {
-        S {
-            _u: u,
-            size_of_u: size_of::<U>(),
-            _v: v,
-            size_of_v: size_of::<V>()
-        }
+        S { _u: u, size_of_u: size_of::<U>(), _v: v, size_of_v: size_of::<V>() }
     }
 }
 

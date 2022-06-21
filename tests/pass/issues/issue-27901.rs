@@ -1,5 +1,9 @@
-trait Stream { type Item; }
-impl<'a> Stream for &'a str { type Item = u8; }
+trait Stream {
+    type Item;
+}
+impl<'a> Stream for &'a str {
+    type Item = u8;
+}
 fn f<'s>(s: &'s str) -> (&'s str, <&'s str as Stream>::Item) {
     (s, 42)
 }
