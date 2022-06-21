@@ -12,7 +12,7 @@ use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::Normalized;
 use rustc_middle::mir;
-use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 
@@ -162,15 +162,13 @@ struct QueryNormalizer<'cx, 'tcx> {
     universes: Vec<Option<ty::UniverseIndex>>,
 }
 
-impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
+impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     type Error = NoSolution;
 
     fn tcx<'c>(&'c self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
-}
 
-impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     fn try_fold_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
