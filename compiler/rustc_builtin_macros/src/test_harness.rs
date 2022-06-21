@@ -351,7 +351,7 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ecx = &cx.ext_cx;
 
-    ecx.expr_vec_slice(
+    ecx.expr_array_ref(
         sp,
         cx.test_cases
             .iter()
