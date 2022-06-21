@@ -1041,7 +1041,38 @@ impl<'a> Linker for EmLinker<'a> {
         &mut self.cmd
     }
 
-    fn set_output_kind(&mut self, _output_kind: LinkOutputKind, _out_filename: &Path) {}
+    fn set_output_kind(&mut self, output_kind: LinkOutputKind, _out_filename: &Path) {
+        match output_kind {
+            LinkOutputKind::DynamicNoPicExe | LinkOutputKind::DynamicPicExe => {
+                // "-sMAIN_MODULE=1" breaks
+                // https://github.com/rust-lang/rust/issues/92738
+                self.cmd.arg("-sMAIN_MODULE=2");
+                warn!(
+                    "Building dynamic executable with -sMAIN_MODULE=2. \
+                    Dead code elimination may break things. \
+                    See https://emscripten.org/docs/compiling/Dynamic-Linking.html?highlight=main_module#code-size \
+                    "
+                );
+            }
+            LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => {
+                // -sSIDE_MODULE=1 breaks
+                // https://github.com/rust-lang/rust/issues/92738
+                // In any case, -sSIDE_MODULE=2 is better because Rust is good at
+                // calculating exports.
+                self.cmd.arg("-sSIDE_MODULE=2");
+                // Without -sWASM_BIGINT there are issues with dynamic Rust libraries. There
+                // are no plans to fix this in Emscripten AFAIK. See
+                // https://github.com/emscripten-core/emscripten/pull/16693 This could also
+                // be fixed with panic=abort.
+                self.cmd.arg("-sWASM_BIGINT");
+            }
+            // -fno-pie is the default on Emscripten.
+            LinkOutputKind::StaticNoPicExe | LinkOutputKind::StaticPicExe => {}
+            LinkOutputKind::WasiReactorExe => {
+                unreachable!();
+            }
+        }
+    }
 
     fn include_path(&mut self, path: &Path) {
         self.cmd.arg("-L").arg(path);
