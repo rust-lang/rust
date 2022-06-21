@@ -190,7 +190,7 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
             .map(|e| *e.0)
             .collect();
     }
-    let (what, value) = match (pre.is_empty(), post.is_empty()) {
+    let (what, value) = match (have_no_extra_prefix(&pre), post.is_empty()) {
         (true, true) => return,
         (false, _) => ("pre", pre.join("")),
         (true, false) => {
@@ -210,6 +210,11 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
             what
         ),
     );
+}
+
+#[must_use]
+fn have_no_extra_prefix(prefixes: &Vec<&str>) -> bool {
+    prefixes.is_empty() || prefixes.join("") == "_"
 }
 
 #[must_use]
