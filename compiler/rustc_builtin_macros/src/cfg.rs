@@ -43,6 +43,13 @@ struct RequiresCfgPattern {
     span: Span,
 }
 
+#[derive(SessionDiagnostic)]
+#[error(slug = "builtin-macros-expected-one-cfg-pattern")]
+struct OneCfgPattern {
+    #[primary_span]
+    span: Span,
+}
+
 fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<'a, ast::MetaItem> {
     let mut p = cx.new_parser_from_tts(tts);
 
@@ -55,7 +62,7 @@ fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<
     let _ = p.eat(&token::Comma);
 
     if !p.eat(&token::Eof) {
-        return Err(cx.struct_span_err(span, "expected 1 cfg-pattern"));
+        return Err(cx.create_err(OneCfgPattern { span }));
     }
 
     Ok(cfg)
