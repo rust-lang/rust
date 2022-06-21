@@ -9,7 +9,7 @@ fn foo(x: &mut (i32, i32)) -> Option<&i32> {
 
 fn main() {
     match foo(&mut (1, 2)) {
-        Some(_x) => {}, //~ ERROR borrow stack
-        None => {},
+        Some(_x) => {} //~ ERROR borrow stack
+        None => {}
     }
 }
