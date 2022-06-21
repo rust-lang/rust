@@ -1,20 +1,32 @@
-error[E0381]: use of possibly-uninitialized variable: `z`
+error[E0381]: binding `z` isn't initialized in all conditions
   --> $DIR/chains-without-let.rs:3:34
    |
+LL |     let z;
+   |         - variable declared here
 LL |     if true && { z = 3; true} && z == 3 {}
-   |                                  ^ use of possibly-uninitialized `z`
+   |                  -----           ^ `z` used here but it isn't initialized in all conditions
+   |                  |
+   |                  binding initialized here in some conditions
 
-error[E0381]: use of possibly-uninitialized variable: `z`
+error[E0381]: binding `z` isn't initialized in all conditions
   --> $DIR/chains-without-let.rs:9:31
    |
+LL |     let z;
+   |         - variable declared here
 LL |     true && { z = 3; true} && z == 3;
-   |                               ^ use of possibly-uninitialized `z`
+   |               -----           ^ `z` used here but it isn't initialized in all conditions
+   |               |
+   |               binding initialized here in some conditions
 
-error[E0381]: use of possibly-uninitialized variable: `z`
+error[E0381]: binding `z` isn't initialized in all conditions
   --> $DIR/chains-without-let.rs:15:36
    |
+LL |     let z;
+   |         - variable declared here
 LL |     if false || { z = 3; false} || z == 3 {}
-   |                                    ^ use of possibly-uninitialized `z`
+   |                   -----            ^ `z` used here but it isn't initialized in all conditions
+   |                   |
+   |                   binding initialized here in some conditions
 
 error: aborting due to 3 previous errors
 

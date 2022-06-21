@@ -1,26 +1,42 @@
-error[E0381]: assign to part of possibly-uninitialized variable: `t`
+error[E0381]: binding `t` isn't fully initialized
   --> $DIR/disallow-possibly-uninitialized.rs:6:5
    |
+LL |     let mut t: (u64, u64);
+   |         ----- variable declared here
 LL |     t.0 = 1;
-   |     ^^^^^^^ use of possibly-uninitialized `t`
+   |     ^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
 
-error[E0381]: assign to part of possibly-uninitialized variable: `t`
+error[E0381]: binding `t` isn't fully initialized
   --> $DIR/disallow-possibly-uninitialized.rs:11:5
    |
+LL |     let mut t: (u64, u64);
+   |         ----- variable declared here
 LL |     t.1 = 1;
-   |     ^^^^^^^ use of possibly-uninitialized `t`
+   |     ^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
 
-error[E0381]: assign to part of possibly-uninitialized variable: `t`
+error[E0381]: binding `t` isn't fully initialized
   --> $DIR/disallow-possibly-uninitialized.rs:16:5
    |
+LL |     let mut t: (u64, u64);
+   |         ----- variable declared here
 LL |     t.0 = 1;
-   |     ^^^^^^^ use of possibly-uninitialized `t`
+   |     ^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
 
-error[E0381]: assign to part of possibly-uninitialized variable: `t`
+error[E0381]: binding `t` isn't fully initialized
   --> $DIR/disallow-possibly-uninitialized.rs:20:5
    |
+LL |     let mut t: (u64,);
+   |         ----- variable declared here
 LL |     t.0 = 1;
-   |     ^^^^^^^ use of possibly-uninitialized `t`
+   |     ^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
 
 error: aborting due to 4 previous errors
 

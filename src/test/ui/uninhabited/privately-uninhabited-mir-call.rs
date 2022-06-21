@@ -25,5 +25,5 @@ fn main() {
     widget::Widget::new();
     // Error. Widget type is not known to be uninhabited here,
     // so the following code is considered reachable.
-    *y = 2; //~ ERROR use of possibly-uninitialized variable
+    *y = 2; //~ ERROR E0381
 }

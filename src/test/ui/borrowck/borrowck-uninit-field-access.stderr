@@ -1,8 +1,10 @@
-error[E0381]: use of possibly-uninitialized variable: `a`
+error[E0381]: binding `a.x` isn't initialized
   --> $DIR/borrowck-uninit-field-access.rs:21:13
    |
+LL |     let mut a: Point;
+   |         ----- variable declared here
 LL |     let _ = a.x + 1;
-   |             ^^^ use of possibly-uninitialized `a.x`
+   |             ^^^ `a.x` used here but it isn't initialized
 
 error[E0382]: use of moved value: `line1.origin`
   --> $DIR/borrowck-uninit-field-access.rs:25:13

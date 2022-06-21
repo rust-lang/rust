@@ -1,8 +1,10 @@
-error[E0381]: use of possibly-uninitialized variable: `a`
+error[E0381]: binding `a` isn't initialized
   --> $DIR/move-into-dead-array-1.rs:14:5
    |
+LL |     let mut a: [D; 4];
+   |         ----- variable declared here
 LL |     a[i] = d();
-   |     ^^^^ use of possibly-uninitialized `a`
+   |     ^^^^ `a` used here but it isn't initialized
 
 error: aborting due to previous error
 

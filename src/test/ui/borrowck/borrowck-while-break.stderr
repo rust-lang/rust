@@ -1,8 +1,13 @@
-error[E0381]: borrow of possibly-uninitialized variable: `v`
+error[E0381]: binding `v` isn't initialized in all conditions
   --> $DIR/borrowck-while-break.rs:7:20
    |
+LL |     let v;
+   |         - variable declared here
+LL |     while cond {
+   |           ---- `v` is uninitialized if this condition isn't met
+...
 LL |     println!("{}", v);
-   |                    ^ use of possibly-uninitialized `v`
+   |                    ^ `v` borrowed here but it isn't initialized in all conditions
    |
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -10,8 +10,7 @@ async fn noop() {}
 
 async fn test_tuple() {
     let mut t: (i32, i32);
-    t.0 = 42;
-    //~^ ERROR assign to part of possibly-uninitialized variable: `t` [E0381]
+    t.0 = 42; //~ ERROR E0381
     noop().await;
     t.1 = 88;
     let _ = t;
@@ -19,8 +18,7 @@ async fn test_tuple() {
 
 async fn test_tuple_struct() {
     let mut t: T;
-    t.0 = 42;
-    //~^ ERROR assign to part of possibly-uninitialized variable: `t` [E0381]
+    t.0 = 42; //~ ERROR E0381
     noop().await;
     t.1 = 88;
     let _ = t;
@@ -28,8 +26,7 @@ async fn test_tuple_struct() {
 
 async fn test_struct() {
     let mut t: S;
-    t.x = 42;
-    //~^ ERROR assign to part of possibly-uninitialized variable: `t` [E0381]
+    t.x = 42; //~ ERROR E0381
     noop().await;
     t.y = 88;
     let _ = t;

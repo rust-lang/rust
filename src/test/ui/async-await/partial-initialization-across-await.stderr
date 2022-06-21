@@ -1,20 +1,32 @@
-error[E0381]: assign to part of possibly-uninitialized variable: `t`
+error[E0381]: binding `t` isn't fully initialized
   --> $DIR/partial-initialization-across-await.rs:13:5
    |
+LL |     let mut t: (i32, i32);
+   |         ----- variable declared here
 LL |     t.0 = 42;
-   |     ^^^^^^^^ use of possibly-uninitialized `t`
-
-error[E0381]: assign to part of possibly-uninitialized variable: `t`
-  --> $DIR/partial-initialization-across-await.rs:22:5
+   |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
    |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+
+error[E0381]: binding `t` isn't fully initialized
+  --> $DIR/partial-initialization-across-await.rs:21:5
+   |
+LL |     let mut t: T;
+   |         ----- variable declared here
 LL |     t.0 = 42;
-   |     ^^^^^^^^ use of possibly-uninitialized `t`
-
-error[E0381]: assign to part of possibly-uninitialized variable: `t`
-  --> $DIR/partial-initialization-across-await.rs:31:5
+   |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
    |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
+
+error[E0381]: binding `t` isn't fully initialized
+  --> $DIR/partial-initialization-across-await.rs:29:5
+   |
+LL |     let mut t: S;
+   |         ----- variable declared here
 LL |     t.x = 42;
-   |     ^^^^^^^^ use of possibly-uninitialized `t`
+   |     ^^^^^^^^ `t` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
 
 error: aborting due to 3 previous errors
 

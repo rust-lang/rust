@@ -1,8 +1,13 @@
-error[E0381]: use of possibly-uninitialized variable: `x`
+error[E0381]: binding `x` isn't initialized in all conditions
   --> $DIR/borrowck-if-with-else.rs:10:9
    |
+LL |     let x: isize;
+   |         - variable declared here
+LL |     if 1 > 2 {
+   |        ----- `x` is uninitialized if this condition is met
+...
 LL |     foo(x);
-   |         ^ use of possibly-uninitialized `x`
+   |         ^ `x` used here but it isn't initialized in all conditions
 
 error: aborting due to previous error
 

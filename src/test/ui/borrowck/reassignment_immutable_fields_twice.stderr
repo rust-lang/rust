@@ -7,11 +7,15 @@ LL |     x = (22, 44);
 LL |     x.0 = 1;
    |     ^^^^^^^ cannot assign
 
-error[E0381]: assign to part of possibly-uninitialized variable: `x`
+error[E0381]: binding `x` isn't fully initialized
   --> $DIR/reassignment_immutable_fields_twice.rs:12:5
    |
+LL |     let x: (u32, u32);
+   |         - variable declared here
 LL |     x.0 = 1;
-   |     ^^^^^^^ use of possibly-uninitialized `x`
+   |     ^^^^^^^ `x` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
 
 error: aborting due to 2 previous errors
 

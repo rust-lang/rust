@@ -1,8 +1,14 @@
-error[E0381]: borrow of possibly-uninitialized variable: `cfg_res`
+error[E0381]: binding `cfg_res` isn't initialized in all conditions
   --> $DIR/try-block-opt-init.rs:15:5
    |
+LL |     let cfg_res;
+   |         ------- variable declared here
+...
+LL |         cfg_res = 5;
+   |         ----------- binding initialized here in some conditions
+...
 LL |     assert_eq!(cfg_res, 5);
-   |     ^^^^^^^^^^^^^^^^^^^^^^ use of possibly-uninitialized `cfg_res`
+   |     ^^^^^^^^^^^^^^^^^^^^^^ `cfg_res` borrowed here but it isn't initialized in all conditions
    |
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 

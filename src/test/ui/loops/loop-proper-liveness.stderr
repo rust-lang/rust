@@ -1,8 +1,11 @@
-error[E0381]: borrow of possibly-uninitialized variable: `x`
+error[E0381]: binding `x` isn't initialized
   --> $DIR/loop-proper-liveness.rs:9:22
    |
+LL |     let x: i32;
+   |         - variable declared here
+...
 LL |     println!("{:?}", x);
-   |                      ^ use of possibly-uninitialized `x`
+   |                      ^ `x` borrowed here but it isn't initialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 

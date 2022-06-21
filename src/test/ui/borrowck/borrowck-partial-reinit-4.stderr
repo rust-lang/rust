@@ -1,8 +1,10 @@
-error[E0381]: assign of possibly-uninitialized variable: `x.0`
+error[E0381]: binding `x.0` isn't initialized
   --> $DIR/borrowck-partial-reinit-4.rs:17:5
    |
+LL |     let mut x : (Test2, Test2);
+   |         ----- variable declared here
 LL |     (x.0).0 = Some(Test);
-   |     ^^^^^^^ use of possibly-uninitialized `x.0`
+   |     ^^^^^^^ `x.0` assigned here but it isn't initialized
 
 error: aborting due to previous error
 

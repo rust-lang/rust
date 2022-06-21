@@ -1,8 +1,12 @@
-error[E0381]: use of possibly-uninitialized variable: `x`
+error[E0381]: binding `x` isn't initialized in all conditions
   --> $DIR/borrowck-while.rs:4:12
    |
+LL |     let mut x: isize;
+   |         ----- variable declared here
+LL |     while 1 == 1 { x = 10; }
+   |           ------ `x` is uninitialized if this condition isn't met
 LL |     return x;
-   |            ^ use of possibly-uninitialized `x`
+   |            ^ `x` used here but it isn't initialized in all conditions
 
 error: aborting due to previous error
 
