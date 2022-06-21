@@ -8,6 +8,6 @@ fn main() {
     let zst_val = [1u8; 0];
     let ptr = (&0u8 as *const u8).wrapping_sub(0x800) as *mut [u8; 0];
     unsafe {
-        *ptr = zst_val;
-    } //~ ERROR out-of-bounds
+        *ptr = zst_val; //~ ERROR out-of-bounds
+    }
 }

@@ -17,6 +17,6 @@ fn main() {
     // One byte further is OOB.
     let x = x.wrapping_offset(1);
     unsafe {
-        *(x as *mut [u8; 0]) = zst_val;
-    } //~ ERROR out-of-bounds
+        *(x as *mut [u8; 0]) = zst_val; //~ ERROR out-of-bounds
+    }
 }

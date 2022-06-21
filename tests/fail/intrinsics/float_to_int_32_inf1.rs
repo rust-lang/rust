@@ -7,6 +7,6 @@ extern "rust-intrinsic" {
 
 fn main() {
     unsafe {
-        float_to_int_unchecked::<f32, i32>(f32::INFINITY);
-    } //~ ERROR: cannot be represented in target type `i32`
+        float_to_int_unchecked::<f32, i32>(f32::INFINITY); //~ ERROR: cannot be represented in target type `i32`
+    }
 }

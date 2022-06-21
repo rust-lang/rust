@@ -12,6 +12,6 @@ fn main() {
     let x = &mut *x_box as *mut _ as *mut [u8; 0];
     drop(x_box);
     unsafe {
-        *x = zst_val;
-    } //~ ERROR dereferenced after this allocation got freed
+        *x = zst_val; //~ ERROR dereferenced after this allocation got freed
+    }
 }

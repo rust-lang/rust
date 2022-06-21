@@ -8,7 +8,7 @@ fn foo(a: &mut u32, y: *mut u32) -> u32 {
     *a = 1;
     let _b = &*a;
     unsafe {
-        *y = 2;
-    } //~ ERROR: not granting access to tag
+        *y = 2; //~ ERROR: not granting access to tag
+    }
     return *a;
 }

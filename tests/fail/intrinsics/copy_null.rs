@@ -10,6 +10,6 @@ fn main() {
     let ptr = &mut data[0] as *mut u16;
     // Even copying 0 elements from NULL should error.
     unsafe {
-        copy_nonoverlapping(std::ptr::null(), ptr, 0);
-    } //~ ERROR: memory access failed: null pointer is not a valid pointer
+        copy_nonoverlapping(std::ptr::null(), ptr, 0); //~ ERROR: memory access failed: null pointer is not a valid pointer
+    }
 }

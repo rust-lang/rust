@@ -11,6 +11,6 @@ fn main() {
     // `raw` still carries a tag, so we get another pointer to the same location that does not carry a tag
     let raw = (&mut x[1] as *mut i32).wrapping_offset(-1);
     unsafe {
-        *raw = 13;
-    } //~ ERROR borrow stack
+        *raw = 13; //~ ERROR borrow stack
+    }
 }

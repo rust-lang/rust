@@ -4,7 +4,7 @@ fn main() {
     let r#ref = &target; // freeze
     let ptr = r#ref as *const _ as *mut _; // raw ptr, with raw tag
     unsafe {
-        *ptr = 42;
-    } //~ ERROR only grants SharedReadOnly permission
+        *ptr = 42; //~ ERROR only grants SharedReadOnly permission
+    }
     let _val = *r#ref;
 }
