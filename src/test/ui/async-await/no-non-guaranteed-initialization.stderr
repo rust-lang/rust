@@ -1,8 +1,13 @@
-error[E0381]: use of possibly-uninitialized variable: `y`
+error[E0381]: binding `y` isn't initialized in all conditions
   --> $DIR/no-non-guaranteed-initialization.rs:9:5
    |
+LL |     let y;
+   |         - variable declared here
+LL |     if x > 5 {
+   |        ----- this `if` expression might be missing an `else` arm where `y` is initialized
+...
 LL |     y
-   |     ^ use of possibly-uninitialized `y`
+   |     ^ `y` used here but it isn't initialized in all conditions
 
 error: aborting due to previous error
 

@@ -1,8 +1,10 @@
-error[E0381]: borrow of possibly-uninitialized variable: `x`
+error[E0381]: binding `x` isn't initialized
   --> $DIR/move-of-addr-of-mut.rs:8:5
    |
+LL |     let mut x: S;
+   |         ----- variable declared here
 LL |     std::ptr::addr_of_mut!(x);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ use of possibly-uninitialized `x`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ `x` borrowed here but it isn't initialized
    |
    = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
 

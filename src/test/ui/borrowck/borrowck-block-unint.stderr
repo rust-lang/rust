@@ -1,8 +1,10 @@
-error[E0381]: borrow of possibly-uninitialized variable: `x`
+error[E0381]: binding `x` isn't initialized
   --> $DIR/borrowck-block-unint.rs:4:11
    |
+LL |     let x: isize;
+   |         - variable declared here
 LL |     force(|| {
-   |           ^^ use of possibly-uninitialized `x`
+   |           ^^ `x` borrowed here but it isn't initialized
 LL |         println!("{}", x);
    |                        - borrow occurs due to use in closure
 

@@ -1,8 +1,10 @@
-error[E0381]: use of possibly-uninitialized variable: `v`
+error[E0381]: binding `v` isn't initialized
   --> $DIR/borrowck-init-op-equal.rs:3:5
    |
+LL |     let v: isize;
+   |         - variable declared here
 LL |     v += 1;
-   |     ^^^^^^ use of possibly-uninitialized `v`
+   |     ^^^^^^ `v` used here but it isn't initialized
 
 error: aborting due to previous error
 

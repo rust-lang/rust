@@ -1,8 +1,10 @@
-error[E0381]: use of possibly-uninitialized variable: `origin`
+error[E0381]: binding `origin.y` isn't initialized
   --> $DIR/borrowck-init-in-fru.rs:9:14
    |
+LL |     let mut origin: Point;
+   |         ---------- variable declared here
 LL |     origin = Point { x: 10, ..origin };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ use of possibly-uninitialized `origin.y`
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ `origin.y` used here but it isn't initialized
 
 error: aborting due to previous error
 

@@ -33,22 +33,6 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         err
     }
 
-    pub(crate) fn cannot_act_on_uninitialized_variable(
-        &self,
-        span: Span,
-        verb: &str,
-        desc: &str,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(
-            self,
-            span,
-            E0381,
-            "{} of possibly-uninitialized variable: `{}`",
-            verb,
-            desc,
-        )
-    }
-
     pub(crate) fn cannot_mutably_borrow_multiply(
         &self,
         new_loan_span: Span,
@@ -175,8 +159,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             new_loan_span,
             E0501,
-            "cannot borrow {}{} as {} because previous closure \
-             requires unique access",
+            "cannot borrow {}{} as {} because previous closure requires unique access",
             desc_new,
             opt_via,
             kind_new,
@@ -453,9 +436,8 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             closure_span,
             E0373,
-            "{} may outlive the current function, \
-             but it borrows {}, \
-             which is owned by the current function",
+            "{} may outlive the current function, but it borrows {}, which is owned by the current \
+             function",
             closure_kind,
             borrowed_path,
         );
@@ -479,7 +461,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     #[rustc_lint_diagnostics]
-    fn struct_span_err_with_code<S: Into<MultiSpan>>(
+    pub(crate) fn struct_span_err_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
         msg: impl Into<DiagnosticMessage>,

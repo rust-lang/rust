@@ -1,8 +1,10 @@
-error[E0381]: use of possibly-uninitialized variable: `e`
+error[E0381]: binding `e` isn't initialized
   --> $DIR/issue-62107-match-arm-scopes.rs:3:11
    |
+LL |     let e: i32;
+   |         - variable declared here
 LL |     match e {
-   |           ^ use of possibly-uninitialized `e`
+   |           ^ `e` used here but it isn't initialized
 
 error: aborting due to previous error
 

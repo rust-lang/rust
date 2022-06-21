@@ -33,11 +33,13 @@ LL |     match t {
 LL |     x;
    |     - borrow later used here
 
-error[E0381]: use of possibly-uninitialized variable: `n`
+error[E0381]: binding `n` isn't initialized
   --> $DIR/match-on-borrowed.rs:93:11
    |
+LL |     let n: Never;
+   |         - variable declared here
 LL |     match n {}
-   |           ^ use of possibly-uninitialized `n`
+   |           ^ `n` used here but it isn't initialized
 
 error: aborting due to 4 previous errors
 

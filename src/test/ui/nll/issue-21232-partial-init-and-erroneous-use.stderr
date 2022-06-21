@@ -1,17 +1,21 @@
-error[E0381]: assign of possibly-uninitialized variable: `d`
+error[E0381]: binding `d` isn't initialized
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:28:5
    |
+LL |     let d: D;
+   |         - variable declared here
 LL |     d.x = 10;
-   |     ^^^^^^^^ use of possibly-uninitialized `d`
+   |     ^^^^^^^^ `d` assigned here but it isn't initialized
 
-error[E0381]: assign of possibly-uninitialized variable: `d`
-  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:34:5
+error[E0381]: binding `d` isn't initialized
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:33:5
    |
+LL |     let mut d: D;
+   |         ----- variable declared here
 LL |     d.x = 10;
-   |     ^^^^^^^^ use of possibly-uninitialized `d`
+   |     ^^^^^^^^ `d` assigned here but it isn't initialized
 
 error[E0382]: assign of moved value: `d`
-  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:41:5
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:39:5
    |
 LL |     let mut d = D { x: 0, s: S{ y: 0, z: 0 } };
    |         ----- move occurs because `d` has type `D`, which does not implement the `Copy` trait
@@ -20,20 +24,28 @@ LL |     drop(d);
 LL |     d.x = 10;
    |     ^^^^^^^^ value assigned here after move
 
-error[E0381]: assign to part of possibly-uninitialized variable: `d`
-  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:47:5
+error[E0381]: binding `d.s` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:45:5
    |
+LL |     let d: D;
+   |         - variable declared here
 LL |     d.s.y = 20;
-   |     ^^^^^^^^^^ use of possibly-uninitialized `d.s`
+   |     ^^^^^^^^^^ `d.s` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
 
-error[E0381]: assign to part of possibly-uninitialized variable: `d`
-  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:53:5
+error[E0381]: binding `d.s` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:50:5
    |
+LL |     let mut d: D;
+   |         ----- variable declared here
 LL |     d.s.y = 20;
-   |     ^^^^^^^^^^ use of possibly-uninitialized `d.s`
+   |     ^^^^^^^^^^ `d.s` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign to part of moved value: `d`
-  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:60:5
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:56:5
    |
 LL |     let mut d = D { x: 0, s: S{ y: 0, z: 0} };
    |         ----- move occurs because `d` has type `D`, which does not implement the `Copy` trait

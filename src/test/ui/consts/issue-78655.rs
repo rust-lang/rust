@@ -1,6 +1,6 @@
 const FOO: *const u32 = {
     let x;
-    &x //~ ERROR borrow of possibly-uninitialized variable: `x`
+    &x //~ ERROR E0381
 };
 
 fn main() {

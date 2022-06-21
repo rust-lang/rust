@@ -1,14 +1,22 @@
-error[E0381]: assign to part of possibly-uninitialized variable: `x`
+error[E0381]: binding `x` isn't fully initialized
   --> $DIR/assign_mutable_fields.rs:9:5
    |
+LL |     let mut x: (u32, u32);
+   |         ----- variable declared here
 LL |     x.0 = 1;
-   |     ^^^^^^^ use of possibly-uninitialized `x`
+   |     ^^^^^^^ `x` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
 
-error[E0381]: assign to part of possibly-uninitialized variable: `x`
+error[E0381]: binding `x` isn't fully initialized
   --> $DIR/assign_mutable_fields.rs:17:5
    |
+LL |     let mut x: (u32, u32);
+   |         ----- variable declared here
 LL |     x.0 = 1;
-   |     ^^^^^^^ use of possibly-uninitialized `x`
+   |     ^^^^^^^ `x` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate, or use `std::mem::MaybeUninit`
 
 error: aborting due to 2 previous errors
 

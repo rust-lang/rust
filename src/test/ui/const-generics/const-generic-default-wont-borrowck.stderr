@@ -1,8 +1,10 @@
-error[E0381]: borrow of possibly-uninitialized variable: `s`
+error[E0381]: binding `*s` isn't initialized
   --> $DIR/const-generic-default-wont-borrowck.rs:2:26
    |
 LL |     let s: &'static str; s.len()
-   |                          ^^^^^^^ use of possibly-uninitialized `*s`
+   |         -                ^^^^^^^ `*s` borrowed here but it isn't initialized
+   |         |
+   |         variable declared here
 
 error: aborting due to previous error
 
