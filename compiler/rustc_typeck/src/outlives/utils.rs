@@ -1,6 +1,6 @@
 use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, EarlyBinder, Region, Ty, TyCtxt};
+use rustc_middle::ty::{self, Region, Ty, TyCtxt};
 use rustc_span::Span;
 use smallvec::smallvec;
 use std::collections::BTreeMap;
@@ -97,36 +97,20 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                     }
 
                     Component::Opaque(def_id, substs) => {
-                        for predicate in tcx.item_bounds(def_id) {
-                            let predicate = EarlyBinder(predicate).subst(tcx, substs);
-                            // FIXME(oli-obk): fishy skip-binder
-                            match predicate.kind().skip_binder() {
-                                ty::PredicateKind::Trait(tp) => {
-                                    for subst in tp.trait_ref.substs {
-                                        insert_outlives_predicate(
-                                            tcx,
-                                            subst,
-                                            outlived_region,
-                                            span,
-                                            required_predicates,
-                                        )
-                                    }
-                                }
-                                ty::PredicateKind::RegionOutlives(_)
-                                | ty::PredicateKind::TypeOutlives(_)
-                                | ty::PredicateKind::Projection(_)
-                                | ty::PredicateKind::WellFormed(_)
-                                | ty::PredicateKind::ObjectSafe(_)
-                                | ty::PredicateKind::ClosureKind(_, _, _)
-                                | ty::PredicateKind::Subtype(_)
-                                | ty::PredicateKind::Coerce(_)
-                                | ty::PredicateKind::ConstEvaluatable(_)
-                                | ty::PredicateKind::ConstEquate(_, _)
-                                | ty::PredicateKind::TypeWellFormedFromEnv(_) => {
-                                    todo!("{:#?}", predicate)
-                                }
-                            }
-                        }
+                        // This would arise from something like:
+                        //
+                        // ```rust
+                        // type Opaque<T> = impl Sized;
+                        // fn defining<T>() -> Opaque<T> {}
+                        // struct Ss<'a, T>(&'a Opaque<T>);
+                        // ```
+                        //
+                        // Here we want to require an explicit `where Opaque<T>: 'a`
+
+                        let ty = tcx.mk_opaque(def_id, substs);
+                        required_predicates
+                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
+                            .or_insert(span);
                     }
 
                     Component::EscapingProjection(_) => {
