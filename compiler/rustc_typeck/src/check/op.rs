@@ -859,6 +859,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.lookup_op_method_in_trait(span, opname, trait_did, lhs_ty, other_ty, other_ty_expr)
         });
 
+        debug!("lookup_op_method(method={method:?}");
+
         match (method, trait_did) {
             (Some(ok), _) => {
                 let method = self.register_infer_ok_obligations(ok);
