@@ -191,7 +191,12 @@ impl MetadataCollector {
             lints: BinaryHeap::<LintMetadata>::default(),
             applicability_info: FxHashMap::<String, ApplicabilityInfo>::default(),
             config: collect_configs(),
-            clippy_project_root: clippy_dev::clippy_project_root(),
+            clippy_project_root: std::env::current_dir()
+                .expect("failed to get current dir")
+                .ancestors()
+                .nth(1)
+                .expect("failed to get project root")
+                .to_path_buf(),
         }
     }
 
