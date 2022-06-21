@@ -27,6 +27,8 @@
 #[no_mangle]
 pub static TEST: u64 = 0xdeadbeef;
 
+// FIXME: uncommenting this namespace breaks the test, and we're not sure why
+// pub static OTHER_TEST: u64 = 43;
 pub mod namespace {
     pub static OTHER_TEST: u64 = 42;
 }
