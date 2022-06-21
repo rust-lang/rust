@@ -5,6 +5,8 @@ use std::fs::remove_file;
 use std::path::Path;
 use std::process::Command;
 
+use rustfmt_config_proc_macro::rustfmt_only_ci_test;
+
 /// Run the rustfmt executable and return its output.
 fn rustfmt(args: &[&str]) -> (String, String) {
     let mut bin_dir = env::current_exe().unwrap();
@@ -47,7 +49,7 @@ macro_rules! assert_that {
     };
 }
 
-#[ignore]
+#[rustfmt_only_ci_test]
 #[test]
 fn print_config() {
     assert_that!(
@@ -76,7 +78,7 @@ fn print_config() {
     remove_file("minimal-config").unwrap();
 }
 
-#[ignore]
+#[rustfmt_only_ci_test]
 #[test]
 fn inline_config() {
     // single invocation

@@ -4,6 +4,8 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 
+use rustfmt_config_proc_macro::rustfmt_only_ci_test;
+
 /// Run the cargo-fmt executable and return its output.
 fn cargo_fmt(args: &[&str]) -> (String, String) {
     let mut bin_dir = env::current_exe().unwrap();
@@ -47,7 +49,7 @@ macro_rules! assert_that {
     };
 }
 
-#[ignore]
+#[rustfmt_only_ci_test]
 #[test]
 fn version() {
     assert_that!(&["--version"], starts_with("rustfmt "));
@@ -56,7 +58,7 @@ fn version() {
     assert_that!(&["--", "--version"], starts_with("rustfmt "));
 }
 
-#[ignore]
+#[rustfmt_only_ci_test]
 #[test]
 fn print_config() {
     assert_that!(
@@ -65,7 +67,7 @@ fn print_config() {
     );
 }
 
-#[ignore]
+#[rustfmt_only_ci_test]
 #[test]
 fn rustfmt_help() {
     assert_that!(&["--", "--help"], contains("Format Rust code"));
@@ -73,7 +75,7 @@ fn rustfmt_help() {
     assert_that!(&["--", "--help=config"], contains("Configuration Options:"));
 }
 
-#[ignore]
+#[rustfmt_only_ci_test]
 #[test]
 fn cargo_fmt_out_of_line_test_modules() {
     // See also https://github.com/rust-lang/rustfmt/issues/5119
