@@ -1,6 +1,6 @@
-use std::sync::{Mutex, TryLockError};
-use std::sync::atomic;
 use std::hint;
+use std::sync::atomic;
+use std::sync::{Mutex, TryLockError};
 
 fn main() {
     test_mutex_stdlib();

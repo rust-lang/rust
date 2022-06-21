@@ -22,7 +22,9 @@ fn crazy_closure() -> (i32, i32, i32) {
 }
 
 fn closure_arg_adjustment_problem() -> i64 {
-    fn once<F: FnOnce(i64)>(f: F) { f(2); }
+    fn once<F: FnOnce(i64)>(f: F) {
+        f(2);
+    }
     let mut y = 1;
     {
         let f = |x| y += x;
@@ -32,7 +34,9 @@ fn closure_arg_adjustment_problem() -> i64 {
 }
 
 fn fn_once_closure_with_multiple_args() -> i64 {
-    fn once<F: FnOnce(i64, i64) -> i64>(f: F) -> i64 { f(2, 3) }
+    fn once<F: FnOnce(i64, i64) -> i64>(f: F) -> i64 {
+        f(2, 3)
+    }
     let y = 1;
     {
         let f = |x, z| x + y + z;
@@ -50,7 +54,8 @@ fn box_dyn() {
     let mut i = 5;
     {
         let mut x: Box<dyn FnMut()> = Box::new(|| i *= 2);
-        x(); x();
+        x();
+        x();
     }
     assert_eq!(i, 20);
 }
@@ -88,7 +93,9 @@ fn fn_item_with_multiple_args_as_closure_trait_object() {
 
 fn fn_ptr_as_closure_trait_object() {
     fn foo() {}
-    fn bar(u: u32) { assert_eq!(u, 42); }
+    fn bar(u: u32) {
+        assert_eq!(u, 42);
+    }
     fn baa(u: u32, f: f32) {
         assert_eq!(u, 42);
         assert_eq!(f, 3.141);
@@ -101,13 +108,18 @@ fn fn_ptr_as_closure_trait_object() {
     f(42, 3.141);
 }
 
-
 fn main() {
     assert_eq!(simple(), 12);
     assert_eq!(crazy_closure(), (84, 10, 10));
     assert_eq!(closure_arg_adjustment_problem(), 3);
     assert_eq!(fn_once_closure_with_multiple_args(), 6);
-    assert_eq!(boxed_fn_once(Box::new({let x = 13; move || x})), 13);
+    assert_eq!(
+        boxed_fn_once(Box::new({
+            let x = 13;
+            move || x
+        })),
+        13,
+    );
 
     box_dyn();
     fn_item_as_closure_trait_object();

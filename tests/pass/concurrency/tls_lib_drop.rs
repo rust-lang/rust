@@ -9,7 +9,9 @@ struct TestCell {
 
 impl Drop for TestCell {
     fn drop(&mut self) {
-        for _ in 0..10 { thread::yield_now(); }
+        for _ in 0..10 {
+            thread::yield_now();
+        }
         println!("Dropping: {} (should be before 'Continue main 1').", *self.value.borrow())
     }
 }
@@ -43,7 +45,9 @@ struct JoinCell {
 
 impl Drop for JoinCell {
     fn drop(&mut self) {
-        for _ in 0..10 { thread::yield_now(); }
+        for _ in 0..10 {
+            thread::yield_now();
+        }
         let join_handle = self.value.borrow_mut().take().unwrap();
         println!("Joining: {} (should be before 'Continue main 2').", join_handle.join().unwrap());
     }
@@ -118,9 +122,10 @@ fn join_orders_after_tls_destructors() {
                             match sync_state {
                                 THREAD2_LAUNCHED | THREAD1_WAITING => thread::yield_now(),
                                 MAIN_THREAD_RENDEZVOUS => break,
-                                THREAD2_JOINED => panic!(
-                                    "Thread 1 still running after thread 2 joined on thread 1"
-                                ),
+                                THREAD2_JOINED =>
+                                    panic!(
+                                        "Thread 1 still running after thread 2 joined on thread 1"
+                                    ),
                                 v => unreachable!("sync state: {}", v),
                             }
                             sync_state = SYNC_STATE.load(Ordering::SeqCst);

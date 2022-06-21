@@ -2,10 +2,10 @@
 // This specifically tests behavior *without* preemption.
 // compile-flags: -Zmiri-preemption-rate=0
 
-use std::thread;
+use std::cell::Cell;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc;
-use std::cell::Cell;
+use std::thread;
 
 /// When a thread yields, Miri's scheduler used to pick the thread with the lowest ID
 /// that can run. IDs are assigned in thread creation order.

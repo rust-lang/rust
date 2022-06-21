@@ -1,14 +1,33 @@
 // normalize-stderr-test: "::<.*>" -> ""
 
-#[inline(never)] fn func_a() -> Box<[*mut ()]> { func_b::<u8>() }
-#[inline(never)] fn func_b<T>() -> Box<[*mut ()]> { func_c() }
-
-macro_rules! invoke_func_d {
-    () => { func_d() }
+#[inline(never)]
+fn func_a() -> Box<[*mut ()]> {
+    func_b::<u8>()
+}
+#[inline(never)]
+fn func_b<T>() -> Box<[*mut ()]> {
+    func_c()
 }
 
-#[inline(never)] fn func_c() -> Box<[*mut ()]> { invoke_func_d!() }
-#[inline(never)] fn func_d() -> Box<[*mut ()]> { unsafe { let count = miri_backtrace_size(0); let mut buf = vec![std::ptr::null_mut(); count]; miri_get_backtrace(1, buf.as_mut_ptr()); buf.into() } }
+macro_rules! invoke_func_d {
+    () => {
+        func_d()
+    };
+}
+
+#[inline(never)]
+fn func_c() -> Box<[*mut ()]> {
+    invoke_func_d!()
+}
+#[inline(never)]
+fn func_d() -> Box<[*mut ()]> {
+    unsafe {
+        let count = miri_backtrace_size(0);
+        let mut buf = vec![std::ptr::null_mut(); count];
+        miri_get_backtrace(1, buf.as_mut_ptr());
+        buf.into()
+    }
+}
 
 fn main() {
     let mut seen_main = false;

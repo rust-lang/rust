@@ -5,7 +5,7 @@
  * should be read as a null or otherwise wrong pointer and crash.
  */
 
-fn f() { }
+fn f() {}
 static mut CLOSURES: &'static mut [fn()] = &mut [f as fn(), f as fn()];
 
 pub fn main() {

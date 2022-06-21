@@ -8,7 +8,9 @@ static mut DROP_COUNT: usize = 0;
 
 impl Drop for Bar {
     fn drop(&mut self) {
-        unsafe { DROP_COUNT += 1; }
+        unsafe {
+            DROP_COUNT += 1;
+        }
     }
 }
 

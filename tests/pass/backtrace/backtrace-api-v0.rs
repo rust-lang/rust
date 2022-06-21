@@ -1,14 +1,28 @@
 // normalize-stderr-test: "::<.*>" -> ""
 
-#[inline(never)] fn func_a() -> Box<[*mut ()]> { func_b::<u8>() }
-#[inline(never)] fn func_b<T>() -> Box<[*mut ()]> { func_c() }
-
-macro_rules! invoke_func_d {
-    () => { func_d() }
+#[inline(never)]
+fn func_a() -> Box<[*mut ()]> {
+    func_b::<u8>()
+}
+#[inline(never)]
+fn func_b<T>() -> Box<[*mut ()]> {
+    func_c()
 }
 
-#[inline(never)] fn func_c() -> Box<[*mut ()]> { invoke_func_d!() }
-#[inline(never)] fn func_d() -> Box<[*mut ()]> { unsafe { miri_get_backtrace(0) } }
+macro_rules! invoke_func_d {
+    () => {
+        func_d()
+    };
+}
+
+#[inline(never)]
+fn func_c() -> Box<[*mut ()]> {
+    invoke_func_d!()
+}
+#[inline(never)]
+fn func_d() -> Box<[*mut ()]> {
+    unsafe { miri_get_backtrace(0) }
+}
 
 fn main() {
     let mut seen_main = false;
@@ -51,4 +65,3 @@ struct MiriFrame {
     colno: u32,
     fn_ptr: *mut (),
 }
-

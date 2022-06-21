@@ -36,31 +36,33 @@ fn test_align_to() {
     {
         let (l, m, r) = unsafe { s[1..].align_to::<u32>() };
         assert_eq!(l.len(), 3);
-        assert_eq!(m.len(), N-1);
+        assert_eq!(m.len(), N - 1);
         assert_eq!(r.len(), 0);
         assert_eq!(raw.wrapping_offset(4), m.as_ptr() as *const u8);
     }
 
     {
-        let (l, m, r) = unsafe { s[..4*N - 1].align_to::<u32>() };
+        let (l, m, r) = unsafe { s[..4 * N - 1].align_to::<u32>() };
         assert_eq!(l.len(), 0);
-        assert_eq!(m.len(), N-1);
+        assert_eq!(m.len(), N - 1);
         assert_eq!(r.len(), 3);
         assert_eq!(raw, m.as_ptr() as *const u8);
     }
 
     {
-        let (l, m, r) = unsafe { s[1..4*N - 1].align_to::<u32>() };
+        let (l, m, r) = unsafe { s[1..4 * N - 1].align_to::<u32>() };
         assert_eq!(l.len(), 3);
-        assert_eq!(m.len(), N-2);
+        assert_eq!(m.len(), N - 2);
         assert_eq!(r.len(), 3);
         assert_eq!(raw.wrapping_offset(4), m.as_ptr() as *const u8);
     }
 
     {
-        #[repr(align(8))] struct Align8(u64);
+        #[repr(align(8))]
+        struct Align8(u64);
+
         let (l, m, r) = unsafe { s.align_to::<Align8>() }; // requested alignment higher than allocation alignment
-        assert_eq!(l.len(), 4*N);
+        assert_eq!(l.len(), 4 * N);
         assert_eq!(r.len(), 0);
         assert_eq!(m.len(), 0);
     }
