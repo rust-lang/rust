@@ -1056,7 +1056,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "mixed_integer_ops", since = "1.63.0")]
         #[rustc_const_stable(feature = "mixed_integer_ops", since = "1.63.0")]
-        #[must_use = "this returns the result of the operation, 
+        #[must_use = "this returns the result of the operation,
                       without modifying the original"]
         #[inline]
         pub const fn saturating_add_signed(self, rhs: $SignedT) -> Self {
