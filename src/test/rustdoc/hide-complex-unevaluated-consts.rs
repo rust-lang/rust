@@ -7,6 +7,8 @@
 // Read the documentation of `rustdoc::clean::utils::print_const_expr`
 // for further details.
 
+// FIXME: This test file now partially overlaps with `const-value-display.rs`.
+
 // @has hide_complex_unevaluated_consts/trait.Container.html
 pub trait Container {
     // A helper constant that prevents const expressions containing it
@@ -18,20 +20,15 @@ pub trait Container {
     // Ensure that the private field does not get leaked:
     //
     // @has - '//*[@id="associatedconstant.STRUCT0"]' \
-    //        'const STRUCT0: Struct = _'
+    //        'const STRUCT0: Struct = Struct { .. }'
     const STRUCT0: Struct = Struct { private: () };
 
     // @has - '//*[@id="associatedconstant.STRUCT1"]' \
-    //        'const STRUCT1: (Struct,) = _'
+    //        'const STRUCT1: (Struct,) = (Struct { .. },)'
     const STRUCT1: (Struct,) = (Struct{private: /**/()},);
 
-    // Although the struct field is public here, check that it is not
-    // displayed. In a future version of rustdoc, we definitely want to
-    // show it. However for the time being, the printing logic is a bit
-    // conservative.
-    //
     // @has - '//*[@id="associatedconstant.STRUCT2"]' \
-    //        'const STRUCT2: Record = _'
+    //        'const STRUCT2: Record = Record { public: 5 }'
     const STRUCT2: Record = Record { public: 5 };
 
     // Test that we do not show the incredibly verbose match expr:

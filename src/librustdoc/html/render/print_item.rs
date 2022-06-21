@@ -1377,36 +1377,13 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
                 typ = c.type_.print(cx),
             );
 
-            // FIXME: The code below now prints
-            //            ` = _; // 100i32`
-            //        if the expression is
-            //            `50 + 50`
-            //        which looks just wrong.
-            //        Should we print
-            //            ` = 100i32;`
-            //        instead?
-
-            let value = c.value(cx.tcx());
-            let is_literal = c.is_literal(cx.tcx());
-            let expr = c.expr(cx.tcx());
-            if value.is_some() || is_literal {
-                write!(w, " = {expr};", expr = Escape(&expr));
-            } else {
-                w.write_str(";");
+            // FIXME: (Maybe) preserve hexadecimal literals like on master.
+            // FIXME: (Maybe) add numeric underscores like on master.
+            if let Some(value) = c.eval_and_render(&super::constant::Renderer::Html(cx)) {
+                write!(w, " = {}", value);
             }
 
-            if !is_literal {
-                if let Some(value) = &value {
-                    let value_lowercase = value.to_lowercase();
-                    let expr_lowercase = expr.to_lowercase();
-
-                    if value_lowercase != expr_lowercase
-                        && value_lowercase.trim_end_matches("i32") != expr_lowercase
-                    {
-                        write!(w, " // {value}", value = Escape(value));
-                    }
-                }
-            }
+            w.write_str(";");
         });
     });
 

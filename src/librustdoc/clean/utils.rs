@@ -16,16 +16,11 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_middle::mir;
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
 use std::mem;
-
-#[cfg(test)]
-mod tests;
 
 pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit();
@@ -238,6 +233,8 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
             let mut s = if let Some(def) = def.as_local() {
                 print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(def.did))
             } else {
+                // FIXME: This relies on the HIR pretty-printer which leaks private and
+                //        doc(hidden) struct fields.
                 inline::print_inlined_const(cx.tcx, def.did)
             };
             if let Some(promoted) = promoted {
@@ -258,69 +255,6 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
             }
             s
         }
-    }
-}
-
-pub(crate) fn print_evaluated_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<String> {
-    tcx.const_eval_poly(def_id).ok().and_then(|val| {
-        let ty = tcx.type_of(def_id);
-        match (val, ty.kind()) {
-            (_, &ty::Ref(..)) => None,
-            (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
-            (ConstValue::Scalar(_), _) => {
-                let const_ = mir::ConstantKind::from_value(val, ty);
-                Some(print_const_with_custom_print_scalar(tcx, const_))
-            }
-            _ => None,
-        }
-    })
-}
-
-fn format_integer_with_underscore_sep(num: &str) -> String {
-    let num_chars: Vec<_> = num.chars().collect();
-    let mut num_start_index = if num_chars.get(0) == Some(&'-') { 1 } else { 0 };
-    let chunk_size = match num[num_start_index..].as_bytes() {
-        [b'0', b'b' | b'x', ..] => {
-            num_start_index += 2;
-            4
-        }
-        [b'0', b'o', ..] => {
-            num_start_index += 2;
-            let remaining_chars = num_chars.len() - num_start_index;
-            if remaining_chars <= 6 {
-                // don't add underscores to Unix permissions like 0755 or 100755
-                return num.to_string();
-            }
-            3
-        }
-        _ => 3,
-    };
-
-    num_chars[..num_start_index]
-        .iter()
-        .chain(num_chars[num_start_index..].rchunks(chunk_size).rev().intersperse(&['_']).flatten())
-        .collect()
-}
-
-fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: mir::ConstantKind<'_>) -> String {
-    // Use a slightly different format for integer types which always shows the actual value.
-    // For all other types, fallback to the original `pretty_print_const`.
-    match (ct, ct.ty().kind()) {
-        (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Uint(ui)) => {
-            format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
-        }
-        (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Int(i)) => {
-            let ty = tcx.lift(ct.ty()).unwrap();
-            let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
-            let data = int.assert_bits(size);
-            let sign_extended_data = size.sign_extend(data) as i128;
-            format!(
-                "{}{}",
-                format_integer_with_underscore_sep(&sign_extended_data.to_string()),
-                i.name_str()
-            )
-        }
-        _ => ct.to_string(),
     }
 }
 

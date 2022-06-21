@@ -27,8 +27,10 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
-use crate::json::conversions::{from_item_id, from_item_id_with_name, IntoWithTcx};
+use crate::json::conversions::{from_item_id, from_item_id_with_name, IntoWithCx};
 use crate::{clean, try_err};
+
+pub(crate) use crate::json::conversions::Context;
 
 #[derive(Clone)]
 pub(crate) struct JsonRenderer<'tcx> {
@@ -127,7 +129,11 @@ impl<'tcx> JsonRenderer<'tcx> {
                                 .last()
                                 .map(|s| s.to_string()),
                             visibility: types::Visibility::Public,
-                            inner: types::ItemEnum::Trait(trait_item.clone().into_tcx(self.tcx)),
+                            inner: types::ItemEnum::Trait(
+                                trait_item
+                                    .clone()
+                                    .into_cx(&Context::new(self.tcx, self.cache.clone())),
+                            ),
                             span: None,
                             docs: Default::default(),
                             links: Default::default(),
@@ -283,7 +289,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
                             path: path.iter().map(|s| s.to_string()).collect(),
-                            kind: kind.into_tcx(self.tcx),
+                            kind: kind.into_cx(&Context::new(self.tcx, self.cache.clone())),
                         },
                     )
                 })

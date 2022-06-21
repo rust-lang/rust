@@ -87,6 +87,10 @@ pub(crate) struct Cache {
     /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
     pub(crate) document_private: bool,
 
+    /// Whether to document `#[doc(hidden)]` items.
+    /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
+    pub(crate) document_hidden: bool,
+
     /// Crates marked with [`#[doc(masked)]`][doc_masked].
     ///
     /// [doc_masked]: https://doc.rust-lang.org/nightly/unstable-book/language-features/doc-masked.html
@@ -132,8 +136,12 @@ struct CacheBuilder<'a, 'tcx> {
 }
 
 impl Cache {
-    pub(crate) fn new(access_levels: AccessLevels<DefId>, document_private: bool) -> Self {
-        Cache { access_levels, document_private, ..Cache::default() }
+    pub(crate) fn new(
+        access_levels: AccessLevels<DefId>,
+        document_private: bool,
+        document_hidden: bool,
+    ) -> Self {
+        Cache { access_levels, document_private, document_hidden, ..Cache::default() }
     }
 
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was

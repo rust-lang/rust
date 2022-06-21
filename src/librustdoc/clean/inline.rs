@@ -596,6 +596,8 @@ fn build_module_items(
 }
 
 pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
+    // FIXME: Both branches rely on HIR pretty-printing which
+    //        leaks private and doc(hidden) struct fields.
     if let Some(did) = did.as_local() {
         let hir_id = tcx.hir().local_def_id_to_hir_id(did);
         rustc_hir_pretty::id_to_string(&tcx.hir(), hir_id)

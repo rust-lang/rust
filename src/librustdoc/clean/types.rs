@@ -37,11 +37,11 @@ use crate::clean::cfg::Cfg;
 use crate::clean::clean_visibility;
 use crate::clean::external_path;
 use crate::clean::inline::{self, print_inlined_const};
-use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
+use crate::clean::utils::is_literal_expr;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::html::render::Context;
+use crate::html::render::{constant::Renderer as ConstantRenderer, Context};
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
 pub(crate) use self::FnRetTy::*;
@@ -2292,8 +2292,8 @@ impl Constant {
         self.kind.expr(tcx)
     }
 
-    pub(crate) fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        self.kind.value(tcx)
+    pub(crate) fn eval_and_render(&self, renderer: &ConstantRenderer<'_, '_>) -> Option<String> {
+        self.kind.eval_and_render(renderer)
     }
 
     pub(crate) fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
@@ -2307,16 +2307,16 @@ impl ConstantKind {
             ConstantKind::TyConst { ref expr } => expr.clone(),
             ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
-                print_const_expr(tcx, body)
+                super::utils::print_const_expr(tcx, body)
             }
         }
     }
 
-    pub(crate) fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
+    pub(crate) fn eval_and_render(&self, renderer: &ConstantRenderer<'_, '_>) -> Option<String> {
         match *self {
             ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
             ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
-                print_evaluated_const(tcx, def_id)
+                crate::html::render::eval_and_render_const(def_id, renderer)
             }
         }
     }

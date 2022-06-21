@@ -654,6 +654,13 @@ pub(crate) fn href_with_root_path(
             // documented on their parent's page
             tcx.parent(did)
         }
+        DefKind::Field => {
+            let parent_id = tcx.parent(did);
+            match tcx.def_kind(parent_id) {
+                DefKind::Variant => tcx.parent(parent_id),
+                _ => parent_id,
+            }
+        }
         _ => did,
     };
     let cache = cx.cache();

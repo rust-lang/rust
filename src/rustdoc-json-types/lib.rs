@@ -166,7 +166,26 @@ pub enum GenericArg {
 pub struct Constant {
     #[serde(rename = "type")]
     pub type_: Type,
+    /// The *unevaluated* constant expression assigned to this constant item.
+    ///
+    /// This textual representation may not actually be what the user wrote
+    /// or be valid Rust syntax since it may contain underscores in place of
+    /// overly big or complex expressions.
     pub expr: String,
+    /// The (constant) value of this constant item if the evaluation succeeded.
+    ///
+    /// It is the result of the *evaluation* of the constant expression assigned
+    /// to this constant item or `None` if the expression is “too generic”.
+    ///
+    /// This textual representation may not actually be lossless or even valid
+    /// Rust syntax since
+    ///
+    /// * overly long arrays & strings and deeply-nested subexpressions are replaced
+    ///   with ellipses
+    /// * private and `#[doc(hidden)]` struct fields are omitted
+    /// * `..` is added to (tuple) struct literals if any fields are omitted
+    ///   or if the type is `#[non_exhaustive]`
+    /// * `_` is used in place of “unsupported” expressions (e.g. pointers)
     pub value: Option<String>,
     pub is_literal: bool,
 }
@@ -259,7 +278,19 @@ pub enum ItemEnum {
     AssocConst {
         #[serde(rename = "type")]
         type_: Type,
-        /// e.g. `const X: usize = 5;`
+        /// The default (constant) value of this associated constant if available.
+        ///
+        /// E.g. the `5` in `const X: usize = 5;`.
+        ///
+        /// This textual representation may not actually be lossless or even valid
+        /// Rust syntax since
+        ///
+        /// * overly long arrays & strings and deeply-nested subexpressions are replaced
+        ///   with ellipses
+        /// * private and `#[doc(hidden)]` struct fields are omitted
+        /// * `..` is added to (tuple) struct literals if any fields are omitted
+        ///   or if the type is `#[non_exhaustive]`
+        /// * `_` is used in place of “unsupported” expressions (e.g. pointers)
         default: Option<String>,
     },
     AssocType {

@@ -828,6 +828,12 @@ pre, .rustdoc.source .example-wrap {
 	margin-left: 0;
 }
 
+.content .ellipsis {
+	border: 1px solid var(--main-color);
+	border-radius: 4px;
+	opacity: 0.5;
+}
+
 nav.sub {
 	flex-grow: 1;
 	margin-bottom: 25px;
