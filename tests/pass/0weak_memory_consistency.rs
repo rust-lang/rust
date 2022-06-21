@@ -214,7 +214,7 @@ fn test_single_thread() {
 }
 
 pub fn main() {
-    for _ in 0..50 {
+    for _ in 0..75 {
         test_single_thread();
         test_mixed_access();
         test_load_buffering_acq_rel();
