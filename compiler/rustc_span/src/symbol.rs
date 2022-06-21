@@ -131,6 +131,7 @@ symbols! {
         Arc,
         Argument,
         ArgumentV1,
+        ArgumentV1Methods,
         Arguments,
         AsMut,
         AsRef,
@@ -1641,7 +1642,7 @@ impl Ident {
 
 impl PartialEq for Ident {
     fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name && self.span.ctxt() == rhs.span.ctxt()
+        self.name == rhs.name && self.span.eq_ctxt(rhs.span)
     }
 }
 

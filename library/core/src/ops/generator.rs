@@ -61,9 +61,10 @@ pub enum GeneratorState<Y, R> {
 /// }
 /// ```
 ///
-/// More documentation of generators can be found in the unstable book.
+/// More documentation of generators can be found in the [unstable book].
 ///
 /// [RFC 2033]: https://github.com/rust-lang/rfcs/pull/2033
+/// [unstable book]: ../../unstable-book/language-features/generators.html
 #[lang = "generator"]
 #[unstable(feature = "generator_trait", issue = "43122")]
 #[fundamental]

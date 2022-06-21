@@ -195,7 +195,7 @@ impl CoverageSpan {
             .expn_span
             .parent_callsite()
             .unwrap_or_else(|| bug!("macro must have a parent"))
-            .ctxt() == body_span.ctxt()
+            .eq_ctxt(body_span)
         {
             return Some(current_macro);
         }

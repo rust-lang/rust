@@ -814,7 +814,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn bounds_to_string(&self, bounds: &[ast::GenericBound]) -> String {
-        Self::to_string(|s| s.print_type_bounds("", bounds))
+        Self::to_string(|s| s.print_type_bounds(bounds))
     }
 
     fn pat_to_string(&self, pat: &ast::Pat) -> String {
@@ -991,7 +991,12 @@ impl<'a> State<'a> {
                     Term::Const(c) => self.print_expr_anon_const(c, &[]),
                 }
             }
-            ast::AssocConstraintKind::Bound { bounds } => self.print_type_bounds(":", &*bounds),
+            ast::AssocConstraintKind::Bound { bounds } => {
+                if !bounds.is_empty() {
+                    self.word_nbsp(":");
+                    self.print_type_bounds(&bounds);
+                }
+            }
         }
     }
 
@@ -1045,11 +1050,14 @@ impl<'a> State<'a> {
             }
             ast::TyKind::Path(Some(ref qself), ref path) => self.print_qpath(path, qself, false),
             ast::TyKind::TraitObject(ref bounds, syntax) => {
-                let prefix = if syntax == ast::TraitObjectSyntax::Dyn { "dyn" } else { "" };
-                self.print_type_bounds(prefix, &bounds);
+                if syntax == ast::TraitObjectSyntax::Dyn {
+                    self.word_nbsp("dyn");
+                }
+                self.print_type_bounds(bounds);
             }
             ast::TyKind::ImplTrait(_, ref bounds) => {
-                self.print_type_bounds("impl", &bounds);
+                self.word_nbsp("impl");
+                self.print_type_bounds(bounds);
             }
             ast::TyKind::Array(ref ty, ref length) => {
                 self.word("[");
@@ -1549,29 +1557,24 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_type_bounds(&mut self, prefix: &'static str, bounds: &[ast::GenericBound]) {
-        if !bounds.is_empty() {
-            self.word(prefix);
-            let mut first = true;
-            for bound in bounds {
-                if !(first && prefix.is_empty()) {
-                    self.nbsp();
-                }
-                if first {
-                    first = false;
-                } else {
-                    self.word_space("+");
-                }
+    pub fn print_type_bounds(&mut self, bounds: &[ast::GenericBound]) {
+        let mut first = true;
+        for bound in bounds {
+            if first {
+                first = false;
+            } else {
+                self.nbsp();
+                self.word_space("+");
+            }
 
-                match bound {
-                    GenericBound::Trait(tref, modifier) => {
-                        if modifier == &TraitBoundModifier::Maybe {
-                            self.word("?");
-                        }
-                        self.print_poly_trait_ref(tref);
+            match bound {
+                GenericBound::Trait(tref, modifier) => {
+                    if modifier == &TraitBoundModifier::Maybe {
+                        self.word("?");
                     }
-                    GenericBound::Outlives(lt) => self.print_lifetime(*lt),
+                    self.print_poly_trait_ref(tref);
                 }
+                GenericBound::Outlives(lt) => self.print_lifetime(*lt),
             }
         }
     }
@@ -1580,22 +1583,14 @@ impl<'a> State<'a> {
         self.print_name(lifetime.ident.name)
     }
 
-    pub(crate) fn print_lifetime_bounds(
-        &mut self,
-        lifetime: ast::Lifetime,
-        bounds: &ast::GenericBounds,
-    ) {
-        self.print_lifetime(lifetime);
-        if !bounds.is_empty() {
-            self.word(": ");
-            for (i, bound) in bounds.iter().enumerate() {
-                if i != 0 {
-                    self.word(" + ");
-                }
-                match bound {
-                    ast::GenericBound::Outlives(lt) => self.print_lifetime(*lt),
-                    _ => panic!(),
-                }
+    pub(crate) fn print_lifetime_bounds(&mut self, bounds: &ast::GenericBounds) {
+        for (i, bound) in bounds.iter().enumerate() {
+            if i != 0 {
+                self.word(" + ");
+            }
+            match bound {
+                ast::GenericBound::Outlives(lt) => self.print_lifetime(*lt),
+                _ => panic!(),
             }
         }
     }
@@ -1613,11 +1608,18 @@ impl<'a> State<'a> {
             match param.kind {
                 ast::GenericParamKind::Lifetime => {
                     let lt = ast::Lifetime { id: param.id, ident: param.ident };
-                    s.print_lifetime_bounds(lt, &param.bounds)
+                    s.print_lifetime(lt);
+                    if !param.bounds.is_empty() {
+                        s.word_nbsp(":");
+                        s.print_lifetime_bounds(&param.bounds)
+                    }
                 }
                 ast::GenericParamKind::Type { ref default } => {
                     s.print_ident(param.ident);
-                    s.print_type_bounds(":", &param.bounds);
+                    if !param.bounds.is_empty() {
+                        s.word_nbsp(":");
+                        s.print_type_bounds(&param.bounds);
+                    }
                     if let Some(ref default) = default {
                         s.space();
                         s.word_space("=");
@@ -1630,7 +1632,10 @@ impl<'a> State<'a> {
                     s.space();
                     s.word_space(":");
                     s.print_type(ty);
-                    s.print_type_bounds(":", &param.bounds);
+                    if !param.bounds.is_empty() {
+                        s.word_nbsp(":");
+                        s.print_type_bounds(&param.bounds);
+                    }
                     if let Some(ref default) = default {
                         s.space();
                         s.word_space("=");

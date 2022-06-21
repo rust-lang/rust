@@ -41,7 +41,7 @@ error[E0109]: type arguments are not allowed on this type
 LL |     0: u8(ţ
    |        -- ^ type argument not allowed
    |        |
-   |        not allowed on this
+   |        not allowed on this type
    |
 help: primitive type `u8` doesn't have generic parameters
    |

@@ -537,6 +537,9 @@ impl Span {
     pub fn ctxt(self) -> SyntaxContext {
         self.data_untracked().ctxt
     }
+    pub fn eq_ctxt(self, other: Span) -> bool {
+        self.data_untracked().ctxt == other.data_untracked().ctxt
+    }
     #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
         self.data_untracked().with_ctxt(ctxt)

@@ -54,6 +54,25 @@
 //! Like boxes, `OwnedFd` values conceptually own the resource they point to,
 //! and free (close) it when they are dropped.
 //!
+//! ## `/proc/self/mem` and similar OS features
+//!
+//! Some platforms have special files, such as `/proc/self/mem`, which
+//! provide read and write access to the process's memory. Such reads
+//! and writes happen outside the control of the Rust compiler, so they do not
+//! uphold Rust's memory safety guarantees.
+//!
+//! This does not mean that all APIs that might allow `/proc/self/mem`
+//! to be opened and read from or written must be `unsafe`. Rust's safety guarantees
+//! only cover what the program itself can do, and not what entities outside
+//! the program can do to it. `/proc/self/mem` is considered to be such an
+//! external entity, along with debugging interfaces, and people with physical access to
+//! the hardware. This is true even in cases where the program is controlling
+//! the external entity.
+//!
+//! If you desire to comprehensively prevent programs from reaching out and
+//! causing external entities to reach back in and violate memory safety, it's
+//! necessary to use *sandboxing*, which is outside the scope of `std`.
+//!
 //! [`BorrowedFd<'a>`]: crate::os::unix::io::BorrowedFd
 
 #![stable(feature = "rust1", since = "1.0.0")]

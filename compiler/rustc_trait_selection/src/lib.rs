@@ -1,4 +1,4 @@
-//! This crates defines the trait resolution method.
+//! This crate defines the trait resolution method.
 //!
 //! - **Traits.** Trait resolution is implemented in the `traits` module.
 //!

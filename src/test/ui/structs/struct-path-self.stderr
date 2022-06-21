@@ -10,7 +10,7 @@ error[E0109]: type arguments are not allowed on self type
 LL |         let z = Self::<u8> {};
    |                 ----   ^^ type argument not allowed
    |                 |
-   |                 not allowed on this
+   |                 not allowed on self type
    |
 help: the `Self` type doesn't accept type parameters
    |
@@ -36,7 +36,7 @@ error[E0109]: type arguments are not allowed on self type
 LL |         let z = Self::<u8> {};
    |                 ----   ^^ type argument not allowed
    |                 |
-   |                 not allowed on this
+   |                 not allowed on self type
    |
 note: `Self` is of type `S`
   --> $DIR/struct-path-self.rs:1:8
@@ -58,7 +58,7 @@ error[E0109]: type arguments are not allowed on self type
 LL |         let z = Self::<u8> {};
    |                 ----   ^^ type argument not allowed
    |                 |
-   |                 not allowed on this
+   |                 not allowed on self type
    |
 note: `Self` is of type `S`
   --> $DIR/struct-path-self.rs:1:8

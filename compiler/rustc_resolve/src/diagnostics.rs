@@ -1914,6 +1914,8 @@ impl<'a> Resolver<'a> {
                 };
             }
             (msg, None)
+        } else if ident.name == kw::SelfUpper {
+            ("`Self` is only available in impls, traits, and type definitions".to_string(), None)
         } else if ident.name.as_str().chars().next().map_or(false, |c| c.is_ascii_uppercase()) {
             // Check whether the name refers to an item in the value namespace.
             let binding = if let Some(ribs) = ribs {

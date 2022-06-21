@@ -332,6 +332,16 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 span,
                 "`Self` is only available in impls, traits, and type definitions".to_string(),
             );
+            if let Some(item_kind) = self.diagnostic_metadata.current_item {
+                err.span_label(
+                    item_kind.ident.span,
+                    format!(
+                        "`Self` not allowed in {} {}",
+                        item_kind.kind.article(),
+                        item_kind.kind.descr()
+                    ),
+                );
+            }
             return (err, Vec::new());
         }
         if is_self_value(path, ns) {
@@ -389,6 +399,15 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         );
                     }
                 }
+            } else if let Some(item_kind) = self.diagnostic_metadata.current_item {
+                err.span_label(
+                    item_kind.ident.span,
+                    format!(
+                        "`self` not allowed in {} {}",
+                        item_kind.kind.article(),
+                        item_kind.kind.descr()
+                    ),
+                );
             }
             return (err, Vec::new());
         }
@@ -1788,7 +1807,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         path: &[Segment],
     ) -> Option<(Span, &'static str, String, Applicability)> {
         let (ident, span) = match path {
-            [segment] if !segment.has_generic_args => {
+            [segment] if !segment.has_generic_args && segment.ident.name != kw::SelfUpper => {
                 (segment.ident.to_string(), segment.ident.span)
             }
             _ => return None,
@@ -1875,7 +1894,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let names = rib
             .bindings
             .iter()
-            .filter(|(id, _)| id.span.ctxt() == label.span.ctxt())
+            .filter(|(id, _)| id.span.eq_ctxt(label.span))
             .map(|(id, _)| id.name)
             .collect::<Vec<Symbol>>();
 

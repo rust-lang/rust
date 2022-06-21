@@ -1254,8 +1254,6 @@ impl<T: Clone> Rc<T> {
 }
 
 impl Rc<dyn Any> {
-    #[inline]
-    #[stable(feature = "rc_downcast", since = "1.29.0")]
     /// Attempt to downcast the `Rc<dyn Any>` to a concrete type.
     ///
     /// # Examples
@@ -1274,6 +1272,8 @@ impl Rc<dyn Any> {
     /// print_if_string(Rc::new(my_string));
     /// print_if_string(Rc::new(0i8));
     /// ```
+    #[inline]
+    #[stable(feature = "rc_downcast", since = "1.29.0")]
     pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {
         if (*self).is::<T>() {
             unsafe {
@@ -1283,6 +1283,42 @@ impl Rc<dyn Any> {
             }
         } else {
             Err(self)
+        }
+    }
+
+    /// Downcasts the `Rc<dyn Any>` to a concrete type.
+    ///
+    /// For a safe alternative see [`downcast`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(downcast_unchecked)]
+    ///
+    /// use std::any::Any;
+    /// use std::rc::Rc;
+    ///
+    /// let x: Rc<dyn Any> = Rc::new(1_usize);
+    ///
+    /// unsafe {
+    ///     assert_eq!(*x.downcast_unchecked::<usize>(), 1);
+    /// }
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// The contained value must be of type `T`. Calling this method
+    /// with the incorrect type is *undefined behavior*.
+    ///
+    ///
+    /// [`downcast`]: Self::downcast
+    #[inline]
+    #[unstable(feature = "downcast_unchecked", issue = "90850")]
+    pub unsafe fn downcast_unchecked<T: Any>(self) -> Rc<T> {
+        unsafe {
+            let ptr = self.ptr.cast::<RcBox<T>>();
+            mem::forget(self);
+            Rc::from_inner(ptr)
         }
     }
 }

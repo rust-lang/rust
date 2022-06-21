@@ -320,6 +320,7 @@ macro_rules! arg_new {
     };
 }
 
+#[rustc_diagnostic_item = "ArgumentV1Methods"]
 impl<'a> ArgumentV1<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]

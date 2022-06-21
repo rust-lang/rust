@@ -1273,6 +1273,22 @@ impl Stdio {
     pub fn null() -> Stdio {
         Stdio(imp::Stdio::Null)
     }
+
+    /// Returns `true` if this requires [`Command`] to create a new pipe.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(stdio_makes_pipe)]
+    /// use std::process::Stdio;
+    ///
+    /// let io = Stdio::piped();
+    /// assert_eq!(io.makes_pipe(), true);
+    /// ```
+    #[unstable(feature = "stdio_makes_pipe", issue = "98288")]
+    pub fn makes_pipe(&self) -> bool {
+        matches!(self.0, imp::Stdio::MakePipe)
+    }
 }
 
 impl FromInner<imp::Stdio> for Stdio {
