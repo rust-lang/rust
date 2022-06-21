@@ -25,7 +25,7 @@ LL |     called_in_const.call_once(arg)
 LL |     const MASKED_NAN1: u32 = f32::NAN.to_bits() ^ 0x002A_AAAA;
    |                              ------------------ inside `f32::MASKED_NAN1` at $DIR/const-float-bits-reject-conv.rs:27:30
    |
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `panic` which expands to macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/num/f32.rs:LL:COL
@@ -54,7 +54,7 @@ LL |     called_in_const.call_once(arg)
 LL |     const MASKED_NAN2: u32 = f32::NAN.to_bits() ^ 0x0055_5555;
    |                              ------------------ inside `f32::MASKED_NAN2` at $DIR/const-float-bits-reject-conv.rs:28:30
    |
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `panic` which expands to macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
   --> $DIR/const-float-bits-reject-conv.rs:30:34
@@ -132,7 +132,7 @@ LL |     called_in_const.call_once(arg)
 LL |     const MASKED_NAN1: u64 = f64::NAN.to_bits() ^ 0x000A_AAAA_AAAA_AAAA;
    |                              ------------------ inside `f64::MASKED_NAN1` at $DIR/const-float-bits-reject-conv.rs:54:30
    |
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `panic` which expands to macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/num/f64.rs:LL:COL
@@ -161,7 +161,7 @@ LL |     called_in_const.call_once(arg)
 LL |     const MASKED_NAN2: u64 = f64::NAN.to_bits() ^ 0x0005_5555_5555_5555;
    |                              ------------------ inside `f64::MASKED_NAN2` at $DIR/const-float-bits-reject-conv.rs:55:30
    |
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `panic` which expands to macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
   --> $DIR/const-float-bits-reject-conv.rs:57:34

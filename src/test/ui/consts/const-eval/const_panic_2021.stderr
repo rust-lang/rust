@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL | const A: () = std::panic!("blåhaj");
    |               ^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'blåhaj', $DIR/const_panic_2021.rs:6:15
    |
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `std::panic` which expands to macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_2021.rs:9:15
@@ -12,7 +12,7 @@ error[E0080]: evaluation of constant value failed
 LL | const B: () = std::panic!();
    |               ^^^^^^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/const_panic_2021.rs:9:15
    |
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `std::panic` which expands to macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_2021.rs:12:15
@@ -20,7 +20,7 @@ error[E0080]: evaluation of constant value failed
 LL | const C: () = std::unreachable!();
    |               ^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic_2021.rs:12:15
    |
-   = note: this error originates in the macro `$crate::panic::unreachable_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `std::unreachable` which expands to macro `$crate::panic::unreachable_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_2021.rs:15:15
@@ -36,7 +36,7 @@ error[E0080]: evaluation of constant value failed
 LL | const E: () = std::panic!("{}", MSG);
    |               ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'hello', $DIR/const_panic_2021.rs:18:15
    |
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `std::panic` which expands to macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_2021.rs:21:20
@@ -44,7 +44,7 @@ error[E0080]: evaluation of constant value failed
 LL | const A_CORE: () = core::panic!("shark");
    |                    ^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'shark', $DIR/const_panic_2021.rs:21:20
    |
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `core::panic` which expands to macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_2021.rs:24:20
@@ -52,7 +52,7 @@ error[E0080]: evaluation of constant value failed
 LL | const B_CORE: () = core::panic!();
    |                    ^^^^^^^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/const_panic_2021.rs:24:20
    |
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `core::panic` which expands to macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_2021.rs:27:20
@@ -60,7 +60,7 @@ error[E0080]: evaluation of constant value failed
 LL | const C_CORE: () = core::unreachable!();
    |                    ^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic_2021.rs:27:20
    |
-   = note: this error originates in the macro `$crate::panic::unreachable_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `core::unreachable` which expands to macro `$crate::panic::unreachable_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_2021.rs:30:20
@@ -76,7 +76,7 @@ error[E0080]: evaluation of constant value failed
 LL | const E_CORE: () = core::panic!("{}", MSG);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'hello', $DIR/const_panic_2021.rs:33:20
    |
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `core::panic` which expands to macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 10 previous errors
 

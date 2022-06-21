@@ -10,7 +10,7 @@ LL |     panic!()
    |     the evaluated program panicked at 'explicit panic', $DIR/issue-81899.rs:12:5
    |     inside `f::<[closure@$DIR/issue-81899.rs:4:31: 4:37]>` at $SRC_DIR/std/src/panic.rs:LL:COL
    |
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `panic` which expands to macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
   --> $DIR/issue-81899.rs:4:23

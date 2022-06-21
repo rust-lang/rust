@@ -6,7 +6,7 @@ LL |     println!("{}", path);
    |
    = help: the trait `std::fmt::Display` is not implemented for `Path`
    = note: call `.display()` or `.to_string_lossy()` to safely print paths, as they may contain non-Unicode data
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` which expands to macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `PathBuf` doesn't implement `std::fmt::Display`
   --> $DIR/path-display.rs:9:20
@@ -16,7 +16,7 @@ LL |     println!("{}", path);
    |
    = help: the trait `std::fmt::Display` is not implemented for `PathBuf`
    = note: call `.display()` or `.to_string_lossy()` to safely print paths, as they may contain non-Unicode data
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` which expands to macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

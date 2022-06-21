@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the associated function `new_display`
    |
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` which expands to macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider specifying the generic argument
    |
 LL |     println!("{}", 23u64.test(xs.iter().sum())::<T>);
