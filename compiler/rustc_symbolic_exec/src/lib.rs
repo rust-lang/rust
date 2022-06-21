@@ -845,15 +845,12 @@ fn backward_symbolic_exec(body: &Body<'_>) -> String {
     // constrain int inputs
     for i in 0..body.arg_count {
         let arg = ast::Int::new_const(&solver.get_context(), format!("_{}", (i + 1).to_string()));
-        let min_int = ast::Int::from_bv(
-            &ast::BV::from_i64(solver.get_context(), i32::MIN.into(), 32),
-            true,
-        );
-        let max_int = ast::Int::from_bv(
-            &ast::BV::from_i64(solver.get_context(), i32::MAX.into(), 32),
-            true,
-        );
-        solver.assert(&ast::Bool::and(solver.get_context(), &[&arg.ge(&min_int), &arg.le(&max_int)]));
+        let min_int =
+            ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), i32::MIN.into(), 32), true);
+        let max_int =
+            ast::Int::from_bv(&ast::BV::from_i64(solver.get_context(), i32::MAX.into(), 32), true);
+        solver
+            .assert(&ast::Bool::and(solver.get_context(), &[&arg.ge(&min_int), &arg.le(&max_int)]));
     }
 
     // let panic_var = ast::Bool::new_const(solver.get_context(), PANIC_VAR_NAME);
