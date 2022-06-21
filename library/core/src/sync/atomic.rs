@@ -4,7 +4,7 @@
 //! threads, and are the building blocks of other concurrent
 //! types.
 //!
-//! Rust atomics follow the same rules as [C++20 atomics][cpp], specifically `atomic_ref`.
+//! Rust atomics currently follow the same rules as [C++20 atomics][cpp], specifically `atomic_ref`.
 //! Basically, creating a *shared reference* to one of the Rust atomic types corresponds to creating
 //! an `atomic_ref` in C++; the `atomic_ref` is destroyed when the lifetime of the shared reference
 //! ends. (A Rust atomic type that is exclusively owned or behind a mutable reference does *not*
