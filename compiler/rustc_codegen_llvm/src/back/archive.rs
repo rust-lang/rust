@@ -15,19 +15,12 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_session::cstore::{DllCallingConvention, DllImport};
 use rustc_session::Session;
 
-struct ArchiveConfig<'a> {
-    pub sess: &'a Session,
-    pub dst: PathBuf,
-    pub src: Option<PathBuf>,
-}
-
 /// Helper for adding many files to an archive.
 #[must_use = "must call build() to finish building the archive"]
 pub struct LlvmArchiveBuilder<'a> {
-    config: ArchiveConfig<'a>,
-    removals: Vec<String>,
+    sess: &'a Session,
+    dst: PathBuf,
     additions: Vec<Addition>,
-    src_archive: Option<Option<ArchiveRO>>,
 }
 
 enum Addition {
@@ -50,10 +43,6 @@ fn is_relevant_child(c: &Child<'_>) -> bool {
     }
 }
 
-fn archive_config<'a>(sess: &'a Session, output: &Path, input: Option<&Path>) -> ArchiveConfig<'a> {
-    ArchiveConfig { sess, dst: output.to_path_buf(), src: input.map(|p| p.to_path_buf()) }
-}
-
 /// Map machine type strings to values of LLVM's MachineTypes enum.
 fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
     match cpu {
@@ -68,37 +57,8 @@ fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
 impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     /// Creates a new static archive, ready for modifying the archive specified
     /// by `config`.
-    fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> LlvmArchiveBuilder<'a> {
-        let config = archive_config(sess, output, input);
-        LlvmArchiveBuilder {
-            config,
-            removals: Vec::new(),
-            additions: Vec::new(),
-            src_archive: None,
-        }
-    }
-
-    /// Removes a file from this archive
-    fn remove_file(&mut self, file: &str) {
-        self.removals.push(file.to_string());
-    }
-
-    /// Lists all files in an archive
-    fn src_files(&mut self) -> Vec<String> {
-        if self.src_archive().is_none() {
-            return Vec::new();
-        }
-
-        let archive = self.src_archive.as_ref().unwrap().as_ref().unwrap();
-
-        archive
-            .iter()
-            .filter_map(|child| child.ok())
-            .filter(is_relevant_child)
-            .filter_map(|child| child.name())
-            .filter(|name| !self.removals.iter().any(|x| x == name))
-            .map(|name| name.to_owned())
-            .collect()
+    fn new(sess: &'a Session, output: &Path) -> LlvmArchiveBuilder<'a> {
+        LlvmArchiveBuilder { sess, dst: output.to_path_buf(), additions: Vec::new() }
     }
 
     fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
@@ -129,13 +89,10 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
-    fn build(mut self) {
-        let kind = self.llvm_archive_kind().unwrap_or_else(|kind| {
-            self.config.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
-        });
-
-        if let Err(e) = self.build_with_llvm(kind) {
-            self.config.sess.fatal(&format!("failed to build archive: {}", e));
+    fn build(mut self) -> bool {
+        match self.build_with_llvm() {
+            Ok(any_members) => any_members,
+            Err(e) => self.sess.fatal(&format!("failed to build archive: {}", e)),
         }
     }
 
@@ -151,7 +108,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             output_path.with_extension("lib")
         };
 
-        let target = &self.config.sess.target;
+        let target = &self.sess.target;
         let mingw_gnu_toolchain = target.vendor == "pc"
             && target.os == "windows"
             && target.env == "gnu"
@@ -160,7 +117,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = dll_imports
             .iter()
             .map(|import: &DllImport| {
-                if self.config.sess.target.arch == "x86" {
+                if self.sess.target.arch == "x86" {
                     (
                         LlvmArchiveBuilder::i686_decorated_name(import, mingw_gnu_toolchain),
                         import.ordinal,
@@ -197,11 +154,11 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             match std::fs::write(&def_file_path, def_file_content) {
                 Ok(_) => {}
                 Err(e) => {
-                    self.config.sess.fatal(&format!("Error writing .DEF file: {}", e));
+                    self.sess.fatal(&format!("Error writing .DEF file: {}", e));
                 }
             };
 
-            let dlltool = find_binutils_dlltool(self.config.sess);
+            let dlltool = find_binutils_dlltool(self.sess);
             let result = std::process::Command::new(dlltool)
                 .args([
                     "-d",
@@ -215,9 +172,9 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
             match result {
                 Err(e) => {
-                    self.config.sess.fatal(&format!("Error calling dlltool: {}", e));
+                    self.sess.fatal(&format!("Error calling dlltool: {}", e));
                 }
-                Ok(output) if !output.status.success() => self.config.sess.fatal(&format!(
+                Ok(output) if !output.status.success() => self.sess.fatal(&format!(
                     "Dlltool could not create import library: {}\n{}",
                     String::from_utf8_lossy(&output.stdout),
                     String::from_utf8_lossy(&output.stderr)
@@ -263,13 +220,13 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
                     output_path_z.as_ptr(),
                     ffi_exports.as_ptr(),
                     ffi_exports.len(),
-                    llvm_machine_type(&self.config.sess.target.arch) as u16,
-                    !self.config.sess.target.is_like_msvc,
+                    llvm_machine_type(&self.sess.target.arch) as u16,
+                    !self.sess.target.is_like_msvc,
                 )
             };
 
             if result == crate::llvm::LLVMRustResult::Failure {
-                self.config.sess.fatal(&format!(
+                self.sess.fatal(&format!(
                     "Error creating import library for {}: {}",
                     lib_name,
                     llvm::last_error().unwrap_or("unknown LLVM error".to_string())
@@ -278,7 +235,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         };
 
         self.add_archive(&output_path, |_| false).unwrap_or_else(|e| {
-            self.config.sess.fatal(&format!(
+            self.sess.fatal(&format!(
                 "failed to add native library {}: {}",
                 output_path.display(),
                 e
@@ -288,46 +245,19 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 }
 
 impl<'a> LlvmArchiveBuilder<'a> {
-    fn src_archive(&mut self) -> Option<&ArchiveRO> {
-        if let Some(ref a) = self.src_archive {
-            return a.as_ref();
-        }
-        let src = self.config.src.as_ref()?;
-        self.src_archive = Some(ArchiveRO::open(src).ok());
-        self.src_archive.as_ref().unwrap().as_ref()
-    }
+    fn build_with_llvm(&mut self) -> io::Result<bool> {
+        let kind = &*self.sess.target.archive_format;
+        let kind = kind.parse::<ArchiveKind>().map_err(|_| kind).unwrap_or_else(|kind| {
+            self.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
+        });
 
-    fn llvm_archive_kind(&self) -> Result<ArchiveKind, &str> {
-        let kind = &*self.config.sess.target.archive_format;
-        kind.parse().map_err(|_| kind)
-    }
-
-    fn build_with_llvm(&mut self, kind: ArchiveKind) -> io::Result<()> {
-        let removals = mem::take(&mut self.removals);
         let mut additions = mem::take(&mut self.additions);
         let mut strings = Vec::new();
         let mut members = Vec::new();
 
-        let dst = CString::new(self.config.dst.to_str().unwrap())?;
+        let dst = CString::new(self.dst.to_str().unwrap())?;
 
         unsafe {
-            if let Some(archive) = self.src_archive() {
-                for child in archive.iter() {
-                    let child = child.map_err(string_to_io_error)?;
-                    let Some(child_name) = child.name() else { continue };
-                    if removals.iter().any(|r| r == child_name) {
-                        continue;
-                    }
-
-                    let name = CString::new(child_name)?;
-                    members.push(llvm::LLVMRustArchiveMemberNew(
-                        ptr::null(),
-                        name.as_ptr(),
-                        Some(child.raw),
-                    ));
-                    strings.push(name);
-                }
-            }
             for addition in &mut additions {
                 match addition {
                     Addition::File { path, name_in_archive } => {
@@ -389,7 +319,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
                 };
                 Err(io::Error::new(io::ErrorKind::Other, msg))
             } else {
-                Ok(())
+                Ok(!members.is_empty())
             };
             for member in members {
                 llvm::LLVMRustArchiveMemberFree(member);
