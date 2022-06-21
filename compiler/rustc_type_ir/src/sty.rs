@@ -554,137 +554,37 @@ impl<I: Interner> hash::Hash for TyKind<I> {
 // This is manually implemented because a derive would require `I: Debug`
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match (&*self,) {
-            (&Bool,) => fmt::Formatter::write_str(f, "Bool"),
-            (&Char,) => fmt::Formatter::write_str(f, "Char"),
-            (&Int(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Int");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
+        use std::fmt::*;
+        match self {
+            Bool => Formatter::write_str(f, "Bool"),
+            Char => Formatter::write_str(f, "Char"),
+            Int(f0) => Formatter::debug_tuple_field1_finish(f, "Int", f0),
+            Uint(f0) => Formatter::debug_tuple_field1_finish(f, "Uint", f0),
+            Float(f0) => Formatter::debug_tuple_field1_finish(f, "Float", f0),
+            Adt(f0, f1) => Formatter::debug_tuple_field2_finish(f, "Adt", f0, f1),
+            Foreign(f0) => Formatter::debug_tuple_field1_finish(f, "Foreign", f0),
+            Str => Formatter::write_str(f, "Str"),
+            Array(f0, f1) => Formatter::debug_tuple_field2_finish(f, "Array", f0, f1),
+            Slice(f0) => Formatter::debug_tuple_field1_finish(f, "Slice", f0),
+            RawPtr(f0) => Formatter::debug_tuple_field1_finish(f, "RawPtr", f0),
+            Ref(f0, f1, f2) => Formatter::debug_tuple_field3_finish(f, "Ref", f0, f1, f2),
+            FnDef(f0, f1) => Formatter::debug_tuple_field2_finish(f, "FnDef", f0, f1),
+            FnPtr(f0) => Formatter::debug_tuple_field1_finish(f, "FnPtr", f0),
+            Dynamic(f0, f1) => Formatter::debug_tuple_field2_finish(f, "Dynamic", f0, f1),
+            Closure(f0, f1) => Formatter::debug_tuple_field2_finish(f, "Closure", f0, f1),
+            Generator(f0, f1, f2) => {
+                Formatter::debug_tuple_field3_finish(f, "Generator", f0, f1, f2)
             }
-            (&Uint(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Uint");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Float(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Float");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Adt(ref __self_0, ref __self_1),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Adt");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Foreign(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Foreign");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Str,) => fmt::Formatter::write_str(f, "Str"),
-            (&Array(ref __self_0, ref __self_1),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Array");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Slice(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Slice");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&RawPtr(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "RawPtr");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Ref(ref __self_0, ref __self_1, ref __self_2),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Ref");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_2);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&FnDef(ref __self_0, ref __self_1),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "FnDef");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&FnPtr(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "FnPtr");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Dynamic(ref __self_0, ref __self_1),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Dynamic");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Closure(ref __self_0, ref __self_1),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Closure");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Generator(ref __self_0, ref __self_1, ref __self_2),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Generator");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_2);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&GeneratorWitness(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "GeneratorWitness");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Never,) => fmt::Formatter::write_str(f, "Never"),
-            (&Tuple(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Tuple");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Projection(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Projection");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Opaque(ref __self_0, ref __self_1),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Opaque");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Param(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Param");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Bound(ref __self_0, ref __self_1),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Bound");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_1);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Placeholder(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Placeholder");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Infer(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Infer");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
-            (&Error(ref __self_0),) => {
-                let debug_trait_builder = &mut fmt::Formatter::debug_tuple(f, "Error");
-                let _ = fmt::DebugTuple::field(debug_trait_builder, &__self_0);
-                fmt::DebugTuple::finish(debug_trait_builder)
-            }
+            GeneratorWitness(f0) => Formatter::debug_tuple_field1_finish(f, "GeneratorWitness", f0),
+            Never => Formatter::write_str(f, "Never"),
+            Tuple(f0) => Formatter::debug_tuple_field1_finish(f, "Tuple", f0),
+            Projection(f0) => Formatter::debug_tuple_field1_finish(f, "Projection", f0),
+            Opaque(f0, f1) => Formatter::debug_tuple_field2_finish(f, "Opaque", f0, f1),
+            Param(f0) => Formatter::debug_tuple_field1_finish(f, "Param", f0),
+            Bound(f0, f1) => Formatter::debug_tuple_field2_finish(f, "Bound", f0, f1),
+            Placeholder(f0) => Formatter::debug_tuple_field1_finish(f, "Placeholder", f0),
+            Infer(f0) => Formatter::debug_tuple_field1_finish(f, "Infer", f0),
+            TyKind::Error(f0) => Formatter::debug_tuple_field1_finish(f, "Error", f0),
         }
     }
 }

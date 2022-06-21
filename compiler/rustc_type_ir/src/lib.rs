@@ -1,3 +1,4 @@
+#![feature(fmt_helpers_for_derive)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 
