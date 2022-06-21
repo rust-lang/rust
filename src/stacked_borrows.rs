@@ -821,6 +821,13 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     } else {
                         Permission::SharedReadWrite
                     };
+                    let protector = if frozen {
+                        protector
+                    } else {
+                        // We do not protect inside UnsafeCell.
+                        // This fixes https://github.com/rust-lang/rust/issues/55005.
+                        None
+                    };
                     let item = Item { perm, tag: new_tag, protector };
                     let mut global = this.machine.stacked_borrows.as_ref().unwrap().borrow_mut();
                     stacked_borrows.for_each(range, |offset, stack, history| {
