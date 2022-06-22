@@ -2,7 +2,9 @@ error: Undefined Behavior: type validation failed: encountered a dangling refere
   --> $DIR/branchless-select-i128-pointer.rs:LL:CC
    |
 LL | /             transmute::<_, &str>(
-LL | |                 !mask & transmute::<_, TwoPtrs>("false !") | mask & transmute::<_, TwoPtrs>("true !"),
+LL | |
+LL | |                 !mask & transmute::<_, TwoPtrs>("false !")
+LL | |                     | mask & transmute::<_, TwoPtrs>("true !"),
 LL | |             )
    | |_____________^ type validation failed: encountered a dangling reference (address $HEX is unallocated)
    |
