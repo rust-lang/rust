@@ -20,8 +20,8 @@ fn ptr_int_casts() {
     *val = (1 as *const u8).wrapping_offset(-4);
     assert_eq!(*val as usize, usize::MAX - 2);
 
+    // ptr-int-ptr
     {
-        // ptr-int-ptr
         let x = 13;
         let mut y = &x as &_ as *const _ as usize;
         y += 13;
@@ -30,8 +30,8 @@ fn ptr_int_casts() {
         assert!(eq_ref(&x, unsafe { &*y }));
     }
 
+    // fnptr-int-fnptr
     {
-        // fnptr-int-fnptr
         let x: fn() -> i32 = f;
         let y: *mut u8 = unsafe { mem::transmute(x as fn() -> i32) };
         let mut y = y as usize;

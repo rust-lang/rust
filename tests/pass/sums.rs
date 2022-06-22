@@ -1,7 +1,7 @@
 #[derive(Debug, PartialEq)]
 enum Unit {
-    Unit(()),
-} // Force non-C-enum representation.
+    Unit(()), // Force non-C-enum representation.
+}
 
 fn return_unit() -> Unit {
     Unit::Unit(())
@@ -9,9 +9,9 @@ fn return_unit() -> Unit {
 
 #[derive(Debug, PartialEq)]
 enum MyBool {
-    False(()),
+    False(()), // Force non-C-enum representation.
     True(()),
-} // Force non-C-enum representation.
+}
 
 fn return_true() -> MyBool {
     MyBool::True(())

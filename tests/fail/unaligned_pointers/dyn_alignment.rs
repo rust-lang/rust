@@ -6,8 +6,8 @@
 struct MuchAlign;
 
 fn main() {
+    // Try many times as this might work by chance.
     for _ in 0..10 {
-        // Try many times as this might work by chance.
         let buf = [0u32; 256];
         // `buf` is sufficiently aligned for `layout.align` on a `dyn Debug`, but not
         // for the actual alignment required by `MuchAlign`.
