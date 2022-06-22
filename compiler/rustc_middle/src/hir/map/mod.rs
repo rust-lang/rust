@@ -1276,10 +1276,6 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> Module
 
             self.items.push(item.item_id());
 
-            if self.tcx.hir().is_body_owner(item.def_id) {
-                self.body_owners.push(item.def_id);
-            }
-
             if let ItemKind::Mod(..) = item.kind {
                 // If this declares another module, do not recurse inside it.
                 self.submodules.push(item.def_id);
@@ -1319,14 +1315,14 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> Module
             if matches!(ex.kind, ExprKind::Closure { .. })
                 && associated_body(Node::Expr(ex)).is_some()
             {
-                self.body_owners.push(ex.hir_id.owner);
+                self.body_owners.push(self.tcx.hir().local_def_id(ex.hir_id));
             }
             intravisit::walk_expr(self, ex)
         }
 
         fn visit_anon_const(&mut self, c: &'hir AnonConst) {
             if associated_body(Node::AnonConst(c)).is_some() {
-                self.body_owners.push(c.hir_id.owner);
+                self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
             }
             intravisit::walk_anon_const(self, c)
         }
@@ -1427,14 +1423,14 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
             if matches!(ex.kind, ExprKind::Closure { .. })
                 && associated_body(Node::Expr(ex)).is_some()
             {
-                self.body_owners.push(ex.hir_id.owner);
+                self.body_owners.push(self.tcx.hir().local_def_id(ex.hir_id));
             }
             intravisit::walk_expr(self, ex)
         }
 
         fn visit_anon_const(&mut self, c: &'hir AnonConst) {
             if associated_body(Node::AnonConst(c)).is_some() {
-                self.body_owners.push(c.hir_id.owner);
+                self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
             }
             intravisit::walk_anon_const(self, c)
         }
