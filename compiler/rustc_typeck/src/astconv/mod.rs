@@ -38,7 +38,9 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::astconv_object_safety_violations;
-use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
+use rustc_trait_selection::traits::error_reporting::{
+    report_object_safety_error, suggestions::NextTypeParamName,
+};
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
 use smallvec::SmallVec;
@@ -2986,48 +2988,48 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         Some(r)
     }
 
-    /// make sure that we are in the condition to suggest the blanket implementation, if we are in the
-    /// case of suggest it, use the function `err_reporter` to report the error or suggestion.
+    /// Make sure that we are in the condition to suggest the blanket implementation.
     fn maybe_lint_blanket_trait_impl<T: rustc_errors::EmissionGuarantee>(
         &self,
         self_ty: &hir::Ty<'_>,
-        diagnostic: &mut DiagnosticBuilder<'_, T>,
+        diag: &mut DiagnosticBuilder<'_, T>,
     ) {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id);
         if let hir::Node::Item(hir::Item {
             kind:
                 hir::ItemKind::Impl(hir::Impl {
-                    self_ty: impl_self_typ, of_trait: Some(trait_ref), generics, ..
+                    self_ty: impl_self_ty, of_trait: Some(of_trait_ref), generics, ..
                 }),
             ..
-        }) = tcx.hir().get_by_def_id(parent_id) && self_ty.hir_id == impl_self_typ.hir_id
+        }) = tcx.hir().get_by_def_id(parent_id) && self_ty.hir_id == impl_self_ty.hir_id
         {
-            let trait_span = trait_ref.path.span;
-            let target_span = if let Some(span) = generics.span_for_param_suggestion() {
-                span
-            } else {
-                trait_span
-            };
-            let is_local = trait_ref.trait_def_id().map_or(false, |def_id| def_id.is_local());
-            if is_local {
-                let trait_name = tcx.sess.source_map().span_to_snippet(trait_span).unwrap();
-                let self_name = tcx.sess.source_map().span_to_snippet(self_ty.span).unwrap();
-                let blanket_msg = format!(
-                    "use a blanket implementation to implement {} for all types that also implement {}",
-                    trait_name, self_name
-                );
-                let blanket_sugg = vec![
-                    (target_span, "<T: ".to_owned()),
-                    (trait_span.shrink_to_hi(), format!("{}>", self_name)),
-                    (self_ty.span, "T".to_owned()),
-                ];
-                diagnostic.multipart_suggestion(
-                    blanket_msg,
-                    blanket_sugg,
-                    Applicability::Unspecified,
-                );
+            if !of_trait_ref.trait_def_id().map_or(false, |def_id| def_id.is_local()) {
+                return;
             }
+            let of_trait_span = of_trait_ref.path.span;
+            // make sure that we are not calling unwrap to abort during the compilation
+            let Ok(impl_trait_name) = tcx.sess.source_map().span_to_snippet(self_ty.span) else { return; };
+            let Ok(of_trait_name) = tcx.sess.source_map().span_to_snippet(of_trait_span) else { return; };
+            // check if the trait has generics, to make a correct suggestion
+            let param_name = generics.params.next_type_param_name(None);
+
+            let add_generic_sugg = if let Some(span) = generics.span_for_param_suggestion() {
+                let param_name = generics.params.next_type_param_name(Some(&impl_trait_name));
+                (span, format!(", {}: {}", param_name, impl_trait_name))
+            } else {
+                (generics.span, format!("<{}: {}>", param_name, impl_trait_name))
+            };
+            diag.multipart_suggestion(
+            format!("alternatively use a blanket \
+                     implementation to implement `{of_trait_name}` for \
+                     all types that also implement `{impl_trait_name}`"),
+                vec![
+                    (self_ty.span, param_name),
+                    add_generic_sugg,
+                ],
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 
@@ -3045,6 +3047,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .map_or(false, |s| s.trim_end().ends_with('<'));
 
             let is_global = poly_trait_ref.trait_ref.path.is_global();
+            let is_local = if let Some(def_id) = poly_trait_ref.trait_ref.trait_def_id() {
+                def_id.is_local()
+            } else {
+                false
+            };
             let sugg = Vec::from_iter([
                 (
                     self_ty.span.shrink_to_lo(),
@@ -3069,7 +3076,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let mut diag =
                     rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg);
                 diag.multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable);
-                self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
+                // check if the impl trait that we are considering is a impl of a local trait
+                if is_local {
+                    self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
+                }
                 diag.emit();
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
@@ -3084,7 +3094,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             sugg,
                             Applicability::MachineApplicable,
                         );
-                        self.maybe_lint_blanket_trait_impl::<()>(&self_ty, &mut diag);
+                        // check if the impl trait that we are considering is a impl of a local trait
+                        if is_local {
+                            self.maybe_lint_blanket_trait_impl::<()>(&self_ty, &mut diag);
+                        }
                         diag.emit();
                     },
                 );
