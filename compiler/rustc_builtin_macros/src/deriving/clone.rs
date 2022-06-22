@@ -300,10 +300,12 @@ fn cs_clone_from(
                     &format!("not exactly 2 arguments in `clone_from` in `derive({})`", name),
                 );
             }
+            let self_ = cx.expr_addr_of_mut(field.span, field.self_.clone());
+            let other = cx.expr_addr_of(field.span, field.other[0].clone());
             cx.stmt_semi(cx.expr_call_global(
                 field.span,
                 clone_from_path.clone(),
-                vec![field.self_.clone(), field.other[0].clone()],
+                vec![self_, other],
             ))
         })
         .collect();

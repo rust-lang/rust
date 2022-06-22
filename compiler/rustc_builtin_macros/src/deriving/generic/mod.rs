@@ -1039,6 +1039,13 @@ impl<'a> MethodDef<'a> {
         let span = trait_.span;
         let mut patterns = Vec::new();
         for i in 0..self_args.len() {
+            // Currently supports mutability only for `&mut self`
+            let mutbl = match (i, &self.explicit_self) {
+                (0, Some(Some(PtrTy::Borrowed(_, mutbl)))) => *mutbl,
+                (0, Some(Some(PtrTy::Raw(mutbl)))) => *mutbl,
+                _ => ast::Mutability::Not,
+            };
+
             // We could use `type_ident` instead of `Self`, but in the case of a type parameter
             // shadowing the struct name, that causes a second, unnecessary E0578 error. #97343
             let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
@@ -1047,7 +1054,7 @@ impl<'a> MethodDef<'a> {
                 struct_path,
                 struct_def,
                 &format!("__self_{}", i),
-                ast::Mutability::Not,
+                mutbl,
                 use_temporaries,
             );
             patterns.push(pat);
@@ -1250,28 +1257,35 @@ impl<'a> MethodDef<'a> {
             .enumerate()
             .filter(|&(_, v)| !(self.unify_fieldless_variants && v.data.fields().is_empty()))
             .map(|(index, variant)| {
-                let mk_self_pat = |cx: &mut ExtCtxt<'_>, self_arg_name: &str| {
-                    let (p, idents) = trait_.create_enum_variant_pattern(
-                        cx,
-                        type_ident,
-                        variant,
-                        self_arg_name,
-                        ast::Mutability::Not,
-                    );
-                    (cx.pat(span, PatKind::Ref(p, ast::Mutability::Not)), idents)
+                // Support mutability only for `&mut self` for now.
+                let self_mutbl = match &self.explicit_self {
+                    Some(Some(PtrTy::Borrowed(_, mutbl))) => *mutbl,
+                    Some(Some(PtrTy::Raw(mutbl))) => *mutbl,
+                    _ => ast::Mutability::Not,
                 };
+                let mk_self_pat =
+                    |cx: &mut ExtCtxt<'_>, self_arg_name: &str, mutbl: ast::Mutability| {
+                        let (p, idents) = trait_.create_enum_variant_pattern(
+                            cx,
+                            type_ident,
+                            variant,
+                            self_arg_name,
+                            mutbl,
+                        );
+                        (cx.pat(span, PatKind::Ref(p, mutbl)), idents)
+                    };
 
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
                 // (see "Final wrinkle" note below for why.)
                 let mut subpats = Vec::with_capacity(self_arg_names.len());
                 let mut self_pats_idents = Vec::with_capacity(self_arg_names.len() - 1);
                 let first_self_pat_idents = {
-                    let (p, idents) = mk_self_pat(cx, &self_arg_names[0]);
+                    let (p, idents) = mk_self_pat(cx, &self_arg_names[0], self_mutbl);
                     subpats.push(p);
                     idents
                 };
                 for self_arg_name in &self_arg_names[1..] {
-                    let (p, idents) = mk_self_pat(cx, &self_arg_name);
+                    let (p, idents) = mk_self_pat(cx, &self_arg_name, ast::Mutability::Not);
                     subpats.push(p);
                     self_pats_idents.push(idents);
                 }
