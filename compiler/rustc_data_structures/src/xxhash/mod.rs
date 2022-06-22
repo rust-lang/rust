@@ -20,7 +20,7 @@ pub struct Hash128 {
 }
 
 cfg_if! {
-    if #[cfg(target_feature = "avx2")] {
+    if #[cfg(target_feature = "sse2")] {
         #[repr(align(16))]
         struct Acc([u64; 8]);
     } else {
@@ -28,7 +28,7 @@ cfg_if! {
     }
 }
 
-#[cfg(not(target_feature = "avx2"))]
+#[cfg(not(target_feature = "sse2"))]
 const XXH_ACC_ALIGN: usize = 16;
 const XXH3_MIDSIZE_MAX: u64 = 240;
 const XXH3_INTERNALBUFFER_SIZE: usize = 256;
@@ -191,7 +191,7 @@ impl Xxh3Hasher {
 }
 
 cfg_if! {
-    if #[cfg(target_feature = "avx2")] {
+    if #[cfg(target_feature = "sse2")] {
         const XXH3_accumulate_512: XXH3_f_accumulate_512 = XXH3_accumulate_512_sse2;
         const XXH3_scrambleAcc: XXH3_f_scrambleAcc = XXH3_scrambleAcc_sse2;
     } else {
@@ -493,7 +493,7 @@ fn checked_memcpy(dst: PtrMut<u8>, src: Ptr<u8>, byte_count: usize) {
 }
 
 #[inline]
-#[cfg(not(target_feature = "avx2"))]
+#[cfg(not(target_feature = "sse2"))]
 fn XXH3_accumulate_512_scalar(acc: &mut Acc, input: Ptr<u8>, secret: Ptr<u8>) {
     // Make sure this gets unrolled or that i >= 0 && i < XXH_ACC_NB is known to LLVM
     for i in 0..XXH_ACC_NB {
@@ -502,7 +502,7 @@ fn XXH3_accumulate_512_scalar(acc: &mut Acc, input: Ptr<u8>, secret: Ptr<u8>) {
 }
 
 #[inline]
-#[cfg(not(target_feature = "avx2"))]
+#[cfg(not(target_feature = "sse2"))]
 fn XXH3_scalarRound(acc: &mut Acc, input: Ptr<u8>, secret: Ptr<u8>, lane: usize) {
     debug_assert!(lane < XXH_ACC_NB);
     debug_assert!((acc.0.as_ptr() as usize & (XXH_ACC_ALIGN - 1)) == 0);
@@ -515,7 +515,7 @@ fn XXH3_scalarRound(acc: &mut Acc, input: Ptr<u8>, secret: Ptr<u8>, lane: usize)
     }
 }
 
-#[cfg(target_feature = "avx2")]
+#[cfg(target_feature = "sse2")]
 #[inline]
 fn XXH3_accumulate_512_sse2(acc: &mut Acc, input: Ptr<u8>, secret: Ptr<u8>) {
     debug_assert!((acc as *mut _ as usize & 15) == 0);
@@ -650,7 +650,7 @@ fn XXH3_accumulate(
 }
 
 #[inline]
-#[cfg(not(target_feature = "avx2"))]
+#[cfg(not(target_feature = "sse2"))]
 fn XXH3_scrambleAcc_scalar(acc: &mut Acc, secret: Ptr<u8>) {
     for i in 0..XXH_ACC_NB {
         XXH3_scalarScrambleRound(acc, secret, i);
@@ -658,7 +658,7 @@ fn XXH3_scrambleAcc_scalar(acc: &mut Acc, secret: Ptr<u8>) {
 }
 
 #[inline]
-#[cfg(not(target_feature = "avx2"))]
+#[cfg(not(target_feature = "sse2"))]
 fn XXH3_scalarScrambleRound(acc: &mut Acc, secret: Ptr<u8>, lane: usize) {
     debug_assert!(((acc.0.as_ptr() as usize) & (XXH_ACC_ALIGN - 1)) == 0);
     debug_assert!(lane < XXH_ACC_NB);
@@ -678,7 +678,7 @@ const fn XXH_xorshift64(v64: u64, shift: i32) -> u64 {
     return v64 ^ (v64 >> shift);
 }
 
-#[cfg(target_feature = "avx2")]
+#[cfg(target_feature = "sse2")]
 #[inline]
 fn XXH3_scrambleAcc_sse2(acc: &mut Acc, secret: Ptr<u8>) {
     debug_assert!((acc as *mut _ as usize & 15) == 0);
