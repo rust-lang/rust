@@ -70,6 +70,214 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     unsafe { crate::ptr::drop_in_place(to_drop) }
 }
 
+// These have been renamed.
+#[cfg(bootstrap)]
+extern "rust-intrinsic" {
+    pub fn atomic_cxchg<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchg_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchg_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchg_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchg_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchg_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchg_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchg_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchg_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_load<T: Copy>(src: *const T) -> T;
+    pub fn atomic_load_acq<T: Copy>(src: *const T) -> T;
+    pub fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
+    pub fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
+    pub fn atomic_store<T: Copy>(dst: *mut T, val: T);
+    pub fn atomic_store_rel<T: Copy>(dst: *mut T, val: T);
+    pub fn atomic_store_relaxed<T: Copy>(dst: *mut T, val: T);
+    pub fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
+    pub fn atomic_xchg<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xchg_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xchg_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xchg_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xchg_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xadd<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xadd_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xadd_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xadd_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xsub<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xsub_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xsub_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xsub_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xsub_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_and<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_and_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_and_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_and_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_and_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_nand<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_nand_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_nand_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_nand_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_nand_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_or<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_or_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_or_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_or_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_or_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xor<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xor_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xor_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xor_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xor_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_max<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_max_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_max_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_max_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_max_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_min<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_min_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_min_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_min_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_min_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umin<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umin_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umin_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umin_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umin_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umax<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umax_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umax_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umax_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umax_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_fence();
+    pub fn atomic_fence_acq();
+    pub fn atomic_fence_rel();
+    pub fn atomic_fence_acqrel();
+    pub fn atomic_singlethreadfence();
+    pub fn atomic_singlethreadfence_acq();
+    pub fn atomic_singlethreadfence_rel();
+    pub fn atomic_singlethreadfence_acqrel();
+}
+
+// These have been renamed.
+#[cfg(bootstrap)]
+mod atomics {
+    pub use super::atomic_cxchg as atomic_cxchg_seqcst_seqcst;
+    pub use super::atomic_cxchg_acq as atomic_cxchg_acquire_acquire;
+    pub use super::atomic_cxchg_acq_failrelaxed as atomic_cxchg_acquire_relaxed;
+    pub use super::atomic_cxchg_acqrel as atomic_cxchg_acqrel_acquire;
+    pub use super::atomic_cxchg_acqrel_failrelaxed as atomic_cxchg_acqrel_relaxed;
+    pub use super::atomic_cxchg_failacq as atomic_cxchg_seqcst_acquire;
+    pub use super::atomic_cxchg_failrelaxed as atomic_cxchg_seqcst_relaxed;
+    pub use super::atomic_cxchg_rel as atomic_cxchg_release_relaxed;
+    pub use super::atomic_cxchg_relaxed as atomic_cxchg_relaxed_relaxed;
+
+    pub use super::atomic_cxchgweak as atomic_cxchgweak_seqcst_seqcst;
+    pub use super::atomic_cxchgweak_acq as atomic_cxchgweak_acquire_acquire;
+    pub use super::atomic_cxchgweak_acq_failrelaxed as atomic_cxchgweak_acquire_relaxed;
+    pub use super::atomic_cxchgweak_acqrel as atomic_cxchgweak_acqrel_acquire;
+    pub use super::atomic_cxchgweak_acqrel_failrelaxed as atomic_cxchgweak_acqrel_relaxed;
+    pub use super::atomic_cxchgweak_failacq as atomic_cxchgweak_seqcst_acquire;
+    pub use super::atomic_cxchgweak_failrelaxed as atomic_cxchgweak_seqcst_relaxed;
+    pub use super::atomic_cxchgweak_rel as atomic_cxchgweak_release_relaxed;
+    pub use super::atomic_cxchgweak_relaxed as atomic_cxchgweak_relaxed_relaxed;
+
+    pub use super::atomic_load as atomic_load_seqcst;
+    pub use super::atomic_load_acq as atomic_load_acquire;
+    pub use super::atomic_load_relaxed;
+    pub use super::atomic_load_unordered;
+
+    pub use super::atomic_store as atomic_store_seqcst;
+    pub use super::atomic_store_rel as atomic_store_release;
+    pub use super::atomic_store_relaxed;
+    pub use super::atomic_store_unordered;
+
+    pub use super::atomic_xchg as atomic_xchg_seqcst;
+    pub use super::atomic_xchg_acq as atomic_xchg_acquire;
+    pub use super::atomic_xchg_acqrel;
+    pub use super::atomic_xchg_rel as atomic_xchg_release;
+    pub use super::atomic_xchg_relaxed;
+
+    pub use super::atomic_xadd as atomic_xadd_seqcst;
+    pub use super::atomic_xadd_acq as atomic_xadd_acquire;
+    pub use super::atomic_xadd_acqrel;
+    pub use super::atomic_xadd_rel as atomic_xadd_release;
+    pub use super::atomic_xadd_relaxed;
+
+    pub use super::atomic_xsub as atomic_xsub_seqcst;
+    pub use super::atomic_xsub_acq as atomic_xsub_acquire;
+    pub use super::atomic_xsub_acqrel;
+    pub use super::atomic_xsub_rel as atomic_xsub_release;
+    pub use super::atomic_xsub_relaxed;
+
+    pub use super::atomic_and as atomic_and_seqcst;
+    pub use super::atomic_and_acq as atomic_and_acquire;
+    pub use super::atomic_and_acqrel;
+    pub use super::atomic_and_rel as atomic_and_release;
+    pub use super::atomic_and_relaxed;
+
+    pub use super::atomic_nand as atomic_nand_seqcst;
+    pub use super::atomic_nand_acq as atomic_nand_acquire;
+    pub use super::atomic_nand_acqrel;
+    pub use super::atomic_nand_rel as atomic_nand_release;
+    pub use super::atomic_nand_relaxed;
+
+    pub use super::atomic_or as atomic_or_seqcst;
+    pub use super::atomic_or_acq as atomic_or_acquire;
+    pub use super::atomic_or_acqrel;
+    pub use super::atomic_or_rel as atomic_or_release;
+    pub use super::atomic_or_relaxed;
+
+    pub use super::atomic_xor as atomic_xor_seqcst;
+    pub use super::atomic_xor_acq as atomic_xor_acquire;
+    pub use super::atomic_xor_acqrel;
+    pub use super::atomic_xor_rel as atomic_xor_release;
+    pub use super::atomic_xor_relaxed;
+
+    pub use super::atomic_max as atomic_max_seqcst;
+    pub use super::atomic_max_acq as atomic_max_acquire;
+    pub use super::atomic_max_acqrel;
+    pub use super::atomic_max_rel as atomic_max_release;
+    pub use super::atomic_max_relaxed;
+
+    pub use super::atomic_min as atomic_min_seqcst;
+    pub use super::atomic_min_acq as atomic_min_acquire;
+    pub use super::atomic_min_acqrel;
+    pub use super::atomic_min_rel as atomic_min_release;
+    pub use super::atomic_min_relaxed;
+
+    pub use super::atomic_umin as atomic_umin_seqcst;
+    pub use super::atomic_umin_acq as atomic_umin_acquire;
+    pub use super::atomic_umin_acqrel;
+    pub use super::atomic_umin_rel as atomic_umin_release;
+    pub use super::atomic_umin_relaxed;
+
+    pub use super::atomic_umax as atomic_umax_seqcst;
+    pub use super::atomic_umax_acq as atomic_umax_acquire;
+    pub use super::atomic_umax_acqrel;
+    pub use super::atomic_umax_rel as atomic_umax_release;
+    pub use super::atomic_umax_relaxed;
+
+    pub use super::atomic_fence as atomic_fence_seqcst;
+    pub use super::atomic_fence_acq as atomic_fence_acquire;
+    pub use super::atomic_fence_acqrel;
+    pub use super::atomic_fence_rel as atomic_fence_release;
+
+    pub use super::atomic_singlethreadfence as atomic_singlethreadfence_seqcst;
+    pub use super::atomic_singlethreadfence_acq as atomic_singlethreadfence_acquire;
+    pub use super::atomic_singlethreadfence_acqrel;
+    pub use super::atomic_singlethreadfence_rel as atomic_singlethreadfence_release;
+}
+
+#[cfg(bootstrap)]
+pub use atomics::*;
+
+#[cfg(not(bootstrap))]
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
@@ -78,142 +286,226 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange` method by passing
-    /// [`Ordering::SeqCst`] as both the `success` and `failure` parameters.
+    /// [`Ordering::Relaxed`] as both the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
-    pub fn atomic_cxchg<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchg_relaxed_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange` method by passing
-    /// [`Ordering::Acquire`] as both the `success` and `failure` parameters.
+    /// [`Ordering::Relaxed`] and [`Ordering::Acquire`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
-    pub fn atomic_cxchg_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchg_relaxed_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange` method by passing
-    /// [`Ordering::Release`] as the `success` and [`Ordering::Relaxed`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange`].
-    pub fn atomic_cxchg_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    /// Stores a value if the current value is the same as the `old` value.
-    ///
-    /// The stabilized version of this intrinsic is available on the
-    /// [`atomic`] types via the `compare_exchange` method by passing
-    /// [`Ordering::AcqRel`] as the `success` and [`Ordering::Acquire`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange`].
-    pub fn atomic_cxchg_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    /// Stores a value if the current value is the same as the `old` value.
-    ///
-    /// The stabilized version of this intrinsic is available on the
-    /// [`atomic`] types via the `compare_exchange` method by passing
-    /// [`Ordering::Relaxed`] as both the `success` and `failure` parameters.
+    /// [`Ordering::Relaxed`] and [`Ordering::SeqCst`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange`].
-    pub fn atomic_cxchg_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchg_relaxed_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange` method by passing
-    /// [`Ordering::SeqCst`] as the `success` and [`Ordering::Relaxed`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange`].
-    pub fn atomic_cxchg_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// [`Ordering::Acquire`] and [`Ordering::Relaxed`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_acquire_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange` method by passing
-    /// [`Ordering::SeqCst`] as the `success` and [`Ordering::Acquire`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange`].
-    pub fn atomic_cxchg_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// [`Ordering::Acquire`] as both the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_acquire_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange` method by passing
-    /// [`Ordering::Acquire`] as the `success` and [`Ordering::Relaxed`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange`].
-    pub fn atomic_cxchg_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// [`Ordering::Acquire`] and [`Ordering::SeqCst`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_acquire_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange` method by passing
-    /// [`Ordering::AcqRel`] as the `success` and [`Ordering::Relaxed`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange`].
-    pub fn atomic_cxchg_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// [`Ordering::Release`] and [`Ordering::Relaxed`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_release_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange` method by passing
+    /// [`Ordering::Release`] and [`Ordering::Acquire`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_release_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange` method by passing
+    /// [`Ordering::Release`] and [`Ordering::SeqCst`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange` method by passing
+    /// [`Ordering::AcqRel`] and [`Ordering::Relaxed`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_acqrel_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange` method by passing
+    /// [`Ordering::AcqRel`] and [`Ordering::Acquire`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_acqrel_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange` method by passing
+    /// [`Ordering::AcqRel`] and [`Ordering::SeqCst`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_acqrel_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange` method by passing
+    /// [`Ordering::SeqCst`] and [`Ordering::Relaxed`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_seqcst_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange` method by passing
+    /// [`Ordering::SeqCst`] and [`Ordering::Acquire`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_seqcst_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange` method by passing
+    /// [`Ordering::SeqCst`] as both the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange`].
+    pub fn atomic_cxchg_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::SeqCst`] as both the `success` and `failure` parameters.
+    /// [`Ordering::Relaxed`] as both the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
-    pub fn atomic_cxchgweak<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak_relaxed_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::Acquire`] as both the `success` and `failure` parameters.
+    /// [`Ordering::Relaxed`] and [`Ordering::Acquire`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
-    pub fn atomic_cxchgweak_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak_relaxed_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::Release`] as the `success` and [`Ordering::Relaxed`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange_weak`].
-    pub fn atomic_cxchgweak_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    /// Stores a value if the current value is the same as the `old` value.
-    ///
-    /// The stabilized version of this intrinsic is available on the
-    /// [`atomic`] types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::AcqRel`] as the `success` and [`Ordering::Acquire`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange_weak`].
-    pub fn atomic_cxchgweak_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    /// Stores a value if the current value is the same as the `old` value.
-    ///
-    /// The stabilized version of this intrinsic is available on the
-    /// [`atomic`] types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::Relaxed`] as both the `success` and `failure` parameters.
+    /// [`Ordering::Relaxed`] and [`Ordering::SeqCst`] as the success and failure parameters.
     /// For example, [`AtomicBool::compare_exchange_weak`].
-    pub fn atomic_cxchgweak_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    pub fn atomic_cxchgweak_relaxed_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::SeqCst`] as the `success` and [`Ordering::Relaxed`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange_weak`].
-    pub fn atomic_cxchgweak_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// [`Ordering::Acquire`] and [`Ordering::Relaxed`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_acquire_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::SeqCst`] as the `success` and [`Ordering::Acquire`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange_weak`].
-    pub fn atomic_cxchgweak_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// [`Ordering::Acquire`] as both the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_acquire_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::Acquire`] as the `success` and [`Ordering::Relaxed`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange_weak`].
-    pub fn atomic_cxchgweak_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// [`Ordering::Acquire`] and [`Ordering::SeqCst`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_acquire_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `compare_exchange_weak` method by passing
-    /// [`Ordering::AcqRel`] as the `success` and [`Ordering::Relaxed`] as the
-    /// `failure` parameters. For example, [`AtomicBool::compare_exchange_weak`].
-    pub fn atomic_cxchgweak_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// [`Ordering::Release`] and [`Ordering::Relaxed`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_release_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange_weak` method by passing
+    /// [`Ordering::Release`] and [`Ordering::Acquire`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_release_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange_weak` method by passing
+    /// [`Ordering::Release`] and [`Ordering::SeqCst`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange_weak` method by passing
+    /// [`Ordering::AcqRel`] and [`Ordering::Relaxed`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_acqrel_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange_weak` method by passing
+    /// [`Ordering::AcqRel`] and [`Ordering::Acquire`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_acqrel_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange_weak` method by passing
+    /// [`Ordering::AcqRel`] and [`Ordering::SeqCst`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_acqrel_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange_weak` method by passing
+    /// [`Ordering::SeqCst`] and [`Ordering::Relaxed`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_seqcst_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange_weak` method by passing
+    /// [`Ordering::SeqCst`] and [`Ordering::Acquire`] as the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_seqcst_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// [`atomic`] types via the `compare_exchange_weak` method by passing
+    /// [`Ordering::SeqCst`] as both the success and failure parameters.
+    /// For example, [`AtomicBool::compare_exchange_weak`].
+    pub fn atomic_cxchgweak_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     /// Loads the current value of the pointer.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `load` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::load`].
-    pub fn atomic_load<T: Copy>(src: *const T) -> T;
+    pub fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
     /// Loads the current value of the pointer.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `load` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::load`].
-    pub fn atomic_load_acq<T: Copy>(src: *const T) -> T;
+    pub fn atomic_load_acquire<T: Copy>(src: *const T) -> T;
     /// Loads the current value of the pointer.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -227,13 +519,13 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `store` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::store`].
-    pub fn atomic_store<T: Copy>(dst: *mut T, val: T);
+    pub fn atomic_store_seqcst<T: Copy>(dst: *mut T, val: T);
     /// Stores the value at the specified memory location.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `store` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::store`].
-    pub fn atomic_store_rel<T: Copy>(dst: *mut T, val: T);
+    pub fn atomic_store_release<T: Copy>(dst: *mut T, val: T);
     /// Stores the value at the specified memory location.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -247,19 +539,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `swap` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::swap`].
-    pub fn atomic_xchg<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xchg_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `swap` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::swap`].
-    pub fn atomic_xchg_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xchg_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `swap` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::swap`].
-    pub fn atomic_xchg_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xchg_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Stores the value at the specified memory location, returning the old value.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -278,19 +570,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_add` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicIsize::fetch_add`].
-    pub fn atomic_xadd<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xadd_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_add` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicIsize::fetch_add`].
-    pub fn atomic_xadd_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xadd_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_add` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicIsize::fetch_add`].
-    pub fn atomic_xadd_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xadd_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Adds to the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -309,19 +601,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_sub` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
-    pub fn atomic_xsub<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xsub_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_sub` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
-    pub fn atomic_xsub_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xsub_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_sub` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
-    pub fn atomic_xsub_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xsub_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Subtract from the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -340,19 +632,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_and` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_and`].
-    pub fn atomic_and<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_and_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_and` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_and`].
-    pub fn atomic_and_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_and_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_and` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_and`].
-    pub fn atomic_and_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_and_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise and with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -371,19 +663,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`AtomicBool`] type via the `fetch_nand` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_nand`].
-    pub fn atomic_nand<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_nand_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`AtomicBool`] type via the `fetch_nand` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_nand`].
-    pub fn atomic_nand_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_nand_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`AtomicBool`] type via the `fetch_nand` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_nand`].
-    pub fn atomic_nand_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_nand_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise nand with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -402,19 +694,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_or` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_or`].
-    pub fn atomic_or<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_or_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_or` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_or`].
-    pub fn atomic_or_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_or_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_or` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_or`].
-    pub fn atomic_or_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_or_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise or with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -433,19 +725,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_xor` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_xor`].
-    pub fn atomic_xor<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xor_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_xor` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_xor`].
-    pub fn atomic_xor_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xor_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] types via the `fetch_xor` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_xor`].
-    pub fn atomic_xor_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_xor_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Bitwise xor with the current value, returning the previous value.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -464,19 +756,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_max` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicI32::fetch_max`].
-    pub fn atomic_max<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_max_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_max` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicI32::fetch_max`].
-    pub fn atomic_max_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_max_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_max` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicI32::fetch_max`].
-    pub fn atomic_max_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_max_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -495,19 +787,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_min` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicI32::fetch_min`].
-    pub fn atomic_min<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_min_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_min` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicI32::fetch_min`].
-    pub fn atomic_min_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_min_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_min` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicI32::fetch_min`].
-    pub fn atomic_min_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_min_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a signed comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -526,19 +818,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicU32::fetch_min`].
-    pub fn atomic_umin<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umin_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicU32::fetch_min`].
-    pub fn atomic_umin_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umin_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicU32::fetch_min`].
-    pub fn atomic_umin_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umin_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -557,19 +849,19 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicU32::fetch_max`].
-    pub fn atomic_umax<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umax_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::Acquire`] as the `order`. For example, [`AtomicU32::fetch_max`].
-    pub fn atomic_umax_acq<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umax_acquire<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
     /// [`Ordering::Release`] as the `order`. For example, [`AtomicU32::fetch_max`].
-    pub fn atomic_umax_rel<T: Copy>(dst: *mut T, src: T) -> T;
+    pub fn atomic_umax_release<T: Copy>(dst: *mut T, src: T) -> T;
     /// Maximum with the current value using an unsigned comparison.
     ///
     /// The stabilized version of this intrinsic is available on the
@@ -583,6 +875,99 @@ extern "rust-intrinsic" {
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicU32::fetch_max`].
     pub fn atomic_umax_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
+    /// An atomic fence.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`atomic::fence`] by passing [`Ordering::SeqCst`]
+    /// as the `order`.
+    pub fn atomic_fence_seqcst();
+    /// An atomic fence.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`atomic::fence`] by passing [`Ordering::Acquire`]
+    /// as the `order`.
+    pub fn atomic_fence_acquire();
+    /// An atomic fence.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`atomic::fence`] by passing [`Ordering::Release`]
+    /// as the `order`.
+    pub fn atomic_fence_release();
+    /// An atomic fence.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`atomic::fence`] by passing [`Ordering::AcqRel`]
+    /// as the `order`.
+    pub fn atomic_fence_acqrel();
+
+    /// A compiler-only memory barrier.
+    ///
+    /// Memory accesses will never be reordered across this barrier by the
+    /// compiler, but no instructions will be emitted for it. This is
+    /// appropriate for operations on the same thread that may be preempted,
+    /// such as when interacting with signal handlers.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`atomic::compiler_fence`] by passing [`Ordering::SeqCst`]
+    /// as the `order`.
+    pub fn atomic_singlethreadfence_seqcst();
+    /// A compiler-only memory barrier.
+    ///
+    /// Memory accesses will never be reordered across this barrier by the
+    /// compiler, but no instructions will be emitted for it. This is
+    /// appropriate for operations on the same thread that may be preempted,
+    /// such as when interacting with signal handlers.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`atomic::compiler_fence`] by passing [`Ordering::Acquire`]
+    /// as the `order`.
+    pub fn atomic_singlethreadfence_acquire();
+    /// A compiler-only memory barrier.
+    ///
+    /// Memory accesses will never be reordered across this barrier by the
+    /// compiler, but no instructions will be emitted for it. This is
+    /// appropriate for operations on the same thread that may be preempted,
+    /// such as when interacting with signal handlers.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`atomic::compiler_fence`] by passing [`Ordering::Release`]
+    /// as the `order`.
+    pub fn atomic_singlethreadfence_release();
+    /// A compiler-only memory barrier.
+    ///
+    /// Memory accesses will never be reordered across this barrier by the
+    /// compiler, but no instructions will be emitted for it. This is
+    /// appropriate for operations on the same thread that may be preempted,
+    /// such as when interacting with signal handlers.
+    ///
+    /// The stabilized version of this intrinsic is available in
+    /// [`atomic::compiler_fence`] by passing [`Ordering::AcqRel`]
+    /// as the `order`.
+    pub fn atomic_singlethreadfence_acqrel();
+}
+
+// These have been renamed.
+//
+// These are the aliases for the old names.
+// To be removed when stdarch and panic_unwind have been updated.
+#[cfg(not(bootstrap))]
+mod atomics {
+    pub use super::atomic_cxchg_acqrel_acquire as atomic_cxchg_acqrel;
+    pub use super::atomic_cxchg_acqrel_relaxed as atomic_cxchg_acqrel_failrelaxed;
+    pub use super::atomic_cxchg_acquire_acquire as atomic_cxchg_acq;
+    pub use super::atomic_cxchg_acquire_relaxed as atomic_cxchg_acq_failrelaxed;
+    pub use super::atomic_cxchg_relaxed_relaxed as atomic_cxchg_relaxed;
+    pub use super::atomic_cxchg_release_relaxed as atomic_cxchg_rel;
+    pub use super::atomic_cxchg_seqcst_acquire as atomic_cxchg_failacq;
+    pub use super::atomic_cxchg_seqcst_relaxed as atomic_cxchg_failrelaxed;
+    pub use super::atomic_cxchg_seqcst_seqcst as atomic_cxchg;
+    pub use super::atomic_store_seqcst as atomic_store;
+}
+
+#[cfg(not(bootstrap))]
+pub use atomics::*;
+
+extern "rust-intrinsic" {
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
     /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
@@ -623,78 +1008,6 @@ extern "rust-intrinsic" {
     ///
     /// This intrinsic does not have a stable counterpart.
     pub fn prefetch_write_instruction<T>(data: *const T, locality: i32);
-}
-
-extern "rust-intrinsic" {
-    /// An atomic fence.
-    ///
-    /// The stabilized version of this intrinsic is available in
-    /// [`atomic::fence`] by passing [`Ordering::SeqCst`]
-    /// as the `order`.
-    pub fn atomic_fence();
-    /// An atomic fence.
-    ///
-    /// The stabilized version of this intrinsic is available in
-    /// [`atomic::fence`] by passing [`Ordering::Acquire`]
-    /// as the `order`.
-    pub fn atomic_fence_acq();
-    /// An atomic fence.
-    ///
-    /// The stabilized version of this intrinsic is available in
-    /// [`atomic::fence`] by passing [`Ordering::Release`]
-    /// as the `order`.
-    pub fn atomic_fence_rel();
-    /// An atomic fence.
-    ///
-    /// The stabilized version of this intrinsic is available in
-    /// [`atomic::fence`] by passing [`Ordering::AcqRel`]
-    /// as the `order`.
-    pub fn atomic_fence_acqrel();
-
-    /// A compiler-only memory barrier.
-    ///
-    /// Memory accesses will never be reordered across this barrier by the
-    /// compiler, but no instructions will be emitted for it. This is
-    /// appropriate for operations on the same thread that may be preempted,
-    /// such as when interacting with signal handlers.
-    ///
-    /// The stabilized version of this intrinsic is available in
-    /// [`atomic::compiler_fence`] by passing [`Ordering::SeqCst`]
-    /// as the `order`.
-    pub fn atomic_singlethreadfence();
-    /// A compiler-only memory barrier.
-    ///
-    /// Memory accesses will never be reordered across this barrier by the
-    /// compiler, but no instructions will be emitted for it. This is
-    /// appropriate for operations on the same thread that may be preempted,
-    /// such as when interacting with signal handlers.
-    ///
-    /// The stabilized version of this intrinsic is available in
-    /// [`atomic::compiler_fence`] by passing [`Ordering::Acquire`]
-    /// as the `order`.
-    pub fn atomic_singlethreadfence_acq();
-    /// A compiler-only memory barrier.
-    ///
-    /// Memory accesses will never be reordered across this barrier by the
-    /// compiler, but no instructions will be emitted for it. This is
-    /// appropriate for operations on the same thread that may be preempted,
-    /// such as when interacting with signal handlers.
-    ///
-    /// The stabilized version of this intrinsic is available in
-    /// [`atomic::compiler_fence`] by passing [`Ordering::Release`]
-    /// as the `order`.
-    pub fn atomic_singlethreadfence_rel();
-    /// A compiler-only memory barrier.
-    ///
-    /// Memory accesses will never be reordered across this barrier by the
-    /// compiler, but no instructions will be emitted for it. This is
-    /// appropriate for operations on the same thread that may be preempted,
-    /// such as when interacting with signal handlers.
-    ///
-    /// The stabilized version of this intrinsic is available in
-    /// [`atomic::compiler_fence`] by passing [`Ordering::AcqRel`]
-    /// as the `order`.
-    pub fn atomic_singlethreadfence_acqrel();
 
     /// Magic intrinsic that derives its meaning from attributes
     /// attached to the function.
