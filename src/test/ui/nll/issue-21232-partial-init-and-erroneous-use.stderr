@@ -1,18 +1,18 @@
-error[E0381]: assigned binding `d` isn't initialized
+error[E0381]: assigned binding `d` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:28:5
    |
 LL |     let d: D;
    |         - binding declared here but left uninitialized
 LL |     d.x = 10;
-   |     ^^^^^^^^ `d` assigned here but it isn't initialized
+   |     ^^^^^^^^ `d` assigned here but it isn't fully initialized
 
-error[E0381]: assigned binding `d` isn't initialized
+error[E0381]: assigned binding `d` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:33:5
    |
 LL |     let mut d: D;
    |         ----- binding declared here but left uninitialized
 LL |     d.x = 10;
-   |     ^^^^^^^^ `d` assigned here but it isn't initialized
+   |     ^^^^^^^^ `d` assigned here but it isn't fully initialized
 
 error[E0382]: assign of moved value: `d`
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:39:5
