@@ -11,7 +11,6 @@ use rustc_ast::MacroDef;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
@@ -36,7 +35,10 @@ use std::marker::PhantomData;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, mem};
 
-use errors::{FieldIsPrivate, FieldIsPrivateLabel, ItemIsPrivate, UnnamedItemIsPrivate};
+use errors::{
+    FieldIsPrivate, FieldIsPrivateLabel, InPublicInterface, InPublicInterfaceTraits, ItemIsPrivate,
+    UnnamedItemIsPrivate,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.
@@ -1748,22 +1750,31 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     }
                 }
             };
-            let make_msg = || format!("{} {} `{}` in public interface", vis_descr, kind, descr);
             let span = self.tcx.def_span(self.item_def_id.to_def_id());
             if self.has_old_errors
                 || self.in_assoc_ty
                 || self.tcx.resolutions(()).has_pub_restricted
             {
-                let mut err = if kind == "trait" {
-                    struct_span_err!(self.tcx.sess, span, E0445, "{}", make_msg())
-                } else {
-                    struct_span_err!(self.tcx.sess, span, E0446, "{}", make_msg())
-                };
+                let descr = descr.to_string();
                 let vis_span =
                     self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id));
-                err.span_label(span, format!("can't leak {} {}", vis_descr, kind));
-                err.span_label(vis_span, format!("`{}` declared as {}", descr, vis_descr));
-                err.emit();
+                if kind == "trait" {
+                    self.tcx.sess.emit_err(InPublicInterfaceTraits {
+                        span,
+                        vis_descr,
+                        kind,
+                        descr,
+                        vis_span,
+                    });
+                } else {
+                    self.tcx.sess.emit_err(InPublicInterface {
+                        span,
+                        vis_descr,
+                        kind,
+                        descr,
+                        vis_span,
+                    });
+                }
             } else {
                 let err_code = if kind == "trait" { "E0445" } else { "E0446" };
                 self.tcx.struct_span_lint_hir(
@@ -1771,7 +1782,12 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     hir_id,
                     span,
                     |lint| {
-                        lint.build(&format!("{} (error {})", make_msg(), err_code)).emit();
+                        lint.build(&format!(
+                            "{} (error {})",
+                            format!("{} {} `{}` in public interface", vis_descr, kind, descr),
+                            err_code
+                        ))
+                        .emit();
                     },
                 );
             }
