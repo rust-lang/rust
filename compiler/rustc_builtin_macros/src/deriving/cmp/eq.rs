@@ -3,9 +3,9 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, GenericArg, MetaItem};
+use rustc_ast::{self as ast, Expr, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
 pub fn expand_deriving_eq(
@@ -55,24 +55,6 @@ fn cs_total_eq_assert(
     trait_span: Span,
     substr: &Substructure<'_>,
 ) -> P<Expr> {
-    fn assert_ty_bounds(
-        cx: &mut ExtCtxt<'_>,
-        stmts: &mut Vec<ast::Stmt>,
-        ty: P<ast::Ty>,
-        span: Span,
-        helper_name: &str,
-    ) {
-        // Generate statement `let _: helper_name<ty>;`,
-        // set the expn ID so we can use the unstable struct.
-        let span = cx.with_def_site_ctxt(span);
-        let assert_path = cx.path_all(
-            span,
-            true,
-            cx.std_path(&[sym::cmp, Symbol::intern(helper_name)]),
-            vec![GenericArg::Type(ty)],
-        );
-        stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
-    }
     fn process_variant(
         cx: &mut ExtCtxt<'_>,
         stmts: &mut Vec<ast::Stmt>,
@@ -80,7 +62,13 @@ fn cs_total_eq_assert(
     ) {
         for field in variant.fields() {
             // let _: AssertParamIsEq<FieldTy>;
-            assert_ty_bounds(cx, stmts, field.ty.clone(), field.span, "AssertParamIsEq");
+            super::assert_ty_bounds(
+                cx,
+                stmts,
+                field.ty.clone(),
+                field.span,
+                &[sym::cmp, sym::AssertParamIsEq],
+            );
         }
     }
 
