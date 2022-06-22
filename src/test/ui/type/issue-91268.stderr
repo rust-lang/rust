@@ -35,13 +35,13 @@ help: use angle brackets instead
 LL |     0: u8<ţ>
    |          ~ +
 
-error[E0109]: type arguments are not allowed on this type
+error[E0109]: type arguments are not allowed on builtin type `u8`
   --> $DIR/issue-91268.rs:9:11
    |
 LL |     0: u8(ţ
    |        -- ^ type argument not allowed
    |        |
-   |        not allowed on this type
+   |        not allowed on builtin type `u8`
    |
 help: primitive type `u8` doesn't have generic parameters
    |
