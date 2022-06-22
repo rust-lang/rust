@@ -341,6 +341,7 @@ symbols! {
         always,
         and,
         and_then,
+        anonymous_lifetime_in_impl_trait,
         any,
         append_const_msg,
         arbitrary_enum_discriminant,
