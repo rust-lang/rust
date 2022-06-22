@@ -15,10 +15,12 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
+#![feature(const_nonnull_new)]
 #![feature(let_else)]
 #![feature(if_let_guard)]
 #![feature(negative_impls)]
 #![feature(min_specialization)]
+#![feature(strict_provenance)]
 #![feature(rustc_attrs)]
 #![allow(rustc::potential_query_instability)]
 
@@ -604,7 +606,11 @@ impl Span {
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
-        if self.is_dummy() { other } else { self }
+        if self.is_dummy() {
+            other
+        } else {
+            self
+        }
     }
 
     /// Returns `true` if `self` fully encloses `other`.
@@ -635,21 +641,33 @@ impl Span {
     pub fn trim_start(self, other: Span) -> Option<Span> {
         let span = self.data();
         let other = other.data();
-        if span.hi > other.hi { Some(span.with_lo(cmp::max(span.lo, other.hi))) } else { None }
+        if span.hi > other.hi {
+            Some(span.with_lo(cmp::max(span.lo, other.hi)))
+        } else {
+            None
+        }
     }
 
     /// Returns the source span -- this is either the supplied span, or the span for
     /// the macro callsite that expanded to it.
     pub fn source_callsite(self) -> Span {
         let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { expn_data.call_site.source_callsite() } else { self }
+        if !expn_data.is_root() {
+            expn_data.call_site.source_callsite()
+        } else {
+            self
+        }
     }
 
     /// The `Span` for the tokens in the previous macro expansion from which `self` was generated,
     /// if any.
     pub fn parent_callsite(self) -> Option<Span> {
         let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { Some(expn_data.call_site) } else { None }
+        if !expn_data.is_root() {
+            Some(expn_data.call_site)
+        } else {
+            None
+        }
     }
 
     /// Walk down the expansion ancestors to find a span that's contained within `outer`.
@@ -693,10 +711,18 @@ impl Span {
     pub fn source_callee(self) -> Option<ExpnData> {
         fn source_callee(expn_data: ExpnData) -> ExpnData {
             let next_expn_data = expn_data.call_site.ctxt().outer_expn_data();
-            if !next_expn_data.is_root() { source_callee(next_expn_data) } else { expn_data }
+            if !next_expn_data.is_root() {
+                source_callee(next_expn_data)
+            } else {
+                expn_data
+            }
         }
         let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { Some(source_callee(expn_data)) } else { None }
+        if !expn_data.is_root() {
+            Some(source_callee(expn_data))
+        } else {
+            None
+        }
     }
 
     /// Checks if a span is "internal" to a macro in which `#[unstable]`

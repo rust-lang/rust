@@ -3486,7 +3486,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 80);
     rustc_data_structures::static_assert_size!(super::GenericBound<'_>, 48);
     rustc_data_structures::static_assert_size!(super::Generics<'static>, 56);
-    rustc_data_structures::static_assert_size!(super::Impl<'static>, 72);
+    rustc_data_structures::static_assert_size!(super::Impl<'static>, 88);
 
     rustc_data_structures::static_assert_size!(super::Item<'static>, 88);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 96);

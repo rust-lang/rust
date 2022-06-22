@@ -11,6 +11,8 @@ use crate::{BytePos, SpanData};
 
 use rustc_data_structures::fx::FxHashSet;
 
+use std::ptr::invalid;
+
 /// A compressed span.
 ///
 /// Whereas [`SpanData`] is 16 bytes, which is a bit too big to stick everywhere, `Span`
@@ -25,16 +27,10 @@ use rustc_data_structures::fx::FxHashSet;
 /// slower because only 80--90% of spans could be stored inline (even less in
 /// very large crates) and so the interner was used a lot more.
 ///
-/// Inline (compressed) format with no parent:
+/// Inline (compressed) format:
 /// - `span.base_or_index == span_data.lo`
 /// - `span.len_or_tag == len == span_data.hi - span_data.lo` (must be `<= MAX_LEN`)
 /// - `span.ctxt == span_data.ctxt` (must be `<= MAX_CTXT`)
-///
-/// Inline (compressed) format with root context:
-/// - `span.base_or_index == span_data.lo`
-/// - `span.len_or_tag == len == span_data.hi - span_data.lo` (must be `<= MAX_LEN`)
-/// - `span.len_or_tag` has top bit (`PARENT_MASK`) set
-/// - `span.ctxt == span_data.parent` (must be `<= MAX_CTXT`)
 ///
 /// Interned format:
 /// - `span.base_or_index == index` (indexes into the interner table)
@@ -69,18 +65,14 @@ use rustc_data_structures::fx::FxHashSet;
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 #[rustc_pass_by_value]
 pub struct Span {
-    pointer: &'static SpanData,
+    pointer_or_code: *const SpanData,
 }
 
+const MAX_LEN: u32 = u16::MAX as u32;
+const MAX_CTXT: u32 = u16::MAX as u32 >> 1;
+
 /// Dummy span, both position and length are zero, syntax context is zero as well.
-pub const DUMMY_SP: Span = Span {
-    pointer: &SpanData {
-        lo: BytePos(0),
-        hi: BytePos(0),
-        ctxt: SyntaxContext::root(),
-        parent: None,
-    },
-};
+pub const DUMMY_SP: Span = Span { pointer_or_code: invalid(1) };
 
 impl Span {
     #[inline]
@@ -94,10 +86,22 @@ impl Span {
             std::mem::swap(&mut lo, &mut hi);
         }
 
-        // Interned format.
-        let pointer =
-            with_span_interner(|interner| interner.intern(SpanData { lo, hi, ctxt, parent }));
-        Span { pointer }
+        let (base, len, ctxt2) = (lo.0, hi.0 - lo.0, ctxt.as_u32());
+
+        if len <= MAX_LEN && ctxt2 <= MAX_CTXT && parent.is_none() {
+            // Inline format.
+            let code: usize =
+                ((base as usize) << 32) | ((len as usize) << 16) | ((ctxt2 as usize) << 1) | 1;
+            let pointer_or_code = invalid(code);
+            Span { pointer_or_code }
+        } else {
+            // Interned format.
+            let pointer =
+                with_span_interner(|interner| interner.intern(SpanData { lo, hi, ctxt, parent }));
+            let pointer = pointer as *const SpanData;
+            debug_assert_eq!(pointer.addr() & 1, 0);
+            Span { pointer_or_code: pointer }
+        }
     }
 
     #[inline]
@@ -113,7 +117,22 @@ impl Span {
     /// This function must not be used outside the incremental engine.
     #[inline]
     pub fn data_untracked(self) -> SpanData {
-        *self.pointer
+        let code = self.pointer_or_code.addr();
+        if code & 1 == 1 {
+            // Inline format.
+            let base = (code >> 32) as u32;
+            let len = (code >> 16) as u16;
+            let ctxt = (code as u16) >> 1;
+            SpanData {
+                lo: BytePos(base),
+                hi: BytePos(base + len as u32),
+                ctxt: SyntaxContext::from_u32(ctxt as u32),
+                parent: None,
+            }
+        } else {
+            // Interned format.
+            unsafe { *self.pointer_or_code }
+        }
     }
 }
 
