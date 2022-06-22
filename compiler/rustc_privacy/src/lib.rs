@@ -36,7 +36,7 @@ use std::marker::PhantomData;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, mem};
 
-use errors::{FieldIsPrivate, FieldIsPrivateLabel, ItemIsPrivate};
+use errors::{FieldIsPrivate, FieldIsPrivateLabel, ItemIsPrivate, UnnamedItemIsPrivate};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.
@@ -1248,13 +1248,10 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                     hir::QPath::TypeRelative(_, segment) => Some(segment.ident.to_string()),
                 };
                 let kind = kind.descr(def_id);
-                let msg = match name {
-                    Some(name) => format!("{} `{}` is private", kind, name),
-                    None => format!("{} is private", kind),
+                let _ = match name {
+                    Some(name) => sess.emit_err(ItemIsPrivate { span, kind, descr: name }),
+                    None => sess.emit_err(UnnamedItemIsPrivate { span, kind }),
                 };
-                sess.struct_span_err(span, &msg)
-                    .span_label(span, &format!("private {}", kind))
-                    .emit();
                 return;
             }
         }
