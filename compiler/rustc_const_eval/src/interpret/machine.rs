@@ -334,12 +334,14 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// allocation (because a copy had to be done to add tags or metadata), machine memory will
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
+    ///
+    /// This must only fail if `alloc` contains relocations.
     fn init_allocation_extra<'b>(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>;
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>>;
 
     /// Hook for performing extra checks on a memory read access.
     ///
@@ -485,9 +487,9 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
         _kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> Cow<'b, Allocation<Self::PointerTag>> {
+    ) -> InterpResult<$tcx, Cow<'b, Allocation<Self::PointerTag>>> {
         // We do not use a tag so we can just cheaply forward the allocation
-        alloc
+        Ok(alloc)
     }
 
     fn extern_static_base_pointer(

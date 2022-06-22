@@ -846,8 +846,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 //                                      the opaque_ty generics
                 let opaque_ty = self.tcx.hir().item(item_id);
                 let (generics, bounds) = match opaque_ty.kind {
-                    // Named opaque `impl Trait` types are reached via `TyKind::Path`.
-                    // This arm is for `impl Trait` in the types of statics, constants and locals.
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                         origin: hir::OpaqueTyOrigin::TyAlias,
                         ..
@@ -866,7 +864,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
                         return;
                     }
-                    // RPIT (return position impl trait)
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                         origin: hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..),
                         ref generics,
