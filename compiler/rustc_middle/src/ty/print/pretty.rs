@@ -817,25 +817,18 @@ pub trait PrettyPrinter<'tcx>:
             }
         }
 
-        {
-            define_scoped_cx!(self);
-            p!("impl ");
-        }
+        write!(self, "impl ")?;
 
         let mut first = true;
         // Insert parenthesis around (Fn(A, B) -> C) if the opaque ty has more than one other trait
         let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !is_sized;
 
         for (fn_once_trait_ref, entry) in fn_traits {
-            {
-                define_scoped_cx!(self);
-                p!(
-                    write("{}", if first { "" } else { " + " }),
-                    write("{}", if paren_needed { "(" } else { "" })
-                );
-            }
+            write!(self, "{}", if first { "" } else { " + " })?;
+            write!(self, "{}", if paren_needed { "(" } else { "" })?;
 
-            self = self.wrap_binder(&fn_once_trait_ref, |trait_ref, mut self_| {
+            self = self.wrap_binder(&fn_once_trait_ref, |trait_ref, mut cx| {
+                define_scoped_cx!(cx);
                 // Get the (single) generic ty (the args) of this FnOnce trait ref.
                 let generics = tcx.generics_of(trait_ref.def_id);
                 let args = generics.own_substs_no_defaults(tcx, trait_ref.substs);
@@ -852,7 +845,6 @@ pub trait PrettyPrinter<'tcx>:
                             "FnOnce"
                         };
 
-                        define_scoped_cx!(self_);
                         p!(write("{}(", name));
 
                         for (idx, ty) in arg_tys.tuple_fields().iter().enumerate() {
@@ -892,19 +884,16 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
 
-                Ok(self_)
+                Ok(cx)
             })?;
         }
 
         // Print the rest of the trait types (that aren't Fn* family of traits)
         for (trait_ref, assoc_items) in traits {
-            {
-                define_scoped_cx!(self);
-                p!(write("{}", if first { "" } else { " + " }));
-            }
+            write!(self, "{}", if first { "" } else { " + " })?;
 
-            self = self.wrap_binder(&trait_ref, |trait_ref, mut self_| {
-                define_scoped_cx!(self_);
+            self = self.wrap_binder(&trait_ref, |trait_ref, mut cx| {
+                define_scoped_cx!(cx);
                 p!(print(trait_ref.print_only_trait_name()));
 
                 let generics = tcx.generics_of(trait_ref.def_id);
@@ -969,16 +958,14 @@ pub trait PrettyPrinter<'tcx>:
                 }
 
                 first = false;
-                Ok(self_)
+                Ok(cx)
             })?;
         }
 
-        define_scoped_cx!(self);
-
         if !is_sized {
-            p!(write("{}?Sized", if first { "" } else { " + " }));
+            write!(self, "{}?Sized", if first { "" } else { " + " })?;
         } else if first {
-            p!("Sized");
+            write!(self, "Sized")?;
         }
 
         Ok(self)
