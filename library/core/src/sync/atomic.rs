@@ -2649,22 +2649,30 @@ unsafe fn atomic_compare_exchange<T: Copy>(
     let (val, ok) = unsafe {
         match (success, failure) {
             (Relaxed, Relaxed) => intrinsics::atomic_cxchg_relaxed_relaxed(dst, old, new),
+            #[cfg(not(bootstrap))]
             (Relaxed, Acquire) => intrinsics::atomic_cxchg_relaxed_acquire(dst, old, new),
+            #[cfg(not(bootstrap))]
             (Relaxed, SeqCst) => intrinsics::atomic_cxchg_relaxed_seqcst(dst, old, new),
             (Acquire, Relaxed) => intrinsics::atomic_cxchg_acquire_relaxed(dst, old, new),
             (Acquire, Acquire) => intrinsics::atomic_cxchg_acquire_acquire(dst, old, new),
+            #[cfg(not(bootstrap))]
             (Acquire, SeqCst) => intrinsics::atomic_cxchg_acquire_seqcst(dst, old, new),
             (Release, Relaxed) => intrinsics::atomic_cxchg_release_relaxed(dst, old, new),
+            #[cfg(not(bootstrap))]
             (Release, Acquire) => intrinsics::atomic_cxchg_release_acquire(dst, old, new),
+            #[cfg(not(bootstrap))]
             (Release, SeqCst) => intrinsics::atomic_cxchg_release_seqcst(dst, old, new),
             (AcqRel, Relaxed) => intrinsics::atomic_cxchg_acqrel_relaxed(dst, old, new),
             (AcqRel, Acquire) => intrinsics::atomic_cxchg_acqrel_acquire(dst, old, new),
+            #[cfg(not(bootstrap))]
             (AcqRel, SeqCst) => intrinsics::atomic_cxchg_acqrel_seqcst(dst, old, new),
             (SeqCst, Relaxed) => intrinsics::atomic_cxchg_seqcst_relaxed(dst, old, new),
             (SeqCst, Acquire) => intrinsics::atomic_cxchg_seqcst_acquire(dst, old, new),
             (SeqCst, SeqCst) => intrinsics::atomic_cxchg_seqcst_seqcst(dst, old, new),
             (_, AcqRel) => panic!("there is no such thing as an acquire-release failure ordering"),
             (_, Release) => panic!("there is no such thing as a release failure ordering"),
+            #[cfg(bootstrap)]
+            _ => panic!("a failure ordering can't be stronger than a success ordering"),
         }
     };
     if ok { Ok(val) } else { Err(val) }
@@ -2683,22 +2691,30 @@ unsafe fn atomic_compare_exchange_weak<T: Copy>(
     let (val, ok) = unsafe {
         match (success, failure) {
             (Relaxed, Relaxed) => intrinsics::atomic_cxchgweak_relaxed_relaxed(dst, old, new),
+            #[cfg(not(bootstrap))]
             (Relaxed, Acquire) => intrinsics::atomic_cxchgweak_relaxed_acquire(dst, old, new),
+            #[cfg(not(bootstrap))]
             (Relaxed, SeqCst) => intrinsics::atomic_cxchgweak_relaxed_seqcst(dst, old, new),
             (Acquire, Relaxed) => intrinsics::atomic_cxchgweak_acquire_relaxed(dst, old, new),
             (Acquire, Acquire) => intrinsics::atomic_cxchgweak_acquire_acquire(dst, old, new),
+            #[cfg(not(bootstrap))]
             (Acquire, SeqCst) => intrinsics::atomic_cxchgweak_acquire_seqcst(dst, old, new),
             (Release, Relaxed) => intrinsics::atomic_cxchgweak_release_relaxed(dst, old, new),
+            #[cfg(not(bootstrap))]
             (Release, Acquire) => intrinsics::atomic_cxchgweak_release_acquire(dst, old, new),
+            #[cfg(not(bootstrap))]
             (Release, SeqCst) => intrinsics::atomic_cxchgweak_release_seqcst(dst, old, new),
             (AcqRel, Relaxed) => intrinsics::atomic_cxchgweak_acqrel_relaxed(dst, old, new),
             (AcqRel, Acquire) => intrinsics::atomic_cxchgweak_acqrel_acquire(dst, old, new),
+            #[cfg(not(bootstrap))]
             (AcqRel, SeqCst) => intrinsics::atomic_cxchgweak_acqrel_seqcst(dst, old, new),
             (SeqCst, Relaxed) => intrinsics::atomic_cxchgweak_seqcst_relaxed(dst, old, new),
             (SeqCst, Acquire) => intrinsics::atomic_cxchgweak_seqcst_acquire(dst, old, new),
             (SeqCst, SeqCst) => intrinsics::atomic_cxchgweak_seqcst_seqcst(dst, old, new),
             (_, AcqRel) => panic!("there is no such thing as an acquire-release failure ordering"),
             (_, Release) => panic!("there is no such thing as a release failure ordering"),
+            #[cfg(bootstrap)]
+            _ => panic!("a failure ordering can't be stronger than a success ordering"),
         }
     };
     if ok { Ok(val) } else { Err(val) }
