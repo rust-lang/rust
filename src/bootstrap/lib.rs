@@ -122,8 +122,7 @@ use once_cell::sync::OnceCell;
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::util::{
-    check_run, exe, libdir, mtime, output, run, run_suppressed, t, try_run, try_run_suppressed,
-    CiEnv,
+    check_run, exe, libdir, mtime, output, run, run_suppressed, try_run, try_run_suppressed, CiEnv,
 };
 
 mod builder;
