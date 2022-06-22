@@ -1,8 +1,8 @@
 warning: struct `S` is never constructed
-  --> $DIR/macro-span-replacement.rs:7:14
+  --> $DIR/macro-span-replacement.rs:7:12
    |
 LL |         $b $a;
-   |              ^
+   |            ^^
 ...
 LL |     m!(S struct);
    |     ------------ in this macro invocation

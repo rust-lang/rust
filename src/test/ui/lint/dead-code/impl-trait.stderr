@@ -1,8 +1,8 @@
 error: type alias `Unused` is never used
-  --> $DIR/impl-trait.rs:12:1
+  --> $DIR/impl-trait.rs:12:6
    |
 LL | type Unused = ();
-   | ^^^^^^^^^^^^^^^^^
+   |      ^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/impl-trait.rs:1:9

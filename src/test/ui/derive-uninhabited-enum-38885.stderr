@@ -5,7 +5,7 @@ LL | enum Foo {
    |      --- variant in this enum
 LL |     Bar(u8),
 LL |     Void(Void),
-   |     ^^^^^^^^^^
+   |     ^^^^
    |
    = note: `-W dead-code` implied by `-W unused`
    = note: `Foo` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis

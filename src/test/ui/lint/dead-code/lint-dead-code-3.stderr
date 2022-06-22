@@ -29,10 +29,10 @@ LL | enum c_void {}
    |      ^^^^^^
 
 error: function `free` is never used
-  --> $DIR/lint-dead-code-3.rs:62:5
+  --> $DIR/lint-dead-code-3.rs:62:8
    |
 LL |     fn free(p: *const c_void);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^
 
 error: aborting due to 5 previous errors
 

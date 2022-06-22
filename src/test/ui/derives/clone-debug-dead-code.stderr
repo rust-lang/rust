@@ -2,7 +2,7 @@ error: field `f` is never read
   --> $DIR/clone-debug-dead-code.rs:6:12
    |
 LL | struct A { f: () }
-   |        -   ^^^^^
+   |        -   ^
    |        |
    |        field in this struct
    |
@@ -16,7 +16,7 @@ error: field `f` is never read
   --> $DIR/clone-debug-dead-code.rs:10:12
    |
 LL | struct B { f: () }
-   |        -   ^^^^^
+   |        -   ^
    |        |
    |        field in this struct
    |
@@ -26,7 +26,7 @@ error: field `f` is never read
   --> $DIR/clone-debug-dead-code.rs:14:12
    |
 LL | struct C { f: () }
-   |        -   ^^^^^
+   |        -   ^
    |        |
    |        field in this struct
    |
@@ -36,7 +36,7 @@ error: field `f` is never read
   --> $DIR/clone-debug-dead-code.rs:18:12
    |
 LL | struct D { f: () }
-   |        -   ^^^^^
+   |        -   ^
    |        |
    |        field in this struct
    |
@@ -46,7 +46,7 @@ error: field `f` is never read
   --> $DIR/clone-debug-dead-code.rs:21:12
    |
 LL | struct E { f: () }
-   |        -   ^^^^^
+   |        -   ^
    |        |
    |        field in this struct
 

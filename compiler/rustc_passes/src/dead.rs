@@ -635,8 +635,7 @@ fn live_symbols_and_ignored_derived_traits<'tcx>(
 }
 
 struct DeadVariant {
-    hir_id: hir::HirId,
-    span: Span,
+    def_id: LocalDefId,
     name: Symbol,
     level: lint::Level,
 }
@@ -687,29 +686,39 @@ impl<'tcx> DeadVisitor<'tcx> {
 
     fn warn_multiple_dead_codes(
         &self,
-        dead_codes: &[(hir::HirId, Span, Symbol)],
+        dead_codes: &[LocalDefId],
         participle: &str,
-        parent_hir_id: Option<hir::HirId>,
+        parent_item: Option<LocalDefId>,
     ) {
-        if let Some((id, _, name)) = dead_codes.first()
-            && !name.as_str().starts_with('_')
-        {
-            self.tcx.struct_span_lint_hir(
+        if let Some(&first_id) = dead_codes.first() {
+            let tcx = self.tcx;
+            let names: Vec<_> = dead_codes
+                .iter()
+                .map(|&def_id| tcx.item_name(def_id.to_def_id()).to_string())
+                .collect();
+            let spans = dead_codes
+                .iter()
+                .map(|&def_id| match tcx.def_ident_span(def_id) {
+                    Some(s) => s.with_ctxt(tcx.def_span(def_id).ctxt()),
+                    None => tcx.def_span(def_id),
+                })
+                .collect();
+
+            tcx.struct_span_lint_hir(
                 lint::builtin::DEAD_CODE,
-                *id,
-                MultiSpan::from_spans(
-                    dead_codes.iter().map(|(_, span, _)| *span).collect(),
-                ),
+                tcx.hir().local_def_id_to_hir_id(first_id),
+                MultiSpan::from_spans(spans),
                 |lint| {
-                    let def_id = self.tcx.hir().local_def_id(*id);
-                    let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
+                    let descr = tcx.def_kind(first_id).descr(first_id.to_def_id());
                     let span_len = dead_codes.len();
-                    let names = match &dead_codes.iter().map(|(_, _, n)| n.to_string()).collect::<Vec<_>>()[..]
-                    {
+                    let names = match &names[..] {
                         _ if span_len > 6 => String::new(),
                         [name] => format!("`{name}` "),
                         [names @ .., last] => {
-                            format!("{} and `{last}` ", names.iter().map(|name| format!("`{name}`")).join(", "))
+                            format!(
+                                "{} and `{last}` ",
+                                names.iter().map(|name| format!("`{name}`")).join(", ")
+                            )
                         }
                         [] => unreachable!(),
                     };
@@ -719,25 +728,17 @@ impl<'tcx> DeadVisitor<'tcx> {
                         s = pluralize!(span_len),
                         are = pluralize!("is", span_len),
                     ));
-                    let hir = self.tcx.hir();
-                    if let Some(parent_hir_id) = parent_hir_id
-                        && let Some(parent_node) = hir.find(parent_hir_id)
-                        && let Node::Item(item) = parent_node
-                    {
-                        let def_id = self.tcx.hir().local_def_id(parent_hir_id);
-                        let parent_descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
+
+                    if let Some(parent_item) = parent_item {
+                        let parent_descr = tcx.def_kind(parent_item).descr(parent_item.to_def_id());
                         err.span_label(
-                            item.ident.span,
-                            format!(
-                                "{descr}{s} in this {parent_descr}",
-                                s = pluralize!(span_len)
-                            ),
+                            tcx.def_ident_span(parent_item).unwrap(),
+                            format!("{descr}{s} in this {parent_descr}", s = pluralize!(span_len)),
                         );
                     }
-                    if let Some(encl_scope) = hir.get_enclosing_scope(*id)
-                        && let Some(encl_def_id) = hir.opt_local_def_id(encl_scope)
-                        && let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id)
-                    {
+
+                    let encl_def_id = parent_item.unwrap_or(first_id);
+                    if let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id) {
                         let traits_str = ign_traits
                             .iter()
                             .map(|(trait_id, _)| format!("`{}`", self.tcx.item_name(*trait_id)))
@@ -758,15 +759,15 @@ impl<'tcx> DeadVisitor<'tcx> {
                         );
                         err.note(&msg);
                     }
-                        err.emit();
-                    },
+                    err.emit();
+                },
             );
         }
     }
 
     fn warn_dead_fields_and_variants(
         &self,
-        hir_id: hir::HirId,
+        def_id: LocalDefId,
         participle: &str,
         dead_codes: Vec<DeadVariant>,
     ) {
@@ -781,23 +782,18 @@ impl<'tcx> DeadVisitor<'tcx> {
         dead_codes.sort_by_key(|v| v.level);
         for (_, group) in &dead_codes.into_iter().group_by(|v| v.level) {
             self.warn_multiple_dead_codes(
-                &group
-                    .map(|v| (v.hir_id, v.span, v.name))
-                    .collect::<Vec<(hir::HirId, Span, Symbol)>>(),
+                &group.map(|v| v.def_id).collect::<Vec<_>>(),
                 participle,
-                Some(hir_id),
+                Some(def_id),
             );
         }
     }
 
-    fn warn_dead_code(
-        &mut self,
-        id: hir::HirId,
-        span: rustc_span::Span,
-        name: Symbol,
-        participle: &str,
-    ) {
-        self.warn_multiple_dead_codes(&[(id, span, name)], participle, None);
+    fn warn_dead_code(&mut self, id: LocalDefId, participle: &str) {
+        if self.tcx.item_name(id.to_def_id()).as_str().starts_with('_') {
+            return;
+        }
+        self.warn_multiple_dead_codes(&[id], participle, None);
     }
 }
 
@@ -815,33 +811,11 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if self.should_warn_about_item(item) {
             // For most items, we want to highlight its identifier
-            let span = match item.kind {
-                hir::ItemKind::Fn(..)
-                | hir::ItemKind::Mod(..)
-                | hir::ItemKind::Enum(..)
-                | hir::ItemKind::Struct(..)
-                | hir::ItemKind::Union(..)
-                | hir::ItemKind::Trait(..)
-                | hir::ItemKind::Impl { .. } => {
-                    // FIXME(66095): Because item.span is annotated with things
-                    // like expansion data, and ident.span isn't, we use the
-                    // def_span method if it's part of a macro invocation
-                    // (and thus has a source_callee set).
-                    // We should probably annotate ident.span with the macro
-                    // context, but that's a larger change.
-                    if item.span.source_callee().is_some() {
-                        self.tcx.sess.source_map().guess_head_span(item.span)
-                    } else {
-                        item.ident.span
-                    }
-                }
-                _ => item.span,
-            };
             let participle = match item.kind {
                 hir::ItemKind::Struct(..) => "constructed", // Issue #52325
                 _ => "used",
             };
-            self.warn_dead_code(item.hir_id(), span, item.ident.name, participle);
+            self.warn_dead_code(item.def_id, participle);
         } else {
             // Only continue if we didn't warn
             intravisit::walk_item(self, item);
@@ -865,8 +839,7 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
             .filter_map(|variant| {
                 if self.should_warn_about_variant(&variant) {
                     Some(DeadVariant {
-                        hir_id: variant.id,
-                        span: variant.span,
+                        def_id: self.tcx.hir().local_def_id(variant.id),
                         name: variant.ident.name,
                         level: self.tcx.lint_level_at_node(lint::builtin::DEAD_CODE, variant.id).0,
                     })
@@ -875,7 +848,7 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
                 }
             })
             .collect();
-        self.warn_dead_fields_and_variants(item_id, "constructed", dead_variants)
+        self.warn_dead_fields_and_variants(item_id.expect_owner(), "constructed", dead_variants)
     }
 
     fn visit_variant(
@@ -891,7 +864,7 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem<'tcx>) {
         if self.should_warn_about_foreign_item(fi) {
-            self.warn_dead_code(fi.hir_id(), fi.span, fi.ident.name, "used");
+            self.warn_dead_code(fi.def_id, "used");
         }
         intravisit::walk_foreign_item(self, fi);
     }
@@ -911,8 +884,7 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
             .filter_map(|field| {
                 if self.should_warn_about_field(&field) {
                     Some(DeadVariant {
-                        hir_id: field.hir_id,
-                        span: field.span,
+                        def_id: self.tcx.hir().local_def_id(field.hir_id),
                         name: field.ident.name,
                         level: self
                             .tcx
@@ -924,36 +896,20 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
                 }
             })
             .collect();
-        self.warn_dead_fields_and_variants(id, "read", dead_fields)
+        self.warn_dead_fields_and_variants(self.tcx.hir().local_def_id(id), "read", dead_fields)
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         match impl_item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
                 if !self.symbol_is_live(impl_item.def_id) {
-                    self.warn_dead_code(
-                        impl_item.hir_id(),
-                        impl_item.span,
-                        impl_item.ident.name,
-                        "used",
-                    );
+                    self.warn_dead_code(impl_item.def_id, "used");
                 }
                 self.visit_nested_body(body_id)
             }
             hir::ImplItemKind::Fn(_, body_id) => {
                 if !self.symbol_is_live(impl_item.def_id) {
-                    // FIXME(66095): Because impl_item.span is annotated with things
-                    // like expansion data, and ident.span isn't, we use the
-                    // def_span method if it's part of a macro invocation
-                    // (and thus has a source_callee set).
-                    // We should probably annotate ident.span with the macro
-                    // context, but that's a larger change.
-                    let span = if impl_item.span.source_callee().is_some() {
-                        self.tcx.sess.source_map().guess_head_span(impl_item.span)
-                    } else {
-                        impl_item.ident.span
-                    };
-                    self.warn_dead_code(impl_item.hir_id(), span, impl_item.ident.name, "used");
+                    self.warn_dead_code(impl_item.def_id, "used");
                 }
                 self.visit_nested_body(body_id)
             }
