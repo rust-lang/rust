@@ -10,7 +10,7 @@ use comments::ErrorMatch;
 use regex::Regex;
 use rustc_stderr::{Level, Message};
 
-use crate::comments::Comments;
+use crate::comments::{Comments, Condition};
 
 mod comments;
 mod rustc_stderr;
@@ -103,7 +103,7 @@ pub fn run_tests(config: Config) {
                     }
                     let comments = Comments::parse_file(&path);
                     // Ignore file if only/ignore rules do (not) apply
-                    if ignore_file(&comments, &target) {
+                    if !test_file_conditions(&comments, &target) {
                         ignored.fetch_add(1, Ordering::Relaxed);
                         eprintln!(
                             "{} ... {}",
@@ -509,42 +509,36 @@ fn check_output(
 
 fn output_path(path: &Path, comments: &Comments, kind: String, target: &str) -> PathBuf {
     if comments.stderr_per_bitwidth {
-        return path.with_extension(format!("{}.{kind}", get_pointer_width(target)));
+        return path.with_extension(format!("{}bit.{kind}", get_pointer_width(target)));
     }
     path.with_extension(kind)
 }
 
-fn ignore_file(comments: &Comments, target: &str) -> bool {
-    for s in &comments.ignore {
-        if target.contains(s) {
-            return true;
-        }
-        if get_pointer_width(target) == s {
-            return true;
-        }
+fn test_condition(condition: &Condition, target: &str) -> bool {
+    match condition {
+        Condition::Bitwidth(bits) => get_pointer_width(target) == *bits,
+        Condition::Target(t) => target.contains(t),
     }
-    for s in &comments.only {
-        if !target.contains(s) {
-            return true;
-        }
-        /* FIXME(https://github.com/rust-lang/miri/issues/2206)
-        if get_pointer_width(target) != s {
-            return true;
-        } */
+}
+
+/// Returns whether according to the in-file conditions, this file should be run.
+fn test_file_conditions(comments: &Comments, target: &str) -> bool {
+    if comments.ignore.iter().any(|c| test_condition(c, target)) {
+        return false;
     }
-    false
+    comments.only.iter().all(|c| test_condition(c, target))
 }
 
 // Taken 1:1 from compiletest-rs
-fn get_pointer_width(triple: &str) -> &'static str {
+fn get_pointer_width(triple: &str) -> u8 {
     if (triple.contains("64") && !triple.ends_with("gnux32") && !triple.ends_with("gnu_ilp32"))
         || triple.starts_with("s390x")
     {
-        "64bit"
+        64
     } else if triple.starts_with("avr") {
-        "16bit"
+        16
     } else {
-        "32bit"
+        32
     }
 }
 

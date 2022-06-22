@@ -15,9 +15,9 @@ pub(crate) struct Comments {
     /// List of revision names to execute. Can only be speicified once
     pub revisions: Option<Vec<String>>,
     /// Don't run this test if any of these filters apply
-    pub ignore: Vec<String>,
+    pub ignore: Vec<Condition>,
     /// Only run this test if all of these filters apply
-    pub only: Vec<String>,
+    pub only: Vec<Condition>,
     /// Generate one .stderr file per bit width, by prepending with `.64bit` and similar
     pub stderr_per_bitwidth: bool,
     /// Additional flags to pass to the executable
@@ -31,6 +31,16 @@ pub(crate) struct Comments {
     pub error_matches: Vec<ErrorMatch>,
 }
 
+
+/// The conditions used for "ignore" and "only" filters.
+#[derive(Debug)]
+pub(crate) enum Condition {
+    /// The given string must appear in the target.
+    Target(String),
+    /// Tests that the bitwidth is the given one.
+    Bitwidth(u8),
+}
+
 #[derive(Debug)]
 pub(crate) struct ErrorMatch {
     pub matched: String,
@@ -40,6 +50,17 @@ pub(crate) struct ErrorMatch {
     pub definition_line: usize,
     /// The line this pattern is expecting to find a message in.
     pub line: usize,
+}
+
+impl Condition {
+    fn parse(c: &str) -> Self {
+        if let Some(bits) = c.strip_suffix("bit") {
+            let bits: u8 = bits.parse().expect("ignore/only filter ending in 'bit' must be of the form 'Nbit' for some integer N");
+            Condition::Bitwidth(bits)
+        } else {
+            Condition::Target(c.to_owned())
+        }
+    }
 }
 
 impl Comments {
@@ -75,14 +96,14 @@ impl Comments {
                     .split_once(|c: char| c == ':' || c.is_whitespace())
                     .map(|(s, _)| s)
                     .unwrap_or(s);
-                this.ignore.push(s.to_owned());
+                this.ignore.push(Condition::parse(s));
             }
             if let Some(s) = line.strip_prefix("// only-") {
                 let s = s
                     .split_once(|c: char| c == ':' || c.is_whitespace())
                     .map(|(s, _)| s)
                     .unwrap_or(s);
-                this.only.push(s.to_owned());
+                this.only.push(Condition::parse(s));
             }
             if line.starts_with("// stderr-per-bitwidth") {
                 assert!(
