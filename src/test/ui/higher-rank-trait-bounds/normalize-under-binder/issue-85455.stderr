@@ -1,24 +1,24 @@
-error[E0277]: the trait bound `T: SomeTrait<'_>` is not satisfied
+error[E0277]: the trait bound `for<'r> T: SomeTrait<'r>` is not satisfied
   --> $DIR/issue-85455.rs:8:5
    |
 LL |     callee::<fn(&()) -> <T as SomeTrait<'_>>::Associated>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `SomeTrait<'_>` is not implemented for `T`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'r> SomeTrait<'r>` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |
-LL | fn give_me_ice<T: SomeTrait<'_>>() {
-   |                 +++++++++++++++
+LL | fn give_me_ice<T: for<'r> SomeTrait<'r>>() {
+   |                 +++++++++++++++++++++++
 
-error[E0277]: the trait bound `T: SomeTrait<'_>` is not satisfied
+error[E0277]: the trait bound `for<'r> T: SomeTrait<'r>` is not satisfied
   --> $DIR/issue-85455.rs:8:14
    |
 LL |     callee::<fn(&()) -> <T as SomeTrait<'_>>::Associated>();
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `SomeTrait<'_>` is not implemented for `T`
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'r> SomeTrait<'r>` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |
-LL | fn give_me_ice<T: SomeTrait<'_>>() {
-   |                 +++++++++++++++
+LL | fn give_me_ice<T: for<'r> SomeTrait<'r>>() {
+   |                 +++++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

@@ -191,9 +191,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
                 }
                 GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
-                    ParenthesizedGenericArgs::Ok => {
-                        self.lower_parenthesized_parameter_data(segment.id, data)
-                    }
+                    ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
                     ParenthesizedGenericArgs::Err => {
                         let mut err = struct_span_err!(self.sess, data.span, E0214, "{}", msg);
                         err.span_label(data.span, "only `Fn` traits may use parentheses");
@@ -351,7 +349,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_parenthesized_parameter_data(
         &mut self,
-        id: NodeId,
         data: &ParenthesizedArgs,
     ) -> (GenericArgsCtor<'hir>, bool) {
         // Switch to `PassThrough` mode for anonymous lifetimes; this
@@ -359,31 +356,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // a hidden lifetime parameter. This is needed for backwards
         // compatibility, even in contexts like an impl header where
         // we generally don't permit such things (see #51008).
-        self.with_lifetime_binder(id, |this| {
-            let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
-            let inputs = this.arena.alloc_from_iter(inputs.iter().map(|ty| {
-                this.lower_ty_direct(
-                    ty,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam),
-                )
-            }));
-            let output_ty = match output {
-                FnRetTy::Ty(ty) => this
-                    .lower_ty(&ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn)),
-                FnRetTy::Default(_) => this.arena.alloc(this.ty_tup(*span, &[])),
-            };
-            let args = smallvec![GenericArg::Type(this.ty_tup(*inputs_span, inputs))];
-            let binding = this.output_ty_binding(output_ty.span, output_ty);
-            (
-                GenericArgsCtor {
-                    args,
-                    bindings: arena_vec![this; binding],
-                    parenthesized: true,
-                    span: data.inputs_span,
-                },
-                false,
-            )
-        })
+        let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
+        let inputs = self.arena.alloc_from_iter(inputs.iter().map(|ty| {
+            self.lower_ty_direct(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
+        }));
+        let output_ty = match output {
+            FnRetTy::Ty(ty) => {
+                self.lower_ty(&ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
+            }
+            FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
+        };
+        let args = smallvec![GenericArg::Type(self.ty_tup(*inputs_span, inputs))];
+        let binding = self.output_ty_binding(output_ty.span, output_ty);
+        (
+            GenericArgsCtor {
+                args,
+                bindings: arena_vec![self; binding],
+                parenthesized: true,
+                span: data.inputs_span,
+            },
+            false,
+        )
     }
 
     /// An associated type binding `Output = $ty`.

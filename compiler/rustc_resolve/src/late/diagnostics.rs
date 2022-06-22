@@ -2242,9 +2242,18 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             ]
             .contains(&Some(did))
             {
-                let (span, span_type) = match &trait_ref.bound_generic_params {
-                    [] => (trait_ref.span.shrink_to_lo(), ForLifetimeSpanType::BoundEmpty),
-                    [.., bound] => (bound.span.shrink_to_hi(), ForLifetimeSpanType::BoundTail),
+                let (span, span_type) = if let Some(bound) =
+                    trait_ref.bound_generic_params.iter().rfind(|param| {
+                        matches!(
+                            param.kind,
+                            hir::GenericParamKind::Lifetime {
+                                kind: hir::LifetimeParamKind::Explicit
+                            }
+                        )
+                    }) {
+                    (bound.span.shrink_to_hi(), ForLifetimeSpanType::BoundTail)
+                } else {
+                    (trait_ref.span.shrink_to_lo(), ForLifetimeSpanType::BoundEmpty)
                 };
                 self.missing_named_lifetime_spots
                     .push(MissingLifetimeSpot::HigherRanked { span, span_type });

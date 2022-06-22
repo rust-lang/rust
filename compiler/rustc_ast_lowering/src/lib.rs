@@ -223,6 +223,12 @@ impl ResolverAstLoweringExt for ResolverAstLowering {
     }
 
     /// Obtain the list of lifetimes parameters to add to an item.
+    ///
+    /// Extra lifetime parameters should only be added in places that can appear
+    /// as a `binder` in `LifetimeRes`.
+    ///
+    /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
+    /// should appear at the enclosing `PolyTraitRef`.
     fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
         self.extra_lifetime_params_map.remove(&id).unwrap_or_default()
     }
@@ -721,6 +727,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Converts a lifetime into a new generic parameter.
+    #[tracing::instrument(level = "debug", skip(self))]
     fn lifetime_res_to_generic_param(
         &mut self,
         ident: Ident,
@@ -731,7 +738,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Param { .. } => {
                 (hir::ParamName::Plain(ident), hir::LifetimeParamKind::Explicit)
             }
-            LifetimeRes::Fresh { .. } => (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided),
+            LifetimeRes::Fresh { param, .. } => {
+                // Late resolution delegates to us the creation of the `LocalDefId`.
+                let _def_id = self.create_def(
+                    self.current_hir_id_owner,
+                    param,
+                    DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                );
+                debug!(?_def_id);
+
+                (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided)
+            }
             LifetimeRes::Static | LifetimeRes::Error => return None,
             res => panic!(
                 "Unexpected lifetime resolution {:?} for {:?} at {:?}",
@@ -777,11 +794,25 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Register a binder to be ignored for lifetime capture.
     #[tracing::instrument(level = "debug", skip(self, f))]
     #[inline]
-    fn with_lifetime_binder<T>(&mut self, binder: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
+    fn with_lifetime_binder<T>(
+        &mut self,
+        binder: NodeId,
+        generic_params: &[GenericParam],
+        f: impl FnOnce(&mut Self, &'hir [hir::GenericParam<'hir>]) -> T,
+    ) -> T {
+        let mut generic_params: Vec<_> = self.lower_generic_params_mut(generic_params).collect();
+        let extra_lifetimes = self.resolver.take_extra_lifetime_params(binder);
+        debug!(?extra_lifetimes);
+        generic_params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
+            self.lifetime_res_to_generic_param(ident, node_id, res)
+        }));
+        let generic_params = self.arena.alloc_from_iter(generic_params);
+        debug!(?generic_params);
+
         if let Some(ctxt) = &mut self.captured_lifetimes {
             ctxt.binders_to_ignore.insert(binder);
         }
-        let ret = f(self);
+        let ret = f(self, generic_params);
         if let Some(ctxt) = &mut self.captured_lifetimes {
             ctxt.binders_to_ignore.remove(&binder);
         }
@@ -1178,15 +1209,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let lifetime = self.lower_lifetime(&region);
                 hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
             }
-            TyKind::BareFn(ref f) => self.with_lifetime_binder(t.id, |this| {
-                hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
-                    generic_params: this.lower_generic_params(&f.generic_params),
-                    unsafety: this.lower_unsafety(f.unsafety),
-                    abi: this.lower_extern(f.ext),
-                    decl: this.lower_fn_decl(&f.decl, None, FnDeclKind::Pointer, None),
-                    param_names: this.lower_fn_params_to_names(&f.decl),
-                }))
-            }),
+            TyKind::BareFn(ref f) => {
+                self.with_lifetime_binder(t.id, &f.generic_params, |this, generic_params| {
+                    hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
+                        generic_params,
+                        unsafety: this.lower_unsafety(f.unsafety),
+                        abi: this.lower_extern(f.ext),
+                        decl: this.lower_fn_decl(&f.decl, None, FnDeclKind::Pointer, None),
+                        param_names: this.lower_fn_params_to_names(&f.decl),
+                    }))
+                })
+            }
             TyKind::Never => hir::TyKind::Never,
             TyKind::Tup(ref tys) => hir::TyKind::Tup(
                 self.arena.alloc_from_iter(tys.iter().map(|ty| self.lower_ty_direct(ty, itctx))),
@@ -1814,8 +1847,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 hir::LifetimeName::Param(param, p_name)
             }
-            LifetimeRes::Fresh { mut param, binder } => {
+            LifetimeRes::Fresh { param, binder } => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
+                let mut param = self.local_def_id(param);
                 if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
                     if !captured_lifetimes.binders_to_ignore.contains(&binder) {
                         match captured_lifetimes.captures.entry(param) {
@@ -1952,13 +1986,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &PolyTraitRef,
         itctx: ImplTraitContext,
     ) -> hir::PolyTraitRef<'hir> {
-        let bound_generic_params = self.lower_generic_params(&p.bound_generic_params);
-
-        let trait_ref = self.with_lifetime_binder(p.trait_ref.ref_id, |this| {
-            this.lower_trait_ref(&p.trait_ref, itctx)
-        });
-
-        hir::PolyTraitRef { bound_generic_params, trait_ref, span: self.lower_span(p.span) }
+        self.with_lifetime_binder(
+            p.trait_ref.ref_id,
+            &p.bound_generic_params,
+            |this, bound_generic_params| {
+                let trait_ref = this.lower_trait_ref(&p.trait_ref, itctx);
+                hir::PolyTraitRef { bound_generic_params, trait_ref, span: this.lower_span(p.span) }
+            },
+        )
     }
 
     fn lower_mt(&mut self, mt: &MutTy, itctx: ImplTraitContext) -> hir::MutTy<'hir> {

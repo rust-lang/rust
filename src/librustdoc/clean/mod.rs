@@ -222,10 +222,15 @@ impl<'tcx> Clean<'tcx, Option<Lifetime>> for ty::Region<'tcx> {
         match **self {
             ty::ReStatic => Some(Lifetime::statik()),
             ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => {
-                Some(Lifetime(name))
+                if name != kw::UnderscoreLifetime { Some(Lifetime(name)) } else { None }
             }
-            ty::ReEarlyBound(ref data) => Some(Lifetime(data.name)),
-
+            ty::ReEarlyBound(ref data) => {
+                if data.name != kw::UnderscoreLifetime {
+                    Some(Lifetime(data.name))
+                } else {
+                    None
+                }
+            }
             ty::ReLateBound(..)
             | ty::ReFree(..)
             | ty::ReVar(..)
@@ -530,29 +535,25 @@ fn clean_generic_param<'tcx>(
     GenericParamDef { name, kind }
 }
 
+/// Synthetic type-parameters are inserted after normal ones.
+/// In order for normal parameters to be able to refer to synthetic ones,
+/// scans them first.
+fn is_impl_trait(param: &hir::GenericParam<'_>) -> bool {
+    match param.kind {
+        hir::GenericParamKind::Type { synthetic, .. } => synthetic,
+        _ => false,
+    }
+}
+
+/// This can happen for `async fn`, e.g. `async fn f<'_>(&'_ self)`.
+///
+/// See `lifetime_to_generic_param` in `rustc_ast_lowering` for more information.
+fn is_elided_lifetime(param: &hir::GenericParam<'_>) -> bool {
+    matches!(param.kind, hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided })
+}
+
 impl<'tcx> Clean<'tcx, Generics> for hir::Generics<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Generics {
-        // Synthetic type-parameters are inserted after normal ones.
-        // In order for normal parameters to be able to refer to synthetic ones,
-        // scans them first.
-        fn is_impl_trait(param: &hir::GenericParam<'_>) -> bool {
-            match param.kind {
-                hir::GenericParamKind::Type { synthetic, .. } => synthetic,
-                _ => false,
-            }
-        }
-        /// This can happen for `async fn`, e.g. `async fn f<'_>(&'_ self)`.
-        ///
-        /// See [`lifetime_to_generic_param`] in [`rustc_ast_lowering`] for more information.
-        ///
-        /// [`lifetime_to_generic_param`]: rustc_ast_lowering::LoweringContext::lifetime_to_generic_param
-        fn is_elided_lifetime(param: &hir::GenericParam<'_>) -> bool {
-            matches!(
-                param.kind,
-                hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided }
-            )
-        }
-
         let impl_trait_params = self
             .params
             .iter()
@@ -991,6 +992,7 @@ impl<'tcx> Clean<'tcx, PolyTrait> for hir::PolyTraitRef<'tcx> {
             generic_params: self
                 .bound_generic_params
                 .iter()
+                .filter(|p| !is_elided_lifetime(p))
                 .map(|x| clean_generic_param(cx, None, x))
                 .collect(),
         }
@@ -1865,8 +1867,12 @@ impl<'tcx> Clean<'tcx, BareFunctionDecl> for hir::BareFnTy<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> BareFunctionDecl {
         let (generic_params, decl) = enter_impl_trait(cx, |cx| {
             // NOTE: generics must be cleaned before args
-            let generic_params =
-                self.generic_params.iter().map(|x| clean_generic_param(cx, None, x)).collect();
+            let generic_params = self
+                .generic_params
+                .iter()
+                .filter(|p| !is_elided_lifetime(p))
+                .map(|x| clean_generic_param(cx, None, x))
+                .collect();
             let args = clean_args_from_types_and_names(cx, self.decl.inputs, self.param_names);
             let decl = clean_fn_decl_with_args(cx, self.decl, args);
             (generic_params, decl)

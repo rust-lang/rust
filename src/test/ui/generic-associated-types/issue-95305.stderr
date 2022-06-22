@@ -1,13 +1,8 @@
-error[E0106]: missing lifetime specifier
+error[E0637]: `'_` cannot be used here
   --> $DIR/issue-95305.rs:11:26
    |
 LL | fn foo(x: &impl Foo<Item<'_> = u32>) { }
-   |                          ^^ expected named lifetime parameter
-   |
-help: consider introducing a named lifetime parameter
-   |
-LL | fn foo<'a>(x: &impl Foo<Item<'a> = u32>) { }
-   |       ++++                   ~~
+   |                          ^^ `'_` is a reserved lifetime name
 
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-95305.rs:14:41
@@ -22,4 +17,5 @@ LL | fn bar(x: &impl for<'a> Foo<Item<'a> = &'a u32>) { }
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0106`.
+Some errors have detailed explanations: E0106, E0637.
+For more information about an error, try `rustc --explain E0106`.
