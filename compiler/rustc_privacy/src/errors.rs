@@ -27,3 +27,13 @@ pub enum FieldIsPrivateLabel {
         span: Span,
     },
 }
+
+#[derive(SessionDiagnostic)]
+#[error(privacy::item_is_private)]
+pub struct ItemIsPrivate<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub kind: &'a str,
+    pub descr: String,
+}
