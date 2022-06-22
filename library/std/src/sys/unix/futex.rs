@@ -5,6 +5,7 @@
     target_os = "freebsd",
     target_os = "openbsd",
     target_os = "dragonfly",
+    target_os = "fuchsia",
 ))]
 
 use crate::sync::atomic::AtomicU32;
@@ -236,4 +237,53 @@ pub fn futex_wake(futex: &AtomicU32) -> bool {
 #[cfg(target_os = "emscripten")]
 pub fn futex_wake_all(futex: &AtomicU32) {
     unsafe { emscripten_futex_wake(futex, i32::MAX) };
+}
+
+#[cfg(target_os = "fuchsia")]
+mod zircon {
+    type zx_time_t = i64;
+    type zx_futex_t = crate::sync::atomic::AtomicU32;
+    type zx_handle_t = u32;
+    type zx_status_t = i32;
+
+    pub const ZX_HANDLE_INVALID: zx_handle_t = 0;
+    pub const ZX_ERR_TIMED_OUT: zx_status_t = -21;
+    pub const ZX_TIME_INFINITE: zx_time_t = zx_time_t::MAX;
+
+    extern "C" {
+        pub fn zx_futex_wait(
+            value_ptr: *const zx_futex_t,
+            current_value: zx_futex_t,
+            new_futex_owner: zx_handle_t,
+            deadline: zx_time_t,
+        ) -> zx_status_t;
+        pub fn zx_futex_wake(value_ptr: *const zx_futex_t, wake_count: u32) -> zx_status_t;
+        pub fn zx_clock_get_monotonic() -> zx_time_t;
+    }
+}
+
+#[cfg(target_os = "fuchsia")]
+pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -> bool {
+    use crate::convert::TryFrom;
+
+    // Sleep forever if the timeout is longer than fits in a i64.
+    let deadline = timeout
+        .and_then(|d| {
+            i64::try_from(d.as_nanos())
+                .ok()?
+                .checked_add(unsafe { zircon::zx_clock_get_monotonic() })
+        })
+        .unwrap_or(zircon::ZX_TIME_INFINITE);
+
+    unsafe {
+        zircon::zx_futex_wait(futex, AtomicU32::new(expected), zircon::ZX_HANDLE_INVALID, deadline)
+            != zircon::ZX_ERR_TIMED_OUT
+    }
+}
+
+// Fuchsia doesn't tell us how many threads are woken up, so this always returns false.
+#[cfg(target_os = "fuchsia")]
+pub fn futex_wake(futex: &AtomicU32) -> bool {
+    unsafe { zircon::zx_futex_wake(futex, 1) };
+    false
 }
