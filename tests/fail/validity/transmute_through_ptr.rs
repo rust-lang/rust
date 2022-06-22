@@ -1,10 +1,14 @@
 #[repr(u32)]
 #[derive(Debug)]
-enum Bool { True }
+enum Bool {
+    True,
+}
 
 fn evil(x: &mut Bool) {
     let x = x as *mut _ as *mut u32;
-    unsafe { *x = 44; } // out-of-bounds enum tag
+    unsafe {
+        *x = 44; // out-of-bounds enum tag
+    }
 }
 
 #[rustfmt::skip] // rustfmt bug: https://github.com/rust-lang/rustfmt/issues/5391

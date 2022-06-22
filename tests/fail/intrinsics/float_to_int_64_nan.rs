@@ -6,5 +6,7 @@ extern "rust-intrinsic" {
 }
 
 fn main() {
-    unsafe { float_to_int_unchecked::<f64, u32>(f64::NAN); } //~ ERROR: cannot be represented in target type `u32`
+    unsafe {
+        float_to_int_unchecked::<f64, u32>(f64::NAN); //~ ERROR: cannot be represented in target type `u32`
+    }
 }

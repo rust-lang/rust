@@ -6,5 +6,7 @@ extern "rust-intrinsic" {
 }
 
 fn main() {
-    unsafe { float_to_int_unchecked::<f64, i128>(f64::NEG_INFINITY); } //~ ERROR: cannot be represented in target type `i128`
+    unsafe {
+        float_to_int_unchecked::<f64, i128>(f64::NEG_INFINITY); //~ ERROR: cannot be represented in target type `i128`
+    }
 }

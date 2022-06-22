@@ -10,8 +10,10 @@ fn main() {
     let x = &mut [0u8; 3];
     let base_addr = x as *mut _ as usize;
     // Manually make sure the pointer is properly aligned.
-    let base_addr_aligned = if base_addr % 2 == 0 { base_addr } else { base_addr+1 };
+    let base_addr_aligned = if base_addr % 2 == 0 { base_addr } else { base_addr + 1 };
     let u16_ptr = base_addr_aligned as *mut u16;
-    unsafe { *u16_ptr = 2; } //~ERROR memory with alignment 1, but alignment 2 is required
+    unsafe {
+        *u16_ptr = 2; //~ERROR memory with alignment 1, but alignment 2 is required
+    }
     println!("{:?}", x);
 }

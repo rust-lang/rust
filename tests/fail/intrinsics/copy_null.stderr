@@ -1,8 +1,8 @@
 error: Undefined Behavior: memory access failed: null pointer is not a valid pointer
   --> $DIR/copy_null.rs:LL:CC
    |
-LL |     unsafe { copy_nonoverlapping(std::ptr::null(), ptr, 0); }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: null pointer is not a valid pointer
+LL |         copy_nonoverlapping(std::ptr::null(), ptr, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: null pointer is not a valid pointer
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
