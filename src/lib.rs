@@ -13,6 +13,7 @@
 #![warn(unused_lifetimes)]
 
 extern crate rustc_ast;
+extern crate rustc_attr;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
@@ -32,6 +33,7 @@ mod abi;
 mod allocator;
 mod archive;
 mod asm;
+mod attributes;
 mod back;
 mod base;
 mod builder;
@@ -188,6 +190,24 @@ pub struct GccContext {
     context: Context<'static>,
 }
 
+impl GccContext {
+    fn new<'tcx>(tcx: TyCtxt<'tcx>) -> Self {
+        let context = create_context(tcx);
+        Self {
+            context,
+        }
+    }
+}
+
+fn create_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
+    let context = Context::default();
+    if tcx.sess.target.is_builtin {
+        //let features = global_gcc_features(sess, false);
+        println!("Features: {:?}", tcx.sess.opts.cg.target_feature);
+    }
+    context
+}
+
 unsafe impl Send for GccContext {}
 // FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "-Zno-parallel-llvm". Try to disable it here.
 unsafe impl Sync for GccContext {}
@@ -302,6 +322,8 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
         .filter(|_feature| {
             // TODO(antoyo): implement a way to get enabled feature in libgccjit.
             // Probably using the equivalent of __builtin_cpu_supports.
+            // TODO: maybe use whatever outputs the following command:
+            // gcc -march=native -Q --help=target
             #[cfg(feature="master")]
             {
                 (_feature.contains("sse") || _feature.contains("avx")) && !_feature.contains("avx512")

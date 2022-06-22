@@ -4,6 +4,7 @@ use rustc_middle::ty::{self, Instance, TypeFoldable};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 
 use crate::abi::FnAbiGccExt;
+use crate::attributes;
 use crate::context::CodegenCx;
 
 /// Codegens a reference to a fn/method item, monomorphizing and
@@ -67,8 +68,12 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
             cx.linkage.set(FunctionType::Extern);
             let func = cx.declare_fn(&sym, &fn_abi);
 
+            attributes::from_fn_attrs(cx, func, instance);
+
             // TODO(antoyo): set linkage and attributes.
-            func
+
+            // FIXME(antoyo): this is a wrong cast. That requires changing the compiler API.
+            unsafe { std::mem::transmute(func) }
         };
 
     cx.function_instances.borrow_mut().insert(instance, func);

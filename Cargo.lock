@@ -41,7 +41,6 @@ dependencies = [
 [[package]]
 name = "gccjit"
 version = "1.0.0"
-source = "git+https://github.com/antoyo/gccjit.rs#bdb86fb5092895ff5589726b33250010c64d93f6"
 dependencies = [
  "gccjit_sys",
 ]
@@ -49,7 +48,6 @@ dependencies = [
 [[package]]
 name = "gccjit_sys"
 version = "0.0.1"
-source = "git+https://github.com/antoyo/gccjit.rs#bdb86fb5092895ff5589726b33250010c64d93f6"
 dependencies = [
  "libc 0.1.12",
 ]
@@ -215,6 +213,7 @@ dependencies = [
  "ar",
  "gccjit",
  "lang_tester",
+ "smallvec",
  "target-lexicon",
  "tempfile",
 ]
@@ -227,6 +226,12 @@ checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
 ]
+
+[[package]]
+name = "smallvec"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
 
 [[package]]
 name = "target-lexicon"
