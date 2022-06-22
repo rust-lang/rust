@@ -16,7 +16,7 @@ fn wake_nobody() {
 
     // Wake 1 waiter. Expect zero waiters woken up, as nobody is waiting.
     unsafe {
-        assert_eq!(libc::syscall(libc::SYS_futex, &futex as *const i32, libc::FUTEX_WAKE, 1,), 0);
+        assert_eq!(libc::syscall(libc::SYS_futex, &futex as *const i32, libc::FUTEX_WAKE, 1), 0);
     }
 
     // Same, but without omitting the unused arguments.
@@ -31,7 +31,7 @@ fn wake_nobody() {
                 0usize,
                 0,
             ),
-            0
+            0,
         );
     }
 }
@@ -43,7 +43,7 @@ fn wake_dangling() {
 
     // Wake 1 waiter. Expect zero waiters woken up, as nobody is waiting.
     unsafe {
-        assert_eq!(libc::syscall(libc::SYS_futex, ptr, libc::FUTEX_WAKE, 1,), 0);
+        assert_eq!(libc::syscall(libc::SYS_futex, ptr, libc::FUTEX_WAKE, 1), 0);
     }
 }
 
@@ -60,7 +60,7 @@ fn wait_wrong_val() {
                 456,
                 ptr::null::<libc::timespec>(),
             ),
-            -1
+            -1,
         );
         assert_eq!(*libc::__errno_location(), libc::EAGAIN);
     }
@@ -81,7 +81,7 @@ fn wait_timeout() {
                 123,
                 &libc::timespec { tv_sec: 0, tv_nsec: 200_000_000 },
             ),
-            -1
+            -1,
         );
         assert_eq!(*libc::__errno_location(), libc::ETIMEDOUT);
     }
@@ -120,7 +120,7 @@ fn wait_absolute_timeout() {
                 0usize,
                 u32::MAX,
             ),
-            -1
+            -1,
         );
         assert_eq!(*libc::__errno_location(), libc::ETIMEDOUT);
     }
@@ -143,8 +143,8 @@ fn wait_wake() {
                     libc::FUTEX_WAKE,
                     10, // Wake up at most 10 threads.
                 ),
-                1
-            ); // Woken up one thread.
+                1, // Woken up one thread.
+            );
         }
     });
 
@@ -157,7 +157,7 @@ fn wait_wake() {
                 0,
                 ptr::null::<libc::timespec>(),
             ),
-            0
+            0,
         );
     }
 
@@ -183,8 +183,8 @@ fn wait_wake_bitset() {
                     0usize,
                     0b1001, // bitset
                 ),
-                0
-            ); // Didn't match any thread.
+                0, // Didn't match any thread.
+            );
         }
         thread::sleep(Duration::from_millis(200));
         unsafe {
@@ -198,8 +198,8 @@ fn wait_wake_bitset() {
                     0usize,
                     0b0110, // bitset
                 ),
-                1
-            ); // Woken up one thread.
+                1, // Woken up one thread.
+            );
         }
     });
 
@@ -214,7 +214,7 @@ fn wait_wake_bitset() {
                 0usize,
                 0b0100, // bitset
             ),
-            0
+            0,
         );
     }
 

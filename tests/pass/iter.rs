@@ -1,6 +1,6 @@
 fn iter_empty_and_zst() {
+    // Iterate over a Unique::empty()
     for _ in Vec::<u32>::new().iter() {
-        // this iterates over a Unique::empty()
         panic!("We should never be here.");
     }
 

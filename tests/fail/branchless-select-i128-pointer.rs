@@ -12,7 +12,7 @@ fn main() {
         // However, it drops provenance when transmuting to TwoPtrs, so this is UB.
         let val = unsafe {
             transmute::<_, &str>(
-                //~ERROR type validation failed: encountered a dangling reference
+                //~^ ERROR type validation failed: encountered a dangling reference
                 !mask & transmute::<_, TwoPtrs>("false !")
                     | mask & transmute::<_, TwoPtrs>("true !"),
             )

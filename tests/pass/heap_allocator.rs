@@ -16,7 +16,7 @@ fn check_alloc<T: Allocator>(allocator: T) {
                 assert_eq!(
                     a.as_ptr() as usize % layout_20.align(),
                     0,
-                    "pointer is incorrectly aligned"
+                    "pointer is incorrectly aligned",
                 );
                 allocator.deallocate(a, layout_20);
             }
@@ -25,7 +25,7 @@ fn check_alloc<T: Allocator>(allocator: T) {
             assert_eq!(
                 p1.as_ptr() as usize % layout_20.align(),
                 0,
-                "pointer is incorrectly aligned"
+                "pointer is incorrectly aligned",
             );
             assert_eq!(*p1.as_ptr(), 0);
 
@@ -34,7 +34,7 @@ fn check_alloc<T: Allocator>(allocator: T) {
             assert_eq!(
                 p2.as_ptr() as usize % layout_40.align(),
                 0,
-                "pointer is incorrectly aligned"
+                "pointer is incorrectly aligned",
             );
             let slice = slice::from_raw_parts(p2.as_ptr(), 20);
             assert_eq!(&slice, &[0_u8; 20]);
@@ -44,7 +44,7 @@ fn check_alloc<T: Allocator>(allocator: T) {
             assert_eq!(
                 p3.as_ptr() as usize % layout_40.align(),
                 0,
-                "pointer is incorrectly aligned"
+                "pointer is incorrectly aligned",
             );
             let slice = slice::from_raw_parts(p3.as_ptr(), 20);
             assert_eq!(&slice, &[0_u8; 20]);
@@ -54,7 +54,7 @@ fn check_alloc<T: Allocator>(allocator: T) {
             assert_eq!(
                 p4.as_ptr() as usize % layout_10.align(),
                 0,
-                "pointer is incorrectly aligned"
+                "pointer is incorrectly aligned",
             );
             let slice = slice::from_raw_parts(p4.as_ptr(), 10);
             assert_eq!(&slice, &[0_u8; 10]);
@@ -65,10 +65,9 @@ fn check_alloc<T: Allocator>(allocator: T) {
 }
 
 fn check_align_requests<T: Allocator>(allocator: T) {
-    for &size in &[2, 8, 64] {
-        // size less than and bigger than alignment
-        for &align in &[4, 8, 16, 32] {
-            // Be sure to cover less than and bigger than `MIN_ALIGN` for all architectures
+    #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/3255
+    for &size in &[2, 8, 64] { // size less than and bigger than alignment
+        for &align in &[4, 8, 16, 32] { // Be sure to cover less than and bigger than `MIN_ALIGN` for all architectures
             let iterations = 32;
             unsafe {
                 let pointers: Vec<_> = (0..iterations)
@@ -83,7 +82,7 @@ fn check_align_requests<T: Allocator>(allocator: T) {
                     assert_eq!(
                         (ptr.as_ptr() as usize) % align,
                         0,
-                        "Got a pointer less aligned than requested"
+                        "Got a pointer less aligned than requested",
                     )
                 }
 
@@ -93,7 +92,7 @@ fn check_align_requests<T: Allocator>(allocator: T) {
                 }
             }
         }
-    }
+    };
 }
 
 fn global_to_box() {
