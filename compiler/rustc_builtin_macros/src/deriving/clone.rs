@@ -2,8 +2,9 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
+use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, GenericArg, Generics, ItemKind, MetaItem, VariantData};
+use rustc_ast::{Expr, GenericArg, Generics, ItemKind, MetaItem, VariantData};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
@@ -30,7 +31,8 @@ pub fn expand_deriving_clone(
     //      for deriving, Clone alone is not enough.
     //      Wherever Clone is implemented for fields is irrelevant so we don't assert it.
     let bounds;
-    let substructure;
+    let substructure_clone;
+    let substructure_clone_from;
     let is_shallow;
     match *item {
         Annotatable::Item(ref annitem) => match annitem.kind {
@@ -45,28 +47,45 @@ pub fn expand_deriving_clone(
                 {
                     bounds = vec![];
                     is_shallow = true;
-                    substructure = combine_substructure(Box::new(|c, s, sub| {
+                    substructure_clone = combine_substructure(Box::new(|c, s, sub| {
                         cs_clone_shallow("Clone", c, s, sub, false)
                     }));
+                    // There is no point in implementing `Clone::clone_from` for `Copy` types
+                    // because they don't own resources to preserve.
+                    // Default implementation would suffice and this would save compilation time a little.
+                    substructure_clone_from = None;
                 } else {
                     bounds = vec![];
                     is_shallow = false;
-                    substructure =
+                    substructure_clone =
                         combine_substructure(Box::new(|c, s, sub| cs_clone("Clone", c, s, sub)));
+                    if is_type_without_fields(item) {
+                        // It clones field by field
+                        // so there is no point to generate it if there aren't any.
+                        substructure_clone_from = None;
+                    } else {
+                        substructure_clone_from =
+                            Some(combine_substructure(Box::new(|c, s, sub| {
+                                cs_clone_from("Clone", c, s, sub)
+                            })))
+                    }
                 }
             }
             ItemKind::Union(..) => {
                 bounds = vec![Literal(path_std!(marker::Copy))];
                 is_shallow = true;
-                substructure = combine_substructure(Box::new(|c, s, sub| {
+                substructure_clone = combine_substructure(Box::new(|c, s, sub| {
                     cs_clone_shallow("Clone", c, s, sub, true)
                 }));
+                // Same reasoning as with `is_shallow`.
+                substructure_clone_from = None;
             }
             _ => {
                 bounds = vec![];
                 is_shallow = false;
-                substructure =
+                substructure_clone =
                     combine_substructure(Box::new(|c, s, sub| cs_clone("Clone", c, s, sub)));
+                substructure_clone_from = None;
             }
         },
 
@@ -74,7 +93,34 @@ pub fn expand_deriving_clone(
     }
 
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)];
+    let attrs = [cx.attribute(inline)];
+
+    let mut methods = Vec::with_capacity(2);
+    methods.push(MethodDef {
+        name: sym::clone,
+        generics: Bounds::empty(),
+        explicit_self: borrowed_explicit_self(),
+        args: Vec::new(),
+        ret_ty: Self_,
+        attributes: attrs.to_vec(),
+        is_unsafe: false,
+        unify_fieldless_variants: false,
+        combine_substructure: substructure_clone,
+    });
+    if let Some(substructure_clone_from) = substructure_clone_from {
+        methods.push(MethodDef {
+            name: sym::clone_from,
+            generics: Bounds::empty(),
+            explicit_self: mutable_explicit_self(),
+            args: vec![(borrowed_self(), sym::other)],
+            ret_ty: nil_ty(),
+            attributes: attrs.to_vec(),
+            is_unsafe: false,
+            unify_fieldless_variants: false,
+            combine_substructure: substructure_clone_from,
+        })
+    }
+
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
@@ -83,17 +129,7 @@ pub fn expand_deriving_clone(
         generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: true,
-        methods: vec![MethodDef {
-            name: sym::clone,
-            generics: Bounds::empty(),
-            explicit_self: borrowed_explicit_self(),
-            args: Vec::new(),
-            ret_ty: Self_,
-            attributes: attrs,
-            is_unsafe: false,
-            unify_fieldless_variants: false,
-            combine_substructure: substructure,
-        }],
+        methods,
         associated_types: Vec::new(),
     };
 
@@ -157,6 +193,10 @@ fn cs_clone_shallow(
     cx.expr_block(cx.block(trait_span, stmts))
 }
 
+fn clone_fn_full_path(cx: &ExtCtxt<'_>) -> Vec<Ident> {
+    cx.std_path(&[sym::clone, sym::Clone, sym::clone])
+}
+
 fn cs_clone(
     name: &str,
     cx: &mut ExtCtxt<'_>,
@@ -165,7 +205,7 @@ fn cs_clone(
 ) -> P<Expr> {
     let ctor_path;
     let all_fields;
-    let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
+    let fn_path = clone_fn_full_path(cx);
     let subcall = |cx: &mut ExtCtxt<'_>, field: &FieldInfo<'_>| {
         let args = vec![cx.expr_addr_of(field.span, field.self_.clone())];
         cx.expr_call_global(field.span, fn_path.clone(), args)
@@ -216,4 +256,56 @@ fn cs_clone(
         }
         VariantData::Unit(..) => cx.expr_path(ctor_path),
     }
+}
+
+fn cs_clone_from(
+    name: &str,
+    cx: &mut ExtCtxt<'_>,
+    trait_span: Span,
+    substr: &Substructure<'_>,
+) -> P<Expr> {
+    let all_fields = match *substr.fields {
+        Struct(.., ref af) => af,
+        EnumMatching(.., ref af) => af,
+        EnumNonMatchingCollapsed(ref idents, ..) => {
+            // Cannot do something smart here.
+            // so emit `*self = other.clone();`
+
+            let [self_, other] = idents[..] else{
+                cx.span_bug(trait_span, &format!("not exactly 2 arguments in `clone_from` in `derive({})`", name))
+            };
+            let self_ = cx.expr_deref(trait_span, cx.expr_ident(trait_span, self_));
+            let other = cx.expr_ident(trait_span, other);
+            let clone_call = cx.expr_call_global(
+                trait_span,
+                clone_fn_full_path(cx),
+                vec![cx.expr_addr_of(trait_span, other)],
+            );
+            return cx.expr(trait_span, ast::ExprKind::Assign(self_, clone_call, trait_span));
+        }
+        StaticEnum(..) | StaticStruct(..) => {
+            cx.span_bug(trait_span, &format!("associated function in `derive({})`", name))
+        }
+    };
+
+    // Here we know that we have same fields in `&mut self` and in `other`
+    // so we can call `clone_from` of each of them.
+    let clone_from_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone_from]);
+    let fields_clones_from: Vec<_> = all_fields
+        .iter()
+        .map(|field| {
+            if field.other.len() != 1 {
+                cx.span_bug(
+                    trait_span,
+                    &format!("not exactly 2 arguments in `clone_from` in `derive({})`", name),
+                );
+            }
+            cx.stmt_semi(cx.expr_call_global(
+                field.span,
+                clone_from_path.clone(),
+                vec![field.self_.clone(), field.other[0].clone()],
+            ))
+        })
+        .collect();
+    cx.expr_block(cx.block(trait_span, fields_clones_from))
 }

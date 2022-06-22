@@ -108,8 +108,14 @@ pub fn borrowed(ty: Box<Ty>) -> Ty {
     Ptr(ty, borrowed_ptrty())
 }
 
+/// `&self` argument
 pub fn borrowed_explicit_self() -> Option<Option<PtrTy>> {
     Some(Some(borrowed_ptrty()))
+}
+
+/// `&mut self` argument
+pub fn mutable_explicit_self() -> Option<Option<PtrTy>> {
+    Some(Some(PtrTy::Borrowed(None, ast::Mutability::Mut)))
 }
 
 pub fn borrowed_self() -> Ty {
