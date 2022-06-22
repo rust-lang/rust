@@ -498,19 +498,8 @@ impl<'hir> Map<'hir> {
 
     pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
         use rustc_data_structures::sync::{par_iter, ParallelIterator};
-        #[cfg(parallel_compiler)]
-        use rustc_rayon::iter::IndexedParallelIterator;
 
-        par_iter(&self.krate().owners.raw).enumerate().for_each(|(owner, owner_info)| {
-            let owner = LocalDefId::new(owner);
-            if let MaybeOwner::Owner(owner_info) = owner_info {
-                par_iter(owner_info.nodes.bodies.range(..)).for_each(|(local_id, _)| {
-                    let hir_id = HirId { owner, local_id: *local_id };
-                    let body_id = BodyId { hir_id };
-                    f(self.body_owner_def_id(body_id))
-                })
-            }
-        });
+        par_iter(&self.tcx.hir_crate_items(()).body_owners[..]).for_each(|&def_id| f(def_id));
     }
 
     pub fn ty_param_owner(self, def_id: LocalDefId) -> LocalDefId {
