@@ -195,6 +195,7 @@ impl SelfProfilerRef {
         F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
     {
         #[inline(never)]
+        #[cold]
         fn cold_call<F>(profiler_ref: &SelfProfilerRef, f: F) -> TimingGuard<'_>
         where
             F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
@@ -203,7 +204,7 @@ impl SelfProfilerRef {
             f(&**profiler)
         }
 
-        if unlikely!(self.event_filter_mask.contains(event_filter)) {
+        if self.event_filter_mask.contains(event_filter) {
             cold_call(self, f)
         } else {
             TimingGuard::none()

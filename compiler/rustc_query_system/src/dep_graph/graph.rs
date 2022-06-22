@@ -750,7 +750,7 @@ impl<K: DepKind> DepGraph<K> {
             dep_node
         );
 
-        if unlikely!(!side_effects.is_empty()) {
+        if !side_effects.is_empty() {
             self.emit_side_effects(tcx, data, dep_node_index, side_effects);
         }
 
