@@ -1,0 +1,18 @@
+error: internal compiler error
+
+error: internal compiler error
+                                encountered ... with incompatible types:
+                                left-hand side has type: <IntFactory as Factory<T>>::Item
+                                right-hand side has type: usize
+  --> $DIR/select-param-env-instead-of-blanket.rs:42:5
+   |
+LL |     let mut x: <IntFactory as Factory<T>>::Item = bar::<T>();
+   |                                                   ---------- in this inlined function call
+...
+LL |     0usize
+   |     ^^^^^^
+   |
+   = note: delayed at compiler/rustc_const_eval/src/transform/validate.rs:128:36
+
+thread 'rustc' panicked
+
