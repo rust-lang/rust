@@ -60,7 +60,8 @@ fn test_corr() {
         r2 //                                        |                    |
     }); //                                           |                    |
     //                                               |synchronizes-with   |happens-before
-    let j3 = spawn(move || { //                      |                    |
+    let j3 = spawn(move || {
+        //                      |                    |
         acquires_value(&y, 1); // <------------------+                    |
         x.load(Relaxed) // <----------------------------------------------+
         // The two reads on x are ordered by hb, so they cannot observe values
@@ -84,12 +85,14 @@ fn test_wrc() {
         x.store(1, Release); // ---------------------+---------------------+
     }); //                                           |                     |
     //                                               |synchronizes-with    |
-    let j2 = spawn(move || { //                      |                     |
+    let j2 = spawn(move || {
+        //                      |                     |
         acquires_value(&x, 1); // <------------------+                     |
         y.store(1, Release); // ---------------------+                     |happens-before
     }); //                                           |                     |
     //                                               |synchronizes-with    |
-    let j3 = spawn(move || { //                      |                     |
+    let j3 = spawn(move || {
+        //                      |                     |
         acquires_value(&y, 1); // <------------------+                     |
         x.load(Relaxed) // <-----------------------------------------------+
     });
@@ -112,7 +115,8 @@ fn test_message_passing() {
         y.store(1, Release); // ---------------------+                   |
     }); //                                           |                   |
     //                                               |synchronizes-with  | happens-before
-    let j2 = spawn(move || { //                      |                   |
+    let j2 = spawn(move || {
+        //                      |                   |
         acquires_value(&y, 1); // <------------------+                   |
         unsafe { *x.0 } // <---------------------------------------------+
     });
