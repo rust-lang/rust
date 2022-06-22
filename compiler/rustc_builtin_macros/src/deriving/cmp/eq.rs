@@ -55,31 +55,27 @@ fn cs_total_eq_assert(
     trait_span: Span,
     substr: &Substructure<'_>,
 ) -> P<Expr> {
-    fn process_variant(
-        cx: &mut ExtCtxt<'_>,
-        stmts: &mut Vec<ast::Stmt>,
-        variant: &ast::VariantData,
-    ) {
+    let mut stmts = Vec::new();
+    let mut process_variant = |variant: &ast::VariantData| {
         for field in variant.fields() {
             // let _: AssertParamIsEq<FieldTy>;
             super::assert_ty_bounds(
                 cx,
-                stmts,
+                &mut stmts,
                 field.ty.clone(),
                 field.span,
                 &[sym::cmp, sym::AssertParamIsEq],
             );
         }
-    }
+    };
 
-    let mut stmts = Vec::new();
     match *substr.fields {
         StaticStruct(vdata, ..) => {
-            process_variant(cx, &mut stmts, vdata);
+            process_variant(vdata);
         }
         StaticEnum(enum_def, ..) => {
             for variant in &enum_def.variants {
-                process_variant(cx, &mut stmts, &variant.data);
+                process_variant(&variant.data);
             }
         }
         _ => cx.span_bug(trait_span, "unexpected substructure in `derive(Eq)`"),

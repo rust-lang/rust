@@ -107,20 +107,20 @@ fn cs_clone_shallow(
     substr: &Substructure<'_>,
     is_union: bool,
 ) -> P<Expr> {
-    fn process_variant(cx: &mut ExtCtxt<'_>, stmts: &mut Vec<ast::Stmt>, variant: &VariantData) {
+    let mut stmts = Vec::new();
+    let mut process_variant = |variant: &VariantData| {
         for field in variant.fields() {
             // let _: AssertParamIsClone<FieldTy>;
             super::assert_ty_bounds(
                 cx,
-                stmts,
+                &mut stmts,
                 field.ty.clone(),
                 field.span,
                 &[sym::clone, sym::AssertParamIsClone],
             );
         }
-    }
+    };
 
-    let mut stmts = Vec::new();
     if is_union {
         // let _: AssertParamIsCopy<Self>;
         let self_ty = cx.ty_path(cx.path_ident(trait_span, Ident::with_dummy_span(kw::SelfUpper)));
@@ -134,11 +134,11 @@ fn cs_clone_shallow(
     } else {
         match *substr.fields {
             StaticStruct(vdata, ..) => {
-                process_variant(cx, &mut stmts, vdata);
+                process_variant(vdata);
             }
             StaticEnum(enum_def, ..) => {
                 for variant in &enum_def.variants {
-                    process_variant(cx, &mut stmts, &variant.data);
+                    process_variant(&variant.data);
                 }
             }
             _ => cx.span_bug(
