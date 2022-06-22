@@ -1,9 +1,12 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(control_flow_enum)]
-#![feature(try_blocks)]
 #![feature(associated_type_defaults)]
+#![feature(control_flow_enum)]
+#![feature(rustc_private)]
+#![feature(try_blocks)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![cfg_attr(not(bootstrap), deny(rustc::untranslatable_diagnostic))]
+#![cfg_attr(not(bootstrap), deny(rustc::diagnostic_outside_of_impl))]
 
 mod errors;
 
