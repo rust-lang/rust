@@ -13,7 +13,7 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,53,0 { OR_PATTERNS, MANUAL_BITS }
-    1,52,0 { STR_SPLIT_ONCE }
+    1,52,0 { STR_SPLIT_ONCE, REM_EUCLID_CONST }
     1,51,0 { BORROW_AS_PTR, UNSIGNED_ABS }
     1,50,0 { BOOL_THEN }
     1,47,0 { TAU }

@@ -36,5 +36,11 @@ error: manual `rem_euclid` implementation
 LL |     ((num % 4) + 4) % 4
    |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `num.rem_euclid(4)`
 
-error: aborting due to 6 previous errors
+error: manual `rem_euclid` implementation
+  --> $DIR/manual_rem_euclid.rs:37:5
+   |
+LL |     ((num % 4) + 4) % 4
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `num.rem_euclid(4)`
+
+error: aborting due to 7 previous errors
 

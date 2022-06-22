@@ -31,3 +31,8 @@ fn main() {
 pub fn rem_euclid_4(num: i32) -> i32 {
     ((num % 4) + 4) % 4
 }
+
+// Constant version came later, should still lint
+pub const fn const_rem_euclid_4(num: i32) -> i32 {
+    ((num % 4) + 4) % 4
+}

@@ -1,7 +1,7 @@
 use clippy_utils::consts::{constant_full_int, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{meets_msrv, msrvs, path_to_local};
+use clippy_utils::{in_constant, meets_msrv, msrvs, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -48,6 +48,10 @@ impl_lint_pass!(ManualRemEuclid => [MANUAL_REM_EUCLID]);
 impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !meets_msrv(self.msrv, msrvs::REM_EUCLID) {
+            return;
+        }
+
+        if in_constant(cx, expr.hir_id) && !meets_msrv(self.msrv, msrvs::REM_EUCLID_CONST) {
             return;
         }
 
