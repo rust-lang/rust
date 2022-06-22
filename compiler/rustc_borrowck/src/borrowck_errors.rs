@@ -1,4 +1,6 @@
-use rustc_errors::{struct_span_err, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    struct_span_err, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
+};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
@@ -476,10 +478,11 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         struct_span_err!(self, span, E0716, "temporary value dropped while borrowed",)
     }
 
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     fn struct_span_err_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         self.infcx.tcx.sess.struct_span_err_with_code(sp, msg, code)

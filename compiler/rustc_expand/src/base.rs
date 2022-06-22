@@ -1077,6 +1077,7 @@ impl<'a> ExtCtxt<'a> {
         self.current_expansion.id.expansion_cause()
     }
 
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -1101,9 +1102,11 @@ impl<'a> ExtCtxt<'a> {
     ///
     /// Compilation will be stopped in the near future (at the end of
     /// the macro expansion phase).
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.sess.parse_sess.span_diagnostic.span_err(sp, msg);
     }
+    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.sess.parse_sess.span_diagnostic.span_warn(sp, msg);
     }
