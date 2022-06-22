@@ -6,6 +6,7 @@ cfg_if::cfg_if! {
         target_os = "freebsd",
         target_os = "openbsd",
         target_os = "dragonfly",
+        target_os = "fuchsia",
     ))] {
         mod futex;
         pub use futex::Parker;

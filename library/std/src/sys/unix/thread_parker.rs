@@ -7,6 +7,7 @@
     target_os = "freebsd",
     target_os = "openbsd",
     target_os = "dragonfly",
+    target_os = "fuchsia",
 )))]
 
 use crate::cell::UnsafeCell;
