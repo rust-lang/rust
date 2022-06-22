@@ -39,6 +39,7 @@ use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::TypeError::FieldMisMatch;
@@ -839,6 +840,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return_expr,
             return_expr_ty,
         );
+
+        if self.return_type_has_opaque {
+            // Point any obligations that were registered due to opaque type
+            // inference at the return expression.
+            self.select_obligations_where_possible(false, |errors| {
+                self.point_at_return_for_opaque_ty_error(errors, span, return_expr_ty);
+            });
+        }
+    }
+
+    fn point_at_return_for_opaque_ty_error(
+        &self,
+        errors: &mut Vec<traits::FulfillmentError<'tcx>>,
+        span: Span,
+        return_expr_ty: Ty<'tcx>,
+    ) {
+        // Don't point at the whole block if it's empty
+        if span == self.tcx.hir().span(self.body_id) {
+            return;
+        }
+        for err in errors {
+            let cause = &mut err.obligation.cause;
+            if let ObligationCauseCode::OpaqueReturnType(None) = cause.code() {
+                let new_cause = ObligationCause::new(
+                    cause.span,
+                    cause.body_id,
+                    ObligationCauseCode::OpaqueReturnType(Some((return_expr_ty, span))),
+                );
+                *cause = new_cause;
+            }
+        }
     }
 
     pub(crate) fn check_lhs_assignable(

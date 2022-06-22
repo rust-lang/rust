@@ -3,6 +3,9 @@ error[E0277]: the trait bound `Uwu<10_u32, 12_u32>: Trait` is not satisfied
    |
 LL | fn rawr() -> impl Trait {
    |              ^^^^^^^^^^ the trait `Trait` is not implemented for `Uwu<10_u32, 12_u32>`
+LL |
+LL |     Uwu::<10, 12>
+   |     ------------- return type was inferred to be `Uwu<10_u32, 12_u32>` here
    |
    = help: the trait `Trait` is implemented for `Uwu<N>`
 
@@ -11,6 +14,9 @@ error[E0277]: the trait bound `u32: Traitor<N>` is not satisfied
    |
 LL | fn uwu<const N: u8>() -> impl Traitor<N> {
    |                          ^^^^^^^^^^^^^^^ the trait `Traitor<N>` is not implemented for `u32`
+LL |
+LL |     1_u32
+   |     ----- return type was inferred to be `u32` here
    |
    = help: the following other types implement trait `Traitor<N, M>`:
              <u32 as Traitor<N, 2_u8>>
@@ -21,6 +27,9 @@ error[E0277]: the trait bound `u64: Traitor` is not satisfied
    |
 LL | fn owo() -> impl Traitor {
    |             ^^^^^^^^^^^^ the trait `Traitor` is not implemented for `u64`
+LL |
+LL |     1_u64
+   |     ----- return type was inferred to be `u64` here
    |
    = help: the following other types implement trait `Traitor<N, M>`:
              <u32 as Traitor<N, 2_u8>>

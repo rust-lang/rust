@@ -10,6 +10,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Ty};
@@ -645,8 +646,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn hide_parent_opaque_types(&self, ty: Ty<'tcx>, span: Span, body_id: hir::HirId) -> Ty<'tcx> {
-        let InferOk { value, obligations } =
-            self.replace_opaque_types_with_inference_vars(ty, body_id, span, self.param_env);
+        let InferOk { value, obligations } = self.replace_opaque_types_with_inference_vars(
+            ty,
+            body_id,
+            span,
+            ObligationCauseCode::MiscObligation,
+            self.param_env,
+        );
         self.register_predicates(obligations);
         value
     }

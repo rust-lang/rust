@@ -5,7 +5,7 @@ use hir::{HirId, OpaqueTyOrigin};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
-use rustc_middle::traits::ObligationCause;
+use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{
@@ -46,6 +46,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         value: T,
         body_id: HirId,
         span: Span,
+        code: ObligationCauseCode<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, T> {
         if !value.has_opaque_types() {
@@ -68,10 +69,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     ) =>
                 {
                     let span = if span.is_dummy() { self.tcx.def_span(def_id) } else { span };
-                    let cause = ObligationCause::misc(span, body_id);
+                    let cause = ObligationCause::new(span, body_id, code.clone());
+                    // FIXME(compiler-errors): We probably should add a new TypeVariableOriginKind
+                    // for opaque types, and then use that kind to fix the spans for type errors
+                    // that we see later on.
                     let ty_var = self.next_ty_var(TypeVariableOrigin {
                         kind: TypeVariableOriginKind::TypeInference,
-                        span: cause.span,
+                        span,
                     });
                     obligations.extend(
                         self.handle_opaque_type(ty, ty_var, true, &cause, param_env)

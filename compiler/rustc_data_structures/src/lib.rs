@@ -11,7 +11,6 @@
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
 #![feature(control_flow_enum)]
-#![feature(core_intrinsics)]
 #![feature(extend_one)]
 #![feature(let_else)]
 #![feature(hash_raw_entry)]
@@ -42,26 +41,6 @@ pub use rustc_index::static_assert_size;
 #[cold]
 pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
     f()
-}
-
-#[macro_export]
-macro_rules! likely {
-    ($e:expr) => {
-        match $e {
-            #[allow(unused_unsafe)]
-            e => unsafe { std::intrinsics::likely(e) },
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! unlikely {
-    ($e:expr) => {
-        match $e {
-            #[allow(unused_unsafe)]
-            e => unsafe { std::intrinsics::unlikely(e) },
-        }
-    };
 }
 
 pub mod base_n;

@@ -316,7 +316,7 @@ where
     OnHit: FnOnce(&C::Stored) -> R,
 {
     cache.lookup(&key, |value, index| {
-        if unlikely!(tcx.profiler().enabled()) {
+        if std::intrinsics::unlikely(tcx.profiler().enabled()) {
             tcx.profiler().query_cache_hit(index.into());
         }
         tcx.dep_graph().read_index(index);
@@ -354,7 +354,7 @@ where
                 .lookup(&key, |value, index| (value.clone(), index))
                 .unwrap_or_else(|_| panic!("value must be in cache after waiting"));
 
-            if unlikely!(tcx.dep_context().profiler().enabled()) {
+            if std::intrinsics::unlikely(tcx.dep_context().profiler().enabled()) {
                 tcx.dep_context().profiler().query_cache_hit(index.into());
             }
             query_blocked_prof_timer.finish_with_query_invocation_id(index.into());
@@ -422,7 +422,7 @@ where
     let diagnostics = diagnostics.into_inner();
     let side_effects = QuerySideEffects { diagnostics };
 
-    if unlikely!(!side_effects.is_empty()) {
+    if std::intrinsics::unlikely(!side_effects.is_empty()) {
         if query.anon {
             tcx.store_side_effects_for_anon_node(dep_node_index, side_effects);
         } else {
@@ -466,7 +466,9 @@ where
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         if let Some(result) = result {
-            if unlikely!(tcx.dep_context().sess().opts.debugging_opts.query_dep_graph) {
+            if std::intrinsics::unlikely(
+                tcx.dep_context().sess().opts.debugging_opts.query_dep_graph,
+            ) {
                 dep_graph.mark_debug_loaded_from_disk(*dep_node)
             }
 
@@ -483,8 +485,8 @@ where
             // currently afford to verify every hash. This subset should still
             // give us some coverage of potential bugs though.
             let try_verify = prev_fingerprint.as_value().1 % 32 == 0;
-            if unlikely!(
-                try_verify || tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich
+            if std::intrinsics::unlikely(
+                try_verify || tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich,
             ) {
                 incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
             }
@@ -723,7 +725,7 @@ where
     // Ensure that only one of them runs the query.
     let cache = Q::query_cache(tcx);
     let cached = cache.lookup(&key, |_, index| {
-        if unlikely!(tcx.dep_context().profiler().enabled()) {
+        if std::intrinsics::unlikely(tcx.dep_context().profiler().enabled()) {
             tcx.dep_context().profiler().query_cache_hit(index.into());
         }
     });
