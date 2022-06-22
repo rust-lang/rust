@@ -7,7 +7,7 @@
 use std::future::Future;
 
 async fn baz<T>(_c: impl FnMut() -> T) where T: Future<Output=()> {
-//[drop_tracking]~^ within this async block
+//[drop_tracking]~^ within this `async fn` body
 }
 
 fn foo(tx: std::sync::mpsc::Sender<i32>) -> impl Future + Send {
@@ -21,7 +21,7 @@ fn foo(tx: std::sync::mpsc::Sender<i32>) -> impl Future + Send {
     //[drop_tracking]~|  NOTE: in this expansion
     //[drop_tracking]~|  NOTE: in this expansion
     async move {
-    //[drop_tracking]~^ within this async block
+    //[drop_tracking]~^ within this `async` block
         baz(|| async{ //[drop_tracking]~ NOTE: used within this closure
             foo(tx.clone());
         }).await;
