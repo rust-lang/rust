@@ -32,6 +32,7 @@ pub use unic_langid::{langid, LanguageIdentifier};
 // Generates `DEFAULT_LOCALE_RESOURCES` static and `fluent_generated` module.
 fluent_messages! {
     parser => "../locales/en-US/parser.ftl",
+    privacy => "../locales/en-US/privacy.ftl",
     typeck => "../locales/en-US/typeck.ftl",
 }
 

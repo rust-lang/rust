@@ -5,6 +5,8 @@
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
+mod errors;
+
 use rustc_ast::MacroDef;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
@@ -33,6 +35,8 @@ use rustc_trait_selection::traits::const_evaluatable::{self, AbstractConst};
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, mem};
+
+use errors::{FieldIsPrivate, FieldIsPrivateLabel};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.
@@ -935,23 +939,17 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         let hir_id = self.tcx.hir().local_def_id_to_hir_id(self.current_item);
         let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id).1;
         if !field.vis.is_accessible_from(def_id, self.tcx) {
-            let label = if in_update_syntax {
-                format!("field `{}` is private", field.name)
-            } else {
-                "private field".to_string()
-            };
-
-            struct_span_err!(
-                self.tcx.sess,
+            self.tcx.sess.emit_err(FieldIsPrivate {
                 span,
-                E0451,
-                "field `{}` of {} `{}` is private",
-                field.name,
-                def.variant_descr(),
-                self.tcx.def_path_str(def.did())
-            )
-            .span_label(span, label)
-            .emit();
+                field_name: field.name,
+                variant_descr: def.variant_descr(),
+                def_path_str: self.tcx.def_path_str(def.did()),
+                label: if in_update_syntax {
+                    FieldIsPrivateLabel::IsUpdateSyntax { span, field_name: field.name }
+                } else {
+                    FieldIsPrivateLabel::Other { span }
+                },
+            });
         }
     }
 }
