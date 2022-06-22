@@ -1,5 +1,6 @@
 fn iter_empty_and_zst() {
-    for _ in Vec::<u32>::new().iter() { // this iterates over a Unique::empty()
+    // Iterate over a Unique::empty()
+    for _ in Vec::<u32>::new().iter() {
         panic!("We should never be here.");
     }
 
@@ -21,13 +22,13 @@ fn test_iterator_step_by_nth() {
 }
 
 fn iter_any() {
-    let f = |x: &u8| { 10u8 == *x };
+    let f = |x: &u8| 10u8 == *x;
     f(&1u8);
 
-    let g = |(), x: &u8| { 10u8 == *x };
+    let g = |(), x: &u8| 10u8 == *x;
     g((), &1u8);
 
-    let h = |(), (), x: &u8| { 10u8 == *x };
+    let h = |(), (), x: &u8| 10u8 == *x;
     h((), (), &1u8);
 
     [1, 2, 3u8].iter().any(|elt| 10 == *elt);

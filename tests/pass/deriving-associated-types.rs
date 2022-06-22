@@ -40,10 +40,15 @@ struct TupleStruct<A, B: DeclaredTrait, C>(
     <C as WhereTrait>::Type,
     Option<<C as WhereTrait>::Type>,
     <i32 as DeclaredTrait>::Type,
-) where C: WhereTrait;
+)
+where
+    C: WhereTrait;
 
 #[derive(PartialEq, Debug)]
-pub struct Struct<A, B: DeclaredTrait, C> where C: WhereTrait {
+pub struct Struct<A, B: DeclaredTrait, C>
+where
+    C: WhereTrait,
+{
     m1: module::Type,
     m2: Option<module::Type>,
     a1: A,
@@ -62,7 +67,10 @@ pub struct Struct<A, B: DeclaredTrait, C> where C: WhereTrait {
 }
 
 #[derive(PartialEq, Debug)]
-enum Enum<A, B: DeclaredTrait, C> where C: WhereTrait {
+enum Enum<A, B: DeclaredTrait, C>
+where
+    C: WhereTrait,
+{
     Unit,
     Seq(
         module::Type,
@@ -101,35 +109,11 @@ enum Enum<A, B: DeclaredTrait, C> where C: WhereTrait {
 }
 
 fn main() {
-
-    let e: Enum<
-        i32,
-        i32,
-        i32,
-    > = Enum::Seq(
-        0,
-        None,
-        0,
-        PrivateStruct(0),
-        0,
-        0,
-        None,
-        0,
-        None,
-        0,
-        0,
-        None,
-        0,
-        None,
-        0,
-    );
+    let e: Enum<i32, i32, i32> =
+        Enum::Seq(0, None, 0, PrivateStruct(0), 0, 0, None, 0, None, 0, 0, None, 0, None, 0);
     assert_eq!(e, e);
 
-    let e: Enum<
-        i32,
-        i32,
-        i32,
-    > = Enum::Map {
+    let e: Enum<i32, i32, i32> = Enum::Map {
         m1: 0,
         m2: None,
         a1: 0,
@@ -147,52 +131,29 @@ fn main() {
         d: 0,
     };
     assert_eq!(e, e);
-        let e: TupleStruct<
-            i32,
-            i32,
-            i32,
-        > = TupleStruct(
-            0,
-            None,
-            0,
-            PrivateStruct(0),
-            0,
-            0,
-            None,
-            0,
-            None,
-            0,
-            0,
-            None,
-            0,
-            None,
-            0,
-        );
-        assert_eq!(e, e);
+    let e: TupleStruct<i32, i32, i32> =
+        TupleStruct(0, None, 0, PrivateStruct(0), 0, 0, None, 0, None, 0, 0, None, 0, None, 0);
+    assert_eq!(e, e);
 
-        let e: Struct<
-            i32,
-            i32,
-            i32,
-        > = Struct {
-            m1: 0,
-            m2: None,
-            a1: 0,
-            a2: PrivateStruct(0),
-            b: 0,
-            b1: 0,
-            b2: None,
-            b3: 0,
-            b4: None,
-            c: 0,
-            c1: 0,
-            c2: None,
-            c3: 0,
-            c4: None,
-            d: 0,
-        };
-        assert_eq!(e, e);
+    let e: Struct<i32, i32, i32> = Struct {
+        m1: 0,
+        m2: None,
+        a1: 0,
+        a2: PrivateStruct(0),
+        b: 0,
+        b1: 0,
+        b2: None,
+        b3: 0,
+        b4: None,
+        c: 0,
+        c1: 0,
+        c2: None,
+        c3: 0,
+        c4: None,
+        d: 0,
+    };
+    assert_eq!(e, e);
 
-        let e = Enum::Unit::<i32, i32, i32>;
-        assert_eq!(e, e);
+    let e = Enum::Unit::<i32, i32, i32>;
+    assert_eq!(e, e);
 }

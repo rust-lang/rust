@@ -54,12 +54,13 @@ fn test_corr() {
         x.store(2, Relaxed);
     });
 
+    #[rustfmt::skip]
     let j2 = spawn(move || {
         let r2 = x.load(Relaxed); // -------------------------------------+
         y.store(1, Release); // ---------------------+                    |
         r2 //                                        |                    |
     }); //                                           |                    |
-    //                                               |synchronizes-with   |happens-before
+    #[rustfmt::skip] //                              |synchronizes-with   |happens-before
     let j3 = spawn(move || { //                      |                    |
         acquires_value(&y, 1); // <------------------+                    |
         x.load(Relaxed) // <----------------------------------------------+
@@ -80,15 +81,16 @@ fn test_wrc() {
     let x = static_atomic(0);
     let y = static_atomic(0);
 
+    #[rustfmt::skip]
     let j1 = spawn(move || {
         x.store(1, Release); // ---------------------+---------------------+
     }); //                                           |                     |
-    //                                               |synchronizes-with    |
+    #[rustfmt::skip] //                              |synchronizes-with    |
     let j2 = spawn(move || { //                      |                     |
         acquires_value(&x, 1); // <------------------+                     |
         y.store(1, Release); // ---------------------+                     |happens-before
     }); //                                           |                     |
-    //                                               |synchronizes-with    |
+    #[rustfmt::skip] //                              |synchronizes-with    |
     let j3 = spawn(move || { //                      |                     |
         acquires_value(&y, 1); // <------------------+                     |
         x.load(Relaxed) // <-----------------------------------------------+
@@ -107,11 +109,12 @@ fn test_message_passing() {
     let x = EvilSend(ptr);
     let y = static_atomic(0);
 
+    #[rustfmt::skip]
     let j1 = spawn(move || {
         unsafe { *x.0 = 1 }; // -----------------------------------------+
         y.store(1, Release); // ---------------------+                   |
     }); //                                           |                   |
-    //                                               |synchronizes-with  | happens-before
+    #[rustfmt::skip] //                              |synchronizes-with  | happens-before
     let j2 = spawn(move || { //                      |                   |
         acquires_value(&y, 1); // <------------------+                   |
         unsafe { *x.0 } // <---------------------------------------------+

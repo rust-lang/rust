@@ -1,8 +1,13 @@
 error: Undefined Behavior: Data race detected between Deallocate on Thread(id = 2) and Read on Thread(id = 1) at ALLOC (current vector clock = VClock, conflicting timestamp = VClock)
   --> $DIR/dealloc_read_race1.rs:LL:CC
    |
-LL |             __rust_dealloc(ptr.0 as *mut _, std::mem::size_of::<usize>(), std::mem::align_of::<usize>());
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between Deallocate on Thread(id = 2) and Read on Thread(id = 1) at ALLOC (current vector clock = VClock, conflicting timestamp = VClock)
+LL | /             __rust_dealloc(
+LL | |
+LL | |                 ptr.0 as *mut _,
+LL | |                 std::mem::size_of::<usize>(),
+LL | |                 std::mem::align_of::<usize>(),
+LL | |             );
+   | |_____________^ Data race detected between Deallocate on Thread(id = 2) and Read on Thread(id = 1) at ALLOC (current vector clock = VClock, conflicting timestamp = VClock)
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
