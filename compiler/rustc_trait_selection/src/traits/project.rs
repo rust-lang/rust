@@ -28,6 +28,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{MaxUniverse, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
@@ -261,6 +262,7 @@ fn project_and_unify_type<'cx, 'tcx>(
             actual,
             obligation.cause.body_id,
             obligation.cause.span,
+            ObligationCauseCode::MiscObligation,
             obligation.param_env,
         );
     obligations.extend(new);
