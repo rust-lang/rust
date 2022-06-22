@@ -71,11 +71,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
                 match cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
                     Some(Node::Param(..)) => (),
                     Some(Node::Local(local)) => {
-                        if let Some(ty) = local.ty {
-                            if matches!(ty.kind, TyKind::Infer) {
-                                return;
-                            }
-                        } else {
+                        let Some(ty) = local.ty else { return };
+                        if matches!(ty.kind, TyKind::Infer) {
                             return;
                         }
                     }
