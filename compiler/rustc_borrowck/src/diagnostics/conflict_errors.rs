@@ -339,23 +339,48 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 Some(name) => (format!("`{name}`"), format!("`{name}`"), format!("`{name}` ")),
                 None => ("value".to_string(), "the variable".to_string(), String::new()),
             };
+
+        // We use the statements were the binding was initialized, and inspect the HIR to look
+        // for the branching codepaths that aren't covered, to point at them.
+        let hir_id = self.mir_hir_id();
+        let map = self.infcx.tcx.hir();
+        let body_id = map.body_owned_by(hir_id);
+        let body = map.body(body_id);
+
+        let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };
+        visitor.visit_body(&body);
+
         let isnt_initialized =
             if let InitializationRequiringAction::PartialAssignment = desired_action {
                 // The same error is emitted for bindings that are *sometimes* initialized and the ones
                 // that are *partially* initialized by assigning to a field of an uninitialized
                 // binding. We differentiate between them for more accurate wording here.
                 "isn't fully initialized"
-            } else if spans.iter().filter(|i| !i.contains(span)).count() == 0 {
-                // We filter above to avoid misleading wording in cases like the following, where `x`
-                // has an `init`, but it is in the same place we're looking at:
-                // ```
-                // let x;
-                // x += 1;
-                // ```
+            } else if spans
+                .iter()
+                .filter(|i| {
+                    // We filter these to avoid misleading wording in cases like the following,
+                    // where `x` has an `init`, but it is in the same place we're looking at:
+                    // ```
+                    // let x;
+                    // x += 1;
+                    // ```
+                    !i.contains(span)
+                    // We filter these to avoid incorrect main message on `match-cfg-fake-edges.rs`
+                        && !visitor
+                            .errors
+                            .iter()
+                            .map(|(sp, _)| *sp)
+                            .any(|sp| span < sp && !sp.contains(span))
+                })
+                .count()
+                == 0
+            {
                 "isn't initialized"
             } else {
                 "is possibly-uninitialized"
             };
+
         let used = desired_action.as_general_verb_in_past_tense();
         let mut err =
             struct_span_err!(self, span, E0381, "{used} binding {desc}{isnt_initialized}");
@@ -372,22 +397,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
         err.span_label(span, format!("{binding} {used} here but it {isnt_initialized}"));
 
-        // We use the statements were the binding was initialized, and inspect the HIR to look
-        // for the branching codepaths that aren't covered, to point at them.
-        let hir_id = self.mir_hir_id();
-        let map = self.infcx.tcx.hir();
-        let body_id = map.body_owned_by(hir_id);
-        let body = map.body(body_id);
-
-        let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };
-        visitor.visit_body(&body);
-        if visitor.errors.is_empty() {
-            for sp in &spans {
-                if *sp < span && !sp.overlaps(span) {
-                    err.span_label(*sp, "binding initialized here in some conditions");
-                }
-            }
-        }
+        let mut shown = false;
         for (sp, label) in visitor.errors {
             if sp < span && !sp.overlaps(span) {
                 // When we have a case like `match-cfg-fake-edges.rs`, we don't want to mention
@@ -404,6 +414,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // };
                 // ```
                 err.span_label(sp, &label);
+                shown = true;
+            }
+        }
+        if !shown {
+            for sp in &spans {
+                if *sp < span && !sp.overlaps(span) {
+                    err.span_label(*sp, "binding initialized here in some conditions");
+                }
             }
         }
         err.span_label(decl_span, "binding declared here but left uninitialized");
