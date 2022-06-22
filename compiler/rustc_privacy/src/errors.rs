@@ -45,3 +45,31 @@ pub struct UnnamedItemIsPrivate {
     pub span: Span,
     pub kind: &'static str,
 }
+
+// Duplicate of `InPublicInterface` but with a different error code, shares the same slug.
+#[derive(SessionDiagnostic)]
+#[error(privacy::in_public_interface, code = "E0445")]
+pub struct InPublicInterfaceTraits<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub vis_descr: &'static str,
+    pub kind: &'a str,
+    pub descr: String,
+    #[label(privacy::visibility_label)]
+    pub vis_span: Span,
+}
+
+// Duplicate of `InPublicInterfaceTraits` but with a different error code, shares the same slug.
+#[derive(SessionDiagnostic)]
+#[error(privacy::in_public_interface, code = "E0446")]
+pub struct InPublicInterface<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub vis_descr: &'static str,
+    pub kind: &'a str,
+    pub descr: String,
+    #[label(privacy::visibility_label)]
+    pub vis_span: Span,
+}

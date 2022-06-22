@@ -6,3 +6,7 @@ privacy-item-is-private = {$kind} `{$descr}` is private
     .label = private {$kind}
 privacy-unnamed-item-is-private = {$kind} is private
     .label = private {$kind}
+
+privacy-in-public-interface = {$vis_descr} {$kind} `{$descr}` in public interface
+    .label = can't leak {$vis_descr} {$kind}
+    .visibility-label = `{$descr}` declared as {$vis_descr}
