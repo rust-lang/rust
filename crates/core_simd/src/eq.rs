@@ -71,3 +71,45 @@ macro_rules! impl_mask {
 }
 
 impl_mask! { i8, i16, i32, i64, isize }
+
+impl<T, const LANES: usize> SimdPartialEq for Simd<*const T, LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Mask = Mask<isize, LANES>;
+
+    #[inline]
+    fn simd_eq(self, other: Self) -> Self::Mask {
+        // Safety: `self` is a vector, and the result of the comparison
+        // is always a valid mask.
+        unsafe { Mask::from_int_unchecked(intrinsics::simd_eq(self, other)) }
+    }
+
+    #[inline]
+    fn simd_ne(self, other: Self) -> Self::Mask {
+        // Safety: `self` is a vector, and the result of the comparison
+        // is always a valid mask.
+        unsafe { Mask::from_int_unchecked(intrinsics::simd_ne(self, other)) }
+    }
+}
+
+impl<T, const LANES: usize> SimdPartialEq for Simd<*mut T, LANES>
+where
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    type Mask = Mask<isize, LANES>;
+
+    #[inline]
+    fn simd_eq(self, other: Self) -> Self::Mask {
+        // Safety: `self` is a vector, and the result of the comparison
+        // is always a valid mask.
+        unsafe { Mask::from_int_unchecked(intrinsics::simd_eq(self, other)) }
+    }
+
+    #[inline]
+    fn simd_ne(self, other: Self) -> Self::Mask {
+        // Safety: `self` is a vector, and the result of the comparison
+        // is always a valid mask.
+        unsafe { Mask::from_int_unchecked(intrinsics::simd_ne(self, other)) }
+    }
+}

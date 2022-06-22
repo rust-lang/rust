@@ -2,7 +2,7 @@
 pub(crate) mod ptr;
 
 use crate::simd::{
-    intrinsics, LaneCount, Mask, MaskElement, SimdPartialOrd, SupportedLaneCount, Swizzle,
+    intrinsics, LaneCount, Mask, MaskElement, SimdCast, SimdPartialOrd, SupportedLaneCount, Swizzle,
 };
 
 /// A SIMD vector of `LANES` elements of type `T`. `Simd<T, N>` has the same shape as [`[T; N]`](array), but operates like `T`.
@@ -211,7 +211,10 @@ where
     #[must_use]
     #[inline]
     #[cfg(not(bootstrap))]
-    pub fn cast<U: SimdElement>(self) -> Simd<U, LANES> {
+    pub fn cast<U: SimdElement>(self) -> Simd<U, LANES>
+    where
+        T: SimdCast<U>,
+    {
         // Safety: The input argument is a vector of a valid SIMD element type.
         unsafe { intrinsics::simd_as(self) }
     }
@@ -234,7 +237,7 @@ where
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn to_int_unchecked<I>(self) -> Simd<I, LANES>
     where
-        T: core::convert::FloatToInt<I>,
+        T: core::convert::FloatToInt<I> + SimdCast<I>,
         I: SimdElement,
     {
         // Safety: `self` is a vector, and `FloatToInt` ensures the type can be casted to
@@ -738,4 +741,14 @@ impl Sealed for f64 {}
 // Safety: f64 is a valid SIMD element type, and is supported by this API
 unsafe impl SimdElement for f64 {
     type Mask = i64;
+}
+
+impl<T> Sealed for *const T {}
+unsafe impl<T> SimdElement for *const T {
+    type Mask = isize;
+}
+
+impl<T> Sealed for *mut T {}
+unsafe impl<T> SimdElement for *mut T {
+    type Mask = isize;
 }
