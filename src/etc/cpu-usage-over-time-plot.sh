@@ -7,12 +7,20 @@
 # commit SHA of the build you're interested in, and the second is the name of
 # the builder. For example:
 #
-#  ./src/etc/cpu-usage-over-time-plot.sh e699ea096fcc2fc9ce8e8bcf884e11496a31cc9f i686-mingw-1
+#  ./src/etc/cpu-usage-over-time-plot.sh 7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c x86_64-gnu
 #
 # That will generate `$builder.png` in the current directory which you can open
 # up to see a hopefully pretty graph.
 #
 # Improvements to this script are greatly appreciated!
+
+if [[ $# != 2 ]]; then
+    echo "expected 2 arguments, recieved $#"
+    echo "example usage: './src/etc/cpu-usage-over-time-plot.sh \
+7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c \
+x86_64-gnu'"
+    exit 1
+fi
 
 set -ex
 
@@ -30,7 +38,7 @@ set ylabel "CPU Usage %"
 set xlabel "Time"
 set datafile sep ','
 set term png size 3000,1000
-set output "$builder.png"
+set output "$builder-$commit-cpu-usage-plot.png"
 set grid
 
 f(x) = mean_y
@@ -43,7 +51,9 @@ set ytics 10
 set boxwidth 0.5
 
 plot \\
-   mean_y with lines linetype 1 linecolor rgb "#ff0000" title "average", \\
-   "cpu-$builder.csv" using 1:(100-\$2) with points pointtype 7 pointsize 0.4 title "$builder", \\
-   "" using 1:(100-\$2) smooth bezier linewidth 3 title "bezier"
+    mean_y with lines linetype 1 linecolor rgb "#ff0000" title "average", "cpu-$builder.csv" \\
+    using 1:(100-\$2) with points pointtype 7 pointsize 0.4 title "$builder", "" \\
+    using 1:(100-\$2) smooth bezier linewidth 3 title "bezier"
 EOF
+
+rm "cpu-$builder.csv"
