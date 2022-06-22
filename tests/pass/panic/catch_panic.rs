@@ -3,8 +3,8 @@
 #![feature(never_type)]
 #![allow(unconditional_panic, non_fmt_panics)]
 
-use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::cell::Cell;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 thread_local! {
     static MY_COUNTER: Cell<usize> = Cell::new(0);
@@ -59,23 +59,29 @@ fn main() {
     test(None, |old_val| core::panic!("Hello from panic: {:?}", old_val));
 
     // Built-in panics; also make sure the message is right.
-    test(
-        Some("index out of bounds: the len is 3 but the index is 4"),
-        |_old_val| { let _val = [0, 1, 2][4]; loop {} },
-    );
-    test(
-        Some("attempt to divide by zero"),
-        |_old_val| { let _val = 1/0; loop {} },
-    );
+    test(Some("index out of bounds: the len is 3 but the index is 4"), |_old_val| {
+        let _val = [0, 1, 2][4];
+        loop {}
+    });
+    test(Some("attempt to divide by zero"), |_old_val| {
+        let _val = 1 / 0;
+        loop {}
+    });
 
-    test(
-        Some("align_offset: align is not a power-of-two"),
-        |_old_val| { (0usize as *const u8).align_offset(3); loop {} },
-    );
+    test(Some("align_offset: align is not a power-of-two"), |_old_val| {
+        (0usize as *const u8).align_offset(3);
+        loop {}
+    });
 
     // Assertion and debug assertion
-    test(None, |_old_val| { assert!(false); loop {} });
-    test(None, |_old_val| { debug_assert!(false); loop {} });
+    test(None, |_old_val| {
+        assert!(false);
+        loop {}
+    });
+    test(None, |_old_val| {
+        debug_assert!(false);
+        loop {}
+    });
 
     eprintln!("Success!"); // Make sure we get this in stderr
 }
@@ -89,7 +95,8 @@ fn test(expect_msg: Option<&str>, do_panic: impl FnOnce(usize) -> !) {
     let res = catch_unwind(AssertUnwindSafe(|| {
         let _string = "LEAKED FROM CLOSURE".to_string();
         do_panic_counter(do_panic)
-    })).expect_err("do_panic() did not panic!");
+    }))
+    .expect_err("do_panic() did not panic!");
 
     // See if we can extract the panic message.
     let msg = if let Some(s) = res.downcast_ref::<String>() {
