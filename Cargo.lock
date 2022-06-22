@@ -4590,7 +4590,6 @@ dependencies = [
 name = "rustc_typeck"
 version = "0.0.0"
 dependencies = [
- "itertools",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",

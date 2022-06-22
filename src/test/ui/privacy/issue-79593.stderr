@@ -16,11 +16,7 @@ error: cannot construct `Pub` with struct literal syntax due to private fields
 LL |     foo::Pub {};
    |     ^^^^^^^^
    |
-note: missing field `private` is private
-  --> $DIR/issue-79593.rs:2:22
-   |
-LL |     pub struct Pub { private: () }
-   |                      ^^^^^^^^^^^
+   = note: ... and other private field `private` that were not provided
 
 error[E0063]: missing field `y` in initializer of `Enum`
   --> $DIR/issue-79593.rs:23:5
