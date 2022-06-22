@@ -35,7 +35,6 @@ o("debug", "rust.debug", "enables debugging environment; does not affect optimiz
 o("docs", "build.docs", "build standard library documentation")
 o("compiler-docs", "build.compiler-docs", "build compiler documentation")
 o("optimize-tests", "rust.optimize-tests", "build tests with optimizations")
-o("parallel-compiler", "rust.parallel-compiler", "build a multi-threaded rustc")
 o("verbose-tests", "rust.verbose-tests", "enable verbose output when running tests")
 o("ccache", "llvm.ccache", "invoke gcc/clang via ccache to reuse object files between builds")
 o("sccache", None, "invoke gcc/clang via sccache to reuse object files between builds")
@@ -70,7 +69,6 @@ v("llvm-libunwind", "rust.llvm-libunwind", "use LLVM libunwind")
 
 # Optimization and debugging options. These may be overridden by the release
 # channel, etc.
-o("optimize", "rust.optimize", "build optimized rust code")
 o("optimize-llvm", "llvm.optimize", "build optimized LLVM")
 o("llvm-assertions", "llvm.assertions", "build LLVM with assertions")
 o("llvm-plugins", "llvm.plugins", "build LLVM with plugin interface")
@@ -161,7 +159,7 @@ v("default-linker", "rust.default-linker", "the default linker")
 # Many of these are saved below during the "writing configuration" step
 # (others are conditionally saved).
 o("manage-submodules", "build.submodules", "let the build manage the git submodules")
-o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of two")
+o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of two (not recommended except for testing reproducible builds)")
 o("extended", "build.extended", "build an extended rust tool set")
 
 v("tools", None, "List of extended tools will be installed")
@@ -493,4 +491,3 @@ with bootstrap.output('Makefile') as f:
 
 p("")
 p("run `python {}/x.py --help`".format(rust_dir))
-p("")
