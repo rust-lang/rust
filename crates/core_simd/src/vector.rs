@@ -9,8 +9,9 @@ pub use uint::*;
 // Vectors of pointers are not for public use at the current time.
 pub(crate) mod ptr;
 
-use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Mask, MaskElement, SimdPartialOrd, SupportedLaneCount};
+use crate::simd::{
+    intrinsics, LaneCount, Mask, MaskElement, SimdPartialOrd, SupportedLaneCount, Swizzle,
+};
 
 /// A SIMD vector of `LANES` elements of type `T`. `Simd<T, N>` has the same shape as [`[T; N]`](array), but operates like `T`.
 ///
@@ -123,8 +124,14 @@ where
     /// let v = u32x4::splat(8);
     /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
     /// ```
-    pub const fn splat(value: T) -> Self {
-        Self([value; LANES])
+    pub fn splat(value: T) -> Self {
+        // This is a workaround for `[value; LANES]` generating a loop:
+        // https://github.com/rust-lang/rust/issues/97804
+        struct Splat;
+        impl<const LANES: usize> Swizzle<1, LANES> for Splat {
+            const INDEX: [usize; LANES] = [0; LANES];
+        }
+        Splat::swizzle(Simd::<T, 1>::from([value]))
     }
 
     /// Returns an array reference containing the entire SIMD vector.
