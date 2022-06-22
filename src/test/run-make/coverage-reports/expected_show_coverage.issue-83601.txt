@@ -2,12 +2,6 @@
     2|       |
     3|      3|#[derive(Debug, PartialEq, Eq)]
                               ^2
-  ------------------
-  | <issue_83601::Foo as core::cmp::PartialEq>::eq:
-  |    3|      2|#[derive(Debug, PartialEq, Eq)]
-  ------------------
-  | Unexecuted instantiation: <issue_83601::Foo as core::cmp::PartialEq>::ne
-  ------------------
     4|       |struct Foo(u32);
     5|       |
     6|      1|fn main() {

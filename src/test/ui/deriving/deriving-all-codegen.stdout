@@ -122,10 +122,6 @@ impl ::core::cmp::PartialEq for Point {
     fn eq(&self, other: &Point) -> bool {
         self.x == other.x && self.y == other.y
     }
-    #[inline]
-    fn ne(&self, other: &Point) -> bool {
-        self.x != other.x || self.y != other.y
-    }
 }
 impl ::core::marker::StructuralEq for Point {}
 #[automatically_derived]
@@ -238,13 +234,6 @@ impl ::core::cmp::PartialEq for Big {
                             self.b4 == other.b4 && self.b5 == other.b5 &&
                     self.b6 == other.b6 && self.b7 == other.b7 &&
             self.b8 == other.b8
-    }
-    #[inline]
-    fn ne(&self, other: &Big) -> bool {
-        self.b1 != other.b1 || self.b2 != other.b2 || self.b3 != other.b3 ||
-                            self.b4 != other.b4 || self.b5 != other.b5 ||
-                    self.b6 != other.b6 || self.b7 != other.b7 ||
-            self.b8 != other.b8
     }
 }
 impl ::core::marker::StructuralEq for Big {}
@@ -361,8 +350,6 @@ impl ::core::marker::StructuralPartialEq for Unsized {}
 impl ::core::cmp::PartialEq for Unsized {
     #[inline]
     fn eq(&self, other: &Unsized) -> bool { self.0 == other.0 }
-    #[inline]
-    fn ne(&self, other: &Unsized) -> bool { self.0 != other.0 }
 }
 impl ::core::marker::StructuralEq for Unsized {}
 #[automatically_derived]
@@ -428,8 +415,6 @@ impl ::core::marker::StructuralPartialEq for PackedCopy {}
 impl ::core::cmp::PartialEq for PackedCopy {
     #[inline]
     fn eq(&self, other: &PackedCopy) -> bool { { self.0 } == { other.0 } }
-    #[inline]
-    fn ne(&self, other: &PackedCopy) -> bool { { self.0 } != { other.0 } }
 }
 impl ::core::marker::StructuralEq for PackedCopy {}
 #[automatically_derived]
@@ -502,12 +487,6 @@ impl ::core::cmp::PartialEq for PackedNonCopy {
         let Self(ref __self_0_0) = *self;
         let Self(ref __self_1_0) = *other;
         *__self_0_0 == *__self_1_0
-    }
-    #[inline]
-    fn ne(&self, other: &PackedNonCopy) -> bool {
-        let Self(ref __self_0_0) = *self;
-        let Self(ref __self_1_0) = *other;
-        *__self_0_0 != *__self_1_0
     }
 }
 impl ::core::marker::StructuralEq for PackedNonCopy {}
@@ -636,13 +615,6 @@ impl ::core::cmp::PartialEq for Enum1 {
         match (self, other) {
             (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
                 *__self_0 == *__arg1_0,
-        }
-    }
-    #[inline]
-    fn ne(&self, other: &Enum1) -> bool {
-        match (self, other) {
-            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
-                *__self_0 != *__arg1_0,
         }
     }
 }
@@ -883,20 +855,6 @@ impl ::core::cmp::PartialEq for Mixed {
                 _ => true,
             }
     }
-    #[inline]
-    fn ne(&self, other: &Mixed) -> bool {
-        let __self_tag = ::core::intrinsics::discriminant_value(self);
-        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
-        __self_tag != __arg1_tag ||
-            match (self, other) {
-                (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
-                    *__self_0 != *__arg1_0,
-                (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
-                    d1: __arg1_0, d2: __arg1_1 }) =>
-                    *__self_0 != *__arg1_0 || *__self_1 != *__arg1_1,
-                _ => false,
-            }
-    }
 }
 impl ::core::marker::StructuralEq for Mixed {}
 #[automatically_derived]
@@ -1020,21 +978,6 @@ impl ::core::cmp::PartialEq for Fielded {
                     *__self_0 == *__arg1_0,
                 (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
                     *__self_0 == *__arg1_0,
-                _ => unsafe { ::core::intrinsics::unreachable() }
-            }
-    }
-    #[inline]
-    fn ne(&self, other: &Fielded) -> bool {
-        let __self_tag = ::core::intrinsics::discriminant_value(self);
-        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
-        __self_tag != __arg1_tag ||
-            match (self, other) {
-                (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
-                    *__self_0 != *__arg1_0,
-                (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
-                    *__self_0 != *__arg1_0,
-                (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
-                    *__self_0 != *__arg1_0,
                 _ => unsafe { ::core::intrinsics::unreachable() }
             }
     }

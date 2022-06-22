@@ -23,12 +23,6 @@
    22|      1|//! ```
    23|      2|//! #[derive(Debug, PartialEq)]
                        ^1
-  ------------------
-  | Unexecuted instantiation: <rust_out::main::_doctest_main____coverage_doctest_rs_22_0::SomeError as core::cmp::PartialEq>::ne
-  ------------------
-  | <rust_out::main::_doctest_main____coverage_doctest_rs_22_0::SomeError as core::cmp::PartialEq>::eq:
-  |   23|      2|//! #[derive(Debug, PartialEq)]
-  ------------------
    24|      1|//! struct SomeError {
    25|      1|//!     msg: String,
    26|      1|//! }
