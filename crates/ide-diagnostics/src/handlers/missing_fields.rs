@@ -5,7 +5,7 @@ use hir::{
 };
 use ide_db::{
     assists::Assist, famous_defs::FamousDefs, imports::import_assets::item_for_path_search,
-    source_change::SourceChange, FxHashMap,
+    source_change::SourceChange, use_trivial_contructor::use_trivial_constructor, FxHashMap,
 };
 use stdx::format_to;
 use syntax::{
@@ -16,51 +16,6 @@ use syntax::{
 use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticsContext};
-
-// FIXME: how to depupicate with `ide-assists/generate_new`
-fn use_trivial_constructor(
-    db: &ide_db::RootDatabase,
-    path: ast::Path,
-    ty: &hir::Type,
-) -> Option<ast::Expr> {
-    match ty.as_adt() {
-        Some(hir::Adt::Enum(x)) => {
-            let variants = x.variants(db);
-
-            if variants.len() == 1 {
-                let variant = variants[0];
-
-                if variant.fields(db).is_empty() {
-                    let path = ast::make::path_qualified(
-                        path,
-                        syntax::ast::make::path_segment(ast::make::name_ref(
-                            &variant.name(db).to_smol_str(),
-                        )),
-                    );
-
-                    let is_record = variant.kind(db) == hir::StructKind::Record;
-
-                    return Some(if is_record {
-                        ast::Expr::RecordExpr(syntax::ast::make::record_expr(
-                            path,
-                            ast::make::record_expr_field_list(std::iter::empty()),
-                        ))
-                    } else {
-                        syntax::ast::make::expr_path(path)
-                    });
-                }
-            }
-        }
-        Some(hir::Adt::Struct(x)) => {
-            if x.fields(db).is_empty() {
-                return Some(syntax::ast::make::expr_path(path));
-            }
-        }
-        _ => {}
-    }
-
-    None
-}
 
 // Diagnostic: missing-fields
 //
@@ -104,8 +59,8 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     let root = ctx.sema.db.parse_or_expand(d.file)?;
 
     let current_module = match &d.field_list_parent {
-        Either::Left(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).unwrap().module(),
-        Either::Right(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).unwrap().module(),
+        Either::Left(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).map(|it| it.module()),
+        Either::Right(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).map(|it| it.module()),
     };
 
     let build_text_edit = |parent_syntax, new_syntax: &SyntaxNode, old_syntax| {
@@ -166,7 +121,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                     let expr = (|| -> Option<ast::Expr> {
                         let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
 
-                        let type_path = current_module.find_use_path(
+                        let type_path = current_module?.find_use_path(
                             ctx.sema.db,
                             item_for_path_search(ctx.sema.db, item_in_ns)?,
                         )?;

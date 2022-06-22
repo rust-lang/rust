@@ -1,4 +1,6 @@
-use ide_db::imports::import_assets::item_for_path_search;
+use ide_db::{
+    imports::import_assets::item_for_path_search, use_trivial_contructor::use_trivial_constructor,
+};
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::ast::{self, AstNode, HasName, HasVisibility, StructKind};
@@ -7,51 +9,6 @@ use crate::{
     utils::{find_impl_block_start, find_struct_impl, generate_impl_text},
     AssistContext, AssistId, AssistKind, Assists,
 };
-
-// FIXME: how to depupicate with `ide-diagnostics/mssing_fields`
-fn use_trivial_constructor(
-    db: &ide_db::RootDatabase,
-    path: ast::Path,
-    ty: &hir::Type,
-) -> Option<ast::Expr> {
-    match ty.as_adt() {
-        Some(hir::Adt::Enum(x)) => {
-            let variants = x.variants(db);
-
-            if variants.len() == 1 {
-                let variant = variants[0];
-
-                if variant.fields(db).is_empty() {
-                    let path = ast::make::path_qualified(
-                        path,
-                        syntax::ast::make::path_segment(ast::make::name_ref(
-                            &variant.name(db).to_smol_str(),
-                        )),
-                    );
-
-                    let is_record = variant.kind(db) == hir::StructKind::Record;
-
-                    return Some(if is_record {
-                        ast::Expr::RecordExpr(syntax::ast::make::record_expr(
-                            path,
-                            ast::make::record_expr_field_list(std::iter::empty()),
-                        ))
-                    } else {
-                        syntax::ast::make::expr_path(path)
-                    });
-                }
-            }
-        }
-        Some(hir::Adt::Struct(x)) => {
-            if x.fields(db).is_empty() {
-                return Some(syntax::ast::make::expr_path(path));
-            }
-        }
-        _ => {}
-    }
-
-    None
-}
 
 // Assist: generate_new
 //
@@ -84,6 +41,8 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     // Return early if we've found an existing new fn
     let impl_def = find_struct_impl(ctx, &ast::Adt::Struct(strukt.clone()), "new")?;
 
+    let current_module = ctx.sema.scope(strukt.syntax())?.module();
+
     let target = strukt.syntax().text_range();
     acc.add(AssistId("generate_new", AssistKind::Generate), "Generate `new`", target, |builder| {
         let mut buf = String::with_capacity(512);
@@ -93,8 +52,6 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         }
 
         let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
-
-        let current_module = ctx.sema.scope(strukt.syntax()).unwrap().module();
 
         let trivial_constructors = field_list
             .fields()
