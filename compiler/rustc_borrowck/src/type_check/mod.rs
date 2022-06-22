@@ -790,6 +790,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
                 PlaceTy::from_ty(fty)
             }
+            ProjectionElem::OpaqueCast(ty) => {
+                let ty = self.sanitize_type(place, ty);
+                let ty = self.cx.normalize(ty, location);
+                PlaceTy::from_ty(ty)
+            }
         }
     }
 
@@ -1195,10 +1200,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 tcx,
                 self.param_env,
                 proj,
-                |this, field, ()| {
+                |this, field, _| {
                     let ty = this.field_ty(tcx, field);
                     self.normalize(ty, locations)
                 },
+                |_, _| unreachable!(),
             );
             curr_projected_ty = projected_ty;
         }
@@ -2493,6 +2499,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
                 ProjectionElem::Field(..)
                 | ProjectionElem::Downcast(..)
+                | ProjectionElem::OpaqueCast(..)
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {

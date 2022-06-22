@@ -105,6 +105,7 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
                 continue;
             }
             ProjectionElem::Index(..)
+            | ProjectionElem::OpaqueCast(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. } => {
                 // We don't capture array-access projections.
@@ -795,6 +796,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     ProjectionElem::Field(..)
                     | ProjectionElem::Downcast(..)
+                    | ProjectionElem::OpaqueCast(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. } => (),
                 }
