@@ -55,13 +55,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
         if_chain! {
             if let ExprKind::Binary(op1, ..) = expr.kind;
             if op1.node == BinOpKind::Rem;
-            if let Some((const1, expr1)) = check_for_positive_int_constant(cx, expr);
+            if let Some((const1, expr1)) = check_for_positive_int_constant(cx, expr, false);
             if let ExprKind::Binary(op2, ..) = expr1.kind;
             if op2.node == BinOpKind::Add;
-            if let Some((const2, expr2)) = check_for_positive_int_constant(cx, expr1);
+            if let Some((const2, expr2)) = check_for_positive_int_constant(cx, expr1, true);
             if let ExprKind::Binary(op3, ..) = expr2.kind;
             if op3.node == BinOpKind::Rem;
-            if let Some((const3, expr3)) = check_for_positive_int_constant(cx, expr2);
+            if let Some((const3, expr3)) = check_for_positive_int_constant(cx, expr2, false);
             if const1 == const2 && const2 == const3;
             // Only apply if we see an explicit type annotation on the local.
             if let Some(hir_id) = path_to_local(expr3);
@@ -91,13 +91,18 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
 }
 
 // Takes a binary expression and separates the operands into the int constant and the other
-// operand. Ensures the int constant is positive.
-fn check_for_positive_int_constant<'a>(cx: &'a LateContext<'_>, expr: &'a Expr<'_>) -> Option<(u128, &'a Expr<'a>)> {
+// operand. Ensures the int constant is positive. Operators that are not commutative must have the
+// constant appear on the right hand side to return a value.
+fn check_for_positive_int_constant<'a>(
+    cx: &'a LateContext<'_>,
+    expr: &'a Expr<'_>,
+    is_commutative: bool,
+) -> Option<(u128, &'a Expr<'a>)> {
     let (int_const, other_op) = if let ExprKind::Binary(_, left, right) = expr.kind {
-        if let Some(int_const) = constant_full_int(cx, cx.typeck_results(), left) {
-            (int_const, right)
-        } else if let Some(int_const) = constant_full_int(cx, cx.typeck_results(), right) {
+        if let Some(int_const) = constant_full_int(cx, cx.typeck_results(), right) {
             (int_const, left)
+        } else if is_commutative && let Some(int_const) = constant_full_int(cx, cx.typeck_results(), left) {
+            (int_const, right)
         } else {
             return None;
         }

@@ -21,4 +21,8 @@ fn main() {
     let _ = ((not_annotated % 4) + 4) % 4;
     let inferred: _ = 24;
     let _ = ((inferred % 4) + 4) % 4;
+
+    // For lint to apply the constant must always be on the RHS of the previous value for %
+    let _: i32 = 4 % ((value % 4) + 4);
+    let _: i32 = ((4 % value) + 4) % 4;
 }
