@@ -2,7 +2,6 @@ use clippy_utils::consts::{constant_full_int, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{meets_msrv, msrvs, path_to_local};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -52,26 +51,22 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             return;
         }
 
-        if_chain! {
-            if let ExprKind::Binary(op1, ..) = expr.kind;
-            if op1.node == BinOpKind::Rem;
-            if let Some((const1, expr1)) = check_for_positive_int_constant(cx, expr, false);
-            if let ExprKind::Binary(op2, ..) = expr1.kind;
-            if op2.node == BinOpKind::Add;
-            if let Some((const2, expr2)) = check_for_positive_int_constant(cx, expr1, true);
-            if let ExprKind::Binary(op3, ..) = expr2.kind;
-            if op3.node == BinOpKind::Rem;
-            if let Some((const3, expr3)) = check_for_positive_int_constant(cx, expr2, false);
-            if const1 == const2 && const2 == const3;
+        if let ExprKind::Binary(op1, ..) = expr.kind
+            && op1.node == BinOpKind::Rem
+            && let Some((const1, expr1)) = check_for_positive_int_constant(cx, expr, false)
+            && let ExprKind::Binary(op2, ..) = expr1.kind
+            && op2.node == BinOpKind::Add
+            && let Some((const2, expr2)) = check_for_positive_int_constant(cx, expr1, true)
+            && let ExprKind::Binary(op3, ..) = expr2.kind
+            && op3.node == BinOpKind::Rem
+            && let Some((const3, expr3)) = check_for_positive_int_constant(cx, expr2, false)
+            && const1 == const2 && const2 == const3
             // Only apply if we see an explicit type annotation on the local.
-            if let Some(hir_id) = path_to_local(expr3);
-            let hir = cx.tcx.hir();
-            if let Some(Node::Binding(_)) = hir.find(hir_id);
-            let parent = hir.get_parent_node(hir_id);
-            if let Some(Node::Local(local)) = hir.find(parent);
-            if let Some(ty) = local.ty;
-            if !matches!(ty.kind, TyKind::Infer);
-            then {
+            && let Some(hir_id) = path_to_local(expr3)
+            && let Some(Node::Binding(_)) = cx.tcx.hir().find(hir_id)
+            && let Some(Node::Local(local)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id))
+            && let Some(ty) = local.ty
+            && !matches!(ty.kind, TyKind::Infer) {
                 let mut app = Applicability::MachineApplicable;
                 let rem_of = snippet_with_applicability(cx, expr3.span, "_", &mut app);
                 span_lint_and_sugg(
@@ -83,7 +78,6 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
                     format!("{rem_of}.rem_euclid({const1})"),
                     app,
                 );
-            }
         }
     }
 
