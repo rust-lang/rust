@@ -56,7 +56,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{
-    symbol::{kw, sym, Symbol},
+    symbol::{sym, Symbol},
     BytePos, FileName, RealFileName,
 };
 use serde::ser::SerializeSeq;
@@ -1738,8 +1738,6 @@ pub(crate) fn render_impl_summary(
 }
 
 fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
-    let parentlen = cx.current.len() - if it.is_mod() { 1 } else { 0 };
-
     if it.is_struct()
         || it.is_trait()
         || it.is_primitive()
@@ -1800,21 +1798,6 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
         write!(buffer, "<h2 class=\"location\"><a href=\"index.html\">In {}</a></h2>", path);
     }
 
-    // Sidebar refers to the enclosing module, not this module.
-    let relpath = if it.is_mod() && parentlen != 0 { "./" } else { "" };
-    write!(
-        buffer,
-        "<div id=\"sidebar-vars\" data-name=\"{name}\" data-ty=\"{ty}\" data-relpath=\"{path}\">\
-        </div>",
-        name = it.name.unwrap_or(kw::Empty),
-        ty = it.type_(),
-        path = relpath
-    );
-    write!(
-        buffer,
-        "<script defer src=\"{}sidebar-items{}.js\"></script>",
-        relpath, cx.shared.resource_suffix
-    );
     // Closes sidebar-elems div.
     buffer.write_str("</div>");
 }

@@ -446,16 +446,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         mir::PlaceRef { projection: &place_ref.projection[..elem.0], ..place_ref },
                     );
 
-                    // a box with a non-zst allocator should not be directly dereferenced
-                    if cg_base.layout.ty.is_box() && !cg_base.layout.field(cx, 1).is_zst() {
-                        // Extract `Box<T>` -> `Unique<T>` -> `NonNull<T>` -> `*const T`
-                        let ptr =
-                            cg_base.extract_field(bx, 0).extract_field(bx, 0).extract_field(bx, 0);
-
-                        ptr.deref(bx.cx())
-                    } else {
-                        cg_base.deref(bx.cx())
-                    }
+                    cg_base.deref(bx.cx())
                 } else {
                     bug!("using operand local {:?} as place", place_ref);
                 }
@@ -463,18 +454,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
         for elem in place_ref.projection[base..].iter() {
             cg_base = match *elem {
-                mir::ProjectionElem::Deref => {
-                    // a box with a non-zst allocator should not be directly dereferenced
-                    if cg_base.layout.ty.is_box() && !cg_base.layout.field(cx, 1).is_zst() {
-                        // Project `Box<T>` -> `Unique<T>` -> `NonNull<T>` -> `*const T`
-                        let ptr =
-                            cg_base.project_field(bx, 0).project_field(bx, 0).project_field(bx, 0);
-
-                        bx.load_operand(ptr).deref(bx.cx())
-                    } else {
-                        bx.load_operand(cg_base).deref(bx.cx())
-                    }
-                }
+                mir::ProjectionElem::Deref => bx.load_operand(cg_base).deref(bx.cx()),
                 mir::ProjectionElem::Field(ref field, _) => {
                     cg_base.project_field(bx, field.index())
                 }

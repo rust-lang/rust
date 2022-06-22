@@ -1,4 +1,4 @@
-error: constant is never used: `foo`
+error: constant `foo` is never used
   --> $DIR/issue-17718-const-naming.rs:4:1
    |
 LL | const foo: isize = 3;

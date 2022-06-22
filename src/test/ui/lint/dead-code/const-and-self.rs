@@ -30,8 +30,8 @@ impl Foo<Y> for X {
 
 enum E {
     A,
-    B, //~ WARN variant is never constructed: `B`
-    C, //~ WARN variant is never constructed: `C`
+    B, //~ WARN variants `B` and `C` are never constructed
+    C,
 }
 
 type F = E;

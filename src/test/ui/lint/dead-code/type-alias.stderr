@@ -1,4 +1,4 @@
-error: type alias is never used: `Unused`
+error: type alias `Unused` is never used
   --> $DIR/type-alias.rs:4:1
    |
 LL | type Unused = u8;

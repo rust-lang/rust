@@ -1,5 +1,5 @@
 #![deny(unused)]
 
-enum E {} //~ ERROR enum is never used
+enum E {} //~ ERROR enum `E` is never used
 
 fn main() {}

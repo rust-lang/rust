@@ -195,6 +195,7 @@ pub enum MirPhase {
     /// Beginning with this phase, the following variants are disallowed:
     /// * [`TerminatorKind::Yield`](terminator::TerminatorKind::Yield)
     /// * [`TerminatorKind::GeneratorDrop`](terminator::TerminatorKind::GeneratorDrop)
+    /// * [`ProjectionElem::Deref`] of `Box`
     GeneratorsLowered = 6,
     Optimized = 7,
 }

@@ -4,7 +4,6 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenStreamBuilder, TokenTree};
 use rustc_span::create_default_session_globals_then;
 use rustc_span::{BytePos, Span, Symbol};
-use smallvec::smallvec;
 
 fn string_to_ts(string: &str) -> TokenStream {
     string_to_stream(string.to_owned())
@@ -24,7 +23,10 @@ fn test_concat() {
         let test_res = string_to_ts("foo::bar::baz");
         let test_fst = string_to_ts("foo::bar");
         let test_snd = string_to_ts("::baz");
-        let eq_res = TokenStream::from_streams(smallvec![test_fst, test_snd]);
+        let mut builder = TokenStreamBuilder::new();
+        builder.push(test_fst);
+        builder.push(test_snd);
+        let eq_res = builder.build();
         assert_eq!(test_res.trees().count(), 5);
         assert_eq!(eq_res.trees().count(), 5);
         assert_eq!(test_res.eq_unspanned(&eq_res), true);

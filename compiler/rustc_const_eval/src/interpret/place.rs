@@ -313,6 +313,11 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
+
+        if val.layout.ty.is_box() {
+            bug!("dereferencing {:?}", val.layout.ty);
+        }
+
         let mplace = self.ref_to_mplace(&val)?;
         self.check_mplace_access(mplace, CheckInAllocMsg::DerefTest)?;
         Ok(mplace)

@@ -1,6 +1,9 @@
-error: variant is never constructed: `Bar`
+error: variant `Bar` is never constructed
   --> $DIR/unused-struct-variant.rs:8:5
    |
+LL | enum E {
+   |      - variant in this enum
+LL |     Foo(F),
 LL |     Bar(B),
    |     ^^^^^^
    |

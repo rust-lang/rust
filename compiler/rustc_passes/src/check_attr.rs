@@ -4,8 +4,7 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MacArgs, MetaItemKind, NestedMetaItem};
+use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_expand::base::resolve_path;
@@ -899,68 +898,6 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    /// Checks `#[doc(hidden)]` attributes. Returns `true` if valid.
-    fn check_doc_hidden(
-        &self,
-        attr: &Attribute,
-        meta_index: usize,
-        meta: &NestedMetaItem,
-        hir_id: HirId,
-        target: Target,
-    ) -> bool {
-        if let Target::AssocConst
-        | Target::AssocTy
-        | Target::Method(MethodKind::Trait { body: true }) = target
-        {
-            let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
-            let containing_item = self.tcx.hir().expect_item(parent_hir_id);
-
-            if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = containing_item.kind {
-                let meta_items = attr.meta_item_list().unwrap();
-
-                let (span, replacement_span) = if meta_items.len() == 1 {
-                    (attr.span, attr.span)
-                } else {
-                    let meta_span = meta.span();
-                    (
-                        meta_span,
-                        meta_span.until(match meta_items.get(meta_index + 1) {
-                            Some(next_item) => next_item.span(),
-                            None => match attr.get_normal_item().args {
-                                MacArgs::Delimited(DelimSpan { close, .. }, ..) => close,
-                                _ => unreachable!(),
-                            },
-                        }),
-                    )
-                };
-
-                // FIXME: #[doc(hidden)] was previously erroneously allowed on trait impl items,
-                // so for backward compatibility only emit a warning and do not mark it as invalid.
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, span, |lint| {
-                    lint.build("`#[doc(hidden)]` is ignored on trait impl items")
-                        .warn(
-                            "this was previously accepted by the compiler but is \
-                             being phased out; it will become a hard error in \
-                             a future release!",
-                        )
-                        .note(
-                            "whether the impl item is `doc(hidden)` or not \
-                             entirely depends on the corresponding trait item",
-                        )
-                        .span_suggestion(
-                            replacement_span,
-                            "remove this attribute",
-                            "",
-                            Applicability::MachineApplicable,
-                        )
-                        .emit();
-                });
-            }
-        }
-
-        true
-    }
-
     /// Checks that an attribute is *not* used at the crate level. Returns `true` if valid.
     fn check_attr_not_crate_level(
         &self,
@@ -1079,7 +1016,7 @@ impl CheckAttrVisitor<'_> {
         let mut is_valid = true;
 
         if let Some(mi) = attr.meta() && let Some(list) = mi.meta_item_list() {
-            for (meta_index, meta) in list.into_iter().enumerate() {
+            for meta in list {
                 if let Some(i_meta) = meta.meta_item() {
                     match i_meta.name_or_empty() {
                         sym::alias
@@ -1124,15 +1061,6 @@ impl CheckAttrVisitor<'_> {
                                 specified_inline,
                             ) =>
                         {
-                            is_valid = false;
-                        }
-
-                        sym::hidden if !self.check_doc_hidden(attr,
-                            meta_index,
-                            meta,
-                            hir_id,
-                            target,
-                            ) => {
                             is_valid = false;
                         }
 

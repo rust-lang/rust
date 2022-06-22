@@ -1,4 +1,4 @@
-error: type alias is never used: `Unused`
+error: type alias `Unused` is never used
   --> $DIR/impl-trait.rs:12:1
    |
 LL | type Unused = ();

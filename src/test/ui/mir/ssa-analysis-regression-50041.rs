@@ -1,27 +1,29 @@
 // build-pass
 // compile-flags: -Z mir-opt-level=4
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 #![feature(lang_items)]
 #![no_std]
 
+struct NonNull<T: ?Sized>(*mut T);
+
+struct Unique<T: ?Sized>(NonNull<T>);
+
 #[lang = "owned_box"]
-pub struct Box<T: ?Sized>(*mut T, ());
+pub struct Box<T: ?Sized>(Unique<T>);
 
 impl<T: ?Sized> Drop for Box<T> {
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) {}
 }
 
 #[lang = "box_free"]
 #[inline(always)]
-unsafe fn box_free<T: ?Sized>(ptr: *mut T, _: ()) {
-    dealloc(ptr)
+unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
+    dealloc(ptr.0.0)
 }
 
 #[inline(never)]
-fn dealloc<T: ?Sized>(_: *mut T) {
-}
+fn dealloc<T: ?Sized>(_: *mut T) {}
 
 pub struct Foo<T>(T);
 

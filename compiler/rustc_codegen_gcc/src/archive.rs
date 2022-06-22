@@ -32,7 +32,7 @@ pub struct ArArchiveBuilder<'a> {
 }
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
-    fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self {
+    fn new(sess: &'a Session, output: &Path) -> Self {
         let config = ArchiveConfig {
             sess,
             dst: output.to_path_buf(),
@@ -41,46 +41,11 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             use_gnu_style_archive: sess.target.options.archive_format == "gnu",
         };
 
-        let (src_archives, entries) = if let Some(input) = input {
-            let mut archive = ar::Archive::new(File::open(input).unwrap());
-            let mut entries = Vec::new();
-
-            let mut i = 0;
-            while let Some(entry) = archive.next_entry() {
-                let entry = entry.unwrap();
-                entries.push((
-                    String::from_utf8(entry.header().identifier().to_vec()).unwrap(),
-                    ArchiveEntry::FromArchive {
-                        archive_index: 0,
-                        entry_index: i,
-                    },
-                ));
-                i += 1;
-            }
-
-            (vec![(input.to_owned(), archive)], entries)
-        } else {
-            (vec![], Vec::new())
-        };
-
         ArArchiveBuilder {
             config,
-            src_archives,
-            entries,
+            src_archives: vec![],
+            entries: vec![],
         }
-    }
-
-    fn src_files(&mut self) -> Vec<String> {
-        self.entries.iter().map(|(name, _)| name.clone()).collect()
-    }
-
-    fn remove_file(&mut self, name: &str) {
-        let index = self
-            .entries
-            .iter()
-            .position(|(entry_name, _)| entry_name == name)
-            .expect("Tried to remove file not existing in src archive");
-        self.entries.remove(index);
     }
 
     fn add_file(&mut self, file: &Path) {
@@ -113,7 +78,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         Ok(())
     }
 
-    fn build(mut self) {
+    fn build(mut self) -> bool {
         use std::process::Command;
 
         fn add_file_using_ar(archive: &Path, file: &Path) {
@@ -145,6 +110,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         } else {
             BuilderKind::Bsd(ar::Builder::new(File::create(&self.config.dst).unwrap()))
         };
+
+        let any_members = !self.entries.is_empty();
 
         // Add all files
         for (entry_name, entry) in self.entries.into_iter() {
@@ -206,6 +173,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         if !status.success() {
             self.config.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
         }
+
+        any_members
     }
 
     fn inject_dll_import_lib(&mut self, _lib_name: &str, _dll_imports: &[DllImport], _tmpdir: &MaybeTempDir) {

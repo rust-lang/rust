@@ -270,7 +270,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 
     let lib_search_paths = archive_search_paths(sess);
 
-    let mut ab = <B as ArchiveBuilder>::new(sess, out_filename, None);
+    let mut ab = <B as ArchiveBuilder>::new(sess, out_filename);
 
     let trailing_metadata = match flavor {
         RlibFlavor::Normal => {
@@ -2466,17 +2466,19 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let name = &name[3..name.len() - 5]; // chop off lib/.rlib
 
         sess.prof.generic_activity_with_arg("link_altering_rlib", name).run(|| {
-            let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
+            let canonical_name = name.replace('-', "_");
+            let upstream_rust_objects_already_included =
+                are_upstream_rust_objects_already_included(sess);
+            let is_builtins = sess.target.no_builtins
+                || !codegen_results.crate_info.is_no_builtins.contains(&cnum);
 
-            let mut any_objects = false;
-            for f in archive.src_files() {
+            let mut archive = <B as ArchiveBuilder>::new(sess, &dst);
+            if let Err(e) = archive.add_archive(cratepath, move |f| {
                 if f == METADATA_FILENAME {
-                    archive.remove_file(&f);
-                    continue;
+                    return true;
                 }
 
                 let canonical = f.replace('-', "_");
-                let canonical_name = name.replace('-', "_");
 
                 let is_rust_object =
                     canonical.starts_with(&canonical_name) && looks_like_rust_object_file(&f);
@@ -2490,23 +2492,20 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                let skip_because_lto = are_upstream_rust_objects_already_included(sess)
-                    && is_rust_object
-                    && (sess.target.no_builtins
-                        || !codegen_results.crate_info.is_no_builtins.contains(&cnum));
+                let skip_because_lto =
+                    upstream_rust_objects_already_included && is_rust_object && is_builtins;
 
                 if skip_because_cfg_say_so || skip_because_lto {
-                    archive.remove_file(&f);
-                } else {
-                    any_objects = true;
+                    return true;
                 }
-            }
 
-            if !any_objects {
-                return;
+                false
+            }) {
+                sess.fatal(&format!("failed to build archive from rlib: {}", e));
             }
-            archive.build();
-            link_upstream(&dst);
+            if archive.build() {
+                link_upstream(&dst);
+            }
         });
     }
 
