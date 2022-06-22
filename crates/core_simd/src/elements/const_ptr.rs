@@ -1,5 +1,5 @@
 use super::sealed::Sealed;
-use crate::simd::{intrinsics, LaneCount, Mask, Simd, SimdPartialEq, SupportedLaneCount};
+use crate::simd::{LaneCount, Mask, Simd, SimdPartialEq, SupportedLaneCount};
 
 /// Operations on SIMD vectors of constant pointers.
 pub trait SimdConstPtr: Copy + Sealed {
@@ -43,17 +43,14 @@ where
     }
 
     fn as_mut(self) -> Self::MutPtr {
-        // Converting between pointers is safe
-        unsafe { intrinsics::simd_as(self) }
+        self.cast()
     }
 
     fn to_bits(self) -> Self::Bits {
-        // Casting pointers to usize is safe
-        unsafe { intrinsics::simd_as(self) }
+        self.cast()
     }
 
     fn from_bits(bits: Self::Bits) -> Self {
-        // Casting usize to pointers is safe
-        unsafe { intrinsics::simd_as(bits) }
+        bits.cast()
     }
 }
