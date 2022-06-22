@@ -107,7 +107,7 @@ fn check_for_positive_int_constant<'a>(cx: &'a LateContext<'_>, expr: &'a Expr<'
 
     if int_const > FullInt::S(0) {
         let val = match int_const {
-            FullInt::S(s) => s.try_into().unwrap(),
+            FullInt::S(s) => s.try_into().ok()?,
             FullInt::U(u) => u,
         };
         Some((val, other_op))
