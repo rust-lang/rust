@@ -36,7 +36,7 @@ use std::marker::PhantomData;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, mem};
 
-use errors::{FieldIsPrivate, FieldIsPrivateLabel};
+use errors::{FieldIsPrivate, FieldIsPrivateLabel, ItemIsPrivate};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.
@@ -1073,11 +1073,11 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
-            self.tcx
-                .sess
-                .struct_span_err(self.span, &format!("{} `{}` is private", kind, descr))
-                .span_label(self.span, &format!("private {}", kind))
-                .emit();
+            self.tcx.sess.emit_err(ItemIsPrivate {
+                span: self.span,
+                kind,
+                descr: descr.to_string(),
+            });
         }
         is_error
     }
