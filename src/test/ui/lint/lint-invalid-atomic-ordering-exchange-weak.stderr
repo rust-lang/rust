@@ -1,137 +1,137 @@
-error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`, since a failed compare_exchange_weak does not result in a write
+error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange_weak` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:22:67
    |
 LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Relaxed, Ordering::AcqRel);
    |                                                                   ^^^^^^^^^^^^^^^^ invalid failure ordering
    |
    = note: `#[deny(invalid_atomic_ordering)]` on by default
-   = help: consider using Acquire or Relaxed failure ordering instead
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
 
-error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`, since a failed compare_exchange_weak does not result in a write
+error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange_weak` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:24:67
    |
 LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Acquire, Ordering::AcqRel);
    |                                                                   ^^^^^^^^^^^^^^^^ invalid failure ordering
    |
-   = help: consider using Acquire or Relaxed failure ordering instead
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
 
-error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`, since a failed compare_exchange_weak does not result in a write
+error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange_weak` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:26:67
    |
 LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering::AcqRel);
    |                                                                   ^^^^^^^^^^^^^^^^ invalid failure ordering
    |
-   = help: consider using Acquire or Relaxed failure ordering instead
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
 
-error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`, since a failed compare_exchange_weak does not result in a write
+error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange_weak` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:28:66
    |
 LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::AcqRel, Ordering::AcqRel);
    |                                                                  ^^^^^^^^^^^^^^^^ invalid failure ordering
    |
-   = help: consider using Acquire or Relaxed failure ordering instead
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
 
-error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`, since a failed compare_exchange_weak does not result in a write
+error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange_weak` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:30:66
    |
 LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::SeqCst, Ordering::AcqRel);
    |                                                                  ^^^^^^^^^^^^^^^^ invalid failure ordering
    |
-   = help: consider using Acquire or Relaxed failure ordering instead
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
 
-error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`, since a failed compare_exchange_weak does not result in a write
+error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange_weak` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:34:67
    |
 LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering::Release);
    |                                                                   ^^^^^^^^^^^^^^^^^ invalid failure ordering
    |
-   = help: consider using Acquire or Relaxed failure ordering instead
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
 
-error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`, since a failed compare_exchange_weak does not result in a write
+error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange_weak` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:36:67
    |
 LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Acquire, Ordering::Release);
    |                                                                   ^^^^^^^^^^^^^^^^^ invalid failure ordering
    |
-   = help: consider using Acquire or Relaxed failure ordering instead
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
 
-error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`, since a failed compare_exchange_weak does not result in a write
+error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange_weak` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:38:67
    |
 LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Release, Ordering::Release);
    |                                                                   ^^^^^^^^^^^^^^^^^ invalid failure ordering
    |
-   = help: consider using Acquire or Relaxed failure ordering instead
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
 
-error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`, since a failed compare_exchange_weak does not result in a write
+error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange_weak` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:40:66
    |
 LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::AcqRel, Ordering::Release);
    |                                                                  ^^^^^^^^^^^^^^^^^ invalid failure ordering
    |
-   = help: consider using Acquire or Relaxed failure ordering instead
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
 
-error: compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`, since a failed compare_exchange_weak does not result in a write
+error: `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange_weak` does not result in a write
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:42:66
    |
 LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::SeqCst, Ordering::Release);
    |                                                                  ^^^^^^^^^^^^^^^^^ invalid failure ordering
    |
-   = help: consider using Acquire or Relaxed failure ordering instead
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
 
-error: compare_exchange_weak's success ordering must be at least as strong as its failure ordering
+error: `compare_exchange_weak`'s success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:46:48
    |
 LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering::Acquire);
-   |                                                ^^^^^^^^^^^^^^^^^  ----------------- Acquire failure ordering
+   |                                                ^^^^^^^^^^^^^^^^^  ----------------- `Acquire` failure ordering
    |                                                |
-   |                                                Release success ordering
-   |                                                help: consider using AcqRel success ordering instead
+   |                                                `Release` success ordering
+   |                                                help: consider using `AcqRel` success ordering instead
 
-error: compare_exchange_weak's success ordering must be at least as strong as its failure ordering
+error: `compare_exchange_weak`'s success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:48:48
    |
 LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering::SeqCst);
-   |                                                ^^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
+   |                                                ^^^^^^^^^^^^^^^^^  ---------------- `SeqCst` failure ordering
    |                                                |
-   |                                                Release success ordering
-   |                                                help: consider using SeqCst success ordering instead
+   |                                                `Release` success ordering
+   |                                                help: consider using `SeqCst` success ordering instead
 
-error: compare_exchange_weak's success ordering must be at least as strong as its failure ordering
+error: `compare_exchange_weak`'s success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:52:48
    |
 LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering::SeqCst);
-   |                                                ^^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
+   |                                                ^^^^^^^^^^^^^^^^^  ---------------- `SeqCst` failure ordering
    |                                                |
-   |                                                Relaxed success ordering
-   |                                                help: consider using SeqCst success ordering instead
+   |                                                `Relaxed` success ordering
+   |                                                help: consider using `SeqCst` success ordering instead
 
-error: compare_exchange_weak's success ordering must be at least as strong as its failure ordering
+error: `compare_exchange_weak`'s success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:54:48
    |
 LL |     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering::Acquire);
-   |                                                ^^^^^^^^^^^^^^^^^  ----------------- Acquire failure ordering
+   |                                                ^^^^^^^^^^^^^^^^^  ----------------- `Acquire` failure ordering
    |                                                |
-   |                                                Relaxed success ordering
-   |                                                help: consider using Acquire success ordering instead
+   |                                                `Relaxed` success ordering
+   |                                                help: consider using `Acquire` success ordering instead
 
-error: compare_exchange_weak's success ordering must be at least as strong as its failure ordering
+error: `compare_exchange_weak`'s success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:58:48
    |
 LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Acquire, Ordering::SeqCst);
-   |                                                ^^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
+   |                                                ^^^^^^^^^^^^^^^^^  ---------------- `SeqCst` failure ordering
    |                                                |
-   |                                                Acquire success ordering
-   |                                                help: consider using SeqCst success ordering instead
+   |                                                `Acquire` success ordering
+   |                                                help: consider using `SeqCst` success ordering instead
 
-error: compare_exchange_weak's success ordering must be at least as strong as its failure ordering
+error: `compare_exchange_weak`'s success ordering must be at least as strong as its failure ordering
   --> $DIR/lint-invalid-atomic-ordering-exchange-weak.rs:60:48
    |
 LL |     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::AcqRel, Ordering::SeqCst);
-   |                                                ^^^^^^^^^^^^^^^^  ---------------- SeqCst failure ordering
+   |                                                ^^^^^^^^^^^^^^^^  ---------------- `SeqCst` failure ordering
    |                                                |
-   |                                                AcqRel success ordering
-   |                                                help: consider using SeqCst success ordering instead
+   |                                                `AcqRel` success ordering
+   |                                                help: consider using `SeqCst` success ordering instead
 
 error: aborting due to 16 previous errors
 

@@ -20,43 +20,43 @@ fn main() {
 
     // AcqRel is always forbidden as a failure ordering
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Relaxed, Ordering::AcqRel);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+    //~^ ERROR `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Acquire, Ordering::AcqRel);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+    //~^ ERROR `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering::AcqRel);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+    //~^ ERROR `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::AcqRel, Ordering::AcqRel);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+    //~^ ERROR `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::SeqCst, Ordering::AcqRel);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+    //~^ ERROR `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`
 
     // Release is always forbidden as a failure ordering
     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering::Release);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+    //~^ ERROR `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`
     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Acquire, Ordering::Release);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+    //~^ ERROR `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`
     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Release, Ordering::Release);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+    //~^ ERROR `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`
     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::AcqRel, Ordering::Release);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+    //~^ ERROR `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`
     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::SeqCst, Ordering::Release);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be `Release` or `AcqRel`
+    //~^ ERROR `compare_exchange_weak`'s failure ordering may not be `Release` or `AcqRel`
 
     // Release success order forbids failure order of Acquire or SeqCst
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering::Acquire);
-    //~^ ERROR compare_exchange_weak's success ordering must be at least as strong as
+    //~^ ERROR `compare_exchange_weak`'s success ordering must be at least as strong as
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering::SeqCst);
-    //~^ ERROR compare_exchange_weak's success ordering must be at least as strong as
+    //~^ ERROR `compare_exchange_weak`'s success ordering must be at least as strong as
 
     // Relaxed success order also forbids failure order of Acquire or SeqCst
     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering::SeqCst);
-    //~^ ERROR compare_exchange_weak's success ordering must be at least as strong as
+    //~^ ERROR `compare_exchange_weak`'s success ordering must be at least as strong as
     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering::Acquire);
-    //~^ ERROR compare_exchange_weak's success ordering must be at least as strong as
+    //~^ ERROR `compare_exchange_weak`'s success ordering must be at least as strong as
 
     // Acquire/AcqRel forbids failure order of SeqCst
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Acquire, Ordering::SeqCst);
-    //~^ ERROR compare_exchange_weak's success ordering must be at least as strong as
+    //~^ ERROR `compare_exchange_weak`'s success ordering must be at least as strong as
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::AcqRel, Ordering::SeqCst);
-    //~^ ERROR compare_exchange_weak's success ordering must be at least as strong as
+    //~^ ERROR `compare_exchange_weak`'s success ordering must be at least as strong as
 }

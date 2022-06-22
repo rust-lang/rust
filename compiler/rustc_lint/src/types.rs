@@ -1554,11 +1554,11 @@ impl InvalidAtomicOrdering {
         if matches!(fail_ordering, sym::Release | sym::AcqRel) {
             cx.struct_span_lint(INVALID_ATOMIC_ORDERING, fail_order_arg.span, |diag| {
                 diag.build(&format!(
-                    "{method}'s failure ordering may not be `Release` or `AcqRel`, \
-                    since a failed {method} does not result in a write",
+                    "`{method}`'s failure ordering may not be `Release` or `AcqRel`, \
+                    since a failed `{method}` does not result in a write",
                 ))
                 .span_label(fail_order_arg.span, "invalid failure ordering")
-                .help("consider using Acquire or Relaxed failure ordering instead")
+                .help("consider using `Acquire` or `Relaxed` failure ordering instead")
                 .emit();
             });
         }
@@ -1578,14 +1578,14 @@ impl InvalidAtomicOrdering {
                 };
             cx.struct_span_lint(INVALID_ATOMIC_ORDERING, success_order_arg.span, |diag| {
                 diag.build(&format!(
-                    "{method}'s success ordering must be at least as strong as its failure ordering"
+                    "`{method}`'s success ordering must be at least as strong as its failure ordering"
                 ))
-                .span_label(fail_order_arg.span, format!("{fail_ordering} failure ordering"))
-                .span_label(success_order_arg.span, format!("{success_ordering} success ordering"))
+                .span_label(fail_order_arg.span, format!("`{fail_ordering}` failure ordering"))
+                .span_label(success_order_arg.span, format!("`{success_ordering}` success ordering"))
                 .span_suggestion_short(
                     success_order_arg.span,
-                    format!("consider using {success_suggestion} success ordering instead"),
-                    success_suggestion.to_string(),
+                    format!("consider using `{success_suggestion}` success ordering instead"),
+                    format!("std::sync::atomic::Ordering::{success_suggestion}"),
                     Applicability::MaybeIncorrect,
                 )
                 .emit();
