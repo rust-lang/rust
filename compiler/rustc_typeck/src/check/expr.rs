@@ -1839,25 +1839,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             })
             .partition(|field| field.2);
-        let remaining_private_fields_len = remaining_private_fields.len();
-        let names = match &remaining_private_fields
-            .iter()
-            .map(|(name, _, _)| name.to_string())
-            .collect::<Vec<_>>()[..]
-        {
-            _ if remaining_private_fields_len > 6 => String::new(),
-            [name] => format!("`{name}` "),
-            [names @ .., last] => {
-                let names = names.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
-                format!("{} and `{last}` ", names.join(", "))
-            }
-            [] => unreachable!(),
-        };
         err.span_labels(used_private_fields.iter().map(|(_, span, _)| *span), "private field");
-        err.note(format!(
-            "... and other private field{s} {names}that were not provided",
-            s = pluralize!(remaining_private_fields_len),
-        ));
+        if !remaining_private_fields.is_empty() {
+            let remaining_private_fields_len = remaining_private_fields.len();
+            let names = match &remaining_private_fields
+                .iter()
+                .map(|(name, _, _)| name.to_string())
+                .collect::<Vec<_>>()[..]
+            {
+                _ if remaining_private_fields_len > 6 => String::new(),
+                [name] => format!("`{name}` "),
+                [names @ .., last] => {
+                    let names = names.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
+                    format!("{} and `{last}` ", names.join(", "))
+                }
+                [] => unreachable!(),
+            };
+            err.note(format!(
+                "... and other private field{s} {names}that {were} not provided",
+                s = pluralize!(remaining_private_fields_len),
+                were = pluralize!("was", remaining_private_fields_len),
+            ));
+        }
         err.emit();
     }
 
