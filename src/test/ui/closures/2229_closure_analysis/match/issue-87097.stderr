@@ -1,6 +1,9 @@
-warning: variant is never constructed: `B`
+warning: variant `B` is never constructed
   --> $DIR/issue-87097.rs:6:5
    |
+LL | enum Variant {
+   |      ------- variant in this enum
+LL |     A,
 LL |     B,
    |     ^
    |

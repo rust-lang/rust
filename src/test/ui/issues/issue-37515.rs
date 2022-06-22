@@ -3,6 +3,6 @@
 #![warn(unused)]
 
 type Z = dyn for<'x> Send;
-//~^ WARN type alias is never used
+//~^ WARN type alias `Z` is never used
 
 fn main() {}

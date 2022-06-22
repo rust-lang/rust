@@ -1,6 +1,9 @@
-error: field is never read: `b`
+error: field `b` is never read
   --> $DIR/union-lint-dead-code.rs:8:5
    |
+LL | union Foo {
+   |       --- field in this union
+LL |     x: usize,
 LL |     b: bool,
    |     ^^^^^^^
    |

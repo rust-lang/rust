@@ -1,4 +1,4 @@
-warning: type alias is never used: `Z`
+warning: type alias `Z` is never used
   --> $DIR/issue-37515.rs:5:1
    |
 LL | type Z = dyn for<'x> Send;
