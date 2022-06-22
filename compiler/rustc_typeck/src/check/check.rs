@@ -101,8 +101,13 @@ pub(super) fn check_fn<'a, 'tcx>(
             declared_ret_ty,
             body.value.hir_id,
             DUMMY_SP,
+            traits::ObligationCauseCode::OpaqueReturnType(None),
             param_env,
         ));
+    // If we replaced declared_ret_ty with infer vars, then we must be infering
+    // an opaque type, so set a flag so we can improve diagnostics.
+    fcx.return_type_has_opaque = ret_ty != declared_ret_ty;
+
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());
 

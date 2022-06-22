@@ -6,6 +6,9 @@ LL | fn bar() -> impl Bar {
 ...
 LL | fn baz() -> impl Bar<Item = i32> {
    |             ^^^^^^^^^^^^^^^^^^^^ expected associated type, found `i32`
+LL |
+LL |     bar()
+   |     ----- return type was inferred to be `impl Bar` here
    |
    = note: expected associated type `<impl Bar as Foo>::Item`
                          found type `i32`
