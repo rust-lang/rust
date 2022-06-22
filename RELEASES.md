@@ -1,3 +1,128 @@
+Version 1.62.0 (2022-06-30)
+==========================
+
+Language
+--------
+
+- [Stabilize `#[derive(Default)]` on enums with a `#[default]` variant][94457]
+- [Stop validating some checks in dead code after functions with uninhabited return types][93313]
+- [Fix constants not getting dropped if part of a diverging expression][94775]
+- [Support unit struct/enum variant in destructuring assignment][95380]
+- [Remove mutable_borrow_reservation_conflict lint and allow the code pattern][96268]
+
+Compiler
+--------
+
+- [linker: Stop using whole-archive on dependencies of dylibs][96436]
+- [Make `unaligned_references` lint deny-by-default][95372]
+  This lint is also a future compatibility lint, and is expected to eventually
+  become a hard error.
+- [Only add codegen backend to dep info if -Zbinary-dep-depinfo is used][93969]
+- [Reject `#[thread_local]` attribute on non-static items][95006]
+- [Add tier 3 `aarch64-pc-windows-gnullvm` and `x86_64-pc-windows-gnullvm` targets\*][94872]
+- [Implement a lint to warn about unused macro rules][96150]
+- [Promote `x86_64-unknown-none` target to Tier 2\*][95705]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
+
+Libraries
+---------
+
+- [Move `CStr` to libcore, and `CString` to liballoc][94079]
+- [Windows: Use a pipe relay for chaining pipes][95841]
+- [Replace Linux Mutex and Condvar with futex based ones.][95035]
+- [Replace RwLock by a futex based one on Linux][95801]
+- [std: directly use pthread in UNIX parker implementation][96393]
+
+Stabilized APIs
+---------------
+
+- [`bool::then_some`]
+- [`f32::total_cmp`]
+- [`f64::total_cmp`]
+- [`Stdin::lines`]
+- [`windows::CommandExt::raw_arg`]
+- [`impl<T: Default> Default for AssertUnwindSafe<T>`]
+- [`From<Rc<str>> for Rc<[u8]>`][rc-u8-from-str]
+- [`From<Arc<str>> for Arc<[u8]>`][arc-u8-from-str]
+- [`FusedIterator for EncodeWide`]
+- [RDM intrinsics on aarch64][stdarch/1285]
+
+Clippy
+------
+
+- [Create clippy lint against unexpectedly late drop for temporaries in match scrutinee expressions][94206]
+
+Cargo
+-----
+
+- Added the `cargo add` command for adding dependencies to `Cargo.toml` from
+  the command-line.
+  [docs](https://doc.rust-lang.org/nightly/cargo/commands/cargo-add.html)
+- Package ID specs now support `name@version` syntax in addition to the
+  previous `name:version` to align with the behavior in `cargo add` and other
+  tools. `cargo install` and `cargo yank` also now support this syntax so the
+  version does not need to passed as a separate flag.
+- The `git` and `registry` directories in Cargo's home directory (usually
+  `~/.cargo`) are now marked as cache directories so that they are not
+  included in backups or content indexing (on Windows).
+- Added automatic `@` argfile support, which will use "response files" if the
+  command-line to `rustc` exceeds the operating system's limit.
+
+Compatibility Notes
+-------------------
+
+- `cargo test` now passes `--target` to `rustdoc` if the specified target is
+  the same as the host target.
+  [#10594](https://github.com/rust-lang/cargo/pull/10594)
+- [rustdoc: Remove .woff font files][96279]
+- [Enforce Copy bounds for repeat elements while considering lifetimes][95819]
+
+Internal Changes
+----------------
+
+- [Unify ReentrantMutex implementations across all platforms][96042]
+
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+[93313]: https://github.com/rust-lang/rust/pull/93313/
+[93969]: https://github.com/rust-lang/rust/pull/93969/
+[94079]: https://github.com/rust-lang/rust/pull/94079/
+[94206]: https://github.com/rust-lang/rust/pull/94206/
+[94457]: https://github.com/rust-lang/rust/pull/94457/
+[94775]: https://github.com/rust-lang/rust/pull/94775/
+[94872]: https://github.com/rust-lang/rust/pull/94872/
+[95006]: https://github.com/rust-lang/rust/pull/95006/
+[95035]: https://github.com/rust-lang/rust/pull/95035/
+[95372]: https://github.com/rust-lang/rust/pull/95372/
+[95380]: https://github.com/rust-lang/rust/pull/95380/
+[95431]: https://github.com/rust-lang/rust/pull/95431/
+[95705]: https://github.com/rust-lang/rust/pull/95705/
+[95801]: https://github.com/rust-lang/rust/pull/95801/
+[95819]: https://github.com/rust-lang/rust/pull/95819/
+[95841]: https://github.com/rust-lang/rust/pull/95841/
+[96042]: https://github.com/rust-lang/rust/pull/96042/
+[96150]: https://github.com/rust-lang/rust/pull/96150/
+[96268]: https://github.com/rust-lang/rust/pull/96268/
+[96279]: https://github.com/rust-lang/rust/pull/96279/
+[96393]: https://github.com/rust-lang/rust/pull/96393/
+[96436]: https://github.com/rust-lang/rust/pull/96436/
+[96557]: https://github.com/rust-lang/rust/pull/96557/
+
+[`bool::then_some`]: https://doc.rust-lang.org/stable/std/primitive.bool.html#method.then_some
+[`f32::total_cmp`]: https://doc.rust-lang.org/stable/std/primitive.f32.html#method.total_cmp
+[`f64::total_cmp`]: https://doc.rust-lang.org/stable/std/primitive.f64.html#method.total_cmp
+[`Stdin::lines`]: https://doc.rust-lang.org/stable/std/io/struct.Stdin.html#method.lines
+[`impl<T: Default> Default for AssertUnwindSafe<T>`]: https://doc.rust-lang.org/stable/std/panic/struct.AssertUnwindSafe.html#impl-Default
+[rc-u8-from-str]: https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#impl-From%3CRc%3Cstr%3E%3E
+[arc-u8-from-str]: https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#impl-From%3CArc%3Cstr%3E%3E
+[stdarch/1285]: https://github.com/rust-lang/stdarch/pull/1285
+[`windows::CommandExt::raw_arg`]: https://doc.rust-lang.org/stable/std/os/windows/process/trait.CommandExt.html#tymethod.raw_arg
+[`FusedIterator for EncodeWide`]: https://doc.rust-lang.org/stable/std/os/windows/ffi/struct.EncodeWide.html#impl-FusedIterator
+
 Version 1.61.0 (2022-05-19)
 ==========================
 
