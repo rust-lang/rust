@@ -30,7 +30,7 @@ pub(crate) fn orphan_check_impl(
 
     let ret = do_orphan_check_impl(tcx, trait_ref, impl_def_id);
     if tcx.trait_is_auto(trait_ref.def_id) {
-        lint_auto_trait_impls(tcx, trait_ref, impl_def_id);
+        lint_auto_trait_impl(tcx, trait_ref, impl_def_id);
     }
 
     ret
@@ -332,7 +332,7 @@ fn emit_orphan_check_error<'tcx>(
 
 /// Lint impls of auto traits if they are likely to have
 /// unsound or surprising effects on auto impls.
-fn lint_auto_trait_impls<'tcx>(
+fn lint_auto_trait_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     impl_def_id: LocalDefId,
