@@ -31,7 +31,6 @@ pub(crate) struct Comments {
     pub error_matches: Vec<ErrorMatch>,
 }
 
-
 /// The conditions used for "ignore" and "only" filters.
 #[derive(Debug)]
 pub(crate) enum Condition {
@@ -55,7 +54,9 @@ pub(crate) struct ErrorMatch {
 impl Condition {
     fn parse(c: &str) -> Self {
         if let Some(bits) = c.strip_suffix("bit") {
-            let bits: u8 = bits.parse().expect("ignore/only filter ending in 'bit' must be of the form 'Nbit' for some integer N");
+            let bits: u8 = bits.parse().expect(
+                "ignore/only filter ending in 'bit' must be of the form 'Nbit' for some integer N",
+            );
             Condition::Bitwidth(bits)
         } else {
             Condition::Target(c.to_owned())
