@@ -137,10 +137,6 @@ function getNakedUrl() {
     return window.location.href.split("?")[0].split("#")[0];
 }
 
-window.hideSettings = () => {
-    // Does nothing by default.
-};
-
 /**
  * This function inserts `newNode` after `referenceNode`. It doesn't work if `referenceNode`
  * doesn't have a parent node.
@@ -413,8 +409,7 @@ function loadCss(cssFileName) {
         }
         ev.preventDefault();
         searchState.defocus();
-        window.hideSettings();
-        hideHelp();
+        window.hidePopoverMenus();
     }
 
     const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
@@ -824,7 +819,7 @@ function loadCss(cssFileName) {
     }
 
     function helpBlurHandler(event) {
-        blurHandler(event, getHelpButton(), hideHelp);
+        blurHandler(event, getHelpButton(), window.hidePopoverMenus);
     }
 
     function buildHelpMenu() {
@@ -901,6 +896,15 @@ function loadCss(cssFileName) {
     }
 
     /**
+     * Hide all the popover menus.
+     */
+    window.hidePopoverMenus = function() {
+        onEachLazy(document.querySelectorAll(".search-container .popover"), elem => {
+            elem.style.display = "none";
+        });
+    };
+
+    /**
      * Returns the help menu element (not the button).
      *
      * @param {boolean} buildNeeded - If this argument is `false`, the help menu element won't be
@@ -926,25 +930,14 @@ function loadCss(cssFileName) {
         }
     }
 
-    /**
-     * Hide the help popup menu.
-     */
-    function hideHelp() {
-        const menu = getHelpMenu(false);
-        if (menu && menu.style.display !== "none") {
-            menu.style.display = "none";
-        }
-    }
-
     document.querySelector(`#${HELP_BUTTON_ID} > button`).addEventListener("click", event => {
         const target = event.target;
         if (target.tagName !== "BUTTON" || target.parentElement.id !== HELP_BUTTON_ID) {
             return;
         }
         const menu = getHelpMenu(true);
-        if (menu.style.display !== "none") {
-            hideHelp();
-        } else {
+        const shouldShowHelp = menu.style.display === "none";
+        if (shouldShowHelp) {
             showHelp();
         }
     });

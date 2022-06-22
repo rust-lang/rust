@@ -228,7 +228,7 @@
     }
 
     function settingsBlurHandler(event) {
-        blurHandler(event, getSettingsButton(), window.hideSettings);
+        blurHandler(event, getSettingsButton(), window.hidePopoverMenus);
     }
 
     if (isSettingsPage) {
@@ -240,17 +240,15 @@
         // We replace the existing "onclick" callback.
         const settingsButton = getSettingsButton();
         const settingsMenu = document.getElementById("settings");
-        window.hideSettings = function() {
-            settingsMenu.style.display = "none";
-        };
         settingsButton.onclick = function(event) {
             if (elemIsInParent(event.target, settingsMenu)) {
                 return;
             }
             event.preventDefault();
-            if (settingsMenu.style.display !== "none") {
-                window.hideSettings();
-            } else {
+            const shouldDisplaySettings = settingsMenu.style.display === "none";
+
+            window.hidePopoverMenus();
+            if (shouldDisplaySettings) {
                 displaySettings();
             }
         };
