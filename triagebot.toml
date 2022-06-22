@@ -1,7 +1,16 @@
 [relabel]
 allow-unauthenticated = [
-    "C-*", "A-*", "E-*", "NLL-*", "O-*", "S-*", "T-*", "WG-*", "F-*", "I-*",
+    "A-*",
+    "C-*",
     "D-*",
+    "E-*",
+    "F-*",
+    "I-*",
+    "NLL-*",
+    "O-*",
+    "S-*",
+    "T-*",
+    "WG-*",
     "needs-fcp",
     "relnotes",
     "requires-nightly",
