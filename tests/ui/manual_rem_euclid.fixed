@@ -26,3 +26,8 @@ fn main() {
     let _: i32 = 4 % ((value % 4) + 4);
     let _: i32 = ((4 % value) + 4) % 4;
 }
+
+// Should lint for params too
+pub fn rem_euclid_4(num: i32) -> i32 {
+    num.rem_euclid(4)
+}

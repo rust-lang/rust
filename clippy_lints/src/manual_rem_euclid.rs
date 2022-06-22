@@ -61,12 +61,23 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             && op3.node == BinOpKind::Rem
             && let Some((const3, expr3)) = check_for_positive_int_constant(cx, expr2, false)
             && const1 == const2 && const2 == const3
-            // Only apply if we see an explicit type annotation on the local.
             && let Some(hir_id) = path_to_local(expr3)
-            && let Some(Node::Binding(_)) = cx.tcx.hir().find(hir_id)
-            && let Some(Node::Local(local)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id))
-            && let Some(ty) = local.ty
-            && !matches!(ty.kind, TyKind::Infer) {
+            && let Some(Node::Binding(_)) = cx.tcx.hir().find(hir_id) {
+                // Apply only to params or locals with annotated types
+                match cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
+                    Some(Node::Param(..)) => (),
+                    Some(Node::Local(local)) => {
+                        if let Some(ty) = local.ty {
+                            if matches!(ty.kind, TyKind::Infer) {
+                                return;
+                            }
+                        } else {
+                            return;
+                        }
+                    }
+                    _ => return,
+                };
+
                 let mut app = Applicability::MachineApplicable;
                 let rem_of = snippet_with_applicability(cx, expr3.span, "_", &mut app);
                 span_lint_and_sugg(
