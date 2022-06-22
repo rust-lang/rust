@@ -2,17 +2,17 @@ error[E0201]: duplicate definitions with name `bar`:
   --> $DIR/E0201.rs:5:5
    |
 LL |     fn bar(&self) -> bool { self.0 > 5 }
-   |     ------------------------------------ previous definition of `bar` here
+   |     --------------------- previous definition of `bar` here
 LL |     fn bar() {}
-   |     ^^^^^^^^^^^ duplicate definition
+   |     ^^^^^^^^ duplicate definition
 
 error[E0201]: duplicate definitions with name `baz`:
   --> $DIR/E0201.rs:17:5
    |
 LL |     fn baz(&self) -> bool { true }
-   |     ------------------------------ previous definition of `baz` here
+   |     --------------------- previous definition of `baz` here
 LL |     fn baz(&self) -> bool { self.0 > 5 }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ duplicate definition
+   |     ^^^^^^^^^^^^^^^^^^^^^ duplicate definition
 
 error[E0201]: duplicate definitions with name `Quux`:
   --> $DIR/E0201.rs:18:5
