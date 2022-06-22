@@ -1,4 +1,4 @@
-use super::{const_io_error, Custom, Error, ErrorData, ErrorKind, Repr};
+use super::{const_io_error, Custom, Error, ErrorData, ErrorKind, Repr, SimpleMessage};
 use crate::assert_matches::assert_matches;
 use crate::error;
 use crate::fmt;
@@ -140,4 +140,55 @@ fn test_custom_error_packing() {
             error,
         }) if error.downcast_ref::<Bojji>().as_deref() == Some(&Bojji(true)),
     );
+}
+
+#[derive(Debug)]
+struct E;
+
+impl fmt::Display for E {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
+    }
+}
+
+impl error::Error for E {}
+
+#[test]
+fn test_try_downcast_inner() {
+    // Case 1: custom error, downcast succeeds
+    let io_error = Error::new(ErrorKind::Other, Bojji(true));
+    let e: Box<Bojji> = io_error.try_downcast_inner().unwrap();
+    assert!(e.0);
+
+    // Case 2: custom error, downcast fails
+    let io_error = Error::new(ErrorKind::Other, Bojji(true));
+    let io_error = io_error.try_downcast_inner::<E>().unwrap_err();
+
+    //   ensures that the custom error is intact
+    assert_eq!(ErrorKind::Other, io_error.kind());
+    let e: Box<Bojji> = io_error.try_downcast_inner().unwrap();
+    assert!(e.0);
+
+    // Case 3: os error
+    let errno = 20;
+    let io_error = Error::from_raw_os_error(errno);
+    let io_error = io_error.try_downcast_inner::<E>().unwrap_err();
+
+    assert_eq!(errno, io_error.raw_os_error().unwrap());
+
+    // Case 4: simple
+    let kind = ErrorKind::OutOfMemory;
+    let io_error: Error = kind.into();
+    let io_error = io_error.try_downcast_inner::<E>().unwrap_err();
+
+    assert_eq!(kind, io_error.kind());
+
+    // Case 5: simple message
+    const SIMPLE_MESSAGE: SimpleMessage =
+        SimpleMessage { kind: ErrorKind::Other, message: "simple message error test" };
+    let io_error = Error::from_static_message(&SIMPLE_MESSAGE);
+    let io_error = io_error.try_downcast_inner::<E>().unwrap_err();
+
+    assert_eq!(SIMPLE_MESSAGE.kind, io_error.kind());
+    assert_eq!(SIMPLE_MESSAGE.message, &*format!("{io_error}"));
 }
