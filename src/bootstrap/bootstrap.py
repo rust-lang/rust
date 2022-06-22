@@ -822,55 +822,32 @@ class RustBuild(object):
 
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
-        vendor_dir = os.path.join(self.rust_root, 'vendor')
         if 'SUDO_USER' in os.environ and not self.use_vendored_sources:
             if os.getuid() == 0:
                 self.use_vendored_sources = True
                 print('info: looks like you\'re trying to run this command as root')
                 print('      and so in order to preserve your $HOME this will now')
                 print('      use vendored sources by default.')
-                if not os.path.exists(vendor_dir):
-                    print('error: vendoring required, but vendor directory does not exist.')
-                    print('       Run `cargo vendor` without sudo to initialize the '
-                          'vendor directory.')
-                    raise Exception("{} not found".format(vendor_dir))
 
+        cargo_dir = os.path.join(self.rust_root, '.cargo')
         if self.use_vendored_sources:
-            config = ("[source.crates-io]\n"
-                      "replace-with = 'vendored-sources'\n"
-                      "registry = 'https://example.com'\n"
-                      "\n"
-                      "[source.vendored-sources]\n"
-                      "directory = '{}/vendor'\n"
-                      .format(self.rust_root))
-            if not os.path.exists('.cargo'):
-                os.makedirs('.cargo')
-                with output('.cargo/config') as cargo_config:
-                    cargo_config.write(config)
-            else:
-                print('info: using vendored source, but .cargo/config is already present.')
-                print('      Reusing the current configuration file. But you may want to '
-                      'configure vendoring like this:')
-                print(config)
+            vendor_dir = os.path.join(self.rust_root, 'vendor')
+            if not os.path.exists(vendor_dir):
+                sync_dirs = "--sync ./src/tools/rust-analyzer/Cargo.toml " \
+                            "--sync ./compiler/rustc_codegen_cranelift/Cargo.toml " \
+                            "--sync ./src/bootstrap/Cargo.toml "
+                print('error: vendoring required, but vendor directory does not exist.')
+                print('       Run `cargo vendor {}` to initialize the '
+                      'vendor directory.'.format(sync_dirs))
+                print('Alternatively, use the pre-vendored `rustc-src` dist component.')
+                raise Exception("{} not found".format(vendor_dir))
+
+            if not os.path.exists(cargo_dir):
+                print('error: vendoring required, but .cargo/config does not exist.')
+                raise Exception("{} not found".format(cargo_dir))
         else:
-            if os.path.exists('.cargo'):
-                shutil.rmtree('.cargo')
-
-    def ensure_vendored(self):
-        """Ensure that the vendored sources are available if needed"""
-        vendor_dir = os.path.join(self.rust_root, 'vendor')
-        # Note that this does not handle updating the vendored dependencies if
-        # the rust git repository is updated. Normal development usually does
-        # not use vendoring, so hopefully this isn't too much of a problem.
-        if self.use_vendored_sources and not os.path.exists(vendor_dir):
-            run([
-                self.cargo(),
-                "vendor",
-                "--sync=./src/bootstrap/Cargo.toml",
-                "--sync=./src/tools/rust-analyzer/Cargo.toml",
-                "--sync=./compiler/rustc_codegen_cranelift/Cargo.toml",
-            ], verbose=self.verbose, cwd=self.rust_root)
-
+            if os.path.exists(cargo_dir):
+                shutil.rmtree(cargo_dir)
 
 def bootstrap(help_triggered):
     """Configure, fetch, build and run the initial bootstrap"""
@@ -953,7 +930,6 @@ def bootstrap(help_triggered):
     # Fetch/build the bootstrap
     build.download_toolchain()
     sys.stdout.flush()
-    build.ensure_vendored()
     build.build_bootstrap()
     sys.stdout.flush()
 

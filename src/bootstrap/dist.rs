@@ -894,8 +894,19 @@ impl Step for PlainSourceTarball {
                 .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
+                .arg("--sync")
+                .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
                 .current_dir(&plain_dst_src);
-            builder.run(&mut cmd);
+
+            let config = if !builder.config.dry_run {
+                t!(String::from_utf8(t!(cmd.output()).stdout))
+            } else {
+                String::new()
+            };
+
+            let cargo_config_dir = plain_dst_src.join(".cargo");
+            builder.create_dir(&cargo_config_dir);
+            builder.create(&cargo_config_dir.join("config.toml"), &config);
         }
 
         tarball.bare()
