@@ -1,13 +1,13 @@
-error[E0381]: used binding `v` isn't initialized in all conditions
+error[E0381]: used binding `v` is possibly-uninitialized
   --> $DIR/borrowck-while-break.rs:7:20
    |
 LL |     let v;
    |         - binding declared here but left uninitialized
 LL |     while cond {
-   |           ---- `v` is uninitialized if this condition isn't met and the `while` loop runs 0 times
+   |           ---- if this condition isn't met and the `while` loop runs 0 times, `v` is not initialized
 ...
 LL |     println!("{}", v);
-   |                    ^ `v` used here but it isn't initialized in all conditions
+   |                    ^ `v` used here but it is possibly-uninitialized
    |
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -329,7 +329,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         for init_idx in inits {
             let init = &self.move_data.inits[*init_idx];
             let span = init.span(&self.body);
-            spans.push(span);
+            if !span.is_dummy() {
+                spans.push(span);
+            }
         }
 
         let (binding, name, desc) =
@@ -337,24 +339,26 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 Some(name) => (format!("`{name}`"), format!("`{name}`"), format!("`{name}` ")),
                 None => ("value".to_string(), "the variable".to_string(), String::new()),
             };
-        let initialized = if let InitializationRequiringAction::PartialAssignment = desired_action {
-            // The same error is emitted for bindings that are *sometimes* initialized and the ones
-            // that are *partially* initialized by assigning to a field of an uninitialized
-            // binding. We differentiate between them for more accurate wording here.
-            "fully initialized"
-        } else if spans.iter().filter(|i| !i.contains(span)).count() == 0 {
-            // We filter above to avoid misleading wording in cases like:
-            // ```
-            // let x;
-            // x += 1;
-            // ```
-            "initialized"
-        } else {
-            "initialized in all conditions"
-        };
+        let isnt_initialized =
+            if let InitializationRequiringAction::PartialAssignment = desired_action {
+                // The same error is emitted for bindings that are *sometimes* initialized and the ones
+                // that are *partially* initialized by assigning to a field of an uninitialized
+                // binding. We differentiate between them for more accurate wording here.
+                "isn't fully initialized"
+            } else if spans.iter().filter(|i| !i.contains(span)).count() == 0 {
+                // We filter above to avoid misleading wording in cases like the following, where `x`
+                // has an `init`, but it is in the same place we're looking at:
+                // ```
+                // let x;
+                // x += 1;
+                // ```
+                "isn't initialized"
+            } else {
+                "is possibly-uninitialized"
+            };
         let used = desired_action.as_general_verb_in_past_tense();
         let mut err =
-            struct_span_err!(self, span, E0381, "{used} binding {desc}isn't {initialized}");
+            struct_span_err!(self, span, E0381, "{used} binding {desc}{isnt_initialized}");
         use_spans.var_span_label_path_only(
             &mut err,
             format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
@@ -366,7 +370,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                  default value and mutate it, or use `std::mem::MaybeUninit`",
             );
         }
-        err.span_label(span, format!("{binding} {used} here but it isn't {initialized}"));
+        err.span_label(span, format!("{binding} {used} here but it {isnt_initialized}"));
 
         // We use the statements were the binding was initialized, and inspect the HIR to look
         // for the branching codepaths that aren't covered, to point at them.
@@ -2561,12 +2565,15 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                 v.visit_expr(body);
                 if v.1 {
                     self.errors.push((
-                        ex.span.to(cond.span),
+                        cond.span,
                         format!(
-                            "this `if` expression might be missing an `else` arm that initializes \
-                             {}",
+                            "if this `if` condition is `false`, {} is not initialized",
                             self.name,
                         ),
+                    ));
+                    self.errors.push((
+                        ex.span.shrink_to_hi(),
+                        format!("an `else` arm might be missing here, initializing {}", self.name),
                     ));
                 }
             }
@@ -2584,8 +2591,8 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                             self.errors.push((
                                 cond.span,
                                 format!(
-                                    "{} is uninitialized if this condition isn't met and the \
-                                     `while` loop runs 0 times",
+                                    "if this condition isn't met and the `while` loop runs 0 \
+                                     times, {} is not initialized",
                                     self.name
                                 ),
                             ));
@@ -2593,7 +2600,8 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                             self.errors.push((
                                 body.span.shrink_to_hi().until(other.span),
                                 format!(
-                                    "{} is uninitialized if this `else` arm is executed",
+                                    "if the `if` condition is `false` and this `else` arm is \
+                                     executed, {} is not initialized",
                                     self.name
                                 ),
                             ));
@@ -2602,7 +2610,10 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                     (false, true) => {
                         self.errors.push((
                             cond.span,
-                            format!("{} is uninitialized if this condition is met", self.name),
+                            format!(
+                                "if this condition is `true`, {} is not initialized",
+                                self.name
+                            ),
                         ));
                     }
                 }
@@ -2625,7 +2636,7 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                                 self.errors.push((
                                     e.span,
                                     format!(
-                                        "{} is uninitialized if the `for` loop runs 0 times",
+                                        "if the `for` loop runs 0 times, {} is not initialized ",
                                         self.name
                                     ),
                                 ));
@@ -2633,8 +2644,8 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                                 self.errors.push((
                                     arm.pat.span.to(guard.body().span),
                                     format!(
-                                        "{} is uninitialized if this pattern and condition are \
-                                         matched",
+                                        "if this pattern and condition are matched, {} is not \
+                                         initialized",
                                         self.name
                                     ),
                                 ));
@@ -2642,7 +2653,7 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                                 self.errors.push((
                                     arm.pat.span,
                                     format!(
-                                        "{} is uninitialized if this pattern is matched",
+                                        "if this pattern is matched, {} is not initialized",
                                         self.name
                                     ),
                                 ));
