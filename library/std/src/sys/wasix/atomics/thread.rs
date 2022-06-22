@@ -108,7 +108,7 @@ impl Thread {
         });
         let handle = unsafe {
             let raw = Box::into_raw(cb) as *mut ReactorCallback;
-            wasi::thread_spawn("_reactor_work", "_malloc", raw as u64, wasi::BOOL_TRUE)
+            wasi::thread_spawn("_reactor_work", raw as u64, wasi::BOOL_TRUE)
                 .map_err(err2io)?
         };
 
