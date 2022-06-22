@@ -4,3 +4,5 @@ privacy-field-is-private-label = private field
 
 privacy-item-is-private = {$kind} `{$descr}` is private
     .label = private {$kind}
+privacy-unnamed-item-is-private = {$kind} is private
+    .label = private {$kind}

@@ -37,3 +37,11 @@ pub struct ItemIsPrivate<'a> {
     pub kind: &'a str,
     pub descr: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(privacy::unnamed_item_is_private)]
+pub struct UnnamedItemIsPrivate {
+    #[primary_span]
+    pub span: Span,
+    pub kind: &'static str,
+}
