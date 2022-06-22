@@ -638,6 +638,14 @@ fn phase_cargo_miri(mut args: env::Args) {
         );
     }
     cmd.env("RUSTC_WRAPPER", &cargo_miri_path);
+    // Having both `RUSTC_WRAPPER` and `RUSTC` set does some odd things, so let's avoid that.
+    // See <https://github.com/rust-lang/miri/issues/2238>.
+    if env::var_os("RUSTC").is_some() && env::var_os("MIRI").is_none() {
+        println!(
+            "WARNING: Ignoring `RUSTC` environment variable; set `MIRI` if you want to control the binary used as the driver."
+        );
+    }
+    cmd.env_remove("RUSTC");
 
     let runner_env_name =
         |triple: &str| format!("CARGO_TARGET_{}_RUNNER", triple.to_uppercase().replace('-', "_"));
