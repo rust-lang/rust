@@ -24,8 +24,8 @@ pub(crate) fn orphan_check_impl(
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
-    if trait_ref.references_error() {
-        return Ok(());
+    if let Some(err) = trait_ref.error_reported() {
+        return Err(err);
     }
 
     let ret = do_orphan_check_impl(tcx, trait_ref, impl_def_id);
