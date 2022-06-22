@@ -648,7 +648,7 @@ impl ::core::cmp::PartialEq for Fieldless {
         {
             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if true && __self_vi == __arg_1_vi {
+            if __self_vi == __arg_1_vi {
                     match (&*self, &*other) { _ => true, }
                 } else { false }
         }
@@ -672,7 +672,7 @@ impl ::core::cmp::PartialOrd for Fieldless {
         {
             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if true && __self_vi == __arg_1_vi {
+            if __self_vi == __arg_1_vi {
                     match (&*self, &*other) {
                         _ =>
                             ::core::option::Option::Some(::core::cmp::Ordering::Equal),
@@ -692,7 +692,7 @@ impl ::core::cmp::Ord for Fieldless {
         {
             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if true && __self_vi == __arg_1_vi {
+            if __self_vi == __arg_1_vi {
                     match (&*self, &*other) {
                         _ => ::core::cmp::Ordering::Equal,
                     }
@@ -783,7 +783,7 @@ impl ::core::cmp::PartialEq for Mixed {
         {
             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if true && __self_vi == __arg_1_vi {
+            if __self_vi == __arg_1_vi {
                     match (&*self, &*other) {
                         (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
                             (*__self_0) == (*__arg_1_0),
@@ -800,7 +800,7 @@ impl ::core::cmp::PartialEq for Mixed {
         {
             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if true && __self_vi == __arg_1_vi {
+            if __self_vi == __arg_1_vi {
                     match (&*self, &*other) {
                         (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
                             (*__self_0) != (*__arg_1_0),
@@ -837,7 +837,7 @@ impl ::core::cmp::PartialOrd for Mixed {
         {
             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if true && __self_vi == __arg_1_vi {
+            if __self_vi == __arg_1_vi {
                     match (&*self, &*other) {
                         (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
                             match ::core::cmp::PartialOrd::partial_cmp(&(*__self_0),
@@ -880,7 +880,7 @@ impl ::core::cmp::Ord for Mixed {
         {
             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if true && __self_vi == __arg_1_vi {
+            if __self_vi == __arg_1_vi {
                     match (&*self, &*other) {
                         (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
                             match ::core::cmp::Ord::cmp(&(*__self_0), &(*__arg_1_0)) {
@@ -973,7 +973,7 @@ impl ::core::cmp::PartialEq for Fielded {
         {
             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if true && __self_vi == __arg_1_vi {
+            if __self_vi == __arg_1_vi {
                     match (&*self, &*other) {
                         (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
                             (*__self_0) == (*__arg_1_0),
@@ -991,7 +991,7 @@ impl ::core::cmp::PartialEq for Fielded {
         {
             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if true && __self_vi == __arg_1_vi {
+            if __self_vi == __arg_1_vi {
                     match (&*self, &*other) {
                         (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
                             (*__self_0) != (*__arg_1_0),
@@ -1029,7 +1029,7 @@ impl ::core::cmp::PartialOrd for Fielded {
         {
             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if true && __self_vi == __arg_1_vi {
+            if __self_vi == __arg_1_vi {
                     match (&*self, &*other) {
                         (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
                             match ::core::cmp::PartialOrd::partial_cmp(&(*__self_0),
@@ -1072,7 +1072,7 @@ impl ::core::cmp::Ord for Fielded {
         {
             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if true && __self_vi == __arg_1_vi {
+            if __self_vi == __arg_1_vi {
                     match (&*self, &*other) {
                         (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
                             match ::core::cmp::Ord::cmp(&(*__self_0), &(*__arg_1_0)) {
