@@ -307,8 +307,9 @@ where
 
 /// Copies `len` bytes of data from enclave pointer `src` to userspace `dst`
 ///
-/// This function mitigates stale data vulnerabilities
-/// https://www.intel.com/content/www/us/en/security-center/advisory/intel-sa-00615.html
+/// This function mitigates stale data vulnerabilities by ensuring all writes to untrusted memory are either:
+///  - preceded by the VERW instruction and followed by the MFENCE; LFENCE instruction sequence
+///  - or are in multiples of 8 bytes, aligned to an 8-byte boundary
 ///
 /// # Panics
 /// This function panics if:
@@ -317,10 +318,14 @@ where
 /// * The `dst` pointer is null
 /// * The `src` memory range is not in enclave memory
 /// * The `dst` memory range is not in user memory
+///
+/// # References
+///  - https://www.intel.com/content/www/us/en/security-center/advisory/intel-sa-00615.html
+///  - https://www.intel.com/content/www/us/en/developer/articles/technical/software-security-guidance/technical-documentation/processor-mmio-stale-data-vulnerabilities.html#inpage-nav-3-2-2
 pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize) {
     unsafe fn copy_bytewise_to_userspace(src: *const u8, dst: *mut u8, len: usize) {
         unsafe {
-            let seg_sel: u16 = 0;
+            let mut seg_sel: u16 = 0;
             for off in 0..len {
                 asm!("
                     mov %ds, ({seg_sel})
@@ -328,10 +333,10 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
                     movb {val}, ({dst})
                     mfence
                     lfence
-                     ",
+                    ",
                     val = in(reg_byte) *src.offset(off as isize),
                     dst = in(reg) dst.offset(off as isize),
-                    seg_sel = in(reg) &seg_sel,
+                    seg_sel = in(reg) &mut seg_sel,
                     options(nostack, att_syntax)
                 );
             }
