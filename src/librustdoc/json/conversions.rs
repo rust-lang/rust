@@ -43,7 +43,7 @@ impl JsonRenderer<'_> {
         let span = item.span(self.tcx);
         let clean::Item { name, attrs: _, kind: _, visibility, item_id, cfg: _ } = item;
         let inner = match *item.kind {
-            clean::StrippedItem(_) => return None,
+            clean::StrippedItem(_) | clean::KeywordItem(_) => return None,
             _ => from_clean_item(item, self.tcx),
         };
         Some(Item {
@@ -254,11 +254,8 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         },
         // FIXME: do not map to Typedef but to a custom variant
         AssocTypeItem(t, _) => ItemEnum::Typedef(t.into_tcx(tcx)),
-        // `convert_item` early returns `None` for striped items
-        StrippedItem(_) => unreachable!(),
-        KeywordItem(_) => {
-            panic!("{:?} is not supported for JSON output", item)
-        }
+        // `convert_item` early returns `None` for striped items and keywords.
+        StrippedItem(_) | KeywordItem(_) => unreachable!(),
         ExternCrateItem { ref src } => ItemEnum::ExternCrate {
             name: name.as_ref().unwrap().to_string(),
             rename: src.map(|x| x.to_string()),
@@ -764,7 +761,7 @@ impl FromWithTcx<ItemType> for ItemKind {
 fn ids(items: impl IntoIterator<Item = clean::Item>, tcx: TyCtxt<'_>) -> Vec<Id> {
     items
         .into_iter()
-        .filter(|x| !x.is_stripped())
+        .filter(|x| !x.is_stripped() && !x.is_keyword())
         .map(|i| from_item_id_with_name(i.item_id, tcx, i.name))
         .collect()
 }
