@@ -11,7 +11,7 @@ use crate::{
     intern::Interned,
     type_ref::{ConstScalarOrPath, LifetimeRef},
 };
-use hir_expand::name::{name, Name};
+use hir_expand::name::Name;
 use syntax::ast;
 
 use crate::type_ref::{TypeBound, TypeRef};
@@ -134,9 +134,7 @@ impl Path {
     }
 
     pub fn is_self_type(&self) -> bool {
-        self.type_anchor.is_none()
-            && *self.generic_args == [None]
-            && self.mod_path.as_ident() == Some(&name!(Self))
+        self.type_anchor.is_none() && *self.generic_args == [None] && self.mod_path.is_Self()
     }
 }
 

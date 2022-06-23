@@ -80,6 +80,12 @@ impl ModPath {
         self.kind == PathKind::Super(0) && self.segments.is_empty()
     }
 
+    #[allow(non_snake_case)]
+    pub fn is_Self(&self) -> bool {
+        self.kind == PathKind::Plain
+            && matches!(&*self.segments, [name] if *name == known::SELF_TYPE)
+    }
+
     /// If this path is a single identifier, like `foo`, return its name.
     pub fn as_ident(&self) -> Option<&Name> {
         if self.kind != PathKind::Plain {

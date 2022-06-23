@@ -5,31 +5,33 @@
 //!  - Building the type for an item: This happens through the `type_for_def` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
-use std::cell::{Cell, RefCell};
-use std::{iter, sync::Arc};
+use std::{
+    cell::{Cell, RefCell},
+    iter,
+    sync::Arc,
+};
 
 use base_db::CrateId;
-use chalk_ir::fold::Fold;
-use chalk_ir::interner::HasInterner;
-use chalk_ir::{cast::Cast, fold::Shift, Mutability, Safety};
-use hir_def::generics::TypeOrConstParamData;
-use hir_def::intern::Interned;
-use hir_def::lang_item::lang_attr;
-use hir_def::path::{ModPath, PathKind};
-use hir_def::type_ref::ConstScalarOrPath;
+use chalk_ir::{cast::Cast, fold::Fold, fold::Shift, interner::HasInterner, Mutability, Safety};
+
 use hir_def::{
     adt::StructKind,
     body::{Expander, LowerCtx},
     builtin_type::BuiltinType,
-    generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
-    path::{GenericArg, Path, PathSegment, PathSegments},
+    generics::{
+        TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
+    },
+    intern::Interned,
+    lang_item::lang_attr,
+    path::{GenericArg, ModPath, Path, PathKind, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
-    type_ref::{TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef},
-    AdtId, AssocItemId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule,
-    ImplId, ItemContainerId, LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId,
-    UnionId, VariantId,
+    type_ref::{
+        ConstScalarOrPath, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef,
+    },
+    AdtId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId,
+    HasModule, ImplId, ItemContainerId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
+    TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId, VariantId,
 };
-use hir_def::{ConstParamId, TypeOrConstParamId, TypeParamId};
 use hir_expand::{name::Name, ExpandResult};
 use itertools::Either;
 use la_arena::ArenaMap;
@@ -38,20 +40,19 @@ use smallvec::SmallVec;
 use stdx::{impl_from, never};
 use syntax::{ast, SmolStr};
 
-use crate::consteval::{
-    intern_scalar_const, path_to_const, unknown_const, unknown_const_as_generic,
-};
-use crate::utils::Generics;
-use crate::{all_super_traits, make_binders, Const, GenericArgData, ParamKind};
 use crate::{
+    all_super_traits,
+    consteval::{intern_scalar_const, path_to_const, unknown_const, unknown_const_as_generic},
     db::HirDatabase,
+    make_binders,
     mapping::ToChalk,
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
+    utils::Generics,
     utils::{all_super_trait_refs, associated_type_by_name_including_super_traits, generics},
-    AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
-    FnSubst, ImplTraitId, Interner, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
-    QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution,
-    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
+    AliasEq, AliasTy, Binders, BoundVar, CallableSig, Const, DebruijnIndex, DynTy, FnPointer,
+    FnSig, FnSubst, GenericArgData, ImplTraitId, Interner, ParamKind, PolyFnSig, ProjectionTy,
+    QuantifiedWhereClause, QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits,
+    Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
 };
 
 #[derive(Debug)]

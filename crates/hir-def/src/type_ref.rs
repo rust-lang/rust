@@ -109,7 +109,6 @@ pub enum TypeRef {
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
     Fn(Vec<(Option<Name>, TypeRef)>, bool /*varargs*/),
-    // For
     ImplTrait(Vec<Interned<TypeBound>>),
     DynTrait(Vec<Interned<TypeBound>>),
     Macro(AstId<ast::MacroCall>),
