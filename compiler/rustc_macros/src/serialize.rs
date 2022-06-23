@@ -30,7 +30,9 @@ pub fn decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
     s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_serialize::Decoder});
     s.add_bounds(synstructure::AddBounds::Generics);
 
-    decodable_body(s, decoder_ty)
+    let res = decodable_body(s, decoder_ty);
+    //eprintln!("----\n{}", res);
+    res
 }
 
 fn decodable_body(
@@ -117,7 +119,9 @@ pub fn encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
     s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_serialize::Encoder});
     s.add_bounds(synstructure::AddBounds::Generics);
 
-    encodable_body(s, encoder_ty, false)
+    let res = encodable_body(s, encoder_ty, false);
+    //eprintln!("----\n{}", res);
+    res
 }
 
 fn encodable_body(
@@ -139,8 +143,11 @@ fn encodable_body(
     });
 
     let encode_body = match s.variants() {
-        [_] => {
-            let encode_inner = s.each_variant(|vi| {
+        [variant] if variant.prefix.is_some() => {
+            // njn: merge this case in below; need to handle the
+            // single-variant-enum case in decodable too
+            //eprintln!("VariantInfo = {:#?}", _variant);
+            let _encode_inner = s.each_variant(|vi| {
                 vi.bindings()
                     .iter()
                     .map(|binding| {
@@ -155,15 +162,19 @@ fn encodable_body(
                     })
                     .collect::<TokenStream>()
             });
+
             quote! {
-                match *self { #encode_inner }
+                //#_encode_inner2
+                //let _ = #_encode_inner2;
+                match *self { #_encode_inner }
+                //println!("----");
+                //#_encode_inner2
             }
         }
-        _ => {
-            let mut variant_idx = 0usize;
-            let encode_inner = s.each_variant(|vi| {
-                let encode_fields: TokenStream = vi
-                    .bindings()
+        [_variant] => {
+            //eprintln!("VariantInfo = {:#?}", _variant);
+            let _encode_inner = s.each_variant(|vi| {
+                vi.bindings()
                     .iter()
                     .map(|binding| {
                         let bind_ident = &binding.binding;
@@ -174,6 +185,59 @@ fn encodable_body(
                             );
                         };
                         result
+                    })
+                    .collect::<TokenStream>()
+            });
+            let _encode_inner2 = _variant
+                .bindings()
+                .iter()
+                .enumerate()
+                .map(|(n, binding)| {
+                    match &binding.ast().ident.as_ref() {
+                        Some(field_ident) => {
+                            quote! {
+                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                                    &self.#field_ident,
+                                    __encoder,
+                                );
+                            }
+                        }
+                        None => {
+                            // njn: comment
+                            let n = syn::Index::from(n);
+                            quote! {
+                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                                    &self.#n,
+                                    __encoder,
+                                );
+                            }
+                        }
+                    }
+                })
+                .collect::<TokenStream>();
+
+            quote! {
+                #_encode_inner2
+                //let _ = #_encode_inner2;
+                //tch *self { #_encode_inner }
+                //println!("----");
+                //#_encode_inner2
+            }
+        }
+        _ => {
+            let mut variant_idx = 0usize;
+            let encode_inner = s.each_variant(|vi| {
+                let encode_fields: TokenStream = vi
+                    .bindings()
+                    .iter()
+                    .map(|binding| {
+                        let bind_ident = &binding.binding;
+                        quote! {
+                            ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                                #bind_ident,
+                                __encoder,
+                            );
+                        }
                     })
                     .collect();
 
