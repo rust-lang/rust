@@ -14,12 +14,15 @@ struct Sum<A,B>(A,B);
 impl<A: Unsigned, B: Unsigned> Unsigned for Sum<A,B> {
     const MAX: u8 = A::MAX + B::MAX;
     //~^ ERROR any use of this value will cause an error [const_err]
+    //~| ERROR any use of this value will cause an error
     //~| WARN this was previously accepted by the compiler but is being phased out
+    //~| WARNING this was previously accepted by the compiler
 }
 
 fn foo<T>(_: T) -> &'static u8 {
     &Sum::<U8,U8>::MAX
     //~^ ERROR E0080
+    //~| ERROR evaluation of `foo::<i32>` failed
 }
 
 fn main() {

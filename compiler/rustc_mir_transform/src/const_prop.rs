@@ -468,11 +468,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     /// Returns the value, if any, of evaluating `c`.
     fn eval_constant(&mut self, c: &Constant<'tcx>) -> Option<OpTy<'tcx>> {
-        // FIXME we need to revisit this for #67176
-        if c.needs_subst() {
-            return None;
-        }
-
         self.ecx.mir_const_to_op(&c.literal, None).ok()
     }
 
