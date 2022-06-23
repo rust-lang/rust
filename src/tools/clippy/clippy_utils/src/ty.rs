@@ -320,11 +320,7 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
 /// Returns `false` if the `LangItem` is not defined.
 pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => cx
-            .tcx
-            .lang_items()
-            .require(lang_item)
-            .map_or(false, |li| li == adt.did()),
+        ty::Adt(adt, _) => cx.tcx.lang_items().require(lang_item).is_ok_and(|&li| li == adt.did()),
         _ => false,
     }
 }
@@ -375,7 +371,7 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             .tcx
             .lang_items()
             .drop_trait()
-            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+            .is_some_and(|&id| implements_trait(cx, ty, id, &[]))
         {
             // This type doesn't implement drop, so no side effects here.
             // Check if any component type has any.
@@ -544,7 +540,7 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
                     {
                         let output = bounds
                             .projection_bounds()
-                            .find(|p| lang_items.fn_once_output().map_or(false, |id| id == p.item_def_id()))
+                            .find(|p| lang_items.fn_once_output().is_some_and(|&id| id == p.item_def_id()))
                             .map(|p| p.map_bound(|p| p.term.ty().expect("return type was a const")));
                         Some(ExprFnSig::Trait(bound.map_bound(|b| b.substs.type_at(0)), output))
                     },

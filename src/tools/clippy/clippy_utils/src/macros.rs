@@ -528,7 +528,7 @@ impl<'tcx> FormatArgsArg<'tcx> {
     /// Returns true if any formatting parameters are used that would have an effect on strings,
     /// like `{:+2}` instead of just `{}`.
     pub fn has_string_formatting(&self) -> bool {
-        self.spec.map_or(false, |spec| {
+        self.spec.is_some_and(|spec| {
             // `!` because these conditions check that `self` is unformatted.
             !if_chain! {
                 // struct `core::fmt::rt::v1::Argument`

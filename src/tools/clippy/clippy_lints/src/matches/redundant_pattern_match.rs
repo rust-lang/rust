@@ -90,7 +90,7 @@ fn temporaries_need_ordered_drop<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<
                             .cx
                             .typeck_results()
                             .type_dependent_def_id(expr.hir_id)
-                            .map_or(false, |id| self.cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref());
+                            .is_some_and(|id| self.cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref());
                         if self_by_ref && needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(self_arg)) {
                             self.res = true;
                         } else {

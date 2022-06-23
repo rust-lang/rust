@@ -1288,9 +1288,7 @@ fn is_first_if_chain_expr(cx: &LateContext<'_>, hir_id: HirId, if_chain_span: Sp
             #[rustfmt::skip]
             !matches!(node, Node::Expr(Expr { kind: ExprKind::Block(..), .. }) | Node::Stmt(_))
         })
-        .map_or(false, |(id, _)| {
-            is_expn_of(cx.tcx.hir().span(id), "if_chain") != Some(if_chain_span)
-        })
+        .is_some_and(|(id, _)| is_expn_of(cx.tcx.hir().span(id), "if_chain") != Some(if_chain_span))
 }
 
 /// Checks a trailing slice of statements and expression of a `Block` to see if they are part

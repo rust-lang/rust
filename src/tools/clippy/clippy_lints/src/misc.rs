@@ -581,16 +581,14 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
             if typeck
                 .type_dependent_def_id(expr.hir_id)
                 .and_then(|id| cx.tcx.trait_of_item(id))
-                .map_or(false, |id| {
-                    matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ToString | sym::ToOwned))
-                }) =>
+                .is_some_and(|&id| matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ToString | sym::ToOwned))) =>
         {
             (arg, arg.span)
         },
         ExprKind::Call(path, [arg])
             if path_def_id(cx, path)
                 .and_then(|id| match_any_def_paths(cx, id, &[&paths::FROM_STR_METHOD, &paths::FROM_FROM]))
-                .map_or(false, |idx| match idx {
+                .is_some_and(|idx| match idx {
                     0 => true,
                     1 => !is_copy(cx, typeck.expr_ty(expr)),
                     _ => false,

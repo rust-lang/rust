@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                 let (expr_ty, expr_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(expr));
                 let (indexed_ty, indexed_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(indexed));
                 let parent_expr = get_parent_expr(cx, expr);
-                let needs_parens_for_prefix = parent_expr.map_or(false, |parent| {
+                let needs_parens_for_prefix = parent_expr.is_some_and(|parent| {
                     parent.precedence().order() > PREC_PREFIX
                 });
                 let mut app = Applicability::MachineApplicable;
@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                             kind: ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _),
                             ..
                         })
-                    ) || cx.typeck_results().expr_adjustments(expr).first().map_or(false, |a| {
+                    ) || cx.typeck_results().expr_adjustments(expr).first().is_some_and(|a| {
                         matches!(a.kind, Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. })))
                     }) {
                         // The slice was used to make a temporary reference.

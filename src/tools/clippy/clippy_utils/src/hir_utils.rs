@@ -229,7 +229,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::Block(l, _), &ExprKind::Block(r, _)) => self.eq_block(l, r),
             (&ExprKind::Binary(l_op, ll, lr), &ExprKind::Binary(r_op, rl, rr)) => {
                 l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
-                    || swap_binop(l_op.node, ll, lr).map_or(false, |(l_op, ll, lr)| {
+                    || swap_binop(l_op.node, ll, lr).is_some_and(|&(l_op, ll, lr)| {
                         l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
                     })
             },
@@ -501,7 +501,7 @@ fn swap_binop<'a>(
 /// `eq_fn`.
 pub fn both<X>(l: &Option<X>, r: &Option<X>, mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
     l.as_ref()
-        .map_or_else(|| r.is_none(), |x| r.as_ref().map_or(false, |y| eq_fn(x, y)))
+        .map_or_else(|| r.is_none(), |x| r.as_ref().is_some_and(|y| eq_fn(x, y)))
 }
 
 /// Checks if two slices are equal as per `eq_fn`.

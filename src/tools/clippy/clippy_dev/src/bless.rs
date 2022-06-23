@@ -20,7 +20,7 @@ pub fn bless(ignore_timestamp: bool) {
     WalkDir::new(build_dir())
         .into_iter()
         .map(Result::unwrap)
-        .filter(|entry| entry.path().extension().map_or(false, |ext| extensions.contains(&ext)))
+        .filter(|entry| entry.path().extension().is_some_and(|ext| extensions.contains(&ext)))
         .for_each(|entry| update_reference_file(&entry, ignore_timestamp));
 }
 

@@ -181,7 +181,7 @@ fn check_final_expr<'tcx>(
             // allow `#[cfg(a)] return a; #[cfg(b)] return b;`
             let attrs = cx.tcx.hir().attrs(expr.hir_id);
             if !attrs.iter().any(attr_is_cfg) {
-                let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
+                let borrows = inner.is_some_and(|inner| last_statement_borrows(cx, inner));
                 if !borrows {
                     emit_return_lint(
                         cx,

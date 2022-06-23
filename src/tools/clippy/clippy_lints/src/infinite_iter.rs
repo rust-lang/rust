@@ -169,9 +169,9 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
         ExprKind::Block(block, _) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
         ExprKind::Box(e) | ExprKind::AddrOf(BorrowKind::Ref, _, e) => is_infinite(cx, e),
         ExprKind::Call(path, _) => path_def_id(cx, path)
-            .map_or(false, |id| match_def_path(cx, id, &paths::ITER_REPEAT))
+            .is_some_and(|&id| match_def_path(cx, id, &paths::ITER_REPEAT))
             .into(),
-        ExprKind::Struct(..) => higher::Range::hir(expr).map_or(false, |r| r.end.is_none()).into(),
+        ExprKind::Struct(..) => higher::Range::hir(expr).is_some_and(|r| r.end.is_none()).into(),
         _ => Finite,
     }
 }
@@ -233,9 +233,7 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 let not_double_ended = cx
                     .tcx
                     .get_diagnostic_item(sym::DoubleEndedIterator)
-                    .map_or(false, |id| {
-                        !implements_trait(cx, cx.typeck_results().expr_ty(&args[0]), id, &[])
-                    });
+                    .is_some_and(|&id| !implements_trait(cx, cx.typeck_results().expr_ty(&args[0]), id, &[]));
                 if not_double_ended {
                     return is_infinite(cx, &args[0]);
                 }

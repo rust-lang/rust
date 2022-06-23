@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
 
                 // Check that the type being compared implements `core::cmp::Ord`
                 let ty = cx.typeck_results().expr_ty(lhs1);
-                let is_ord = get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]));
+                let is_ord = get_trait_def_id(cx, &paths::ORD).is_some_and(|&id| implements_trait(cx, ty, id, &[]));
 
                 if !is_ord {
                     return;
