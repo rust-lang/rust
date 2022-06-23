@@ -146,6 +146,15 @@ impl GenericParams {
     ) -> Interned<GenericParams> {
         let _p = profile::span("generic_params_query");
 
+        macro_rules! id_to_generics {
+            ($id:ident) => {{
+                let id = $id.lookup(db).id;
+                let tree = id.item_tree(db);
+                let item = &tree[id.value];
+                item.generic_params.clone()
+            }};
+        }
+
         match def {
             GenericDefId::FunctionId(id) => {
                 let loc = id.lookup(db);
@@ -166,42 +175,12 @@ impl GenericParams {
 
                 Interned::new(generic_params)
             }
-            GenericDefId::AdtId(AdtId::StructId(id)) => {
-                let id = id.lookup(db).id;
-                let tree = id.item_tree(db);
-                let item = &tree[id.value];
-                item.generic_params.clone()
-            }
-            GenericDefId::AdtId(AdtId::EnumId(id)) => {
-                let id = id.lookup(db).id;
-                let tree = id.item_tree(db);
-                let item = &tree[id.value];
-                item.generic_params.clone()
-            }
-            GenericDefId::AdtId(AdtId::UnionId(id)) => {
-                let id = id.lookup(db).id;
-                let tree = id.item_tree(db);
-                let item = &tree[id.value];
-                item.generic_params.clone()
-            }
-            GenericDefId::TraitId(id) => {
-                let id = id.lookup(db).id;
-                let tree = id.item_tree(db);
-                let item = &tree[id.value];
-                item.generic_params.clone()
-            }
-            GenericDefId::TypeAliasId(id) => {
-                let id = id.lookup(db).id;
-                let tree = id.item_tree(db);
-                let item = &tree[id.value];
-                item.generic_params.clone()
-            }
-            GenericDefId::ImplId(id) => {
-                let id = id.lookup(db).id;
-                let tree = id.item_tree(db);
-                let item = &tree[id.value];
-                item.generic_params.clone()
-            }
+            GenericDefId::AdtId(AdtId::StructId(id)) => id_to_generics!(id),
+            GenericDefId::AdtId(AdtId::EnumId(id)) => id_to_generics!(id),
+            GenericDefId::AdtId(AdtId::UnionId(id)) => id_to_generics!(id),
+            GenericDefId::TraitId(id) => id_to_generics!(id),
+            GenericDefId::TypeAliasId(id) => id_to_generics!(id),
+            GenericDefId::ImplId(id) => id_to_generics!(id),
             GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {
                 Interned::new(GenericParams::default())
             }
@@ -393,15 +372,14 @@ impl GenericParams {
 
     pub fn find_trait_self_param(&self) -> Option<LocalTypeOrConstParamId> {
         self.type_or_consts.iter().find_map(|(id, p)| {
-            if let TypeOrConstParamData::TypeParamData(p) = p {
-                if p.provenance == TypeParamProvenance::TraitSelf {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            matches!(
+                p,
+                TypeOrConstParamData::TypeParamData(TypeParamData {
+                    provenance: TypeParamProvenance::TraitSelf,
+                    ..
+                })
+            )
+            .then(|| id)
         })
     }
 }
