@@ -33,15 +33,3 @@ function retry {
     }
   done
 }
-
-# Copied from ../../init_repo.sh
-function fetch_github_commit_archive {
-    local module=$1
-    local cached="download-${module//\//-}.tar.gz"
-    retry sh -c "rm -f $cached && \
-        curl -f -sSL -o $cached $2"
-    mkdir $module
-    touch "$module/.git"
-    tar -C $module --strip-components=1 -xf $cached
-    rm $cached
-}

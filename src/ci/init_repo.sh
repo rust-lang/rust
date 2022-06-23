@@ -21,7 +21,6 @@ if [ "$(releaseChannel)" = "beta" ]; then
   git fetch origin --unshallow beta master
 fi
 
-# Duplicated in docker/dist-various-2/shared.sh
 function fetch_github_commit_archive {
     local module=$1
     local cached="download-${module//\//-}.tar.gz"
