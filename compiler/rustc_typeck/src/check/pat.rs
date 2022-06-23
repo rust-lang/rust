@@ -663,6 +663,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ast::Mutability::Not => "",
             };
 
+            let mut_var_suggestion = 'block: {
+                if !matches!(mutbl, ast::Mutability::Mut) {
+                    break 'block None;
+                }
+
+                let ident_kind = match binding_parent {
+                    hir::Node::Param(_) => Some("parameter"),
+                    hir::Node::Local(_) => Some("variable"),
+                    hir::Node::Arm(_) => Some("binding"),
+
+                    // Provide diagnostics only if the parent pattern is struct-like,
+                    // i.e. where `mut binding` makes sense
+                    hir::Node::Pat(Pat { kind, .. }) => match kind {
+                        PatKind::Struct(..)
+                        | PatKind::TupleStruct(..)
+                        | PatKind::Or(..)
+                        | PatKind::Tuple(..)
+                        | PatKind::Slice(..) => Some("binding"),
+
+                        PatKind::Wild
+                        | PatKind::Binding(..)
+                        | PatKind::Path(..)
+                        | PatKind::Box(..)
+                        | PatKind::Ref(..)
+                        | PatKind::Lit(..)
+                        | PatKind::Range(..) => None,
+                    },
+
+                    // Don't provide suggestions in other cases
+                    _ => None,
+                };
+
+                ident_kind.map(|thing| (
+                    pat.span,
+                    format!("to declare a mutable {thing} use `mut variable_name`"),
+                    format!("mut {binding}"),
+                ))
+
+            };
+
             match binding_parent {
                 // Check that there is explicit type (ie this is not a closure param with inferred type)
                 // so we don't suggest moving something to the type that does not exist
@@ -675,6 +715,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ],
                         Applicability::MachineApplicable
                     );
+
+                    if let Some((sp, msg, sugg)) = mut_var_suggestion {
+                        err.span_note(sp, format!("{msg}: `{sugg}`"));
+                    }
                 }
                 hir::Node::Param(_) | hir::Node::Arm(_) | hir::Node::Pat(_) => {
                     // rely on match ergonomics or it might be nested `&&pat`
@@ -684,6 +728,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "",
                         Applicability::MaybeIncorrect,
                     );
+
+                    if let Some((sp, msg, sugg)) = mut_var_suggestion {
+                        err.span_note(sp, format!("{msg}: `{sugg}`"));
+                    }
+                }
+                _ if let Some((sp, msg, sugg)) = mut_var_suggestion => {
+                    err.span_suggestion(sp, msg, sugg, Applicability::MachineApplicable);
                 }
                 _ => {} // don't provide suggestions in other cases #55175
             }
