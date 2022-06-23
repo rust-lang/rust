@@ -1429,6 +1429,43 @@ fn f() {
                 "#,
             );
         }
+
+        #[test]
+        fn method_call_defaulted() {
+            check(
+                r#"
+trait Twait {
+    fn a(&self) {}
+     //^
+}
+
+struct Stwuct;
+
+impl Twait for Stwuct {
+}
+fn f() {
+    let s = Stwuct;
+    s.a$0();
+}
+        "#,
+            );
+        }
+
+        #[test]
+        fn method_call_on_generic() {
+            check(
+                r#"
+trait Twait {
+    fn a(&self) {}
+     //^
+}
+
+fn f<T: Twait>(s: T) {
+    s.a$0();
+}
+        "#,
+            );
+        }
     }
 
     #[test]
