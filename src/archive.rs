@@ -30,25 +30,7 @@ pub(crate) struct ArArchiveBuilder<'a> {
 }
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
-    fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self {
-        let (src_archives, entries) = if let Some(input) = input {
-            let read_cache = ReadCache::new(File::open(input).unwrap());
-            let archive = ArchiveFile::parse(&read_cache).unwrap();
-            let mut entries = Vec::new();
-
-            for entry in archive.members() {
-                let entry = entry.unwrap();
-                entries.push((
-                    entry.name().to_vec(),
-                    ArchiveEntry::FromArchive { archive_index: 0, file_range: entry.file_range() },
-                ));
-            }
-
-            (vec![read_cache.into_inner()], entries)
-        } else {
-            (vec![], Vec::new())
-        };
-
+    fn new(sess: &'a Session, output: &Path) -> Self {
         ArArchiveBuilder {
             sess,
             dst: output.to_path_buf(),
@@ -56,22 +38,9 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             // FIXME fix builtin ranlib on macOS
             no_builtin_ranlib: sess.target.is_like_osx,
 
-            src_archives,
-            entries,
+            src_archives: vec![],
+            entries: vec![],
         }
-    }
-
-    fn src_files(&mut self) -> Vec<String> {
-        self.entries.iter().map(|(name, _)| String::from_utf8(name.clone()).unwrap()).collect()
-    }
-
-    fn remove_file(&mut self, name: &str) {
-        let index = self
-            .entries
-            .iter()
-            .position(|(entry_name, _)| entry_name == name.as_bytes())
-            .expect("Tried to remove file not existing in src archive");
-        self.entries.remove(index);
     }
 
     fn add_file(&mut self, file: &Path) {
@@ -105,7 +74,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         Ok(())
     }
 
-    fn build(mut self) {
+    fn build(mut self) -> bool {
         enum BuilderKind {
             Bsd(ar::Builder<File>),
             Gnu(ar::GnuBuilder<File>),
@@ -221,6 +190,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             )
         };
 
+        let any_members = !entries.is_empty();
+
         // Add all files
         for (entry_name, data) in entries.into_iter() {
             let header = ar::Header::new(entry_name, data.len() as u64);
@@ -246,6 +217,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                 self.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
             }
         }
+
+        any_members
     }
 
     fn inject_dll_import_lib(

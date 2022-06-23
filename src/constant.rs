@@ -45,7 +45,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
             ConstantKind::Ty(ct) => ct,
             ConstantKind::Val(..) => continue,
         };
-        match const_.val() {
+        match const_.kind() {
             ConstKind::Value(_) => {}
             ConstKind::Unevaluated(unevaluated) => {
                 if let Err(err) =
@@ -126,8 +126,8 @@ pub(crate) fn codegen_constant<'tcx>(
         ConstantKind::Ty(ct) => ct,
         ConstantKind::Val(val, ty) => return codegen_const_value(fx, val, ty),
     };
-    let const_val = match const_.val() {
-        ConstKind::Value(const_val) => const_val,
+    let const_val = match const_.kind() {
+        ConstKind::Value(valtree) => fx.tcx.valtree_to_const_val((const_.ty(), valtree)),
         ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
             if fx.tcx.is_static(def.did) =>
         {
@@ -468,9 +468,10 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
 ) -> Option<ConstValue<'tcx>> {
     match operand {
         Operand::Constant(const_) => match const_.literal {
-            ConstantKind::Ty(const_) => {
-                fx.monomorphize(const_).eval(fx.tcx, ParamEnv::reveal_all()).val().try_to_value()
-            }
+            ConstantKind::Ty(const_) => fx
+                .monomorphize(const_)
+                .eval_for_mir(fx.tcx, ParamEnv::reveal_all())
+                .try_to_value(fx.tcx),
             ConstantKind::Val(val, _) => Some(val),
         },
         // FIXME(rust-lang/rust#85105): Casts like `IMM8 as u32` result in the const being stored
