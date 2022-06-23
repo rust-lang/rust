@@ -173,7 +173,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                     VerifyBound::OutlivedBy(r)
                 } else {
                     let verify_if_eq_b = binder.map_bound(|ty::OutlivesPredicate(ty, bound)| VerifyIfEq { ty, bound });
-                    VerifyBound::IfEqBound(verify_if_eq_b)
+                    VerifyBound::IfEq(verify_if_eq_b)
                 }
             });
 

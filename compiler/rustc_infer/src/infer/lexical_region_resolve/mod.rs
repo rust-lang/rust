@@ -822,8 +822,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         min: ty::Region<'tcx>,
     ) -> bool {
         match bound {
-            VerifyBound::IfEqBound(verify_if_eq_b) => {
-                match test_type_match::extract_verify_if_eq_bound(
+            VerifyBound::IfEq(verify_if_eq_b) => {
+                match test_type_match::extract_verify_if_eq(
                     self.tcx(),
                     self.param_env,
                     verify_if_eq_b,

@@ -35,7 +35,7 @@ use crate::infer::region_constraints::VerifyIfEq;
 /// very late in inference and hence cannot make use of the normal inference
 /// machinery.
 #[tracing::instrument(level = "Debug", skip(tcx, param_env))]
-pub fn extract_verify_if_eq_bound<'tcx>(
+pub fn extract_verify_if_eq<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     verify_if_eq_b: &ty::Binder<'tcx, VerifyIfEq<'tcx>>,

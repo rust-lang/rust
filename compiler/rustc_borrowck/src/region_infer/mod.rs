@@ -1191,8 +1191,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("eval_verify_bound(lower_bound={:?}, verify_bound={:?})", lower_bound, verify_bound);
 
         match verify_bound {
-            VerifyBound::IfEqBound(verify_if_eq_b) => {
-                self.eval_if_eq_bound(infcx, param_env, generic_ty, lower_bound, *verify_if_eq_b)
+            VerifyBound::IfEq(verify_if_eq_b) => {
+                self.eval_if_eq(infcx, param_env, generic_ty, lower_bound, *verify_if_eq_b)
             }
 
             VerifyBound::IsEmpty => {
@@ -1229,7 +1229,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    fn eval_if_eq_bound(
+    fn eval_if_eq(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -1239,7 +1239,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> bool {
         let generic_ty = self.normalize_to_scc_representatives(infcx.tcx, generic_ty);
         let verify_if_eq_b = self.normalize_to_scc_representatives(infcx.tcx, verify_if_eq_b);
-        match test_type_match::extract_verify_if_eq_bound(
+        match test_type_match::extract_verify_if_eq(
             infcx.tcx,
             param_env,
             &verify_if_eq_b,

@@ -228,7 +228,7 @@ pub enum VerifyBound<'tcx> {
     ///     }
     /// }
     /// ```
-    IfEqBound(ty::Binder<'tcx, VerifyIfEq<'tcx>>),
+    IfEq(ty::Binder<'tcx, VerifyIfEq<'tcx>>),
 
     /// Given a region `R`, expands to the function:
     ///
@@ -807,7 +807,7 @@ impl<'tcx> GenericKind<'tcx> {
 impl<'tcx> VerifyBound<'tcx> {
     pub fn must_hold(&self) -> bool {
         match self {
-            VerifyBound::IfEqBound(..) => false,
+            VerifyBound::IfEq(..) => false,
             VerifyBound::OutlivedBy(re) => re.is_static(),
             VerifyBound::IsEmpty => false,
             VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.must_hold()),
@@ -817,7 +817,7 @@ impl<'tcx> VerifyBound<'tcx> {
 
     pub fn cannot_hold(&self) -> bool {
         match self {
-            VerifyBound::IfEqBound(..) => false,
+            VerifyBound::IfEq(..) => false,
             VerifyBound::IsEmpty => false,
             VerifyBound::OutlivedBy(_) => false,
             VerifyBound::AnyBound(bs) => bs.iter().all(|b| b.cannot_hold()),
