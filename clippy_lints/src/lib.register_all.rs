@@ -345,6 +345,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(vec::USELESS_VEC),
     LintId::of(vec_init_then_push::VEC_INIT_THEN_PUSH),
     LintId::of(vec_resize_to_zero::VEC_RESIZE_TO_ZERO),
+    LintId::of(write::POSITIONAL_NAMED_FORMAT_PARAMETERS),
     LintId::of(write::PRINTLN_EMPTY_STRING),
     LintId::of(write::PRINT_LITERAL),
     LintId::of(write::PRINT_WITH_NEWLINE),

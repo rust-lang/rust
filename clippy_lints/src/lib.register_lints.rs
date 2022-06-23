@@ -583,6 +583,7 @@ store.register_lints(&[
     verbose_file_reads::VERBOSE_FILE_READS,
     wildcard_imports::ENUM_GLOB_USE,
     wildcard_imports::WILDCARD_IMPORTS,
+    write::POSITIONAL_NAMED_FORMAT_PARAMETERS,
     write::PRINTLN_EMPTY_STRING,
     write::PRINT_LITERAL,
     write::PRINT_STDERR,
