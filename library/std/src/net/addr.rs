@@ -131,7 +131,7 @@ impl SocketAddr {
     /// ```
     #[stable(feature = "ip_addr", since = "1.7.0")]
     #[must_use]
-    #[rustc_const_unstable(feature = "const_socketaddr", issue = "none")]
+    #[rustc_const_unstable(feature = "const_socketaddr", issue = "82485")]
     pub const fn new(ip: IpAddr, port: u16) -> SocketAddr {
         match ip {
             IpAddr::V4(a) => SocketAddr::V4(SocketAddrV4::new(a, port)),
@@ -278,7 +278,7 @@ impl SocketAddrV4 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    #[rustc_const_unstable(feature = "const_socketaddr", issue = "none")]
+    #[rustc_const_unstable(feature = "const_socketaddr", issue = "82485")]
     pub const fn new(ip: Ipv4Addr, port: u16) -> SocketAddrV4 {
         SocketAddrV4 { ip, port }
     }
@@ -369,7 +369,7 @@ impl SocketAddrV6 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    #[rustc_const_unstable(feature = "const_socketaddr", issue = "none")]
+    #[rustc_const_unstable(feature = "const_socketaddr", issue = "82485")]
     pub const fn new(ip: Ipv6Addr, port: u16, flowinfo: u32, scope_id: u32) -> SocketAddrV6 {
         SocketAddrV6 { ip, port, flowinfo, scope_id }
     }
