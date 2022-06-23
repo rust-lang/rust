@@ -74,10 +74,16 @@ fn run_clippy_for_package(project: &str, args: &[&str]) {
         .env("CARGO_INCREMENTAL", "0")
         .arg("clippy")
         .arg("--all-targets")
-        .arg("--all-features")
-        .arg("--")
-        .args(args)
-        .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
+        .arg("--all-features");
+
+    if let Ok(dogfood_args) = std::env::var("__CLIPPY_DOGFOOD_ARGS") {
+        for arg in dogfood_args.split_whitespace() {
+            command.arg(arg);
+        }
+    }
+
+    command.arg("--").args(args);
+    command.arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
 
     if cfg!(feature = "internal") {
         // internal lints only exist if we build with the internal feature

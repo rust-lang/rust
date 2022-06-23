@@ -11,6 +11,7 @@ extern crate rustc_lexer;
 use std::path::PathBuf;
 
 pub mod bless;
+pub mod dogfood;
 pub mod fmt;
 pub mod lint;
 pub mod new_lint;
