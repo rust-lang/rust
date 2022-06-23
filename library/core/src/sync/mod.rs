@@ -4,5 +4,5 @@
 
 pub mod atomic;
 mod exclusive;
-#[unstable(feature = "exclusive_wrapper", issue = "none")]
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
 pub use exclusive::Exclusive;

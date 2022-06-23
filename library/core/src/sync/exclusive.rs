@@ -72,7 +72,7 @@ use core::task::{Context, Poll};
 ///
 ///
 /// [`Sync`]: core::marker::Sync
-#[unstable(feature = "exclusive_wrapper", issue = "none")]
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
 #[doc(alias = "SyncWrapper")]
 #[doc(alias = "SyncCell")]
 #[doc(alias = "Unique")]
@@ -86,10 +86,10 @@ pub struct Exclusive<T: ?Sized> {
 }
 
 // See `Exclusive`'s docs for justification.
-#[unstable(feature = "exclusive_wrapper", issue = "none")]
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
 unsafe impl<T: ?Sized> Sync for Exclusive<T> {}
 
-#[unstable(feature = "exclusive_wrapper", issue = "none")]
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T: ?Sized> fmt::Debug for Exclusive<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.debug_struct("Exclusive").finish_non_exhaustive()
@@ -98,14 +98,14 @@ impl<T: ?Sized> fmt::Debug for Exclusive<T> {
 
 impl<T: Sized> Exclusive<T> {
     /// Wrap a value in an `Exclusive`
-    #[unstable(feature = "exclusive_wrapper", issue = "none")]
+    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     pub const fn new(t: T) -> Self {
         Self { inner: t }
     }
 
     /// Unwrap the value contained in the `Exclusive`
-    #[unstable(feature = "exclusive_wrapper", issue = "none")]
+    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     pub const fn into_inner(self) -> T {
         self.inner
@@ -114,7 +114,7 @@ impl<T: Sized> Exclusive<T> {
 
 impl<T: ?Sized> Exclusive<T> {
     /// Get exclusive access to the underlying value.
-    #[unstable(feature = "exclusive_wrapper", issue = "none")]
+    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     pub const fn get_mut(&mut self) -> &mut T {
         &mut self.inner
@@ -126,7 +126,7 @@ impl<T: ?Sized> Exclusive<T> {
     /// value, which means _unpinned_ `Exclusive`s can produce _unpinned_
     /// access to the underlying value, but _pinned_ `Exclusive`s only
     /// produce _pinned_ access to the underlying value.
-    #[unstable(feature = "exclusive_wrapper", issue = "none")]
+    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     pub const fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
         // SAFETY: `Exclusive` can only produce `&mut T` if itself is unpinned
@@ -137,7 +137,7 @@ impl<T: ?Sized> Exclusive<T> {
     /// Build a _mutable_ references to an `Exclusive<T>` from
     /// a _mutable_ reference to a `T`. This allows you to skip
     /// building an `Exclusive` with [`Exclusive::new`].
-    #[unstable(feature = "exclusive_wrapper", issue = "none")]
+    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     pub const fn from_mut(r: &'_ mut T) -> &'_ mut Exclusive<T> {
         // SAFETY: repr is ≥ C, so refs have the same layout; and `Exclusive` properties are `&mut`-agnostic
@@ -147,7 +147,7 @@ impl<T: ?Sized> Exclusive<T> {
     /// Build a _pinned mutable_ references to an `Exclusive<T>` from
     /// a _pinned mutable_ reference to a `T`. This allows you to skip
     /// building an `Exclusive` with [`Exclusive::new`].
-    #[unstable(feature = "exclusive_wrapper", issue = "none")]
+    #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     pub const fn from_pin_mut(r: Pin<&'_ mut T>) -> Pin<&'_ mut Exclusive<T>> {
         // SAFETY: `Exclusive` can only produce `&mut T` if itself is unpinned
@@ -156,14 +156,14 @@ impl<T: ?Sized> Exclusive<T> {
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "none")]
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T> From<T> for Exclusive<T> {
     fn from(t: T) -> Self {
         Self::new(t)
     }
 }
 
-#[unstable(feature = "exclusive_wrapper", issue = "none")]
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T: Future + ?Sized> Future for Exclusive<T> {
     type Output = T::Output;
 

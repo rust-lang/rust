@@ -155,7 +155,7 @@
 pub use alloc_crate::sync::{Arc, Weak};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;
-#[unstable(feature = "exclusive_wrapper", issue = "none")]
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
 pub use core::sync::Exclusive;
 
 #[stable(feature = "rust1", since = "1.0.0")]
