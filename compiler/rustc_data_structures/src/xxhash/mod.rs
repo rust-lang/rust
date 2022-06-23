@@ -156,13 +156,13 @@ impl Default for Xxh3Hasher {
 
         Self {
             acc: XXH3_INIT_ACC,
-            buffer: unsafe {
+            buffer: /*unsafe {
                 if cfg!(debug_assertions) {
                     Buffer([0xCC; XXH3_INTERNALBUFFER_SIZE])
                 } else {
                     std::mem::MaybeUninit::uninit().assume_init()
                 }
-            },
+            },*/Buffer([0x00; XXH3_INTERNALBUFFER_SIZE]),
             buffered_size: 0,
             num_stripes_so_far: 0,
             total_len: 0,
