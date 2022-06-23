@@ -10,4 +10,14 @@ fn b() -> impl for<'a> Fn(&'a u8) -> (impl Debug + 'a) {
     |x| x
 }
 
+fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
+    //~^ ERROR higher kinded lifetime bounds on nested opaque types are not supported yet
+    |x| x
+}
+
+fn d() -> impl Fn() -> (impl Debug + '_) {
+    //~^ ERROR missing lifetime specifier
+    || ()
+}
+
 fn main() {}

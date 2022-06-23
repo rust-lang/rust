@@ -22,5 +22,35 @@ note: lifetime declared here
 LL | fn b() -> impl for<'a> Fn(&'a u8) -> (impl Debug + 'a) {
    |                    ^^
 
-error: aborting due to 2 previous errors
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/impl-fn-hrtb-bounds.rs:13:52
+   |
+LL | fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
+   |                                                    ^^
+   |
+note: lifetime declared here
+  --> $DIR/impl-fn-hrtb-bounds.rs:13:20
+   |
+LL | fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
+   |                    ^^
 
+error[E0106]: missing lifetime specifier
+  --> $DIR/impl-fn-hrtb-bounds.rs:18:38
+   |
+LL | fn d() -> impl Fn() -> (impl Debug + '_) {
+   |                                      ^^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'a` lifetime
+   |
+LL | fn d() -> impl for<'a> Fn() -> (impl Debug + 'a) {
+   |                +++++++                       ~~
+help: consider using the `'static` lifetime
+   |
+LL | fn d() -> impl Fn() -> (impl Debug + 'static) {
+   |                                      ~~~~~~~
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0106`.
