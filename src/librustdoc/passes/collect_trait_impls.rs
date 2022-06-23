@@ -191,7 +191,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
             cleaner.keep_impl(
                 for_,
                 trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait(),
-            ) || trait_.as_ref().map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
+            ) || trait_.is_some_and(|t| cleaner.keep_impl_with_def_id(t.def_id().into()))
                 || kind.is_blanket()
         } else {
             true

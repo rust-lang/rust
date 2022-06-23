@@ -1220,7 +1220,7 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                 if let Some(trait_) = &impl_.trait_ {
                     let trait_did = trait_.def_id();
 
-                    if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable) {
+                    if cx.cache().traits.get(&trait_did).is_some_and(|t| t.is_notable) {
                         if out.is_empty() {
                             write!(
                                 &mut out,

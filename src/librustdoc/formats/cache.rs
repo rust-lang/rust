@@ -213,10 +213,10 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             if self.cache.masked_crates.contains(&item.item_id.krate())
                 || i.trait_
                     .as_ref()
-                    .map_or(false, |t| self.cache.masked_crates.contains(&t.def_id().krate))
+                    .is_some_and(|t| self.cache.masked_crates.contains(&t.def_id().krate))
                 || i.for_
                     .def_id(self.cache)
-                    .map_or(false, |d| self.cache.masked_crates.contains(&d.krate))
+                    .is_some_and(|d| self.cache.masked_crates.contains(&d.krate))
             {
                 return None;
             }
@@ -317,7 +317,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // A crate has a module at its root, containing all items,
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
-                    if item.item_id.as_def_id().map_or(false, |idx| !idx.is_crate_root()) {
+                    if item.item_id.as_def_id().is_some_and(|idx| !idx.is_crate_root()) {
                         let desc = item.doc_value().map_or_else(String::new, |x| {
                             short_markdown_summary(x.as_str(), &item.link_names(self.cache))
                         });
