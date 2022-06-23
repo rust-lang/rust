@@ -14,7 +14,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::BuiltinLintDiagnostics;
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
-use rustc_session::{parse::ParseSess, Limit, Session};
+use rustc_session::{parse::ParseSess, Limit, Session, SessionDiagnostic};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
@@ -1083,6 +1083,17 @@ impl<'a> ExtCtxt<'a> {
         msg: &str,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         self.sess.parse_sess.span_diagnostic.struct_span_err(sp, msg)
+    }
+
+    pub fn create_err(
+        &self,
+        err: impl SessionDiagnostic<'a>,
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        self.sess.create_err(err)
+    }
+
+    pub fn emit_err(&self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
+        self.sess.emit_err(err)
     }
 
     /// Emit `msg` attached to `sp`, without immediately stopping
