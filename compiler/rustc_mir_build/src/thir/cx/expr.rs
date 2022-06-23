@@ -650,6 +650,9 @@ impl<'tcx> Cx<'tcx> {
                     } else {
                         None
                     };
+                    debug!(?var);
+                    let substs = self.typeck_results.node_substs(source.hir_id);
+                    debug!(?substs);
 
                     let source = if let Some((did, offset, var_ty)) = var {
                         let param_env_ty = self.param_env.and(var_ty);
@@ -671,7 +674,7 @@ impl<'tcx> Cx<'tcx> {
                             Some(did) => {
                                 // in case we are offsetting from a computed discriminant
                                 // and not the beginning of discriminants (which is always `0`)
-                                let substs = InternalSubsts::identity_for_item(tcx, did);
+
                                 let kind =
                                     ExprKind::NamedConst { def_id: did, substs, user_ty: None };
                                 let lhs = self.thir.exprs.push(Expr {
