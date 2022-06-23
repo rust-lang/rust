@@ -897,6 +897,39 @@ fn test_range_mut() {
     map.check();
 }
 
+#[should_panic(expected = "range start is greater than range end in BTreeMap")]
+#[test]
+fn test_range_panic_1() {
+    let mut map = BTreeMap::new();
+    map.insert(3, "a");
+    map.insert(5, "b");
+    map.insert(8, "c");
+
+    let _invalid_range = map.range((Included(&8), Included(&3)));
+}
+
+#[should_panic(expected = "range start and end are equal and excluded in BTreeMap")]
+#[test]
+fn test_range_panic_2() {
+    let mut map = BTreeMap::new();
+    map.insert(3, "a");
+    map.insert(5, "b");
+    map.insert(8, "c");
+
+    let _invalid_range = map.range((Excluded(&5), Excluded(&5)));
+}
+
+#[should_panic(expected = "range start and end are equal and excluded in BTreeMap")]
+#[test]
+fn test_range_panic_3() {
+    let mut map: BTreeMap<i32, ()> = BTreeMap::new();
+    map.insert(3, ());
+    map.insert(5, ());
+    map.insert(8, ());
+
+    let _invalid_range = map.range((Excluded(&5), Excluded(&5)));
+}
+
 #[test]
 fn test_retain() {
     let mut map = BTreeMap::from_iter((0..100).map(|x| (x, x * 10)));
