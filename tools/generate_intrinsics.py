@@ -182,6 +182,8 @@ def update_intrinsics(llvm_path, llvmint, llvmint2):
             for entry in intrinsics[arch]:
                 if entry[2] == True: # if it is a duplicate
                     out.write('    // [DUPLICATE]: "{}" => "{}",\n'.format(entry[0], entry[1]))
+                elif "_round_mask" in entry[1]:
+                    out.write('    // [INVALID CONVERSION]: "{}" => "{}",\n'.format(entry[0], entry[1]))
                 else:
                     out.write('    "{}" => "{}",\n'.format(entry[0], entry[1]))
         out.write('    _ => unimplemented!("***** unsupported LLVM intrinsic {}", name),\n')
