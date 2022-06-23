@@ -48,7 +48,10 @@ function fetch_github_commit_archive {
     rm $cached
 }
 
-included="src/llvm-project src/doc/book src/doc/rust-by-example"
+# Archive downloads are temporarily disabled due to sudden 504
+# gateway timeout errors.
+# included="src/llvm-project src/doc/book src/doc/rust-by-example"
+included=""
 modules="$(git config --file .gitmodules --get-regexp '\.path$' | cut -d' ' -f2)"
 modules=($modules)
 use_git=""
@@ -71,10 +74,10 @@ for i in ${!modules[@]}; do
 done
 retry sh -c "git submodule deinit -f $use_git && \
     git submodule sync && \
-    git submodule update -j 16 --init --recursive $use_git"
-STATUS=0
-for pid in ${bg_pids[*]}
-do
-    wait $pid || STATUS=1
-done
-exit ${STATUS}
+    git submodule update -j 16 --init --recursive --depth 1 $use_git"
+# STATUS=0
+# for pid in ${bg_pids[*]}
+# do
+#     wait $pid || STATUS=1
+# done
+# exit ${STATUS}
