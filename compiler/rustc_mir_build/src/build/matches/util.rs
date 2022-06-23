@@ -31,21 +31,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         suffix: &'pat [Pat<'tcx>],
     ) {
         let tcx = self.tcx;
-        let (min_length, exact_size) = if let Ok(place_resolved) =
-            place.clone().try_upvars_resolved(tcx, self.typeck_results)
-        {
-            match place_resolved
-                .into_place(tcx, self.typeck_results)
-                .ty(&self.local_decls, tcx)
-                .ty
-                .kind()
-            {
-                ty::Array(_, length) => (length.eval_usize(tcx, self.param_env), true),
-                _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
-            }
-        } else {
-            ((prefix.len() + suffix.len()).try_into().unwrap(), false)
-        };
+        let (min_length, exact_size) =
+            if let Ok(place_resolved) = place.clone().try_upvars_resolved(self) {
+                match place_resolved.into_place(self).ty(&self.local_decls, tcx).ty.kind() {
+                    ty::Array(_, length) => (length.eval_usize(tcx, self.param_env), true),
+                    _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
+                }
+            } else {
+                ((prefix.len() + suffix.len()).try_into().unwrap(), false)
+            };
 
         match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
             let elem =
@@ -100,7 +94,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
-    pub(crate) fn new(
+    pub(in crate::build) fn new(
         place: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
     ) -> MatchPair<'pat, 'tcx> {

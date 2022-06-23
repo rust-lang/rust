@@ -220,10 +220,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
         let source_info = self.source_info(scrutinee_span);
 
-        if let Ok(scrutinee_builder) =
-            scrutinee_place_builder.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-        {
-            let scrutinee_place = scrutinee_builder.into_place(self.tcx, self.typeck_results);
+        if let Ok(scrutinee_builder) = scrutinee_place_builder.clone().try_upvars_resolved(self) {
+            let scrutinee_place = scrutinee_builder.into_place(self);
             self.cfg.push_fake_read(block, source_info, cause_matched_place, scrutinee_place);
         }
 
@@ -348,12 +346,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // ```
                     let mut opt_scrutinee_place: Option<(Option<&Place<'tcx>>, Span)> = None;
                     let scrutinee_place: Place<'tcx>;
-                    if let Ok(scrutinee_builder) = scrutinee_place_builder
-                        .clone()
-                        .try_upvars_resolved(this.tcx, this.typeck_results)
+                    if let Ok(scrutinee_builder) =
+                        scrutinee_place_builder.clone().try_upvars_resolved(this)
                     {
-                        scrutinee_place =
-                            scrutinee_builder.into_place(this.tcx, this.typeck_results);
+                        scrutinee_place = scrutinee_builder.into_place(this);
                         opt_scrutinee_place = Some((Some(&scrutinee_place), scrutinee_span));
                     }
                     let scope = this.declare_bindings(
@@ -602,12 +598,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             while let Some(next) = {
                 for binding in &candidate_ref.bindings {
                     let local = self.var_local_id(binding.var_id, OutsideGuard);
-
-                    let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
-                        VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
-                    )))) = self.local_decls[local].local_info else {
-                        bug!("Let binding to non-user variable.")
-                    };
                     // `try_upvars_resolved` may fail if it is unable to resolve the given
                     // `PlaceBuilder` inside a closure. In this case, we don't want to include
                     // a scrutinee place. `scrutinee_place_builder` will fail for destructured
@@ -622,10 +612,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     //    let (v1, v2) = foo;
                     // };
                     // ```
-                    if let Ok(match_pair_resolved) =
-                        initializer.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-                    {
-                        let place = match_pair_resolved.into_place(self.tcx, self.typeck_results);
+                    if let Ok(match_pair_resolved) = initializer.clone().try_upvars_resolved(self) {
+                        let place = match_pair_resolved.into_place(self);
+
+                        let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                            VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
+                        )))) = self.local_decls[local].local_info else {
+                            bug!("Let binding to non-user variable.")
+                        };
+
                         *match_place = Some(place);
                     }
                 }
@@ -1605,9 +1600,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Insert a Shallow borrow of any places that is switched on.
         if let Some(fb) = fake_borrows && let Ok(match_place_resolved) =
-            match_place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+            match_place.clone().try_upvars_resolved(self)
         {
-            let resolved_place = match_place_resolved.into_place(self.tcx, self.typeck_results);
+            let resolved_place = match_place_resolved.into_place(self);
             fb.insert(resolved_place);
         }
 
@@ -1799,10 +1794,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         let mut opt_expr_place: Option<(Option<&Place<'tcx>>, Span)> = None;
         let expr_place: Place<'tcx>;
-        if let Ok(expr_builder) =
-            expr_place_builder.try_upvars_resolved(self.tcx, self.typeck_results)
-        {
-            expr_place = expr_builder.into_place(self.tcx, self.typeck_results);
+        if let Ok(expr_builder) = expr_place_builder.try_upvars_resolved(self) {
+            expr_place = expr_builder.into_place(self);
             opt_expr_place = Some((Some(&expr_place), expr_span));
         }
         let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();

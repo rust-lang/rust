@@ -155,10 +155,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
     ) {
         let place: Place<'tcx>;
-        if let Ok(test_place_builder) =
-            place_builder.try_upvars_resolved(self.tcx, self.typeck_results)
-        {
-            place = test_place_builder.into_place(self.tcx, self.typeck_results);
+        if let Ok(test_place_builder) = place_builder.try_upvars_resolved(self) {
+            place = test_place_builder.into_place(self);
         } else {
             return;
         }

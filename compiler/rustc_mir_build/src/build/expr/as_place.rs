@@ -71,7 +71,7 @@ pub(crate) enum PlaceBase {
 /// This is used internally when building a place for an expression like `a.b.c`. The fields `b`
 /// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct PlaceBuilder<'tcx> {
+pub(in crate::build) struct PlaceBuilder<'tcx> {
     base: PlaceBase,
     projection: Vec<PlaceElem<'tcx>>,
 }
@@ -202,10 +202,9 @@ fn find_capture_matching_projections<'a, 'tcx>(
 /// `PlaceBuilder` now starts from `PlaceBase::Local`.
 ///
 /// Returns a Result with the error being the PlaceBuilder (`from_builder`) that was not found.
-fn to_upvars_resolved_place_builder<'a, 'tcx>(
+fn to_upvars_resolved_place_builder<'tcx>(
     from_builder: PlaceBuilder<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    typeck_results: &'a ty::TypeckResults<'tcx>,
+    cx: &Builder<'_, 'tcx>,
 ) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
     match from_builder.base {
         PlaceBase::Local(_) => Ok(from_builder),
@@ -220,13 +219,13 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
 
             let Some((capture_index, capture)) =
                 find_capture_matching_projections(
-                    typeck_results,
+                    cx.typeck_results,
                     var_hir_id,
                     closure_def_id,
                     &from_builder.projection,
                 ) else {
-                let closure_span = tcx.def_span(closure_def_id);
-                if !enable_precise_capture(tcx, closure_span) {
+                let closure_span = cx.tcx.def_span(closure_def_id);
+                if !enable_precise_capture(cx.tcx, closure_span) {
                     bug!(
                         "No associated capture found for {:?}[{:#?}] even though \
                             capture_disjoint_fields isn't enabled",
@@ -243,8 +242,8 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
             };
 
             // We won't be building MIR if the closure wasn't local
-            let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
-            let closure_ty = typeck_results.node_type(closure_hir_id);
+            let closure_hir_id = cx.tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+            let closure_ty = cx.typeck_results.node_type(closure_hir_id);
 
             let substs = match closure_ty.kind() {
                 ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
@@ -316,24 +315,16 @@ fn strip_prefix<'tcx>(
 }
 
 impl<'tcx> PlaceBuilder<'tcx> {
-    pub(crate) fn into_place<'a>(
-        self,
-        tcx: TyCtxt<'tcx>,
-        typeck_results: &'a ty::TypeckResults<'tcx>,
-    ) -> Place<'tcx> {
+    pub(crate) fn into_place(self, cx: &Builder<'_, 'tcx>) -> Place<'tcx> {
         if let PlaceBase::Local(local) = self.base {
-            Place { local, projection: tcx.intern_place_elems(&self.projection) }
+            Place { local, projection: cx.tcx.intern_place_elems(&self.projection) }
         } else {
-            self.expect_upvars_resolved(tcx, typeck_results).into_place(tcx, typeck_results)
+            self.expect_upvars_resolved(cx).into_place(cx)
         }
     }
 
-    fn expect_upvars_resolved<'a>(
-        self,
-        tcx: TyCtxt<'tcx>,
-        typeck_results: &'a ty::TypeckResults<'tcx>,
-    ) -> PlaceBuilder<'tcx> {
-        to_upvars_resolved_place_builder(self, tcx, typeck_results).unwrap()
+    fn expect_upvars_resolved(self, cx: &Builder<'_, 'tcx>) -> PlaceBuilder<'tcx> {
+        to_upvars_resolved_place_builder(self, cx).unwrap()
     }
 
     /// Attempts to resolve the `PlaceBuilder`.
@@ -347,12 +338,11 @@ impl<'tcx> PlaceBuilder<'tcx> {
     /// not captured. This can happen because the final mir that will be
     /// generated doesn't require a read for this place. Failures will only
     /// happen inside closures.
-    pub(crate) fn try_upvars_resolved<'a>(
+    pub(crate) fn try_upvars_resolved(
         self,
-        tcx: TyCtxt<'tcx>,
-        typeck_results: &'a ty::TypeckResults<'tcx>,
+        cx: &Builder<'_, 'tcx>,
     ) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
-        to_upvars_resolved_place_builder(self, tcx, typeck_results)
+        to_upvars_resolved_place_builder(self, cx)
     }
 
     pub(crate) fn base(&self) -> PlaceBase {
@@ -412,7 +402,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_place_builder(block, expr));
-        block.and(place_builder.into_place(self.tcx, self.typeck_results))
+        block.and(place_builder.into_place(self))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -436,7 +426,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr));
-        block.and(place_builder.into_place(self.tcx, self.typeck_results))
+        block.and(place_builder.into_place(self))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -531,7 +521,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             inferred_ty: expr.ty,
                         });
 
-                    let place = place_builder.clone().into_place(this.tcx, this.typeck_results);
+                    let place = place_builder.clone().into_place(this);
                     this.cfg.push(
                         block,
                         Statement {
@@ -683,7 +673,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if is_outermost_index {
             self.read_fake_borrows(block, fake_borrow_temps, source_info)
         } else {
-            base_place = base_place.expect_upvars_resolved(self.tcx, self.typeck_results);
+            base_place = base_place.expect_upvars_resolved(self);
             self.add_fake_borrows_of_base(
                 &base_place,
                 block,
@@ -711,12 +701,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let lt = self.temp(bool_ty, expr_span);
 
         // len = len(slice)
-        self.cfg.push_assign(
-            block,
-            source_info,
-            len,
-            Rvalue::Len(slice.into_place(self.tcx, self.typeck_results)),
-        );
+        self.cfg.push_assign(block, source_info, len, Rvalue::Len(slice.into_place(self)));
         // lt = idx < len
         self.cfg.push_assign(
             block,
