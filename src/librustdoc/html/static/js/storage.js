@@ -1,3 +1,8 @@
+// storage.js is loaded in the `<head>` of all rustdoc pages and doesn't
+// use `async` or `defer`. That means it blocks further parsing and rendering
+// of the page: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script.
+// This makes it the correct place to act on settings that affect the display of
+// the page, so we don't see major layout changes during the load of the page.
 "use strict";
 
 const darkThemes = ["dark", "ayu"];
@@ -234,6 +239,12 @@ if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
     updateSystemTheme();
 } else {
     switchToSavedTheme();
+}
+
+if (getSettingValue("source-sidebar-show") === "true") {
+    // At this point in page load, `document.body` is not available yet.
+    // Set a class on the `<html>` element instead.
+    addClass(document.documentElement, "source-sidebar-expanded");
 }
 
 // If we navigate away (for example to a settings page), and then use the back or
