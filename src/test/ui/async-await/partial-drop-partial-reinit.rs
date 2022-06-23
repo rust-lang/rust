@@ -5,9 +5,15 @@
 fn main() {
     gimme_send(foo());
     //~^ ERROR cannot be sent between threads safely
+    //~| NOTE cannot be sent
+    //~| NOTE bound introduced by
+    //~| NOTE appears within the type
+    //~| NOTE captures the following types
 }
 
 fn gimme_send<T: Send>(t: T) {
+//~^ NOTE required by this bound
+//~| NOTE required by a bound
     drop(t);
 }
 
@@ -20,6 +26,8 @@ impl Drop for NotSend {
 impl !Send for NotSend {}
 
 async fn foo() {
+//~^ NOTE used within this async block
+//~| NOTE within this `impl Future
     let mut x = (NotSend {},);
     drop(x.0);
     x.0 = NotSend {};
