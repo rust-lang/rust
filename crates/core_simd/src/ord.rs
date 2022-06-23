@@ -1,4 +1,6 @@
-use crate::simd::{intrinsics, LaneCount, Mask, Simd, SimdPartialEq, SupportedLaneCount};
+use crate::simd::{
+    intrinsics, LaneCount, Mask, Simd, SimdConstPtr, SimdMutPtr, SimdPartialEq, SupportedLaneCount,
+};
 
 /// Parallel `PartialOrd`.
 pub trait SimdPartialOrd: SimdPartialEq {
@@ -218,30 +220,22 @@ where
 {
     #[inline]
     fn simd_lt(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_lt(self, other)) }
+        self.addr().simd_lt(other.addr())
     }
 
     #[inline]
     fn simd_le(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_le(self, other)) }
+        self.addr().simd_le(other.addr())
     }
 
     #[inline]
     fn simd_gt(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_gt(self, other)) }
+        self.addr().simd_gt(other.addr())
     }
 
     #[inline]
     fn simd_ge(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_ge(self, other)) }
+        self.addr().simd_ge(other.addr())
     }
 }
 
@@ -275,30 +269,22 @@ where
 {
     #[inline]
     fn simd_lt(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_lt(self, other)) }
+        self.addr().simd_lt(other.addr())
     }
 
     #[inline]
     fn simd_le(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_le(self, other)) }
+        self.addr().simd_le(other.addr())
     }
 
     #[inline]
     fn simd_gt(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_gt(self, other)) }
+        self.addr().simd_gt(other.addr())
     }
 
     #[inline]
     fn simd_ge(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_ge(self, other)) }
+        self.addr().simd_ge(other.addr())
     }
 }
 

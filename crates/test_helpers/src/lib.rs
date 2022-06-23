@@ -38,6 +38,28 @@ impl_num! { usize }
 impl_num! { f32 }
 impl_num! { f64 }
 
+impl<T> DefaultStrategy for *const T {
+    type Strategy = proptest::strategy::Map<proptest::num::isize::Any, fn(isize) -> *const T>;
+    fn default_strategy() -> Self::Strategy {
+        fn map<T>(x: isize) -> *const T {
+            x as _
+        }
+        use proptest::strategy::Strategy;
+        proptest::num::isize::ANY.prop_map(map)
+    }
+}
+
+impl<T> DefaultStrategy for *mut T {
+    type Strategy = proptest::strategy::Map<proptest::num::isize::Any, fn(isize) -> *mut T>;
+    fn default_strategy() -> Self::Strategy {
+        fn map<T>(x: isize) -> *mut T {
+            x as _
+        }
+        use proptest::strategy::Strategy;
+        proptest::num::isize::ANY.prop_map(map)
+    }
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 impl DefaultStrategy for u128 {
     type Strategy = proptest::num::u128::Any;
@@ -135,21 +157,21 @@ pub fn test_unary_elementwise<Scalar, ScalarResult, Vector, VectorResult, const 
     fs: &dyn Fn(Scalar) -> ScalarResult,
     check: &dyn Fn([Scalar; LANES]) -> bool,
 ) where
-    Scalar: Copy + Default + core::fmt::Debug + DefaultStrategy,
-    ScalarResult: Copy + Default + biteq::BitEq + core::fmt::Debug + DefaultStrategy,
+    Scalar: Copy + core::fmt::Debug + DefaultStrategy,
+    ScalarResult: Copy + biteq::BitEq + core::fmt::Debug + DefaultStrategy,
     Vector: Into<[Scalar; LANES]> + From<[Scalar; LANES]> + Copy,
     VectorResult: Into<[ScalarResult; LANES]> + From<[ScalarResult; LANES]> + Copy,
 {
     test_1(&|x: [Scalar; LANES]| {
         proptest::prop_assume!(check(x));
         let result_1: [ScalarResult; LANES] = fv(x.into()).into();
-        let result_2: [ScalarResult; LANES] = {
-            let mut result = [ScalarResult::default(); LANES];
-            for (i, o) in x.iter().zip(result.iter_mut()) {
-                *o = fs(*i);
-            }
-            result
-        };
+        let result_2: [ScalarResult; LANES] = x
+            .iter()
+            .copied()
+            .map(fs)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
         crate::prop_assert_biteq!(result_1, result_2);
         Ok(())
     });
@@ -162,7 +184,7 @@ pub fn test_unary_mask_elementwise<Scalar, Vector, Mask, const LANES: usize>(
     fs: &dyn Fn(Scalar) -> bool,
     check: &dyn Fn([Scalar; LANES]) -> bool,
 ) where
-    Scalar: Copy + Default + core::fmt::Debug + DefaultStrategy,
+    Scalar: Copy + core::fmt::Debug + DefaultStrategy,
     Vector: Into<[Scalar; LANES]> + From<[Scalar; LANES]> + Copy,
     Mask: Into<[bool; LANES]> + From<[bool; LANES]> + Copy,
 {
@@ -196,9 +218,9 @@ pub fn test_binary_elementwise<
     fs: &dyn Fn(Scalar1, Scalar2) -> ScalarResult,
     check: &dyn Fn([Scalar1; LANES], [Scalar2; LANES]) -> bool,
 ) where
-    Scalar1: Copy + Default + core::fmt::Debug + DefaultStrategy,
-    Scalar2: Copy + Default + core::fmt::Debug + DefaultStrategy,
-    ScalarResult: Copy + Default + biteq::BitEq + core::fmt::Debug + DefaultStrategy,
+    Scalar1: Copy + core::fmt::Debug + DefaultStrategy,
+    Scalar2: Copy + core::fmt::Debug + DefaultStrategy,
+    ScalarResult: Copy + biteq::BitEq + core::fmt::Debug + DefaultStrategy,
     Vector1: Into<[Scalar1; LANES]> + From<[Scalar1; LANES]> + Copy,
     Vector2: Into<[Scalar2; LANES]> + From<[Scalar2; LANES]> + Copy,
     VectorResult: Into<[ScalarResult; LANES]> + From<[ScalarResult; LANES]> + Copy,
@@ -206,13 +228,14 @@ pub fn test_binary_elementwise<
     test_2(&|x: [Scalar1; LANES], y: [Scalar2; LANES]| {
         proptest::prop_assume!(check(x, y));
         let result_1: [ScalarResult; LANES] = fv(x.into(), y.into()).into();
-        let result_2: [ScalarResult; LANES] = {
-            let mut result = [ScalarResult::default(); LANES];
-            for ((i1, i2), o) in x.iter().zip(y.iter()).zip(result.iter_mut()) {
-                *o = fs(*i1, *i2);
-            }
-            result
-        };
+        let result_2: [ScalarResult; LANES] = x
+            .iter()
+            .copied()
+            .zip(y.iter().copied())
+            .map(|(x, y)| fs(x, y))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
         crate::prop_assert_biteq!(result_1, result_2);
         Ok(())
     });

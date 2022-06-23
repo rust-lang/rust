@@ -1,4 +1,6 @@
-use crate::simd::{intrinsics, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::{
+    intrinsics, LaneCount, Mask, Simd, SimdConstPtr, SimdElement, SimdMutPtr, SupportedLaneCount,
+};
 
 /// Parallel `PartialEq`.
 pub trait SimdPartialEq {
@@ -80,16 +82,12 @@ where
 
     #[inline]
     fn simd_eq(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_eq(self, other)) }
+        self.addr().simd_eq(other.addr())
     }
 
     #[inline]
     fn simd_ne(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_ne(self, other)) }
+        self.addr().simd_ne(other.addr())
     }
 }
 
@@ -101,15 +99,11 @@ where
 
     #[inline]
     fn simd_eq(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_eq(self, other)) }
+        self.addr().simd_eq(other.addr())
     }
 
     #[inline]
     fn simd_ne(self, other: Self) -> Self::Mask {
-        // Safety: `self` is a vector, and the result of the comparison
-        // is always a valid mask.
-        unsafe { Mask::from_int_unchecked(intrinsics::simd_ne(self, other)) }
+        self.addr().simd_ne(other.addr())
     }
 }

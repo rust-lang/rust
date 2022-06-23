@@ -1,8 +1,6 @@
-// Vectors of pointers are not for public use at the current time.
-pub(crate) mod ptr;
-
 use crate::simd::{
-    intrinsics, LaneCount, Mask, MaskElement, SimdCast, SimdPartialOrd, SupportedLaneCount, Swizzle,
+    intrinsics, LaneCount, Mask, MaskElement, SimdCast, SimdConstPtr, SimdMutPtr, SimdPartialOrd,
+    SupportedLaneCount, Swizzle,
 };
 
 /// A SIMD vector of `LANES` elements of type `T`. `Simd<T, N>` has the same shape as [`[T; N]`](array), but operates like `T`.
@@ -215,8 +213,7 @@ where
     where
         T: SimdCast<U>,
     {
-        // Safety: The input argument is a vector of a valid SIMD element type.
-        unsafe { intrinsics::simd_as(self) }
+        SimdCast::cast(self)
     }
 
     /// Rounds toward zero and converts to the same-width integer type, assuming that
@@ -352,7 +349,7 @@ where
         idxs: Simd<usize, LANES>,
         or: Self,
     ) -> Self {
-        let base_ptr = crate::simd::ptr::SimdConstPtr::splat(slice.as_ptr());
+        let base_ptr = Simd::<*const T, LANES>::splat(slice.as_ptr());
         // Ferris forgive me, I have done pointer arithmetic here.
         let ptrs = base_ptr.wrapping_add(idxs);
         // Safety: The ptrs have been bounds-masked to prevent memory-unsafe reads insha'allah
@@ -460,7 +457,7 @@ where
         // 3. &mut [T] which will become our base ptr.
         unsafe {
             // Now Entering ☢️ *mut T Zone
-            let base_ptr = crate::simd::ptr::SimdMutPtr::splat(slice.as_mut_ptr());
+            let base_ptr = Simd::<*mut T, LANES>::splat(slice.as_mut_ptr());
             // Ferris forgive me, I have done pointer arithmetic here.
             let ptrs = base_ptr.wrapping_add(idxs);
             // The ptrs have been bounds-masked to prevent memory-unsafe writes insha'allah
