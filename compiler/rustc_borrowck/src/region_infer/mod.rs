@@ -1363,10 +1363,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         let result = self.scc_values.contains_points(sup_region_scc, sub_region_scc);
-        debug!(
-            "returning {} because of comparison between points in sup/sub",
-            result
-        );
+        debug!("returning {} because of comparison between points in sup/sub", result);
         result
     }
 
