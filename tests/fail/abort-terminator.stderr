@@ -4,6 +4,7 @@ error: abnormal termination: the program aborted execution
   --> $DIR/abort-terminator.rs:LL:CC
    |
 LL | / extern "C" fn panic_abort() {
+LL | |
 LL | |     panic!()
 LL | | }
    | |_^ the program aborted execution
