@@ -530,6 +530,31 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn frem(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        // TODO(antoyo): add check in libgccjit since using the binary operator % causes the following error:
+        // during RTL pass: expand
+        // libgccjit.so: error: in expmed_mode_index, at expmed.h:240
+        // 0x7f0101d58dc6 expmed_mode_index
+        //     ../../../gcc/gcc/expmed.h:240
+        // 0x7f0101d58e35 expmed_op_cost_ptr
+        //     ../../../gcc/gcc/expmed.h:262
+        // 0x7f0101d594a1 sdiv_cost_ptr
+        //     ../../../gcc/gcc/expmed.h:531
+        // 0x7f0101d594f3 sdiv_cost
+        //     ../../../gcc/gcc/expmed.h:549
+        // 0x7f0101d6af7e expand_divmod(int, tree_code, machine_mode, rtx_def*, rtx_def*, rtx_def*, int, optab_methods)
+        //     ../../../gcc/gcc/expmed.cc:4356
+        // 0x7f0101d94f9e expand_expr_divmod
+        //     ../../../gcc/gcc/expr.cc:8929
+        // 0x7f0101d97a26 expand_expr_real_2(separate_ops*, rtx_def*, machine_mode, expand_modifier)
+        //     ../../../gcc/gcc/expr.cc:9566
+        // 0x7f0101bef6ef expand_gimple_stmt_1
+        //     ../../../gcc/gcc/cfgexpand.cc:3967
+        // 0x7f0101bef910 expand_gimple_stmt
+        //     ../../../gcc/gcc/cfgexpand.cc:4028
+        // 0x7f0101bf6ee7 expand_gimple_basic_block
+        //     ../../../gcc/gcc/cfgexpand.cc:6069
+        // 0x7f0101bf9194 execute
+        //     ../../../gcc/gcc/cfgexpand.cc:6795
         if a.get_type().is_compatible_with(self.cx.float_type) {
             let fmodf = self.context.get_builtin_function("fmodf");
             // FIXME(antoyo): this seems to produce the wrong result.
@@ -604,24 +629,29 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         a * b
     }
 
-    fn fadd_fast(&mut self, _lhs: RValue<'gcc>, _rhs: RValue<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
+    fn fadd_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
+        // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
+        lhs + rhs
     }
 
-    fn fsub_fast(&mut self, _lhs: RValue<'gcc>, _rhs: RValue<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
+    fn fsub_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
+        // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
+        lhs - rhs
     }
 
-    fn fmul_fast(&mut self, _lhs: RValue<'gcc>, _rhs: RValue<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
+    fn fmul_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
+        // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
+        lhs * rhs
     }
 
-    fn fdiv_fast(&mut self, _lhs: RValue<'gcc>, _rhs: RValue<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
+    fn fdiv_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
+        // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
+        lhs / rhs
     }
 
-    fn frem_fast(&mut self, _lhs: RValue<'gcc>, _rhs: RValue<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
+    fn frem_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
+        // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
+        self.frem(lhs, rhs)
     }
 
     fn checked_binop(&mut self, oop: OverflowOp, typ: Ty<'_>, lhs: Self::Value, rhs: Self::Value) -> (Self::Value, Self::Value) {
