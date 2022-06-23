@@ -4,10 +4,10 @@ fn main() {
     // error handles this gracefully, and in particular doesn't generate an extra
     // note about the `?` operator in the closure body, which isn't relevant to
     // the inference.
-    let x = |r| {
+    let x = |r| { //~ ERROR type annotations needed for `Result<(), E>`
         let v = r?;
         Ok(v)
     };
 
-    let _ = x(x(Ok(())));  //~ ERROR type annotations needed for `Result<(), E>`
+    let _ = x(x(Ok(())));
 }
