@@ -455,7 +455,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         .sess
                         .source_map()
                         .span_to_snippet(self.expr_span)
-                        .map_or(false, |snip| snip.starts_with('('));
+                        .is_ok_and(|snip| snip.starts_with('('));
 
                     // Very crude check to see whether the expression must be wrapped
                     // in parentheses for the suggestion to work (issue #89497).

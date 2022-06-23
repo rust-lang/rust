@@ -1,5 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(if_let_guard)]
+#![feature(is_some_with)]
 #![feature(let_else)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
@@ -653,7 +654,7 @@ impl<'tcx> SaveContext<'tcx> {
     ) -> Option<Ref> {
         // Returns true if the path is function type sugar, e.g., `Fn(A) -> B`.
         fn fn_type(seg: &hir::PathSegment<'_>) -> bool {
-            seg.args.map_or(false, |args| args.parenthesized)
+            seg.args.is_some_and(|args| args.parenthesized)
         }
 
         let res = self.get_path_res(id);

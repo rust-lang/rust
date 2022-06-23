@@ -6,6 +6,7 @@
 #![feature(closure_track_caller)]
 #![feature(const_btree_new)]
 #![feature(let_else)]
+#![feature(is_some_with)]
 #![feature(once_cell)]
 #![feature(min_specialization)]
 #![feature(never_type)]

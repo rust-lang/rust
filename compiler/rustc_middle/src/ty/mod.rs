@@ -2028,8 +2028,8 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Option<ImplOverlapKind> {
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if self.impl_trait_ref(def_id1).map_or(false, |tr| tr.references_error())
-            || self.impl_trait_ref(def_id2).map_or(false, |tr| tr.references_error())
+        if self.impl_trait_ref(def_id1).is_some_and(|tr| tr.references_error())
+            || self.impl_trait_ref(def_id2).is_some_and(|tr| tr.references_error())
         {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
@@ -2059,7 +2059,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let is_marker_overlap = {
             let is_marker_impl = |def_id: DefId| -> bool {
                 let trait_ref = self.impl_trait_ref(def_id);
-                trait_ref.map_or(false, |tr| self.trait_def(tr.def_id).is_marker)
+                trait_ref.is_some_and(|tr| self.trait_def(tr.def_id).is_marker)
             };
             is_marker_impl(def_id1) && is_marker_impl(def_id2)
         };

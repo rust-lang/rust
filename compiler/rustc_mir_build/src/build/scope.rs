@@ -324,10 +324,10 @@ impl DropTree {
         entry_points.sort();
 
         for (drop_idx, drop_data) in self.drops.iter_enumerated().rev() {
-            if entry_points.last().map_or(false, |entry_point| entry_point.0 == drop_idx) {
+            if entry_points.last().is_some_and(|entry_point| entry_point.0 == drop_idx) {
                 let block = *blocks[drop_idx].get_or_insert_with(|| T::make_block(cfg));
                 needs_block[drop_idx] = Block::Own;
-                while entry_points.last().map_or(false, |entry_point| entry_point.0 == drop_idx) {
+                while entry_points.last().is_some_and(|entry_point| entry_point.0 == drop_idx) {
                     let entry_block = entry_points.pop().unwrap().1;
                     T::add_entry(cfg, entry_block, block);
                 }
@@ -739,7 +739,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn leave_top_scope(&mut self, block: BasicBlock) -> BasicBlock {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
-        let needs_cleanup = self.scopes.scopes.last().map_or(false, |scope| scope.needs_cleanup());
+        let needs_cleanup = self.scopes.scopes.last().is_some_and(|scope| scope.needs_cleanup());
         let is_generator = self.generator_kind.is_some();
         let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
 

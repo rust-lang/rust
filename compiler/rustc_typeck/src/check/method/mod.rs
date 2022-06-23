@@ -346,7 +346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     traits::BinOp {
                         rhs_span: opt_input_expr.map(|expr| expr.span),
                         is_lit: opt_input_expr
-                            .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                            .is_some_and(|expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
                     },
                 ),
                 self.param_env,
@@ -503,7 +503,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 traits::BinOp {
                     rhs_span: opt_input_expr.map(|expr| expr.span),
                     is_lit: opt_input_expr
-                        .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                        .is_some_and(|expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
                 },
             )
         } else {

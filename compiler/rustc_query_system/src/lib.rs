@@ -1,6 +1,7 @@
 #![feature(assert_matches)]
 #![feature(core_intrinsics)]
 #![feature(hash_raw_entry)]
+#![feature(is_some_with)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(extern_types)]

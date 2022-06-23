@@ -12,6 +12,7 @@
 //! symbol to the `accepted` or `removed` modules respectively.
 
 #![feature(once_cell)]
+#![feature(is_some_with)]
 
 mod accepted;
 mod active;
@@ -84,11 +85,11 @@ impl UnstableFeatures {
         let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
         // Returns whether `krate` should be counted as unstable
         let is_unstable_crate = |var: &str| {
-            krate.map_or(false, |name| var.split(',').any(|new_krate| new_krate == name))
+            krate.is_some_and(|&name| var.split(',').any(|new_krate| new_krate == name))
         };
         // `true` if we should enable unstable features for bootstrapping.
-        let bootstrap = std::env::var("RUSTC_BOOTSTRAP")
-            .map_or(false, |var| var == "1" || is_unstable_crate(&var));
+        let bootstrap =
+            std::env::var("RUSTC_BOOTSTRAP").is_ok_and(|var| var == "1" || is_unstable_crate(var));
         match (disable_unstable_features, bootstrap) {
             (_, true) => UnstableFeatures::Cheat,
             (true, _) => UnstableFeatures::Disallow,

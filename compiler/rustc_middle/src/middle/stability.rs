@@ -358,7 +358,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let parent_def_id = self.hir().get_parent_item(id);
                 let skip = self
                     .lookup_deprecation_entry(parent_def_id.to_def_id())
-                    .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
+                    .is_some_and(|parent_depr| parent_depr.same_origin(&depr_entry));
 
                 // #[deprecated] doesn't emit a notice if we're not on the
                 // topmost deprecation. For example, if a struct is deprecated,

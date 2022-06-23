@@ -260,7 +260,7 @@ impl<'tcx> Generics {
             .iter()
             .rev()
             .take_while(|param| {
-                param.default_value(tcx).map_or(false, |default| {
+                param.default_value(tcx).is_some_and(|default| {
                     default.subst(tcx, substs) == substs[param.index as usize]
                 })
             })

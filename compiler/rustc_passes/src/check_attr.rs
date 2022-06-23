@@ -1892,7 +1892,7 @@ impl CheckAttrVisitor<'_> {
             || (is_simd && is_c)
             || (int_reprs == 1
                 && is_c
-                && item.map_or(false, |item| {
+                && item.is_some_and(|item| {
                     if let ItemLike::Item(item) = item {
                         return is_c_like_enum(item);
                     }
@@ -2211,7 +2211,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::feature
                 | sym::repr
                 | sym::target_feature
-        ) && attr.meta_item_list().map_or(false, |list| list.is_empty())
+        ) && attr.meta_item_list().is_some_and(|list| list.is_empty())
         {
             format!(
                 "attribute `{}` with an empty list has no effect",

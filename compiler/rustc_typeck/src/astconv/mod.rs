@@ -373,7 +373,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return (tcx.intern_substs(&[]), arg_count);
         }
 
-        let is_object = self_ty.map_or(false, |ty| ty == self.tcx().types.trait_object_dummy_self);
+        let is_object = self_ty.is_some_and(|&ty| ty == self.tcx().types.trait_object_dummy_self);
 
         struct SubstsForAstPathCtxt<'a, 'tcx> {
             astconv: &'a (dyn AstConv<'tcx> + 'a),
@@ -2995,8 +2995,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .sess
                     .source_map()
                     .span_to_prev_source(self_ty.span)
-                    .ok()
-                    .map_or(false, |s| s.trim_end().ends_with('<'));
+                    .is_ok_and(|s| s.trim_end().ends_with('<'));
 
             let is_global = poly_trait_ref.trait_ref.path.is_global();
             let sugg = Vec::from_iter([

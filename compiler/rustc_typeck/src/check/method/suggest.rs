@@ -1879,18 +1879,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         hir::TraitFn::Required([ident, ..]) => {
                                             ident.name == kw::SelfLower
                                         }
-                                        hir::TraitFn::Provided(body_id) => {
-                                            self.tcx.hir().body(*body_id).params.first().map_or(
-                                                false,
-                                                |param| {
-                                                    matches!(
-                                                        param.pat.kind,
-                                                        hir::PatKind::Binding(_, _, ident, _)
-                                                            if ident.name == kw::SelfLower
-                                                    )
-                                                },
-                                            )
-                                        }
+                                        hir::TraitFn::Provided(body_id) => self
+                                            .tcx
+                                            .hir()
+                                            .body(*body_id)
+                                            .params
+                                            .first()
+                                            .is_some_and(|param| {
+                                                matches!(
+                                                    param.pat.kind,
+                                                    hir::PatKind::Binding(_, _, ident, _)
+                                                        if ident.name == kw::SelfLower
+                                                )
+                                            }),
                                         _ => false,
                                     };
 
@@ -2058,7 +2059,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let imp = self.tcx.impl_trait_ref(imp_did).unwrap();
                             let imp_simp =
                                 simplify_type(self.tcx, imp.self_ty(), TreatParams::AsPlaceholder);
-                            imp_simp.map_or(false, |s| s == simp_rcvr_ty)
+                            imp_simp.is_some_and(|&s| s == simp_rcvr_ty)
                         })
                     {
                         explicitly_negative.push(candidate);
@@ -2140,7 +2141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match ty.kind() {
                 ty::Adt(def, _) => def.did().is_local(),
                 ty::Foreign(did) => did.is_local(),
-                ty::Dynamic(tr, ..) => tr.principal().map_or(false, |d| d.def_id().is_local()),
+                ty::Dynamic(tr, ..) => tr.principal().is_some_and(|d| d.def_id().is_local()),
                 ty::Param(_) => true,
 
                 // Everything else (primitive types, etc.) is effectively

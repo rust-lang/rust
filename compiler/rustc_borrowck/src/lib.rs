@@ -2,6 +2,7 @@
 
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
+#![feature(is_some_with)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]

@@ -895,7 +895,7 @@ impl<'tcx> Cx<'tcx> {
         let is_upvar = self
             .tcx
             .upvars_mentioned(self.body_owner)
-            .map_or(false, |upvars| upvars.contains_key(&var_hir_id));
+            .is_some_and(|upvars| upvars.contains_key(&var_hir_id));
 
         debug!(
             "convert_var({:?}): is_upvar={}, body_owner={:?}",

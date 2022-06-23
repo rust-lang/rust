@@ -16,6 +16,7 @@
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![feature(hash_drain_filter)]
+#![feature(is_some_with)]
 #![feature(label_break_value)]
 #![feature(let_chains)]
 #![feature(let_else)]

@@ -128,5 +128,5 @@ fn is_parent_const_stable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         return false;
     }
 
-    tcx.lookup_const_stability(parent.owner).map_or(false, |stab| stab.is_const_stable())
+    tcx.lookup_const_stability(parent.owner).is_some_and(|stab| stab.is_const_stable())
 }

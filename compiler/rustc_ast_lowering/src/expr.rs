@@ -40,7 +40,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Tup(ref elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
                 ExprKind::Call(ref f, ref args) => {
-                    if e.attrs.get(0).map_or(false, |a| a.has_name(sym::rustc_box)) {
+                    if e.attrs.get(0).is_some_and(|a| a.has_name(sym::rustc_box)) {
                         if let [inner] = &args[..] && e.attrs.len() == 1 {
                             let kind = hir::ExprKind::Box(self.lower_expr(&inner));
                             let hir_id = self.lower_node_id(e.id);

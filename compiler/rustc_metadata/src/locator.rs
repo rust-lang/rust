@@ -539,7 +539,7 @@ impl<'a> CrateLocator<'a> {
         let mut err_data: Option<Vec<PathBuf>> = None;
         for (lib, kind) in m {
             info!("{} reading metadata from: {}", flavor, lib.display());
-            if flavor == CrateFlavor::Rmeta && lib.metadata().map_or(false, |m| m.len() == 0) {
+            if flavor == CrateFlavor::Rmeta && lib.metadata().is_ok_and(|m| m.len() == 0) {
                 // Empty files will cause get_metadata_section to fail. Rmeta
                 // files can be empty, for example with binaries (which can
                 // often appear with `cargo check` when checking a library as
@@ -574,7 +574,7 @@ impl<'a> CrateLocator<'a> {
                     }
                 };
             // If we see multiple hashes, emit an error about duplicate candidates.
-            if slot.as_ref().map_or(false, |s| s.0 != hash) {
+            if slot.is_some_and(|s| s.0 != hash) {
                 if let Some(candidates) = err_data {
                     return Err(CrateError::MultipleCandidates(
                         self.crate_name,

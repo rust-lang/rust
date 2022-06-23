@@ -13,6 +13,7 @@
 #![feature(const_default_impls)]
 #![feature(const_trait_impl)]
 #![feature(if_let_guard)]
+#![feature(is_some_with)]
 #![feature(label_break_value)]
 #![feature(let_chains)]
 #![feature(min_specialization)]

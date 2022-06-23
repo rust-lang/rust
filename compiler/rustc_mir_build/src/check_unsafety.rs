@@ -433,7 +433,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         // To avoid semver hazard, we only consider `Copy` and `ManuallyDrop` non-dropping.
                         if !(assigned_ty
                             .ty_adt_def()
-                            .map_or(false, |adt| adt.is_manually_drop())
+                            .is_some_and(|adt| adt.is_manually_drop())
                             || assigned_ty
                                 .is_copy_modulo_regions(self.tcx.at(expr.span), self.param_env))
                         {

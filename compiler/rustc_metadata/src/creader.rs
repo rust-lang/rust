@@ -369,7 +369,7 @@ impl<'a> CrateLoader<'a> {
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
 
         let private_dep =
-            self.sess.opts.externs.get(name.as_str()).map_or(false, |e| e.is_private_dep);
+            self.sess.opts.externs.get(name.as_str()).is_some_and(|e| e.is_private_dep);
 
         // Claim this crate number and cache it
         let cnum = self.cstore.alloc_new_crate_num();

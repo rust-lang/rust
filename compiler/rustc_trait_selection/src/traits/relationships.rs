@@ -14,7 +14,7 @@ pub(crate) fn update<'tcx, T>(
     // (*) binder skipped
     if let ty::PredicateKind::Trait(tpred) = obligation.predicate.kind().skip_binder()
         && let Some(ty) = infcx.shallow_resolve(tpred.self_ty()).ty_vid().map(|t| infcx.root_var(t))
-        && infcx.tcx.lang_items().sized_trait().map_or(false, |st| st != tpred.trait_ref.def_id)
+        && infcx.tcx.lang_items().sized_trait().is_some_and(|&st| st != tpred.trait_ref.def_id)
     {
         let new_self_ty = infcx.tcx.types.unit;
 

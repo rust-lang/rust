@@ -2274,10 +2274,10 @@ pub struct FnDecl {
 
 impl FnDecl {
     pub fn has_self(&self) -> bool {
-        self.inputs.get(0).map_or(false, Param::is_self)
+        self.inputs.get(0).is_some_and(|p| p.is_self())
     }
     pub fn c_variadic(&self) -> bool {
-        self.inputs.last().map_or(false, |arg| matches!(arg.ty.kind, TyKind::CVarArgs))
+        self.inputs.last().is_some_and(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
     }
 }
 

@@ -916,7 +916,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // have no `rustc_const_stable` attributes to be const-unstable as well. This
                 // should be fixed later.
                 let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
-                    && tcx.lookup_stability(callee).map_or(false, |s| s.is_unstable());
+                    && tcx.lookup_stability(callee).is_some_and(|s| s.is_unstable());
                 if callee_is_unstable_unmarked {
                     trace!("callee_is_unstable_unmarked");
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are

@@ -582,7 +582,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let right_size = r.layout.size;
             let r_bits = r.to_scalar().ok();
             let r_bits = r_bits.and_then(|r| r.to_bits(right_size).ok());
-            if r_bits.map_or(false, |b| b >= left_size.bits() as u128) {
+            if r_bits.is_some_and(|&b| b >= left_size.bits() as u128) {
                 debug!("check_binary_op: reporting assert for {:?}", source_info);
                 self.report_assert_as_lint(
                     lint::builtin::ARITHMETIC_OVERFLOW,

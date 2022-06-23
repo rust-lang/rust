@@ -63,10 +63,7 @@ pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
 }
 
 fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
-    match associated_body(node) {
-        Some(b) => b.hir_id == hir_id,
-        None => false,
-    }
+    associated_body(node).is_some_and(|b| b.hir_id == hir_id)
 }
 
 #[derive(Copy, Clone)]
@@ -417,7 +414,7 @@ impl<'hir> Map<'hir> {
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(self, BodyId { hir_id }: BodyId) -> HirId {
         let parent = self.get_parent_node(hir_id);
-        assert!(self.find(parent).map_or(false, |n| is_body_owner(n, hir_id)));
+        assert!(self.find(parent).is_some_and(|&n| is_body_owner(n, hir_id)));
         parent
     }
 

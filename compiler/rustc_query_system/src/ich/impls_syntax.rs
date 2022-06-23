@@ -24,7 +24,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
             .iter()
             .filter(|attr| {
                 !attr.is_doc_comment()
-                    && !attr.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name))
+                    && !attr.ident().is_some_and(|ident| hcx.is_ignored_attr(ident.name))
             })
             .collect();
 
@@ -38,7 +38,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
 impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
     fn hash_attr(&mut self, attr: &ast::Attribute, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
-        debug_assert!(!attr.ident().map_or(false, |ident| self.is_ignored_attr(ident.name)));
+        debug_assert!(!attr.ident().is_some_and(|ident| self.is_ignored_attr(ident.name)));
         debug_assert!(!attr.is_doc_comment());
 
         let ast::Attribute { kind, id: _, style, span } = attr;

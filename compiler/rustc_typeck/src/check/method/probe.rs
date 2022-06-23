@@ -1160,7 +1160,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pick.autoderefs += 1;
                     pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
                         mutbl,
-                        unsize: pick.autoref_or_ptr_adjustment.map_or(false, |a| a.get_unsize()),
+                        unsize: pick.autoref_or_ptr_adjustment.is_some_and(|a| a.get_unsize()),
                     })
                 }
 

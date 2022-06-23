@@ -128,7 +128,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
             l.emit();
             return;
         }
-        if arg_macro.map_or(false, |id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
+        if arg_macro.is_some_and(|&id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
             // A case of `panic!(format!(..))`.
             l.note(format!("the {}!() macro supports formatting, so there's no need for the format!() macro here", symbol).as_str());
             if let Some((open, close, _)) = find_delimiters(cx, arg_span) {

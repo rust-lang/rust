@@ -17,6 +17,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(extend_one)]
+#![feature(is_some_with)]
 #![feature(label_break_value)]
 #![feature(let_chains)]
 #![feature(let_else)]

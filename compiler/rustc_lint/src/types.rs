@@ -683,7 +683,7 @@ pub fn transparent_newtype_field<'a, 'tcx>(
     let param_env = tcx.param_env(variant.def_id);
     variant.fields.iter().find(|field| {
         let field_ty = tcx.type_of(field.did);
-        let is_zst = tcx.layout_of(param_env.and(field_ty)).map_or(false, |layout| layout.is_zst());
+        let is_zst = tcx.layout_of(param_env.and(field_ty)).is_ok_and(|layout| layout.is_zst());
         !is_zst
     })
 }

@@ -71,7 +71,7 @@ fn has_cfg_or_cfg_attr(attrs: &[Attribute]) -> bool {
     // Therefore, the absence of a literal `cfg` or `cfg_attr` guarantees that
     // we don't need to do any eager expansion.
     attrs.iter().any(|attr| {
-        attr.ident().map_or(false, |ident| ident.name == sym::cfg || ident.name == sym::cfg_attr)
+        attr.ident().is_some_and(|ident| ident.name == sym::cfg || ident.name == sym::cfg_attr)
     })
 }
 

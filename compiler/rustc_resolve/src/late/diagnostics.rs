@@ -358,7 +358,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 // The current function has a `self' parameter, but we were unable to resolve
                 // a reference to `self`. This can only happen if the `self` identifier we
                 // are resolving came from a different hygiene context.
-                if fn_kind.decl().inputs.get(0).map_or(false, |p| p.is_self()) {
+                if fn_kind.decl().inputs.get(0).is_some_and(|p| p.is_self()) {
                     err.span_label(*span, "this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters");
                 } else {
                     let doesnt = if is_assoc_fn {
@@ -1730,7 +1730,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
         } else {
             let needs_placeholder = |def_id: DefId, kind: CtorKind| {
-                let has_no_fields = self.r.field_names.get(&def_id).map_or(false, |f| f.is_empty());
+                let has_no_fields = self.r.field_names.get(&def_id).is_some_and(|f| f.is_empty());
                 match kind {
                     CtorKind::Const => false,
                     CtorKind::Fn | CtorKind::Fictive if has_no_fields => false,

@@ -869,7 +869,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         });
 
         let needs_location =
-            instance.map_or(false, |i| i.def.requires_caller_location(self.cx.tcx()));
+            instance.is_some_and(|i| i.def.requires_caller_location(self.cx.tcx()));
         if needs_location {
             let mir_args = if let Some(num_untupled) = num_untupled {
                 first_args.len() + num_untupled

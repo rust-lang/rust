@@ -524,7 +524,7 @@ impl Token {
     /// Returns `true` if the token is an identifier whose name is the given
     /// string slice.
     pub fn is_ident_named(&self, name: Symbol) -> bool {
-        self.ident().map_or(false, |(ident, _)| ident.name == name)
+        self.ident().is_some_and(|(ident, _)| ident.name == name)
     }
 
     /// Returns `true` if the token is an interpolated path.

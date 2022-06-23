@@ -115,7 +115,7 @@ fn get_arm_identity_info<'a, 'tcx>(
         test: impl Fn(&'a Statement<'tcx>) -> bool,
         mut action: impl FnMut(usize, &'a Statement<'tcx>),
     ) {
-        while stmt_iter.peek().map_or(false, |(_, stmt)| test(stmt)) {
+        while stmt_iter.peek().is_some_and(|(_, stmt)| test(stmt)) {
             let (idx, stmt) = stmt_iter.next().unwrap();
 
             action(idx, stmt);

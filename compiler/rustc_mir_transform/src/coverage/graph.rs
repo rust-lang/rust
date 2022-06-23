@@ -540,7 +540,7 @@ impl TraverseCoverageGraphWithLoops {
         );
         while let Some(next_bcb) = {
             // Strip contexts with empty worklists from the top of the stack
-            while self.context_stack.last().map_or(false, |context| context.worklist.is_empty()) {
+            while self.context_stack.last().is_some_and(|context| context.worklist.is_empty()) {
                 self.context_stack.pop();
             }
             // Pop the next bcb off of the current context_stack. If none, all BCBs were visited.
