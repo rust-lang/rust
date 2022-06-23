@@ -66,7 +66,7 @@
 //!
 //! # "`cs`" functions
 //!
-//! The `cs_...` functions ("combine substructure) are designed to
+//! The `cs_...` functions ("combine substructure") are designed to
 //! make life easier by providing some pre-made recipes for common
 //! threads; mostly calling the function being derived on all the
 //! arguments and then combining them back together in some way (or
@@ -1643,7 +1643,6 @@ where
 /// fields.
 /// When the `substructure` is an `EnumNonMatchingCollapsed`, the result of `enum_nonmatch_f`
 /// is returned. Statics may not be folded over.
-/// See `cs_op` in `partial_ord.rs` for a model example.
 pub fn cs_fold1<F, B>(
     use_foldl: bool,
     f: F,
