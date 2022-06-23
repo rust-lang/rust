@@ -19,7 +19,7 @@ where
     async move { c.connect().await }
     //~^ ERROR `C` does not live long enough
     //
-    // FIXME. This is because we infer at some point a value of
+    // FIXME(#71723). This is because we infer at some point a value of
     //
     // impl Future<Output = <C as Client>::Connection<'_>>
     //
