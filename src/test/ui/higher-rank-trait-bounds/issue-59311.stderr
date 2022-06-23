@@ -4,7 +4,7 @@ error: higher-ranked lifetime error
 LL |     v.t(|| {});
    |     ^^^^^^^^^^
    |
-   = note: could not prove [closure@$DIR/issue-59311.rs:17:9: 17:14] well-formed
+   = note: could not prove `[closure@$DIR/issue-59311.rs:17:9: 17:14] well-formed`
 
 error: higher-ranked lifetime error
   --> $DIR/issue-59311.rs:17:9
@@ -12,7 +12,7 @@ error: higher-ranked lifetime error
 LL |     v.t(|| {});
    |         ^^^^^
    |
-   = note: could not prove for<'a> &'a V: 'static
+   = note: could not prove `for<'a> &'a V: 'static`
 
 error: aborting due to 2 previous errors
 

@@ -281,9 +281,19 @@ pub trait Emitter {
         let message = bundle.get_message(&identifier).expect("missing diagnostic in fluent bundle");
         let value = match attr {
             Some(attr) => {
-                message.get_attribute(attr).expect("missing attribute in fluent message").value()
+                if let Some(attr) = message.get_attribute(attr) {
+                    attr.value()
+                } else {
+                    panic!("missing attribute `{attr}` in fluent message `{identifier}`")
+                }
             }
-            None => message.value().expect("missing value in fluent message"),
+            None => {
+                if let Some(value) = message.value() {
+                    value
+                } else {
+                    panic!("missing value in fluent message `{identifier}`")
+                }
+            }
         };
 
         let mut err = vec![];
