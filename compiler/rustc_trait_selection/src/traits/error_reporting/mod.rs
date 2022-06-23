@@ -484,10 +484,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err.span_label(span, explanation);
                         }
 
-                        if let ObligationCauseCode::ObjectCastObligation(obj_ty) = obligation.cause.code().peel_derives() &&
-                           let Some(self_ty) = trait_predicate.self_ty().no_bound_vars() &&
+                        if let ObligationCauseCode::ObjectCastObligation(concrete_ty, obj_ty) = obligation.cause.code().peel_derives() &&
                            Some(trait_ref.def_id()) == self.tcx.lang_items().sized_trait() {
-                            self.suggest_borrowing_for_object_cast(&mut err, &obligation, self_ty, *obj_ty);
+                            self.suggest_borrowing_for_object_cast(&mut err, &root_obligation, *concrete_ty, *obj_ty);
                         }
 
                         if trait_predicate.is_const_if_const() && obligation.param_env.is_const() {
@@ -1560,7 +1559,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     obligation.cause.code().peel_derives(),
                     ObligationCauseCode::ItemObligation(_)
                         | ObligationCauseCode::BindingObligation(_, _)
-                        | ObligationCauseCode::ObjectCastObligation(_)
+                        | ObligationCauseCode::ObjectCastObligation(..)
                         | ObligationCauseCode::OpaqueType
                 );
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(
