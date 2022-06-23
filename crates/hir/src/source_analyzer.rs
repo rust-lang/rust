@@ -281,7 +281,7 @@ impl SourceAnalyzer {
             _ => (),
         };
         let (func, self_ty) = fun_info?;
-        let implied_trait = match func.lookup(db.upcast()).container {
+        let impled_trait = match func.lookup(db.upcast()).container {
             ItemContainerId::TraitId(trait_id) => trait_id,
             _ => return None,
         };
@@ -293,13 +293,7 @@ impl SourceAnalyzer {
         );
 
         let fun_data = db.function_data(func);
-        method_resolution::lookup_trait_m_for_self_ty(
-            &self_ty,
-            db,
-            trait_env,
-            implied_trait,
-            &fun_data.name,
-        )
+        method_resolution::lookup_impl_method(&self_ty, db, trait_env, impled_trait, &fun_data.name)
     }
 
     pub(crate) fn resolve_field(
