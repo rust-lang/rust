@@ -196,6 +196,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
         let mut ty = self.typeck_results.node_type(pat.hir_id);
 

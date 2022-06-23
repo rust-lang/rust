@@ -654,6 +654,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// scope for the bindings in these patterns, if such a scope had to be
     /// created. NOTE: Declaring the bindings should always be done in their
     /// drop scope.
+    #[instrument(skip(self), level = "debug")]
     pub(crate) fn declare_bindings(
         &mut self,
         mut visibility_scope: Option<SourceScope>,
@@ -662,7 +663,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
-        debug!("declare_bindings: pattern={:?}", pattern);
         self.visit_primary_bindings(
             &pattern,
             UserTypeProjections::none(),
@@ -1048,6 +1048,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// if `x.0` matches `false` (for the third arm). In the (impossible at
     /// runtime) case when `x.0` is now `true`, we branch to
     /// `otherwise_block`.
+    #[instrument(skip(self, fake_borrows), level = "debug")]
     fn match_candidates<'pat>(
         &mut self,
         span: Span,
@@ -1057,11 +1058,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
-        debug!(
-            "matched_candidate(span={:?}, candidates={:?}, start_block={:?}, otherwise_block={:?})",
-            span, candidates, start_block, otherwise_block,
-        );
-
         // Start by simplifying candidates. Once this process is complete, all
         // the match pairs which remain require some form of test, whether it
         // be a switch or pattern comparison.
@@ -1380,6 +1376,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         )
     }
 
+    #[instrument(
+        skip(self, otherwise, or_span, place, fake_borrows, candidate, pats),
+        level = "debug"
+    )]
     fn test_or_pattern<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
@@ -1389,7 +1389,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: PlaceBuilder<'tcx>,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
-        debug!("test_or_pattern:\ncandidate={:#?}\npats={:#?}", candidate, pats);
+        debug!("candidate={:#?}\npats={:#?}", candidate, pats);
         let mut or_candidates: Vec<_> = pats
             .iter()
             .map(|pat| Candidate::new(place.clone(), pat, candidate.has_guard))
@@ -1634,9 +1634,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             candidates = rest;
         }
         // at least the first candidate ought to be tested
-        assert!(total_candidate_count > candidates.len());
-        debug!("test_candidates: tested_candidates: {}", total_candidate_count - candidates.len());
-        debug!("test_candidates: untested_candidates: {}", candidates.len());
+        assert!(
+            total_candidate_count > candidates.len(),
+            "{}, {:#?}",
+            total_candidate_count,
+            candidates
+        );
+        debug!("tested_candidates: {}", total_candidate_count - candidates.len());
+        debug!("untested_candidates: {}", candidates.len());
 
         // HACK(matthewjasper) This is a closure so that we can let the test
         // create its blocks before the rest of the match. This currently
@@ -2195,6 +2200,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// first local is a binding for occurrences of `var` in the guard, which
     /// will have type `&T`. The second local is a binding for occurrences of
     /// `var` in the arm body, which will have type `T`.
+    #[instrument(skip(self), level = "debug")]
     fn declare_binding(
         &mut self,
         source_info: SourceInfo,
@@ -2209,19 +2215,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,
     ) {
-        debug!(
-            "declare_binding(var_id={:?}, name={:?}, mode={:?}, var_ty={:?}, \
-             visibility_scope={:?}, source_info={:?})",
-            var_id, name, mode, var_ty, visibility_scope, source_info
-        );
-
         let tcx = self.tcx;
         let debug_source_info = SourceInfo { span: source_info.span, scope: visibility_scope };
         let binding_mode = match mode {
             BindingMode::ByValue => ty::BindingMode::BindByValue(mutability),
             BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability),
         };
-        debug!("declare_binding: user_ty={:?}", user_ty);
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty,
@@ -2271,7 +2270,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             LocalsForNode::One(for_arm_body)
         };
-        debug!("declare_binding: vars={:?}", locals);
+        debug!(?locals);
         self.var_indices.insert(var_id, locals);
     }
 

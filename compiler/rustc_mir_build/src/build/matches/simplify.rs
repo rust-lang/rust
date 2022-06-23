@@ -37,12 +37,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// only generates a single switch. If this happens this method returns
     /// `true`.
+    #[instrument(skip(self, candidate), level = "debug")]
     pub(super) fn simplify_candidate<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> bool {
         // repeatedly simplify match pairs until fixed point is reached
-        debug!(?candidate, "simplify_candidate");
+        debug!("{:#?}", candidate);
 
         // existing_bindings and new_bindings exists to keep the semantics in order.
         // Reversing the binding order for bindings after `@` changes the binding order in places
