@@ -72,12 +72,12 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// ```ignore (rust)
 /// #[derive(SessionSubdiagnostic)]
 /// pub enum ExpectedIdentifierLabel<'tcx> {
-///     #[label(slug = "parser-expected-identifier")]
+///     #[label(parser::expected_identifier)]
 ///     WithoutFound {
 ///         #[primary_span]
 ///         span: Span,
 ///     }
-///     #[label(slug = "parser-expected-identifier-found")]
+///     #[label(parser::expected_identifier_found)]
 ///     WithFound {
 ///         #[primary_span]
 ///         span: Span,
@@ -86,7 +86,7 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// }
 ///
 /// #[derive(SessionSubdiagnostic)]
-/// #[suggestion_verbose(slug = "parser-raw-identifier")]
+/// #[suggestion_verbose(parser::raw_identifier)]
 /// pub struct RawIdentifierSuggestion<'tcx> {
 ///     #[primary_span]
 ///     span: Span,

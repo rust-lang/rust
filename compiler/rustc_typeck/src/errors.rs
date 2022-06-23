@@ -197,7 +197,7 @@ pub struct AddressOfTemporaryTaken {
 #[derive(SessionSubdiagnostic)]
 pub enum AddReturnTypeSuggestion<'tcx> {
     #[suggestion(
-        slug = "typeck-add-return-type-add",
+        typeck::add_return_type_add,
         code = "-> {found} ",
         applicability = "machine-applicable"
     )]
@@ -207,7 +207,7 @@ pub enum AddReturnTypeSuggestion<'tcx> {
         found: Ty<'tcx>,
     },
     #[suggestion(
-        slug = "typeck-add-return-type-missing-here",
+        typeck::add_return_type_missing_here,
         code = "-> _ ",
         applicability = "has-placeholders"
     )]
@@ -219,12 +219,12 @@ pub enum AddReturnTypeSuggestion<'tcx> {
 
 #[derive(SessionSubdiagnostic)]
 pub enum ExpectedReturnTypeLabel<'tcx> {
-    #[label(slug = "typeck-expected-default-return-type")]
+    #[label(typeck::expected_default_return_type)]
     Unit {
         #[primary_span]
         span: Span,
     },
-    #[label(slug = "typeck-expected-return-type")]
+    #[label(typeck::expected_return_type)]
     Other {
         #[primary_span]
         span: Span,

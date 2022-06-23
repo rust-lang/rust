@@ -265,7 +265,7 @@ struct BadTypePlus {
 #[derive(SessionSubdiagnostic)]
 pub enum BadTypePlusSub {
     #[suggestion(
-        slug = "parser-add-paren",
+        parser::add_paren,
         code = "{sum_with_parens}",
         applicability = "machine-applicable"
     )]
@@ -274,12 +274,12 @@ pub enum BadTypePlusSub {
         #[primary_span]
         span: Span,
     },
-    #[label(slug = "parser-forgot-paren")]
+    #[label(parser::forgot_paren)]
     ForgotParen {
         #[primary_span]
         span: Span,
     },
-    #[label(slug = "parser-expect-path")]
+    #[label(parser::expect_path)]
     ExpectPath {
         #[primary_span]
         span: Span,

@@ -470,7 +470,7 @@ struct NoApplicability {
 }
 
 #[derive(SessionSubdiagnostic)]
-#[note(slug = "note")]
+#[note(parser::add_paren)]
 struct Note;
 
 #[derive(SessionDiagnostic)]

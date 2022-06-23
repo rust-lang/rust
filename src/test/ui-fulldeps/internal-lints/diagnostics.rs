@@ -23,7 +23,7 @@ struct DeriveSessionDiagnostic {
 }
 
 #[derive(SessionSubdiagnostic)]
-#[note(slug = "note")]
+#[note(parser::add_paren)]
 struct Note {
     #[primary_span]
     span: Span,
