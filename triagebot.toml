@@ -1,14 +1,21 @@
 [relabel]
 allow-unauthenticated = [
-    "C-*", "A-*", "E-*", "NLL-*", "O-*", "S-*", "T-*", "WG-*", "F-*",
+    "A-*",
+    "C-*",
     "D-*",
+    "E-*",
+    "F-*",
+    "I-*",
+    "NLL-*",
+    "O-*",
+    "S-*",
+    "T-*",
+    "WG-*",
     "needs-fcp",
     "relnotes",
     "requires-nightly",
     "regression-*",
     "perf-*",
-    # I-* without I-*nominated
-    "I-*", "!I-*nominated",
     "AsyncAwait-OnDeck",
 ]
 
