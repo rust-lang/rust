@@ -55,15 +55,16 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             return;
         }
 
-        if let ExprKind::Binary(op1, ..) = expr.kind
+        if let ExprKind::Binary(op1, expr1, right) = expr.kind
             && op1.node == BinOpKind::Rem
-            && let Some((const1, expr1)) = check_for_positive_int_constant(cx, expr, false)
-            && let ExprKind::Binary(op2, ..) = expr1.kind
+            && let Some(const1) = check_for_unsigned_int_constant(cx, right)
+            && let ExprKind::Binary(op2, left, right) = expr1.kind
             && op2.node == BinOpKind::Add
-            && let Some((const2, expr2)) = check_for_positive_int_constant(cx, expr1, true)
-            && let ExprKind::Binary(op3, ..) = expr2.kind
+            && let Some((const2, expr2)) = check_for_either_unsigned_int_constant(cx, left, right)
+            && let ExprKind::Binary(op3, expr3, right) = expr2.kind
             && op3.node == BinOpKind::Rem
-            && let Some((const3, expr3)) = check_for_positive_int_constant(cx, expr2, false)
+            && let Some(const3) = check_for_unsigned_int_constant(cx, right)
+            // Also ensures the const is nonzero since zero can't be a divisor
             && const1 == const2 && const2 == const3
             && let Some(hir_id) = path_to_local(expr3)
             && let Some(Node::Binding(_)) = cx.tcx.hir().find(hir_id) {
@@ -96,33 +97,22 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
     extract_msrv_attr!(LateContext);
 }
 
-// Takes a binary expression and separates the operands into the int constant and the other
-// operand. Ensures the int constant is positive. Operators that are not commutative must have the
-// constant appear on the right hand side to return a value.
-fn check_for_positive_int_constant<'a>(
+// Checks if either the left or right expressions can be an unsigned int constant and returns that
+// constant along with the other expression unchanged if so
+fn check_for_either_unsigned_int_constant<'a>(
     cx: &'a LateContext<'_>,
-    expr: &'a Expr<'_>,
-    is_commutative: bool,
+    left: &'a Expr<'_>,
+    right: &'a Expr<'_>,
 ) -> Option<(u128, &'a Expr<'a>)> {
-    let (int_const, other_op) = if let ExprKind::Binary(_, left, right) = expr.kind {
-        if let Some(int_const) = constant_full_int(cx, cx.typeck_results(), right) {
-            (int_const, left)
-        } else if is_commutative && let Some(int_const) = constant_full_int(cx, cx.typeck_results(), left) {
-            (int_const, right)
-        } else {
-            return None;
-        }
-    } else {
-        return None;
-    };
+    check_for_unsigned_int_constant(cx, left)
+        .map(|int_const| (int_const, right))
+        .or_else(|| check_for_unsigned_int_constant(cx, right).map(|int_const| (int_const, left)))
+}
 
-    if int_const > FullInt::S(0) {
-        let val = match int_const {
-            FullInt::S(s) => s.try_into().ok()?,
-            FullInt::U(u) => u,
-        };
-        Some((val, other_op))
-    } else {
-        None
+fn check_for_unsigned_int_constant<'a>(cx: &'a LateContext<'_>, expr: &'a Expr<'_>) -> Option<u128> {
+    let Some(int_const) = constant_full_int(cx, cx.typeck_results(), expr) else { return None };
+    match int_const {
+        FullInt::S(s) => s.try_into().ok(),
+        FullInt::U(u) => Some(u),
     }
 }
