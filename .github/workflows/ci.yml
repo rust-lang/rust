@@ -86,8 +86,8 @@ jobs:
       - name: Test
         run: bash ./ci.sh
 
-  clippy:
-    name: clippy + rustdoc
+  style:
+    name: style checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -95,32 +95,23 @@ jobs:
         # We need a toolchain that can actually build Miri, just a nightly won't do.
         run: |
           cargo install rustup-toolchain-install-master # TODO: cache this?
-          ./rustup-toolchain "" -c clippy
-      - name: Clippy (miri)
+          ./rustup-toolchain "" -c clippy -c rustfmt
+      - name: rustfmt (miri, ui_test)
+        run: cargo fmt --all --check
+      - name: rustfmt (everything else)
+        # TODO: Add `tests` (work in progress).
+        # Maybe change to `find . -name '*.rs'`, superseding the previous step.
+        run: |
+          find bench-cargo-miri benches cargo-miri test-cargo-miri -name '*.rs' \
+            | xargs rustfmt --edition=2021 --config-path ./rustfmt.toml --check
+      - name: clippy (miri)
         run: cargo clippy --all-targets -- -D warnings
       #- name: Clippy (ui_test)
       #  run: cargo clippy --manifest-path ui_test/Cargo.toml --all-targets -- -D warnings
-      - name: Clippy (cargo-miri)
+      - name: clippy (cargo-miri)
         run: cargo clippy --manifest-path cargo-miri/Cargo.toml --all-targets -- -D warnings
-      - name: Rustdoc
+      - name: rustdoc
         run: RUSTDOCFLAGS="-Dwarnings" cargo doc --document-private-items
-
-  fmt:
-    name: formatting (ignored by bors)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install latest nightly
-        run: |
-          rustup toolchain install nightly --component rustfmt
-          rustup override set nightly
-      - name: Formatting (miri, ui_test)
-        run: cargo fmt --all --check
-      - name: Formatting (everything else)
-        # TODO: Add `tests` (work in progress).
-        # Maybe change to `find . -name '*.rs'`, superseding the previous step.
-        run: find bench-cargo-miri benches cargo-miri test-cargo-miri -name '*.rs'
-          | xargs rustfmt --edition=2021 --config-path ./rustfmt.toml --check
 
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a
@@ -131,7 +122,7 @@ jobs:
   end-success:
     name: bors build finished
     runs-on: ubuntu-latest
-    needs: [build, clippy]
+    needs: [build, style]
     if: github.event.pusher.name == 'bors' && success()
     steps:
       - name: mark the job as a success
@@ -139,7 +130,7 @@ jobs:
   end-failure:
     name: bors build finished
     runs-on: ubuntu-latest
-    needs: [build, clippy]
+    needs: [build, style]
     if: github.event.pusher.name == 'bors' && (failure() || cancelled())
     steps:
       - name: mark the job as a failure
@@ -149,7 +140,7 @@ jobs:
   cron-fail-notify:
     name: cronjob failure notification
     runs-on: ubuntu-latest
-    needs: [build, clippy]
+    needs: [build, style]
     if: github.event_name == 'schedule' && (failure() || cancelled())
     steps:
       - name: Install zulip-send
