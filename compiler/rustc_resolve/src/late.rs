@@ -3514,7 +3514,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     })
                 });
             }
-            ExprKind::Async(..) | ExprKind::Closure(..) => {
+            // For closures, ClosureOrAsyncRibKind is added in visit_fn
+            ExprKind::Closure(..) => visit::walk_expr(self, expr),
+            ExprKind::Async(..) => {
                 self.with_label_rib(ClosureOrAsyncRibKind, |this| visit::walk_expr(this, expr));
             }
             ExprKind::Repeat(ref elem, ref ct) => {
