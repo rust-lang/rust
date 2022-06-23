@@ -1,4 +1,4 @@
-error[E0381]: used binding `*x` isn't initialized
+error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-use-uninitialized-in-cast.rs:7:13
    |
 LL |     let x: &i32;

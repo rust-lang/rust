@@ -98,8 +98,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return;
             }
 
-            let err =
-                self.report_use_of_uninitialized(mpi, used_place, desired_action, span, use_spans);
+            let err = self.report_use_of_uninitialized(
+                mpi,
+                used_place,
+                moved_place,
+                desired_action,
+                span,
+                use_spans,
+            );
             self.buffer_error(err);
         } else {
             if let Some((reported_place, _)) = self.has_move_error(&move_out_indices) {
@@ -316,6 +322,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         mpi: MovePathIndex,
         used_place: PlaceRef<'tcx>,
+        moved_place: PlaceRef<'tcx>,
         desired_action: InitializationRequiringAction,
         span: Span,
         use_spans: UseSpans<'tcx>,
@@ -334,11 +341,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        let (binding, name, desc) =
-            match self.describe_place_with_options(used_place, IncludingDowncast(true)) {
-                Some(name) => (format!("`{name}`"), format!("`{name}`"), format!("`{name}` ")),
-                None => ("value".to_string(), "the variable".to_string(), String::new()),
+        let (name, desc) =
+            match self.describe_place_with_options(moved_place, IncludingDowncast(true)) {
+                Some(name) => (format!("`{name}`"), format!("`{name}` ")),
+                None => ("the variable".to_string(), String::new()),
             };
+        let path = match self.describe_place_with_options(used_place, IncludingDowncast(true)) {
+            Some(name) => format!("`{name}`"),
+            None => "value".to_string(),
+        };
 
         // We use the statements were the binding was initialized, and inspect the HIR to look
         // for the branching codepaths that aren't covered, to point at them.
@@ -390,13 +401,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
         );
 
-        if let InitializationRequiringAction::PartialAssignment = desired_action {
+        if let InitializationRequiringAction::PartialAssignment
+        | InitializationRequiringAction::Assignment = desired_action
+        {
             err.help(
                 "partial initialization isn't supported, fully initialize the binding with a \
                  default value and mutate it, or use `std::mem::MaybeUninit`",
             );
         }
-        err.span_label(span, format!("{binding} {used} here but it {isnt_initialized}"));
+        err.span_label(span, format!("{path} {used} here but it {isnt_initialized}"));
 
         let mut shown = false;
         for (sp, label) in visitor.errors {

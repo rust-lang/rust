@@ -1,4 +1,4 @@
-error[E0381]: used binding `origin.y` isn't initialized
+error[E0381]: used binding `origin` isn't initialized
   --> $DIR/borrowck-init-in-fru.rs:9:14
    |
 LL |     let mut origin: Point;
