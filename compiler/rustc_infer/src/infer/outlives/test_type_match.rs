@@ -57,7 +57,15 @@ pub fn extract_verify_if_eq<'tcx>(
             }
         }
     } else {
-        // The region does not contain any inference variables.
+        // The region does not contain any bound variables, so we don't need
+        // to do any substitution.
+        //
+        // Example:
+        //
+        // for<'a> <T as Foo<'a>>::Item: 'b
+        //
+        // In this case, we've now matched and found a value for
+        // `'a`, but it doesn't affect the bound `'b`.
         Some(verify_if_eq.bound)
     }
 }
