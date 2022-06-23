@@ -1,0 +1,26 @@
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/impl-fn-hrtb-bounds.rs:3:41
+   |
+LL | fn a() -> impl Fn(&u8) -> (impl Debug + '_) {
+   |                                         ^^
+   |
+note: lifetime declared here
+  --> $DIR/impl-fn-hrtb-bounds.rs:3:19
+   |
+LL | fn a() -> impl Fn(&u8) -> (impl Debug + '_) {
+   |                   ^
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/impl-fn-hrtb-bounds.rs:8:52
+   |
+LL | fn b() -> impl for<'a> Fn(&'a u8) -> (impl Debug + 'a) {
+   |                                                    ^^
+   |
+note: lifetime declared here
+  --> $DIR/impl-fn-hrtb-bounds.rs:8:20
+   |
+LL | fn b() -> impl for<'a> Fn(&'a u8) -> (impl Debug + 'a) {
+   |                    ^^
+
+error: aborting due to 2 previous errors
+
