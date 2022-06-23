@@ -1,3 +1,4 @@
+#![feature(is_some_with)]
 #![feature(rustc_private)]
 #![feature(once_cell)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
@@ -200,7 +201,7 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     }
 
     // If backtraces are enabled, also print the query stack
-    let backtrace = env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
+    let backtrace = env::var_os("RUST_BACKTRACE").is_some_and(|x| x != "0");
 
     let num_frames = if backtrace { None } else { Some(2) };
 

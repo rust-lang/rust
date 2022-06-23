@@ -52,7 +52,7 @@ pub(super) fn check<'tcx>(
                 );
             }
             let ty = cx.typeck_results().expr_ty(inner_ret);
-            if cx.tcx.lang_items().copy_trait().map_or(false, |id| implements_trait(cx, ty, id, &[])) {
+            if cx.tcx.lang_items().copy_trait().is_some_and(|&id| implements_trait(cx, ty, id, &[])) {
                 snippet.push_str(
                     &format!(
                         ".find(|{}{}| {})",

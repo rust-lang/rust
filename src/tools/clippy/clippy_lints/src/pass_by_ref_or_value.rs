@@ -200,7 +200,10 @@ impl<'tcx> PassByRefOrValue {
                                 continue;
                             }
                         }
-                        let value_type = if fn_body.and_then(|body| body.params.get(index)).map_or(false, is_self) {
+                        let value_type = if fn_body
+                                .and_then(|body| body.params.get(index))
+                                .is_some_and(|p| is_self(p))
+                            {
                             "self".into()
                         } else {
                             snippet(cx, decl_ty.span, "_").into()

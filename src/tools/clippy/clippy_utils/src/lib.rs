@@ -1,5 +1,6 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
+#![feature(is_some_with)]
 #![feature(let_else)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
@@ -268,7 +269,7 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
     let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
     let trt_id = cx.tcx.trait_of_item(def_id);
-    trt_id.map_or(false, |trt_id| match_def_path(cx, trt_id, path))
+    trt_id.is_some_and(|&trt_id| match_def_path(cx, trt_id, path))
 }
 
 /// Checks if a method is defined in an impl of a diagnostic item
@@ -293,7 +294,7 @@ pub fn is_diag_trait_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol
 pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
     cx.typeck_results()
         .type_dependent_def_id(expr.hir_id)
-        .map_or(false, |did| is_diag_trait_item(cx, did, diag_item))
+        .is_some_and(|&did| is_diag_trait_item(cx, did, diag_item))
 }
 
 /// Checks if the given expression is a path referring an item on the trait
@@ -309,7 +310,7 @@ pub fn is_trait_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -
     if let hir::ExprKind::Path(ref qpath) = expr.kind {
         cx.qpath_res(qpath, expr.hir_id)
             .opt_def_id()
-            .map_or(false, |def_id| is_diag_trait_item(cx, def_id, diag_item))
+            .is_some_and(|&def_id| is_diag_trait_item(cx, def_id, diag_item))
     } else {
         false
     }
@@ -369,13 +370,13 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
 ///
 /// Please use `is_expr_diagnostic_item` if the target is a diagnostic item.
 pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
-    path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, segments))
+    path_def_id(cx, expr).is_some_and(|&id| match_def_path(cx, id, segments))
 }
 
 /// If the expression is a path, resolves it to a `DefId` and checks if it matches the given
 /// diagnostic item.
 pub fn is_expr_diagnostic_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
-    path_def_id(cx, expr).map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
+    path_def_id(cx, expr).is_some_and(|&id| cx.tcx.is_diagnostic_item(diag_item, id))
 }
 
 /// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
@@ -1081,7 +1082,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec
 pub fn is_entrypoint_fn(cx: &LateContext<'_>, def_id: DefId) -> bool {
     cx.tcx
         .entry_fn(())
-        .map_or(false, |(entry_fn_def_id, _)| def_id == entry_fn_def_id)
+        .is_some_and(|&(entry_fn_def_id, _)| def_id == entry_fn_def_id)
 }
 
 /// Returns `true` if the expression is in the program's `#[panic_handler]`.
@@ -1435,7 +1436,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
 
     match pat.kind {
         PatKind::Wild => false,
-        PatKind::Binding(_, _, _, pat) => pat.map_or(false, |pat| is_refutable(cx, pat)),
+        PatKind::Binding(_, _, _, pat) => pat.is_some_and(|pat| is_refutable(cx, pat)),
         PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
         PatKind::Lit(..) | PatKind::Range(..) => true,
         PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
@@ -1652,7 +1653,7 @@ pub fn match_libc_symbol(cx: &LateContext<'_>, did: DefId, name: &str) -> bool {
     let path = cx.get_def_path(did);
     // libc is meant to be used as a flat list of names, but they're all actually defined in different
     // modules based on the target platform. Ignore everything but crate name and the item name.
-    path.first().map_or(false, |s| s.as_str() == "libc") && path.last().map_or(false, |s| s.as_str() == name)
+    path.first().is_some_and(|s| s.as_str() == "libc") && path.last().is_some_and(|s| s.as_str() == name)
 }
 
 /// Returns the list of condition expressions and the list of blocks in a
@@ -1740,7 +1741,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         _ => None,
     };
 
-    did.map_or(false, |did| cx.tcx.has_attr(did, sym::must_use))
+    did.is_some_and(|&did| cx.tcx.has_attr(did, sym::must_use))
 }
 
 /// Checks if an expression represents the identity function
@@ -1787,7 +1788,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
 
     match expr.kind {
         ExprKind::Closure { body, .. } => is_body_identity_function(cx, cx.tcx.hir().body(body)),
-        _ => path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
+        _ => path_def_id(cx, expr).is_some_and(|&id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
     }
 }
 

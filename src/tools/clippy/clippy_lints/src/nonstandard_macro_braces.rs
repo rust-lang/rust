@@ -8,7 +8,6 @@ use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::DefId;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -100,7 +99,8 @@ fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a Mac
             || span
                 .macro_backtrace()
                 .last()
-                .map_or(false, |e| e.macro_def_id.map_or(false, DefId::is_local))
+                .and_then(|e| e.macro_def_id)
+                .is_some_and(|id| id.is_local())
     };
     if_chain! {
         if let ExpnKind::Macro(MacroKind::Bang, mac_name) = span.ctxt().outer_expn_data().kind;

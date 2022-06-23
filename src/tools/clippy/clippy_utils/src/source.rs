@@ -24,7 +24,7 @@ pub fn span_starts_with<T: LintContext>(cx: &T, span: Span, text: &str) -> bool 
         let end = span.hi() - pos.sf.start_pos;
         src.get(pos.pos.0 as usize..end.0 as usize)
             // Expression spans can include wrapping parenthesis. Remove them first.
-            .map_or(false, |s| s.trim_start_matches('(').starts_with(text))
+            .is_some_and(|s| s.trim_start_matches('(').starts_with(text))
     }
     helper(cx.sess().source_map(), span, text)
 }

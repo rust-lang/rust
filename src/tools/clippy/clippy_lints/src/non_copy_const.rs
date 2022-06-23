@@ -251,7 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
         if let ItemKind::Const(hir_ty, body_id) = it.kind {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            if !macro_backtrace(it.span).last().map_or(false, |macro_call| {
+            if !macro_backtrace(it.span).last().is_some_and(|macro_call| {
                 matches!(
                     cx.tcx.get_diagnostic_name(macro_call.def_id),
                     Some(sym::thread_local_macro)

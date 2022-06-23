@@ -247,7 +247,7 @@ fn lint_branches_sharing_code<'tcx>(
         let span = span.with_hi(last_block.span.hi());
         // Improve formatting if the inner block has indention (i.e. normal Rust formatting)
         let test_span = Span::new(span.lo() - BytePos(4), span.lo(), span.ctxt(), span.parent());
-        let span = if snippet_opt(cx, test_span).map_or(false, |snip| snip == "    ") {
+        let span = if snippet_opt(cx, test_span).is_some_and(|snip| snip == "    ") {
             span.with_lo(test_span.lo())
         } else {
             span
@@ -357,12 +357,10 @@ fn eq_stmts(
         let new_bindings = &moved_bindings[old_count..];
         blocks
             .iter()
-            .all(|b| get_stmt(b).map_or(false, |s| eq_binding_names(s, new_bindings)))
+            .all(|b| get_stmt(b).is_some_and(|s| eq_binding_names(s, new_bindings)))
     } else {
         true
-    }) && blocks
-        .iter()
-        .all(|b| get_stmt(b).map_or(false, |s| eq.eq_stmt(s, stmt)))
+    }) && blocks.iter().all(|b| get_stmt(b).is_some_and(|s| eq.eq_stmt(s, stmt)))
 }
 
 fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'_>, blocks: &[&Block<'_>]) -> BlockEq {
@@ -447,7 +445,7 @@ fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'
         });
     if let Some(e) = block.expr {
         for block in blocks {
-            if block.expr.map_or(false, |expr| !eq.eq_expr(expr, e)) {
+            if block.expr.is_some_and(|expr| !eq.eq_expr(expr, e)) {
                 moved_locals.truncate(moved_locals_at_start);
                 return BlockEq {
                     start_end_eq,
@@ -466,7 +464,7 @@ fn scan_block_for_eq(cx: &LateContext<'_>, _conds: &[&Expr<'_>], block: &Block<'
 }
 
 fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbol)], if_expr: &Expr<'_>) -> bool {
-    get_enclosing_block(cx, if_expr.hir_id).map_or(false, |block| {
+    get_enclosing_block(cx, if_expr.hir_id).is_some_and(|block| {
         let ignore_span = block.span.shrink_to_lo().to(if_expr.span);
 
         symbols

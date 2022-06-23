@@ -415,7 +415,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 .tcx
                 .lang_items()
                 .require(item)
-                .map_or(false, |id| Some(id) == trait_ref.trait_def_id())
+                .is_ok_and(|&id| Some(id) == trait_ref.trait_def_id())
         }) {
             let mut sub_visitor = RefVisitor::new(self.cx);
             sub_visitor.visit_trait_ref(trait_ref);

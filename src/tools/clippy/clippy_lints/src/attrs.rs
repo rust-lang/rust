@@ -343,7 +343,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                         return;
                     }
                     if let Some(lint_list) = &attr.meta_item_list() {
-                        if attr.ident().map_or(false, |ident| is_lint_level(ident.name)) {
+                        if attr.ident().is_some_and(|ident| is_lint_level(ident.name)) {
                             for lint in lint_list {
                                 match item.kind {
                                     ItemKind::Use(..) => {
@@ -351,7 +351,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                             || is_word(lint, sym::deprecated)
                                             || is_word(lint, sym!(unreachable_pub))
                                             || is_word(lint, sym!(unused))
-                                            || extract_clippy_lint(lint).map_or(false, |s| {
+                                            || extract_clippy_lint(lint).is_some_and(|s| {
                                                 matches!(
                                                     s.as_str(),
                                                     "wildcard_imports"
@@ -503,7 +503,7 @@ fn is_relevant_block(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_
         block
             .expr
             .as_ref()
-            .map_or(false, |e| is_relevant_expr(cx, typeck_results, e)),
+            .is_some_and(|e| is_relevant_expr(cx, typeck_results, e)),
         |stmt| match &stmt.kind {
             StmtKind::Local(_) => true,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, typeck_results, expr),
@@ -513,7 +513,7 @@ fn is_relevant_block(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_
 }
 
 fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>, expr: &Expr<'_>) -> bool {
-    if macro_backtrace(expr.span).last().map_or(false, |macro_call| {
+    if macro_backtrace(expr.span).last().is_some_and(|macro_call| {
         is_panic(cx, macro_call.def_id) || cx.tcx.item_name(macro_call.def_id) == sym::unreachable
     }) {
         return false;

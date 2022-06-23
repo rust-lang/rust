@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                         if_chain! {
                             if let ty::Closure(_, substs) = callee_ty.peel_refs().kind();
                             if substs.as_closure().kind() == ClosureKind::FnMut;
-                            if path_to_local(callee).map_or(false, |l| local_used_after_expr(cx, l, expr));
+                            if path_to_local(callee).is_some_and(|&l| local_used_after_expr(cx, l, expr));
 
                             then {
                                 // Mutable closure is used after current expr; we cannot consume it.

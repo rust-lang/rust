@@ -53,7 +53,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                         },
                         TyKind::Path(qpath)
                             if get_bounds_if_impl_trait(cx, qpath, inner.hir_id)
-                                .map_or(false, |bounds| bounds.len() > 1) =>
+                                .is_some_and(|bounds| bounds.len() > 1) =>
                         {
                             format!("&{}({})", ltopt, &inner_snippet)
                         },

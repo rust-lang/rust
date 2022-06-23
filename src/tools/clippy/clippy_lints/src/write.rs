@@ -304,8 +304,7 @@ impl EarlyLintPass for Write {
             cx.sess()
                 .opts
                 .crate_name
-                .as_ref()
-                .map_or(false, |crate_name| crate_name == "build_script_build")
+                .is_some_and(|crate_name| crate_name == "build_script_build")
         }
 
         if mac.path == sym!(print) {
