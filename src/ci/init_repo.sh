@@ -8,22 +8,12 @@ ci_dir=$(cd $(dirname $0) && pwd)
 . "$ci_dir/shared.sh"
 
 REPO_DIR="$1"
-CACHE_DIR="$2"
-
-cache_src_dir="$CACHE_DIR/src"
 
 if [ ! -d "$REPO_DIR" -o ! -d "$REPO_DIR/.git" ]; then
     echo "Error: $REPO_DIR does not exist or is not a git repo"
     exit 1
 fi
 cd $REPO_DIR
-if [ ! -d "$CACHE_DIR" ]; then
-    echo "Error: $CACHE_DIR does not exist or is not an absolute path"
-    exit 1
-fi
-
-rm -rf "$CACHE_DIR"
-mkdir "$CACHE_DIR"
 
 # On the beta channel we'll be automatically calculating the prerelease version
 # via the git history, so unshallow our shallow clone from CI.

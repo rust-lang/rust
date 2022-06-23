@@ -7,11 +7,4 @@ IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
-if isWindows; then
-    path="/c/cache/rustsrc"
-else
-    path="${HOME}/rustsrc"
-fi
-
-mkdir -p "${path}"
-"$(cd "$(dirname "$0")" && pwd)/../init_repo.sh" . "${path}"
+"$(cd "$(dirname "$0")" && pwd)/../init_repo.sh" .
