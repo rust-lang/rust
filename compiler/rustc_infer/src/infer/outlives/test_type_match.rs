@@ -34,7 +34,7 @@ use crate::infer::region_constraints::VerifyIfEq;
 /// like are used. This is a particular challenge since this function is invoked
 /// very late in inference and hence cannot make use of the normal inference
 /// machinery.
-#[tracing::instrument(level = "Debug", skip(tcx, param_env))]
+#[tracing::instrument(level = "debug", skip(tcx, param_env))]
 pub fn extract_verify_if_eq<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -63,7 +63,7 @@ pub fn extract_verify_if_eq<'tcx>(
 }
 
 /// True if a (potentially higher-ranked) outlives
-#[tracing::instrument(level = "Debug", skip(tcx, param_env))]
+#[tracing::instrument(level = "debug", skip(tcx, param_env))]
 pub(super) fn can_match_erased_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -102,7 +102,7 @@ impl<'tcx> Match<'tcx> {
 
     /// Binds the pattern variable `br` to `value`; returns an `Err` if the pattern
     /// is already bound to a different value.
-    #[tracing::instrument(level = "Debug", skip(self))]
+    #[tracing::instrument(level = "debug", skip(self))]
     fn bind(
         &mut self,
         br: ty::BoundRegion,
@@ -167,7 +167,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn tys(&mut self, pattern: Ty<'tcx>, value: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         if pattern == value {
-            return Ok(pattern);
+            Ok(pattern)
         } else {
             relate::super_relate_tys(self, pattern, value)
         }
@@ -181,7 +181,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         debug!("{}.consts({:?}, {:?})", self.tag(), pattern, value);
         if pattern == value {
-            return Ok(pattern);
+            Ok(pattern)
         } else {
             relate::super_relate_consts(self, pattern, value)
         }

@@ -318,7 +318,7 @@ where
         self.delegate.push_verify(origin, generic, region, verify_bound);
     }
 
-    #[tracing::instrument(level = "Debug", skip(self))]
+    #[tracing::instrument(level = "debug", skip(self))]
     fn projection_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
@@ -361,7 +361,7 @@ where
         // }` in the trait definition.
         approx_env_bounds.retain(|bound_outlives| {
             // OK to skip binder because we only manipulate and compare against other
-            // values from the same inder. e.g. if we have (e.g.) `for<'a> <T as Trait<'a>>::Item: 'a`
+            // values from the same binder. e.g. if we have (e.g.) `for<'a> <T as Trait<'a>>::Item: 'a`
             // in `bound`, the `'a` will be a `^1` (bound, debruijn index == innermost) region.
             // If the declaration is `trait Trait<'b> { type Item: 'b; }`, then `projection_declared_bounds_from_trait`
             // will be invoked with `['b => ^1]` and so we will get `^1` returned.
