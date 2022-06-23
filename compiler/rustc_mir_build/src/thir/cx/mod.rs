@@ -5,7 +5,6 @@
 use crate::thir::pattern::pat_from_hir;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
-use rustc_ast as ast;
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -13,10 +12,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::HirId;
 use rustc_hir::Node;
 use rustc_middle::middle::region;
-use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
-use rustc_middle::mir::ConstantKind;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt};
+use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
 use rustc_span::Span;
 
 pub(crate) fn thir_body<'tcx>(
@@ -77,24 +74,6 @@ impl<'tcx> Cx<'tcx> {
             rvalue_scopes: &typeck_results.rvalue_scopes,
             body_owner: def.did.to_def_id(),
             adjustment_span: None,
-        }
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    pub(crate) fn const_eval_literal(
-        &mut self,
-        lit: &'tcx ast::LitKind,
-        ty: Ty<'tcx>,
-        sp: Span,
-        neg: bool,
-    ) -> ConstantKind<'tcx> {
-        match self.tcx.at(sp).lit_to_mir_constant(LitToConstInput { lit, ty, neg }) {
-            Ok(c) => c,
-            Err(LitToConstError::Reported) => {
-                // create a dummy value and continue compiling
-                ConstantKind::Ty(self.tcx.const_error(ty))
-            }
-            Err(LitToConstError::TypeError) => bug!("const_eval_literal: had type error"),
         }
     }
 
