@@ -21,9 +21,12 @@ to the final `cargo test` invocation.
 ./miri run <flags>:
 Build miri, set up a sysroot and then run the driver with the given <flags>.
 
-All commands also exist in a "-debug" variant (e.g. "./miri run-debug
+The commands above also exist in a "-debug" variant (e.g. "./miri run-debug
 <flags>") which uses debug builds instead of release builds, for faster build
 times and slower execution times.
+
+./miri fmt <flags>:
+Format all sources and tests.  <flags> are passed to `rustfmt`.
 
   ENVIRONMENT VARIABLES
 
@@ -155,6 +158,10 @@ run|run-debug)
     find_sysroot
     # Then run the actual command.
     exec cargo run $CARGO_BUILD_FLAGS -- --sysroot "$MIRI_SYSROOT" "$@"
+    ;;
+fmt)
+    find "$MIRIDIR" -not \( -name target -prune \) -name '*.rs' \
+        | xargs rustfmt --edition=2021 --config-path "$MIRIDIR/rustfmt.toml" "$@"
     ;;
 *)
     if [ -n "$COMMAND" ]; then

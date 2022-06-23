@@ -95,15 +95,9 @@ jobs:
         # We need a toolchain that can actually build Miri, just a nightly won't do.
         run: |
           cargo install rustup-toolchain-install-master # TODO: cache this?
-          ./rustup-toolchain "" -c clippy -c rustfmt
-      - name: rustfmt (miri, ui_test)
-        run: cargo fmt --all --check
-      - name: rustfmt (everything else)
-        # TODO: Add `tests` (work in progress).
-        # Maybe change to `find . -name '*.rs'`, superseding the previous step.
-        run: |
-          find bench-cargo-miri benches cargo-miri test-cargo-miri -name '*.rs' \
-            | xargs rustfmt --edition=2021 --config-path ./rustfmt.toml --check
+          ./rustup-toolchain "" -c clippy
+      - name: rustfmt
+        run: ./miri fmt --check
       - name: clippy (miri)
         run: cargo clippy --all-targets -- -D warnings
       #- name: Clippy (ui_test)

@@ -2,7 +2,7 @@
 // We are making scheduler assumptions here.
 // compile-flags: -Zmiri-strict-provenance -Zmiri-preemption-rate=0
 
-use std::sync::{Condvar, Mutex, Arc};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 
 fn check_conditional_variables_notify_all() {
