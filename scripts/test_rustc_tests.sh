@@ -33,6 +33,7 @@ rm src/test/ui/test-attrs/test-fn-signature-verification-for-explicit-return-typ
 rm src/test/ui/async-await/async-fn-size-moved-locals.rs # -Cpanic=abort shrinks some generator by one byte
 rm src/test/ui/async-await/async-fn-size-uninit-locals.rs # same
 rm src/test/ui/generator/size-moved-locals.rs # same
+rm -r src/test/ui/macros/rfc-2011-nicer-assert-messages/
 
 # vendor intrinsics
 rm src/test/ui/sse2.rs # cpuid not supported, so sse2 not detected
@@ -68,7 +69,7 @@ rm -r src/test/run-make/emit-named-files # requires full --emit support
 
 # optimization tests
 # ==================
-rm src/test/ui/issues/issue-28950.rs # depends on stack size optimizations
+rm src/test/ui/codegen/issue-28950.rs # depends on stack size optimizations
 rm src/test/ui/codegen/init-large-type.rs # same
 rm -r src/test/run-make/fmt-write-bloat/ # tests an optimization
 
