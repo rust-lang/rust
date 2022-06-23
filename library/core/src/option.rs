@@ -559,7 +559,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_some_with)]
+    /// #![feature(is_some_and)]
     ///
     /// let x: Option<u32> = Some(2);
     /// assert_eq!(x.is_some_and(|x| x > 1), true);
@@ -572,7 +572,7 @@ impl<T> Option<T> {
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_some_with", issue = "93050")]
+    #[unstable(feature = "is_some_and", issue = "93050")]
     pub fn is_some_and(self, f: impl FnOnce(T) -> bool) -> bool {
         match self {
             None => false,
