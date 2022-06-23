@@ -133,10 +133,11 @@ impl<T> HashSet<T, RandomState> {
         Default::default()
     }
 
-    /// Creates an empty `HashSet` with the specified capacity.
+    /// Creates an empty `HashSet` with at least the specified capacity.
     ///
     /// The hash set will be able to hold at least `capacity` elements without
-    /// reallocating. If `capacity` is 0, the hash set will not allocate.
+    /// reallocating. This method is allowed to allocate for more elements than
+    /// `capacity`. If `capacity` is 0, the hash set will not allocate.
     ///
     /// # Examples
     ///
@@ -379,11 +380,12 @@ impl<T, S> HashSet<T, S> {
         HashSet { base: base::HashSet::with_hasher(hasher) }
     }
 
-    /// Creates an empty `HashSet` with the specified capacity, using
+    /// Creates an empty `HashSet` with at least the specified capacity, using
     /// `hasher` to hash the keys.
     ///
     /// The hash set will be able to hold at least `capacity` elements without
-    /// reallocating. If `capacity` is 0, the hash set will not allocate.
+    /// reallocating. This method is allowed to allocate for more elements than
+    /// `capacity`. If `capacity` is 0, the hash set will not allocate.
     ///
     /// Warning: `hasher` is normally randomly generated, and
     /// is designed to allow `HashSet`s to be resistant to attacks that
@@ -434,8 +436,10 @@ where
     S: BuildHasher,
 {
     /// Reserves capacity for at least `additional` more elements to be inserted
-    /// in the `HashSet`. The collection may reserve more space to avoid
-    /// frequent reallocations.
+    /// in the `HashSet`. The collection may reserve more space to speculatively
+    /// avoid frequent reallocations. After calling `reserve`,
+    /// capacity will be greater than or equal to `self.len() + additional`.
+    /// Does nothing if capacity is already sufficient.
     ///
     /// # Panics
     ///
@@ -456,8 +460,11 @@ where
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `HashSet<K, V>`. The collection may reserve more space to avoid
-    /// frequent reallocations.
+    /// in the `HashSet`. The collection may reserve more space to speculatively
+    /// avoid frequent reallocations. After calling `reserve`,
+    /// capacity will be greater than or equal to `self.len() + additional` if
+    /// it returns `Ok(())`.
+    /// Does nothing if capacity is already sufficient.
     ///
     /// # Errors
     ///
@@ -469,7 +476,7 @@ where
     /// ```
     /// use std::collections::HashSet;
     /// let mut set: HashSet<i32> = HashSet::new();
-    /// set.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
+    /// set.try_reserve(10).expect("why is the test harness OOMing on a handful of bytes?");
     /// ```
     #[inline]
     #[stable(feature = "try_reserve", since = "1.57.0")]
