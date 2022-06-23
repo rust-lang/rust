@@ -17,7 +17,7 @@ use crate::items::{
 use crate::macros::{macro_style, rewrite_macro, rewrite_macro_def, MacroPosition};
 use crate::modules::Module;
 use crate::parse::session::ParseSess;
-use crate::rewrite::{Memoize, Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::skip::{is_skip_attr, SkipContext};
 use crate::source_map::{LineRangeUtils, SpanUtils};
@@ -71,7 +71,6 @@ impl SnippetProvider {
 
 pub(crate) struct FmtVisitor<'a> {
     parent_context: Option<&'a RewriteContext<'a>>,
-    pub(crate) memoize: Memoize,
     pub(crate) parse_sess: &'a ParseSess,
     pub(crate) buffer: String,
     pub(crate) last_pos: BytePos,
@@ -759,7 +758,6 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             ctx.config,
             ctx.snippet_provider,
             ctx.report.clone(),
-            ctx.memoize.clone(),
         );
         visitor.skip_context.update(ctx.skip_context.clone());
         visitor.set_parent_context(ctx);
@@ -771,12 +769,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         config: &'a Config,
         snippet_provider: &'a SnippetProvider,
         report: FormatReport,
-        memoize: Memoize,
     ) -> FmtVisitor<'a> {
         FmtVisitor {
             parent_context: None,
             parse_sess: parse_session,
-            memoize,
             buffer: String::with_capacity(snippet_provider.big_snippet.len() * 2),
             last_pos: BytePos(0),
             block_indent: Indent::empty(),
@@ -999,7 +995,6 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         RewriteContext {
             parse_sess: self.parse_sess,
             config: self.config,
-            memoize: self.memoize.clone(),
             inside_macro: Rc::new(Cell::new(false)),
             use_block: Cell::new(false),
             is_if_else_block: Cell::new(false),

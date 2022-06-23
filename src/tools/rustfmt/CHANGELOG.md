@@ -2,7 +2,29 @@
 
 ## [Unreleased]
 
-## [1.5.0] 2022-06-13
+## [1.5.1] 2022-06-24
+
+**N.B** A bug was introduced in v1.5.0/nightly-2022-06-15 which modified formatting. If you happened to run rustfmt over your code with one of those ~10 nightlies it's possible you may have seen formatting changes, and you may see additional changes after this fix since that bug has now been reverted.
+
+### Fixed
+
+- Correct an issue introduced in v1.5.0 where formatting changes were unintentionally introduced in a few cases with a large/long construct in a right hand side position (e.g. a large chain on the RHS of a local/assignment statement)
+- `cargo fmt --version` properly displays the version value again [#5395](https://github.com/rust-lang/rustfmt/issues/5395)
+
+### Changed
+
+- Properly sort imports containing raw identifiers [#3791](https://github.com/rust-lang/rustfmt/issues/3791) (note this is change version gated, and not applied by default)
+
+### Added
+
+- Add new configuration option, `doc_comment_code_block_width`, which allows for setting a shorter width limit to use for formatting code snippets in doc comments [#5384](https://github.com/rust-lang/rustfmt/issues/5384)
+
+### Install/Download Options
+- **rustup (nightly)** - nightly-2022-06-24
+- **GitHub Release Binaries** - [Release v1.5.1](https://github.com/rust-lang/rustfmt/releases/tag/v1.5.0)
+- **Build from source** - [Tag v1.5.1](https://github.com/rust-lang/rustfmt/tree/v1.5.1), see instructions for how to [install rustfmt from source][install-from-source]
+
+## [1.5.0] 2022-06-14
 
 ### Changed
 
@@ -75,7 +97,7 @@
 - Improved performance when formatting large and deeply nested expression trees, often found in generated code, which have many expressions that exceed `max_width` [#5128](https://github.com/rust-lang/rustfmt/issues/5128), [#4867](https://github.com/rust-lang/rustfmt/issues/4867), [#4476](https://github.com/rust-lang/rustfmt/issues/4476), [#5139](https://github.com/rust-lang/rustfmt/pull/5139)
 
 ### Install/Download Options
-- **rustup (nightly)** - *pending*
+- **rustup (nightly)** - nightly-2022-06-15
 - **GitHub Release Binaries** - [Release v1.5.0](https://github.com/rust-lang/rustfmt/releases/tag/v1.5.0)
 - **Build from source** - [Tag v1.5.0](https://github.com/rust-lang/rustfmt/tree/v1.5.0), see instructions for how to [install rustfmt from source][install-from-source]
 

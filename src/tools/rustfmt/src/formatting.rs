@@ -2,7 +2,6 @@
 
 use std::collections::HashMap;
 use std::io::{self, Write};
-use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use rustc_ast::ast;
@@ -203,7 +202,6 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             self.config,
             &snippet_provider,
             self.report.clone(),
-            Rc::default(),
         );
         visitor.skip_context.update_with_attrs(&self.krate.attrs);
         visitor.is_macro_def = is_macro_def;
