@@ -19,7 +19,6 @@ use rustc_middle::mir::{
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::ObligationCauseCode;
-use rustc_middle::ty::Region;
 use rustc_middle::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
@@ -1192,10 +1191,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("eval_verify_bound(lower_bound={:?}, verify_bound={:?})", lower_bound, verify_bound);
 
         match verify_bound {
-            VerifyBound::IfEq(test_ty, verify_bound1) => {
-                self.eval_if_eq(infcx, generic_ty, lower_bound, *test_ty, *verify_bound1)
-            }
-
             VerifyBound::IfEqBound(verify_if_eq_b) => {
                 self.eval_if_eq_bound(infcx, param_env, generic_ty, lower_bound, *verify_if_eq_b)
             }
@@ -1231,24 +1226,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     verify_bound,
                 )
             }),
-        }
-    }
-
-    fn eval_if_eq(
-        &self,
-        infcx: &InferCtxt<'_, 'tcx>,
-        generic_ty: Ty<'tcx>,
-        lower_bound: RegionVid,
-        test_ty: Ty<'tcx>,
-        verify_bound: Region<'tcx>,
-    ) -> bool {
-        let generic_ty_normalized = self.normalize_to_scc_representatives(infcx.tcx, generic_ty);
-        let test_ty_normalized = self.normalize_to_scc_representatives(infcx.tcx, test_ty);
-        if generic_ty_normalized == test_ty_normalized {
-            let verify_bound_vid = self.to_region_vid(verify_bound);
-            self.eval_outlives(verify_bound_vid, lower_bound)
-        } else {
-            false
         }
     }
 

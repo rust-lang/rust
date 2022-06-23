@@ -190,42 +190,44 @@ pub enum GenericKind<'tcx> {
 /// This is described with an `AnyRegion('a, 'b)` node.
 #[derive(Debug, Clone)]
 pub enum VerifyBound<'tcx> {
-    /// Given a kind K and a bound B, expands to a function like the
-    /// following, where `G` is the generic for which this verify
-    /// bound was created:
+    /// This is a "conditional bound" that checks the result of inference
+    /// and supplies a bound if it ended up being relevant. It's used in situations
+    /// like this:
+    ///
+    /// ```rust
+    /// fn foo<'a, 'b, T: SomeTrait<'a>>
+    /// where
+    ///    <T as SomeTrait<'a>>::Item: 'b
+    /// ```
+    ///
+    /// If we have an obligation like `<T as SomeTrait<'?x>>::Item: 'c`, then
+    /// we don't know yet whether it suffices to show that `'b: 'c`. If `'?x` winds
+    /// up being equal to `'a`, then the where-clauses on function applies, and
+    /// in that case we can show `'b: 'c`. But if `'?x` winds up being something
+    /// else, the bound isn't relevant.
+    ///
+    /// More abstractly, this function takes a `Binder<VerifyIfEq>`. The binder
+    /// represents an existential binder -- i.e., if you have something like
+    ///
+    /// ```rust
+    /// where for<'a> <T as SomeTrait<'a>::Item: 'a
+    /// ```
+    ///
+    /// then the `for<'a>` corresponds to the binder. The idea is that we have
+    /// to find some instantiation of `'a` that can make `<T as SomeTrait<'a>>::Item`
+    /// equal to the final value of `G`, the generic we are checking.
     ///
     /// ```ignore (pseudo-rust)
     /// fn(min) -> bool {
-    ///     if G == K {
-    ///         B(min)
-    ///     } else {
-    ///         false
+    ///     exists<'a> {
+    ///         if G == K {
+    ///             B(min)
+    ///         } else {
+    ///             false
+    ///         }
     ///     }
     /// }
     /// ```
-    ///
-    /// In other words, if the generic `G` that we are checking is
-    /// equal to `K`, then check the associated verify bound
-    /// (otherwise, false).
-    ///
-    /// This is used when we have something in the environment that
-    /// may or may not be relevant, depending on the region inference
-    /// results. For example, we may have `where <T as
-    /// Trait<'a>>::Item: 'b` in our where-clauses. If we are
-    /// generating the verify-bound for `<T as Trait<'0>>::Item`, then
-    /// this where-clause is only relevant if `'0` winds up inferred
-    /// to `'a`.
-    ///
-    /// So we would compile to a verify-bound like
-    ///
-    /// ```ignore (illustrative)
-    /// IfEq(<T as Trait<'a>>::Item, AnyRegion('a))
-    /// ```
-    ///
-    /// meaning, if the subject G is equal to `<T as Trait<'a>>::Item`
-    /// (after inference), and `'a: min`, then `G: min`.
-    IfEq(Ty<'tcx>, Region<'tcx>),
-
     IfEqBound(ty::Binder<'tcx, VerifyIfEq<'tcx>>),
 
     /// Given a region `R`, expands to the function:
@@ -805,7 +807,6 @@ impl<'tcx> GenericKind<'tcx> {
 impl<'tcx> VerifyBound<'tcx> {
     pub fn must_hold(&self) -> bool {
         match self {
-            VerifyBound::IfEq(..) => false,
             VerifyBound::IfEqBound(..) => false,
             VerifyBound::OutlivedBy(re) => re.is_static(),
             VerifyBound::IsEmpty => false,
@@ -816,7 +817,6 @@ impl<'tcx> VerifyBound<'tcx> {
 
     pub fn cannot_hold(&self) -> bool {
         match self {
-            VerifyBound::IfEq(_, _) => false,
             VerifyBound::IfEqBound(..) => false,
             VerifyBound::IsEmpty => false,
             VerifyBound::OutlivedBy(_) => false,
