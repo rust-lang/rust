@@ -26,6 +26,9 @@ macro_rules! pluralize {
     ("is", $x:expr) => {
         if $x == 1 { "is" } else { "are" }
     };
+    ("was", $x:expr) => {
+        if $x == 1 { "was" } else { "were" }
+    };
     ("this", $x:expr) => {
         if $x == 1 { "this" } else { "these" }
     };
