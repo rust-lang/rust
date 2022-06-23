@@ -217,3 +217,12 @@ mod just_above_msrv {
         }
     }
 }
+
+mod const_rem_euclid {
+    #![feature(custom_inner_attributes)]
+    #![clippy::msrv = "1.50.0"]
+
+    pub const fn const_rem_euclid_4(num: i32) -> i32 {
+        ((num % 4) + 4) % 4
+    }
+}

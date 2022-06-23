@@ -4,7 +4,8 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{in_constant, meets_msrv, msrvs, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, TyKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
@@ -52,6 +53,10 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
         }
 
         if in_constant(cx, expr.hir_id) && !meets_msrv(self.msrv, msrvs::REM_EUCLID_CONST) {
+            return;
+        }
+
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
 
