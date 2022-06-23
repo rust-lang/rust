@@ -67,7 +67,7 @@ def extract_instrinsics_from_llvm(llvm_path, intrinsics):
             pos += 1
             if line == "}":
                 break
-        entries = re.findall('string GCCBuiltinName = "(\\w+)";', content)
+        entries = re.findall('string ClangBuiltinName = "(\\w+)";', content)
         current_arch = re.findall('string TargetPrefix = "(\\w+)";', content)
         if len(entries) == 1 and len(current_arch) == 1:
             current_arch = current_arch[0]
