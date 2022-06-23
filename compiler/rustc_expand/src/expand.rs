@@ -1546,7 +1546,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     cfg_pos = Some(pos); // a cfg attr found, no need to search anymore
                     break;
                 } else if attr_pos.is_none()
-                    && !name.map_or(false, rustc_feature::is_builtin_attr_name)
+                    && !name.is_some_and(|&name| rustc_feature::is_builtin_attr_name(name))
                 {
                     attr_pos = Some(pos); // a non-cfg attr found, still may find a cfg attr
                 }
@@ -1594,7 +1594,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
             span = Some(current_span);
 
-            if attrs.peek().map_or(false, |next_attr| next_attr.doc_str().is_some()) {
+            if attrs.peek().is_some_and(|next_attr| next_attr.doc_str().is_some()) {
                 continue;
             }
 
@@ -1883,6 +1883,6 @@ impl<'feat> ExpansionConfig<'feat> {
     }
 
     fn proc_macro_hygiene(&self) -> bool {
-        self.features.map_or(false, |features| features.proc_macro_hygiene)
+        self.features.is_some_and(|features| features.proc_macro_hygiene)
     }
 }

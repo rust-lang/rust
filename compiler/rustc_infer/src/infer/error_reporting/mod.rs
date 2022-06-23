@@ -1665,7 +1665,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         (false, _) => "".to_string(),
                     };
                     if !(values.expected.is_simple_text() && values.found.is_simple_text())
-                        || (exp_found.map_or(false, |ef| {
+                        || (exp_found.is_some_and(|ef| {
                             // This happens when the type error is a subset of the expectation,
                             // like when you have two references but one is `usize` and the other
                             // is `f32`. In those cases we still want to show the `note`. If the
@@ -1710,7 +1710,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let exp_found = match terr {
             // `terr` has more accurate type information than `exp_found` in match expressions.
             ty::error::TypeError::Sorts(terr)
-                if exp_found.map_or(false, |ef| terr.found == ef.found) =>
+                if exp_found.is_some_and(|ef| terr.found == ef.found) =>
             {
                 Some(*terr)
             }

@@ -524,8 +524,8 @@ trait UnusedDelimLint {
             _ => return,
         };
         let keep_space = (
-            left_pos.map_or(false, |s| s >= value.span.lo()),
-            right_pos.map_or(false, |s| s <= value.span.hi()),
+            left_pos.is_some_and(|&s| s >= value.span.lo()),
+            right_pos.is_some_and(|&s| s <= value.span.hi()),
         );
         self.emit_unused_delims(cx, spans, ctx.into(), keep_space);
     }

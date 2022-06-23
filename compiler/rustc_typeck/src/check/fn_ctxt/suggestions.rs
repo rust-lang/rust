@@ -832,8 +832,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let results = self.typeck_results.borrow();
         // First, look for a `Clone::clone` call
         if segment.ident.name == sym::clone
-            && results.type_dependent_def_id(expr.hir_id).map_or(
-                false,
+            && results.type_dependent_def_id(expr.hir_id).is_some_and(
                 |did| {
                     self.tcx.associated_item(did).container
                         == ty::AssocItemContainer::TraitContainer(clone_trait_did)

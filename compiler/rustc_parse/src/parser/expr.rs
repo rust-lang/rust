@@ -872,7 +872,7 @@ impl<'a> Parser<'a> {
 
             // If type ascription is "likely an error", the user will already be getting a useful
             // help message, and doesn't need a second.
-            if self.last_type_ascription.map_or(false, |last_ascription| last_ascription.1) {
+            if self.last_type_ascription.is_some_and(|last_ascription| last_ascription.1) {
                 self.maybe_annotate_with_ascription(&mut err, false);
             } else if let Some(ascription_span) = maybe_ascription_span {
                 let is_nightly = self.sess.unstable_features.is_nightly_build();
@@ -2724,7 +2724,7 @@ impl<'a> Parser<'a> {
                 // We might have a `=>` -> `=` or `->` typo (issue #89396).
                 if TokenKind::FatArrow
                     .similar_tokens()
-                    .map_or(false, |similar_tokens| similar_tokens.contains(&this.token.kind))
+                    .is_some_and(|similar_tokens| similar_tokens.contains(&this.token.kind))
                 {
                     err.span_suggestion(
                         this.token.span,

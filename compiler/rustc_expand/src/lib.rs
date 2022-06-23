@@ -3,6 +3,7 @@
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
 #![feature(if_let_guard)]
+#![feature(is_some_with)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(macro_metavar_expr)]

@@ -155,7 +155,7 @@ impl<N: Idx> LivenessValues<N> {
     /// Returns `true` if the region `r` contains the given element.
     pub(crate) fn contains(&self, row: N, location: Location) -> bool {
         let index = self.elements.point_from_location(location);
-        self.points.row(row).map_or(false, |r| r.contains(index))
+        self.points.row(row).is_some_and(|r| r.contains(index))
     }
 
     /// Returns an iterator of all the elements contained by the region `r`

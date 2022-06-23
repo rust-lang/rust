@@ -563,10 +563,10 @@ pub(crate) fn report_cycle<'a>(
         entry
             .query
             .def_kind
-            .map_or(false, |def_kind| matches!(def_kind, DefKind::TyAlias | DefKind::TraitAlias))
+            .is_some_and(|def_kind| matches!(def_kind, DefKind::TyAlias | DefKind::TraitAlias))
     }) {
         if stack.iter().all(|entry| {
-            entry.query.def_kind.map_or(false, |def_kind| matches!(def_kind, DefKind::TyAlias))
+            entry.query.def_kind.is_some_and(|def_kind| matches!(def_kind, DefKind::TyAlias))
         }) {
             err.note("type aliases cannot be recursive");
             err.help("consider using a struct, enum, or union instead to break the cycle");

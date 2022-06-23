@@ -1684,7 +1684,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             .span_to_snippet(return_sp)
             .unwrap_or_else(|_| "dyn Trait".to_string());
         let mut snippet_iter = snippet.split_whitespace();
-        let has_impl = snippet_iter.next().map_or(false, |s| s == "impl");
+        let has_impl = snippet_iter.next().is_some_and(|&s| s == "impl");
         // Only suggest `Box<dyn Trait>` if `Trait` in `impl Trait` is object safe.
         let mut is_object_safe = false;
         if let hir::FnRetTy::Return(ty) = fn_output
@@ -1704,9 +1704,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     bound
                         .trait_ref()
                         .and_then(|t| t.trait_def_id())
-                        .map_or(false, |def_id| {
-                            fcx.tcx.object_safety_violations(def_id).is_empty()
-                        })
+                        .is_some_and(|def_id| fcx.tcx.object_safety_violations(def_id).is_empty())
                 })
             }
         };

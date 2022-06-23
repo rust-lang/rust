@@ -1564,7 +1564,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
                     nested_obligations.into_iter().chain(obligations),
                 )
-                .map_or(false, |res| res.may_apply())
+                .is_ok_and(|res| res.may_apply())
             });
 
         if is_match {

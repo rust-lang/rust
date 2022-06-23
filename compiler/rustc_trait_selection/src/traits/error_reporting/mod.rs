@@ -181,7 +181,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // 1) strictly implied by another error.
                     // 2) implied by an error with a smaller index.
                     for error2 in error_set {
-                        if error2.index.map_or(false, |index2| is_suppressed[index2]) {
+                        if error2.index.is_some_and(|&index2| is_suppressed[index2]) {
                             // Avoid errors being suppressed by already-suppressed
                             // errors, to prevent all errors from being suppressed
                             // at once.

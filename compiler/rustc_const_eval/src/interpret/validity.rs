@@ -555,7 +555,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if M::enforce_number_no_provenance(self.ecx) {
                     // As a special exception we *do* match on a `Scalar` here, since we truly want
                     // to know its underlying representation (and *not* cast it to an integer).
-                    let is_ptr = value.check_init().map_or(false, |v| matches!(v, Scalar::Ptr(..)));
+                    let is_ptr = value.check_init().is_ok_and(|v| matches!(v, Scalar::Ptr(..)));
                     if is_ptr {
                         throw_validation_failure!(self.path,
                             { "{:x}", value } expected { "plain (non-pointer) bytes" }

@@ -498,7 +498,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .borrow()
                 .adjustments()
                 .get(base.hir_id)
-                .map_or(false, |x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
+                .is_some_and(|x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
         });
         if !is_named {
             self.tcx.sess.emit_err(AddressOfTemporaryTaken { span: oprnd.span });

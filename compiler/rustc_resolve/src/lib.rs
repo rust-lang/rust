@@ -10,6 +10,7 @@
 #![feature(box_patterns)]
 #![feature(drain_filter)]
 #![feature(if_let_guard)]
+#![feature(is_some_with)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
@@ -1526,7 +1527,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn is_builtin_macro(&mut self, res: Res) -> bool {
-        self.get_macro(res).map_or(false, |macro_data| macro_data.ext.builtin_name.is_some())
+        self.get_macro(res).is_some_and(|macro_data| macro_data.ext.builtin_name.is_some())
     }
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {

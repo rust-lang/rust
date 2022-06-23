@@ -5,6 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(is_some_with)]
 #![feature(let_else)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
@@ -1213,7 +1214,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     }
 
     // If backtraces are enabled, also print the query stack
-    let backtrace = env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
+    let backtrace = env::var_os("RUST_BACKTRACE").is_some_and(|x| x != "0");
 
     let num_frames = if backtrace { None } else { Some(2) };
 

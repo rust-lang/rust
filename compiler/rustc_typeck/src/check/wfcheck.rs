@@ -130,7 +130,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         hir::ItemKind::Impl(ref impl_) => {
             let is_auto = tcx
                 .impl_trait_ref(item.def_id)
-                .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
+                .is_some_and(|trait_ref| tcx.trait_is_auto(trait_ref.def_id));
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
                 let mut err =

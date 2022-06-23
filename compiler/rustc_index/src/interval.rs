@@ -226,7 +226,7 @@ impl<I: Idx> IntervalSet<I> {
     fn check_invariants(&self) -> bool {
         let mut current: Option<u32> = None;
         for (start, end) in &self.map {
-            if start > end || current.map_or(false, |x| x + 1 >= *start) {
+            if start > end || current.is_some_and(|x| x + 1 >= *start) {
                 return false;
             }
             current = Some(*end);
@@ -300,6 +300,6 @@ impl<R: Idx, C: Step + Idx> SparseIntervalMatrix<R, C> {
     }
 
     pub fn contains(&self, row: R, point: C) -> bool {
-        self.row(row).map_or(false, |r| r.contains(point))
+        self.row(row).is_some_and(|r| r.contains(point))
     }
 }

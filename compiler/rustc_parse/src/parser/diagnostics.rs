@@ -881,8 +881,7 @@ impl<'a> Parser<'a> {
         // have already been parsed):
         //
         // `x.foo::<u32>>>(3)`
-        let parsed_angle_bracket_args =
-            segment.args.as_ref().map_or(false, |args| args.is_angle_bracketed());
+        let parsed_angle_bracket_args = segment.args.is_some_and(|args| args.is_angle_bracketed());
 
         debug!(
             "check_trailing_angle_brackets: parsed_angle_bracket_args={:?}",

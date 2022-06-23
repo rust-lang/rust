@@ -195,8 +195,7 @@ impl DropRanges {
         self.tracked_value_map
             .get(&TrackedValue::Temporary(hir_id))
             .or(self.tracked_value_map.get(&TrackedValue::Variable(hir_id)))
-            .cloned()
-            .map_or(false, |tracked_value_id| {
+            .is_some_and(|&&tracked_value_id| {
                 self.expect_node(location.into()).drop_state.contains(tracked_value_id)
             })
     }

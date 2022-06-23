@@ -149,7 +149,7 @@ impl<'a> Resolver<'a> {
                         self.cstore().module_expansion_untracked(def_id, &self.session),
                         self.cstore().get_span_untracked(def_id, &self.session),
                         // FIXME: Account for `#[no_implicit_prelude]` attributes.
-                        parent.map_or(false, |module| module.no_implicit_prelude),
+                        parent.is_some_and(|module| module.no_implicit_prelude),
                     ))
                 }
                 _ => None,

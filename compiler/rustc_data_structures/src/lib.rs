@@ -16,6 +16,7 @@
 #![feature(let_else)]
 #![feature(hash_raw_entry)]
 #![feature(hasher_prefixfree_extras)]
+#![feature(is_some_with)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
 #![feature(never_type)]

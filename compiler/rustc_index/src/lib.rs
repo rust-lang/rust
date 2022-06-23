@@ -1,6 +1,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(bench_black_box)]
 #![feature(extend_one)]
+#![feature(is_some_with)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(new_uninit)]

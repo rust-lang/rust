@@ -220,9 +220,8 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     // old value is being dropped.
                     let assigned_ty = place.ty(&self.body.local_decls, self.tcx).ty;
                     // To avoid semver hazard, we only consider `Copy` and `ManuallyDrop` non-dropping.
-                    let manually_drop = assigned_ty
-                        .ty_adt_def()
-                        .map_or(false, |adt_def| adt_def.is_manually_drop());
+                    let manually_drop =
+                        assigned_ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop());
                     let nodrop = manually_drop
                         || assigned_ty.is_copy_modulo_regions(
                             self.tcx.at(self.source_info.span),

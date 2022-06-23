@@ -57,7 +57,7 @@ impl NestedMetaItem {
 
     /// Returns `true` if this list item is a MetaItem with a name of `name`.
     pub fn has_name(&self, name: Symbol) -> bool {
-        self.meta_item().map_or(false, |meta_item| meta_item.has_name(name))
+        self.meta_item().is_some_and(|meta_item| meta_item.has_name(name))
     }
 
     /// For a single-segment meta item, returns its name; otherwise, returns `None`.
@@ -101,7 +101,7 @@ impl NestedMetaItem {
 
     /// Returns `true` if `self` is a `MetaItem` and the meta item is a word.
     pub fn is_word(&self) -> bool {
-        self.meta_item().map_or(false, |meta_item| meta_item.is_word())
+        self.meta_item().is_some_and(|meta_item| meta_item.is_word())
     }
 
     /// See [`MetaItem::name_value_literal_span`].
@@ -266,7 +266,7 @@ impl Attribute {
     }
 
     pub fn may_have_doc_links(&self) -> bool {
-        self.doc_str().map_or(false, |s| comments::may_have_doc_links(s.as_str()))
+        self.doc_str().is_some_and(|s| comments::may_have_doc_links(s.as_str()))
     }
 
     pub fn get_normal_item(&self) -> &AttrItem {

@@ -175,7 +175,7 @@ impl CoverageMapGenerator {
         counter_regions.sort_unstable_by_key(|(_counter, region)| *region);
         for (counter, region) in counter_regions {
             let CodeRegion { file_name, start_line, start_col, end_line, end_col } = *region;
-            let same_file = current_file_name.as_ref().map_or(false, |p| *p == file_name);
+            let same_file = current_file_name.is_some_and(|&p| p == file_name);
             if !same_file {
                 if current_file_name.is_some() {
                     current_file_id += 1;

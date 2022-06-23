@@ -118,7 +118,7 @@ impl<'ast> visit::Visitor<'ast> for CfgFinder {
         self.has_cfg_or_cfg_attr = self.has_cfg_or_cfg_attr
             || attr
                 .ident()
-                .map_or(false, |ident| ident.name == sym::cfg || ident.name == sym::cfg_attr);
+                .is_some_and(|ident| ident.name == sym::cfg || ident.name == sym::cfg_attr);
     }
 }
 

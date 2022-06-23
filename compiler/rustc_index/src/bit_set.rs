@@ -1544,7 +1544,7 @@ impl<T: Idx> GrowableBitSet<T> {
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
-        self.bit_set.words.get(word_index).map_or(false, |word| (word & mask) != 0)
+        self.bit_set.words.get(word_index).is_some_and(|&word| (word & mask) != 0)
     }
 
     #[inline]
@@ -1818,7 +1818,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// if the matrix represents (transitive) reachability, can
     /// `row` reach `column`?
     pub fn contains(&self, row: R, column: C) -> bool {
-        self.row(row).map_or(false, |r| r.contains(column))
+        self.row(row).is_some_and(|r| r.contains(column))
     }
 
     /// Adds the bits from row `read` to the bits from row `write`, and

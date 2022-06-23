@@ -9,6 +9,7 @@
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(extern_types)]
+#![feature(is_some_with)]
 #![feature(once_cell)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]

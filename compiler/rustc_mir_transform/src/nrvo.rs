@@ -107,7 +107,7 @@ fn local_eligible_for_nrvo(body: &mut mir::Body<'_>) -> Option<Local> {
 
         // If multiple different locals are copied to the return place. We can't pick a
         // single one to rename.
-        if copied_to_return_place.map_or(false, |old| old != returned_local) {
+        if copied_to_return_place.is_some_and(|&old| old != returned_local) {
             return None;
         }
 

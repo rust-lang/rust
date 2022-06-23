@@ -328,7 +328,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
                         // This helps avoid accidental drops.
                         if inside_union
-                            && source.ty_adt_def().map_or(false, |adt| adt.is_manually_drop())
+                            && source.ty_adt_def().is_some_and(|adt| adt.is_manually_drop())
                         {
                             let mut err = self.tcx.sess.struct_span_err(
                                 expr.span,

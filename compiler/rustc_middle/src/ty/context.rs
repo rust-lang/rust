@@ -2905,7 +2905,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner).map_or(false, |set| {
+        self.is_late_bound_map(id.owner).is_some_and(|set| {
             let def_id = self.hir().local_def_id(id);
             set.contains(&def_id)
         })
@@ -3014,6 +3014,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     providers.has_panic_handler = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         // We want to check if the panic handler was defined in this crate
-        tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
+        tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
     };
 }

@@ -593,10 +593,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         let doc_hidden = self.doc_hidden()
             || attrs.iter().any(|attr| {
                 attr.has_name(sym::doc)
-                    && match attr.meta_item_list() {
-                        None => false,
-                        Some(l) => attr::list_contains_name(&l, sym::hidden),
-                    }
+                    && attr
+                        .meta_item_list()
+                        .is_some_and(|l| attr::list_contains_name(&l, sym::hidden))
             });
         self.doc_hidden_stack.push(doc_hidden);
     }
@@ -1021,7 +1020,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
                 Some(sugared_span.map_or(attr.span, |span| span.with_hi(attr.span.hi())));
         }
 
-        if attrs.peek().map_or(false, |next_attr| next_attr.is_doc_comment()) {
+        if attrs.peek().is_some_and(|next_attr| next_attr.is_doc_comment()) {
             continue;
         }
 

@@ -1406,7 +1406,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             <https://doc.rust-lang.org/book/ch17-02-trait-objects.html\
             #using-trait-objects-that-allow-for-values-of-different-types>";
 
-        let has_dyn = snippet.split_whitespace().next().map_or(false, |s| s == "dyn");
+        let has_dyn = snippet.split_whitespace().next().is_some_and(|&s| s == "dyn");
         let trait_obj = if has_dyn { &snippet[4..] } else { &snippet };
         if only_never_return {
             // No return paths, probably using `panic!()` or similar.
@@ -2427,7 +2427,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     "note_obligation_cause_code: check for async fn"
                                 );
                                 if is_future
-                                    && obligated_types.last().map_or(false, |ty| match ty.kind() {
+                                    && obligated_types.last().is_some_and(|ty| match ty.kind() {
                                         ty::Opaque(last_def_id, _) => {
                                             tcx.parent(*last_def_id) == from_generator
                                         }

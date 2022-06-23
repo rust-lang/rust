@@ -532,10 +532,8 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
 
         let is_const = self.tcx.is_const_fn(def_id.to_def_id())
             || self.tcx.is_const_trait_impl_raw(def_id.to_def_id());
-        let is_stable = self
-            .tcx
-            .lookup_stability(def_id)
-            .map_or(false, |stability| stability.level.is_stable());
+        let is_stable =
+            self.tcx.lookup_stability(def_id).is_some_and(|stability| stability.level.is_stable());
         let missing_const_stability_attribute = self.tcx.lookup_const_stability(def_id).is_none();
         let is_reachable = self.access_levels.is_reachable(def_id);
 
@@ -746,7 +744,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     // needs to have an error emitted.
                     if features.const_trait_impl
                         && *constness == hir::Constness::Const
-                        && const_stab.map_or(false, |(stab, _)| stab.is_const_stable())
+                        && const_stab.is_some_and(|(stab, _)| stab.is_const_stable())
                     {
                         self.tcx
                             .sess
@@ -776,7 +774,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 let param_env = self.tcx.param_env(item.def_id);
                 for field in &adt_def.non_enum_variant().fields {
                     let field_ty = field.ty(self.tcx, substs);
-                    if !field_ty.ty_adt_def().map_or(false, |adt_def| adt_def.is_manually_drop())
+                    if !field_ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
                         && !field_ty.is_copy_modulo_regions(self.tcx.at(DUMMY_SP), param_env)
                     {
                         if field_ty.needs_drop(self.tcx, param_env) {

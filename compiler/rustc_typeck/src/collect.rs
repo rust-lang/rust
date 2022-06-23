@@ -982,7 +982,7 @@ fn convert_variant(
         parent_did.to_def_id(),
         recovered,
         adt_kind == AdtKind::Struct && tcx.has_attr(parent_did.to_def_id(), sym::non_exhaustive)
-            || variant_did.map_or(false, |variant_did| {
+            || variant_did.is_some_and(|variant_did| {
                 tcx.has_attr(variant_did.to_def_id(), sym::non_exhaustive)
             }),
     )
@@ -1795,7 +1795,7 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
             is_suggestable_infer_ty(ty) || are_suggestable_generic_args(segment.args().args)
         }
         Path(hir::QPath::Resolved(ty_opt, hir::Path { segments, .. })) => {
-            ty_opt.map_or(false, is_suggestable_infer_ty)
+            ty_opt.is_some_and(|ty| is_suggestable_infer_ty(ty))
                 || segments.iter().any(|segment| are_suggestable_generic_args(segment.args().args))
         }
         _ => false,

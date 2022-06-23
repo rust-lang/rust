@@ -17,6 +17,7 @@
 #![feature(array_windows)]
 #![feature(let_else)]
 #![feature(if_let_guard)]
+#![feature(is_some_with)]
 #![feature(negative_impls)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
@@ -709,7 +710,7 @@ impl Span {
         self.ctxt()
             .outer_expn_data()
             .allow_internal_unstable
-            .map_or(false, |features| features.iter().any(|&f| f == feature))
+            .is_some_and(|features| features.iter().any(|&f| f == feature))
     }
 
     /// Checks if this span arises from a compiler desugaring of kind `kind`.

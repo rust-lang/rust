@@ -542,7 +542,8 @@ impl<'tcx> InferSource<'tcx> {
                 receiver.span.from_expansion()
             }
             InferSourceKind::ClosureReturn { data, should_wrap_expr, .. } => {
-                data.span().from_expansion() || should_wrap_expr.map_or(false, Span::from_expansion)
+                data.span().from_expansion()
+                    || should_wrap_expr.is_some_and(|span| span.from_expansion())
             }
         };
         source_from_expansion || self.span.from_expansion()

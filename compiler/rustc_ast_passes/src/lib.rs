@@ -7,6 +7,7 @@
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
+#![feature(is_some_with)]
 #![feature(iter_is_partitioned)]
 #![feature(let_chains)]
 #![feature(let_else)]
