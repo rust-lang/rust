@@ -823,10 +823,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ) -> bool {
         match bound {
             VerifyBound::IfEq(verify_if_eq_b) => {
+                let verify_if_eq_b = var_values.normalize(self.region_rels.tcx, *verify_if_eq_b);
                 match test_type_match::extract_verify_if_eq(
                     self.tcx(),
                     self.param_env,
-                    verify_if_eq_b,
+                    &verify_if_eq_b,
                     generic_ty,
                 ) {
                     Some(r) => {
