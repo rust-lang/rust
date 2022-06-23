@@ -1,4 +1,4 @@
-error[E0381]: used binding `**x` isn't initialized
+error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-ref-chain.rs:8:14
    |
 LL |     let x: &&Box<i32>;
@@ -6,7 +6,7 @@ LL |     let x: &&Box<i32>;
 LL |     let _y = &**x;
    |              ^^^^ `**x` used here but it isn't initialized
 
-error[E0381]: used binding `**x` isn't initialized
+error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-ref-chain.rs:11:14
    |
 LL |     let x: &&S<i32, i32>;
@@ -14,7 +14,7 @@ LL |     let x: &&S<i32, i32>;
 LL |     let _y = &**x;
    |              ^^^^ `**x` used here but it isn't initialized
 
-error[E0381]: used binding `**x` isn't initialized
+error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit-ref-chain.rs:14:14
    |
 LL |     let x: &&i32;

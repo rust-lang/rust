@@ -1,4 +1,4 @@
-error[E0381]: used binding `*w` isn't initialized
+error[E0381]: used binding `w` isn't initialized
   --> $DIR/borrowck-use-in-index-lvalue.rs:3:5
    |
 LL |     let w: &mut [isize];
@@ -6,7 +6,7 @@ LL |     let w: &mut [isize];
 LL |     w[5] = 0;
    |     ^^^^ `*w` used here but it isn't initialized
 
-error[E0381]: used binding `*w` isn't initialized
+error[E0381]: used binding `w` isn't initialized
   --> $DIR/borrowck-use-in-index-lvalue.rs:6:5
    |
 LL |     let mut w: &mut [isize];

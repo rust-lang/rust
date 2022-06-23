@@ -5,6 +5,8 @@ LL |     let d: D;
    |         - binding declared here but left uninitialized
 LL |     d.x = 10;
    |     ^^^^^^^^ `d` assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0381]: assigned binding `d` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:33:5
@@ -13,6 +15,8 @@ LL |     let mut d: D;
    |         ----- binding declared here but left uninitialized
 LL |     d.x = 10;
    |     ^^^^^^^^ `d` assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
 error[E0382]: assign of moved value: `d`
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:39:5
@@ -24,7 +28,7 @@ LL |     drop(d);
 LL |     d.x = 10;
    |     ^^^^^^^^ value assigned here after move
 
-error[E0381]: partially assigned binding `d.s` isn't fully initialized
+error[E0381]: partially assigned binding `d` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:45:5
    |
 LL |     let d: D;
@@ -34,7 +38,7 @@ LL |     d.s.y = 20;
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: partially assigned binding `d.s` isn't fully initialized
+error[E0381]: partially assigned binding `d` isn't fully initialized
   --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:50:5
    |
 LL |     let mut d: D;
