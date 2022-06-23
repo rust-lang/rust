@@ -688,7 +688,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.cap() - 1
     }
 
-    /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
+    /// Reserves the minimum capacity for at least `additional` more elements to be inserted in the
     /// given deque. Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it requests. Therefore
@@ -716,7 +716,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the given
-    /// deque. The collection may reserve more space to avoid frequent reallocations.
+    /// deque. The collection may reserve more space to speculatively avoid frequent reallocations.
     ///
     /// # Panics
     ///
@@ -748,10 +748,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Tries to reserve the minimum capacity for exactly `additional` more elements to
+    /// Tries to reserve the minimum capacity for at least `additional` more elements to
     /// be inserted in the given deque. After calling `try_reserve_exact`,
-    /// capacity will be greater than or equal to `self.len() + additional`.
-    /// Does nothing if the capacity is already sufficient.
+    /// capacity will be greater than or equal to `self.len() + additional` if
+    /// it returns `Ok(())`. Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it
     /// requests. Therefore, capacity can not be relied upon to be precisely
@@ -791,10 +791,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given deque. The collection may reserve more space to avoid
+    /// in the given deque. The collection may reserve more space to speculatively avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
-    /// greater than or equal to `self.len() + additional`. Does nothing if
-    /// capacity is already sufficient.
+    /// greater than or equal to `self.len() + additional` if it returns
+    /// `Ok(())`. Does nothing if capacity is already sufficient.
     ///
     /// # Errors
     ///
