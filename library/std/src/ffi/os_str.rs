@@ -196,10 +196,11 @@ impl OsString {
         self.inner.push_slice(&s.as_ref().inner)
     }
 
-    /// Creates a new `OsString` with the given capacity.
+    /// Creates a new `OsString` with at least the given capacity.
     ///
-    /// The string will be able to hold exactly `capacity` length units of other
-    /// OS strings without reallocating. If `capacity` is 0, the string will not
+    /// The string will be able to hold at least `capacity` length units of other
+    /// OS strings without reallocating. This method is allowed to allocate for
+    /// more units than `capacity`. If `capacity` is 0, the string will not
     /// allocate.
     ///
     /// See the main `OsString` documentation information about encoding and capacity units.
@@ -263,9 +264,10 @@ impl OsString {
     }
 
     /// Reserves capacity for at least `additional` more capacity to be inserted
-    /// in the given `OsString`.
+    /// in the given `OsString`. Does nothing if the capacity is
+    /// already sufficient.
     ///
-    /// The collection may reserve more space to avoid frequent reallocations.
+    /// The collection may reserve more space to speculatively avoid frequent reallocations.
     ///
     /// See the main `OsString` documentation information about encoding and capacity units.
     ///
@@ -285,10 +287,10 @@ impl OsString {
     }
 
     /// Tries to reserve capacity for at least `additional` more length units
-    /// in the given `OsString`. The string may reserve more space to avoid
+    /// in the given `OsString`. The string may reserve more space to speculatively avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
-    /// greater than or equal to `self.len() + additional`. Does nothing if
-    /// capacity is already sufficient.
+    /// greater than or equal to `self.len() + additional` if it returns `Ok(())`.
+    /// Does nothing if capacity is already sufficient.
     ///
     /// See the main `OsString` documentation information about encoding and capacity units.
     ///
@@ -322,7 +324,7 @@ impl OsString {
         self.inner.try_reserve(additional)
     }
 
-    /// Reserves the minimum capacity for exactly `additional` more capacity to
+    /// Reserves the minimum capacity for at least `additional` more capacity to
     /// be inserted in the given `OsString`. Does nothing if the capacity is
     /// already sufficient.
     ///
@@ -349,7 +351,7 @@ impl OsString {
         self.inner.reserve_exact(additional)
     }
 
-    /// Tries to reserve the minimum capacity for exactly `additional`
+    /// Tries to reserve the minimum capacity for at least `additional`
     /// more length units in the given `OsString`. After calling
     /// `try_reserve_exact`, capacity will be greater than or equal to
     /// `self.len() + additional` if it returns `Ok(())`.
