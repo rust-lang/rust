@@ -258,18 +258,6 @@ pub enum SubdiagnosticMessage {
     FluentAttr(FluentId),
 }
 
-impl SubdiagnosticMessage {
-    /// Create a `SubdiagnosticMessage` for the provided Fluent attribute.
-    pub fn attr(id: impl Into<FluentId>) -> Self {
-        SubdiagnosticMessage::FluentAttr(id.into())
-    }
-
-    /// Create a `SubdiagnosticMessage` for the provided Fluent identifier.
-    pub fn message(id: impl Into<FluentId>) -> Self {
-        SubdiagnosticMessage::FluentIdentifier(id.into())
-    }
-}
-
 /// `From` impl that enables existing diagnostic calls to functions which now take
 /// `impl Into<SubdiagnosticMessage>` to continue to work as before.
 impl<S: Into<String>> From<S> for SubdiagnosticMessage {
@@ -331,11 +319,6 @@ impl DiagnosticMessage {
             DiagnosticMessage::Str(s) => s,
             _ => panic!("expected non-translatable diagnostic message"),
         }
-    }
-
-    /// Create a `DiagnosticMessage` for the provided Fluent identifier.
-    pub fn new(id: impl Into<FluentId>) -> Self {
-        DiagnosticMessage::FluentIdentifier(id.into(), None)
     }
 }
 
