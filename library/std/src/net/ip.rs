@@ -14,9 +14,6 @@ use crate::sys_common::{FromInner, IntoInner};
 /// This enum can contain either an [`Ipv4Addr`] or an [`Ipv6Addr`], see their
 /// respective documentation for more details.
 ///
-/// The size of an `IpAddr` instance may vary depending on the target operating
-/// system.
-///
 /// # Examples
 ///
 /// ```
@@ -48,9 +45,6 @@ pub enum IpAddr {
 /// They are usually represented as four octets.
 ///
 /// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
-///
-/// The size of an `Ipv4Addr` struct may vary depending on the target operating
-/// system.
 ///
 /// [IETF RFC 791]: https://tools.ietf.org/html/rfc791
 ///
@@ -86,9 +80,6 @@ pub struct Ipv4Addr {
 ///
 /// IPv6 addresses are defined as 128-bit integers in [IETF RFC 4291].
 /// They are usually represented as eight 16-bit segments.
-///
-/// The size of an `Ipv6Addr` struct may vary depending on the target operating
-/// system.
 ///
 /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
 ///
