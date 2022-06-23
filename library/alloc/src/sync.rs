@@ -1355,15 +1355,16 @@ impl<T: ?Sized> Clone for Arc<T> {
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         let old_size = self.inner().strong.fetch_add(1, Relaxed);
 
-        // However we need to guard against massive refcounts in case someone
-        // is `mem::forget`ing Arcs. If we don't do this the count can overflow
-        // and users will use-after free. We racily saturate to `isize::MAX` on
-        // the assumption that there aren't ~2 billion threads incrementing
-        // the reference count at once. This branch will never be taken in
-        // any realistic program.
+        // However we need to guard against massive refcounts in case someone is `mem::forget`ing
+        // Arcs. If we don't do this the count can overflow and users will use-after free. This
+        // branch will never be taken in any realistic program. We abort because such a program is
+        // incredibly degenerate, and we don't care to support it.
         //
-        // We abort because such a program is incredibly degenerate, and we
-        // don't care to support it.
+        // This check is not 100% water-proof: we error when the refcount grows beyond `isize::MAX`.
+        // But we do that check *after* having done the increment, so there is a chance here that
+        // the worst already happened and we actually do overflow the `usize` counter. However, that
+        // requires the counter to grow from `isize::MAX` to `usize::MAX` between the increment
+        // above and the `abort` below, which seems exceedingly unlikely.
         if old_size > MAX_REFCOUNT {
             abort();
         }
