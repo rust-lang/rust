@@ -2,7 +2,7 @@ error[E0599]: no method named `kaname` found for struct `Homura` in the current 
   --> $DIR/issue-19692.rs:4:40
    |
 LL | struct Homura;
-   | -------------- method `kaname` not found for this
+   |        ------ method `kaname` not found for this struct
 ...
 LL |     let Some(ref madoka) = Some(homura.kaname());
    |                                        ^^^^^^ method not found in `Homura`

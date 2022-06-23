@@ -13,8 +13,8 @@ error[E0599]: the method `foo_one` exists for struct `MyStruct`, but its trait b
    |
 LL | struct MyStruct;
    | ----------------
-   | |
-   | method `foo_one` not found for this
+   | |      |
+   | |      method `foo_one` not found for this struct
    | doesn't satisfy `MyStruct: Foo`
 ...
 LL |     println!("{}", MyStruct.foo_one());
