@@ -363,12 +363,12 @@ pub fn deprecate(name: &str, reason: Option<&String>) {
     let name_upper = name.to_uppercase();
 
     let (mut lints, deprecated_lints, renamed_lints) = gather_all();
-    let Some(lint) = lints.iter().find(|l| l.name == name_lower) else { panic!("failed to find lint `{}`", name) };
+    let Some(lint) = lints.iter().find(|l| l.name == name_lower) else { eprintln!("error: failed to find lint `{}`", name); return; };
 
     let mod_path = {
         let mut mod_path = PathBuf::from(format!("clippy_lints/src/{}", lint.module));
         if mod_path.is_dir() {
-            mod_path = mod_path.join(name);
+            mod_path = mod_path.join("mod");
         }
 
         mod_path.set_extension("rs");
@@ -422,7 +422,7 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
             let mut lint_name_end = impl_lint_pass_start + (lint_name_pos + lint_name_upper.len());
             for c in content[lint_name_end..impl_lint_pass_end].chars() {
                 // Remove trailing whitespace
-                if c.is_whitespace() {
+                if c == ',' || c.is_whitespace() {
                     lint_name_end += 1;
                 } else {
                     break;
@@ -440,39 +440,41 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
                 fs::remove_file(path)?;
             } else {
                 // We can't delete the entire file, just remove the declaration
-                if lint.module != name {
-                    let mut mod_decl_path = path.to_path_buf();
-                    if mod_decl_path.is_dir() {
-                        mod_decl_path = Path::new("clippy_lints/src").join(&lint.module).join("mod.rs");
-                    }
 
-                    let mut content = fs::read_to_string(&mod_decl_path)
-                        .unwrap_or_else(|_| panic!("failed to read `{}`", path.to_string_lossy()));
+                if let Some(Some("mod.rs")) = path.file_name().map(OsStr::to_str) {
+                    // Remove clippy_lints/src/some_mod/some_lint.rs
+                    let mut lint_mod_path = path.to_path_buf();
+                    lint_mod_path.set_file_name(name);
+                    lint_mod_path.set_extension("rs");
 
-                    eprintln!(
-                        "warn: you will have to manually remove any code related to `{}` from `{}`",
-                        name,
-                        &mod_decl_path.to_string_lossy()
-                    );
-
-                    assert!(
-                        content[lint.declaration_range.clone()].contains(&name.to_uppercase()),
-                        "error: `{}` does not contain lint `{}`'s declaration",
-                        mod_decl_path.display(),
-                        lint.name
-                    );
-
-                    // Remove lint declaration (declare_clippy_lint!)
-                    content.replace_range(lint.declaration_range.clone(), "");
-
-                    // Remove the module declaration (mod xyz;)
-                    let mod_decl = format!("\nmod {};", name);
-                    content = content.replacen(&mod_decl, "", 1);
-
-                    remove_impl_lint_pass(&lint.name.to_uppercase(), &mut content);
-                    fs::write(mod_decl_path, content)
-                        .unwrap_or_else(|_| panic!("failed to write to `{}`", path.to_string_lossy()));
+                    fs::remove_file(lint_mod_path).ok();
                 }
+
+                let mut content =
+                    fs::read_to_string(&path).unwrap_or_else(|_| panic!("failed to read `{}`", path.to_string_lossy()));
+
+                eprintln!(
+                    "warn: you will have to manually remove any code related to `{}` from `{}`",
+                    name,
+                    path.display()
+                );
+
+                assert!(
+                    content[lint.declaration_range.clone()].contains(&name.to_uppercase()),
+                    "error: `{}` does not contain lint `{}`'s declaration",
+                    path.display(),
+                    lint.name
+                );
+
+                // Remove lint declaration (declare_clippy_lint!)
+                content.replace_range(lint.declaration_range.clone(), "");
+
+                // Remove the module declaration (mod xyz;)
+                let mod_decl = format!("\nmod {};", name);
+                content = content.replacen(&mod_decl, "", 1);
+
+                remove_impl_lint_pass(&lint.name.to_uppercase(), &mut content);
+                fs::write(path, content).unwrap_or_else(|_| panic!("failed to write to `{}`", path.to_string_lossy()));
             }
 
             remove_test_assets(name);
