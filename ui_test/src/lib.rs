@@ -374,8 +374,6 @@ fn check_annotations(
     comments: &Comments,
 ) {
     if let Some((ref error_pattern, definition_line)) = comments.error_pattern {
-        let mut found = false;
-
         // first check the diagnostics messages outside of our file. We check this first, so that
         // you can mix in-file annotations with // error-pattern annotations, even if there is overlap
         // in the messages.
@@ -384,22 +382,7 @@ fn check_annotations(
             .position(|msg| msg.message.contains(error_pattern))
         {
             messages_from_unknown_file_or_line.remove(i);
-            found = true;
-        }
-
-        // if nothing was found, check the ones inside our file. We permit this because some tests may have
-        // flaky line numbers for their messages.
-        if !found {
-            for line in &mut messages {
-                if let Some(i) = line.iter().position(|msg| msg.message.contains(error_pattern)) {
-                    line.remove(i);
-                    found = true;
-                    break;
-                }
-            }
-        }
-
-        if !found {
+        } else {
             errors.push(Error::PatternNotFound {
                 pattern: error_pattern.to_string(),
                 definition_line,

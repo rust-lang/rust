@@ -1,8 +1,8 @@
 error: Undefined Behavior: type validation failed: encountered a pointer, but expected plain (non-pointer) bytes
   --> $DIR/transmute_fat1.rs:LL:CC
    |
-LL |     let bad = unsafe { std::mem::transmute::<&[u8], $ARRAY>(&[1u8]) };
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected plain (non-pointer) bytes
+LL |         std::mem::transmute::<&[u8], [u8; N]>(&[1u8])
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected plain (non-pointer) bytes
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

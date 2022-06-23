@@ -116,7 +116,7 @@ impl Span {
 }
 
 pub(crate) fn filter_annotations_from_rendered(rendered: &str) -> std::borrow::Cow<'_, str> {
-    let annotations = Regex::new(r"\s*//~.*").unwrap();
+    let annotations = Regex::new(r"\s*//(\[[^\]]\])?~.*").unwrap();
     annotations.replace_all(&rendered, "")
 }
 

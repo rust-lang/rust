@@ -4,6 +4,7 @@ error: Undefined Behavior: unwinding past the topmost frame of the stack
   --> $DIR/unwind_top_of_stack.rs:LL:CC
    |
 LL | / extern "C-unwind" fn thread_start(_null: *mut libc::c_void) -> *mut libc::c_void {
+LL | |
 LL | |     panic!()
 LL | | }
    | |_^ unwinding past the topmost frame of the stack

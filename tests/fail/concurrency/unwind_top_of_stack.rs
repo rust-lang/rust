@@ -1,6 +1,5 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 // compile-flags: -Zmiri-disable-abi-check
-// error-pattern: unwinding past the topmost frame of the stack
 
 //! Unwinding past the top frame of a stack is Undefined Behavior.
 
@@ -11,6 +10,7 @@ extern crate libc;
 use std::{mem, ptr};
 
 extern "C-unwind" fn thread_start(_null: *mut libc::c_void) -> *mut libc::c_void {
+//~^ ERROR unwinding past the topmost frame of the stack
     panic!()
 }
 
