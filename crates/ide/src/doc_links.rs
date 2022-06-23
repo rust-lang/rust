@@ -362,14 +362,15 @@ fn map_links<'e>(
     // holds the origin link target on start event and the rewritten one on end event
     let mut end_link_target: Option<CowStr> = None;
     // normally link's type is determined by the type of link tag in the end event,
-    // however in same cases we want to change the link type, for example,
-    // `Shortcut` type doesn't make sense for url links
+    // however in some cases we want to change the link type, for example,
+    // `Shortcut` type parsed from Start/End tags doesn't make sense for url links
     let mut end_link_type: Option<LinkType> = None;
 
     events.map(move |evt| match evt {
-        Event::Start(Tag::Link(_, ref target, _)) => {
+        Event::Start(Tag::Link(link_type, ref target, _)) => {
             in_link = true;
             end_link_target = Some(target.clone());
+            end_link_type = Some(link_type);
             evt
         }
         Event::End(Tag::Link(link_type, target, _)) => {
@@ -384,14 +385,18 @@ fn map_links<'e>(
             let (link_type, link_target_s, link_name) =
                 callback(&end_link_target.take().unwrap(), &s);
             end_link_target = Some(CowStr::Boxed(link_target_s.into()));
-            end_link_type = link_type;
+            if !matches!(end_link_type, Some(LinkType::Autolink)) {
+                end_link_type = link_type;
+            }
             Event::Text(CowStr::Boxed(link_name.into()))
         }
         Event::Code(s) if in_link => {
             let (link_type, link_target_s, link_name) =
                 callback(&end_link_target.take().unwrap(), &s);
             end_link_target = Some(CowStr::Boxed(link_target_s.into()));
-            end_link_type = link_type;
+            if !matches!(end_link_type, Some(LinkType::Autolink)) {
+                end_link_type = link_type;
+            }
             Event::Code(CowStr::Boxed(link_name.into()))
         }
         _ => evt,
