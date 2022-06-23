@@ -541,6 +541,46 @@ impl Foo {
 }
 
 #[test]
+fn completes_non_exhaustive_variant_within_the_defining_crate() {
+    check(
+        r#"
+enum Foo {
+    #[non_exhaustive]
+    Bar,
+    Baz,
+}
+
+fn foo(self) {
+    Foo::$0
+}
+"#,
+        expect![[r#"
+                ev Bar Bar
+                ev Baz Baz
+            "#]],
+    );
+
+    check(
+        r#"
+//- /main.rs crate:main deps:e
+fn foo(self) {
+    e::Foo::$0
+}
+
+//- /e.rs crate:e
+enum Foo {
+    #[non_exhaustive]
+    Bar,
+    Baz,
+}
+"#,
+        expect![[r#"
+                ev Baz Baz
+            "#]],
+    );
+}
+
+#[test]
 fn completes_primitive_assoc_const() {
     cov_mark::check!(completes_primitive_assoc_const);
     check(
