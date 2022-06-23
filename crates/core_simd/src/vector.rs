@@ -741,11 +741,15 @@ unsafe impl SimdElement for f64 {
 }
 
 impl<T> Sealed for *const T {}
+
+// Safety: const pointers are valid SIMD element types, and are supported by this API
 unsafe impl<T> SimdElement for *const T {
     type Mask = isize;
 }
 
 impl<T> Sealed for *mut T {}
+
+// Safety: mut pointers are valid SIMD element types, and are supported by this API
 unsafe impl<T> SimdElement for *mut T {
     type Mask = isize;
 }
