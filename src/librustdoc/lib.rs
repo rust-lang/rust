@@ -9,6 +9,7 @@
 #![feature(control_flow_enum)]
 #![feature(box_syntax)]
 #![feature(drain_filter)]
+#![feature(is_some_with)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(test)]

@@ -559,7 +559,7 @@ impl Item {
     }
 
     pub(crate) fn is_crate(&self) -> bool {
-        self.is_mod() && self.item_id.as_def_id().map_or(false, |did| did.is_crate_root())
+        self.is_mod() && self.item_id.as_def_id().is_some_and(|did| did.is_crate_root())
     }
     pub(crate) fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
@@ -2359,7 +2359,7 @@ impl ConstantKind {
     pub(crate) fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
         match *self {
             ConstantKind::TyConst { .. } => false,
-            ConstantKind::Extern { def_id } => def_id.as_local().map_or(false, |def_id| {
+            ConstantKind::Extern { def_id } => def_id.as_local().is_some_and(|&def_id| {
                 is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(def_id))
             }),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
