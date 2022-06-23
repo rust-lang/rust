@@ -832,15 +832,7 @@ pub(crate) fn codegen_place<'tcx>(
     for elem in place.projection {
         match elem {
             PlaceElem::Deref => {
-                if cplace.layout().ty.is_box() {
-                    cplace = cplace
-                        .place_field(fx, Field::new(0)) // Box<T> -> Unique<T>
-                        .place_field(fx, Field::new(0)) // Unique<T> -> NonNull<T>
-                        .place_field(fx, Field::new(0)) // NonNull<T> -> *mut T
-                        .place_deref(fx);
-                } else {
-                    cplace = cplace.place_deref(fx);
-                }
+                cplace = cplace.place_deref(fx);
             }
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);
