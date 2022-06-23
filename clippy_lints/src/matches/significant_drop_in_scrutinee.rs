@@ -27,10 +27,10 @@ pub(super) fn check<'tcx>(
                 diag.span_label(s, "original temporary lives until here");
                 if let Some(spans) = has_significant_drop_in_arms(cx, arms) {
                     for span in spans {
-                        diag.span_label(span, "significant drop in arm here");
+                        diag.span_label(span, "another temporary with significant `Drop` created here");
                     }
-                    diag.note("this might lead to deadlocks or other unexpected behavior");
                 }
+                diag.note("this might lead to deadlocks or other unexpected behavior");
             });
         }
     }
@@ -89,9 +89,9 @@ fn has_significant_drop_in_scrutinee<'tcx, 'a>(
     let mut helper = SigDropHelper::new(cx);
     helper.find_sig_drop(scrutinee).map(|drops| {
         let message = if source == MatchSource::Normal {
-            "temporary with drop impl with side effects in match scrutinee lives to end of block"
+            "temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression"
         } else {
-            "temporary with drop impl with side effects in for loop condition lives to end of block"
+            "temporary with significant `Drop` in `for` loop condition will live until the end of the `for` expression"
         };
         (drops, message)
     })
