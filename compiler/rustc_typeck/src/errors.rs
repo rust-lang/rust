@@ -6,18 +6,18 @@ use rustc_session::{parse::ParseSess, SessionDiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0062", slug = "typeck-field-multiply-specified-in-initializer")]
+#[error(typeck::field_multiply_specified_in_initializer, code = "E0062")]
 pub struct FieldMultiplySpecifiedInInitializer {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label = "previous-use-label"]
+    #[label(typeck::previous_use_label)]
     pub prev_span: Span,
     pub ident: Ident,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0092", slug = "typeck-unrecognized-atomic-operation")]
+#[error(typeck::unrecognized_atomic_operation, code = "E0092")]
 pub struct UnrecognizedAtomicOperation<'a> {
     #[primary_span]
     #[label]
@@ -26,7 +26,7 @@ pub struct UnrecognizedAtomicOperation<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0094", slug = "typeck-wrong-number-of-generic-arguments-to-intrinsic")]
+#[error(typeck::wrong_number_of_generic_arguments_to_intrinsic, code = "E0094")]
 pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
     #[primary_span]
     #[label]
@@ -37,7 +37,7 @@ pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0093", slug = "typeck-unrecognized-intrinsic-function")]
+#[error(typeck::unrecognized_intrinsic_function, code = "E0093")]
 pub struct UnrecognizedIntrinsicFunction {
     #[primary_span]
     #[label]
@@ -46,19 +46,19 @@ pub struct UnrecognizedIntrinsicFunction {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0195", slug = "typeck-lifetimes-or-bounds-mismatch-on-trait")]
+#[error(typeck::lifetimes_or_bounds_mismatch_on_trait, code = "E0195")]
 pub struct LifetimesOrBoundsMismatchOnTrait {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label = "generics-label"]
+    #[label(typeck::generics_label)]
     pub generics_span: Option<Span>,
     pub item_kind: &'static str,
     pub ident: Ident,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0120", slug = "typeck-drop-impl-on-wrong-item")]
+#[error(typeck::drop_impl_on_wrong_item, code = "E0120")]
 pub struct DropImplOnWrongItem {
     #[primary_span]
     #[label]
@@ -66,18 +66,18 @@ pub struct DropImplOnWrongItem {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0124", slug = "typeck-field-already-declared")]
+#[error(typeck::field_already_declared, code = "E0124")]
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label = "previous-decl-label"]
+    #[label(typeck::previous_decl_label)]
     pub prev_span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0184", slug = "typeck-copy-impl-on-type-with-dtor")]
+#[error(typeck::copy_impl_on_type_with_dtor, code = "E0184")]
 pub struct CopyImplOnTypeWithDtor {
     #[primary_span]
     #[label]
@@ -85,14 +85,14 @@ pub struct CopyImplOnTypeWithDtor {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0203", slug = "typeck-multiple-relaxed-default-bounds")]
+#[error(typeck::multiple_relaxed_default_bounds, code = "E0203")]
 pub struct MultipleRelaxedDefaultBounds {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0206", slug = "typeck-copy-impl-on-non-adt")]
+#[error(typeck::copy_impl_on_non_adt, code = "E0206")]
 pub struct CopyImplOnNonAdt {
     #[primary_span]
     #[label]
@@ -100,23 +100,23 @@ pub struct CopyImplOnNonAdt {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0224", slug = "typeck-trait-object-declared-with-no-traits")]
+#[error(typeck::trait_object_declared_with_no_traits, code = "E0224")]
 pub struct TraitObjectDeclaredWithNoTraits {
     #[primary_span]
     pub span: Span,
-    #[label = "alias-span"]
+    #[label(typeck::alias_span)]
     pub trait_alias_span: Option<Span>,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0227", slug = "typeck-ambiguous-lifetime-bound")]
+#[error(typeck::ambiguous_lifetime_bound, code = "E0227")]
 pub struct AmbiguousLifetimeBound {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0229", slug = "typeck-assoc-type-binding-not-allowed")]
+#[error(typeck::assoc_type_binding_not_allowed, code = "E0229")]
 pub struct AssocTypeBindingNotAllowed {
     #[primary_span]
     #[label]
@@ -124,14 +124,14 @@ pub struct AssocTypeBindingNotAllowed {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0436", slug = "typeck-functional-record-update-on-non-struct")]
+#[error(typeck::functional_record_update_on_non_struct, code = "E0436")]
 pub struct FunctionalRecordUpdateOnNonStruct {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0516", slug = "typeck-typeof-reserved-keyword-used")]
+#[error(typeck::typeof_reserved_keyword_used, code = "E0516")]
 pub struct TypeofReservedKeywordUsed<'tcx> {
     pub ty: Ty<'tcx>,
     #[primary_span]
@@ -142,25 +142,25 @@ pub struct TypeofReservedKeywordUsed<'tcx> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0572", slug = "typeck-return-stmt-outside-of-fn-body")]
+#[error(typeck::return_stmt_outside_of_fn_body, code = "E0572")]
 pub struct ReturnStmtOutsideOfFnBody {
     #[primary_span]
     pub span: Span,
-    #[label = "encl-body-label"]
+    #[label(typeck::encl_body_label)]
     pub encl_body_span: Option<Span>,
-    #[label = "encl-fn-label"]
+    #[label(typeck::encl_fn_label)]
     pub encl_fn_span: Option<Span>,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0627", slug = "typeck-yield-expr-outside-of-generator")]
+#[error(typeck::yield_expr_outside_of_generator, code = "E0627")]
 pub struct YieldExprOutsideOfGenerator {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0639", slug = "typeck-struct-expr-non-exhaustive")]
+#[error(typeck::struct_expr_non_exhaustive, code = "E0639")]
 pub struct StructExprNonExhaustive {
     #[primary_span]
     pub span: Span,
@@ -168,26 +168,26 @@ pub struct StructExprNonExhaustive {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0699", slug = "typeck-method-call-on-unknown-type")]
+#[error(typeck::method_call_on_unknown_type, code = "E0699")]
 pub struct MethodCallOnUnknownType {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0719", slug = "typeck-value-of-associated-struct-already-specified")]
+#[error(typeck::value_of_associated_struct_already_specified, code = "E0719")]
 pub struct ValueOfAssociatedStructAlreadySpecified {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label = "previous-bound-label"]
+    #[label(typeck::previous_bound_label)]
     pub prev_span: Span,
     pub item_name: Ident,
     pub def_path: String,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0745", slug = "typeck-address-of-temporary-taken")]
+#[error(typeck::address_of_temporary_taken, code = "E0745")]
 pub struct AddressOfTemporaryTaken {
     #[primary_span]
     #[label]
@@ -233,7 +233,7 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "typeck-unconstrained-opaque-type")]
+#[error(typeck::unconstrained_opaque_type)]
 #[note]
 pub struct UnconstrainedOpaqueType {
     #[primary_span]
@@ -301,7 +301,7 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0183", slug = "typeck-manual-implementation")]
+#[error(typeck::manual_implementation, code = "E0183")]
 #[help]
 pub struct ManualImplementation {
     #[primary_span]
@@ -311,7 +311,7 @@ pub struct ManualImplementation {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "typeck-substs-on-overridden-impl")]
+#[error(typeck::substs_on_overridden_impl)]
 pub struct SubstsOnOverriddenImpl {
     #[primary_span]
     pub span: Span,

@@ -244,7 +244,7 @@ impl MultiSugg {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "parser-maybe-report-ambiguous-plus")]
+#[error(parser::maybe_report_ambiguous_plus)]
 struct AmbiguousPlus {
     pub sum_ty: String,
     #[primary_span]
@@ -253,7 +253,7 @@ struct AmbiguousPlus {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0178", slug = "parser-maybe-recover-from-bad-type-plus")]
+#[error(parser::maybe_recover_from_bad_type_plus, code = "E0178")]
 struct BadTypePlus {
     pub ty: String,
     #[primary_span]
@@ -287,7 +287,7 @@ pub enum BadTypePlusSub {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "parser-maybe-recover-from-bad-qpath-stage-2")]
+#[error(parser::maybe_recover_from_bad_qpath_stage_2)]
 struct BadQPathStage2 {
     #[primary_span]
     #[suggestion(applicability = "maybe-incorrect")]
@@ -296,7 +296,7 @@ struct BadQPathStage2 {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "parser-incorrect-semicolon")]
+#[error(parser::incorrect_semicolon)]
 struct IncorrectSemicolon<'a> {
     #[primary_span]
     #[suggestion_short(applicability = "machine-applicable")]
@@ -307,26 +307,26 @@ struct IncorrectSemicolon<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "parser-incorrect-use-of-await")]
+#[error(parser::incorrect_use_of_await)]
 struct IncorrectUseOfAwait {
     #[primary_span]
-    #[suggestion(message = "parentheses-suggestion", applicability = "machine-applicable")]
+    #[suggestion(parser::parentheses_suggestion, applicability = "machine-applicable")]
     span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "parser-incorrect-use-of-await")]
+#[error(parser::incorrect_use_of_await)]
 struct IncorrectAwait {
     #[primary_span]
     span: Span,
-    #[suggestion(message = "postfix-suggestion", code = "{expr}.await{question_mark}")]
+    #[suggestion(parser::postfix_suggestion, code = "{expr}.await{question_mark}")]
     sugg_span: (Span, Applicability),
     expr: String,
     question_mark: &'static str,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "parser-in-in-typo")]
+#[error(parser::in_in_typo)]
 struct InInTypo {
     #[primary_span]
     span: Span,

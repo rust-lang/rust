@@ -16,7 +16,7 @@ use rustc_session::{parse::ParseSess, SessionDiagnostic};
 use rustc_span::Span;
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "parser-expect-path")]
+#[error(parser::expect_path)]
 struct DeriveSessionDiagnostic {
     #[primary_span]
     span: Span,

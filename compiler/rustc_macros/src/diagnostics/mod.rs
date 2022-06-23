@@ -22,14 +22,14 @@ use synstructure::Structure;
 /// # extern crate rust_middle;
 /// # use rustc_middle::ty::Ty;
 /// #[derive(SessionDiagnostic)]
-/// #[error(code = "E0505", slug = "borrowck-move-out-of-borrow")]
+/// #[error(borrowck::move_out_of_borrow, code = "E0505")]
 /// pub struct MoveOutOfBorrowError<'tcx> {
 ///     pub name: Ident,
 ///     pub ty: Ty<'tcx>,
 ///     #[primary_span]
 ///     #[label]
 ///     pub span: Span,
-///     #[label = "first-borrow-label"]
+///     #[label(borrowck::first_borrow_label)]
 ///     pub first_borrow_span: Span,
 ///     #[suggestion(code = "{name}.clone()")]
 ///     pub clone_sugg: Option<(Span, Applicability)>

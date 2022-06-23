@@ -36,7 +36,7 @@ pub fn expand_cfg(
 }
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "builtin-macros-requires-cfg-pattern")]
+#[error(builtin_macros::requires_cfg_pattern)]
 struct RequiresCfgPattern {
     #[primary_span]
     #[label]
@@ -44,7 +44,7 @@ struct RequiresCfgPattern {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "builtin-macros-expected-one-cfg-pattern")]
+#[error(builtin_macros::expected_one_cfg_pattern)]
 struct OneCfgPattern {
     #[primary_span]
     span: Span,
