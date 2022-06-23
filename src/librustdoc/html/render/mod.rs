@@ -707,12 +707,14 @@ fn assoc_const(
         ty = ty.print(cx),
     );
     if let Some(default) = default {
+        write!(w, " = ");
+
         // FIXME: `.value()` uses `clean::utils::format_integer_with_underscore_sep` under the
         //        hood which adds noisy underscores and a type suffix to number literals.
         //        This hurts readability in this context especially when more complex expressions
         //        are involved and it doesn't add much of value.
         //        Find a way to print constants here without all that jazz.
-        write!(w, " = {}", default.value(cx.tcx()).unwrap_or_else(|| default.expr(cx.tcx())));
+        write!(w, "{}", Escape(&default.value(cx.tcx()).unwrap_or_else(|| default.expr(cx.tcx()))));
     }
 }
 
