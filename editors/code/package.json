@@ -49,6 +49,7 @@
         "esbuild": "^0.14.27",
         "eslint": "^8.11.0",
         "eslint-config-prettier": "^8.5.0",
+        "ovsx": "^0.5.1",
         "prettier": "^2.6.2",
         "tslib": "^2.3.0",
         "typescript": "^4.6.3",
