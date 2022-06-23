@@ -844,9 +844,13 @@ impl Error {
             ErrorData::Custom(b) if b.error.is::<E>() => {
                 let res = (*b).error.downcast::<E>();
 
-                // Safety: b.error.is::<E>() returns true,
-                // which means that res must be Ok(e).
-                Ok(unsafe { res.unwrap_unchecked() })
+                // downcast is a really trivial and is marked as inline, so
+                // it's likely be inlined here.
+                //
+                // And the compiler should be able to eliminate the branch
+                // that produces `Err` here since b.error.is::<E>()
+                // returns true.
+                Ok(res.unwrap())
             }
             repr_data => Err(Self { repr: Repr::new(repr_data) }),
         }
