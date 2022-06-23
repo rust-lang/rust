@@ -3497,9 +3497,27 @@ impl HasCrate for AssocItem {
     }
 }
 
+impl HasCrate for Struct {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
+    }
+}
+
+impl HasCrate for Union {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
+    }
+}
+
 impl HasCrate for Field {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
         self.parent_def(db).module(db).krate()
+    }
+}
+
+impl HasCrate for Variant {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
     }
 }
 
