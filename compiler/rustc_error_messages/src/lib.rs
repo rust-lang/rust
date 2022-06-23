@@ -33,6 +33,7 @@ pub use unic_langid::{langid, LanguageIdentifier};
 fluent_messages! {
     parser => "../locales/en-US/parser.ftl",
     typeck => "../locales/en-US/typeck.ftl",
+    builtin_macros => "../locales/en-US/builtin_macros.ftl",
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};
