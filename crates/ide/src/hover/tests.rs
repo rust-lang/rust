@@ -3808,6 +3808,7 @@ fn foo() {
 /// [closure]
 /// [closures][closure]
 /// [threads]
+/// <https://doc.rust-lang.org/nightly/book/ch13-01-closures.html>
 ///
 /// [closure]: ../book/ch13-01-closures.html
 /// [threads]: ../book/ch16-01-threads.html#using-move-closures-with-threads
@@ -3825,6 +3826,7 @@ mod move_keyword {}
             [closure](https://doc.rust-lang.org/nightly/book/ch13-01-closures.html)
             [closures](https://doc.rust-lang.org/nightly/book/ch13-01-closures.html)
             [threads](https://doc.rust-lang.org/nightly/book/ch16-01-threads.html#using-move-closures-with-threads)
+            <https://doc.rust-lang.org/nightly/book/ch13-01-closures.html>
         "##]],
     );
 }

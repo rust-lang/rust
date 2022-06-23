@@ -363,7 +363,7 @@ fn map_links<'e>(
     let mut end_link_target: Option<CowStr> = None;
     // normally link's type is determined by the type of link tag in the end event,
     // however in some cases we want to change the link type, for example,
-    // `Shortcut` type doesn't make sense for url links
+    // `Shortcut` type parsed from Start/End tags doesn't make sense for url links
     let mut end_link_type: Option<LinkType> = None;
 
     events.map(move |evt| match evt {
