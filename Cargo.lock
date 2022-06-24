@@ -218,6 +218,7 @@ dependencies = [
  "getopts",
  "ignore",
  "libc",
+ "num_cpus",
  "once_cell",
  "opener",
  "pretty_assertions",
@@ -247,6 +248,7 @@ dependencies = [
  "anyhow",
  "flate2",
  "hex 0.4.2",
+ "num_cpus",
  "rayon",
  "serde",
  "serde_json",
@@ -346,6 +348,7 @@ dependencies = [
  "libgit2-sys",
  "log",
  "memchr",
+ "num_cpus",
  "opener",
  "openssl",
  "os_info",
@@ -4338,6 +4341,7 @@ name = "rustc_session"
 version = "0.0.0"
 dependencies = [
  "getopts",
+ "num_cpus",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",

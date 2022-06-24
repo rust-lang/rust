@@ -590,28 +590,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     self.nbsp();
                 }
                 self.word("{");
-                let empty = tts.is_empty();
-                if !empty {
+                if !tts.is_empty() {
                     self.space();
                 }
                 self.ibox(0);
                 self.print_tts(tts, convert_dollar_crate);
                 self.end();
+                let empty = tts.is_empty();
                 self.bclose(span, empty);
-            }
-            Some(Delimiter::Invisible) => {
-                self.word("/*«*/");
-                let empty = tts.is_empty();
-                if !empty {
-                    self.space();
-                }
-                self.ibox(0);
-                self.print_tts(tts, convert_dollar_crate);
-                self.end();
-                if !empty {
-                    self.space();
-                }
-                self.word("/*»*/");
             }
             Some(delim) => {
                 let token_str = self.token_kind_to_string(&token::OpenDelim(delim));
@@ -786,8 +772,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::CloseDelim(Delimiter::Bracket) => "]".into(),
             token::OpenDelim(Delimiter::Brace) => "{".into(),
             token::CloseDelim(Delimiter::Brace) => "}".into(),
-            token::OpenDelim(Delimiter::Invisible) => "/*«*/".into(),
-            token::CloseDelim(Delimiter::Invisible) => "/*»*/".into(),
+            token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible) => {
+                "".into()
+            }
             token::Pound => "#".into(),
             token::Dollar => "$".into(),
             token::Question => "?".into(),
