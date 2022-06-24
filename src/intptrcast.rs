@@ -101,14 +101,17 @@ impl<'mir, 'tcx> GlobalStateInner {
         }
     }
 
-    pub fn expose_addr(ecx: &MiriEvalContext<'mir, 'tcx>, alloc_id: AllocId) {
+    pub fn expose_ptr(ecx: &mut MiriEvalContext<'mir, 'tcx>, alloc_id: AllocId, sb: SbTag) {
         trace!("Exposing allocation id {:?}", alloc_id);
 
-        let mut global_state = ecx.machine.intptrcast.borrow_mut();
+        let global_state = ecx.machine.intptrcast.get_mut();
         // In legacy and strict mode, we don't need this, so we can save some cycles
         // by not tracking it.
         if global_state.provenance_mode == ProvenanceMode::Permissive {
             global_state.exposed.insert(alloc_id);
+            if ecx.machine.stacked_borrows.is_some() {
+                ecx.expose_tag(alloc_id, sb);
+            }
         }
     }
 

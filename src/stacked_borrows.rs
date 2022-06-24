@@ -117,7 +117,7 @@ pub struct Stacks {
     stacks: RefCell<RangeMap<Stack>>,
     /// Stores past operations on this allocation
     history: RefCell<AllocHistory>,
-    /// The set of tags that have been exposed
+    /// The set of tags that have been exposed inside this allocation.
     exposed_tags: RefCell<FxHashSet<SbTag>>,
 }
 
@@ -709,26 +709,6 @@ impl Stacks {
     }
 
     #[inline(always)]
-    pub fn ptr_exposed<'tcx>(
-        &self,
-        alloc_id: AllocId,
-        tag: SbTag,
-        range: AllocRange,
-        _state: &GlobalState,
-    ) -> InterpResult<'tcx> {
-        trace!(
-            "allocation exposed with tag {:?}: {:?}, size {}",
-            tag,
-            Pointer::new(alloc_id, range.start),
-            range.size.bytes()
-        );
-
-        self.exposed_tags.borrow_mut().insert(tag);
-
-        Ok(())
-    }
-
-    #[inline(always)]
     pub fn memory_read<'tcx>(
         &self,
         alloc_id: AllocId,
@@ -1095,5 +1075,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.frame_mut().return_place = return_place.into();
 
         Ok(())
+    }
+
+    /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.
+    fn expose_tag(&mut self, alloc_id: AllocId, tag: SbTag) {
+        let this = self.eval_context_mut();
+
+        // Function pointers and dead objects don't have an alloc_extra so we ignore them.
+        // This is okay because accessing them is UB anyway, no need for any Stacked Borrows checks.
+        // FIXME: this catches `InterpError`, which we should not usually do.
+        // We might need a proper fallible API from `memory.rs` to avoid this though.
+        if let Ok((alloc_extra, _)) = this.get_alloc_extra_mut(alloc_id) {
+            alloc_extra.stacked_borrows.as_mut().unwrap().exposed_tags.get_mut().insert(tag);
+        }
     }
 }

@@ -489,6 +489,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     type AllocExtra = AllocExtra;
 
     type PointerTag = Tag;
+    // `None` represents a wildcard pointer.
     type TagExtra = Option<SbTag>;
 
     type MemoryMap =
@@ -709,22 +710,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         match ptr.provenance {
             Tag::Concrete(ConcreteTag { alloc_id, sb }) => {
-                intptrcast::GlobalStateInner::expose_addr(ecx, alloc_id);
-
-                let (size, _) =
-                    ecx.get_alloc_size_and_align(alloc_id, AllocCheck::MaybeDead).unwrap();
-
-                // Function pointers and dead objects don't have an alloc_extra so we ignore them.
-                if let Ok(alloc_extra) = ecx.get_alloc_extra(alloc_id) {
-                    if let Some(stacked_borrows) = &alloc_extra.stacked_borrows {
-                        stacked_borrows.ptr_exposed(
-                            alloc_id,
-                            sb,
-                            alloc_range(Size::from_bytes(0), size),
-                            ecx.machine.stacked_borrows.as_ref().unwrap(),
-                        )?;
-                    }
-                }
+                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, sb);
             }
             Tag::Wildcard => {
                 // No need to do anything for wildcard pointers as
