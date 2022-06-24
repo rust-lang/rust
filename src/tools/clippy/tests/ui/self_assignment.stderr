@@ -1,3 +1,17 @@
+error: this operation will panic at runtime
+  --> $DIR/self_assignment.rs:16:15
+   |
+LL |     s.b[10] = s.b[5 + 5];
+   |               ^^^^^^^^^^ index out of bounds: the length is 10 but the index is 10
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: this operation will panic at runtime
+  --> $DIR/self_assignment.rs:16:5
+   |
+LL |     s.b[10] = s.b[5 + 5];
+   |     ^^^^^^^ index out of bounds: the length is 10 but the index is 10
+
 error: self-assignment of `a` to `a`
   --> $DIR/self_assignment.rs:12:5
    |
@@ -66,5 +80,5 @@ error: self-assignment of `(t.0)` to `t.0`
 LL |     t.0 = (t.0);
    |     ^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 13 previous errors
 

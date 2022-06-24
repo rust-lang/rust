@@ -501,12 +501,23 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 return None;
             }
 
+            Rvalue::Len(len_place) => {
+                // To get the length of an array, we don't need to know the value.
+                let ty = len_place.ty(self.local_decls, self.tcx).ty;
+                if let &ty::Array(_, len) = ty.kind() {
+                    return self.use_ecx(source_info, |this| {
+                        let const_len = this.ecx.const_to_op(len, None)?;
+                        let ecx_place = this.ecx.eval_place(place)?;
+                        this.ecx.copy_op(&const_len, &ecx_place, /*allow_transmute*/ false)
+                    });
+                }
+            }
+
             // There's no other checking to do at this time.
             Rvalue::Aggregate(..)
             | Rvalue::Use(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
-            | Rvalue::Len(..)
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::Discriminant(..)
