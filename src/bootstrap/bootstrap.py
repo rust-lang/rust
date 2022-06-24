@@ -989,6 +989,7 @@ def bootstrap(help_triggered):
     parser.add_argument('--config')
     parser.add_argument('--build')
     parser.add_argument('--clean', action='store_true')
+    parser.add_argument('--download-only', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
     args = [a for a in sys.argv if a != '-h' and a != '--help']
@@ -1056,6 +1057,11 @@ def bootstrap(help_triggered):
 
     # Fetch/build the bootstrap
     build.download_toolchain()
+
+    if args.download_only:
+        print("info: Exiting early because download-only was set.")
+        exit(0)
+
     sys.stdout.flush()
     build.ensure_vendored()
     build.build_bootstrap()
@@ -1091,7 +1097,7 @@ def main():
         else:
             exit_code = 1
             print(error)
-        if not help_triggered:
+        if not help_triggered and exit_code != 0:
             print("Build completed unsuccessfully in {}".format(
                 format_build_time(time() - start_time)))
         sys.exit(exit_code)
