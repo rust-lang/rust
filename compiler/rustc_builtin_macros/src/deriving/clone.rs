@@ -116,7 +116,7 @@ pub fn expand_deriving_clone(
             ret_ty: nil_ty(),
             attributes: attrs.to_vec(),
             is_unsafe: false,
-            unify_fieldless_variants: false,
+            unify_fieldless_variants: true,
             combine_substructure: substructure_clone_from,
         })
     }
@@ -267,19 +267,18 @@ fn cs_clone_from(
     let all_fields = match *substr.fields {
         Struct(.., ref af) => af,
         EnumMatching(.., ref af) => af,
-        EnumNonMatchingCollapsed(ref idents, ..) => {
+        EnumNonMatchingCollapsed(..) => {
             // Cannot do something smart here.
             // so emit `*self = other.clone();`
 
-            let [self_, other] = idents[..] else{
+            let [self_, other] = &substr.self_args[..] else{
                 cx.span_bug(trait_span, &format!("not exactly 2 arguments in `clone_from` in `derive({})`", name))
             };
-            let self_ = cx.expr_deref(trait_span, cx.expr_ident(trait_span, self_));
-            let other = cx.expr_ident(trait_span, other);
+            let self_ = self_.clone();
             let clone_call = cx.expr_call_global(
                 trait_span,
                 clone_fn_full_path(cx),
-                vec![cx.expr_addr_of(trait_span, other)],
+                vec![cx.expr_addr_of(trait_span, other.clone())],
             );
             return cx.expr(trait_span, ast::ExprKind::Assign(self_, clone_call, trait_span));
         }

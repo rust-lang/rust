@@ -185,7 +185,6 @@ use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, BinOpKind, EnumDef, Expr, Generics, PatKind};
 use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
-use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
@@ -1207,7 +1206,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
         type_ident: Ident,
-        mut self_args: Vec<P<Expr>>,
+        self_args: Vec<P<Expr>>,
         nonself_args: &[P<Expr>],
     ) -> P<Expr> {
         let span = trait_.span;
@@ -1247,6 +1246,13 @@ impl<'a> MethodDef<'a> {
 
         let first_fieldless = variants.iter().find(|v| v.data.fields().is_empty());
 
+        // Support mutability only for `&mut self` for now.
+        let self_mutbl = match &self.explicit_self {
+            Some(Some(PtrTy::Borrowed(_, mutbl))) => *mutbl,
+            Some(Some(PtrTy::Raw(mutbl))) => *mutbl,
+            _ => ast::Mutability::Not,
+        };
+
         // These arms are of the form:
         // (Variant1, Variant1, ...) => Body1
         // (Variant2, Variant2, ...) => Body2
@@ -1257,12 +1263,6 @@ impl<'a> MethodDef<'a> {
             .enumerate()
             .filter(|&(_, v)| !(self.unify_fieldless_variants && v.data.fields().is_empty()))
             .map(|(index, variant)| {
-                // Support mutability only for `&mut self` for now.
-                let self_mutbl = match &self.explicit_self {
-                    Some(Some(PtrTy::Borrowed(_, mutbl))) => *mutbl,
-                    Some(Some(PtrTy::Raw(mutbl))) => *mutbl,
-                    _ => ast::Mutability::Not,
-                };
                 let mk_self_pat =
                     |cx: &mut ExtCtxt<'_>, self_arg_name: &str, mutbl: ast::Mutability| {
                         let (p, idents) = trait_.create_enum_variant_pattern(
@@ -1454,7 +1454,17 @@ impl<'a> MethodDef<'a> {
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            self_args.map_in_place(|self_arg| cx.expr_addr_of(span, self_arg));
+            let self_args: Vec<_> = self_args
+                .into_iter()
+                .enumerate()
+                .map(|(i, self_arg)| {
+                    if i == 0 && self_mutbl == ast::Mutability::Mut {
+                        cx.expr_addr_of_mut(span, self_arg)
+                    } else {
+                        cx.expr_addr_of(span, self_arg)
+                    }
+                })
+                .collect();
             let match_arg = cx.expr(span, ast::ExprKind::Tup(self_args));
 
             // Lastly we create an expression which branches on all discriminants being equal
@@ -1530,7 +1540,17 @@ impl<'a> MethodDef<'a> {
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            self_args.map_in_place(|self_arg| cx.expr_addr_of(span, self_arg));
+            let self_args: Vec<_> = self_args
+                .into_iter()
+                .enumerate()
+                .map(|(i, self_arg)| {
+                    if i == 0 && self_mutbl == ast::Mutability::Mut {
+                        cx.expr_addr_of_mut(span, self_arg)
+                    } else {
+                        cx.expr_addr_of(span, self_arg)
+                    }
+                })
+                .collect();
             let match_arg = cx.expr(span, ast::ExprKind::Tup(self_args));
             cx.expr_match(span, match_arg, match_arms)
         }
