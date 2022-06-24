@@ -1713,6 +1713,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c21d40587b92fa6a6c6e3c1bdbf87d75511db5672f9c93175574b3a00df1758"
 dependencies = [
+ "ahash",
  "compiler_builtins",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
@@ -2567,6 +2568,18 @@ dependencies = [
  "crc32fast",
  "flate2",
  "hashbrown 0.11.2",
+ "indexmap",
+ "memchr",
+]
+
+[[package]]
+name = "object"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
+dependencies = [
+ "crc32fast",
+ "hashbrown 0.12.0",
  "indexmap",
  "memchr",
 ]
@@ -3720,7 +3733,7 @@ dependencies = [
  "itertools",
  "jobserver",
  "libc",
- "object 0.28.4",
+ "object 0.29.0",
  "pathdiff",
  "regex",
  "rustc_apfloat",
