@@ -856,7 +856,7 @@ pub trait PrettyPrinter<'tcx>:
                     p!(")");
                     if let Term::Ty(ty) = return_ty.skip_binder() {
                         if !ty.is_unit() {
-                            p!("-> ", print(return_ty));
+                            p!(" -> ", print(return_ty));
                         }
                     }
                     p!(write("{}", if paren_needed { ")" } else { "" }));
