@@ -1,8 +1,5 @@
-use hir::{ItemInNs, ModuleDef};
-use ide_db::{
-    assists::{AssistId, AssistKind},
-    imports::import_assets::item_for_path_search,
-};
+use hir::{db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, ItemInNs, ModuleDef};
+use ide_db::assists::{AssistId, AssistKind};
 use syntax::{ast, AstNode};
 
 use crate::{
@@ -65,6 +62,33 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext) -> Opt
         },
     );
     Some(())
+}
+
+fn item_for_path_search(db: &dyn HirDatabase, item: ItemInNs) -> Option<ItemInNs> {
+    Some(match item {
+        ItemInNs::Types(_) | ItemInNs::Values(_) => match item_as_assoc(db, item) {
+            Some(assoc_item) => match assoc_item.container(db) {
+                AssocItemContainer::Trait(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
+                AssocItemContainer::Impl(impl_) => {
+                    let impled_trait = if matches!(assoc_item, AssocItem::Function(..)) {
+                        impl_.trait_(db)
+                    } else {
+                        None
+                    };
+                    match impled_trait {
+                        None => ItemInNs::from(ModuleDef::from(impl_.self_ty(db).as_adt()?)),
+                        Some(t) => ItemInNs::from(ModuleDef::from(t)),
+                    }
+                }
+            },
+            None => item,
+        },
+        ItemInNs::Macros(_) => item,
+    })
+}
+
+fn item_as_assoc(db: &dyn HirDatabase, item: ItemInNs) -> Option<AssocItem> {
+    item.as_module_def().and_then(|module_def| module_def.as_assoc_item(db))
 }
 
 #[cfg(test)]
@@ -281,7 +305,7 @@ use test_mod::*;
 
 fn main() {
     let test_struct = test_mod::TestStruct {};
-    TestStruct::test_method(&test_struct)
+    TestTrait::test_method(&test_struct)
 }
 "#,
         );
@@ -324,7 +348,7 @@ use test_mod::*;
 
 fn main() {
     let test_struct = test_mod::TestStruct {};
-    TestStruct::test_method(&test_struct, 12, 32u)
+    TestTrait::test_method(&test_struct, 12, 32u)
 }
 "#,
         );
@@ -367,7 +391,7 @@ use test_mod::*;
 
 fn main() {
     let test_struct = test_mod::TestStruct {};
-    TestStruct::test_method(test_struct, 12, 32u)
+    TestTrait::test_method(test_struct, 12, 32u)
 }
 "#,
         );
@@ -410,7 +434,7 @@ use test_mod::*;
 
 fn main() {
     let test_struct = test_mod::TestStruct {};
-    TestStruct::test_method(&mut test_struct, 12, 32u)
+    TestTrait::test_method(&mut test_struct, 12, 32u)
 }
 "#,
         );
@@ -480,7 +504,7 @@ use test_mod::*;
 
 fn main() {
     let test_struct = TestStruct {};
-    TestStruct::test_method::<()>(&test_struct)
+    TestTrait::test_method::<()>(&test_struct)
 }
 "#,
         );
