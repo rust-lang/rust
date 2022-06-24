@@ -4,6 +4,7 @@
 
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
 
 use super::{InterpCx, Machine};
@@ -251,9 +252,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Len(place) => {
                 let src = self.eval_place(place)?;
-                let mplace = self.force_allocation(&src)?;
-                let len = mplace.len(self)?;
-                self.write_scalar(Scalar::from_machine_usize(len, self), &dest)?;
+                if let &ty::Array(_, len) = src.layout.ty.kind() {
+                    let len = self.const_to_op(len, Some(dest.layout))?;
+                    self.copy_op(&len, &dest, /*allow_transmute*/ false)?;
+                } else {
+                    let mplace = self.force_allocation(&src)?;
+                    let len = mplace.len(self)?;
+                    self.write_scalar(Scalar::from_machine_usize(len, self), &dest)?;
+                }
             }
 
             AddressOf(_, place) | Ref(_, _, place) => {

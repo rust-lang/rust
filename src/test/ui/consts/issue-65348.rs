@@ -1,4 +1,5 @@
 // check-pass
+#![allow(unconditional_panic)]
 
 struct Generic<T>(T);
 
