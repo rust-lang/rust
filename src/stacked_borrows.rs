@@ -104,9 +104,10 @@ pub struct Stack {
     /// * Above a `SharedReadOnly` there can only be more `SharedReadOnly`.
     /// * Except for `Untagged`, no tag occurs in the stack more than once.
     borrows: Vec<Item>,
-    /// If this is `Some(id)`, then the actual current stack is unknown. What we do know
-    /// is that `borrows` are at the top of the stack, and below it are arbitrarily many items
-    /// whose `tag` is either `Untagged` or strictly less than `id`.
+    /// If this is `Some(id)`, then the actual current stack is unknown. THis can happen when
+    /// wildcard pointers are used to access this location. What we do know is that `borrows` are at
+    /// the top of the stack, and below it are arbitrarily many items whose `tag` is either
+    /// `Untagged` or strictly less than `id`.
     unknown_bottom: Option<PtrId>,
 }
 
@@ -289,72 +290,72 @@ impl Permission {
 impl<'tcx> Stack {
     /// Find the item granting the given kind of access to the given tag, and return where
     /// it is on the stack.
-    // TODO: Doc ok with Some(index) or None if unknown_bottom used
-    // Err if does not match
+    /// `Ok(None)` indicates it matched the "unknown" part of the stack, or it was a wildcard tag
+    /// and we have no clue what exactly it matched (but it could have matched something)
+    /// `Err` indicates it was not found.
     fn find_granting(
         &self,
         access: AccessKind,
         tag: Option<SbTag>,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> Result<Option<usize>, ()> {
-        let res = self
-            .borrows
-            .iter()
-            .enumerate() // we also need to know *where* in the stack
-            .rev() // search top-to-bottom
-            // Return permission of first item that grants access.
-            // We require a permission with the right tag, ensuring U3 and F3.
-            .find_map(|(idx, item)| {
-                match tag {
-                    Some(tag) if tag == item.tag && item.perm.grants(access) => Some(idx),
-                    None if exposed_tags.contains(&item.tag) => Some(idx),
-                    _ => None,
-                }
-            });
+        let Some(tag) = tag else {
+            // Handle the wildcard case.
+            // Go search the stack for an exposed tag.
+            let maybe_in_stack = self
+                .borrows
+                .iter()
+                .rev() // search top-to-bottom
+                .find_map(|item| {
+                    // If the item fits and *might* be this wildcard, use it.
+                    if item.perm.grants(access) && exposed_tags.contains(&item.tag) {
+                        Some(())
+                    } else {
+                        None
+                    }
+                })
+                .is_some();
+            // If we couldn't find it in the stack, check the unknown bottom.
+            let found = maybe_in_stack || self.unknown_bottom.is_some();
+            return if found { Ok(None) } else { Err(()) };
+        };
 
-        if res.is_some() {
-            return Ok(res);
+        if let Some(idx) =
+            self.borrows
+                .iter()
+                .enumerate() // we also need to know *where* in the stack
+                .rev() // search top-to-bottom
+                // Return permission of first item that grants access.
+                // We require a permission with the right tag, ensuring U3 and F3.
+                .find_map(|(idx, item)| {
+                    if tag == item.tag && item.perm.grants(access) { Some(idx) } else { None }
+                })
+        {
+            return Ok(Some(idx));
         }
 
-        match self.unknown_bottom {
-            Some(id) =>
-                match tag {
-                    Some(tag) =>
-                        match tag {
-                            SbTag::Tagged(tag_id) if tag_id < id => Ok(None),
-                            SbTag::Untagged => Ok(None),
-                            _ => Err(()),
-                        },
-                    None => Ok(None),
-                },
-            None => Err(()),
-        }
+        // Couldn't find it in the stack; but if there is an unknown bottom it might be there.
+        let found = self.unknown_bottom.is_some_and(|&unknown_limit| {
+            match tag {
+                SbTag::Tagged(tag_id) => tag_id < unknown_limit, // unknown_limit is an upper bound for what can be in the unknown bottom.
+                SbTag::Untagged => true,                         // yeah whatever
+            }
+        });
+        if found { Ok(None) } else { Err(()) }
     }
 
     /// Find the first write-incompatible item above the given one --
     /// i.e, find the height to which the stack will be truncated when writing to `granting`.
-    fn find_first_write_incompatible(&self, granting: Option<usize>) -> usize {
-        let perm = if let Some(idx) = granting {
-            self.borrows[idx].perm
-        } else {
-            // I assume this has to be it?
-            Permission::SharedReadWrite
-        };
-
+    fn find_first_write_incompatible(&self, granting: usize) -> usize {
+        let perm = self.borrows[granting].perm;
         match perm {
             Permission::SharedReadOnly => bug!("Cannot use SharedReadOnly for writing"),
             Permission::Disabled => bug!("Cannot use Disabled for anything"),
             // On a write, everything above us is incompatible.
-            Permission::Unique =>
-                if let Some(idx) = granting {
-                    idx + 1
-                } else {
-                    0
-                },
+            Permission::Unique => granting + 1,
             Permission::SharedReadWrite => {
                 // The SharedReadWrite *just* above us are compatible, to skip those.
-                let mut idx = if let Some(idx) = granting { idx + 1 } else { 0 };
-
+                let mut idx = granting + 1;
                 while let Some(item) = self.borrows.get(idx) {
                     if item.perm == Permission::SharedReadWrite {
                         // Go on.
@@ -440,52 +441,57 @@ impl<'tcx> Stack {
             alloc_history.access_error(access, tag, alloc_id, alloc_range, offset, self)
         })?;
 
+        let Some(granting_idx) = granting_idx else {
+            // The access used a wildcard pointer or matched the unknown bottom.
+            // Nobody knows what happened, so forget everything.
+            trace!("access: clearing stack due to wildcard");
+            self.borrows.clear();
+            self.unknown_bottom = Some(global.next_ptr_id);
+            return Ok(());
+        };
+        let tag = tag.unwrap(); // only precise tags have precise locations
+
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
         // items.  Behavior differs for reads and writes.
-        if let Some(tag) = tag {
-            if access == AccessKind::Write {
-                // Remove everything above the write-compatible items, like a proper stack. This makes sure read-only and unique
-                // pointers become invalid on write accesses (ensures F2a, and ensures U2 for write accesses).
-                let first_incompatible_idx = self.find_first_write_incompatible(granting_idx);
-                for item in self.borrows.drain(first_incompatible_idx..).rev() {
-                    trace!("access: popping item {:?}", item);
+        if access == AccessKind::Write {
+            // Remove everything above the write-compatible items, like a proper stack. This makes sure read-only and unique
+            // pointers become invalid on write accesses (ensures F2a, and ensures U2 for write accesses).
+            let first_incompatible_idx = self.find_first_write_incompatible(granting_idx);
+            for item in self.borrows.drain(first_incompatible_idx..).rev() {
+                trace!("access: popping item {:?}", item);
+                Stack::check_protector(
+                    &item,
+                    Some((tag, alloc_range, offset, access)),
+                    global,
+                    alloc_history,
+                )?;
+                alloc_history.log_invalidation(item.tag, alloc_range, current_span);
+            }
+        } else {
+            // On a read, *disable* all `Unique` above the granting item.  This ensures U2 for read accesses.
+            // The reason this is not following the stack discipline (by removing the first Unique and
+            // everything on top of it) is that in `let raw = &mut *x as *mut _; let _val = *x;`, the second statement
+            // would pop the `Unique` from the reborrow of the first statement, and subsequently also pop the
+            // `SharedReadWrite` for `raw`.
+            // This pattern occurs a lot in the standard library: create a raw pointer, then also create a shared
+            // reference and use that.
+            // We *disable* instead of removing `Unique` to avoid "connecting" two neighbouring blocks of SRWs.
+            let first_incompatible_idx = granting_idx + 1;
+            for idx in (first_incompatible_idx..self.borrows.len()).rev() {
+                let item = &mut self.borrows[idx];
+
+                if item.perm == Permission::Unique {
+                    trace!("access: disabling item {:?}", item);
                     Stack::check_protector(
-                        &item,
+                        item,
                         Some((tag, alloc_range, offset, access)),
                         global,
                         alloc_history,
                     )?;
+                    item.perm = Permission::Disabled;
                     alloc_history.log_invalidation(item.tag, alloc_range, current_span);
                 }
-            } else {
-                let start_idx = if let Some(idx) = granting_idx { idx + 1 } else { 0 };
-                // On a read, *disable* all `Unique` above the granting item.  This ensures U2 for read accesses.
-                // The reason this is not following the stack discipline (by removing the first Unique and
-                // everything on top of it) is that in `let raw = &mut *x as *mut _; let _val = *x;`, the second statement
-                // would pop the `Unique` from the reborrow of the first statement, and subsequently also pop the
-                // `SharedReadWrite` for `raw`.
-                // This pattern occurs a lot in the standard library: create a raw pointer, then also create a shared
-                // reference and use that.
-                // We *disable* instead of removing `Unique` to avoid "connecting" two neighbouring blocks of SRWs.
-                for idx in (start_idx..self.borrows.len()).rev() {
-                    let item = &mut self.borrows[idx];
-
-                    if item.perm == Permission::Unique {
-                        trace!("access: disabling item {:?}", item);
-                        Stack::check_protector(
-                            item,
-                            Some((tag, alloc_range, offset, access)),
-                            global,
-                            alloc_history,
-                        )?;
-                        item.perm = Permission::Disabled;
-                        alloc_history.log_invalidation(item.tag, alloc_range, current_span);
-                    }
-                }
             }
-        } else {
-            self.borrows.clear();
-            self.unknown_bottom = Some(global.next_ptr_id);
         }
 
         // Done.
@@ -502,7 +508,7 @@ impl<'tcx> Stack {
         alloc_history: &mut AllocHistory,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> InterpResult<'tcx> {
-        // Step 1: Find granting item.
+        // Step 1: Make sure there is a granting item.
         self.find_granting(AccessKind::Write, tag, exposed_tags).map_err(|_| {
             err_sb_ub(format!(
                 "no item granting write access for deallocation to tag {:?} at {:?} found in borrow stack",
@@ -556,17 +562,20 @@ impl<'tcx> Stack {
                 "this case only makes sense for stack-like accesses"
             );
 
-            if derived_from.is_some() {
-                // SharedReadWrite can coexist with "existing loans", meaning they don't act like a write
-                // access.  Instead of popping the stack, we insert the item at the place the stack would
-                // be popped to (i.e., we insert it above all the write-compatible items).
-                // This ensures F2b by adding the new item below any potentially existing `SharedReadOnly`.
-                self.find_first_write_incompatible(granting_idx)
-            } else {
-                // TODO: is this correct
+            let Some(granting_idx) = granting_idx else {
+                // The parent is a wildcard pointer or matched the unknown bottom.
+                // Nobody knows what happened, so forget everything.
+                trace!("reborrow: clearing stack due to wildcard");
                 self.borrows.clear();
-                0
-            }
+                self.unknown_bottom = Some(global.next_ptr_id);
+                return Ok(());
+            };
+
+            // SharedReadWrite can coexist with "existing loans", meaning they don't act like a write
+            // access.  Instead of popping the stack, we insert the item at the place the stack would
+            // be popped to (i.e., we insert it above all the write-compatible items).
+            // This ensures F2b by adding the new item below any potentially existing `SharedReadOnly`.
+            self.find_first_write_incompatible(granting_idx)
         } else {
             // A "safe" reborrow for a pointer that actually expects some aliasing guarantees.
             // Here, creating a reference actually counts as an access.
@@ -587,9 +596,11 @@ impl<'tcx> Stack {
             // This ensures U1 and F1.
             self.borrows.len()
         };
+
         // Put the new item there. As an optimization, deduplicate if it is equal to one of its new neighbors.
+        // `new_idx` might be 0 if we just cleared the entire stack.
         if self.borrows.get(new_idx) == Some(&new)
-            || new_idx > 0 && self.borrows.get(new_idx - 1) == Some(&new)
+            || (new_idx > 0 && self.borrows[new_idx - 1] == new)
         {
             // Optimization applies, done.
             trace!("reborrow: avoiding adding redundant item {:?}", new);
@@ -648,7 +659,7 @@ impl<'tcx> Stacks {
         ) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
         let stacks = self.stacks.get_mut();
-        let history = &mut *self.history.borrow_mut();
+        let history = &mut *self.history.get_mut();
         let exposed_tags = self.exposed_tags.get_mut();
         for (offset, stack) in stacks.iter_mut(range.start, range.size) {
             f(offset, stack, history, exposed_tags)?;
@@ -1083,10 +1094,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Function pointers and dead objects don't have an alloc_extra so we ignore them.
         // This is okay because accessing them is UB anyway, no need for any Stacked Borrows checks.
+        // NOT using `get_alloc_extra_mut` since this might be a read-only allocation!
         // FIXME: this catches `InterpError`, which we should not usually do.
         // We might need a proper fallible API from `memory.rs` to avoid this though.
-        if let Ok((alloc_extra, _)) = this.get_alloc_extra_mut(alloc_id) {
-            alloc_extra.stacked_borrows.as_mut().unwrap().exposed_tags.get_mut().insert(tag);
+        match this.get_alloc_extra(alloc_id) {
+            Ok(alloc_extra) => {
+                trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id}");
+                alloc_extra.stacked_borrows.as_ref().unwrap().exposed_tags.borrow_mut().insert(tag);
+            }
+            Err(err) => {
+                trace!(
+                    "Not exposing Stacked Borrows tag {tag:?} due to error \
+                    when accessing {alloc_id}: {err}"
+                );
+            }
         }
     }
 }

@@ -358,9 +358,7 @@ to Miri failing to detect cases of undefined behavior in a program.
   for pointer-to-int and int-to-pointer casts, respectively. This will
   necessarily miss some bugs as those semantics are not efficiently
   implementable in a sanitizer, but it will only miss bugs that concerns
-  memory/pointers which is subject to these operations. Also note that this flag
-  is currently incompatible with Stacked Borrows, so you will have to also pass
-  `-Zmiri-disable-stacked-borrows` to use this.
+  memory/pointers which is subject to these operations.
 * `-Zmiri-symbolic-alignment-check` makes the alignment check more strict.  By
   default, alignment is checked by casting the pointer to an integer, and making
   sure that is a multiple of the alignment.  This can lead to cases where a

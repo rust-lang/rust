@@ -6,6 +6,7 @@
 #![feature(let_else)]
 #![feature(io_error_more)]
 #![feature(yeet_expr)]
+#![feature(is_some_with)]
 #![warn(rust_2018_idioms)]
 #![allow(
     clippy::collapsible_else_if,
