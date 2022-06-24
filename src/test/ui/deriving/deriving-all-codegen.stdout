@@ -244,7 +244,7 @@ impl ::core::cmp::Ord for Point {
     }
 }
 
-// A long struct.
+// A large struct.
 struct Big {
     b1: u32,
     b2: u32,
@@ -586,6 +586,113 @@ impl ::core::cmp::Ord for Big {
                                         },
                                     cmp => cmp,
                                 },
+                            cmp => cmp,
+                        },
+                },
+        }
+    }
+}
+
+// A packed tuple struct.
+#[repr(packed)]
+struct Packed(u32);
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::clone::Clone for Packed {
+    #[inline]
+    fn clone(&self) -> Packed {
+        { let _: ::core::clone::AssertParamIsClone<u32>; *self }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::marker::Copy for Packed { }
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::fmt::Debug for Packed {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match *self {
+            Self(__self_0_0) =>
+                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Packed",
+                    &&(__self_0_0)),
+        }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::default::Default for Packed {
+    #[inline]
+    fn default() -> Packed { Packed(::core::default::Default::default()) }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::hash::Hash for Packed {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        match *self {
+            Self(__self_0_0) => {
+                ::core::hash::Hash::hash(&(__self_0_0), state)
+            }
+        }
+    }
+}
+impl ::core::marker::StructuralPartialEq for Packed {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialEq for Packed {
+    #[inline]
+    fn eq(&self, other: &Packed) -> bool {
+        match *other {
+            Self(__self_1_0) =>
+                match *self {
+                    Self(__self_0_0) => (__self_0_0) == (__self_1_0),
+                },
+        }
+    }
+}
+impl ::core::marker::StructuralEq for Packed {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Eq for Packed {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        { let _: ::core::cmp::AssertParamIsEq<u32>; }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialOrd for Packed {
+    #[inline]
+    fn partial_cmp(&self, other: &Packed)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match *other {
+            Self(__self_1_0) =>
+                match *self {
+                    Self(__self_0_0) =>
+                        match ::core::cmp::PartialOrd::partial_cmp(&(__self_0_0),
+                                &(__self_1_0)) {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                =>
+                                ::core::option::Option::Some(::core::cmp::Ordering::Equal),
+                            cmp => cmp,
+                        },
+                },
+        }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Ord for Packed {
+    #[inline]
+    fn cmp(&self, other: &Packed) -> ::core::cmp::Ordering {
+        match *other {
+            Self(__self_1_0) =>
+                match *self {
+                    Self(__self_0_0) =>
+                        match ::core::cmp::Ord::cmp(&(__self_0_0), &(__self_1_0)) {
+                            ::core::cmp::Ordering::Equal =>
+                                ::core::cmp::Ordering::Equal,
                             cmp => cmp,
                         },
                 },
