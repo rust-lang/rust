@@ -154,19 +154,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test: &Test<'tcx>,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
     ) {
-        let place: Place<'tcx>;
-        if let Ok(test_place_builder) = place_builder.try_upvars_resolved(self) {
-            place = test_place_builder.into_place(self);
-        } else {
-            return;
-        }
-        debug!(
-            "perform_test({:?}, {:?}: {:?}, {:?})",
-            block,
-            place,
-            place.ty(&self.local_decls, self.tcx),
-            test
-        );
+        let place = place_builder.into_place(self);
+        let place_ty = place.ty(&self.local_decls, self.tcx);
+        debug!(?place, ?place_ty,);
 
         let source_info = self.source_info(test.span);
         match test.kind {
