@@ -282,6 +282,7 @@ mod manual_async_fn;
 mod manual_bits;
 mod manual_non_exhaustive;
 mod manual_ok_or;
+mod manual_rem_euclid;
 mod manual_strip;
 mod map_clone;
 mod map_err_ignore;
@@ -912,6 +913,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(as_underscore::AsUnderscore));
     store.register_late_pass(|| Box::new(read_zero_byte_vec::ReadZeroByteVec));
     store.register_late_pass(|| Box::new(default_instead_of_iter_empty::DefaultIterEmpty));
+    store.register_late_pass(move || Box::new(manual_rem_euclid::ManualRemEuclid::new(msrv)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

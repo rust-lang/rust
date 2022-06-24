@@ -13,7 +13,7 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,53,0 { OR_PATTERNS, MANUAL_BITS }
-    1,52,0 { STR_SPLIT_ONCE }
+    1,52,0 { STR_SPLIT_ONCE, REM_EUCLID_CONST }
     1,51,0 { BORROW_AS_PTR, UNSIGNED_ABS }
     1,50,0 { BOOL_THEN }
     1,47,0 { TAU }
@@ -23,7 +23,7 @@ msrv_aliases! {
     1,42,0 { MATCHES_MACRO, SLICE_PATTERNS, PTR_SLICE_RAW_PARTS }
     1,41,0 { RE_REBALANCING_COHERENCE, RESULT_MAP_OR_ELSE }
     1,40,0 { MEM_TAKE, NON_EXHAUSTIVE, OPTION_AS_DEREF }
-    1,38,0 { POINTER_CAST }
+    1,38,0 { POINTER_CAST, REM_EUCLID }
     1,37,0 { TYPE_ALIAS_ENUM_VARIANTS }
     1,36,0 { ITERATOR_COPIED }
     1,35,0 { OPTION_COPIED, RANGE_CONTAINS }

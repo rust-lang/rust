@@ -24,6 +24,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(loops::MANUAL_FLATTEN),
     LintId::of(loops::SINGLE_ELEMENT_LOOP),
     LintId::of(loops::WHILE_LET_LOOP),
+    LintId::of(manual_rem_euclid::MANUAL_REM_EUCLID),
     LintId::of(manual_strip::MANUAL_STRIP),
     LintId::of(map_unit_fn::OPTION_MAP_UNIT_FN),
     LintId::of(map_unit_fn::RESULT_MAP_UNIT_FN),
