@@ -503,6 +503,11 @@ fn codegen_stmt<'tcx>(
                     let val = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, val);
                 }
+                Rvalue::VirtualRef(place) => {
+                    let cplace = codegen_place(fx, place);
+                    let val = cplace.to_cvalue(fx);
+                    lval.write_cvalue(fx, val)
+                }
                 Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
                     let place = codegen_place(fx, place);
                     let ref_ = place.place_ref(fx, lval.layout());

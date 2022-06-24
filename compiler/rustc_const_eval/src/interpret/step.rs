@@ -172,6 +172,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.copy_op(&op, &dest)?;
             }
 
+            VirtualRef(ref place) => {
+                let op = self.eval_place_to_op(*place, Some(dest.layout))?;
+                self.copy_op(&op, &dest)?;
+            }
+
             BinaryOp(bin_op, box (ref left, ref right)) => {
                 let layout = binop_left_homogeneous(bin_op).then_some(dest.layout);
                 let left = self.read_immediate(&self.eval_operand(left, layout)?)?;

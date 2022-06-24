@@ -35,6 +35,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
                     last_deref_idx = idx;
                 }
             }
+
             for (idx, (p_ref, p_elem)) in place.iter_projections().enumerate() {
                 if !p_ref.projection.is_empty() && p_elem == ProjectionElem::Deref {
                     let ty = p_ref.ty(&self.local_decls, self.tcx).ty;
@@ -54,7 +55,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
                     self.patcher.add_assign(
                         loc,
                         Place::from(temp),
-                        Rvalue::Use(Operand::Move(deref_place)),
+                        Rvalue::VirtualRef(deref_place),
                     );
                     place_local = temp;
                     last_len = p_ref.projection.len();

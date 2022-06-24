@@ -22,7 +22,7 @@ fn b(_1: &mut Box<T>) -> &mut T {
         StorageLive(_5);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         StorageLive(_6);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         StorageLive(_7);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        _7 = move (*_4);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        _7 = virt (*_4);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         StorageLive(_8);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _8 = (((_7.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: *const T); // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _6 = &mut (*_8);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
