@@ -1,11 +1,10 @@
-use crate::assert::expr_if_not;
 use rustc_ast::{
     attr,
     ptr::P,
     token,
     tokenstream::{DelimSpan, TokenStream, TokenTree},
-    BorrowKind, Expr, ExprKind, ItemKind, MacArgs, MacCall, MacDelimiter, Mutability, Path,
-    PathSegment, Stmt, StructRest, UseTree, UseTreeKind, DUMMY_NODE_ID,
+    BinOpKind, BorrowKind, Expr, ExprKind, ItemKind, MacArgs, MacCall, MacDelimiter, Mutability,
+    Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -16,11 +15,19 @@ use rustc_span::{
 };
 
 pub(super) struct Context<'cx, 'a> {
+    // An optimization.
+    //
+    // Elements that aren't consumed (PartialEq, PartialOrd, ...) can be copied **after** the
+    // `assert!` expression fails rather than copied on-the-fly.
+    best_case_captures: Vec<Stmt>,
     // Top-level `let captureN = Capture::new()` statements
     capture_decls: Vec<Capture>,
     cx: &'cx ExtCtxt<'a>,
     // Formatting string used for debugging
     fmt_string: String,
+    // If the current expression being visited consumes itself. Used to construct
+    // `best_case_captures`.
+    is_consumed: bool,
     // Top-level `let __local_bindN = &expr` statements
     local_bind_decls: Vec<Stmt>,
     // Used to avoid capturing duplicated paths
@@ -36,9 +43,11 @@ pub(super) struct Context<'cx, 'a> {
 impl<'cx, 'a> Context<'cx, 'a> {
     pub(super) fn new(cx: &'cx ExtCtxt<'a>, span: Span) -> Self {
         Self {
+            best_case_captures: <_>::default(),
             capture_decls: <_>::default(),
             cx,
             fmt_string: <_>::default(),
+            is_consumed: true,
             local_bind_decls: <_>::default(),
             paths: <_>::default(),
             span,
@@ -69,14 +78,22 @@ impl<'cx, 'a> Context<'cx, 'a> {
         self.manage_cond_expr(&mut cond_expr);
         let initial_imports = self.build_initial_imports();
         let panic = self.build_panic(&expr_str, panic_path);
+        let cond_expr_with_unlikely = self.build_unlikely(cond_expr);
 
-        let Self { capture_decls, cx, local_bind_decls, span, .. } = self;
+        let Self { best_case_captures, capture_decls, cx, local_bind_decls, span, .. } = self;
+
+        let mut assert_then_stmts = Vec::with_capacity(2);
+        assert_then_stmts.extend(best_case_captures);
+        assert_then_stmts.push(self.cx.stmt_expr(panic));
+        let assert_then = self.cx.block(span, assert_then_stmts);
 
         let mut stmts = Vec::with_capacity(4);
         stmts.push(initial_imports);
         stmts.extend(capture_decls.into_iter().map(|c| c.decl));
         stmts.extend(local_bind_decls);
-        stmts.push(cx.stmt_expr(expr_if_not(cx, span, cond_expr, panic, None)));
+        stmts.push(
+            cx.stmt_expr(cx.expr(span, ExprKind::If(cond_expr_with_unlikely, assert_then, None))),
+        );
         cx.expr_block(cx.block(span, stmts))
     }
 
@@ -112,6 +129,16 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     span: self.span,
                 }),
             ),
+        )
+    }
+
+    /// Takes the conditional expression of `assert!` and then wraps it inside `unlikely`
+    fn build_unlikely(&self, cond_expr: P<Expr>) -> P<Expr> {
+        let unlikely_path = self.cx.std_path(&[sym::intrinsics, sym::unlikely]);
+        self.cx.expr_call(
+            self.span,
+            self.cx.expr_path(self.cx.path(self.span, unlikely_path)),
+            vec![self.cx.expr(self.span, ExprKind::Unary(UnOp::Not, cond_expr))],
         )
     }
 
@@ -167,17 +194,39 @@ impl<'cx, 'a> Context<'cx, 'a> {
     /// See [Self::manage_initial_capture] and [Self::manage_try_capture]
     fn manage_cond_expr(&mut self, expr: &mut P<Expr>) {
         match (*expr).kind {
-            ExprKind::AddrOf(_, _, ref mut local_expr) => {
-                self.manage_cond_expr(local_expr);
+            ExprKind::AddrOf(_, mutability, ref mut local_expr) => {
+                self.with_is_consumed_management(
+                    matches!(mutability, Mutability::Mut),
+                    |this| this.manage_cond_expr(local_expr)
+                );
             }
             ExprKind::Array(ref mut local_exprs) => {
                 for local_expr in local_exprs {
                     self.manage_cond_expr(local_expr);
                 }
             }
-            ExprKind::Binary(_, ref mut lhs, ref mut rhs) => {
-                self.manage_cond_expr(lhs);
-                self.manage_cond_expr(rhs);
+            ExprKind::Binary(ref op, ref mut lhs, ref mut rhs) => {
+                self.with_is_consumed_management(
+                    matches!(
+                        op.node,
+                        BinOpKind::Add
+                            | BinOpKind::And
+                            | BinOpKind::BitAnd
+                            | BinOpKind::BitOr
+                            | BinOpKind::BitXor
+                            | BinOpKind::Div
+                            | BinOpKind::Mul
+                            | BinOpKind::Or
+                            | BinOpKind::Rem
+                            | BinOpKind::Shl
+                            | BinOpKind::Shr
+                            | BinOpKind::Sub
+                    ),
+                    |this| {
+                        this.manage_cond_expr(lhs);
+                        this.manage_cond_expr(rhs);
+                    }
+                );
             }
             ExprKind::Call(_, ref mut local_exprs) => {
                 for local_expr in local_exprs {
@@ -228,8 +277,11 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     self.manage_cond_expr(local_expr);
                 }
             }
-            ExprKind::Unary(_, ref mut local_expr) => {
-                self.manage_cond_expr(local_expr);
+            ExprKind::Unary(un_op, ref mut local_expr) => {
+                self.with_is_consumed_management(
+                    matches!(un_op, UnOp::Neg | UnOp::Not),
+                    |this| this.manage_cond_expr(local_expr)
+                );
             }
             // Expressions that are not worth or can not be captured.
             //
@@ -337,9 +389,23 @@ impl<'cx, 'a> Context<'cx, 'a> {
             ))
             .add_trailing_semicolon();
         let local_bind_path = self.cx.expr_path(Path::from_ident(local_bind));
-        let ret = self.cx.stmt_expr(local_bind_path);
-        let block = self.cx.expr_block(self.cx.block(self.span, vec![try_capture_call, ret]));
-        *expr = self.cx.expr_deref(self.span, block);
+        let rslt = if self.is_consumed {
+            let ret = self.cx.stmt_expr(local_bind_path);
+            self.cx.expr_block(self.cx.block(self.span, vec![try_capture_call, ret]))
+        } else {
+            self.best_case_captures.push(try_capture_call);
+            local_bind_path
+        };
+        *expr = self.cx.expr_deref(self.span, rslt);
+    }
+
+    // Calls `f` with the internal `is_consumed` set to `curr_is_consumed` and then
+    // sets the internal `is_consumed` back to its original value.
+    fn with_is_consumed_management(&mut self, curr_is_consumed: bool, f: impl FnOnce(&mut Self)) {
+        let prev_is_consumed = self.is_consumed;
+        self.is_consumed = curr_is_consumed;
+        f(self);
+        self.is_consumed = prev_is_consumed;
     }
 }
 
