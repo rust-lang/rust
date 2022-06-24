@@ -159,6 +159,9 @@ impl<'tcx> Cx<'tcx> {
         Expr { temp_lifetime, ty: adjustment.target, span, kind }
     }
 
+    /// Lowers a cast expression.
+    ///
+    /// Dealing with user type annotations is left to the caller.
     fn mirror_expr_cast(
         &mut self,
         source: &'tcx hir::Expr<'tcx>,
@@ -198,25 +201,23 @@ impl<'tcx> Cx<'tcx> {
             };
 
             let res = self.typeck_results().qpath_res(qpath, source.hir_id);
-            let (discr_did, discr_offset, discr_ty, substs) = {
-                let ty = self.typeck_results().node_type(source.hir_id);
-                let ty::Adt(adt_def, substs) = ty.kind() else {
+            let ty = self.typeck_results().node_type(source.hir_id);
+            let ty::Adt(adt_def, substs) = ty.kind() else {
                     return ExprKind::Cast { source: self.mirror_expr(source)};
                 };
-                let Res::Def(
+            let Res::Def(
                             DefKind::Ctor(CtorOf::Variant, CtorKind::Const),
                             variant_ctor_id,
                         ) = res else {
                             return ExprKind::Cast { source: self.mirror_expr(source)};
                         };
 
-                let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
-                let (d, o) = adt_def.discriminant_def_for_variant(idx);
-                use rustc_middle::ty::util::IntTypeExt;
-                let ty = adt_def.repr().discr_type();
-                let ty = ty.to_ty(tcx);
-                (d, o, ty, substs)
-            };
+            let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
+            let (discr_did, discr_offset) = adt_def.discriminant_def_for_variant(idx);
+
+            use rustc_middle::ty::util::IntTypeExt;
+            let ty = adt_def.repr().discr_type();
+            let discr_ty = ty.to_ty(tcx);
 
             let param_env_ty = self.param_env.and(discr_ty);
             let size = tcx
@@ -231,10 +232,9 @@ impl<'tcx> Cx<'tcx> {
             let offset = self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
 
             let source = match discr_did {
+                // in case we are offsetting from a computed discriminant
+                // and not the beginning of discriminants (which is always `0`)
                 Some(did) => {
-                    // in case we are offsetting from a computed discriminant
-                    // and not the beginning of discriminants (which is always `0`)
-
                     let kind = ExprKind::NamedConst { def_id: did, substs, user_ty: None };
                     let lhs =
                         self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
