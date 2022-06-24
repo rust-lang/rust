@@ -1,0 +1,16 @@
+error: `S` does not live long enough
+  --> $DIR/type-test-universe.rs:11:5
+   |
+LL |     outlives_forall::<S>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/type-test-universe.rs:17:5
+   |
+LL | fn test2<'a>() {
+   |          -- lifetime `'a` defined here
+LL |     outlives_forall::<Value<'a>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to 2 previous errors
+

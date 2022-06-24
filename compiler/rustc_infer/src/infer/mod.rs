@@ -1290,7 +1290,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             &RegionRelations::new(self.tcx, region_context, outlives_env.free_region_map());
 
         let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(region_rels, var_infos, data);
+            lexical_region_resolve::resolve(outlives_env.param_env, region_rels, var_infos, data);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
