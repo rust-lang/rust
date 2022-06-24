@@ -1093,6 +1093,14 @@ generate_pattern_iterators! {
 #[derive(Clone, Debug)]
 pub struct Lines<'a>(pub(super) Map<SplitTerminator<'a, char>, LinesAnyMap>);
 
+impl<'a> Lines<'a> {
+    /// Returns the remaining lines that weren't iterated yet as one string slice.
+    #[unstable(feature = "str_lines_as_str", issue = "none")]
+    pub fn as_str(&self) -> &'a str {
+        self.0.iter.as_str()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Lines<'a> {
     type Item = &'a str;
