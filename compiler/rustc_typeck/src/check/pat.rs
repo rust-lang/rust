@@ -697,7 +697,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 Some((
                     pat.span,
-                    format!("to declare a mutable {ident_kind} use `mut variable_name`"),
+                    format!("to declare a mutable {ident_kind} use"),
                     format!("mut {binding}"),
                 ))
 

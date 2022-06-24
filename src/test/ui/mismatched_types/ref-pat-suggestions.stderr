@@ -24,7 +24,7 @@ LL | fn _f1(&mut _a: u32) {}
    |
    = note:           expected type `u32`
            found mutable reference `&mut _`
-note: to declare a mutable parameter use `mut variable_name`: `mut _a`
+note: to declare a mutable parameter use: `mut _a`
   --> $DIR/ref-pat-suggestions.rs:4:8
    |
 LL | fn _f1(&mut _a: u32) {}
@@ -127,7 +127,7 @@ LL |     let _: fn(u32) = |&mut _a| ();
    |
    = note:           expected type `u32`
            found mutable reference `&mut _`
-note: to declare a mutable parameter use `mut variable_name`: `mut _a`
+note: to declare a mutable parameter use: `mut _a`
   --> $DIR/ref-pat-suggestions.rs:12:23
    |
 LL |     let _: fn(u32) = |&mut _a| ();
@@ -232,7 +232,7 @@ LL |     let _ = |&mut _a: u32| ();
    |
    = note:           expected type `u32`
            found mutable reference `&mut _`
-note: to declare a mutable parameter use `mut variable_name`: `mut _a`
+note: to declare a mutable parameter use: `mut _a`
   --> $DIR/ref-pat-suggestions.rs:19:14
    |
 LL |     let _ = |&mut _a: u32| ();
@@ -314,7 +314,7 @@ LL |         let &mut _a = 0;
    |             ^^^^^^^   - this expression has type `{integer}`
    |             |
    |             expected integer, found `&mut _`
-   |             help: to declare a mutable variable use `mut variable_name`: `mut _a`
+   |             help: to declare a mutable variable use: `mut _a`
    |
    = note:           expected type `{integer}`
            found mutable reference `&mut _`
@@ -329,7 +329,7 @@ LL |         let S(&mut _b) = S(0);
    |
    = note:           expected type `u8`
            found mutable reference `&mut _`
-note: to declare a mutable binding use `mut variable_name`: `mut _b`
+note: to declare a mutable binding use: `mut _b`
   --> $DIR/ref-pat-suggestions.rs:30:15
    |
 LL |         let S(&mut _b) = S(0);
@@ -350,7 +350,7 @@ LL |         let (&mut _c,) = (0,);
    |
    = note:           expected type `{integer}`
            found mutable reference `&mut _`
-note: to declare a mutable binding use `mut variable_name`: `mut _c`
+note: to declare a mutable binding use: `mut _c`
   --> $DIR/ref-pat-suggestions.rs:31:14
    |
 LL |         let (&mut _c,) = (0,);
@@ -371,7 +371,7 @@ LL |             &mut _d => {}
    |
    = note:           expected type `{integer}`
            found mutable reference `&mut _`
-note: to declare a mutable binding use `mut variable_name`: `mut _d`
+note: to declare a mutable binding use: `mut _d`
   --> $DIR/ref-pat-suggestions.rs:34:13
    |
 LL |             &mut _d => {}
