@@ -86,27 +86,6 @@ input:checked + .slider:before {
 	display: block;
 }
 
-div#settings {
-	position: absolute;
-	right: 0;
-	z-index: 1;
-	display: block;
-	margin-top: 7px;
-	border-radius: 3px;
-	border: 1px solid;
-}
 #settings .setting-line {
 	margin: 1.2em 0.6em;
-}
-/* This rule is to draw the little arrow connecting the settings menu to the gear icon. */
-div#settings::before {
-	content: '';
-	position: absolute;
-	right: 11px;
-	border: solid;
-	border-width: 1px 1px 0 0;
-	display: inline-block;
-	padding: 4px;
-	transform: rotate(-45deg);
-	top: -5px;
 }
