@@ -110,7 +110,7 @@ impl WorkspaceBuildScripts {
         };
 
         tracing::info!("Running build scripts: {:?}", cmd);
-        let output = stdx::process::streaming_output(
+        let output = stdx::process::spawn_with_streaming_output(
             cmd,
             &mut |line| {
                 // Copy-pasted from existing cargo_metadata. It seems like we
