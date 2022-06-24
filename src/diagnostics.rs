@@ -8,7 +8,7 @@ use rustc_middle::ty;
 use rustc_span::{source_map::DUMMY_SP, Span, SpanData, Symbol};
 
 use crate::helpers::HexRange;
-use crate::stacked_borrows::{diagnostics::TagHistory, AccessKind, SbTag};
+use crate::stacked_borrows::{diagnostics::TagHistory, AccessKind};
 use crate::*;
 
 /// Details of premature program termination.
@@ -61,9 +61,9 @@ impl MachineStopType for TerminationInfo {}
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
     CreatedPointerTag(NonZeroU64),
-    /// This `Item` was popped from the borrow stack, either due to a grant of
-    /// `AccessKind` to `SbTag` or a deallocation when the second argument is `None`.
-    PoppedPointerTag(Item, Option<(SbTag, AccessKind)>),
+    /// This `Item` was popped from the borrow stack, either due to an access with the given tag or
+    /// a deallocation when the second argument is `None`.
+    PoppedPointerTag(Item, Option<(SbTagExtra, AccessKind)>),
     CreatedCallId(CallId),
     CreatedAlloc(AllocId),
     FreedAlloc(AllocId),

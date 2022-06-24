@@ -4,12 +4,11 @@ use rustc_middle::mir::interpret::{AllocId, AllocRange};
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
-use core::fmt::Debug;
-
 use crate::helpers::{CurrentSpan, HexRange};
 use crate::stacked_borrows::{err_sb_ub, AccessKind, Permission};
 use crate::Item;
 use crate::SbTag;
+use crate::SbTagExtra;
 use crate::Stack;
 
 use rustc_middle::mir::interpret::InterpError;
@@ -199,19 +198,15 @@ impl AllocHistory {
     /// Report a descriptive error when `new` could not be granted from `derived_from`.
     pub fn grant_error<'tcx>(
         &self,
-        derived_from: Option<SbTag>,
+        derived_from: SbTagExtra,
         new: Item,
         alloc_id: AllocId,
         alloc_range: AllocRange,
         error_offset: Size,
         stack: &Stack,
     ) -> InterpError<'tcx> {
-        // TODO: Fix this properly
-        let z = &derived_from;
-        let f = if let Some(ref t) = z { t as &dyn Debug } else { &"<wildcard>" as &dyn Debug };
         let action = format!(
-            "trying to reborrow {:?} for {:?} permission at {}[{:#x}]",
-            f,
+            "trying to reborrow {derived_from:?} for {:?} permission at {}[{:#x}]",
             new.perm,
             alloc_id,
             error_offset.bytes(),
@@ -229,18 +224,14 @@ impl AllocHistory {
     pub fn access_error<'tcx>(
         &self,
         access: AccessKind,
-        tag: Option<SbTag>,
+        tag: SbTagExtra,
         alloc_id: AllocId,
         alloc_range: AllocRange,
         error_offset: Size,
         stack: &Stack,
     ) -> InterpError<'tcx> {
-        let z = &tag;
-        let f = if let Some(ref t) = z { t as &dyn Debug } else { &"<wildcard>" as &dyn Debug };
         let action = format!(
-            "attempting a {} using {:?} at {}[{:#x}]",
-            access,
-            f,
+            "attempting a {access} using {tag:?} at {}[{:#x}]",
             alloc_id,
             error_offset.bytes(),
         );
@@ -260,8 +251,8 @@ fn operation_summary(
     format!("this error occurs as part of {} at {:?}{}", operation, alloc_id, HexRange(alloc_range))
 }
 
-fn error_cause(stack: &Stack, tag: Option<SbTag>) -> &'static str {
-    if let Some(tag) = tag {
+fn error_cause(stack: &Stack, tag: SbTagExtra) -> &'static str {
+    if let SbTagExtra::Concrete(tag) = tag {
         if stack.borrows.iter().any(|item| item.tag == tag && item.perm != Permission::Disabled) {
             ", but that tag only grants SharedReadOnly permission for this location"
         } else {

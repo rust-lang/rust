@@ -142,9 +142,7 @@ impl<'mir, 'tcx> GlobalStateInner {
                 // Determine the allocation this points to at cast time.
                 let alloc_id = Self::alloc_id_from_addr(ecx, addr);
                 Pointer::new(
-                    alloc_id.map(|alloc_id| {
-                        Tag::Concrete(ConcreteTag { alloc_id, sb: SbTag::Untagged })
-                    }),
+                    alloc_id.map(|alloc_id| Tag::Concrete { alloc_id, sb: SbTag::Untagged }),
                     Size::from_bytes(addr),
                 )
             }
@@ -222,8 +220,8 @@ impl<'mir, 'tcx> GlobalStateInner {
     ) -> Option<(AllocId, Size)> {
         let (tag, addr) = ptr.into_parts(); // addr is absolute (Tag provenance)
 
-        let alloc_id = if let Tag::Concrete(concrete) = tag {
-            concrete.alloc_id
+        let alloc_id = if let Tag::Concrete { alloc_id, .. } = tag {
+            alloc_id
         } else {
             // A wildcard pointer.
             assert_eq!(ecx.machine.intptrcast.borrow().provenance_mode, ProvenanceMode::Permissive);

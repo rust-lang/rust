@@ -130,15 +130,12 @@ impl fmt::Display for MiriMemoryKind {
 /// Pointer provenance (tag).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Tag {
-    Concrete(ConcreteTag),
+    Concrete {
+        alloc_id: AllocId,
+        /// Stacked Borrows tag.
+        sb: SbTag,
+    },
     Wildcard,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ConcreteTag {
-    pub alloc_id: AllocId,
-    /// Stacked Borrows tag.
-    pub sb: SbTag,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
@@ -160,15 +157,15 @@ impl Provenance for Tag {
         write!(f, "0x{:x}", addr.bytes())?;
 
         match tag {
-            Tag::Concrete(tag) => {
+            Tag::Concrete { alloc_id, sb } => {
                 // Forward `alternate` flag to `alloc_id` printing.
                 if f.alternate() {
-                    write!(f, "[{:#?}]", tag.alloc_id)?;
+                    write!(f, "[{:#?}]", alloc_id)?;
                 } else {
-                    write!(f, "[{:?}]", tag.alloc_id)?;
+                    write!(f, "[{:?}]", alloc_id)?;
                 }
                 // Print Stacked Borrows tag.
-                write!(f, "{:?}", tag.sb)?;
+                write!(f, "{:?}", sb)?;
             }
             Tag::Wildcard => {
                 write!(f, "[Wildcard]")?;
@@ -180,7 +177,7 @@ impl Provenance for Tag {
 
     fn get_alloc_id(self) -> Option<AllocId> {
         match self {
-            Tag::Concrete(concrete) => Some(concrete.alloc_id),
+            Tag::Concrete { alloc_id, .. } => Some(alloc_id),
             Tag::Wildcard => None,
         }
     }
@@ -489,8 +486,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     type AllocExtra = AllocExtra;
 
     type PointerTag = Tag;
-    // `None` represents a wildcard pointer.
-    type TagExtra = Option<SbTag>;
+    type TagExtra = SbTagExtra;
 
     type MemoryMap =
         MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Tag, Self::AllocExtra>)>;
@@ -683,7 +679,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             SbTag::Untagged
         };
         Pointer::new(
-            Tag::Concrete(ConcreteTag { alloc_id: ptr.provenance, sb: sb_tag }),
+            Tag::Concrete { alloc_id: ptr.provenance, sb: sb_tag },
             Size::from_bytes(absolute_addr),
         )
     }
@@ -709,7 +705,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx> {
         match ptr.provenance {
-            Tag::Concrete(ConcreteTag { alloc_id, sb }) => {
+            Tag::Concrete { alloc_id, sb } => {
                 intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, sb);
             }
             Tag::Wildcard => {
@@ -730,8 +726,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
         rel.map(|(alloc_id, size)| {
             let sb = match ptr.provenance {
-                Tag::Concrete(ConcreteTag { sb, .. }) => Some(sb),
-                Tag::Wildcard => None,
+                Tag::Concrete { sb, .. } => SbTagExtra::Concrete(sb),
+                Tag::Wildcard => SbTagExtra::Wildcard,
             };
             (alloc_id, size, sb)
         })
