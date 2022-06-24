@@ -928,7 +928,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     _ => (false, itctx),
                 };
 
-                //if desugar_to_impl_trait {
+                //if desugar_to_impl_trait
                 if self.resolver.opt_local_def_id(constraint.impl_trait_id).is_some() {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
                     // constructing the HIR for `impl bounds...` and then lowering that.
@@ -943,7 +943,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         ExpnId::root(),
                         constraint.span,
                     );*/
-
                     self.with_dyn_type_scope(false, |this| {
                         let node_id = this.resolver.next_node_id();
                         let ty = this.lower_ty(
@@ -962,7 +961,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Desugar `AssocTy: Bounds` into a type binding where the
                     // later desugars into a trait predicate.
                     let bounds = self.lower_param_bounds(bounds, itctx);
-                    debug!("desug1111 NO!!!!: {:?}, {:?}", desugar_to_impl_trait, itctx);
+                    debug!("desug1111 NO: {:?}, {:?}", desugar_to_impl_trait, itctx);
 
                     hir::TypeBindingKind::Constraint { bounds }
                 }

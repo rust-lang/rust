@@ -1,5 +1,5 @@
 use crate::{ImplTraitContext, Resolver};
-use rustc_ast::visit::{self, FnKind};
+use rustc_ast::visit::{self, BoundKind, FnKind};
 use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_lowering::ResolverAstLowering;
@@ -117,18 +117,36 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
         let def = self.create_def(i.id, def_data, i.span);
 
         self.with_parent(def, |this| {
-            this.with_impl_trait(ImplTraitContext::Existential, |this| {
-                match i.kind {
-                    ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {
-                        // If this is a unit or tuple-like struct, register the constructor.
-                        if let Some(ctor_hir_id) = struct_def.ctor_id() {
-                            this.create_def(ctor_hir_id, DefPathData::Ctor, i.span);
+            if let ItemKind::TyAlias(box TyAlias { ref generics, ref bounds, ref ty, .. }) = i.kind
+            {
+                this.with_impl_trait(ImplTraitContext::Existential, |this| {
+                    //visit::walk_item(this, i);
+                    this.visit_vis(&i.vis);
+                    this.visit_ident(i.ident);
+
+                    this.visit_generics(generics);
+                    walk_list!(this, visit_param_bound, bounds, BoundKind::Bound);
+
+                    this.with_impl_trait(ImplTraitContext::TyAliasOpaqueTy, |this| {
+                        walk_list!(this, visit_ty, ty)
+                    });
+                    walk_list!(this, visit_attribute, &i.attrs);
+                })
+            } else {
+                this.with_impl_trait(ImplTraitContext::Existential, |this| {
+                    match i.kind {
+                        ItemKind::Struct(ref struct_def, _)
+                        | ItemKind::Union(ref struct_def, _) => {
+                            // If this is a unit or tuple-like struct, register the constructor.
+                            if let Some(ctor_hir_id) = struct_def.ctor_id() {
+                                this.create_def(ctor_hir_id, DefPathData::Ctor, i.span);
+                            }
                         }
+                        _ => {}
                     }
-                    _ => {}
-                }
-                visit::walk_item(this, i);
-            })
+                    visit::walk_item(this, i);
+                })
+            }
         });
     }
 
@@ -310,23 +328,17 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                             self.expansion.to_expn_id(),
                             ty.span,
                         );
-                        self.resolver
-                            .impl_trait_context
-                            .insert(def_id, self.impl_trait_context);
+                        self.resolver.impl_trait_context.insert(def_id, self.impl_trait_context);
                         def_id
                     }
-                    ImplTraitContext::Existential => {
+                    ImplTraitContext::Existential | ImplTraitContext::TyAliasOpaqueTy => {
                         let def_id = self.create_def(node_id, DefPathData::ImplTrait, ty.span);
-                        self.resolver
-                            .impl_trait_context
-                            .insert(def_id, ImplTraitContext::Existential);
+                        self.resolver.impl_trait_context.insert(def_id, self.impl_trait_context);
                         def_id
                     }
                     ImplTraitContext::ReturnOpaquePositionTy => {
                         let def_id = self.create_def(node_id, DefPathData::ImplTrait, ty.span);
-                        self.resolver
-                            .impl_trait_context
-                            .insert(def_id, self.impl_trait_context);
+                        self.resolver.impl_trait_context.insert(def_id, self.impl_trait_context);
                         def_id
                     }
                 };
@@ -394,35 +406,37 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     }
 
     fn visit_assoc_constraint(&mut self, constraint: &'a AssocConstraint) {
-        if let ImplTraitContext::UniversalInDyn(item_def) = self.impl_trait_context {
-            if let AssocConstraintKind::Bound { .. } = constraint.kind {
-                let node_id = constraint.impl_trait_id;
-                let def_id = self.resolver.create_def(
-                    item_def,
-                    node_id,
-                    DefPathData::ImplTrait,
-                    self.expansion.to_expn_id(),
-                    constraint.span,
-                );
-                self.resolver
-                    .impl_trait_context
-                    .insert(def_id, self.impl_trait_context);
+        match self.impl_trait_context {
+            ImplTraitContext::UniversalInDyn(item_def) => {
+                if let AssocConstraintKind::Bound { .. } = constraint.kind {
+                    let node_id = constraint.impl_trait_id;
+                    let def_id = self.resolver.create_def(
+                        item_def,
+                        node_id,
+                        DefPathData::ImplTrait,
+                        self.expansion.to_expn_id(),
+                        constraint.span,
+                    );
+                    self.resolver.impl_trait_context.insert(def_id, self.impl_trait_context);
+                }
             }
+            ImplTraitContext::ReturnOpaquePositionTy => {
+                if let AssocConstraintKind::Bound { .. } = constraint.kind {
+                    let node_id = constraint.impl_trait_id;
+                    let def_id = self.create_def(node_id, DefPathData::ImplTrait, constraint.span);
+                    self.resolver.impl_trait_context.insert(def_id, self.impl_trait_context);
+                }
+            }
+            ImplTraitContext::TyAliasOpaqueTy => {
+                if let AssocConstraintKind::Bound { .. } = constraint.kind {
+                    let node_id = constraint.impl_trait_id;
+                    let def_id = self.create_def(node_id, DefPathData::ImplTrait, constraint.span);
+                    self.resolver.impl_trait_context.insert(def_id, self.impl_trait_context);
+                }
+            }
+            _ => {}
         }
 
-        if let ImplTraitContext::ReturnOpaquePositionTy = self.impl_trait_context {
-            if let AssocConstraintKind::Bound { .. } = constraint.kind {
-                let node_id = constraint.impl_trait_id;
-                let def_id = self.create_def(
-                    node_id,
-                    DefPathData::ImplTrait,
-                    constraint.span,
-                );
-                self.resolver
-                    .impl_trait_context
-                    .insert(def_id, self.impl_trait_context);
-            }
-        }
         visit::walk_assoc_constraint(self, constraint);
     }
 }
