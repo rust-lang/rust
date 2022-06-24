@@ -1,6 +1,7 @@
 //! Proc Macro Expander stub
 
 use base_db::{CrateId, ProcMacroExpansionError, ProcMacroId, ProcMacroKind};
+use stdx::never;
 
 use crate::{db::AstDatabase, ExpandError, ExpandResult};
 
@@ -36,18 +37,20 @@ impl ProcMacroExpander {
                 let krate_graph = db.crate_graph();
                 let proc_macros = match &krate_graph[self.krate].proc_macro {
                     Ok(proc_macros) => proc_macros,
-                    Err(e) => {
-                        return ExpandResult::only_err(ExpandError::Other(
-                            e.clone().into_boxed_str(),
-                        ))
+                    Err(_) => {
+                        never!("Non-dummy expander even though there are no proc macros");
+                        return ExpandResult::only_err(ExpandError::Other("Internal error".into()));
                     }
                 };
                 let proc_macro = match proc_macros.get(id.0 as usize) {
                     Some(proc_macro) => proc_macro,
                     None => {
-                        return ExpandResult::only_err(ExpandError::Other(
-                            "No proc-macro found.".into(),
-                        ))
+                        never!(
+                            "Proc macro index out of bounds: the length is {} but the index is {}",
+                            proc_macros.len(),
+                            id.0
+                        );
+                        return ExpandResult::only_err(ExpandError::Other("Internal error".into()));
                     }
                 };
 

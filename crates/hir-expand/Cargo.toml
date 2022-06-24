@@ -20,6 +20,7 @@ hashbrown = { version = "0.12.1", features = [
     "inline-more",
 ], default-features = false }
 
+stdx = { path = "../stdx", version = "0.0.0" }
 base-db = { path = "../base-db", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
