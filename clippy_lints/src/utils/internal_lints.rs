@@ -348,7 +348,6 @@ declare_clippy_lint! {
     /// Indicates that the documentation is incomplete.
     ///
     /// ### Example
-    /// Bad:
     /// ```rust,ignore
     /// declare_deprecated_lint! {
     ///     /// ### What it does
@@ -362,7 +361,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// Good:
+    /// Use instead:
     /// ```rust,ignore
     /// declare_deprecated_lint! {
     ///     /// ### What it does

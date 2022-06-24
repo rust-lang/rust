@@ -4,17 +4,16 @@
 /// enables the simple extraction of the metadata without changing the current deprecation
 /// declaration.
 pub struct ClippyDeprecatedLint {
-    #[cfg(feature = "internal")]
     #[allow(dead_code)]
-    desc: &'static str,
+    pub desc: &'static str,
 }
 
+#[macro_export]
 macro_rules! declare_deprecated_lint {
     { $(#[$attr:meta])* pub $name: ident, $reason: literal} => {
         $(#[$attr])*
         #[allow(dead_code)]
         pub static $name: ClippyDeprecatedLint = ClippyDeprecatedLint {
-            #[cfg(feature = "internal")]
             desc: $reason
         };
     }
