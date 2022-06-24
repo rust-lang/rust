@@ -33,7 +33,7 @@ LL |     let _: usize = foo;
            found fn item `fn(usize, usize) -> usize {foo}`
 help: use parentheses to call this function
    |
-LL |     let _: usize = foo(a, b);
+LL |     let _: usize = foo(_, _);
    |                       ++++++
 
 error[E0308]: mismatched types
@@ -105,7 +105,7 @@ LL |     let _: usize = T::baz;
            found fn item `fn(usize, usize) -> usize {<_ as T>::baz}`
 help: use parentheses to call this function
    |
-LL |     let _: usize = T::baz(x, y);
+LL |     let _: usize = T::baz(_, _);
    |                          ++++++
 
 error[E0308]: mismatched types
@@ -123,7 +123,7 @@ LL |     let _: usize = T::bat;
            found fn item `fn(usize) -> usize {<_ as T>::bat}`
 help: use parentheses to call this function
    |
-LL |     let _: usize = T::bat(x);
+LL |     let _: usize = T::bat(_);
    |                          +++
 
 error[E0308]: mismatched types
@@ -159,7 +159,7 @@ LL |     let _: usize = X::baz;
            found fn item `fn(usize, usize) -> usize {<X as T>::baz}`
 help: use parentheses to call this function
    |
-LL |     let _: usize = X::baz(x, y);
+LL |     let _: usize = X::baz(_, _);
    |                          ++++++
 
 error[E0308]: mismatched types
@@ -177,7 +177,7 @@ LL |     let _: usize = X::bat;
            found fn item `fn(usize) -> usize {<X as T>::bat}`
 help: use parentheses to call this function
    |
-LL |     let _: usize = X::bat(x);
+LL |     let _: usize = X::bat(_);
    |                          +++
 
 error[E0308]: mismatched types
@@ -195,7 +195,7 @@ LL |     let _: usize = X::bax;
            found fn item `fn(usize) -> usize {<X as T>::bax}`
 help: use parentheses to call this function
    |
-LL |     let _: usize = X::bax(x);
+LL |     let _: usize = X::bax(_);
    |                          +++
 
 error[E0308]: mismatched types
@@ -213,7 +213,7 @@ LL |     let _: usize = X::bach;
            found fn item `fn(usize) -> usize {<X as T>::bach}`
 help: use parentheses to call this function
    |
-LL |     let _: usize = X::bach(x);
+LL |     let _: usize = X::bach(_);
    |                           +++
 
 error[E0308]: mismatched types

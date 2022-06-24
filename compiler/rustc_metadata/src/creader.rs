@@ -133,6 +133,10 @@ impl CStore {
         CrateNum::new(self.metas.len() - 1)
     }
 
+    pub fn has_crate_data(&self, cnum: CrateNum) -> bool {
+        self.metas[cnum].is_some()
+    }
+
     pub(crate) fn get_crate_data(&self, cnum: CrateNum) -> CrateMetadataRef<'_> {
         let cdata = self.metas[cnum]
             .as_ref()

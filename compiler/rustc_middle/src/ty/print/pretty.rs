@@ -5,7 +5,7 @@ use crate::ty::{
     TypeSuperFoldable,
 };
 use rustc_apfloat::ieee::{Double, Single};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
@@ -779,8 +779,8 @@ pub trait PrettyPrinter<'tcx>:
         // by looking up the projections associated with the def_id.
         let bounds = self.tcx().bound_explicit_item_bounds(def_id);
 
-        let mut traits = BTreeMap::new();
-        let mut fn_traits = BTreeMap::new();
+        let mut traits = FxIndexMap::default();
+        let mut fn_traits = FxIndexMap::default();
         let mut is_sized = false;
 
         for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
@@ -856,7 +856,7 @@ pub trait PrettyPrinter<'tcx>:
                     p!(")");
                     if let Term::Ty(ty) = return_ty.skip_binder() {
                         if !ty.is_unit() {
-                            p!("-> ", print(return_ty));
+                            p!(" -> ", print(return_ty));
                         }
                     }
                     p!(write("{}", if paren_needed { ")" } else { "" }));
@@ -970,11 +970,11 @@ pub trait PrettyPrinter<'tcx>:
         &mut self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         proj_ty: Option<(DefId, ty::Binder<'tcx, Term<'tcx>>)>,
-        traits: &mut BTreeMap<
+        traits: &mut FxIndexMap<
             ty::PolyTraitRef<'tcx>,
-            BTreeMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
+            FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
         >,
-        fn_traits: &mut BTreeMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
+        fn_traits: &mut FxIndexMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
     ) {
         let trait_def_id = trait_ref.def_id();
 
@@ -1110,19 +1110,18 @@ pub trait PrettyPrinter<'tcx>:
         // Builtin bounds.
         // FIXME(eddyb) avoid printing twice (needed to ensure
         // that the auto traits are sorted *and* printed via cx).
-        let mut auto_traits: Vec<_> =
-            predicates.auto_traits().map(|did| (self.tcx().def_path_str(did), did)).collect();
+        let mut auto_traits: Vec<_> = predicates.auto_traits().collect();
 
         // The auto traits come ordered by `DefPathHash`. While
         // `DefPathHash` is *stable* in the sense that it depends on
         // neither the host nor the phase of the moon, it depends
         // "pseudorandomly" on the compiler version and the target.
         //
-        // To avoid that causing instabilities in compiletest
+        // To avoid causing instabilities in compiletest
         // output, sort the auto-traits alphabetically.
-        auto_traits.sort();
+        auto_traits.sort_by_cached_key(|did| self.tcx().def_path_str(*did));
 
-        for (_, def_id) in auto_traits {
+        for def_id in auto_traits {
             if !first {
                 p!(" + ");
             }

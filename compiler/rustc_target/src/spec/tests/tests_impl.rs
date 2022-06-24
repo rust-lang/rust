@@ -8,7 +8,12 @@ pub(super) fn test_target(target: Target) {
 
 impl Target {
     fn check_consistency(&self) {
+        assert_eq!(self.is_like_osx, self.vendor == "apple");
+        assert_eq!(self.is_like_solaris, self.os == "solaris" || self.os == "illumos");
+        assert_eq!(self.is_like_windows, self.os == "windows" || self.os == "uefi");
+        assert_eq!(self.is_like_wasm, self.arch == "wasm32" || self.arch == "wasm64");
         assert!(self.is_like_windows || !self.is_like_msvc);
+
         // Check that LLD with the given flavor is treated identically to the linker it emulates.
         // If your target really needs to deviate from the rules below, except it and document the
         // reasons.
