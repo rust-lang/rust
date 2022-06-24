@@ -16,7 +16,7 @@ impl<A: Unsigned, B: Unsigned> Unsigned for Sum<A,B> {
     //~^ ERROR any use of this value will cause an error [const_err]
     //~| ERROR any use of this value will cause an error
     //~| WARN this was previously accepted by the compiler but is being phased out
-    //~| WARNING this was previously accepted by the compiler
+    //~| WARN this was previously accepted by the compiler but is being phased out
 }
 
 fn foo<T>(_: T) -> &'static u8 {
