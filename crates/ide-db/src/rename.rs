@@ -271,7 +271,7 @@ fn rename_reference(
         }
     }
 
-    let def = convert_to_trait_def(def, sema);
+    let def = convert_to_def_in_trait(def, sema);
     let usages = def.usages(sema).all();
 
     if !usages.is_empty() && ident_kind == IdentifierKind::Underscore {
@@ -298,7 +298,10 @@ fn rename_reference(
     Ok(source_change)
 }
 
-pub(crate) fn convert_to_trait_def(def: Definition, sema: &Semantics<RootDatabase>) -> Definition {
+pub(crate) fn convert_to_def_in_trait(
+    def: Definition,
+    sema: &Semantics<RootDatabase>,
+) -> Definition {
     // HACK: resolve trait impl items to the item def of the trait definition
     // so that we properly resolve all trait item references
     let assoc_item = match def {

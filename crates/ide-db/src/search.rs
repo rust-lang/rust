@@ -620,7 +620,7 @@ impl<'a> FindUsages<'a> {
                 sink(file_id, reference)
             }
             Some(NameRefClass::Definition(def))
-                if crate::rename::convert_to_trait_def(def, self.sema) == self.def =>
+                if crate::rename::convert_to_def_in_trait(def, self.sema) == self.def =>
             {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let reference = FileReference {
