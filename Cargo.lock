@@ -1719,9 +1719,9 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c71a9c6ee0d06d82b89ae2674096d2ba1b832a5ee0b1c9a5a6b013deeab5b11f"
+checksum = "6c757b269857055a7be0d1b60448b8696b00c5a00777f515a96ca651f1fcef2b"
 dependencies = [
  "compiler_builtins",
  "libc",
