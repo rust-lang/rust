@@ -265,6 +265,7 @@ EOF
     for test in $(rg --files-with-matches "catch_unwind|should_panic|thread|lto" src/test/ui); do
       rm $test
     done
+    git checkout src/test/ui/lto/auxiliary/dylib.rs
     git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice.rs
     git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
 
