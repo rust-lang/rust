@@ -238,9 +238,7 @@ impl Step for Llvm {
             };
 
         builder.update_submodule(&Path::new("src").join("llvm-project"));
-        if builder.llvm_link_shared()
-            && (target.contains("windows") || target.contains("apple-darwin"))
-        {
+        if builder.llvm_link_shared() && target.contains("windows") {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
@@ -346,7 +344,9 @@ impl Step for Llvm {
         //
         // If we're not linking rustc to a dynamic LLVM, though, then don't link
         // tools to it.
-        if builder.llvm_link_tools_dynamically(target) && builder.llvm_link_shared() {
+        let llvm_link_shared =
+            builder.llvm_link_tools_dynamically(target) && builder.llvm_link_shared();
+        if llvm_link_shared {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
@@ -425,18 +425,18 @@ impl Step for Llvm {
             );
         }
 
-        if let Some(ref suffix) = builder.config.llvm_version_suffix {
+        let llvm_version_suffix = if let Some(ref suffix) = builder.config.llvm_version_suffix {
             // Allow version-suffix="" to not define a version suffix at all.
-            if !suffix.is_empty() {
-                cfg.define("LLVM_VERSION_SUFFIX", suffix);
-            }
+            if !suffix.is_empty() { Some(suffix.to_string()) } else { None }
         } else if builder.config.channel == "dev" {
             // Changes to a version suffix require a complete rebuild of the LLVM.
             // To avoid rebuilds during a time of version bump, don't include rustc
             // release number on the dev channel.
-            cfg.define("LLVM_VERSION_SUFFIX", "-rust-dev");
+            Some("-rust-dev".to_string())
         } else {
-            let suffix = format!("-rust-{}-{}", builder.version, builder.config.channel);
+            Some(format!("-rust-{}-{}", builder.version, builder.config.channel))
+        };
+        if let Some(ref suffix) = llvm_version_suffix {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
@@ -464,6 +464,27 @@ impl Step for Llvm {
         }
 
         cfg.build();
+
+        // When building LLVM with LLVM_LINK_LLVM_DYLIB for macOS, an unversioned
+        // libLLVM.dylib will be built. However, llvm-config will still look
+        // for a versioned path like libLLVM-14.dylib. Manually create a symbolic
+        // link to make llvm-config happy.
+        if llvm_link_shared && target.contains("apple-darwin") {
+            let mut cmd = Command::new(&build_llvm_config);
+            let version = output(cmd.arg("--version"));
+            let major = version.split('.').next().unwrap();
+            let lib_name = match llvm_version_suffix {
+                Some(s) => format!("lib/libLLVM-{}{}.dylib", major, s),
+                None => format!("lib/libLLVM-{}.dylib", major),
+            };
+
+            // The reason why we build the library path from llvm-config is because
+            // the output of llvm-config depends on its location in the file system.
+            // Make sure we create the symlink exactly where it's needed.
+            let llvm_base = build_llvm_config.parent().unwrap().parent().unwrap();
+            let lib_llvm = llvm_base.join(lib_name);
+            t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
+        }
 
         t!(stamp.write());
 

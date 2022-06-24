@@ -107,14 +107,10 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, File};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::str;
-
-#[cfg(unix)]
-use std::os::unix::fs::symlink as symlink_file;
-#[cfg(windows)]
-use std::os::windows::fs::symlink_file;
 
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
@@ -1446,7 +1442,7 @@ impl Build {
                 src = t!(fs::canonicalize(src));
             } else {
                 let link = t!(fs::read_link(src));
-                t!(symlink_file(link, dst));
+                t!(self.symlink_file(link, dst));
                 return;
             }
         }
@@ -1569,6 +1565,14 @@ impl Build {
             Err(err) => panic!("could not read dir {:?}: {:?}", dir, err),
         };
         iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
+    }
+
+    fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, link: Q) -> io::Result<()> {
+        #[cfg(unix)]
+        use std::os::unix::fs::symlink as symlink_file;
+        #[cfg(windows)]
+        use std::os::windows::fs::symlink_file;
+        if !self.config.dry_run { symlink_file(src.as_ref(), link.as_ref()) } else { Ok(()) }
     }
 
     fn remove(&self, f: &Path) {
