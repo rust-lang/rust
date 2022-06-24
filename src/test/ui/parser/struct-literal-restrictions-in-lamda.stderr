@@ -25,6 +25,12 @@ LL | |     }.hi() {
    |
    = note: expected type `bool`
            found closure `[closure@$DIR/struct-literal-restrictions-in-lamda.rs:12:11: 14:11]`
+help: use parentheses to call this closure
+   |
+LL ~     while (|| Foo {
+LL |         x: 3
+LL ~     }.hi())() {
+   |
 
 error: aborting due to 2 previous errors
 
