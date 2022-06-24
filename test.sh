@@ -24,6 +24,7 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --release)
             codegen_channel=release
+            channel="release"
             shift
             ;;
         --release-sysroot)
@@ -38,10 +39,6 @@ while [[ $# -gt 0 ]]; do
         --features)
             shift
             flags="$flags --features $1"
-            shift
-            ;;
-        --release)
-            channel="release"
             shift
             ;;
         "--test-rustc")
