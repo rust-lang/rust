@@ -21,10 +21,26 @@ macro_rules! common_tests {
                 );
             }
 
+            fn wrapping_offset<const LANES: usize>() {
+                test_helpers::test_binary_elementwise(
+                    &Simd::<*$constness (), LANES>::wrapping_offset,
+                    &<*$constness ()>::wrapping_offset,
+                    &|_, _| true,
+                );
+            }
+
             fn wrapping_add<const LANES: usize>() {
                 test_helpers::test_binary_elementwise(
                     &Simd::<*$constness (), LANES>::wrapping_add,
                     &<*$constness ()>::wrapping_add,
+                    &|_, _| true,
+                );
+            }
+
+            fn wrapping_sub<const LANES: usize>() {
+                test_helpers::test_binary_elementwise(
+                    &Simd::<*$constness (), LANES>::wrapping_sub,
+                    &<*$constness ()>::wrapping_sub,
                     &|_, _| true,
                 );
             }

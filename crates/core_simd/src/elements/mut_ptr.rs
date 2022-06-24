@@ -1,10 +1,13 @@
 use super::sealed::Sealed;
-use crate::simd::{LaneCount, Mask, Simd, SimdPartialEq, SupportedLaneCount};
+use crate::simd::{intrinsics, LaneCount, Mask, Simd, SimdPartialEq, SupportedLaneCount};
 
 /// Operations on SIMD vectors of mutable pointers.
 pub trait SimdMutPtr: Copy + Sealed {
-    /// Vector of usize with the same number of lanes.
+    /// Vector of `usize` with the same number of lanes.
     type Usize;
+
+    /// Vector of `isize` with the same number of lanes.
+    type Isize;
 
     /// Vector of constant pointers to the same type.
     type ConstPtr;
@@ -25,8 +28,18 @@ pub trait SimdMutPtr: Copy + Sealed {
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     ///
+    /// Equivalent to calling [`pointer::wrapping_offset`] on each lane.
+    fn wrapping_offset(self, offset: Self::Isize) -> Self;
+
+    /// Calculates the offset from a pointer using wrapping arithmetic.
+    ///
     /// Equivalent to calling [`pointer::wrapping_add`] on each lane.
     fn wrapping_add(self, count: Self::Usize) -> Self;
+
+    /// Calculates the offset from a pointer using wrapping arithmetic.
+    ///
+    /// Equivalent to calling [`pointer::wrapping_add`] on each lane.
+    fn wrapping_sub(self, count: Self::Usize) -> Self;
 }
 
 impl<T, const LANES: usize> Sealed for Simd<*mut T, LANES> where LaneCount<LANES>: SupportedLaneCount
@@ -37,6 +50,7 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     type Usize = Simd<usize, LANES>;
+    type Isize = Simd<isize, LANES>;
     type ConstPtr = Simd<*const T, LANES>;
     type Mask = Mask<isize, LANES>;
 
@@ -56,9 +70,18 @@ where
     }
 
     #[inline]
+    fn wrapping_offset(self, count: Self::Isize) -> Self {
+        // Safety: simd_arith_offset takes a vector of pointers and a vector of offsets
+        unsafe { intrinsics::simd_arith_offset(self, count) }
+    }
+
+    #[inline]
     fn wrapping_add(self, count: Self::Usize) -> Self {
-        let addr = self.addr() + (count * Simd::splat(core::mem::size_of::<T>()));
-        // Safety: transmuting usize to pointers is safe, even if accessing those pointers isn't.
-        unsafe { core::mem::transmute_copy(&addr) }
+        self.wrapping_offset(count.cast())
+    }
+
+    #[inline]
+    fn wrapping_sub(self, count: Self::Usize) -> Self {
+        self.wrapping_offset(-count.cast::<isize>())
     }
 }

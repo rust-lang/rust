@@ -151,4 +151,7 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_select<M, T>(m: M, yes: T, no: T) -> T;
     #[allow(unused)]
     pub(crate) fn simd_select_bitmask<M, T>(m: M, yes: T, no: T) -> T;
+
+    // equivalent to wrapping_offset
+    pub(crate) fn simd_arith_offset<T, U>(ptr: T, offset: U) -> T;
 }
