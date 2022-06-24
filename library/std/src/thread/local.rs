@@ -782,7 +782,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
 mod lazy {
     use crate::cell::UnsafeCell;
     use crate::hint;
-    use crate::mem;
+    use crate::ptr;
 
     pub struct LazyKeyInner<T> {
         inner: UnsafeCell<Option<T>>,
@@ -811,7 +811,7 @@ mod lazy {
 
             // SAFETY:
             //
-            // note that this can in theory just be `*ptr = Some(value)`, but due to
+            // Note that this can in theory just be `*ptr = Some(value)`, but due to
             // the compiler will currently codegen that pattern with something like:
             //
             //      ptr::drop_in_place(ptr)
@@ -821,16 +821,20 @@ mod lazy {
             // `ptr` (e.g., if this is being recursively initialized) to re-access
             // TLS, in which case there will be a `&` and `&mut` pointer to the same
             // value (an aliasing violation). To avoid setting the "I'm running a
-            // destructor" flag we just use `mem::replace` which should sequence the
-            // operations a little differently and make this safe to call.
+            // destructor" flag we just use `ptr::replace` which should sequence the
+            // operations a little differently and make this safe to call:
+            //
+            //      let tmp = ptr::read(ptr)
+            //      ptr::write(ptr, Some(value))
+            //      drop(tmp)
             //
             // The precondition also ensures that we are the only one accessing
             // `self` at the moment so replacing is fine.
             unsafe {
-                let _ = mem::replace(&mut *ptr, Some(value));
+                let _ = ptr::replace(ptr, Some(value));
             }
 
-            // SAFETY: With the call to `mem::replace` it is guaranteed there is
+            // SAFETY: With the call to `ptr::replace` it is guaranteed there is
             // a `Some` behind `ptr`, not a `None` so `unreachable_unchecked`
             // will never be reached.
             unsafe {
