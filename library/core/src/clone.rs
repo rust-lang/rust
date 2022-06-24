@@ -124,9 +124,59 @@ pub trait Clone: Sized {
 
     /// Performs copy-assignment from `source`.
     ///
-    /// `a.clone_from(&b)` is equivalent to `a = b.clone()` in functionality,
-    /// but can be overridden to reuse the resources of `a` to avoid unnecessary
-    /// allocations.
+    /// `a.clone_from(&b)` is equivalent to `a = b.clone()` in functionality except cases
+    /// when it panics in the middle of operation. It can be overridden to reuse the resources
+    /// of `a` to avoid unnecessary allocations.
+    ///
+    /// # Panic behaviour
+    ///
+    /// Due to it's nature, this method cannot guarantee that it would be transactional.
+    /// If call panics, `self` can be left in inconsistent state.
+    /// This is different from `a = b.clone()` because in that case `a` is overwritten
+    /// only if `clone()` succeedes. Therefore, if you need transactional behaviour,
+    /// you shouldn't use this method.
+    ///
+    /// `clone_from` is intended to preserve resources owned by `self`
+    /// so it cannot preserve old data stored in those resources.
+    ///
+    /// That example shows one case of such behaviour:
+    /// ```no_run
+    /// use std::sync::Mutex;
+    ///
+    /// #[derive(PartialEq, Eq, Debug)]
+    /// struct PanicAtTheClone(bool);
+    ///
+    /// impl Clone for PanicAtTheClone {
+    ///     fn clone(&self) -> Self {
+    ///         if self.0 {
+    ///             panic!()
+    ///         } else {
+    ///             PanicAtTheClone(false)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// // first element will copy just fine, second element will panic if cloned!
+    /// let src = vec![PanicAtTheClone(false), PanicAtTheClone(true)];
+    /// // start with an empty vec
+    /// let dest = Mutex::new(vec![]);
+    ///
+    /// // clone from src into dest
+    /// std::panic::catch_unwind(|| {
+    ///     dest.lock().unwrap().clone_from(&src);
+    /// })
+    /// .expect_err("Must panic");
+    ///
+    /// // handle the poisoned mutex (without the mutex even attempting this produces a compiler error!)
+    /// let guard = dest
+    ///     .lock()
+    ///     .expect_err("mutex should be poisoned by the panic")
+    ///     .into_inner();
+    ///
+    /// // dest is left in an incomplete state with only half of the clone having
+    /// // completed successfully
+    /// assert_eq!(vec![PanicAtTheClone(false)], *guard);
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(bootstrap, default_method_body_is_const)]
