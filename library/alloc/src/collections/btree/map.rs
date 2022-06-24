@@ -16,6 +16,7 @@ use super::dedup_sorted_iter::DedupSortedIter;
 use super::navigate::{LazyLeafRange, LeafRange};
 use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
 use super::search::SearchResult::*;
+use super::set_val::SetValZST;
 
 mod entry;
 
@@ -271,7 +272,7 @@ impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
     }
 }
 
-impl<K, Q: ?Sized, A: Allocator + Clone> super::Recover<Q> for BTreeMap<K, (), A>
+impl<K, Q: ?Sized, A: Allocator + Clone> super::Recover<Q> for BTreeMap<K, SetValZST, A>
 where
     K: Borrow<Q> + Ord,
     Q: Ord,
@@ -318,7 +319,7 @@ where
                     alloc: (*map.alloc).clone(),
                     _marker: PhantomData,
                 }
-                .insert(());
+                .insert(SetValZST::default());
                 None
             }
         }
