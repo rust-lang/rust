@@ -7,40 +7,40 @@ macro_rules! common_tests {
         test_helpers::test_lanes! {
             fn is_null<const LANES: usize>() {
                 test_helpers::test_unary_mask_elementwise(
-                    &Simd::<*$constness (), LANES>::is_null,
-                    &<*$constness ()>::is_null,
+                    &Simd::<*$constness u32, LANES>::is_null,
+                    &<*$constness u32>::is_null,
                     &|_| true,
                 );
             }
 
             fn addr<const LANES: usize>() {
                 test_helpers::test_unary_elementwise(
-                    &Simd::<*$constness (), LANES>::addr,
-                    &<*$constness ()>::addr,
+                    &Simd::<*$constness u32, LANES>::addr,
+                    &<*$constness u32>::addr,
                     &|_| true,
                 );
             }
 
             fn wrapping_offset<const LANES: usize>() {
                 test_helpers::test_binary_elementwise(
-                    &Simd::<*$constness (), LANES>::wrapping_offset,
-                    &<*$constness ()>::wrapping_offset,
+                    &Simd::<*$constness u32, LANES>::wrapping_offset,
+                    &<*$constness u32>::wrapping_offset,
                     &|_, _| true,
                 );
             }
 
             fn wrapping_add<const LANES: usize>() {
                 test_helpers::test_binary_elementwise(
-                    &Simd::<*$constness (), LANES>::wrapping_add,
-                    &<*$constness ()>::wrapping_add,
+                    &Simd::<*$constness u32, LANES>::wrapping_add,
+                    &<*$constness u32>::wrapping_add,
                     &|_, _| true,
                 );
             }
 
             fn wrapping_sub<const LANES: usize>() {
                 test_helpers::test_binary_elementwise(
-                    &Simd::<*$constness (), LANES>::wrapping_sub,
-                    &<*$constness ()>::wrapping_sub,
+                    &Simd::<*$constness u32, LANES>::wrapping_sub,
+                    &<*$constness u32>::wrapping_sub,
                     &|_, _| true,
                 );
             }
