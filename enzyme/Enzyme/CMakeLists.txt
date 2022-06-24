@@ -12,7 +12,7 @@ endfunction()
 
 set(LLVM_TARGET_DEFINITIONS InstructionDerivatives.td)
 enzyme_tablegen(InstructionDerivatives.inc -gen-derivatives)
-add_public_tablegen_target(MLIRArithmeticCanonicalizationIncGen)
+add_public_tablegen_target(InstructionDerivativesIncGen)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
@@ -119,6 +119,7 @@ if (${ENZYME_EXTERNAL_SHARED_LIB})
         ${ENZYME_SRC}
     )
     add_dependencies(Enzyme-${LLVM_VERSION_MAJOR} intrinsics_gen)
+    add_dependencies(Enzyme-${LLVM_VERSION_MAJOR} InstructionDerivativesIncGen)
     target_link_libraries(Enzyme-${LLVM_VERSION_MAJOR} LLVM)
     install(TARGETS Enzyme-${LLVM_VERSION_MAJOR}
         EXPORT EnzymeTargets
