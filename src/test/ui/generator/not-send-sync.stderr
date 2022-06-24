@@ -6,7 +6,16 @@ LL |     assert_send(|| {
    |
    = help: the trait `Sync` is not implemented for `Cell<i32>`
    = note: required because of the requirements on the impl of `Send` for `&Cell<i32>`
-   = note: required because it appears within the type `[generator@$DIR/not-send-sync.rs:16:17: 20:6]`
+note: required because it's used within this generator
+  --> $DIR/not-send-sync.rs:16:17
+   |
+LL |       assert_send(|| {
+   |  _________________^
+LL | |
+LL | |         drop(&a);
+LL | |         yield;
+LL | |     });
+   | |_____^
 note: required by a bound in `assert_send`
   --> $DIR/not-send-sync.rs:7:23
    |

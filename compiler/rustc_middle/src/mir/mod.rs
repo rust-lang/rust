@@ -2145,10 +2145,7 @@ impl<'tcx> Place<'tcx> {
     pub fn iter_projections(
         self,
     ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {
-        self.projection.iter().enumerate().map(move |(i, proj)| {
-            let base = PlaceRef { local: self.local, projection: &self.projection[..i] };
-            (base, proj)
-        })
+        self.as_ref().iter_projections()
     }
 
     /// Generates a new place by appending `more_projections` to the existing ones
@@ -2207,6 +2204,23 @@ impl<'tcx> PlaceRef<'tcx> {
         } else {
             None
         }
+    }
+
+    /// Iterate over the projections in evaluation order, i.e., the first element is the base with
+    /// its projection and then subsequently more projections are added.
+    /// As a concrete example, given the place a.b.c, this would yield:
+    /// - (a, .b)
+    /// - (a.b, .c)
+    ///
+    /// Given a place without projections, the iterator is empty.
+    #[inline]
+    pub fn iter_projections(
+        self,
+    ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {
+        self.projection.iter().enumerate().map(move |(i, proj)| {
+            let base = PlaceRef { local: self.local, projection: &self.projection[..i] };
+            (base, *proj)
+        })
     }
 }
 

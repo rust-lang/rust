@@ -32,7 +32,7 @@ assert-document-property: ({"URL": "/lib.rs.html"}, ENDS_WITH)
 
 // First we "open" it.
 click: "#sidebar-toggle"
-assert: ".sidebar.expanded"
+assert: ".source-sidebar-expanded"
 
 // We check that the first entry of the sidebar is collapsed (which, for whatever reason,
 // is number 2 and not 1...).
