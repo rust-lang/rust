@@ -3917,8 +3917,13 @@ public:
                           : diffe(orig_ops[2], Builder2);
 
         auto rule = [&](Value *dif0, Value *dif1, Value *dif2) {
-          Value *dif = Builder2.CreateFAdd(Builder2.CreateFMul(op0, dif1),
-                                           Builder2.CreateFMul(op1, dif0));
+          Value *dif =
+              Builder2.CreateFAdd(gutils->isConstantValue(orig_ops[1])
+                                      ? Constant::getNullValue(opType1)
+                                      : Builder2.CreateFMul(op0, dif1),
+                                  gutils->isConstantValue(orig_ops[2])
+                                      ? Constant::getNullValue(opType2)
+                                      : Builder2.CreateFMul(op1, dif0));
           return Builder2.CreateFAdd(dif, dif2);
         };
 
