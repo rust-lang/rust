@@ -421,15 +421,15 @@ impl DefCollector<'_> {
         }
     }
 
-    /// When the fixed-point loop reaches a stable state, we might still have some unresolved
-    /// attributes (or unexpanded attribute proc macros) left over. This takes one of them, and
-    /// feeds the item it's applied to back into name resolution.
+    /// When the fixed-point loop reaches a stable state, we might still have
+    /// some unresolved attributes left over. This takes one of them, and feeds
+    /// the item it's applied to back into name resolution.
     ///
     /// This effectively ignores the fact that the macro is there and just treats the items as
     /// normal code.
     ///
-    /// This improves UX when proc macros are turned off or don't work, and replicates the behavior
-    /// before we supported proc. attribute macros.
+    /// This improves UX for unresolved attributes, and replicates the
+    /// behavior before we supported proc. attribute macros.
     fn reseed_with_unresolved_attribute(&mut self) -> ReachedFixedPoint {
         cov_mark::hit!(unresolved_attribute_fallback);
 
@@ -1229,6 +1229,7 @@ impl DefCollector<'_> {
                     );
                     let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
 
+                    // If proc attribute macro expansion is disabled, skip expanding it here
                     if !self.db.enable_proc_attr_macros() {
                         self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
                             directive.module_id,
@@ -1250,8 +1251,10 @@ impl DefCollector<'_> {
 
                     if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
                         if exp.is_dummy() {
-                            // Proc macros that cannot be expanded are treated as not
-                            // resolved, in order to fall back later.
+                            // If there's no expander for the proc macro (e.g.
+                            // because proc macros are disabled, or building the
+                            // proc macro crate failed), report this and skip
+                            // expansion like we would if it was disabled
                             self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
                                 directive.module_id,
                                 loc.kind,
