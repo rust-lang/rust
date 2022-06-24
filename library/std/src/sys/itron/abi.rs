@@ -30,14 +30,31 @@ pub type ER = int_t;
 /// Error code type, `ID` on success
 pub type ER_ID = int_t;
 
+/// Service call operational mode
+pub type MODE = uint_t;
+
+/// OR waiting condition for an eventflag
+pub const TWF_ORW: MODE = 0x01;
+
+/// Object attributes
+pub type ATR = uint_t;
+
+/// FIFO wait order
+pub const TA_FIFO: ATR = 0;
+/// Only one task is allowed to be in the waiting state for the eventflag
+pub const TA_WSGL: ATR = 0;
+/// The eventflag’s bit pattern is cleared when a task is released from the
+/// waiting state for that eventflag.
+pub const TA_CLR: ATR = 0x04;
+
+/// Bit pattern of an eventflag
+pub type FLGPTN = uint_t;
+
 /// Task or interrupt priority
 pub type PRI = int_t;
 
 /// The special value of `PRI` representing the current task's priority.
 pub const TPRI_SELF: PRI = 0;
-
-/// Object attributes
-pub type ATR = uint_t;
 
 /// Use the priority inheritance protocol
 #[cfg(target_os = "solid_asp3")]
@@ -92,6 +109,13 @@ pub struct T_CSEM {
 
 #[derive(Clone, Copy)]
 #[repr(C)]
+pub struct T_CFLG {
+    pub flgatr: ATR,
+    pub iflgptn: FLGPTN,
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
 pub struct T_CMTX {
     pub mtxatr: ATR,
     pub ceilpri: PRI,
@@ -139,6 +163,24 @@ extern "C" {
     pub fn sns_dsp() -> bool_t;
     #[link_name = "__asp3_get_tim"]
     pub fn get_tim(p_systim: *mut SYSTIM) -> ER;
+    #[link_name = "__asp3_acre_flg"]
+    pub fn acre_flg(pk_cflg: *const T_CFLG) -> ER_ID;
+    #[link_name = "__asp3_del_flg"]
+    pub fn del_flg(flgid: ID) -> ER;
+    #[link_name = "__asp3_set_flg"]
+    pub fn set_flg(flgid: ID, setptn: FLGPTN) -> ER;
+    #[link_name = "__asp3_clr_flg"]
+    pub fn clr_flg(flgid: ID, clrptn: FLGPTN) -> ER;
+    #[link_name = "__asp3_wai_flg"]
+    pub fn wai_flg(flgid: ID, waiptn: FLGPTN, wfmode: MODE, p_flgptn: *mut FLGPTN) -> ER;
+    #[link_name = "__asp3_twai_flg"]
+    pub fn twai_flg(
+        flgid: ID,
+        waiptn: FLGPTN,
+        wfmode: MODE,
+        p_flgptn: *mut FLGPTN,
+        tmout: TMO,
+    ) -> ER;
     #[link_name = "__asp3_acre_mtx"]
     pub fn acre_mtx(pk_cmtx: *const T_CMTX) -> ER_ID;
     #[link_name = "__asp3_del_mtx"]
