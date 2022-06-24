@@ -389,7 +389,7 @@ fn main() {
 /// also creates a file at `./target/.slow_tests_cookie` which serves as a flag
 /// that slow tests did run.
 pub fn skip_slow_tests() -> bool {
-    let should_skip = std::env::var("CI").is_err() && std::env::var("RUN_SLOW_TESTS").is_err();
+    let should_skip = std::env::var("RUN_SLOW_TESTS").is_err();
     if should_skip {
         eprintln!("ignoring slow test");
     } else {
