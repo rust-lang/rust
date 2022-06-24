@@ -3,30 +3,12 @@ Based off of the Ayu theme
 Original by Dempfi (https://github.com/dempfi/ayu)
 */
 
-/* General structure and fonts */
-
-body, .popover, .popover::before {
-	background-color: #0f1419;
-	color: #c5c5c5;
-}
-
-.setting-line .radio-line input {
-	border-color: #c5c5c5;
-}
-.setting-line .radio-line input:checked {
-	box-shadow: inset 0 0 0 3px #0f1419;
-	background-color: #ffb454;
-}
-.setting-line .radio-line input:focus {
-	box-shadow: 0 0 1px 1px #ffb454;
-}
-/* In here we combine both `:focus` and `:checked` properties. */
-.setting-line .radio-line input:checked:focus {
-	box-shadow: inset 0 0 0 3px 0f1419,
-		0 0 2px 2px #ffb454;
-}
-.setting-line .radio-line input:hover {
-	border-color: #ffb454 !important;
+:root {
+	--main-background-color: #0f1419;
+	--main-color: #c5c5c5;
+	--settings-input-color: #ffb454;
+	--sidebar-background-color: #14191f;
+	--sidebar-background-color-hover: rgba(70, 70, 70, 0.33);
 }
 
 .slider {
@@ -34,9 +16,6 @@ body, .popover, .popover::before {
 }
 .slider:before {
 	background-color: white;
-}
-input:checked + .slider {
-	background-color: #ffb454;
 }
 input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
@@ -125,10 +104,6 @@ pre, .rustdoc.source .example-wrap {
 	color: #ffb44c;
 }
 
-.source .sidebar {
-	background-color: #14191f;
-}
-
 .sidebar-elems .location {
 	color: #ff7733;
 }
@@ -147,12 +122,6 @@ pre, .rustdoc.source .example-wrap {
 
 .docblock table td, .docblock table th {
 	border-color: #5c6773;
-}
-
-.content .method .where,
-.content .fn .where,
-.content .where.fmt-newline {
-	color: #c5c5c5;
 }
 
 .search-results a:hover {
@@ -229,17 +198,6 @@ a {
 	color: #39AFD7;
 }
 
-a#toggle-all-docs,
-a.anchor,
-.small-section-header a,
-#source-sidebar a,
-pre.rust a,
-.sidebar h2 a,
-.sidebar h3 a,
-.mobile-topbar h2 a,
-.in-band a {
-	color: #c5c5c5;
-}
 .sidebar h2 a,
 .sidebar h3 a {
 	color: white;
@@ -613,15 +571,6 @@ kbd {
 	color: #999;
 }
 
-#sidebar-toggle {
-	background-color: #14191f;
-}
-#sidebar-toggle:hover {
-	background-color: rgba(70, 70, 70, 0.33);
-}
-#source-sidebar {
-	background-color: #14191f;
-}
 #source-sidebar > .title {
 	color: #fff;
 	border-bottom-color: #5c6773;

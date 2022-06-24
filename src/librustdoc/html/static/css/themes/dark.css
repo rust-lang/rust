@@ -1,25 +1,9 @@
-body, .popover, .popover::before {
-	background-color: #353535;
-	color: #ddd;
-}
-
-.setting-line .radio-line input {
-	border-color: #ddd;
-}
-.setting-line .radio-line input:checked {
-	box-shadow: inset 0 0 0 3px #353535;
-	background-color: #2196f3;
-}
-.setting-line .radio-line input:focus {
-	box-shadow: 0 0 1px 1px #2196f3;
-}
-/* In here we combine both `:focus` and `:checked` properties. */
-.setting-line .radio-line input:checked:focus {
-	box-shadow: inset 0 0 0 3px #353535,
-		0 0 2px 2px #2196f3;
-}
-.setting-line .radio-line input:hover {
-	border-color: #2196f3 !important;
+:root {
+	--main-background-color: #353535;
+	--main-color: #ddd;
+	--settings-input-color: #2196f3;
+	--sidebar-background-color: #565656;
+	--sidebar-background-color-hover: #676767;
 }
 
 .slider {
@@ -28,16 +12,10 @@ body, .popover, .popover::before {
 .slider:before {
 	background-color: white;
 }
-input:checked + .slider {
-	background-color: #2196F3;
-}
 input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
 }
 
-h1, h2, h3, h4 {
-	color: #ddd;
-}
 h1.fqn {
 	border-bottom-color: #d2d2d2;
 }
@@ -94,10 +72,6 @@ pre, .rustdoc.source .example-wrap {
 	background: #444;
 }
 
-.source .sidebar {
-	background-color: #565656;
-}
-
 .line-numbers span { color: #3B91E2; }
 .line-numbers .line-highlighted {
 	background-color: #0a042f !important;
@@ -109,12 +83,6 @@ pre, .rustdoc.source .example-wrap {
 
 .docblock table td, .docblock table th {
 	border-color: #ddd;
-}
-
-.content .method .where,
-.content .fn .where,
-.content .where.fmt-newline {
-	color: #ddd;
 }
 
 .search-results a:hover {
@@ -210,20 +178,6 @@ a {
 	color: #D2991D;
 }
 
-a#toggle-all-docs,
-a.anchor,
-.small-section-header a,
-#source-sidebar a,
-pre.rust a,
-.sidebar h2 a,
-.sidebar h3 a,
-.mobile-topbar h2 a,
-.in-band a {
-	color: #ddd;
-}
-.search-results a {
-	color: #ddd;
-}
 a.test-arrow {
 	color: #dedede;
 }
@@ -257,11 +211,6 @@ details.undocumented > summary::before {
 	border-color: #008dfd;
 }
 
-.module-item .stab,
-.import-item .stab {
-	color: #ddd;
-}
-
 .stab.empty-impl { background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
 .stab.deprecated { background: #ffc4c4; border-color: #db7b7b; color: #2f2f2f; }
@@ -285,10 +234,6 @@ details.undocumented > summary::before {
 .rightside,
 .out-of-band {
 	color: grey;
-}
-
-.result-name .primitive > i, .result-name .keyword > i {
-	color: #ddd;
 }
 
 .line-numbers :target { background-color: transparent; }
@@ -484,15 +429,6 @@ kbd {
 	color: #ccc;
 }
 
-#sidebar-toggle {
-	background-color: #565656;
-}
-#sidebar-toggle:hover {
-	background-color: #676767;
-}
-#source-sidebar {
-	background-color: #565656;
-}
 #source-sidebar > .title {
 	border-bottom-color: #ccc;
 }
