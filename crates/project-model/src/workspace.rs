@@ -459,7 +459,7 @@ fn project_json_to_crate_graph(
                     krate.display_name.as_ref().map(|it| it.canonical_name()).unwrap_or(""),
                     &it,
                 ),
-                None => Ok(Vec::new()),
+                None => Err("no proc macro dylib present".into()),
             };
 
             let target_cfgs = match krate.target.as_deref() {
@@ -870,9 +870,10 @@ fn add_target_crate_root(
         }
     }
 
-    let proc_macro = match build_data.as_ref().and_then(|it| it.proc_macro_dylib_path.as_ref()) {
-        Some(it) => load_proc_macro(it),
-        None => Ok(Vec::new()),
+    let proc_macro = match build_data.as_ref().map(|it| it.proc_macro_dylib_path.as_ref()) {
+        Some(Some(it)) => load_proc_macro(it),
+        Some(None) => Err("no proc macro dylib present".into()),
+        None => Err("no build data".into()),
     };
 
     let display_name = CrateDisplayName::from_canonical_name(cargo_name.to_string());

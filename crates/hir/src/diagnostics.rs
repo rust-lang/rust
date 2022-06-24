@@ -69,6 +69,7 @@ pub struct UnresolvedImport {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UnresolvedMacroCall {
     pub macro_call: InFile<SyntaxNodePtr>,
+    pub precise_location: Option<TextRange>,
     pub path: ModPath,
     pub is_bang: bool,
 }
@@ -95,6 +96,7 @@ pub struct UnresolvedProcMacro {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MacroError {
     pub node: InFile<SyntaxNodePtr>,
+    pub precise_location: Option<TextRange>,
     pub message: String,
 }
 

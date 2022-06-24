@@ -436,7 +436,7 @@ impl DefCollector<'_> {
         let mut unresolved_macros = mem::take(&mut self.unresolved_macros);
         let pos = unresolved_macros.iter().position(|directive| {
             if let MacroDirectiveKind::Attr { ast_id, mod_item, attr, tree } = &directive.kind {
-                self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
+                self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                     directive.module_id,
                     MacroCallKind::Attr {
                         ast_id: ast_id.ast_id,
@@ -444,7 +444,7 @@ impl DefCollector<'_> {
                         invoc_attr_index: attr.id.ast_index,
                         is_derive: false,
                     },
-                    None,
+                    attr.path().clone(),
                 ));
 
                 self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), attr.id);
@@ -1218,10 +1218,6 @@ impl DefCollector<'_> {
                         return recollect_without(self);
                     }
 
-                    if !self.db.enable_proc_attr_macros() {
-                        return true;
-                    }
-
                     // Not resolved to a derive helper or the derive attribute, so try to treat as a normal attribute.
                     let call_id = attr_macro_as_call_id(
                         self.db,
@@ -1232,6 +1228,15 @@ impl DefCollector<'_> {
                         false,
                     );
                     let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
+
+                    if !self.db.enable_proc_attr_macros() {
+                        self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
+                            directive.module_id,
+                            loc.kind,
+                            Some(loc.def.krate),
+                        ));
+                        return recollect_without(self);
+                    }
 
                     // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
                     // due to duplicating functions into macro expansions

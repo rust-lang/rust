@@ -172,8 +172,8 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -247,8 +247,8 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -312,8 +312,8 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                             },
                         },
                         dependencies: [],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: Some(
@@ -389,8 +389,8 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -464,8 +464,8 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -554,8 +554,8 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -631,8 +631,8 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -696,8 +696,8 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                             },
                         },
                         dependencies: [],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: Some(
@@ -775,8 +775,8 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -852,8 +852,8 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -933,8 +933,8 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -1010,8 +1010,8 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -1075,8 +1075,8 @@ fn cargo_hello_world_project_model() {
                             },
                         },
                         dependencies: [],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: Some(
@@ -1154,8 +1154,8 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -1231,8 +1231,8 @@ fn cargo_hello_world_project_model() {
                                 prelude: true,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no build data",
                         ),
                         origin: CratesIo {
                             repo: None,
@@ -1505,8 +1505,8 @@ fn rust_project_hello_world_project_model() {
                                 prelude: false,
                             },
                         ],
-                        proc_macro: Ok(
-                            [],
+                        proc_macro: Err(
+                            "no proc macro dylib present",
                         ),
                         origin: CratesIo {
                             repo: None,

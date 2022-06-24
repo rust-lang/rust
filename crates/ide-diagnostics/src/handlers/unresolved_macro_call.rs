@@ -1,6 +1,3 @@
-use hir::{db::AstDatabase, InFile};
-use syntax::{ast, AstNode, SyntaxNodePtr};
-
 use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: unresolved-macro-call
@@ -11,25 +8,16 @@ pub(crate) fn unresolved_macro_call(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedMacroCall,
 ) -> Diagnostic {
-    let last_path_segment = ctx.sema.db.parse_or_expand(d.macro_call.file_id).and_then(|root| {
-        let node = d.macro_call.value.to_node(&root);
-        if let Some(macro_call) = ast::MacroCall::cast(node) {
-            macro_call
-                .path()
-                .and_then(|it| it.segment())
-                .and_then(|it| it.name_ref())
-                .map(|it| InFile::new(d.macro_call.file_id, SyntaxNodePtr::new(it.syntax())))
-        } else {
-            None
-        }
-    });
-    let diagnostics = last_path_segment.unwrap_or_else(|| d.macro_call.clone().map(|it| it.into()));
+    // Use more accurate position if available.
+    let display_range = d
+        .precise_location
+        .unwrap_or_else(|| ctx.sema.diagnostics_display_range(d.macro_call.clone()).range);
 
     let bang = if d.is_bang { "!" } else { "" };
     Diagnostic::new(
         "unresolved-macro-call",
         format!("unresolved macro `{}{}`", d.path, bang),
-        ctx.sema.diagnostics_display_range(diagnostics).range,
+        display_range,
     )
     .experimental()
 }

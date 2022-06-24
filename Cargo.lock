@@ -538,6 +538,7 @@ dependencies = [
  "mbe",
  "profile",
  "rustc-hash",
+ "stdx",
  "syntax",
  "tracing",
  "tt",
