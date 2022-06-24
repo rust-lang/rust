@@ -244,7 +244,7 @@ fn rename_mod(
 
 fn rename_reference(
     sema: &Semantics<RootDatabase>,
-    mut def: Definition,
+    def: Definition,
     new_name: &str,
 ) -> Result<SourceChange> {
     let ident_kind = IdentifierKind::classify(new_name)?;
@@ -271,15 +271,43 @@ fn rename_reference(
         }
     }
 
+    let def = convert_to_trait_def(def, sema);
+    let usages = def.usages(sema).all();
+
+    if !usages.is_empty() && ident_kind == IdentifierKind::Underscore {
+        cov_mark::hit!(rename_underscore_multiple);
+        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
+    }
+    let mut source_change = SourceChange::default();
+    source_change.extend(usages.iter().map(|(&file_id, references)| {
+        (file_id, source_edit_from_references(references, def, new_name))
+    }));
+
+    let mut insert_def_edit = |def| {
+        let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
+        source_change.insert_source_edit(file_id, edit);
+        Ok(())
+    };
+    match def {
+        Definition::Local(l) => l
+            .associated_locals(sema.db)
+            .iter()
+            .try_for_each(|&local| insert_def_edit(Definition::Local(local))),
+        def => insert_def_edit(def),
+    }?;
+    Ok(source_change)
+}
+
+pub(crate) fn convert_to_trait_def(def: Definition, sema: &Semantics<RootDatabase>) -> Definition {
+    // HACK: resolve trait impl items to the item def of the trait definition
+    // so that we properly resolve all trait item references
     let assoc_item = match def {
-        // HACK: resolve trait impl items to the item def of the trait definition
-        // so that we properly resolve all trait item references
         Definition::Function(it) => it.as_assoc_item(sema.db),
         Definition::TypeAlias(it) => it.as_assoc_item(sema.db),
         Definition::Const(it) => it.as_assoc_item(sema.db),
         _ => None,
     };
-    def = match assoc_item {
+    match assoc_item {
         Some(assoc) => assoc
             .containing_trait_impl(sema.db)
             .and_then(|trait_| {
@@ -305,31 +333,7 @@ fn rename_reference(
             })
             .unwrap_or(def),
         None => def,
-    };
-    let usages = def.usages(sema).all();
-
-    if !usages.is_empty() && ident_kind == IdentifierKind::Underscore {
-        cov_mark::hit!(rename_underscore_multiple);
-        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
     }
-    let mut source_change = SourceChange::default();
-    source_change.extend(usages.iter().map(|(&file_id, references)| {
-        (file_id, source_edit_from_references(references, def, new_name))
-    }));
-
-    let mut insert_def_edit = |def| {
-        let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
-        source_change.insert_source_edit(file_id, edit);
-        Ok(())
-    };
-    match def {
-        Definition::Local(l) => l
-            .associated_locals(sema.db)
-            .iter()
-            .try_for_each(|&local| insert_def_edit(Definition::Local(local))),
-        def => insert_def_edit(def),
-    }?;
-    Ok(source_change)
 }
 
 pub fn source_edit_from_references(

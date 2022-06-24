@@ -281,7 +281,7 @@ use test_mod::*;
 
 fn main() {
     let test_struct = test_mod::TestStruct {};
-    TestTrait::test_method(&test_struct)
+    TestStruct::test_method(&test_struct)
 }
 "#,
         );
@@ -324,7 +324,7 @@ use test_mod::*;
 
 fn main() {
     let test_struct = test_mod::TestStruct {};
-    TestTrait::test_method(&test_struct, 12, 32u)
+    TestStruct::test_method(&test_struct, 12, 32u)
 }
 "#,
         );
@@ -367,7 +367,7 @@ use test_mod::*;
 
 fn main() {
     let test_struct = test_mod::TestStruct {};
-    TestTrait::test_method(test_struct, 12, 32u)
+    TestStruct::test_method(test_struct, 12, 32u)
 }
 "#,
         );
@@ -410,7 +410,7 @@ use test_mod::*;
 
 fn main() {
     let test_struct = test_mod::TestStruct {};
-    TestTrait::test_method(&mut test_struct, 12, 32u)
+    TestStruct::test_method(&mut test_struct, 12, 32u)
 }
 "#,
         );
@@ -480,7 +480,7 @@ use test_mod::*;
 
 fn main() {
     let test_struct = TestStruct {};
-    TestTrait::test_method::<()>(&test_struct)
+    TestStruct::test_method::<()>(&test_struct)
 }
 "#,
         );
