@@ -49,10 +49,6 @@ h2, h3, h4 {
 	background-color: #353535;
 }
 
-.invisible {
-	background: rgba(0, 0, 0, 0);
-}
-
 .docblock code, .docblock-short code {
 	background-color: #2A2A2A;
 }

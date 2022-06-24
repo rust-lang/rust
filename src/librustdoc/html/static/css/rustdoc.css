@@ -629,11 +629,6 @@ h2.location a {
 	display: block;
 }
 
-.invisible {
-	width: 100%;
-	display: inline-block;
-}
-
 .content .in-band {
 	flex-grow: 1;
 	margin: 0px;
