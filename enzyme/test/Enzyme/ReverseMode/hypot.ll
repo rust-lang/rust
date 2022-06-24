@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -instsimplify -simplifycfg -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -early-cse -instsimplify -simplifycfg -adce -S | FileCheck %s
 
 ; Function Attrs: nounwind readnone uwtable
 define double @tester(double %x, double %y) {
@@ -27,21 +27,21 @@ declare double @__enzyme_autodiff(...)
 
 ; CHECK: define internal { double, double } @diffetester(double %x, double %y, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call fast double @hypot(double %x, double %y)
-; CHECK-NEXT:   %1 = fmul fast double %differeturn, %x
-; CHECK-NEXT:   %2 = fdiv fast double %1, %0
-; CHECK-NEXT:   %3 = fmul fast double %differeturn, %y
-; CHECK-NEXT:   %4 = fdiv fast double %3, %0
-; CHECK-NEXT:   %5 = insertvalue { double, double } undef, double %2, 0
-; CHECK-NEXT:   %6 = insertvalue { double, double } %5, double %4, 1
-; CHECK-NEXT:   ret { double, double } %6
+; CHECK-DAG:   %[[a1:.+]] = fmul fast double %differeturn, %x
+; CHECK-DAG:   %[[a0:.+]] = call fast double @hypot(double %x, double %y)
+; CHECK-DAG:   %[[a2:.+]] = fdiv fast double %[[a1]], %[[a0]]
+; CHECK-DAG:   %[[a3:.+]] = fmul fast double %differeturn, %y
+; CHECK-DAG:   %[[a4:.+]] = fdiv fast double %[[a3]], %[[a0]]
+; CHECK-DAG:   %[[a5:.+]] = insertvalue { double, double } undef, double %[[a2]], 0
+; CHECK-DAG:   %[[a6:.+]] = insertvalue { double, double } %[[a5]], double %[[a4]], 1
+; CHECK-NEXT:   ret { double, double } %[[a6]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { double } @diffetester2(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call fast double @hypot(double %x, double 2.000000e+00)
-; CHECK-NEXT:   %1 = fmul fast double %differeturn, %x
-; CHECK-NEXT:   %2 = fdiv fast double %1, %0
-; CHECK-NEXT:   %3 = insertvalue { double } undef, double %2, 0
+; CHECK-DAG:   %[[a1:.+]] = fmul fast double %differeturn, %x
+; CHECK-DAG:   %[[a0:.+]] = call fast double @hypot(double %x, double 2.000000e+00)
+; CHECK-DAG:   %[[a2:.+]] = fdiv fast double %[[a1]], %[[a0]]
+; CHECK-DAG:   %[[a3:.+]] = insertvalue { double } undef, double %[[a2]], 0
 ; CHECK-NEXT:   ret { double } %3
 ; CHECK-NEXT: }

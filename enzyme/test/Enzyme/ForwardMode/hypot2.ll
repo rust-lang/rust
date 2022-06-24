@@ -17,11 +17,9 @@ declare double @hypot(double, double)
 ; Function Attrs: nounwind
 declare double @__enzyme_fwddiff(...)
 
-; CHECK-LABEL: define internal double @fwddiffetester2(
+; CHECK: define internal double @fwddiffetester2(
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call fast double @hypot(double %x, double 2.000000e+00)
-; CHECK-NEXT:   %1 = fmul fast double %x, %"x'"
-; CHECK-NEXT:   %2 = fdiv fast double %1, %0
-; CHECK-NEXT:   ret double %2
-; CHECK-NEXT: }
-
+; CHECK-DAG:   %[[a1:.+]] = fmul fast double %"x'", %x
+; CHECK-DAG:   %[[a0:.+]] = call fast double @hypot(double %x, double 2.000000e+00)
+; CHECK-DAG:   %[[a2:.+]] = fdiv fast double %[[a1]], %[[a0]]
+; CHECK-DAG:   ret double %[[a2]]

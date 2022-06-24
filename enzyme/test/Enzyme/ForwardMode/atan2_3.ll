@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -instsimplify -simplifycfg -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -early-cse -instsimplify -simplifycfg -adce -S | FileCheck %s
 
 define double @tester2(double %x) {
 entry:
@@ -19,11 +19,11 @@ declare double @__enzyme_fwddiff(...)
 
 ; CHECK-LABEL: define internal double @fwddiffetester2(
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = fmul fast double %x, %x
-; CHECK-NEXT:   %1 = fadd fast double %0, 4.000000e+00
-; CHECK-NEXT:   %2 = fmul fast double %"x'", 2.000000e+00
-; CHECK-NEXT:   %3 = fsub fast double 0.000000e+00, %2
-; CHECK-NEXT:   %4 = fdiv fast double %3, %1
-; CHECK-NEXT:   ret double %4
+; CHECK-DAG:   %[[a2:.+]] = fmul fast double %"x'", 2.000000e+00
+; CHECK-DAG:   %[[a0:.+]] = fmul fast double %x, %x
+; CHECK-DAG:   %[[a1:.+]] = fadd fast double %[[a0]], 4.000000e+00
+; CHECK-DAG:   %[[a4:.+]] = fdiv fast double %[[a2]], %[[a1]]
+; CHECK-DAG:   %[[a7:.+]] = {{(fneg fast double)|(fsub fast double \-0.000000e\+00,)}} %[[a4]]
+; CHECK-NEXT:   ret double %[[a7]]
 ; CHECK-NEXT: }
 

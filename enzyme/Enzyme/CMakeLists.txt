@@ -2,6 +2,20 @@
 #  set(LLVM_LINK_COMPONENTS Core Support)
 #endif()
 
+set(Enzyme_TABLEGEN_EXE enzyme-tblgen)
+
+function(enzyme_tablegen ofn)
+   tablegen(Enzyme ${ARGV})
+  set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/${ofn}
+      PARENT_SCOPE)
+endfunction()
+
+set(LLVM_TARGET_DEFINITIONS InstructionDerivatives.td)
+enzyme_tablegen(InstructionDerivatives.inc -gen-derivatives)
+add_public_tablegen_target(MLIRArithmeticCanonicalizationIncGen)
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 set(LLVM_LINK_COMPONENTS Demangle)
 
 file(GLOB ENZYME_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -104,6 +118,7 @@ if (${ENZYME_EXTERNAL_SHARED_LIB})
         SHARED
         ${ENZYME_SRC}
     )
+    add_dependencies(Enzyme-${LLVM_VERSION_MAJOR} intrinsics_gen)
     target_link_libraries(Enzyme-${LLVM_VERSION_MAJOR} LLVM)
     install(TARGETS Enzyme-${LLVM_VERSION_MAJOR}
         EXPORT EnzymeTargets

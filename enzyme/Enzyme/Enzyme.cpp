@@ -854,6 +854,9 @@ public:
                       ConstantInt::get(batchOffset[i - 1]->getType(), v)));
 #else
               element = Builder.CreateGEP(
+#if LLVM_VERSION_MAJOR >= 14
+                  elementPtrTy,
+#endif
                   element,
                   Builder.CreateMul(
                       batchOffset[i - 1],

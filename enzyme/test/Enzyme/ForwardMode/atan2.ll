@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -instsimplify -simplifycfg -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -early-cse -instcombine -simplifycfg -adce -S | FileCheck %s
 
 ; Function Attrs: nounwind readnone uwtable
 define double @tester(double %y, double %x) {
@@ -20,13 +20,13 @@ declare double @__enzyme_fwddiff(...)
 
 ; CHECK-LABEL: define internal double @fwddiffetester(
 ; CHECK-NEXT: entry:
-; CHECK-DAG:    %[[a0:.+]] = fmul fast double %y, %y
+; CHECK-DAG:   %[[a3:.+]] = fmul fast double %"y'", %x
 ; CHECK-DAG:    %[[a1:.+]] = fmul fast double %x, %x
-; CHECK-NEXT:   %2 = fadd fast double %[[a1]], %[[a0]]
-; CHECK-NEXT:   %3 = fmul fast double %"y'", %x
-; CHECK-NEXT:   %4 = fmul fast double %"x'", %y
-; CHECK-NEXT:   %5 = fsub fast double %3, %4
-; CHECK-NEXT:   %6 = fdiv fast double %5, %2
-; CHECK-NEXT:   ret double %6
+; CHECK-DAG:    %[[a0:.+]] = fmul fast double %y, %y
+; CHECK-DAG:   %[[a2:.+]] = fadd fast double %[[a1]], %[[a0]]
+; CHECK-DAG:   %[[a4:.+]] = fmul fast double %"x'", %y
+; CHECK-DAG:   %[[a5:.+]] = fsub fast double %[[a3]], %[[a4]]
+; CHECK-DAG:   %[[a6:.+]] = fdiv fast double %[[a5]], %[[a2]]
+; CHECK-NEXT:   ret double %[[a6]]
 ; CHECK-NEXT: }
 
