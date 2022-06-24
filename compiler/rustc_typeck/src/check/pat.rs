@@ -669,9 +669,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 let ident_kind = match binding_parent {
-                    hir::Node::Param(_) => Some("parameter"),
-                    hir::Node::Local(_) => Some("variable"),
-                    hir::Node::Arm(_) => Some("binding"),
+                    hir::Node::Param(_) => "parameter",
+                    hir::Node::Local(_) => "variable",
+                    hir::Node::Arm(_) => "binding",
 
                     // Provide diagnostics only if the parent pattern is struct-like,
                     // i.e. where `mut binding` makes sense
@@ -680,7 +680,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::TupleStruct(..)
                         | PatKind::Or(..)
                         | PatKind::Tuple(..)
-                        | PatKind::Slice(..) => Some("binding"),
+                        | PatKind::Slice(..) => "binding",
 
                         PatKind::Wild
                         | PatKind::Binding(..)
@@ -688,16 +688,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::Box(..)
                         | PatKind::Ref(..)
                         | PatKind::Lit(..)
-                        | PatKind::Range(..) => None,
+                        | PatKind::Range(..) => break 'block None,
                     },
 
                     // Don't provide suggestions in other cases
-                    _ => None,
+                    _ => break 'block None,
                 };
 
-                ident_kind.map(|thing| (
+                Some((
                     pat.span,
-                    format!("to declare a mutable {thing} use `mut variable_name`"),
+                    format!("to declare a mutable {ident_kind} use `mut variable_name`"),
                     format!("mut {binding}"),
                 ))
 
