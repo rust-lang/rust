@@ -51,7 +51,7 @@ declare void @free(i8*)
 !5 = distinct !{}
 
 
-; CHECK: define internal { i64, double } @augmented_diffemy_sin2(double %x, double %differeturn)
+; CHECK: define internal double @augmented_diffemy_sin2(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %i = add i64 14, 1
 ; CHECK-NEXT:   %i1 = add nuw i64 %i, 1
@@ -59,12 +59,10 @@ declare void @free(i8*)
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
 ; CHECK-NEXT:   %0 = insertvalue { i8*, double } undef, double %x, 1
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { i64, double } {{(undef|poison)}}, i64 14, 0
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { i64, double } %.fca.0.insert, double %x, 1
-; CHECK-NEXT:   ret { i64, double } %.fca.1.insert
+; CHECK-NEXT:   ret double %x
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffediffemy_sin2(double %x, double %differeturn1, double %differeturn, i64 %tapeArg)
+; CHECK: define internal { double } @diffediffemy_sin2(double %x, double %differeturn1, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = insertvalue { double } undef, double %differeturn, 0
 ; CHECK-NEXT:   ret { double } %0

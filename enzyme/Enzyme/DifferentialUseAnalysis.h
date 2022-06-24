@@ -275,23 +275,33 @@ static inline bool is_value_needed_in_reverse(
         return seen[idx] = true;
 
       if (auto SI = dyn_cast<StoreInst>(user)) {
-        // storing an active pointer into a location
-        // doesn't require the shadow pointer for the
-        // reverse pass
-        if (SI->getValueOperand() == inst &&
-            (mode == DerivativeMode::ReverseModeGradient ||
-             mode == DerivativeMode::ForwardModeSplit)) {
-          // Unless the store is into a backwards store, which would
-          // would then be performed in the reverse if the stored value was
-          // a possible pointer.
+        if (mode == DerivativeMode::ReverseModeGradient ||
+            mode == DerivativeMode::ForwardModeSplit) {
+
           bool rematerialized = false;
           for (auto pair : gutils->backwardsOnlyShadows)
             if (pair.second.stores.count(SI)) {
               rematerialized = true;
               break;
             }
-          if (!rematerialized)
-            goto endShadow;
+
+          if (SI->getValueOperand() == inst) {
+            // storing an active pointer into a location
+            // doesn't require the shadow pointer for the
+            // reverse pass
+            // Unless the store is into a backwards store, which would
+            // would then be performed in the reverse if the stored value was
+            // a possible pointer.
+            if (!rematerialized)
+              goto endShadow;
+          } else {
+            // Likewise, if not rematerializing in reverse pass, you
+            // don't need to keep the pointer operand for known pointers
+            if (!rematerialized &&
+                TR.query(const_cast<Value *>(SI->getValueOperand()))[{-1}] ==
+                    BaseType::Pointer)
+              goto endShadow;
+          }
         }
 
         if (!gutils->isConstantValue(

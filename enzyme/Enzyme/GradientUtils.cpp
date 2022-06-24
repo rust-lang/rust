@@ -3582,13 +3582,9 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
       Type *type = arg->getType()->getPointerElementType();
       auto shadow = new GlobalVariable(
           *arg->getParent(), type, arg->isConstant(), arg->getLinkage(),
-          arg->getInitializer()
-              ? GetOrCreateShadowConstant(Logic, TLI, TA,
-                                          cast<Constant>(arg->getOperand(0)),
-                                          mode, width, AtomicAdd)
-              : Constant::getNullValue(type),
-          arg->getName() + "_shadow", arg, arg->getThreadLocalMode(),
-          arg->getType()->getAddressSpace(), arg->isExternallyInitialized());
+          Constant::getNullValue(type), arg->getName() + "_shadow", arg,
+          arg->getThreadLocalMode(), arg->getType()->getAddressSpace(),
+          arg->isExternallyInitialized());
       arg->setMetadata("enzyme_shadow",
                        MDTuple::get(shadow->getContext(),
                                     {ConstantAsMetadata::get(shadow)}));
@@ -3598,6 +3594,10 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
       shadow->setAlignment(arg->getAlignment());
 #endif
       shadow->setUnnamedAddr(arg->getUnnamedAddr());
+      if (arg->getInitializer())
+        shadow->setInitializer(GetOrCreateShadowConstant(
+            Logic, TLI, TA, cast<Constant>(arg->getOperand(0)), mode, width,
+            AtomicAdd));
       return shadow;
     }
   }
@@ -4103,14 +4103,11 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         Type *elemTy = arg->getType()->getPointerElementType();
         Type *type = getShadowType(elemTy);
         IRBuilder<> B(inversionAllocs);
-        auto ip = arg->getInitializer() ? invertPointerM(arg->getInitializer(),
-                                                         B, /*nullShadow*/ true)
-                                        : Constant::getNullValue(type);
 
-        auto rule = [&](Value *ip) {
+        auto rule = [&]() {
           auto shadow = new GlobalVariable(
               *arg->getParent(), elemTy, arg->isConstant(), arg->getLinkage(),
-              cast<Constant>(ip), arg->getName() + "_shadow", arg,
+              Constant::getNullValue(type), arg->getName() + "_shadow", arg,
               arg->getThreadLocalMode(), arg->getType()->getAddressSpace(),
               arg->isExternallyInitialized());
           arg->setMetadata("enzyme_shadow",
@@ -4126,7 +4123,18 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
           return shadow;
         };
 
-        Value *shadow = applyChainRule(oval->getType(), BuilderM, rule, ip);
+        Value *shadow = applyChainRule(oval->getType(), BuilderM, rule);
+
+        if (arg->getInitializer()) {
+          applyChainRule(
+              BuilderM,
+              [&](Value *shadow, Value *ip) {
+                cast<GlobalVariable>(shadow)->setInitializer(
+                    cast<Constant>(ip));
+              },
+              shadow,
+              invertPointerM(arg->getInitializer(), B, /*nullShadow*/ true));
+        }
 
         invertedPointers.insert(std::make_pair(
             (const Value *)oval, InvertedPointerVH(this, shadow)));

@@ -2472,8 +2472,36 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   }
 
   SmallVector<CallInst *, 4> fnusers;
+  SmallVector<std::pair<GlobalVariable *, DerivativeMode>, 1> gfnusers;
   for (auto user : AugmentedCachedFunctions.find(tup)->second.fn->users()) {
-    fnusers.push_back(cast<CallInst>(user));
+    if (auto CI = dyn_cast<CallInst>(user)) {
+      fnusers.push_back(CI);
+    } else {
+      if (auto CS = dyn_cast<ConstantStruct>(user)) {
+        for (auto cuser : CS->users()) {
+          if (auto G = dyn_cast<GlobalVariable>(cuser)) {
+            if (("_enzyme_reverse_" + todiff->getName() + "'").str() ==
+                G->getName()) {
+              gfnusers.emplace_back(G, DerivativeMode::ReverseModeGradient);
+              continue;
+            }
+            if (("_enzyme_forwardsplit_" + todiff->getName() + "'").str() ==
+                G->getName()) {
+              gfnusers.emplace_back(G, DerivativeMode::ForwardModeSplit);
+              continue;
+            }
+          }
+          llvm::errs() << *gutils->newFunc->getParent() << "\n";
+          llvm::errs() << *cuser << "\n";
+          llvm::errs() << *user << "\n";
+          llvm_unreachable("Bad cuser of staging augmented forward fn");
+        }
+        continue;
+      }
+      llvm::errs() << *gutils->newFunc->getParent() << "\n";
+      llvm::errs() << *user << "\n";
+      llvm_unreachable("Bad user of staging augmented forward fn");
+    }
   }
   for (auto user : fnusers) {
     if (removeStruct) {
@@ -2513,6 +2541,25 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   if (recursive || (omp && !noTape))
     AugmentedCachedFunctions.find(tup)->second.tapeType = tapeType;
   insert_or_assign(AugmentedCachedFinished, tup, true);
+
+  for (auto pair : gfnusers) {
+    auto GV = pair.first;
+    GV->setName("_tmp");
+    auto R = gutils->GetOrCreateShadowFunction(
+        *this, TLI, TA, todiff, pair.second, width, gutils->AtomicAdd);
+    SmallVector<ConstantExpr *, 1> users;
+    for (auto U : GV->users()) {
+      if (auto CE = dyn_cast<ConstantExpr>(U)) {
+        if (CE->isCast()) {
+          users.push_back(CE);
+        }
+      }
+    }
+    for (auto U : users) {
+      U->replaceAllUsesWith(ConstantExpr::getPointerCast(R, U->getType()));
+    }
+    GV->eraseFromParent();
+  }
 
   {
     PreservedAnalyses PA;
