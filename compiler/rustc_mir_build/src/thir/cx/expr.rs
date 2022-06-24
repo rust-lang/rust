@@ -203,14 +203,12 @@ impl<'tcx> Cx<'tcx> {
             let res = self.typeck_results().qpath_res(qpath, source.hir_id);
             let ty = self.typeck_results().node_type(source.hir_id);
             let ty::Adt(adt_def, substs) = ty.kind() else {
-                    return ExprKind::Cast { source: self.mirror_expr(source)};
-                };
-            let Res::Def(
-                            DefKind::Ctor(CtorOf::Variant, CtorKind::Const),
-                            variant_ctor_id,
-                        ) = res else {
-                            return ExprKind::Cast { source: self.mirror_expr(source)};
-                        };
+                return ExprKind::Cast { source: self.mirror_expr(source)};
+            };
+
+            let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), variant_ctor_id) = res else {
+                return ExprKind::Cast { source: self.mirror_expr(source)};
+            };
 
             let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
             let (discr_did, discr_offset) = adt_def.discriminant_def_for_variant(idx);
