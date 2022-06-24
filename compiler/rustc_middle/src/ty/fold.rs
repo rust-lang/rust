@@ -86,7 +86,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     /// A convenient alternative to `try_fold_with` for use with infallible
     /// folders. Do not override this method, to ensure coherence with
     /// `try_fold_with`.
-    fn fold_with<F: TypeFolder<'tcx, Error = !>>(self, folder: &mut F) -> Self {
+    fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
         self.try_fold_with(folder).into_ok()
     }
 
@@ -216,7 +216,7 @@ pub trait TypeSuperFoldable<'tcx>: TypeFoldable<'tcx> {
     /// A convenient alternative to `try_super_fold_with` for use with
     /// infallible folders. Do not override this method, to ensure coherence
     /// with `try_super_fold_with`.
-    fn super_fold_with<F: TypeFolder<'tcx, Error = !>>(self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
         self.try_super_fold_with(folder).into_ok()
     }
 
@@ -229,70 +229,46 @@ pub trait TypeSuperFoldable<'tcx>: TypeFoldable<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
 }
 
-/// This trait is implemented for every folding traversal. There is a fold
-/// method defined for every type of interest. Each such method has a default
-/// that does an "identity" fold. Implementations of these methods often fall
-/// back to a `super_fold_with` method if the primary argument doesn't
-/// satisfy a particular condition.
+/// This trait is implemented for every infallible folding traversal. There is
+/// a fold method defined for every type of interest. Each such method has a
+/// default that does an "identity" fold. Implementations of these methods
+/// often fall back to a `super_fold_with` method if the primary argument
+/// doesn't satisfy a particular condition.
 ///
-/// If this folder is fallible (and therefore its [`Error`][`TypeFolder::Error`]
-/// associated type is something other than the default `!`) then
-/// [`FallibleTypeFolder`] should be implemented manually. Otherwise,
-/// a blanket implementation of [`FallibleTypeFolder`] will defer to
+/// A blanket implementation of [`FallibleTypeFolder`] will defer to
 /// the infallible methods of this trait to ensure that the two APIs
 /// are coherent.
-pub trait TypeFolder<'tcx>: Sized {
-    type Error = !;
-
+pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
     fn fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T>
     where
         T: TypeFoldable<'tcx>,
-        Self: TypeFolder<'tcx, Error = !>,
     {
         t.super_fold_with(self)
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         t.super_fold_with(self)
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         r.super_fold_with(self)
     }
 
-    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
         c.super_fold_with(self)
     }
 
-    fn fold_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ty::Unevaluated<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ty::Unevaluated<'tcx> {
         uv.super_fold_with(self)
     }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         p.super_fold_with(self)
     }
 
-    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx>
-    where
-        Self: TypeFolder<'tcx, Error = !>,
-    {
+    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
         bug!("most type folders should not be folding MIR datastructures: {:?}", c)
     }
 }
@@ -304,7 +280,11 @@ pub trait TypeFolder<'tcx>: Sized {
 /// A blanket implementation of this trait (that defers to the relevant
 /// method of [`TypeFolder`]) is provided for all infallible folders in
 /// order to ensure the two APIs are coherent.
-pub trait FallibleTypeFolder<'tcx>: TypeFolder<'tcx> {
+pub trait FallibleTypeFolder<'tcx>: Sized {
+    type Error;
+
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
+
     fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
     where
         T: TypeFoldable<'tcx>,
@@ -350,45 +330,48 @@ pub trait FallibleTypeFolder<'tcx>: TypeFolder<'tcx> {
 // delegates to infallible methods to ensure coherence.
 impl<'tcx, F> FallibleTypeFolder<'tcx> for F
 where
-    F: TypeFolder<'tcx, Error = !>,
+    F: TypeFolder<'tcx>,
 {
-    fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
+    type Error = !;
+
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+        TypeFolder::tcx(self)
+    }
+
+    fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, !>
     where
         T: TypeFoldable<'tcx>,
     {
         Ok(self.fold_binder(t))
     }
 
-    fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+    fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
         Ok(self.fold_ty(t))
     }
 
-    fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
+    fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, !> {
         Ok(self.fold_region(r))
     }
 
-    fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+    fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, !> {
         Ok(self.fold_const(c))
     }
 
     fn try_fold_unevaluated(
         &mut self,
         c: ty::Unevaluated<'tcx>,
-    ) -> Result<ty::Unevaluated<'tcx>, Self::Error> {
+    ) -> Result<ty::Unevaluated<'tcx>, !> {
         Ok(self.fold_unevaluated(c))
     }
 
-    fn try_fold_predicate(
-        &mut self,
-        p: ty::Predicate<'tcx>,
-    ) -> Result<ty::Predicate<'tcx>, Self::Error> {
+    fn try_fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> Result<ty::Predicate<'tcx>, !> {
         Ok(self.fold_predicate(p))
     }
 
     fn try_fold_mir_const(
         &mut self,
         c: mir::ConstantKind<'tcx>,
-    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
+    ) -> Result<mir::ConstantKind<'tcx>, !> {
         Ok(self.fold_mir_const(c))
     }
 }

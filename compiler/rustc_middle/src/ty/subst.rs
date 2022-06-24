@@ -705,7 +705,7 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
             return val;
         }
 
-        let result = ty::fold::shift_vars(self.tcx(), val, self.binders_passed);
+        let result = ty::fold::shift_vars(TypeFolder::tcx(self), val, self.binders_passed);
         debug!("shift_vars: shifted result = {:?}", result);
 
         result
