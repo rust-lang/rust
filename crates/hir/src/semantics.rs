@@ -348,9 +348,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_method_call(call).map(Function::from)
     }
 
-    pub fn resolve_impl_method(&self, call: &ast::Expr) -> Option<Function> {
-        self.imp.resolve_impl_method(call).map(Function::from)
-    }
     pub fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {
         self.imp.resolve_method_call_as_callable(call)
     }
@@ -979,10 +976,6 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<FunctionId> {
         self.analyze(call.syntax())?.resolve_method_call(self.db, call).map(|(id, _)| id)
-    }
-
-    fn resolve_impl_method(&self, call: &ast::Expr) -> Option<FunctionId> {
-        self.analyze(call.syntax())?.resolve_impl_method(self.db, call)
     }
 
     fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {

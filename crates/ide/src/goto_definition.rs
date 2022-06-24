@@ -65,7 +65,7 @@ pub(crate) fn goto_definition(
                     .definitions()
                     .into_iter()
                     .flat_map(|def| {
-                        try_filter_trait_item_definition(sema, &def, &token)
+                        try_filter_trait_item_definition(sema, &def)
                             .unwrap_or_else(|| def_to_nav(sema.db, def))
                     })
                     .collect(),
@@ -114,14 +114,11 @@ fn try_lookup_include_path(
 fn try_filter_trait_item_definition(
     sema: &Semantics<RootDatabase>,
     def: &Definition,
-    token: &SyntaxToken,
 ) -> Option<Vec<NavigationTarget>> {
     let db = sema.db;
     let assoc = def.as_assoc_item(db)?;
     match assoc {
-        AssocItem::Function(..) => {
-            IdentClass::classify_token_to_impl(sema, &token).map(|def| def_to_nav(db, def))
-        }
+        AssocItem::Function(..) => None,
         AssocItem::Const(..) | AssocItem::TypeAlias(..) => {
             let imp = match assoc.container(db) {
                 hir::AssocItemContainer::Impl(imp) => imp,

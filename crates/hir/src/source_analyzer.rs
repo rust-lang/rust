@@ -21,8 +21,8 @@ use hir_def::{
     path::{ModPath, Path, PathKind},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
     type_ref::Mutability,
-    AsMacroCall, DefWithBodyId, FieldId, FunctionId, ItemContainerId, LocalFieldId, Lookup,
-    ModuleDefId, VariantId,
+    AsMacroCall, AssocItemId, DefWithBodyId, FieldId, FunctionId, ItemContainerId, LocalFieldId,
+    Lookup, ModuleDefId, VariantId,
 };
 use hir_expand::{
     builtin_fn_macro::BuiltinFnLikeExpander, hygiene::Hygiene, name::AsName, HirFileId, InFile,
@@ -245,55 +245,9 @@ impl SourceAnalyzer {
         call: &ast::MethodCallExpr,
     ) -> Option<(FunctionId, Substitution)> {
         let expr_id = self.expr_id(db, &call.clone().into())?;
-        self.infer.as_ref()?.method_resolution(expr_id)
-    }
-
-    pub(crate) fn resolve_impl_method(
-        &self,
-        db: &dyn HirDatabase,
-        call: &ast::Expr,
-    ) -> Option<FunctionId> {
-        let infered = self.infer.as_ref()?;
-        let expr_id = self.expr_id(db, call)?;
-
-        let mut fun_info = None;
-        match call {
-            &ast::Expr::MethodCallExpr(..) => {
-                let (func, subs) = infered.method_resolution(expr_id)?;
-                if subs.is_empty(Interner) {
-                    return None;
-                }
-                fun_info.replace((func, subs.at(Interner, 0).ty(Interner)?.clone()));
-            }
-            &ast::Expr::PathExpr(..) => {
-                let func_ty = infered.type_of_expr.get(expr_id)?;
-                if let TyKind::FnDef(fn_def, subs) = func_ty.kind(Interner) {
-                    if subs.is_empty(Interner) {
-                        return None;
-                    }
-                    if let hir_ty::CallableDefId::FunctionId(f_id) =
-                        db.lookup_intern_callable_def(fn_def.clone().into())
-                    {
-                        fun_info.replace((f_id, subs.at(Interner, 0).ty(Interner)?.clone()));
-                    }
-                }
-            }
-            _ => (),
-        };
-        let (func, self_ty) = fun_info?;
-        let impled_trait = match func.lookup(db.upcast()).container {
-            ItemContainerId::TraitId(trait_id) => trait_id,
-            _ => return None,
-        };
-
-        let krate = self.resolver.krate();
-        let trait_env = self.resolver.body_owner()?.as_generic_def_id().map_or_else(
-            || Arc::new(hir_ty::TraitEnvironment::empty(krate)),
-            |d| db.trait_environment(d),
-        );
-
-        let fun_data = db.function_data(func);
-        method_resolution::lookup_impl_method(&self_ty, db, trait_env, impled_trait, &fun_data.name)
+        let (f_in_trait, substs) = self.infer.as_ref()?.method_resolution(expr_id)?;
+        let f_in_impl = self.resolve_impl_method(db, f_in_trait, &substs);
+        Some((f_in_impl.unwrap_or(f_in_trait), substs))
     }
 
     pub(crate) fn resolve_field(
@@ -391,6 +345,25 @@ impl SourceAnalyzer {
                 let expr_id = self.expr_id(db, &path_expr.into())?;
                 let infer = self.infer.as_ref()?;
                 if let Some(assoc) = infer.assoc_resolutions_for_expr(expr_id) {
+                    let assoc = match assoc {
+                        AssocItemId::FunctionId(f_in_trait) => {
+                            match infer.type_of_expr.get(expr_id) {
+                                None => assoc,
+                                Some(func_ty) => {
+                                    if let TyKind::FnDef(_fn_def, subs) = func_ty.kind(Interner) {
+                                        self.resolve_impl_method(db, f_in_trait, subs)
+                                            .map(AssocItemId::FunctionId)
+                                            .unwrap_or(assoc)
+                                    } else {
+                                        assoc
+                                    }
+                                }
+                            }
+                        }
+
+                        _ => assoc,
+                    };
+
                     return Some(PathResolution::Def(AssocItem::from(assoc).into()));
                 }
                 if let Some(VariantId::EnumVariantId(variant)) =
@@ -615,6 +588,30 @@ impl SourceAnalyzer {
             }
         }
         false
+    }
+
+    fn resolve_impl_method(
+        &self,
+        db: &dyn HirDatabase,
+        func: FunctionId,
+        substs: &Substitution,
+    ) -> Option<FunctionId> {
+        let impled_trait = match func.lookup(db.upcast()).container {
+            ItemContainerId::TraitId(trait_id) => trait_id,
+            _ => return None,
+        };
+        if substs.is_empty(Interner) {
+            return None;
+        }
+        let self_ty = substs.at(Interner, 0).ty(Interner)?;
+        let krate = self.resolver.krate();
+        let trait_env = self.resolver.body_owner()?.as_generic_def_id().map_or_else(
+            || Arc::new(hir_ty::TraitEnvironment::empty(krate)),
+            |d| db.trait_environment(d),
+        );
+
+        let fun_data = db.function_data(func);
+        method_resolution::lookup_impl_method(self_ty, db, trait_env, impled_trait, &fun_data.name)
     }
 }
 

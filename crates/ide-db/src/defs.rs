@@ -162,22 +162,6 @@ impl IdentClass {
             .or_else(|| NameClass::classify_lifetime(sema, lifetime).map(IdentClass::NameClass))
     }
 
-    pub fn classify_token_to_impl(
-        sema: &Semantics<RootDatabase>,
-        token: &SyntaxToken,
-    ) -> Option<Definition> {
-        let p = token.parent()?;
-        match_ast! {
-            match p {
-                ast::NameRef(name_ref) => match NameRefClass::classify_to_impl(sema, name_ref)? {
-                    NameRefClass::Definition(d) => Some(d),
-                    _ => None,
-                },
-                _ => None,
-            }
-        }
-    }
-
     pub fn definitions(self) -> ArrayVec<Definition, 2> {
         let mut res = ArrayVec::new();
         match self {
@@ -433,29 +417,6 @@ impl NameRefClass {
         }
     }
 
-    fn classify_to_impl(
-        sema: &Semantics<RootDatabase>,
-        name_ref: ast::NameRef,
-    ) -> Option<NameRefClass> {
-        let parent = name_ref.syntax().parent()?;
-        let expr = match_ast! {
-            match parent {
-                ast::MethodCallExpr(method_call) => {
-                    Some(ast::Expr::MethodCallExpr(method_call))
-                },
-                ast::PathSegment(..) => {
-                    parent.ancestors()
-                    .find_map(ast::PathExpr::cast)
-                    .map(ast::Expr::PathExpr)
-                },
-                _=> None
-            }
-        };
-        expr.as_ref()
-            .and_then(|e| sema.resolve_impl_method(e))
-            .map(Definition::Function)
-            .map(NameRefClass::Definition)
-    }
     pub fn classify_lifetime(
         sema: &Semantics<RootDatabase>,
         lifetime: &ast::Lifetime,
