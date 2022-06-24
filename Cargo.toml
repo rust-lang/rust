@@ -29,7 +29,7 @@ smallvec = "1.7"
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
 rustc-workspace-hack = "1.0.0"
-measureme = "9.1.2"
+measureme = "10.0.0"
 
 # Enable some feature flags that dev-dependencies need but dependencies
 # do not.  This makes `./miri install` after `./miri build` faster.
