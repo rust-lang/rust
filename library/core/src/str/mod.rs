@@ -69,6 +69,9 @@ pub use iter::SplitAsciiWhitespace;
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::SplitInclusive;
 
+#[unstable(feature = "unicode_converter", issue = "none")]
+pub use iter::{CharsLowercase, CharsUppercase};
+
 #[unstable(feature = "str_internals", issue = "none")]
 pub use validations::{next_code_point, utf8_char_width};
 
@@ -836,6 +839,102 @@ impl str {
     #[inline]
     pub fn char_indices(&self) -> CharIndices<'_> {
         CharIndices { front_offset: 0, iter: self.chars() }
+    }
+
+    /// Returns an iterator over the [`char`]s of a string slice,
+    /// converted to uppercase.
+    ///
+    /// It is guaranteed to match the output of [`str::to_uppercase`]
+    /// as it uses same context-aware conversion method.
+    ///
+    /// It is not guarateed to match [`char::to_uppercase`]
+    /// as that API is not context-aware.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(unicode_converter)]
+    ///
+    /// let input = "abc";
+    ///
+    /// let mut iter = input.chars_uppercase();
+    ///
+    /// assert_eq!(Some('A'), iter.next());
+    /// assert_eq!(Some('B'), iter.next());
+    /// assert_eq!(Some('C'), iter.next());
+    /// assert_eq!(None, iter.next());
+    /// ```
+    ///
+    /// Complex case:
+    ///
+    /// ```
+    /// #![feature(unicode_converter)]
+    ///
+    /// let input = "ὒ";
+    ///
+    /// let mut iter = input.chars_uppercase();
+    ///
+    /// assert_eq!(Some('Υ'), iter.next());
+    /// assert_eq!(Some('\u{300}'), iter.next_back());
+    /// assert_eq!(Some('\u{313}'), iter.next());
+    /// assert_eq!(None, iter.next_back());
+    /// ```
+    ///
+    /// [`char`]: prim@char
+    /// [`str::to_uppercase`]: https://doc.rust-lang.org/std/primitive.str.html#method.to_uppercase
+    #[unstable(feature = "unicode_converter", issue = "none")]
+    #[inline]
+    pub fn chars_uppercase(&self) -> CharsUppercase<'_> {
+        CharsUppercase::new(self)
+    }
+
+    /// Returns an iterator over the [`char`]s of a string slice,
+    /// converted to lowercase.
+    ///
+    /// It is guaranteed to match the output of [`str::to_lowercase`]
+    /// as it uses same context-aware conversion method.
+    ///
+    /// It is not guarateed to match [`char::to_lowercase`]
+    /// as that API is not context-aware.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(unicode_converter)]
+    ///
+    /// let input = "ABC";
+    ///
+    /// let mut iter = input.chars_lowercase();
+    ///
+    /// assert_eq!(Some('a'), iter.next());
+    /// assert_eq!(Some('b'), iter.next());
+    /// assert_eq!(Some('c'), iter.next());
+    /// assert_eq!(None, iter.next());
+    /// ```
+    ///
+    /// Complex situation:
+    ///
+    /// ```
+    /// #![feature(unicode_converter)]
+    ///
+    /// let input = "ὈΔΥΣΣΕΎΣ";
+    ///
+    /// let mut iter = input.chars_lowercase();
+    ///
+    /// assert_eq!(Some('ς'), iter.next_back());
+    /// assert_eq!(Some('σ'), input.chars().flat_map(|c| c.to_lowercase()).last())
+    /// ```
+    ///
+    /// [`char`]: prim@char
+    /// [`str::to_lowercase`]: https://doc.rust-lang.org/std/primitive.str.html#method.to_lowercase
+    #[unstable(feature = "unicode_converter", issue = "none")]
+    #[inline]
+    pub fn chars_lowercase(&self) -> CharsLowercase<'_> {
+        CharsLowercase::new(self)
     }
 
     /// An iterator over the bytes of a string slice.

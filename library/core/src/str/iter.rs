@@ -8,6 +8,7 @@ use crate::iter::{TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::ops::Try;
 use crate::option;
 use crate::slice::{self, Split as SliceSplit};
+use crate::unicode::conversions;
 
 use super::from_utf8_unchecked;
 use super::pattern::Pattern;
@@ -1497,3 +1498,346 @@ macro_rules! escape_types_impls {
 }
 
 escape_types_impls!(EscapeDebug, EscapeDefault, EscapeUnicode);
+
+/// Internal trait for Unicode conversions that potentially
+/// need context and can expand one char to several.
+///
+/// Default implementation is pass-through, no conversion is done,
+/// with `is_simple = is_ascii`.
+trait UnicodeConverter {
+    /// Convert without context nor expansion.
+    fn convert_simple(&self, c: char) -> char;
+
+    /// Convert with context, char can expand.
+    fn convert_complex(&self, c: char, from_str: &str, from_idx: usize) -> [char; 3];
+
+    /// Can conversion be done with `convert_simple` that does not expand?
+    ///
+    /// If true, use `convert_simple`, otherwise `convert_complex`.
+    #[inline]
+    fn is_simple(&self, c: char) -> bool {
+        c.is_ascii()
+    }
+}
+
+/// Convert chars to upper case.
+#[derive(Clone, Debug)]
+struct UppercaseConverter;
+
+impl UnicodeConverter for UppercaseConverter {
+    #[inline]
+    fn convert_simple(&self, c: char) -> char {
+        c.to_ascii_uppercase()
+    }
+
+    #[inline]
+    fn convert_complex(&self, c: char, _from_str: &str, _idx: usize) -> [char; 3] {
+        conversions::to_upper(c)
+    }
+}
+
+/// Convert chars to lower case.
+#[derive(Clone, Debug)]
+struct LowercaseConverter;
+
+impl UnicodeConverter for LowercaseConverter {
+    #[inline]
+    fn convert_simple(&self, c: char) -> char {
+        c.to_ascii_lowercase()
+    }
+
+    #[inline]
+    fn convert_complex(&self, c: char, from_str: &str, idx: usize) -> [char; 3] {
+        // Σ maps to σ, except at the end of a word where it maps to ς.
+        // This is the only conditional (contextual) but language-independent mapping
+        // in `SpecialCasing.txt`,
+        // so hard-code it rather than have a generic "condition" mechanism.
+        // See https://github.com/rust-lang/rust/issues/26035
+        if c == 'Σ' { map_uppercase_sigma(from_str, idx) } else { conversions::to_lower(c) }
+    }
+}
+
+#[cold]
+#[inline(never)]
+fn map_uppercase_sigma(from: &str, i: usize) -> [char; 3] {
+    // See https://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
+    // for the definition of `Final_Sigma`.
+    debug_assert!('Σ'.len_utf8() == 2);
+    let is_word_final = case_ignoreable_then_cased(from[..i].chars().rev())
+        && !case_ignoreable_then_cased(from[i + 2..].chars());
+    if is_word_final { ['ς', '\0', '\0'] } else { ['σ', '\0', '\0'] }
+}
+
+fn case_ignoreable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
+    use crate::unicode::{Case_Ignorable, Cased};
+    match iter.skip_while(|&c| Case_Ignorable(c)).next() {
+        Some(c) => Cased(c),
+        None => false,
+    }
+}
+
+/// Iterator that uses UnicodeConverter to convert chars.
+///
+/// Allows expansion and can provide full context.
+///
+/// Needs internal 2-char buffer in both forward and backward direction
+/// to cache expanded chars.
+#[derive(Clone)]
+struct UnicodeIterator<'a, C>
+where
+    C: UnicodeConverter,
+{
+    // data source
+    iter: CharIndices<'a>,
+    // buffer for .next()
+    fwd: [Option<char>; 2],
+    // buffer for .next_back(), has reverse order
+    bwd: [Option<char>; 2],
+    // keep original str for full context
+    orig_str: &'a str,
+    // state for converter
+    converter: C,
+}
+
+impl<'a, C> UnicodeIterator<'a, C>
+where
+    C: UnicodeConverter,
+{
+    fn new(s: &'a str, converter: C) -> Self {
+        UnicodeIterator {
+            iter: s.char_indices(),
+            fwd: [None, None],
+            bwd: [None, None],
+            orig_str: s,
+            converter,
+        }
+    }
+}
+
+impl<C> Iterator for UnicodeIterator<'_, C>
+where
+    C: UnicodeConverter,
+{
+    type Item = char;
+
+    fn next(&mut self) -> Option<char> {
+        match self.fwd[0] {
+            Some(c) => {
+                self.fwd = [self.fwd[1], None];
+                Some(c)
+            }
+            None => match self.iter.next() {
+                Some((idx, c)) => {
+                    if self.converter.is_simple(c) {
+                        Some(self.converter.convert_simple(c))
+                    } else {
+                        match self.converter.convert_complex(c, self.orig_str, idx) {
+                            [a, '\0', _] => Some(a),
+                            [a, b, '\0'] => {
+                                self.fwd[0] = Some(b);
+                                Some(a)
+                            }
+                            [a, b, c] => {
+                                self.fwd = [Some(b), Some(c)];
+                                Some(a)
+                            }
+                        }
+                    }
+                }
+                None => match self.bwd {
+                    [None, _] => None,
+                    [Some(a), None] => {
+                        self.bwd[0] = None;
+                        Some(a)
+                    }
+                    [_, Some(b)] => {
+                        self.bwd[1] = None;
+                        Some(b)
+                    }
+                },
+            },
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (low, high) = self.iter.size_hint();
+        (low, high.and_then(|n| n.checked_mul(3)).and_then(|n| n.checked_add(4)))
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<char> {
+        self.next_back()
+    }
+}
+
+impl<C> DoubleEndedIterator for UnicodeIterator<'_, C>
+where
+    C: UnicodeConverter,
+{
+    fn next_back(&mut self) -> Option<char> {
+        match self.bwd[0] {
+            Some(c) => {
+                self.bwd = [self.bwd[1], None];
+                Some(c)
+            }
+            None => match self.iter.next_back() {
+                Some((idx, c)) => {
+                    if self.converter.is_simple(c) {
+                        Some(self.converter.convert_simple(c))
+                    } else {
+                        match self.converter.convert_complex(c, self.orig_str, idx) {
+                            [a, '\0', _] => Some(a),
+                            [a, b, '\0'] => {
+                                self.bwd[0] = Some(a);
+                                Some(b)
+                            }
+                            [a, b, c] => {
+                                self.bwd = [Some(b), Some(a)];
+                                Some(c)
+                            }
+                        }
+                    }
+                }
+                None => match self.fwd {
+                    [None, _] => None,
+                    [Some(a), None] => {
+                        self.fwd[0] = None;
+                        Some(a)
+                    }
+                    [_, Some(b)] => {
+                        self.fwd[1] = None;
+                        Some(b)
+                    }
+                },
+            },
+        }
+    }
+}
+
+impl<C> fmt::Debug for UnicodeIterator<'_, C>
+where
+    C: UnicodeConverter + Clone,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
+    }
+}
+
+impl<C> FusedIterator for UnicodeIterator<'_, C> where C: UnicodeConverter {}
+
+/// An iterator over the uppercase chars of a string slice.
+///
+/// This struct is created by the [`chars_uppercase`] method on [`str`].
+/// See its documentation for more information.
+///
+/// [`chars_uppercase`]: str::chars_uppercase
+#[unstable(feature = "unicode_converter", issue = "none")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[derive(Clone)]
+pub struct CharsUppercase<'a> {
+    inner: UnicodeIterator<'a, UppercaseConverter>,
+}
+
+impl<'a> CharsUppercase<'a> {
+    #[inline]
+    pub(super) fn new(val: &'a str) -> CharsUppercase<'a> {
+        Self { inner: UnicodeIterator::new(val, UppercaseConverter) }
+    }
+}
+
+#[unstable(feature = "unicode_converter", issue = "none")]
+impl<'a> Iterator for CharsUppercase<'a> {
+    type Item = char;
+
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        self.inner.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    #[inline]
+    fn last(self) -> Option<char> {
+        self.inner.last()
+    }
+}
+
+#[unstable(feature = "unicode_converter", issue = "none")]
+impl DoubleEndedIterator for CharsUppercase<'_> {
+    #[inline]
+    fn next_back(&mut self) -> Option<char> {
+        self.inner.next_back()
+    }
+}
+
+#[unstable(feature = "unicode_converter", issue = "none")]
+impl FusedIterator for CharsUppercase<'_> {}
+
+#[unstable(feature = "unicode_converter", issue = "none")]
+impl fmt::Debug for CharsUppercase<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CharsUppercase({:?})", &self.inner)
+    }
+}
+
+/// An iterator over the lowercase chars of a string slice.
+///
+/// This struct is created by the [`chars_lowercase`] method on [`str`].
+/// See its documentation for more information.
+///
+/// [`chars_lowercase`]: str::chars_lowercase
+#[unstable(feature = "unicode_converter", issue = "none")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[derive(Clone)]
+pub struct CharsLowercase<'a> {
+    inner: UnicodeIterator<'a, LowercaseConverter>,
+}
+
+impl<'a> CharsLowercase<'a> {
+    #[inline]
+    pub(super) fn new(val: &'a str) -> CharsLowercase<'a> {
+        CharsLowercase { inner: UnicodeIterator::new(val, LowercaseConverter) }
+    }
+}
+
+#[unstable(feature = "unicode_converter", issue = "none")]
+impl<'a> Iterator for CharsLowercase<'a> {
+    type Item = char;
+
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        self.inner.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    #[inline]
+    fn last(self) -> Option<char> {
+        self.inner.last()
+    }
+}
+
+#[unstable(feature = "unicode_converter", issue = "none")]
+impl DoubleEndedIterator for CharsLowercase<'_> {
+    #[inline]
+    fn next_back(&mut self) -> Option<char> {
+        self.inner.next_back()
+    }
+}
+
+#[unstable(feature = "unicode_converter", issue = "none")]
+impl FusedIterator for CharsLowercase<'_> {}
+
+#[unstable(feature = "unicode_converter", issue = "none")]
+impl fmt::Debug for CharsLowercase<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CharsLowercase({:?})", &self.inner)
+    }
+}

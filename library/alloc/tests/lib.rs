@@ -44,6 +44,7 @@
 #![feature(bench_black_box)]
 #![feature(strict_provenance)]
 #![feature(once_cell)]
+#![feature(unicode_converter)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

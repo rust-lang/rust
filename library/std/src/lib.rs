@@ -291,6 +291,7 @@
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(strict_provenance)]
+#![feature(unicode_converter)]
 //
 // Library features (alloc):
 #![feature(alloc_layout_extra)]

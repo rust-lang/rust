@@ -144,6 +144,7 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(std_internals)]
+#![feature(unicode_converter)]
 //
 // Language features:
 #![feature(allocator_internals)]

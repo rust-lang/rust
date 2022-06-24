@@ -1794,6 +1794,108 @@ fn to_uppercase() {
     assert_eq!("aéǅßﬁᾀ".to_uppercase(), "AÉǄSSFIἈΙ");
 }
 
+const CHARS_CONVERT_STRINGS: &[&str; 7] = &[
+    "aBcD",
+    "ὀδυσσεύς",
+    "ὈΔΥΣΣΕΎΣ",
+    "aößü💩στιγμαςǅﬁᾀ",
+    "AÖßÜ💩ΣΤΙΓΜΑΣǅﬁİ",
+    "İİİİİİİİİİİİİİİİİİİİİİİİ",
+    "i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇i̇",
+];
+
+// Run n times .next() then .next_back()
+fn chars_fwdback<I: DoubleEndedIterator<Item = char>>(mut iter: I, n: usize) -> String {
+    let mut buf1 = String::new();
+    let mut buf2 = String::new();
+    for _ in 0..n {
+        if let Some(c) = iter.next() {
+            buf1.push(c);
+        } else {
+            break;
+        }
+    }
+    while let Some(c) = iter.next_back() {
+        buf2.push(c);
+    }
+    for c in buf2.chars().rev() {
+        buf1.push(c);
+    }
+    buf1
+}
+
+// Run n times .next_back() then .next()
+fn chars_backfwd<I: DoubleEndedIterator<Item = char>>(mut iter: I, n: usize) -> String {
+    let mut buf1 = String::new();
+    let mut buf2 = String::new();
+    for _ in 0..n {
+        if let Some(c) = iter.next_back() {
+            buf2.push(c);
+        } else {
+            break;
+        }
+    }
+    while let Some(c) = iter.next() {
+        buf1.push(c);
+    }
+    for c in buf2.chars().rev() {
+        buf1.push(c);
+    }
+    buf1
+}
+
+#[test]
+fn test_chars_uppercase() {
+    for s in CHARS_CONVERT_STRINGS {
+        let exp = s.to_uppercase();
+        assert_eq!(s.chars_uppercase().collect::<String>(), exp);
+        for i in 0..s.len() {
+            assert_eq!((i, &chars_fwdback(s.chars_uppercase(), i)), (i, &exp));
+            assert_eq!((i, &chars_backfwd(s.chars_uppercase(), i)), (i, &exp));
+        }
+    }
+}
+
+#[test]
+fn test_chars_lowercase() {
+    for s in CHARS_CONVERT_STRINGS {
+        let exp = s.to_lowercase();
+        assert_eq!(s.chars_lowercase().collect::<String>(), exp);
+        for i in 0..s.len() {
+            assert_eq!((i, &chars_fwdback(s.chars_lowercase(), i)), (i, &exp));
+            assert_eq!((i, &chars_backfwd(s.chars_lowercase(), i)), (i, &exp));
+        }
+    }
+}
+
+#[test]
+fn test_chars_uppercase_clone_debug() {
+    let mut iter = "abc".chars_uppercase();
+    assert_eq!(iter.next(), Some('A'));
+    assert_eq!(iter.next(), Some('B'));
+    let mut iterc = iter.clone();
+    assert_eq!(&format!("{:?}", &iterc), "CharsUppercase(['C'])");
+    assert_eq!(iter.next(), Some('C'));
+    assert_eq!(iter.next(), None);
+    assert_eq!(iterc.clone().last(), Some('C'));
+    assert_eq!(iterc.next(), Some('C'));
+    assert_eq!(iterc.next(), None);
+}
+
+#[test]
+fn test_chars_lowercase_clone_debug() {
+    let mut iter = "ABC".chars_lowercase();
+    assert_eq!(iter.next(), Some('a'));
+    assert_eq!(iter.next(), Some('b'));
+    let mut iterc = iter.clone();
+    assert_eq!(&format!("{:?}", &iterc), "CharsLowercase(['c'])");
+    assert_eq!(iter.next(), Some('c'));
+    assert_eq!(iter.next(), None);
+    assert_eq!(iterc.clone().last(), Some('c'));
+    assert_eq!(iterc.next(), Some('c'));
+    assert_eq!(iterc.next(), None);
+}
+
 #[test]
 fn test_into_string() {
     // The only way to acquire a Box<str> in the first place is through a String, so just
