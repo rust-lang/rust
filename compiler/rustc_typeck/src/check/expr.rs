@@ -1592,7 +1592,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(base_expr) = base_expr {
             // FIXME: We are currently creating two branches here in order to maintain
             // consistency. But they should be merged as much as possible.
-            let fru_tys = if self.tcx.features().type_changing_struct_update {
+            let fru_tys = if self.tcx.features().type_changing_struct_update || true {
                 if adt.is_struct() {
                     // Make some fresh substitutions for our ADT type.
                     let fresh_substs = self.fresh_substs_for_item(base_expr.span, adt.did());
