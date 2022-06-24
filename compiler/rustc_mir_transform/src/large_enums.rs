@@ -1,6 +1,6 @@
 use crate::rustc_middle::ty::util::IntTypeExt;
 use crate::MirPass;
-use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, AdtDef, Const, ParamEnv, Ty, TyCtxt};
@@ -19,6 +19,10 @@ use rustc_target::abi::{HasDataLayout, Size, TagEncoding, Variants};
 /// Instead of emitting moves of the large variant,
 /// Perform a memcpy instead.
 /// Based off of [this HackMD](https://hackmd.io/@ft4bxUsFT5CEUBmRKYHr7w/rJM8BBPzD).
+///
+/// In summary, what this does is at runtime determine which enum variant is active,
+/// and instead of copying all the bytes of the largest possible variant,
+/// copy only the bytes for the currently active variant.
 pub struct EnumSizeOpt {
     pub(crate) discrepancy: u64,
 }
@@ -26,7 +30,10 @@ pub struct EnumSizeOpt {
 impl<'tcx> MirPass<'tcx> for EnumSizeOpt {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let sess = tcx.sess;
-        if (!sess.opts.debugging_opts.unsound_mir_opts) || sess.mir_opt_level() < 3 {
+        // FIXME(julianknodt): one thing noticed while testing this mir-opt is that there is a
+        // different layout of large enums on wasm. It's not clear what is causing this layout
+        // difference, as it should be identical to i686 (32 bit).
+        if (!sess.opts.unstable_opts.unsound_mir_opts) || sess.mir_opt_level() < 3 {
             return;
         }
         self.optim(tcx, body);
@@ -56,8 +63,8 @@ impl EnumSizeOpt {
             Variants::Multiple { variants, .. } if variants.len() <= 1 => return None,
             Variants::Multiple { variants, .. } => variants,
         };
-        let min = variants.iter().map(|v| v.size()).min().unwrap();
-        let max = variants.iter().map(|v| v.size()).max().unwrap();
+        let min = variants.iter().map(|v| v.size).min().unwrap();
+        let max = variants.iter().map(|v| v.size).max().unwrap();
         if max.bytes() - min.bytes() < self.discrepancy {
             return None;
         }
@@ -92,7 +99,7 @@ impl EnumSizeOpt {
         for (var_idx, layout) in variants.iter_enumerated() {
             let curr_idx =
                 target_bytes * adt_def.discriminant_for_variant(tcx, var_idx).val as usize;
-            let sz = layout.size();
+            let sz = layout.size;
             match ptr_sized_int {
                 rustc_target::abi::Integer::I32 => {
                     encode_store!(curr_idx, data_layout.endian, sz.bytes() as u32);
@@ -115,8 +122,11 @@ impl EnumSizeOpt {
         let mut alloc_cache = FxHashMap::default();
         let body_did = body.source.def_id();
         let param_env = tcx.param_env(body_did);
-        let (bbs, local_decls) = body.basic_blocks_and_local_decls_mut();
-        for bb in bbs {
+
+        let blocks = body.basic_blocks.as_mut();
+        let local_decls = &mut body.local_decls;
+
+        for bb in blocks {
             bb.expand_statements(|st| {
                 if let StatementKind::Assign(box (
                     lhs,
@@ -175,7 +185,7 @@ impl EnumSizeOpt {
                         kind: StatementKind::Assign(box (
                             discr_cast_place,
                             Rvalue::Cast(
-                                CastKind::Misc,
+                                CastKind::IntToInt,
                                 Operand::Copy(discr_place),
                                 tcx.types.usize,
                             ),
@@ -217,7 +227,7 @@ impl EnumSizeOpt {
                         source_info,
                         kind: StatementKind::Assign(box (
                             dst_cast_place,
-                            Rvalue::Cast(CastKind::Misc, Operand::Copy(dst), dst_cast_ty),
+                            Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(dst), dst_cast_ty),
                         )),
                     };
 
@@ -240,17 +250,19 @@ impl EnumSizeOpt {
                         source_info,
                         kind: StatementKind::Assign(box (
                             src_cast_place,
-                            Rvalue::Cast(CastKind::Misc, Operand::Copy(src), src_cast_ty),
+                            Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(src), src_cast_ty),
                         )),
                     };
 
                     let copy_bytes = Statement {
                         source_info,
-                        kind: StatementKind::CopyNonOverlapping(box CopyNonOverlapping {
-                            src: Operand::Copy(src_cast_place),
-                            dst: Operand::Copy(dst_cast_place),
-                            count: Operand::Copy(size_place),
-                        }),
+                        kind: StatementKind::Intrinsic(
+                            box NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
+                                src: Operand::Copy(src_cast_place),
+                                dst: Operand::Copy(dst_cast_place),
+                                count: Operand::Copy(size_place),
+                            }),
+                        ),
                     };
 
                     let store_dead = Statement {

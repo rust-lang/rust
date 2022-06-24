@@ -1,12 +1,14 @@
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // compile-flags: -Zunsound-mir-opts -Zmir-opt-level=3
-// ignore-wasm32-bare compiled with panic=abort by default
+// ignore-wasm32
+
 #![feature(arbitrary_enum_discriminant, repr128)]
 
 // Tests that an enum with a variant with no data gets correctly transformed.
+#[repr(C)]
 pub enum NoData {
+  Large([u8; 8192]),
   None,
-  Large([u64; 1024]),
 }
 
 // Tests that an enum with a variant with data that is a valid candidate gets transformed.
@@ -26,7 +28,7 @@ pub enum InvalidIdxs {
 // Tests that an enum with too high of a discriminant index (not in bounds of usize) does not
 // get tformed.
 #[repr(u128)]
-pub enum Truncatable {
+pub enum NotTrunctable {
     A = 0,
     B([u8; 1024]) = 1,
     C([u8; 4096]) = 0x10000000000000001,
@@ -43,7 +45,7 @@ pub enum RandOrderDiscr {
 // EMIT_MIR enum_opt.unin.EnumSizeOpt.diff
 pub fn unin() {
   let mut a = NoData::None;
-  a = NoData::Large([1; 1024]);
+  a = NoData::Large([1; 8192]);
 }
 
 // EMIT_MIR enum_opt.cand.EnumSizeOpt.diff
@@ -60,9 +62,9 @@ pub fn invalid() {
 
 // EMIT_MIR enum_opt.trunc.EnumSizeOpt.diff
 pub fn trunc() {
-  let mut a = Truncatable::A;
-  a = Truncatable::B([0; 1024]);
-  a = Truncatable::C([0; 4096]);
+  let mut a = NotTrunctable::A;
+  a = NotTrunctable::B([0; 1024]);
+  a = NotTrunctable::C([0; 4096]);
 }
 
 pub fn rand_order() {
