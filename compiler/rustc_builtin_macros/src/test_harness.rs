@@ -147,7 +147,7 @@ fn entry_point_type(sess: &Session, item: &ast::Item, depth: usize) -> EntryPoin
             if sess.contains_name(&item.attrs, sym::start) {
                 EntryPointType::Start
             } else if sess.contains_name(&item.attrs, sym::rustc_main) {
-                EntryPointType::MainAttr
+                EntryPointType::RustcMainAttr
             } else if item.ident.name == sym::main {
                 if depth == 0 {
                     // This is a top-level function so can be 'main'
@@ -177,12 +177,12 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         let item = noop_flat_map_item(i, self).expect_one("noop did something");
         self.depth -= 1;
 
-        // Remove any #[main] or #[start] from the AST so it doesn't
+        // Remove any #[rustc_main] or #[start] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
         let item = match entry_point_type(self.sess, &item, self.depth) {
-            EntryPointType::MainNamed | EntryPointType::MainAttr | EntryPointType::Start => item
-                .map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
+            EntryPointType::MainNamed | EntryPointType::RustcMainAttr | EntryPointType::Start => {
+                item.map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
                     let allow_ident = Ident::new(sym::allow, self.def_site);
                     let dc_nested =
                         attr::mk_nested_word_item(Ident::new(sym::dead_code, self.def_site));
@@ -197,7 +197,8 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                         .collect();
 
                     ast::Item { id, ident, attrs, kind, vis, span, tokens }
-                }),
+                })
+            }
             EntryPointType::None | EntryPointType::OtherMain => item,
         };
 
