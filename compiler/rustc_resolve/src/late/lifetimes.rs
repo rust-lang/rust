@@ -2360,12 +2360,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Scope::Binder {
                     where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
                 } => {
-                    let mut err = self.tcx.sess.struct_span_err(
-                        lifetime_ref.span,
-                        "`impl Trait` can only mention lifetimes bound at the fn or impl level",
-                    );
-                    err.span_note(self.tcx.def_span(region_def_id), "lifetime declared here");
-                    err.emit();
+                    self.tcx
+                        .sess
+                        .struct_span_err(
+                            lifetime_ref.span,
+                            "`impl Trait` can only mention lifetimes bound at the fn or impl level",
+                        )
+                        .emit();
                     return;
                 }
                 Scope::Root => break,

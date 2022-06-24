@@ -3,12 +3,6 @@ error: `impl Trait` can only mention lifetimes bound at the fn or impl level
    |
 LL | fn test_argument_position(x: impl for<'a> Trait<'a, Assoc = impl Copy + 'a>) {}
    |                                                                         ^^
-   |
-note: lifetime declared here
-  --> $DIR/universal_wrong_hrtb.rs:5:39
-   |
-LL | fn test_argument_position(x: impl for<'a> Trait<'a, Assoc = impl Copy + 'a>) {}
-   |                                       ^^
 
 error: aborting due to previous error
 
