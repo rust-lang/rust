@@ -906,7 +906,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             return eh_catch_typeinfo;
         }
         let tcx = self.tcx;
-        assert!(self.sess().target.is_like_emscripten);
+        assert!(self.sess().target.os == "emscripten");
         let eh_catch_typeinfo = match tcx.lang_items().eh_catch_typeinfo() {
             Some(def_id) => self.get_static(def_id),
             _ => {

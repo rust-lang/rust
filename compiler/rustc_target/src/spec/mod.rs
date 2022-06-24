@@ -1273,12 +1273,6 @@ pub struct TargetOptions {
     ///   - uses SEH-based unwinding,
     ///   - supports control flow guard mechanism.
     pub is_like_msvc: bool,
-    /// Whether the target toolchain is like Emscripten's. Only useful for compiling with
-    /// Emscripten toolchain.
-    /// Defaults to false.
-    pub is_like_emscripten: bool,
-    /// Whether the target toolchain is like Fuchsia's.
-    pub is_like_fuchsia: bool,
     /// Whether a target toolchain is like WASM.
     pub is_like_wasm: bool,
     /// Version of DWARF to use if not using the default.
@@ -1505,9 +1499,7 @@ impl Default for TargetOptions {
             is_like_osx: false,
             is_like_solaris: false,
             is_like_windows: false,
-            is_like_emscripten: false,
             is_like_msvc: false,
-            is_like_fuchsia: false,
             is_like_wasm: false,
             dwarf_version: None,
             linker_is_gnu: true,
@@ -2112,8 +2104,6 @@ impl Target {
         key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
-        key!(is_like_emscripten, bool);
-        key!(is_like_fuchsia, bool);
         key!(is_like_wasm, bool);
         key!(dwarf_version, Option<u32>);
         key!(linker_is_gnu, bool);
@@ -2358,8 +2348,6 @@ impl ToJson for Target {
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
         target_option_val!(is_like_msvc);
-        target_option_val!(is_like_emscripten);
-        target_option_val!(is_like_fuchsia);
         target_option_val!(is_like_wasm);
         target_option_val!(dwarf_version);
         target_option_val!(linker_is_gnu);

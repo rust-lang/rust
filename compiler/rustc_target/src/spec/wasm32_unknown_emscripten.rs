@@ -26,7 +26,6 @@ pub fn target() -> Target {
         // functionality, and a .wasm file.
         exe_suffix: ".js".into(),
         linker: None,
-        is_like_emscripten: true,
         panic_strategy: PanicStrategy::Unwind,
         no_default_libraries: false,
         post_link_args,
