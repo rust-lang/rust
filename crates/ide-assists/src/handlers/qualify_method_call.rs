@@ -69,17 +69,10 @@ fn item_for_path_search(db: &dyn HirDatabase, item: ItemInNs) -> Option<ItemInNs
         ItemInNs::Types(_) | ItemInNs::Values(_) => match item_as_assoc(db, item) {
             Some(assoc_item) => match assoc_item.container(db) {
                 AssocItemContainer::Trait(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
-                AssocItemContainer::Impl(impl_) => {
-                    let impled_trait = if matches!(assoc_item, AssocItem::Function(..)) {
-                        impl_.trait_(db)
-                    } else {
-                        None
-                    };
-                    match impled_trait {
-                        None => ItemInNs::from(ModuleDef::from(impl_.self_ty(db).as_adt()?)),
-                        Some(t) => ItemInNs::from(ModuleDef::from(t)),
-                    }
-                }
+                AssocItemContainer::Impl(impl_) => match impl_.trait_(db) {
+                    None => ItemInNs::from(ModuleDef::from(impl_.self_ty(db).as_adt()?)),
+                    Some(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
+                },
             },
             None => item,
         },
