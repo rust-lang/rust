@@ -3921,7 +3921,7 @@ public:
               Builder2.CreateFAdd(gutils->isConstantValue(orig_ops[1])
                                       ? Constant::getNullValue(opType1)
                                       : Builder2.CreateFMul(op0, dif1),
-                                  gutils->isConstantValue(orig_ops[2])
+                                  gutils->isConstantValue(orig_ops[0])
                                       ? Constant::getNullValue(opType2)
                                       : Builder2.CreateFMul(op1, dif0));
           return Builder2.CreateFAdd(dif, dif2);
