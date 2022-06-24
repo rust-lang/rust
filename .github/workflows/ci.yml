@@ -11,7 +11,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        libgccjit_version: ["libgccjit.so", "libgccjit_without_int128.so", "libgccjit12.so"]
+        libgccjit_version:
+          - { gcc: "libgccjit.so", extra: "" }
+          - { gcc: "libgccjit_without_int128.so", extra: "" }
+          - { gcc: "libgccjit12.so", extra: "--no-default-features" }
 
     steps:
     - uses: actions/checkout@v2
@@ -28,7 +31,7 @@ jobs:
       uses: dawidd6/action-download-artifact@v2
       with:
           workflow: main.yml
-          name: ${{ matrix.libgccjit_version }}
+          name: ${{ matrix.libgccjit_version.gcc }}
           path: gcc-build
           repo: antoyo/gcc
           search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
@@ -78,19 +81,10 @@ jobs:
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
 
     - name: Build
-      if: matrix.libgccjit_version != 'libgccjit12.so'
       run: |
         ./prepare_build.sh
-        ./build.sh
-        cargo test
-        ./clean_all.sh
-
-    - name: Build
-      if: matrix.libgccjit_version == 'libgccjit12.so'
-      run: |
-        ./prepare_build.sh
-        ./build.sh --no-default-features
-        cargo test --no-default-features
+        ./build.sh ${{ matrix.libgccjit_version.extra }}
+        cargo test ${{ matrix.libgccjit_version.extra }}
         ./clean_all.sh
 
     - name: Prepare dependencies
@@ -106,8 +100,7 @@ jobs:
         command: build
         args: --release
 
-    - name: Test
-      if: matrix.libgccjit_version != 'libgccjit12.so'
+    - name: Test std_tests
       run: |
         # Enable backtraces for easier debugging
         export RUST_BACKTRACE=1
@@ -116,10 +109,9 @@ jobs:
         export COMPILE_RUNS=2
         export RUN_RUNS=2
 
-        ./test.sh --release
+        ./test.sh --release --clean --build-sysroot --std-tests ${{ matrix.libgccjit_version.extra }}
 
-    - name: Test
-      if: matrix.libgccjit_version == 'libgccjit12.so'
+    - name: Test test_libcore
       run: |
         # Enable backtraces for easier debugging
         export RUST_BACKTRACE=1
@@ -128,7 +120,29 @@ jobs:
         export COMPILE_RUNS=2
         export RUN_RUNS=2
 
-        ./test.sh --release --no-default-features
+        ./test.sh --release --test-libcore ${{ matrix.libgccjit_version.extra }}
+
+    - name: Test extended_sysroot_tests
+      run: |
+        # Enable backtraces for easier debugging
+        export RUST_BACKTRACE=1
+
+        # Reduce amount of benchmark runs as they are slow
+        export COMPILE_RUNS=2
+        export RUN_RUNS=2
+
+        ./test.sh --release --extended-tests ${{ matrix.libgccjit_version.extra }}
+
+    - name: Test test_rustc
+      run: |
+        # Enable backtraces for easier debugging
+        export RUST_BACKTRACE=1
+
+        # Reduce amount of benchmark runs as they are slow
+        export COMPILE_RUNS=2
+        export RUN_RUNS=2
+
+        ./test.sh --release --test-rustc ${{ matrix.libgccjit_version.extra }}
 
   duplicates:
     runs-on: ubuntu-latest
