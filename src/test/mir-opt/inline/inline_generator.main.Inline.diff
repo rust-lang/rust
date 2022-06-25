@@ -77,7 +77,7 @@
 +         StorageLive(_11);                // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
 +         StorageLive(_12);                // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
 +         StorageLive(_13);                // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
-+         _13 = move (_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]); // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
++         _13 = virt (_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]); // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
 +         _12 = discriminant((*_13));      // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
 +         StorageDead(_13);                // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
 +         switchInt(move _12) -> [0_u32: bb3, 1_u32: bb8, 3_u32: bb7, otherwise: bb9]; // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
@@ -125,7 +125,7 @@
 +         ((_1 as Yielded).0: i32) = move _8; // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         discriminant(_1) = 0;            // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         StorageLive(_14);                // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
-+         _14 = move (_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]); // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
++         _14 = virt (_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]); // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         discriminant((*_14)) = 3;        // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         StorageDead(_14);                // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         goto -> bb1;                     // scope 0 at $DIR/inline-generator.rs:15:11: 15:39
@@ -139,7 +139,7 @@
 +         ((_1 as Complete).0: bool) = move _10; // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
 +         discriminant(_1) = 1;            // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
 +         StorageLive(_15);                // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
-+         _15 = move (_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]); // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
++         _15 = virt (_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]); // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
 +         discriminant((*_15)) = 1;        // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
 +         StorageDead(_15);                // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
 +         goto -> bb1;                     // scope 0 at $DIR/inline-generator.rs:15:41: 15:41
