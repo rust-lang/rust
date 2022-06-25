@@ -20,14 +20,22 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// struct Event {
-    ///     id: usize,
     ///     x: i32,
-    ///     y: i32,
+    /// }
+    ///
+    /// fn copy_position(a: &mut Event, b: &Event) {
+    ///     a.x = a.x;
+    /// }
+    /// ```
+    ///
+    /// Should be:
+    /// ```rust
+    /// struct Event {
+    ///     x: i32,
     /// }
     ///
     /// fn copy_position(a: &mut Event, b: &Event) {
     ///     a.x = b.x;
-    ///     a.y = a.y;
     /// }
     /// ```
     #[clippy::version = "1.48.0"]
