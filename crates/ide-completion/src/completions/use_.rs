@@ -79,9 +79,7 @@ pub(crate) fn complete_use_path(
                 }
                 hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Enum(e))) => {
                     cov_mark::hit!(enum_plain_qualified_use_tree);
-                    e.variants(ctx.db)
-                        .into_iter()
-                        .for_each(|variant| acc.add_enum_variant(ctx, path_ctx, variant, None));
+                    acc.add_enum_variants(ctx, path_ctx, *e);
                 }
                 _ => {}
             }

@@ -357,6 +357,12 @@ impl Completions {
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
+        if let PathCompletionCtx { kind: PathKind::Pat { pat_ctx }, .. } = path_ctx {
+            cov_mark::hit!(enum_variant_pattern_path);
+            self.add_variant_pat(ctx, pat_ctx, variant, local_name);
+            return;
+        }
+
         if let Some(builder) =
             render_variant_lit(RenderContext::new(ctx), path_ctx, local_name, variant, None)
         {

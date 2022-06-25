@@ -1,7 +1,7 @@
 //! Completion tests for pattern position.
 use expect_test::{expect, Expect};
 
-use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
+use crate::tests::{check_edit, completion_list, BASE_ITEMS_FIXTURE};
 
 fn check_empty(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(ra_fixture);
@@ -127,15 +127,15 @@ fn foo() {
         expect![[r#"
             ct CONST
             en Enum
-            ma makro!(…) macro_rules! makro
+            ma makro!(…)  macro_rules! makro
             md module
             st Record
             st Tuple
             st Unit
             ev TupleV
-            bn Record    Record { field$1 }$0
-            bn Tuple     Tuple($1)$0
-            bn TupleV    TupleV($1)$0
+            bn Record {…} Record { field$1 }$0
+            bn Tuple(…)   Tuple($1)$0
+            bn TupleV(…)  TupleV($1)$0
             kw mut
             kw ref
         "#]],
@@ -162,8 +162,8 @@ fn foo() {
             st Tuple
             st Unit
             ev Variant
-            bn Record            Record { field$1 }$0
-            bn Tuple             Tuple($1)$0
+            bn Record {…}        Record { field$1 }$0
+            bn Tuple(…)          Tuple($1)$0
             kw mut
             kw ref
         "#]],
@@ -178,13 +178,13 @@ fn foo(a$0) {
 }
 "#,
         expect![[r#"
-            ma makro!(…) macro_rules! makro
+            ma makro!(…)  macro_rules! makro
             md module
             st Record
             st Tuple
             st Unit
-            bn Record    Record { field$1 }: Record$0
-            bn Tuple     Tuple($1): Tuple$0
+            bn Record {…} Record { field$1 }: Record$0
+            bn Tuple(…)   Tuple($1): Tuple$0
             kw mut
             kw ref
         "#]],
@@ -195,13 +195,13 @@ fn foo(a$0: Tuple) {
 }
 "#,
         expect![[r#"
-            ma makro!(…) macro_rules! makro
+            ma makro!(…)  macro_rules! makro
             md module
             st Record
             st Tuple
             st Unit
-            bn Record    Record { field$1 }$0
-            bn Tuple     Tuple($1)$0
+            bn Record {…} Record { field$1 }$0
+            bn Tuple(…)   Tuple($1)$0
             kw mut
             kw ref
         "#]],
@@ -269,8 +269,8 @@ fn outer() {
             st Invisible
             st Record
             st Tuple
-            bn Record    Record { field$1, .. }$0
-            bn Tuple     Tuple($1, ..)$0
+            bn Record {…} Record { field$1, .. }$0
+            bn Tuple(…)   Tuple($1, ..)$0
             kw mut
             kw ref
         "#]],
@@ -293,8 +293,8 @@ impl Foo {
         expect![[r#"
             sp Self
             st Foo
-            bn Foo  Foo($1)$0
-            bn Self Self($1)$0
+            bn Foo(…)  Foo($1)$0
+            bn Self(…) Self($1)$0
             kw mut
             kw ref
         "#]],
@@ -316,9 +316,8 @@ fn func() {
 "#,
         expect![[r#"
             ct ASSOC_CONST const ASSOC_CONST: ()
-            ev RecordV {…} RecordV { field: u32 }
-            ev TupleV(…)   TupleV(u32)
-            ev UnitV       UnitV
+            bn RecordV {…} RecordV { field$1 }$0
+            bn TupleV(…)   TupleV($1)$0
         "#]],
     );
 }
@@ -334,8 +333,8 @@ fn outer(Foo { bar: $0 }: Foo) {}
         expect![[r#"
             st Bar
             st Foo
-            bn Bar Bar($1)$0
-            bn Foo Foo { bar$1 }$0
+            bn Bar(…)  Bar($1)$0
+            bn Foo {…} Foo { bar$1 }$0
             kw mut
             kw ref
         "#]],
@@ -368,8 +367,8 @@ fn foo($0) {}
         expect![[r#"
             st Bar
             st Foo
-            bn Bar Bar($1): Bar$0
-            bn Foo Foo { bar$1 }: Foo$0
+            bn Bar(…)  Bar($1): Bar$0
+            bn Foo {…} Foo { bar$1 }: Foo$0
             kw mut
             kw ref
         "#]],
@@ -389,8 +388,8 @@ fn foo() {
         expect![[r#"
             st Bar
             st Foo
-            bn Bar Bar($1)$0
-            bn Foo Foo { bar$1 }$0
+            bn Bar(…)  Bar($1)$0
+            bn Foo {…} Foo { bar$1 }$0
             kw mut
             kw ref
         "#]],
@@ -443,7 +442,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            ev TupleVariant TupleVariant
+            bn TupleVariant(…) TupleVariant($1)$0
         "#]],
     );
     check_empty(
@@ -458,8 +457,36 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            ev RecordVariant RecordVariant
+            bn RecordVariant {…} RecordVariant { field$1 }$0
         "#]],
+    );
+}
+
+#[test]
+fn completes_enum_variant_pat() {
+    cov_mark::check!(enum_variant_pattern_path);
+    check_edit(
+        "RecordVariant {…}",
+        r#"
+enum Enum {
+    RecordVariant { field: u32 }
+}
+fn foo() {
+    match (Enum::RecordVariant { field: 0 }) {
+        Enum::RecordV$0
+    }
+}
+"#,
+        r#"
+enum Enum {
+    RecordVariant { field: u32 }
+}
+fn foo() {
+    match (Enum::RecordVariant { field: 0 }) {
+        Enum::RecordVariant { field$1 }$0
+    }
+}
+"#,
     );
 }
 

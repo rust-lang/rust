@@ -115,6 +115,7 @@ pub(crate) fn complete_expr_path(
                     };
 
                     if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
+                        cov_mark::hit!(completes_variant_through_self);
                         acc.add_enum_variants(ctx, path_ctx, e);
                     }
 
