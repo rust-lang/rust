@@ -17,11 +17,13 @@ LL | const _: [String; 0] = [String::new(); 0];
    |                        |constants cannot evaluate destructors
    |                        value is dropped here
 
-error[E0381]: use of possibly-uninitialized variable: `x`
+error[E0381]: used binding `x` isn't initialized
   --> $DIR/repeat-drop-2.rs:12:14
    |
+LL |     let x: u8;
+   |         - binding declared here but left uninitialized
 LL |     let _ = [x; 0];
-   |              ^ use of possibly-uninitialized `x`
+   |              ^ `x` used here but it isn't initialized
 
 error: aborting due to 3 previous errors
 

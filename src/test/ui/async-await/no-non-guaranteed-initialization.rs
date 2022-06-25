@@ -6,8 +6,7 @@ async fn no_non_guaranteed_initialization(x: usize) -> usize {
     if x > 5 {
         y = echo(10).await;
     }
-    y
-    //~^ use of possibly-uninitialized variable: `y`
+    y //~ ERROR E0381
 }
 
 async fn echo(x: usize) -> usize { x + 1 }

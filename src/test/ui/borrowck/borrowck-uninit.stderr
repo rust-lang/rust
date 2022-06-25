@@ -1,8 +1,10 @@
-error[E0381]: use of possibly-uninitialized variable: `x`
+error[E0381]: used binding `x` isn't initialized
   --> $DIR/borrowck-uninit.rs:5:9
    |
+LL |     let x: isize;
+   |         - binding declared here but left uninitialized
 LL |     foo(x);
-   |         ^ use of possibly-uninitialized `x`
+   |         ^ `x` used here but it isn't initialized
 
 error: aborting due to previous error
 
