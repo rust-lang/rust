@@ -1636,6 +1636,7 @@ impl<'a> Builder<'a> {
 
             // set for clippy to know the sysroot
             .env("SYSROOT", &sysroot)
+            .env("RUSTC_COMMAND", cmd)
 
             .env("RUSTC_SYSROOT", &sysroot)
             .env("RUSTC_LIBDIR", &libdir)

@@ -156,6 +156,15 @@ fn main() {
         cmd.arg("--check-cfg=values(bootstrap)");
     }
 
+    if let Ok(command) = env::var("RUSTC_COMMAND") {
+        if command == "clippy" && target.is_none() {
+            let libdir_string = libdir.to_string_lossy();
+            let (sysroot, _) = libdir_string.rsplit_once('/').unwrap();
+            eprintln!("passing clippy --sysroot {}", sysroot);
+            cmd.arg("--sysroot").arg(&sysroot);
+        }
+    }
+
     if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
         cmd.arg("--remap-path-prefix").arg(&map);
     }
