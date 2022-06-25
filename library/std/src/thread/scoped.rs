@@ -35,10 +35,13 @@ pub struct Scope<'scope, 'env: 'scope> {
 #[stable(feature = "scoped_threads", since = "1.63.0")]
 pub struct ScopedJoinHandle<'scope, T>(JoinInner<'scope, T>);
 
+// Note: all of `ScopeData` fields must be interiorly mutable since
+// it may be deallocated in the middle of a `&self` method:
+// see `decrement_num_running_threads` below for more info.
 pub(super) struct ScopeData {
     num_running_threads: AtomicUsize,
     a_thread_panicked: AtomicBool,
-    main_thread: Thread,
+    main_thread: UnsafeCell<Thread>,
 }
 
 impl ScopeData {
@@ -51,12 +54,24 @@ impl ScopeData {
             panic!("too many running threads in thread scope");
         }
     }
+    fn main_thread(&self) -> &Thread {
+        unsafe { &*self.main_thread.get() }
+    }
     pub(super) fn decrement_num_running_threads(&self, panic: bool) {
         if panic {
             self.a_thread_panicked.store(true, Ordering::Relaxed);
         }
+        let main_thread = self.main_thread().clone();
         if self.num_running_threads.fetch_sub(1, Ordering::Release) == 1 {
-            self.main_thread.unpark();
+            // By now, `num_running_threads` is `0`, so when `scope()` in the main thread
+            // is unparked, it will complete its business and deallocate `*self`!
+            // Two things to look after:
+            //   - it can spuriously unpark / wake up, **so `self` can no longer be used**, even
+            //     before we, ourselves, unpark. Hence why we've cloned the `main_thread`'s handle.
+            //   - no matter how it unparks, `*self` may be deallocated before this function
+            //     returns, so all of `*self` data, **including `main_thread`**, must be interiorly
+            //     mutable. See https://github.com/rust-lang/rust/issues/55005 for more info.
+            main_thread.unpark();
         }
     }
 }
@@ -133,7 +148,7 @@ where
     let scope = Scope {
         data: ScopeData {
             num_running_threads: AtomicUsize::new(0),
-            main_thread: current(),
+            main_thread: current().into(),
             a_thread_panicked: AtomicBool::new(false),
         },
         env: PhantomData,
@@ -328,7 +343,7 @@ impl fmt::Debug for Scope<'_, '_> {
         f.debug_struct("Scope")
             .field("num_running_threads", &self.data.num_running_threads.load(Ordering::Relaxed))
             .field("a_thread_panicked", &self.data.a_thread_panicked.load(Ordering::Relaxed))
-            .field("main_thread", &self.data.main_thread)
+            .field("main_thread", self.data.main_thread())
             .finish_non_exhaustive()
     }
 }
