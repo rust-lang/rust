@@ -983,42 +983,51 @@ table,
 	font-weight: normal;
 }
 
-body.blur > :not(#help) {
-	filter: blur(8px);
-	-webkit-filter: blur(8px);
-	opacity: .7;
+.popover {
+	font-size: 1rem;
+	position: absolute;
+	right: 0;
+	z-index: 2;
+	display: block;
+	margin-top: 7px;
+	border-radius: 3px;
+	border: 1px solid;
+	font-size: 1rem;
 }
 
-#help {
-	width: 100%;
-	height: 100vh;
-	position: fixed;
-	top: 0;
-	left: 0;
-	display: flex;
-	justify-content: center;
-	align-items: center;
+/* This rule is to draw the little arrow connecting the settings menu to the gear icon. */
+.popover::before {
+	content: '';
+	position: absolute;
+	right: 11px;
+	border: solid;
+	border-width: 1px 1px 0 0;
+	display: inline-block;
+	padding: 4px;
+	transform: rotate(-45deg);
+	top: -5px;
 }
-#help > div {
-	flex: 0 0 auto;
-	box-shadow: 0 0 6px rgba(0,0,0,.2);
-	width: 550px;
-	height: auto;
-	border: 1px solid;
+
+#help-button .popover {
+	max-width: 600px;
 }
-#help dt {
+
+#help-button .popover::before {
+	right: 48px;
+}
+
+#help-button dt {
 	float: left;
 	clear: left;
 	display: block;
 	margin-right: 0.5rem;
 }
-#help span.top, #help span.bottom {
+#help-button span.top, #help-button span.bottom {
 	text-align: center;
 	display: block;
 	font-size: 1.125rem;
-
 }
-#help span.top {
+#help-button span.top {
 	text-align: center;
 	display: block;
 	margin: 10px 0;
@@ -1026,17 +1035,17 @@ body.blur > :not(#help) {
 	padding-bottom: 4px;
 	margin-bottom: 6px;
 }
-#help span.bottom {
+#help-button span.bottom {
 	clear: both;
 	border-top: 1px solid;
 }
-#help dd { margin: 5px 35px; }
-#help .infos { padding-left: 0; }
-#help h1, #help h2 { margin-top: 0; }
-#help > div div {
+.side-by-side {
+	text-align: initial;
+}
+.side-by-side > div {
 	width: 50%;
 	float: left;
-	padding: 0 20px 20px 17px;;
+	padding: 0 20px 20px 17px;
 }
 
 .item-info .stab {
@@ -1391,7 +1400,7 @@ pre.rust {
 #copy-path {
 	height: 34px;
 }
-#settings-menu > a, #help-button, #copy-path {
+#settings-menu > a, #help-button > button, #copy-path {
 	padding: 5px;
 	width: 33px;
 	border: 1px solid;
@@ -1401,9 +1410,8 @@ pre.rust {
 #settings-menu {
 	padding: 0;
 }
-#settings-menu > a {
+#settings-menu > a, #help-button > button {
 	padding: 5px;
-	width: 100%;
 	height: 100%;
 	display: block;
 }
@@ -1420,7 +1428,7 @@ pre.rust {
 	animation: rotating 2s linear infinite;
 }
 
-#help-button {
+#help-button > button {
 	font-family: "Fira Sans", Arial, sans-serif;
 	text-align: center;
 	/* Rare exception to specifying font sizes in rem. Since this is acting
