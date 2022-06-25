@@ -6,6 +6,8 @@ use crate::time::{Duration, Instant};
 pub(crate) mod alloc;
 #[macro_use]
 pub(crate) mod raw;
+#[cfg(test)]
+mod tests;
 
 use self::raw::*;
 
