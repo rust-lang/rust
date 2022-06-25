@@ -3,12 +3,14 @@ use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
-use crate::clean::types::{FnRetTy, Function, GenericBound, Generics, Type, WherePredicate};
+use crate::clean::types::{
+    FnRetTy, Function, GenericBound, Generics, ItemId, Type, WherePredicate,
+};
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
@@ -21,7 +23,7 @@ pub(crate) fn build_index<'tcx>(
     cache: &mut Cache,
     tcx: TyCtxt<'tcx>,
 ) -> String {
-    let mut defid_to_pathid = FxHashMap::default();
+    let mut itemid_to_pathid = FxHashMap::default();
     let mut crate_paths = vec![];
 
     // Attach all orphan items to the type's definition if the type
@@ -79,13 +81,13 @@ pub(crate) fn build_index<'tcx>(
         fn convert_render_type(
             ty: &mut RenderType,
             cache: &mut Cache,
-            defid_to_pathid: &mut FxHashMap<DefId, usize>,
+            itemid_to_pathid: &mut FxHashMap<ItemId, usize>,
             lastpathid: &mut usize,
             crate_paths: &mut Vec<(ItemType, Symbol)>,
         ) {
             if let Some(generics) = &mut ty.generics {
                 for item in generics {
-                    convert_render_type(item, cache, defid_to_pathid, lastpathid, crate_paths);
+                    convert_render_type(item, cache, itemid_to_pathid, lastpathid, crate_paths);
                 }
             }
             let Cache { ref paths, ref external_paths, .. } = *cache;
@@ -93,24 +95,25 @@ pub(crate) fn build_index<'tcx>(
                 assert!(ty.generics.is_some());
                 return;
             };
-            let (defid, path, item_type) = match id {
+            let (itemid, path, item_type) = match id {
                 RenderTypeId::DefId(defid) => {
                     if let Some(&(ref fqp, item_type)) =
                         paths.get(&defid).or_else(|| external_paths.get(&defid))
                     {
-                        (defid, *fqp.last().unwrap(), item_type)
+                        (ItemId::DefId(defid), *fqp.last().unwrap(), item_type)
                     } else {
                         ty.id = None;
                         return;
                     }
                 }
-                RenderTypeId::Primitive(primitive) => {
-                    let defid = *cache.primitive_locations.get(&primitive).unwrap();
-                    (defid, primitive.as_sym(), ItemType::Primitive)
-                }
+                RenderTypeId::Primitive(primitive) => (
+                    ItemId::Primitive(primitive, LOCAL_CRATE),
+                    primitive.as_sym(),
+                    ItemType::Primitive,
+                ),
                 RenderTypeId::Index(_) => return,
             };
-            match defid_to_pathid.entry(defid) {
+            match itemid_to_pathid.entry(itemid) {
                 Entry::Occupied(entry) => ty.id = Some(RenderTypeId::Index(*entry.get())),
                 Entry::Vacant(entry) => {
                     let pathid = *lastpathid;
@@ -126,7 +129,7 @@ pub(crate) fn build_index<'tcx>(
                 convert_render_type(
                     item,
                     cache,
-                    &mut defid_to_pathid,
+                    &mut itemid_to_pathid,
                     &mut lastpathid,
                     &mut crate_paths,
                 );
@@ -135,7 +138,7 @@ pub(crate) fn build_index<'tcx>(
                 convert_render_type(
                     item,
                     cache,
-                    &mut defid_to_pathid,
+                    &mut itemid_to_pathid,
                     &mut lastpathid,
                     &mut crate_paths,
                 );
@@ -149,21 +152,22 @@ pub(crate) fn build_index<'tcx>(
     let crate_items: Vec<&IndexItem> = search_index
         .iter_mut()
         .map(|item| {
-            item.parent_idx = item.parent.and_then(|defid| match defid_to_pathid.entry(defid) {
-                Entry::Occupied(entry) => Some(*entry.get()),
-                Entry::Vacant(entry) => {
-                    let pathid = lastpathid;
-                    entry.insert(pathid);
-                    lastpathid += 1;
+            item.parent_idx =
+                item.parent.and_then(|defid| match itemid_to_pathid.entry(ItemId::DefId(defid)) {
+                    Entry::Occupied(entry) => Some(*entry.get()),
+                    Entry::Vacant(entry) => {
+                        let pathid = lastpathid;
+                        entry.insert(pathid);
+                        lastpathid += 1;
 
-                    if let Some(&(ref fqp, short)) = paths.get(&defid) {
-                        crate_paths.push((short, *fqp.last().unwrap()));
-                        Some(pathid)
-                    } else {
-                        None
+                        if let Some(&(ref fqp, short)) = paths.get(&defid) {
+                            crate_paths.push((short, *fqp.last().unwrap()));
+                            Some(pathid)
+                        } else {
+                            None
+                        }
                     }
-                }
-            });
+                });
 
             // Omit the parent path if it is same to that of the prior item.
             if lastpath == &item.path {
