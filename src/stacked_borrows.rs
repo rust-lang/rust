@@ -3,6 +3,7 @@
 
 use log::trace;
 use std::cell::RefCell;
+use std::cmp;
 use std::fmt;
 use std::num::NonZeroU64;
 
@@ -24,7 +25,8 @@ use diagnostics::{AllocHistory, TagHistory};
 
 pub type PtrId = NonZeroU64;
 pub type CallId = NonZeroU64;
-pub type AllocExtra = Stacks;
+// Even reading memory can have effects on the stack, so we need a `RefCell` here.
+pub type AllocExtra = RefCell<Stacks>;
 
 /// Tracking pointer provenance
 #[derive(Copy, Clone, Hash, Eq)]
@@ -56,6 +58,32 @@ impl fmt::Debug for SbTag {
         match self {
             SbTag::Tagged(id) => write!(f, "<{}>", id),
             SbTag::Untagged => write!(f, "<untagged>"),
+        }
+    }
+}
+
+/// The "extra" information an SB pointer has over a regular AllocId.
+/// Newtype for `Option<SbTag>`.
+#[derive(Copy, Clone)]
+pub enum SbTagExtra {
+    Concrete(SbTag),
+    Wildcard,
+}
+
+impl fmt::Debug for SbTagExtra {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SbTagExtra::Concrete(tag) => write!(f, "{tag:?}"),
+            SbTagExtra::Wildcard => write!(f, "<wildcard>"),
+        }
+    }
+}
+
+impl SbTagExtra {
+    fn and_then<T>(self, f: impl FnOnce(SbTag) -> Option<T>) -> Option<T> {
+        match self {
+            SbTagExtra::Concrete(tag) => f(tag),
+            SbTagExtra::Wildcard => None,
         }
     }
 }
@@ -104,15 +132,24 @@ pub struct Stack {
     /// * Above a `SharedReadOnly` there can only be more `SharedReadOnly`.
     /// * Except for `Untagged`, no tag occurs in the stack more than once.
     borrows: Vec<Item>,
+    /// If this is `Some(id)`, then the actual current stack is unknown. This can happen when
+    /// wildcard pointers are used to access this location. What we do know is that `borrows` are at
+    /// the top of the stack, and below it are arbitrarily many items whose `tag` is either
+    /// `Untagged` or strictly less than `id`.
+    /// When the bottom is unknown, `borrows` always has a `SharedReadOnly` or `Unique` at the bottom;
+    /// we never have the unknown-to-known boundary in an SRW group.
+    unknown_bottom: Option<PtrId>,
 }
 
 /// Extra per-allocation state.
 #[derive(Clone, Debug)]
 pub struct Stacks {
     // Even reading memory can have effects on the stack, so we need a `RefCell` here.
-    stacks: RefCell<RangeMap<Stack>>,
+    stacks: RangeMap<Stack>,
     /// Stores past operations on this allocation
-    history: RefCell<AllocHistory>,
+    history: AllocHistory,
+    /// The set of tags that have been exposed inside this allocation.
+    exposed_tags: FxHashSet<SbTag>,
 }
 
 /// Extra global state, available to the memory access hooks.
@@ -282,19 +319,61 @@ impl Permission {
 /// Core per-location operations: access, dealloc, reborrow.
 impl<'tcx> Stack {
     /// Find the item granting the given kind of access to the given tag, and return where
-    /// it is on the stack.
-    fn find_granting(&self, access: AccessKind, tag: SbTag) -> Option<usize> {
-        self.borrows
-            .iter()
-            .enumerate() // we also need to know *where* in the stack
-            .rev() // search top-to-bottom
-            // Return permission of first item that grants access.
-            // We require a permission with the right tag, ensuring U3 and F3.
-            .find_map(
-                |(idx, item)| {
+    /// it is on the stack. For wildcard tags, the given index is approximate, but if *no*
+    /// index is given it means the match was *not* in the known part of the stack.
+    /// `Ok(None)` indicates it matched the "unknown" part of the stack.
+    /// `Err` indicates it was not found.
+    fn find_granting(
+        &self,
+        access: AccessKind,
+        tag: SbTagExtra,
+        exposed_tags: &FxHashSet<SbTag>,
+    ) -> Result<Option<usize>, ()> {
+        let SbTagExtra::Concrete(tag) = tag else {
+            // Handle the wildcard case.
+            // Go search the stack for an exposed tag.
+            if let Some(idx) =
+                self.borrows
+                    .iter()
+                    .enumerate() // we also need to know *where* in the stack
+                    .rev() // search top-to-bottom
+                    .find_map(|(idx, item)| {
+                        // If the item fits and *might* be this wildcard, use it.
+                        if item.perm.grants(access) && exposed_tags.contains(&item.tag) {
+                            Some(idx)
+                        } else {
+                            None
+                        }
+                    })
+            {
+                return Ok(Some(idx));
+            }
+            // If we couldn't find it in the stack, check the unknown bottom.
+            return if self.unknown_bottom.is_some() { Ok(None) } else { Err(()) };
+        };
+
+        if let Some(idx) =
+            self.borrows
+                .iter()
+                .enumerate() // we also need to know *where* in the stack
+                .rev() // search top-to-bottom
+                // Return permission of first item that grants access.
+                // We require a permission with the right tag, ensuring U3 and F3.
+                .find_map(|(idx, item)| {
                     if tag == item.tag && item.perm.grants(access) { Some(idx) } else { None }
-                },
-            )
+                })
+        {
+            return Ok(Some(idx));
+        }
+
+        // Couldn't find it in the stack; but if there is an unknown bottom it might be there.
+        let found = self.unknown_bottom.is_some_and(|&unknown_limit| {
+            match tag {
+                SbTag::Tagged(tag_id) => tag_id < unknown_limit, // unknown_limit is an upper bound for what can be in the unknown bottom.
+                SbTag::Untagged => true,                         // yeah whatever
+            }
+        });
+        if found { Ok(None) } else { Err(()) }
     }
 
     /// Find the first write-incompatible item above the given one --
@@ -304,8 +383,10 @@ impl<'tcx> Stack {
         match perm {
             Permission::SharedReadOnly => bug!("Cannot use SharedReadOnly for writing"),
             Permission::Disabled => bug!("Cannot use Disabled for anything"),
-            // On a write, everything above us is incompatible.
-            Permission::Unique => granting + 1,
+            Permission::Unique => {
+                // On a write, everything above us is incompatible.
+                granting + 1
+            }
             Permission::SharedReadWrite => {
                 // The SharedReadWrite *just* above us are compatible, to skip those.
                 let mut idx = granting + 1;
@@ -333,7 +414,7 @@ impl<'tcx> Stack {
     /// currently checking.
     fn check_protector(
         item: &Item,
-        provoking_access: Option<(SbTag, AllocRange, Size, AccessKind)>, // just for debug printing and error messages
+        provoking_access: Option<(SbTagExtra, AllocRange, Size, AccessKind)>, // just for debug printing and error messages
         global: &GlobalStateInner,
         alloc_history: &mut AllocHistory,
     ) -> InterpResult<'tcx> {
@@ -354,12 +435,14 @@ impl<'tcx> Stack {
                             tag, item
                         ),
                         None,
-                        alloc_history.get_logs_relevant_to(
-                            tag,
-                            alloc_range,
-                            offset,
-                            Some(item.tag),
-                        ),
+                        tag.and_then(|tag| {
+                            alloc_history.get_logs_relevant_to(
+                                tag,
+                                alloc_range,
+                                offset,
+                                Some(item.tag),
+                            )
+                        }),
                     ))?
                 } else {
                     Err(err_sb_ub(
@@ -380,25 +463,36 @@ impl<'tcx> Stack {
     fn access(
         &mut self,
         access: AccessKind,
-        tag: SbTag,
+        tag: SbTagExtra,
         (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &mut GlobalStateInner,
         current_span: &mut CurrentSpan<'_, '_, 'tcx>,
         alloc_history: &mut AllocHistory,
+        exposed_tags: &FxHashSet<SbTag>,
     ) -> InterpResult<'tcx> {
         // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
-        let granting_idx = self.find_granting(access, tag).ok_or_else(|| {
+        let granting_idx = self.find_granting(access, tag, exposed_tags).map_err(|_| {
             alloc_history.access_error(access, tag, alloc_id, alloc_range, offset, self)
         })?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
         // items.  Behavior differs for reads and writes.
+        // In case of wildcards/unknown matches, we remove everything that is *definitely* gone.
         if access == AccessKind::Write {
             // Remove everything above the write-compatible items, like a proper stack. This makes sure read-only and unique
             // pointers become invalid on write accesses (ensures F2a, and ensures U2 for write accesses).
-            let first_incompatible_idx = self.find_first_write_incompatible(granting_idx);
+            let first_incompatible_idx = if let Some(granting_idx) = granting_idx {
+                // The granting_idx *might* be approximate, but any lower idx would remove more
+                // things. Even if this is a Unique and the lower idx is an SRW (which removes
+                // less), there is an SRW group boundary here so strictly more would get removed.
+                self.find_first_write_incompatible(granting_idx)
+            } else {
+                // We are writing to something in the unknown part.
+                // There is a SRW group boundary between the unknown and the known, so everything is incompatible.
+                0
+            };
             for item in self.borrows.drain(first_incompatible_idx..).rev() {
                 trace!("access: popping item {:?}", item);
                 Stack::check_protector(
@@ -418,8 +512,16 @@ impl<'tcx> Stack {
             // This pattern occurs a lot in the standard library: create a raw pointer, then also create a shared
             // reference and use that.
             // We *disable* instead of removing `Unique` to avoid "connecting" two neighbouring blocks of SRWs.
-            for idx in ((granting_idx + 1)..self.borrows.len()).rev() {
+            let first_incompatible_idx = if let Some(granting_idx) = granting_idx {
+                // The granting_idx *might* be approximate, but any lower idx would disable more things.
+                granting_idx + 1
+            } else {
+                // We are reading from something in the unknown part. That means *all* `Unique` we know about are dead now.
+                0
+            };
+            for idx in (first_incompatible_idx..self.borrows.len()).rev() {
                 let item = &mut self.borrows[idx];
+
                 if item.perm == Permission::Unique {
                     trace!("access: disabling item {:?}", item);
                     Stack::check_protector(
@@ -434,6 +536,31 @@ impl<'tcx> Stack {
             }
         }
 
+        // If this was an approximate action, we now collapse everything into an unknown.
+        if granting_idx.is_none() || matches!(tag, SbTagExtra::Wildcard) {
+            // Compute the upper bound of the items that remain.
+            // (This is why we did all the work above: to reduce the items we have to consider here.)
+            let mut max = NonZeroU64::new(1).unwrap();
+            for item in &self.borrows {
+                // Skip disabled items, they cannot be matched anyway.
+                if !matches!(item.perm, Permission::Disabled) {
+                    if let SbTag::Tagged(tag) = item.tag {
+                        // We are looking for a strict upper bound, so add 1 to this tag.
+                        max = cmp::max(tag.checked_add(1).unwrap(), max);
+                    }
+                }
+            }
+            if let Some(unk) = self.unknown_bottom {
+                max = cmp::max(unk, max);
+            }
+            // Use `max` as new strict upper bound for everything.
+            trace!(
+                "access: forgetting stack to upper bound {max} due to wildcard or unknown access"
+            );
+            self.borrows.clear();
+            self.unknown_bottom = Some(max);
+        }
+
         // Done.
         Ok(())
     }
@@ -442,19 +569,20 @@ impl<'tcx> Stack {
     /// active protectors at all because we will remove all items.
     fn dealloc(
         &mut self,
-        tag: SbTag,
+        tag: SbTagExtra,
         (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &GlobalStateInner,
         alloc_history: &mut AllocHistory,
+        exposed_tags: &FxHashSet<SbTag>,
     ) -> InterpResult<'tcx> {
-        // Step 1: Find granting item.
-        self.find_granting(AccessKind::Write, tag).ok_or_else(|| {
+        // Step 1: Make sure there is a granting item.
+        self.find_granting(AccessKind::Write, tag, exposed_tags).map_err(|_| {
             err_sb_ub(format!(
                 "no item granting write access for deallocation to tag {:?} at {:?} found in borrow stack",
                 tag, alloc_id,
                 ),
                 None,
-                alloc_history.get_logs_relevant_to(tag, alloc_range, offset, None),
+                tag.and_then(|tag| alloc_history.get_logs_relevant_to(tag, alloc_range, offset, None)),
             )
         })?;
 
@@ -462,7 +590,6 @@ impl<'tcx> Stack {
         for item in self.borrows.drain(..).rev() {
             Stack::check_protector(&item, None, global, alloc_history)?;
         }
-
         Ok(())
     }
 
@@ -474,21 +601,24 @@ impl<'tcx> Stack {
     /// `range` that we are currently checking.
     fn grant(
         &mut self,
-        derived_from: SbTag,
+        derived_from: SbTagExtra,
         new: Item,
         (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &mut GlobalStateInner,
         current_span: &mut CurrentSpan<'_, '_, 'tcx>,
         alloc_history: &mut AllocHistory,
+        exposed_tags: &FxHashSet<SbTag>,
     ) -> InterpResult<'tcx> {
         // Figure out which access `perm` corresponds to.
         let access =
             if new.perm.grants(AccessKind::Write) { AccessKind::Write } else { AccessKind::Read };
+
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
-        let granting_idx = self.find_granting(access, derived_from).ok_or_else(|| {
-            alloc_history.grant_error(derived_from, new, alloc_id, alloc_range, offset, self)
-        })?;
+        let granting_idx =
+            self.find_granting(access, derived_from, exposed_tags).map_err(|_| {
+                alloc_history.grant_error(derived_from, new, alloc_id, alloc_range, offset, self)
+            })?;
 
         // Compute where to put the new item.
         // Either way, we ensure that we insert the new item in a way such that between
@@ -498,6 +628,18 @@ impl<'tcx> Stack {
                 access == AccessKind::Write,
                 "this case only makes sense for stack-like accesses"
             );
+
+            let (Some(granting_idx), SbTagExtra::Concrete(_)) = (granting_idx, derived_from) else {
+                // The parent is a wildcard pointer or matched the unknown bottom.
+                // This is approximate. Nobody knows what happened, so forget everything.
+                // The new thing is SRW anyway, so we cannot push it "on top of the unkown part"
+                // (for all we know, it might join an SRW group inside the unknown).
+                trace!("reborrow: forgetting stack entirely due to SharedReadWrite reborrow from wildcard or unknown");
+                self.borrows.clear();
+                self.unknown_bottom = Some(global.next_ptr_id);
+                return Ok(());
+            };
+
             // SharedReadWrite can coexist with "existing loans", meaning they don't act like a write
             // access.  Instead of popping the stack, we insert the item at the place the stack would
             // be popped to (i.e., we insert it above all the write-compatible items).
@@ -514,6 +656,7 @@ impl<'tcx> Stack {
                 global,
                 current_span,
                 alloc_history,
+                exposed_tags,
             )?;
 
             // We insert "as far up as possible": We know only compatible items are remaining
@@ -524,14 +667,16 @@ impl<'tcx> Stack {
         };
 
         // Put the new item there. As an optimization, deduplicate if it is equal to one of its new neighbors.
-        if self.borrows[new_idx - 1] == new || self.borrows.get(new_idx) == Some(&new) {
+        // `new_idx` might be 0 if we just cleared the entire stack.
+        if self.borrows.get(new_idx) == Some(&new)
+            || (new_idx > 0 && self.borrows[new_idx - 1] == new)
+        {
             // Optimization applies, done.
             trace!("reborrow: avoiding adding redundant item {:?}", new);
         } else {
             trace!("reborrow: adding item {:?}", new);
             self.borrows.insert(new_idx, new);
         }
-
         Ok(())
     }
 }
@@ -542,38 +687,28 @@ impl<'tcx> Stacks {
     /// Creates new stack with initial tag.
     fn new(size: Size, perm: Permission, tag: SbTag) -> Self {
         let item = Item { perm, tag, protector: None };
-        let stack = Stack { borrows: vec![item] };
+        let stack = Stack { borrows: vec![item], unknown_bottom: None };
 
         Stacks {
-            stacks: RefCell::new(RangeMap::new(size, stack)),
-            history: RefCell::new(AllocHistory::new()),
+            stacks: RangeMap::new(size, stack),
+            history: AllocHistory::new(),
+            exposed_tags: FxHashSet::default(),
         }
     }
 
     /// Call `f` on every stack in the range.
     fn for_each(
-        &self,
-        range: AllocRange,
-        mut f: impl FnMut(Size, &mut Stack, &mut AllocHistory) -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx> {
-        let mut stacks = self.stacks.borrow_mut();
-        let history = &mut *self.history.borrow_mut();
-        for (offset, stack) in stacks.iter_mut(range.start, range.size) {
-            f(offset, stack, history)?;
-        }
-        Ok(())
-    }
-
-    /// Call `f` on every stack in the range.
-    fn for_each_mut(
         &mut self,
         range: AllocRange,
-        mut f: impl FnMut(Size, &mut Stack, &mut AllocHistory) -> InterpResult<'tcx>,
+        mut f: impl FnMut(
+            Size,
+            &mut Stack,
+            &mut AllocHistory,
+            &mut FxHashSet<SbTag>,
+        ) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
-        let stacks = self.stacks.get_mut();
-        let history = &mut *self.history.borrow_mut();
-        for (offset, stack) in stacks.iter_mut(range.start, range.size) {
-            f(offset, stack, history)?;
+        for (offset, stack) in self.stacks.iter_mut(range.start, range.size) {
+            f(offset, stack, &mut self.history, &mut self.exposed_tags)?;
         }
         Ok(())
     }
@@ -620,8 +755,8 @@ impl Stacks {
                 (tag, Permission::SharedReadWrite)
             }
         };
-        let stacks = Stacks::new(size, perm, base_tag);
-        stacks.history.borrow_mut().log_creation(
+        let mut stacks = Stacks::new(size, perm, base_tag);
+        stacks.history.log_creation(
             None,
             base_tag,
             alloc_range(Size::ZERO, size),
@@ -632,9 +767,9 @@ impl Stacks {
 
     #[inline(always)]
     pub fn memory_read<'tcx>(
-        &self,
+        &mut self,
         alloc_id: AllocId,
-        tag: SbTag,
+        tag: SbTagExtra,
         range: AllocRange,
         state: &GlobalState,
         mut current_span: CurrentSpan<'_, '_, 'tcx>,
@@ -646,7 +781,7 @@ impl Stacks {
             range.size.bytes()
         );
         let mut state = state.borrow_mut();
-        self.for_each(range, |offset, stack, history| {
+        self.for_each(range, |offset, stack, history, exposed_tags| {
             stack.access(
                 AccessKind::Read,
                 tag,
@@ -654,6 +789,7 @@ impl Stacks {
                 &mut state,
                 &mut current_span,
                 history,
+                exposed_tags,
             )
         })
     }
@@ -662,7 +798,7 @@ impl Stacks {
     pub fn memory_written<'tcx>(
         &mut self,
         alloc_id: AllocId,
-        tag: SbTag,
+        tag: SbTagExtra,
         range: AllocRange,
         state: &GlobalState,
         mut current_span: CurrentSpan<'_, '_, 'tcx>,
@@ -674,7 +810,7 @@ impl Stacks {
             range.size.bytes()
         );
         let mut state = state.borrow_mut();
-        self.for_each_mut(range, |offset, stack, history| {
+        self.for_each(range, |offset, stack, history, exposed_tags| {
             stack.access(
                 AccessKind::Write,
                 tag,
@@ -682,6 +818,7 @@ impl Stacks {
                 &mut state,
                 &mut current_span,
                 history,
+                exposed_tags,
             )
         })
     }
@@ -690,14 +827,14 @@ impl Stacks {
     pub fn memory_deallocated<'tcx>(
         &mut self,
         alloc_id: AllocId,
-        tag: SbTag,
+        tag: SbTagExtra,
         range: AllocRange,
         state: &GlobalState,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
         let state = state.borrow();
-        self.for_each_mut(range, |offset, stack, history| {
-            stack.dealloc(tag, (alloc_id, range, offset), &state, history)
+        self.for_each(range, |offset, stack, history, exposed_tags| {
+            stack.dealloc(tag, (alloc_id, range, offset), &state, history, exposed_tags)
         })?;
         Ok(())
     }
@@ -707,6 +844,8 @@ impl Stacks {
 /// to grant for which references, and when to add protectors.
 impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    /// Returns the `AllocId` the reborrow was done in, if some actual borrow stack manipulation
+    /// happened.
     fn reborrow(
         &mut self,
         place: &MPlaceTy<'tcx, Tag>,
@@ -714,7 +853,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         kind: RefKind,
         new_tag: SbTag,
         protect: bool,
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, Option<AllocId>> {
         let this = self.eval_context_mut();
         let current_span = &mut this.machine.current_span();
 
@@ -724,23 +863,36 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             base_offset,
                             orig_tag|
          -> InterpResult<'tcx> {
+            let SbTagExtra::Concrete(orig_tag) = orig_tag else {
+                // FIXME: should we log this?
+                return Ok(())
+            };
             let extra = this.get_alloc_extra(alloc_id)?;
-            let stacked_borrows =
-                extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
-            let mut alloc_history = stacked_borrows.history.borrow_mut();
-            alloc_history.log_creation(
+            let mut stacked_borrows = extra
+                .stacked_borrows
+                .as_ref()
+                .expect("we should have Stacked Borrows data")
+                .borrow_mut();
+            stacked_borrows.history.log_creation(
                 Some(orig_tag),
                 new_tag,
                 alloc_range(base_offset, size),
                 current_span,
             );
             if protect {
-                alloc_history.log_protector(orig_tag, new_tag, current_span);
+                stacked_borrows.history.log_protector(orig_tag, new_tag, current_span);
             }
             Ok(())
         };
 
         if size == Size::ZERO {
+            trace!(
+                "reborrow of size 0: {} reference {:?} derived from {:?} (pointee {})",
+                kind,
+                new_tag,
+                place.ptr,
+                place.layout.ty,
+            );
             // Don't update any stacks for a zero-sized access; borrow stacks are per-byte and this
             // touches no bytes so there is no stack to put this tag in.
             // However, if the pointer for this operation points at a real allocation we still
@@ -750,16 +902,10 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // pointer tagging for example all calls to get_unchecked on them are invalid.
             if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr) {
                 log_creation(this, current_span, alloc_id, base_offset, orig_tag)?;
+                return Ok(Some(alloc_id));
             }
-
-            trace!(
-                "reborrow of size 0: {} reference {:?} derived from {:?} (pointee {})",
-                kind,
-                new_tag,
-                place.ptr,
-                place.layout.ty,
-            );
-            return Ok(());
+            // This pointer doesn't come with an AllocId. :shrug:
+            return Ok(None);
         }
         let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr)?;
         log_creation(this, current_span, alloc_id, base_offset, orig_tag)?;
@@ -810,8 +956,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // We have to use shared references to alloc/memory_extra here since
                 // `visit_freeze_sensitive` needs to access the global state.
                 let extra = this.get_alloc_extra(alloc_id)?;
-                let stacked_borrows =
-                    extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
+                let mut stacked_borrows = extra
+                    .stacked_borrows
+                    .as_ref()
+                    .expect("we should have Stacked Borrows data")
+                    .borrow_mut();
                 this.visit_freeze_sensitive(place, size, |mut range, frozen| {
                     // Adjust range.
                     range.start += base_offset;
@@ -830,7 +979,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     };
                     let item = Item { perm, tag: new_tag, protector };
                     let mut global = this.machine.stacked_borrows.as_ref().unwrap().borrow_mut();
-                    stacked_borrows.for_each(range, |offset, stack, history| {
+                    stacked_borrows.for_each(range, |offset, stack, history, exposed_tags| {
                         stack.grant(
                             orig_tag,
                             item,
@@ -838,23 +987,27 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             &mut *global,
                             current_span,
                             history,
+                            exposed_tags,
                         )
                     })
                 })?;
-                return Ok(());
+                return Ok(Some(alloc_id));
             }
         };
         // Here we can avoid `borrow()` calls because we have mutable references.
         // Note that this asserts that the allocation is mutable -- but since we are creating a
         // mutable pointer, that seems reasonable.
         let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
-        let stacked_borrows =
-            alloc_extra.stacked_borrows.as_mut().expect("we should have Stacked Borrows data");
+        let mut stacked_borrows = alloc_extra
+            .stacked_borrows
+            .as_mut()
+            .expect("we should have Stacked Borrows data")
+            .borrow_mut();
         let item = Item { perm, tag: new_tag, protector };
         let range = alloc_range(base_offset, size);
         let mut global = machine.stacked_borrows.as_ref().unwrap().borrow_mut();
         let current_span = &mut machine.current_span(); // `get_alloc_extra_mut` invalidated our old `current_span`
-        stacked_borrows.for_each_mut(range, |offset, stack, history| {
+        stacked_borrows.for_each(range, |offset, stack, history, exposed_tags| {
             stack.grant(
                 orig_tag,
                 item,
@@ -862,10 +1015,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 &mut global,
                 current_span,
                 history,
+                exposed_tags,
             )
         })?;
 
-        Ok(())
+        Ok(Some(alloc_id))
     }
 
     /// Retags an indidual pointer, returning the retagged version.
@@ -900,16 +1054,22 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         // Reborrow.
-        this.reborrow(&place, size, kind, new_tag, protect)?;
+        let alloc_id = this.reborrow(&place, size, kind, new_tag, protect)?;
 
         // Adjust pointer.
         let new_place = place.map_provenance(|p| {
-            p.map(|t| {
-                // TODO: Fix this eventually
-                if let Tag::Concrete(t) = t {
-                    Tag::Concrete(ConcreteTag { sb: new_tag, ..t })
-                } else {
-                    t
+            p.map(|prov| {
+                match alloc_id {
+                    Some(alloc_id) => {
+                        // If `reborrow` could figure out the AllocId of this ptr, hard-code it into the new one.
+                        // Even if we started out with a wildcard, this newly retagged pointer is tied to that allocation.
+                        Tag::Concrete { alloc_id, sb: new_tag }
+                    }
+                    None => {
+                        // Looks like this has to stay a wildcard pointer.
+                        assert!(matches!(prov, Tag::Wildcard));
+                        Tag::Wildcard
+                    }
                 }
             })
         });
@@ -989,5 +1149,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.frame_mut().return_place = return_place.into();
 
         Ok(())
+    }
+
+    /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.
+    fn expose_tag(&mut self, alloc_id: AllocId, tag: SbTag) {
+        let this = self.eval_context_mut();
+
+        // Function pointers and dead objects don't have an alloc_extra so we ignore them.
+        // This is okay because accessing them is UB anyway, no need for any Stacked Borrows checks.
+        // NOT using `get_alloc_extra_mut` since this might be a read-only allocation!
+        // FIXME: this catches `InterpError`, which we should not usually do.
+        // We might need a proper fallible API from `memory.rs` to avoid this though.
+        match this.get_alloc_extra(alloc_id) {
+            Ok(alloc_extra) => {
+                trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id}");
+                alloc_extra.stacked_borrows.as_ref().unwrap().borrow_mut().exposed_tags.insert(tag);
+            }
+            Err(err) => {
+                trace!(
+                    "Not exposing Stacked Borrows tag {tag:?} due to error \
+                    when accessing {alloc_id}: {err}"
+                );
+            }
+        }
     }
 }

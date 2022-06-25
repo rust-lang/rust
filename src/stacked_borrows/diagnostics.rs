@@ -8,6 +8,7 @@ use crate::helpers::{CurrentSpan, HexRange};
 use crate::stacked_borrows::{err_sb_ub, AccessKind, Permission};
 use crate::Item;
 use crate::SbTag;
+use crate::SbTagExtra;
 use crate::Stack;
 
 use rustc_middle::mir::interpret::InterpError;
@@ -197,7 +198,7 @@ impl AllocHistory {
     /// Report a descriptive error when `new` could not be granted from `derived_from`.
     pub fn grant_error<'tcx>(
         &self,
-        derived_from: SbTag,
+        derived_from: SbTagExtra,
         new: Item,
         alloc_id: AllocId,
         alloc_range: AllocRange,
@@ -205,8 +206,7 @@ impl AllocHistory {
         stack: &Stack,
     ) -> InterpError<'tcx> {
         let action = format!(
-            "trying to reborrow {:?} for {:?} permission at {}[{:#x}]",
-            derived_from,
+            "trying to reborrow {derived_from:?} for {:?} permission at {}[{:#x}]",
             new.perm,
             alloc_id,
             error_offset.bytes(),
@@ -214,7 +214,9 @@ impl AllocHistory {
         err_sb_ub(
             format!("{}{}", action, error_cause(stack, derived_from)),
             Some(operation_summary("a reborrow", alloc_id, alloc_range)),
-            self.get_logs_relevant_to(derived_from, alloc_range, error_offset, None),
+            derived_from.and_then(|derived_from| {
+                self.get_logs_relevant_to(derived_from, alloc_range, error_offset, None)
+            }),
         )
     }
 
@@ -222,23 +224,21 @@ impl AllocHistory {
     pub fn access_error<'tcx>(
         &self,
         access: AccessKind,
-        tag: SbTag,
+        tag: SbTagExtra,
         alloc_id: AllocId,
         alloc_range: AllocRange,
         error_offset: Size,
         stack: &Stack,
     ) -> InterpError<'tcx> {
         let action = format!(
-            "attempting a {} using {:?} at {}[{:#x}]",
-            access,
-            tag,
+            "attempting a {access} using {tag:?} at {}[{:#x}]",
             alloc_id,
             error_offset.bytes(),
         );
         err_sb_ub(
             format!("{}{}", action, error_cause(stack, tag)),
             Some(operation_summary("an access", alloc_id, alloc_range)),
-            self.get_logs_relevant_to(tag, alloc_range, error_offset, None),
+            tag.and_then(|tag| self.get_logs_relevant_to(tag, alloc_range, error_offset, None)),
         )
     }
 }
@@ -251,10 +251,14 @@ fn operation_summary(
     format!("this error occurs as part of {} at {:?}{}", operation, alloc_id, HexRange(alloc_range))
 }
 
-fn error_cause(stack: &Stack, tag: SbTag) -> &'static str {
-    if stack.borrows.iter().any(|item| item.tag == tag && item.perm != Permission::Disabled) {
-        ", but that tag only grants SharedReadOnly permission for this location"
+fn error_cause(stack: &Stack, tag: SbTagExtra) -> &'static str {
+    if let SbTagExtra::Concrete(tag) = tag {
+        if stack.borrows.iter().any(|item| item.tag == tag && item.perm != Permission::Disabled) {
+            ", but that tag only grants SharedReadOnly permission for this location"
+        } else {
+            ", but that tag does not exist in the borrow stack for this location"
+        }
     } else {
-        ", but that tag does not exist in the borrow stack for this location"
+        ", but no exposed tags have suitable permission in the borrow stack for this location"
     }
 }

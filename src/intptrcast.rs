@@ -101,14 +101,16 @@ impl<'mir, 'tcx> GlobalStateInner {
         }
     }
 
-    pub fn expose_addr(ecx: &MiriEvalContext<'mir, 'tcx>, alloc_id: AllocId) {
-        trace!("Exposing allocation id {:?}", alloc_id);
-
-        let mut global_state = ecx.machine.intptrcast.borrow_mut();
+    pub fn expose_ptr(ecx: &mut MiriEvalContext<'mir, 'tcx>, alloc_id: AllocId, sb: SbTag) {
+        let global_state = ecx.machine.intptrcast.get_mut();
         // In legacy and strict mode, we don't need this, so we can save some cycles
         // by not tracking it.
         if global_state.provenance_mode == ProvenanceMode::Permissive {
+            trace!("Exposing allocation id {alloc_id:?}");
             global_state.exposed.insert(alloc_id);
+            if ecx.machine.stacked_borrows.is_some() {
+                ecx.expose_tag(alloc_id, sb);
+            }
         }
     }
 
@@ -140,9 +142,7 @@ impl<'mir, 'tcx> GlobalStateInner {
                 // Determine the allocation this points to at cast time.
                 let alloc_id = Self::alloc_id_from_addr(ecx, addr);
                 Pointer::new(
-                    alloc_id.map(|alloc_id| {
-                        Tag::Concrete(ConcreteTag { alloc_id, sb: SbTag::Untagged })
-                    }),
+                    alloc_id.map(|alloc_id| Tag::Concrete { alloc_id, sb: SbTag::Untagged }),
                     Size::from_bytes(addr),
                 )
             }
@@ -220,8 +220,8 @@ impl<'mir, 'tcx> GlobalStateInner {
     ) -> Option<(AllocId, Size)> {
         let (tag, addr) = ptr.into_parts(); // addr is absolute (Tag provenance)
 
-        let alloc_id = if let Tag::Concrete(concrete) = tag {
-            concrete.alloc_id
+        let alloc_id = if let Tag::Concrete { alloc_id, .. } = tag {
+            alloc_id
         } else {
             // A wildcard pointer.
             assert_eq!(ecx.machine.intptrcast.borrow().provenance_mode, ProvenanceMode::Permissive);

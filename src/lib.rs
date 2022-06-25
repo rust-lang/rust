@@ -6,6 +6,8 @@
 #![feature(let_else)]
 #![feature(io_error_more)]
 #![feature(yeet_expr)]
+#![feature(is_some_with)]
+#![feature(nonzero_ops)]
 #![warn(rust_2018_idioms)]
 #![allow(
     clippy::collapsible_else_if,
@@ -80,15 +82,15 @@ pub use crate::eval::{
 pub use crate::helpers::{CurrentSpan, EvalContextExt as HelpersEvalContextExt};
 pub use crate::intptrcast::ProvenanceMode;
 pub use crate::machine::{
-    AllocExtra, ConcreteTag, Evaluator, FrameData, MiriEvalContext, MiriEvalContextExt,
-    MiriMemoryKind, Tag, NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
+    AllocExtra, Evaluator, FrameData, MiriEvalContext, MiriEvalContextExt, MiriMemoryKind, Tag,
+    NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
-    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, PtrId, SbTag, Stack,
-    Stacks,
+    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, PtrId, SbTag, SbTagExtra,
+    Stack, Stacks,
 };
 pub use crate::sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId};
 pub use crate::thread::{
