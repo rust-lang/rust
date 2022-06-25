@@ -7,9 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Changes since the last major version]
 
+- Vendoring is no longer done automatically when building from git sources. To use vendoring, run `cargo vendor` manually, or use the pre-vendored `rustc-src` tarball.
 - `llvm-libunwind` now accepts `in-tree` (formerly true), `system` or `no` (formerly false) [#77703](https://github.com/rust-lang/rust/pull/77703)
 - The options `infodir`, `localstatedir`, and `gpg-password-file` are no longer allowed in config.toml. Previously, they were ignored without warning. Note that `infodir` and `localstatedir` are still accepted by `./configure`, with a warning. [#82451](https://github.com/rust-lang/rust/pull/82451)
-- Add options for enabling overflow checks, one for std (`overflow-checks-std`) and one for everything else (`overflow-checks`). Both default to false.
 - Change the names for `dist` commands to match the component they generate. [#90684](https://github.com/rust-lang/rust/pull/90684)
 - The `build.fast-submodules` option has been removed. Fast submodule checkouts are enabled unconditionally. Automatic submodule handling can still be disabled with `build.submodules = false`.
 
@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - The default bootstrap profiles are now located at `bootstrap/defaults/config.$PROFILE.toml` (previously they were located at `bootstrap/defaults/config.toml.$PROFILE`) [#77558](https://github.com/rust-lang/rust/pull/77558)
 - If you have Rust already installed, `x.py` will now infer the host target
   from the default rust toolchain. [#78513](https://github.com/rust-lang/rust/pull/78513)
+- Add options for enabling overflow checks, one for std (`overflow-checks-std`) and one for everything else (`overflow-checks`). Both default to false.
 
 
 ## [Version 2] - 2020-09-25

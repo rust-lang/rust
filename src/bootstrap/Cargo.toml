@@ -74,3 +74,11 @@ pretty_assertions = "0.7"
 
 [features]
 build-metrics = ["sysinfo"]
+
+# We care a lot about bootstrap's compile times, so don't include debuginfo for
+# dependencies, only bootstrap itself.
+[profile.dev]
+debug = 0
+[profile.dev.package]
+# Only use debuginfo=1 to further reduce compile times.
+bootstrap.debug = 1

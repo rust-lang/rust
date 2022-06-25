@@ -537,6 +537,20 @@ impl Build {
             build.local_rebuild = true;
         }
 
+        // Make sure we update these before gathering metadata so we don't get an error about missing
+        // Cargo.toml files.
+        let rust_submodules = [
+            "src/tools/rust-installer",
+            "src/tools/cargo",
+            "src/tools/rls",
+            "src/tools/miri",
+            "library/backtrace",
+            "library/stdarch",
+        ];
+        for s in rust_submodules {
+            build.update_submodule(Path::new(s));
+        }
+
         build.verbose("learning about cargo");
         metadata::build(&mut build);
 
