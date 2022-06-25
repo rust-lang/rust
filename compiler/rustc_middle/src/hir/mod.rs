@@ -63,6 +63,15 @@ impl ModuleItems {
         self.foreign_items.iter().copied()
     }
 
+    pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.items
+            .iter()
+            .map(|id| id.def_id)
+            .chain(self.trait_items.iter().map(|id| id.def_id))
+            .chain(self.impl_items.iter().map(|id| id.def_id))
+            .chain(self.foreign_items.iter().map(|id| id.def_id))
+    }
+
     pub fn par_items(&self, f: impl Fn(ItemId) + Send + Sync) {
         par_for_each_in(&self.items[..], |&id| f(id))
     }
