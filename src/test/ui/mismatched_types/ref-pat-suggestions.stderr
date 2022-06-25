@@ -24,6 +24,11 @@ LL | fn _f1(&mut _a: u32) {}
    |
    = note:           expected type `u32`
            found mutable reference `&mut _`
+note: to declare a mutable parameter use: `mut _a`
+  --> $DIR/ref-pat-suggestions.rs:4:8
+   |
+LL | fn _f1(&mut _a: u32) {}
+   |        ^^^^^^^
 help: to take parameter `_a` by reference, move `&mut` to the type
    |
 LL - fn _f1(&mut _a: u32) {}
@@ -122,6 +127,11 @@ LL |     let _: fn(u32) = |&mut _a| ();
    |
    = note:           expected type `u32`
            found mutable reference `&mut _`
+note: to declare a mutable parameter use: `mut _a`
+  --> $DIR/ref-pat-suggestions.rs:12:23
+   |
+LL |     let _: fn(u32) = |&mut _a| ();
+   |                       ^^^^^^^
 help: consider removing `&mut` from the pattern
    |
 LL -     let _: fn(u32) = |&mut _a| ();
@@ -222,6 +232,11 @@ LL |     let _ = |&mut _a: u32| ();
    |
    = note:           expected type `u32`
            found mutable reference `&mut _`
+note: to declare a mutable parameter use: `mut _a`
+  --> $DIR/ref-pat-suggestions.rs:19:14
+   |
+LL |     let _ = |&mut _a: u32| ();
+   |              ^^^^^^^
 help: to take parameter `_a` by reference, move `&mut` to the type
    |
 LL -     let _ = |&mut _a: u32| ();
@@ -292,6 +307,81 @@ LL -     let _ = |&mut &mut _a: &mut u32| ();
 LL +     let _ = |&mut _a: &mut u32| ();
    |
 
-error: aborting due to 18 previous errors
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:29:13
+   |
+LL |         let &mut _a = 0;
+   |             ^^^^^^^   - this expression has type `{integer}`
+   |             |
+   |             expected integer, found `&mut _`
+   |             help: to declare a mutable variable use: `mut _a`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:30:15
+   |
+LL |         let S(&mut _b) = S(0);
+   |               ^^^^^^^    ---- this expression has type `S`
+   |               |
+   |               expected `u8`, found `&mut _`
+   |
+   = note:           expected type `u8`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut _b`
+  --> $DIR/ref-pat-suggestions.rs:30:15
+   |
+LL |         let S(&mut _b) = S(0);
+   |               ^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -         let S(&mut _b) = S(0);
+LL +         let S(_b) = S(0);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:31:14
+   |
+LL |         let (&mut _c,) = (0,);
+   |              ^^^^^^^     ---- this expression has type `({integer},)`
+   |              |
+   |              expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut _c`
+  --> $DIR/ref-pat-suggestions.rs:31:14
+   |
+LL |         let (&mut _c,) = (0,);
+   |              ^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -         let (&mut _c,) = (0,);
+LL +         let (_c,) = (0,);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/ref-pat-suggestions.rs:34:13
+   |
+LL |         match 0 {
+   |               - this expression has type `{integer}`
+LL |             &mut _d => {}
+   |             ^^^^^^^ expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut _d`
+  --> $DIR/ref-pat-suggestions.rs:34:13
+   |
+LL |             &mut _d => {}
+   |             ^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -             &mut _d => {}
+LL +             _d => {}
+   |
+
+error: aborting due to 22 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
