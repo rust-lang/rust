@@ -17,3 +17,102 @@ assert-css: (".sidebar > *:not(#sidebar-toggle)", {"visibility": "hidden", "opac
 click: "#sidebar-toggle"
 // Because of the transition CSS, we check by using `wait-for-css` instead of `assert-css`.
 wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+
+// Now we check the display of the sidebar items.
+show-text: true
+
+// First we start with the light theme.
+local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+reload:
+// Waiting for the sidebar to be displayed...
+wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+assert-css: (
+    "#source-sidebar .expand + .children a.selected",
+    {"color": "rgb(0, 0, 0)", "background-color": "rgb(255, 255, 255)"},
+)
+// Without hover.
+assert-css: (
+    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// With hover.
+move-cursor-to: "#source-sidebar .expand + .children > .files a:not(.selected)"
+assert-css: (
+    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
+)
+// Without hover.
+assert-css: (
+    "#source-sidebar .expand + .children .folders .name",
+    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// With hover.
+move-cursor-to: "#source-sidebar .expand + .children .folders .name"
+assert-css: (
+    "#source-sidebar .expand + .children .folders .name",
+    {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
+)
+
+// Now with the dark theme.
+local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+reload:
+// Waiting for the sidebar to be displayed...
+wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+assert-css: (
+    "#source-sidebar .expand + .children a.selected",
+    {"color": "rgb(221, 221, 221)", "background-color": "rgb(51, 51, 51)"},
+)
+// Without hover.
+assert-css: (
+    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// With hover.
+move-cursor-to: "#source-sidebar .expand + .children > .files a:not(.selected)"
+assert-css: (
+    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
+)
+// Without hover.
+assert-css: (
+    "#source-sidebar .expand + .children .folders .name",
+    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// With hover.
+move-cursor-to: "#source-sidebar .expand + .children .folders .name"
+assert-css: (
+    "#source-sidebar .expand + .children .folders .name",
+    {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
+)
+
+// And finally with the ayu theme.
+local-storage: {"rustdoc-theme": "ayu", "rustdoc-use-system-theme": "false"}
+reload:
+// Waiting for the sidebar to be displayed...
+wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+assert-css: (
+    "#source-sidebar .expand + .children a.selected",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
+)
+// Without hover.
+assert-css: (
+    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    {"color": "rgb(197, 197, 197)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// With hover.
+move-cursor-to: "#source-sidebar .expand + .children > .files a:not(.selected)"
+assert-css: (
+    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
+)
+// Without hover.
+assert-css: (
+    "#source-sidebar .expand + .children .folders .name",
+    {"color": "rgb(197, 197, 197)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+// With hover.
+move-cursor-to: "#source-sidebar .expand + .children .folders .name"
+assert-css: (
+    "#source-sidebar .expand + .children .folders .name",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
+)
