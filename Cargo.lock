@@ -3101,7 +3101,6 @@ name = "racer"
 version = "2.2.2"
 dependencies = [
  "bitflags",
- "clap 2.34.0",
  "derive_more",
  "env_logger 0.7.1",
  "humantime 2.0.1",
@@ -3325,7 +3324,7 @@ dependencies = [
  "difference",
  "env_logger 0.9.0",
  "futures 0.3.19",
- "heck 0.3.1",
+ "heck 0.4.0",
  "home",
  "itertools",
  "jsonrpc-core",
