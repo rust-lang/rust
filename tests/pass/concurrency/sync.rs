@@ -35,7 +35,7 @@ fn check_conditional_variables_notify_one() {
     let pair2 = pair.clone();
 
     // Spawn a new thread.
-    thread::spawn(move || {
+    let t = thread::spawn(move || {
         thread::yield_now();
         let (lock, cvar) = &*pair2;
         let mut started = lock.lock().unwrap();
@@ -50,6 +50,8 @@ fn check_conditional_variables_notify_one() {
     while !*started {
         started = cvar.wait(started).unwrap();
     }
+
+    t.join().unwrap();
 }
 
 /// Test that waiting on a conditional variable with a timeout does not
@@ -191,51 +193,6 @@ fn check_once() {
     }
 }
 
-fn check_rwlock_unlock_bug1() {
-    // There was a bug where when un-read-locking an rwlock that still has other
-    // readers waiting, we'd accidentally also let a writer in.
-    // That caused an ICE.
-    let l = Arc::new(RwLock::new(0));
-
-    let r1 = l.read().unwrap();
-    let r2 = l.read().unwrap();
-
-    // Make a waiting writer.
-    let l2 = l.clone();
-    thread::spawn(move || {
-        let mut w = l2.write().unwrap();
-        *w += 1;
-    });
-    thread::yield_now();
-
-    drop(r1);
-    assert_eq!(*r2, 0);
-    thread::yield_now();
-    thread::yield_now();
-    thread::yield_now();
-    assert_eq!(*r2, 0);
-    drop(r2);
-}
-
-fn check_rwlock_unlock_bug2() {
-    // There was a bug where when un-read-locking an rwlock by letting the last reader leaver,
-    // we'd forget to wake up a writer.
-    // That meant the writer thread could never run again.
-    let l = Arc::new(RwLock::new(0));
-
-    let r = l.read().unwrap();
-
-    // Make a waiting writer.
-    let l2 = l.clone();
-    let h = thread::spawn(move || {
-        let _w = l2.write().unwrap();
-    });
-    thread::yield_now();
-
-    drop(r);
-    h.join().unwrap();
-}
-
 fn park_timeout() {
     let start = Instant::now();
 
@@ -277,8 +234,6 @@ fn main() {
     check_rwlock_write();
     check_rwlock_read_no_deadlock();
     check_once();
-    check_rwlock_unlock_bug1();
-    check_rwlock_unlock_bug2();
     park_timeout();
     park_unpark();
     check_condvar();
