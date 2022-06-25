@@ -323,7 +323,20 @@ error: aborting due to 29 previous errors
 For more information about this error, try `rustc --explain E0080`.
 Future incompatibility report: Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:29:43
+  --> $DIR/const-pointer-values-in-various-types.rs:26:49
+   |
+LL |     const I32_REF_USIZE_UNION: usize = unsafe { Nonsense { int_32_ref: &3 }.u };
+   |     --------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                                 |
+   |                                                 unable to turn pointer into raw bytes
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:30:43
    |
 LL |     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_8 };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -336,7 +349,7 @@ LL |     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:33:45
+  --> $DIR/const-pointer-values-in-various-types.rs:34:45
    |
 LL |     const I32_REF_U16_UNION: u16 = unsafe { Nonsense { int_32_ref: &3 }.uint_16 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -349,7 +362,7 @@ LL |     const I32_REF_U16_UNION: u16 = unsafe { Nonsense { int_32_ref: &3 }.uin
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:37:45
+  --> $DIR/const-pointer-values-in-various-types.rs:38:45
    |
 LL |     const I32_REF_U32_UNION: u32 = unsafe { Nonsense { int_32_ref: &3 }.uint_32 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -362,7 +375,20 @@ LL |     const I32_REF_U32_UNION: u32 = unsafe { Nonsense { int_32_ref: &3 }.uin
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:47:43
+  --> $DIR/const-pointer-values-in-various-types.rs:42:45
+   |
+LL |     const I32_REF_U64_UNION: u64 = unsafe { Nonsense { int_32_ref: &3 }.uint_64 };
+   |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                             |
+   |                                             unable to turn pointer into raw bytes
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:49:43
    |
 LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8 };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -375,7 +401,7 @@ LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:51:45
+  --> $DIR/const-pointer-values-in-various-types.rs:53:45
    |
 LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int_16 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -388,7 +414,7 @@ LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:55:45
+  --> $DIR/const-pointer-values-in-various-types.rs:57:45
    |
 LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int_32 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -401,7 +427,20 @@ LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:65:45
+  --> $DIR/const-pointer-values-in-various-types.rs:61:45
+   |
+LL |     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int_64 };
+   |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                             |
+   |                                             unable to turn pointer into raw bytes
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:68:45
    |
 LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.float_32 };
    |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -414,7 +453,20 @@ LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.flo
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:72:47
+  --> $DIR/const-pointer-values-in-various-types.rs:72:45
+   |
+LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.float_64 };
+   |     ----------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                             |
+   |                                             unable to turn pointer into raw bytes
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:76:47
    |
 LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.truthy_falsey };
    |     ------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -427,7 +479,7 @@ LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.t
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:76:47
+  --> $DIR/const-pointer-values-in-various-types.rs:80:47
    |
 LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.character };
    |     ------------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -440,7 +492,7 @@ LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.c
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:80:39
+  --> $DIR/const-pointer-values-in-various-types.rs:84:39
    |
 LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
    |     ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -453,7 +505,7 @@ LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:84:41
+  --> $DIR/const-pointer-values-in-various-types.rs:88:41
    |
 LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -466,7 +518,7 @@ LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 }
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:88:41
+  --> $DIR/const-pointer-values-in-various-types.rs:92:41
    |
 LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -479,7 +531,20 @@ LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 }
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:95:43
+  --> $DIR/const-pointer-values-in-various-types.rs:96:41
+   |
+LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 };
+   |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                         |
+   |                                         unable to turn pointer into raw bytes
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:100:43
    |
 LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_128 };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -492,7 +557,7 @@ LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_12
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:99:39
+  --> $DIR/const-pointer-values-in-various-types.rs:104:39
    |
 LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
    |     ----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -505,7 +570,7 @@ LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:103:41
+  --> $DIR/const-pointer-values-in-various-types.rs:108:41
    |
 LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -518,7 +583,7 @@ LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:107:41
+  --> $DIR/const-pointer-values-in-various-types.rs:112:41
    |
 LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -531,7 +596,20 @@ LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:114:43
+  --> $DIR/const-pointer-values-in-various-types.rs:116:41
+   |
+LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
+   |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                         |
+   |                                         unable to turn pointer into raw bytes
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:120:43
    |
 LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128 };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -544,7 +622,7 @@ LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:118:41
+  --> $DIR/const-pointer-values-in-various-types.rs:124:41
    |
 LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 };
    |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -557,7 +635,20 @@ LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:125:43
+  --> $DIR/const-pointer-values-in-various-types.rs:128:41
+   |
+LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 };
+   |     ------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                         |
+   |                                         unable to turn pointer into raw bytes
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/const-pointer-values-in-various-types.rs:132:43
    |
 LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_falsey };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -570,7 +661,7 @@ LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:129:43
+  --> $DIR/const-pointer-values-in-various-types.rs:136:43
    |
 LL |     const STR_CHAR_UNION: char = unsafe { Nonsense { stringy: "3" }.character };
    |     --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
