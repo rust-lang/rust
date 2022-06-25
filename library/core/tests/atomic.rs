@@ -30,6 +30,18 @@ fn bool_nand() {
     assert_eq!(a.fetch_nand(true, SeqCst), false);
     assert_eq!(a.load(SeqCst), true);
 }
+#[test]
+fn bool_not() {
+    let a = AtomicBool::new(false);
+    assert_eq!(a.fetch_not(SeqCst), false);
+    assert_eq!(a.load(SeqCst), true);
+    assert_eq!(a.fetch_not(SeqCst), true);
+    assert_eq!(a.load(SeqCst), false);
+    assert_eq!(a.fetch_not(SeqCst), false);
+    assert_eq!(a.load(SeqCst), true);
+    assert_eq!(a.fetch_not(SeqCst), true);
+    assert_eq!(a.load(SeqCst), false);
+}
 
 #[test]
 fn uint_and() {
@@ -158,6 +170,8 @@ fn atomic_access_bool() {
         assert_eq!(*ATOMIC.get_mut(), true);
         ATOMIC.fetch_xor(true, SeqCst);
         assert_eq!(*ATOMIC.get_mut(), false);
+        ATOMIC.fetch_not(SeqCst);
+        assert_eq!(*ATOMIC.get_mut(), true);
     }
 }
 
