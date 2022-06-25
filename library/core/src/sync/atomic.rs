@@ -883,7 +883,7 @@ impl AtomicBool {
     /// assert_eq!(foo.load(Ordering::SeqCst), true);
     /// ```
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "atomic_bool_fetch_not", issue = "98485")]
     #[cfg(target_has_atomic = "8")]
     pub fn fetch_not(&self, order: Ordering) -> bool {
         self.fetch_xor(true, order)
