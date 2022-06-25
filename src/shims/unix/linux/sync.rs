@@ -172,7 +172,6 @@ pub fn futex<'tcx>(
             this.atomic_fence(&[], AtomicFenceOp::SeqCst)?;
             // Read an `i32` through the pointer, regardless of any wrapper types.
             // It's not uncommon for `addr` to be passed as another type than `*mut i32`, such as `*const AtomicI32`.
-            // FIXME: this fails if `addr` is not a pointer type.
             let futex_val = this
                 .read_scalar_at_offset_atomic(
                     &addr.into(),
