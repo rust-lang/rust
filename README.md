@@ -192,7 +192,7 @@ randomness that is used to determine allocation base addresses. The following
 snippet calls Miri in a loop with different values for the seed:
 
 ```
-for seed in $({ echo obase=16; seq 255; } | bc); do
+for seed in $({ echo obase=16; seq 0 255; } | bc); do
   MIRIFLAGS=-Zmiri-seed=$seed cargo miri test || { echo "Last seed: $seed"; break; };
 done
 ```
