@@ -2,7 +2,7 @@ error[E0599]: no variant or associated item named `Hsl` found for enum `Color` i
   --> $DIR/bogus-tag.rs:7:16
    |
 LL | enum Color { Rgb(isize, isize, isize), Rgba(isize, isize, isize, isize), }
-   | ---------- variant or associated item `Hsl` not found here
+   |      ----- variant or associated item `Hsl` not found for this enum
 ...
 LL |         Color::Hsl(h, s, l) => { println!("hsl"); }
    |                ^^^ variant or associated item not found in `Color`

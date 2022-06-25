@@ -2,7 +2,7 @@ error[E0599]: no method named `poll` found for struct `Sleep` in the current sco
   --> $DIR/pin-needed-to-poll.rs:42:20
    |
 LL | struct Sleep;
-   | ------------- method `poll` not found for this
+   |        ----- method `poll` not found for this struct
 ...
 LL |         self.sleep.poll(cx)
    |                    ^^^^ method not found in `Sleep`
