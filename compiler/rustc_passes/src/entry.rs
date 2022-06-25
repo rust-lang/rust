@@ -1,4 +1,4 @@
-use rustc_ast::entry::EntryPointType;
+use rustc_ast::{entry::EntryPointType, Attribute};
 use rustc_errors::struct_span_err;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -7,9 +7,8 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_session::config::{CrateType, EntryFnType};
 use rustc_session::parse::feature_err;
-use rustc_session::Session;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 
 struct EntryContext<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -72,9 +71,16 @@ fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> Entry
     }
 }
 
-fn throw_attr_err(sess: &Session, span: Span, attr: &str) {
-    sess.struct_span_err(span, &format!("`{}` attribute can only be used on functions", attr))
-        .emit();
+fn err_if_attr_found(ctxt: &EntryContext<'_>, attrs: &[Attribute], sym: Symbol) {
+    if let Some(attr) = ctxt.tcx.sess.find_by_name(attrs, sym) {
+        ctxt.tcx
+            .sess
+            .struct_span_err(
+                attr.span,
+                &format!("`{}` attribute can only be used on functions", sym.as_str()),
+            )
+            .emit();
+    }
 }
 
 fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
@@ -84,12 +90,8 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
         EntryPointType::None => (),
         _ if !matches!(ctxt.tcx.def_kind(id.def_id), DefKind::Fn) => {
             let attrs = ctxt.tcx.hir().attrs(id.hir_id());
-            if let Some(attr) = ctxt.tcx.sess.find_by_name(attrs, sym::start) {
-                throw_attr_err(&ctxt.tcx.sess, attr.span, "start");
-            }
-            if let Some(attr) = ctxt.tcx.sess.find_by_name(attrs, sym::rustc_main) {
-                throw_attr_err(&ctxt.tcx.sess, attr.span, "rustc_main");
-            }
+            err_if_attr_found(ctxt, attrs, sym::start);
+            err_if_attr_found(ctxt, attrs, sym::rustc_main);
         }
         EntryPointType::MainNamed => (),
         EntryPointType::OtherMain => {
