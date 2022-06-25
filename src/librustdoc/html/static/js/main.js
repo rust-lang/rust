@@ -63,6 +63,24 @@ function showMain() {
     removeClass(document.getElementById(MAIN_ID), "hidden");
 }
 
+function elemIsInParent(elem, parent) {
+    while (elem && elem !== document.body) {
+        if (elem === parent) {
+            return true;
+        }
+        elem = elem.parentElement;
+    }
+    return false;
+}
+
+function blurHandler(event, parentElem, hideCallback) {
+    if (!elemIsInParent(document.activeElement, parentElem) &&
+        !elemIsInParent(event.relatedTarget, parentElem)
+    ) {
+        hideCallback();
+    }
+}
+
 (function() {
     window.rootPath = getVar("root-path");
     window.currentCrate = getVar("current-crate");
@@ -104,19 +122,20 @@ const MAIN_ID = "main-content";
 const SETTINGS_BUTTON_ID = "settings-menu";
 const ALTERNATIVE_DISPLAY_ID = "alternative-display";
 const NOT_DISPLAYED_ID = "not-displayed";
+const HELP_BUTTON_ID = "help-button";
 
 function getSettingsButton() {
     return document.getElementById(SETTINGS_BUTTON_ID);
+}
+
+function getHelpButton() {
+    return document.getElementById(HELP_BUTTON_ID);
 }
 
 // Returns the current URL without any query parameter or hash.
 function getNakedUrl() {
     return window.location.href.split("?")[0].split("#")[0];
 }
-
-window.hideSettings = () => {
-    // Does nothing by default.
-};
 
 /**
  * This function inserts `newNode` after `referenceNode`. It doesn't work if `referenceNode`
@@ -381,55 +400,16 @@ function loadCss(cssFileName) {
         openParentDetails(document.getElementById(id));
     }
 
-    function getHelpElement(build) {
-        if (build) {
-            buildHelperPopup();
-        }
-        return document.getElementById("help");
-    }
-
-    /**
-     * Show the help popup.
-     *
-     * @param {boolean} display    - Whether to show or hide the popup
-     * @param {Event}   ev         - The event that triggered this call
-     * @param {Element} [help]     - The help element if it already exists
-     */
-    function displayHelp(display, ev, help) {
-        if (display) {
-            help = help ? help : getHelpElement(true);
-            if (hasClass(help, "hidden")) {
-                ev.preventDefault();
-                removeClass(help, "hidden");
-                addClass(document.body, "blur");
-            }
-        } else {
-            // No need to build the help popup if we want to hide it in case it hasn't been
-            // built yet...
-            help = help ? help : getHelpElement(false);
-            if (help && !hasClass(help, "hidden")) {
-                ev.preventDefault();
-                addClass(help, "hidden");
-                removeClass(document.body, "blur");
-            }
-        }
-    }
-
     function handleEscape(ev) {
         searchState.clearInputTimeout();
-        const help = getHelpElement(false);
-        if (help && !hasClass(help, "hidden")) {
-            displayHelp(false, ev, help);
-        } else {
-            switchDisplayedElement(null);
-            if (browserSupportsHistoryApi()) {
-                history.replaceState(null, window.currentCrate + " - Rust",
-                    getNakedUrl() + window.location.hash);
-            }
-            ev.preventDefault();
+        switchDisplayedElement(null);
+        if (browserSupportsHistoryApi()) {
+            history.replaceState(null, window.currentCrate + " - Rust",
+                getNakedUrl() + window.location.hash);
         }
+        ev.preventDefault();
         searchState.defocus();
-        window.hideSettings();
+        window.hidePopoverMenus();
     }
 
     const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
@@ -453,7 +433,6 @@ function loadCss(cssFileName) {
 
             case "s":
             case "S":
-                displayHelp(false, ev);
                 ev.preventDefault();
                 searchState.focus();
                 break;
@@ -465,7 +444,7 @@ function loadCss(cssFileName) {
                 break;
 
             case "?":
-                displayHelp(true, ev);
+                showHelp();
                 break;
 
             default:
@@ -796,9 +775,6 @@ function loadCss(cssFileName) {
             elem.addEventListener("click", f);
         }
     }
-    handleClick("help-button", ev => {
-        displayHelp(true, ev);
-    });
     handleClick(MAIN_ID, () => {
         hideSidebar();
     });
@@ -842,24 +818,16 @@ function loadCss(cssFileName) {
         });
     }
 
-    let buildHelperPopup = () => {
-        const popup = document.createElement("aside");
-        addClass(popup, "hidden");
-        popup.id = "help";
+    function helpBlurHandler(event) {
+        blurHandler(event, getHelpButton(), window.hidePopoverMenus);
+    }
 
-        popup.addEventListener("click", ev => {
-            if (ev.target === popup) {
-                // Clicked the blurred zone outside the help popup; dismiss help.
-                displayHelp(false, ev);
-            }
-        });
-
+    function buildHelpMenu() {
         const book_info = document.createElement("span");
         book_info.className = "top";
         book_info.innerHTML = "You can find more information in \
             <a href=\"https://doc.rust-lang.org/rustdoc/\">the rustdoc book</a>.";
 
-        const container = document.createElement("div");
         const shortcuts = [
             ["?", "Show this help dialog"],
             ["S", "Focus the search field"],
@@ -895,23 +863,84 @@ function loadCss(cssFileName) {
         addClass(div_infos, "infos");
         div_infos.innerHTML = "<h2>Search Tricks</h2>" + infos;
 
-        container.appendChild(book_info);
-        container.appendChild(div_shortcuts);
-        container.appendChild(div_infos);
-
         const rustdoc_version = document.createElement("span");
         rustdoc_version.className = "bottom";
         const rustdoc_version_code = document.createElement("code");
         rustdoc_version_code.innerText = "rustdoc " + getVar("rustdoc-version");
         rustdoc_version.appendChild(rustdoc_version_code);
 
+        const container = document.createElement("div");
+        container.className = "popover";
+        container.style.display = "none";
+
+        const side_by_side = document.createElement("div");
+        side_by_side.className = "side-by-side";
+        side_by_side.appendChild(div_shortcuts);
+        side_by_side.appendChild(div_infos);
+
+        container.appendChild(book_info);
+        container.appendChild(side_by_side);
         container.appendChild(rustdoc_version);
 
-        popup.appendChild(container);
-        insertAfter(popup, document.querySelector("main"));
-        // So that it's only built once and then it'll do nothing when called!
-        buildHelperPopup = () => {};
+        const help_button = getHelpButton();
+        help_button.appendChild(container);
+
+        container.onblur = helpBlurHandler;
+        container.onclick = event => {
+            event.preventDefault();
+        };
+        help_button.onblur = helpBlurHandler;
+        help_button.children[0].onblur = helpBlurHandler;
+
+        return container;
+    }
+
+    /**
+     * Hide all the popover menus.
+     */
+    window.hidePopoverMenus = function() {
+        onEachLazy(document.querySelectorAll(".search-container .popover"), elem => {
+            elem.style.display = "none";
+        });
     };
+
+    /**
+     * Returns the help menu element (not the button).
+     *
+     * @param {boolean} buildNeeded - If this argument is `false`, the help menu element won't be
+     *                                built if it doesn't exist.
+     *
+     * @return {HTMLElement}
+     */
+    function getHelpMenu(buildNeeded) {
+        let menu = getHelpButton().querySelector(".popover");
+        if (!menu && buildNeeded) {
+            menu = buildHelpMenu();
+        }
+        return menu;
+    }
+
+    /**
+     * Show the help popup menu.
+     */
+    function showHelp() {
+        const menu = getHelpMenu(true);
+        if (menu.style.display === "none") {
+            menu.style.display = "";
+        }
+    }
+
+    document.querySelector(`#${HELP_BUTTON_ID} > button`).addEventListener("click", event => {
+        const target = event.target;
+        if (target.tagName !== "BUTTON" || target.parentElement.id !== HELP_BUTTON_ID) {
+            return;
+        }
+        const menu = getHelpMenu(true);
+        const shouldShowHelp = menu.style.display === "none";
+        if (shouldShowHelp) {
+            showHelp();
+        }
+    });
 
     setMobileTopbar();
     addSidebarItems();
