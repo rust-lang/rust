@@ -730,6 +730,10 @@ impl<'a> CommentRewrite<'a> {
                     {
                         let mut config = self.fmt.config.clone();
                         config.set().wrap_comments(false);
+                        let comment_max_width = config
+                            .doc_comment_code_block_width()
+                            .min(config.max_width());
+                        config.set().max_width(comment_max_width);
                         if let Some(s) =
                             crate::format_code_block(&self.code_block_buffer, &config, false)
                         {
