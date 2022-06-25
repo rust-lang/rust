@@ -286,6 +286,9 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let pointee_type =
             val.layout.ty.builtin_deref(true).expect("`ref_to_mplace` called on non-ptr type").ty;
+        if val.layout.ty.is_box() {
+            bug!("dereferencing {:?}", val.layout.ty);
+        }
         let layout = self.layout_of(pointee_type)?;
         let (ptr, meta) = match **val {
             Immediate::Scalar(ptr) => (ptr, MemPlaceMeta::None),
@@ -313,11 +316,6 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
-
-        if val.layout.ty.is_box() {
-            bug!("dereferencing {:?}", val.layout.ty);
-        }
-
         let mplace = self.ref_to_mplace(&val)?;
         self.check_mplace_access(mplace, CheckInAllocMsg::DerefTest)?;
         Ok(mplace)
