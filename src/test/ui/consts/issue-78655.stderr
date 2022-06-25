@@ -1,8 +1,10 @@
-error[E0381]: borrow of possibly-uninitialized variable: `x`
+error[E0381]: used binding `x` isn't initialized
   --> $DIR/issue-78655.rs:3:5
    |
+LL |     let x;
+   |         - binding declared here but left uninitialized
 LL |     &x
-   |     ^^ use of possibly-uninitialized `x`
+   |     ^^ `x` used here but it isn't initialized
 
 error: could not evaluate constant pattern
   --> $DIR/issue-78655.rs:7:9
