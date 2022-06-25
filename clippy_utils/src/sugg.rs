@@ -315,6 +315,12 @@ impl<'a> Sugg<'a> {
         Sugg::NonParen(Cow::Owned(format!("{{ {} }}", self)))
     }
 
+    /// Convenience method to prefix the expression with the `async` keyword.
+    /// Can be used after `blockify` to create an async block.
+    pub fn asyncify(self) -> Sugg<'static> {
+        Sugg::NonParen(Cow::Owned(format!("async {}", self)))
+    }
+
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
     /// suggestion.
     pub fn range(self, end: &Self, limit: ast::RangeLimits) -> Sugg<'static> {
