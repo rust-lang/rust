@@ -132,7 +132,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
-        argument_tmps: &[PlaceRef<'tcx, <Bx as BackendTypes>::Value>],
+        copied_constant_arguments: &[PlaceRef<'tcx, <Bx as BackendTypes>::Value>],
     ) {
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
@@ -173,7 +173,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             if let Some((ret_dest, target)) = destination {
                 bx.switch_to_block(fx.llbb(target));
                 fx.set_debug_loc(bx, self.terminator.source_info);
-                for tmp in argument_tmps {
+                for tmp in copied_constant_arguments {
                     bx.lifetime_end(tmp.llval, tmp.layout.size);
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, invokeret);
@@ -190,7 +190,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
 
             if let Some((ret_dest, target)) = destination {
-                for tmp in argument_tmps {
+                for tmp in copied_constant_arguments {
                     bx.lifetime_end(tmp.llval, tmp.layout.size);
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, llret);
@@ -795,7 +795,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (args, None)
         };
 
-        let mut argument_tmps = vec![];
+        let mut copied_constant_arguments = vec![];
         'make_args: for (i, arg) in first_args.iter().enumerate() {
             let mut op = self.codegen_operand(&mut bx, arg);
 
@@ -864,7 +864,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.lifetime_start(tmp.llval, tmp.layout.size);
                     op.val.store(&mut bx, tmp);
                     op.val = Ref(tmp.llval, None, tmp.align);
-                    argument_tmps.push(tmp);
+                    copied_constant_arguments.push(tmp);
                 }
                 _ => {}
             }
@@ -937,7 +937,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 &llargs,
                 target.as_ref().map(|&target| (ret_dest, target)),
                 cleanup,
-                &argument_tmps,
+                &copied_constant_arguments,
             );
 
             bx.switch_to_block(bb_fail);
@@ -955,7 +955,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             &llargs,
             target.as_ref().map(|&target| (ret_dest, target)),
             cleanup,
-            &argument_tmps,
+            &copied_constant_arguments,
         );
     }
 
