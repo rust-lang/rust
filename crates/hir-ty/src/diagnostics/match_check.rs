@@ -400,7 +400,7 @@ impl<F> HirDisplay for WriteWith<F>
 where
     F: Fn(&mut HirFormatter) -> Result<(), HirDisplayError>,
 {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         (self.0)(f)
     }
 }

@@ -2,6 +2,7 @@
 //! through the body using inference results: mismatched arg counts, missing
 //! fields, etc.
 
+use std::fmt;
 use std::sync::Arc;
 
 use hir_def::{path::path, resolver::HasResolver, AdtId, AssocItemId, DefWithBodyId, HasModule};
@@ -378,6 +379,15 @@ fn missing_match_arms<'p>(
     witnesses: Vec<DeconstructedPat<'p>>,
     arms: &[MatchArm],
 ) -> String {
+    struct DisplayWitness<'a, 'p>(&'a DeconstructedPat<'p>, &'a MatchCheckCtx<'a, 'p>);
+    impl<'a, 'p> fmt::Display for DisplayWitness<'a, 'p> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let DisplayWitness(witness, cx) = *self;
+            let pat = witness.to_pat(cx);
+            write!(f, "{}", pat.display(cx.db))
+        }
+    }
+
     let non_empty_enum = match scrut_ty.as_adt() {
         Some((AdtId::EnumId(e), _)) => !cx.db.enum_data(e).variants.is_empty(),
         _ => false,
@@ -385,25 +395,18 @@ fn missing_match_arms<'p>(
     if arms.is_empty() && !non_empty_enum {
         format!("type `{}` is non-empty", scrut_ty.display(cx.db))
     } else {
+        let pat_display = |witness| DisplayWitness(witness, cx);
         const LIMIT: usize = 3;
         match &*witnesses {
-            [witness] => format!("`{}` not covered", witness.to_pat(&cx).display(cx.db)),
+            [witness] => format!("`{}` not covered", pat_display(witness)),
             [head @ .., tail] if head.len() < LIMIT => {
-                let head: Vec<_> = head.iter().map(|w| w.to_pat(cx)).collect();
-                format!(
-                    "`{}` and `{}` not covered",
-                    head.iter().map(|p| p.display(cx.db)).join("`, `"),
-                    tail.to_pat(&cx).display(cx.db)
-                )
+                let head = head.iter().map(pat_display);
+                format!("`{}` and `{}` not covered", head.format("`, `"), pat_display(tail))
             }
             _ => {
                 let (head, tail) = witnesses.split_at(LIMIT);
-                let head: Vec<_> = head.iter().map(|w| w.to_pat(cx)).collect();
-                format!(
-                    "`{}` and {} more not covered",
-                    head.iter().map(|p| p.display(cx.db)).join("`, `"),
-                    tail.len()
-                )
+                let head = head.iter().map(pat_display);
+                format!("`{}` and {} more not covered", head.format("`, `"), tail.len())
             }
         }
     }
