@@ -259,6 +259,6 @@ fn error_cause(stack: &Stack, tag: SbTagExtra) -> &'static str {
             ", but that tag does not exist in the borrow stack for this location"
         }
     } else {
-        ", but no exposed tags are valid in the borrow stack for this location"
+        ", but no exposed tags have suitable permission in the borrow stack for this location"
     }
 }

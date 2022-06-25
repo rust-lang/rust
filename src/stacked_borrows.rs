@@ -25,7 +25,8 @@ use diagnostics::{AllocHistory, TagHistory};
 
 pub type PtrId = NonZeroU64;
 pub type CallId = NonZeroU64;
-pub type AllocExtra = Stacks;
+// Even reading memory can have effects on the stack, so we need a `RefCell` here.
+pub type AllocExtra = RefCell<Stacks>;
 
 /// Tracking pointer provenance
 #[derive(Copy, Clone, Hash, Eq)]
@@ -131,7 +132,7 @@ pub struct Stack {
     /// * Above a `SharedReadOnly` there can only be more `SharedReadOnly`.
     /// * Except for `Untagged`, no tag occurs in the stack more than once.
     borrows: Vec<Item>,
-    /// If this is `Some(id)`, then the actual current stack is unknown. THis can happen when
+    /// If this is `Some(id)`, then the actual current stack is unknown. This can happen when
     /// wildcard pointers are used to access this location. What we do know is that `borrows` are at
     /// the top of the stack, and below it are arbitrarily many items whose `tag` is either
     /// `Untagged` or strictly less than `id`.
@@ -144,11 +145,11 @@ pub struct Stack {
 #[derive(Clone, Debug)]
 pub struct Stacks {
     // Even reading memory can have effects on the stack, so we need a `RefCell` here.
-    stacks: RefCell<RangeMap<Stack>>,
+    stacks: RangeMap<Stack>,
     /// Stores past operations on this allocation
-    history: RefCell<AllocHistory>,
+    history: AllocHistory,
     /// The set of tags that have been exposed inside this allocation.
-    exposed_tags: RefCell<FxHashSet<SbTag>>,
+    exposed_tags: FxHashSet<SbTag>,
 }
 
 /// Extra global state, available to the memory access hooks.
@@ -689,34 +690,14 @@ impl<'tcx> Stacks {
         let stack = Stack { borrows: vec![item], unknown_bottom: None };
 
         Stacks {
-            stacks: RefCell::new(RangeMap::new(size, stack)),
-            history: RefCell::new(AllocHistory::new()),
-            exposed_tags: RefCell::new(FxHashSet::default()),
+            stacks: RangeMap::new(size, stack),
+            history: AllocHistory::new(),
+            exposed_tags: FxHashSet::default(),
         }
     }
 
     /// Call `f` on every stack in the range.
     fn for_each(
-        &self,
-        range: AllocRange,
-        mut f: impl FnMut(
-            Size,
-            &mut Stack,
-            &mut AllocHistory,
-            &mut FxHashSet<SbTag>,
-        ) -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx> {
-        let mut stacks = self.stacks.borrow_mut();
-        let history = &mut *self.history.borrow_mut();
-        let exposed_tags = &mut *self.exposed_tags.borrow_mut();
-        for (offset, stack) in stacks.iter_mut(range.start, range.size) {
-            f(offset, stack, history, exposed_tags)?;
-        }
-        Ok(())
-    }
-
-    /// Call `f` on every stack in the range.
-    fn for_each_mut(
         &mut self,
         range: AllocRange,
         mut f: impl FnMut(
@@ -726,11 +707,8 @@ impl<'tcx> Stacks {
             &mut FxHashSet<SbTag>,
         ) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
-        let stacks = self.stacks.get_mut();
-        let history = &mut *self.history.get_mut();
-        let exposed_tags = self.exposed_tags.get_mut();
-        for (offset, stack) in stacks.iter_mut(range.start, range.size) {
-            f(offset, stack, history, exposed_tags)?;
+        for (offset, stack) in self.stacks.iter_mut(range.start, range.size) {
+            f(offset, stack, &mut self.history, &mut self.exposed_tags)?;
         }
         Ok(())
     }
@@ -777,8 +755,8 @@ impl Stacks {
                 (tag, Permission::SharedReadWrite)
             }
         };
-        let stacks = Stacks::new(size, perm, base_tag);
-        stacks.history.borrow_mut().log_creation(
+        let mut stacks = Stacks::new(size, perm, base_tag);
+        stacks.history.log_creation(
             None,
             base_tag,
             alloc_range(Size::ZERO, size),
@@ -789,7 +767,7 @@ impl Stacks {
 
     #[inline(always)]
     pub fn memory_read<'tcx>(
-        &self,
+        &mut self,
         alloc_id: AllocId,
         tag: SbTagExtra,
         range: AllocRange,
@@ -832,7 +810,7 @@ impl Stacks {
             range.size.bytes()
         );
         let mut state = state.borrow_mut();
-        self.for_each_mut(range, |offset, stack, history, exposed_tags| {
+        self.for_each(range, |offset, stack, history, exposed_tags| {
             stack.access(
                 AccessKind::Write,
                 tag,
@@ -855,7 +833,7 @@ impl Stacks {
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
         let state = state.borrow();
-        self.for_each_mut(range, |offset, stack, history, exposed_tags| {
+        self.for_each(range, |offset, stack, history, exposed_tags| {
             stack.dealloc(tag, (alloc_id, range, offset), &state, history, exposed_tags)
         })?;
         Ok(())
@@ -890,17 +868,19 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 return Ok(())
             };
             let extra = this.get_alloc_extra(alloc_id)?;
-            let stacked_borrows =
-                extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
-            let mut alloc_history = stacked_borrows.history.borrow_mut();
-            alloc_history.log_creation(
+            let mut stacked_borrows = extra
+                .stacked_borrows
+                .as_ref()
+                .expect("we should have Stacked Borrows data")
+                .borrow_mut();
+            stacked_borrows.history.log_creation(
                 Some(orig_tag),
                 new_tag,
                 alloc_range(base_offset, size),
                 current_span,
             );
             if protect {
-                alloc_history.log_protector(orig_tag, new_tag, current_span);
+                stacked_borrows.history.log_protector(orig_tag, new_tag, current_span);
             }
             Ok(())
         };
@@ -976,8 +956,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // We have to use shared references to alloc/memory_extra here since
                 // `visit_freeze_sensitive` needs to access the global state.
                 let extra = this.get_alloc_extra(alloc_id)?;
-                let stacked_borrows =
-                    extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
+                let mut stacked_borrows = extra
+                    .stacked_borrows
+                    .as_ref()
+                    .expect("we should have Stacked Borrows data")
+                    .borrow_mut();
                 this.visit_freeze_sensitive(place, size, |mut range, frozen| {
                     // Adjust range.
                     range.start += base_offset;
@@ -1015,13 +998,16 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Note that this asserts that the allocation is mutable -- but since we are creating a
         // mutable pointer, that seems reasonable.
         let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
-        let stacked_borrows =
-            alloc_extra.stacked_borrows.as_mut().expect("we should have Stacked Borrows data");
+        let mut stacked_borrows = alloc_extra
+            .stacked_borrows
+            .as_mut()
+            .expect("we should have Stacked Borrows data")
+            .borrow_mut();
         let item = Item { perm, tag: new_tag, protector };
         let range = alloc_range(base_offset, size);
         let mut global = machine.stacked_borrows.as_ref().unwrap().borrow_mut();
         let current_span = &mut machine.current_span(); // `get_alloc_extra_mut` invalidated our old `current_span`
-        stacked_borrows.for_each_mut(range, |offset, stack, history, exposed_tags| {
+        stacked_borrows.for_each(range, |offset, stack, history, exposed_tags| {
             stack.grant(
                 orig_tag,
                 item,
@@ -1177,7 +1163,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match this.get_alloc_extra(alloc_id) {
             Ok(alloc_extra) => {
                 trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id}");
-                alloc_extra.stacked_borrows.as_ref().unwrap().exposed_tags.borrow_mut().insert(tag);
+                alloc_extra.stacked_borrows.as_ref().unwrap().borrow_mut().exposed_tags.insert(tag);
             }
             Err(err) => {
                 trace!(

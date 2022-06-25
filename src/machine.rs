@@ -646,7 +646,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.convert_tag_add_extra(
             &ecx.tcx,
             AllocExtra {
-                stacked_borrows: stacks,
+                stacked_borrows: stacks.map(RefCell::new),
                 data_race: race_alloc,
                 weak_memory: buffer_alloc,
             },
@@ -745,7 +745,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             data_race.read(alloc_id, range, machine.data_race.as_ref().unwrap())?;
         }
         if let Some(stacked_borrows) = &alloc_extra.stacked_borrows {
-            stacked_borrows.memory_read(
+            stacked_borrows.borrow_mut().memory_read(
                 alloc_id,
                 tag,
                 range,
@@ -771,7 +771,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             data_race.write(alloc_id, range, machine.data_race.as_mut().unwrap())?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
-            stacked_borrows.memory_written(
+            stacked_borrows.get_mut().memory_written(
                 alloc_id,
                 tag,
                 range,
@@ -800,7 +800,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             data_race.deallocate(alloc_id, range, machine.data_race.as_mut().unwrap())?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
-            stacked_borrows.memory_deallocated(
+            stacked_borrows.get_mut().memory_deallocated(
                 alloc_id,
                 tag,
                 range,
