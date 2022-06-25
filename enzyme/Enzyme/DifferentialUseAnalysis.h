@@ -106,16 +106,15 @@ static inline bool is_use_directly_needed_in_reverse(
   }
 
   if (isa<CmpInst>(user) || isa<BranchInst>(user) || isa<ReturnInst>(user) ||
-      isa<FPExtInst>(user) || isa<FPTruncInst>(user) ||
-      (isa<ExtractElementInst>(user) &&
-       cast<ExtractElementInst>(user)->getIndexOperand() != val)
+      isa<FPExtInst>(user) || isa<FPTruncInst>(user)
 #if LLVM_VERSION_MAJOR >= 10
       || isa<FreezeInst>(user)
 #endif
       // isa<ExtractElement>(use) ||
       // isa<InsertElementInst>(use) || isa<ShuffleVectorInst>(use) ||
       // isa<ExtractValueInst>(use) || isa<AllocaInst>(use)
-      /*|| isa<StoreInst>(use)*/) {
+      // || isa<StoreInst>(use)
+  ) {
     return false;
   }
 
@@ -129,6 +128,21 @@ static inline bool is_use_directly_needed_in_reverse(
     // is a possible active floating point value
     if (gutils->isConstantValue(const_cast<InsertElementInst *>(IEI)) ||
         TR.query(const_cast<InsertElementInst *>(IEI))[{-1}] ==
+            BaseType::Pointer)
+      return false;
+    // Otherwise, we need the value.
+    return true;
+  }
+  if (auto EEI = dyn_cast<ExtractElementInst>(user)) {
+    // Only need the index in the reverse, so if the value is not
+    // the index, short circuit and say we don't need
+    if (EEI->getIndexOperand() != val) {
+      return false;
+    }
+    // The index is only needed in the reverse if the value being inserted
+    // is a possible active floating point value
+    if (gutils->isConstantValue(const_cast<ExtractElementInst *>(EEI)) ||
+        TR.query(const_cast<ExtractElementInst *>(EEI))[{-1}] ==
             BaseType::Pointer)
       return false;
     // Otherwise, we need the value.
@@ -152,6 +166,29 @@ static inline bool is_use_directly_needed_in_reverse(
     // is a possible active floating point value
     if (gutils->isConstantValue(const_cast<InsertValueInst *>(IVI)) ||
         TR.query(const_cast<InsertValueInst *>(IVI))[{-1}] == BaseType::Pointer)
+      return false;
+    // Otherwise, we need the value.
+    return true;
+  }
+
+  if (auto EVI = dyn_cast<ExtractValueInst>(user)) {
+    // Only need the index in the reverse, so if the value is not
+    // the index, short circuit and say we don't need
+    bool valueIsIndex = false;
+    for (unsigned i = 2; i < EVI->getNumOperands(); ++i) {
+      if (EVI->getOperand(i) == val) {
+        valueIsIndex = true;
+      }
+    }
+
+    if (!valueIsIndex)
+      return false;
+
+    // The index is only needed in the reverse if the value being inserted
+    // is a possible active floating point value
+    if (gutils->isConstantValue(const_cast<ExtractValueInst *>(EVI)) ||
+        TR.query(const_cast<ExtractValueInst *>(EVI))[{-1}] ==
+            BaseType::Pointer)
       return false;
     // Otherwise, we need the value.
     return true;
