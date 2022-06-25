@@ -1539,9 +1539,13 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
     None
 }
 
-/// Returns `true` if the lint is allowed in the current context
+/// Returns `true` if the lint is allowed in the current context. This is useful for
+/// skipping long running code when it's unnecessary
 ///
-/// Useful for skipping long running code when it's unnecessary
+/// This function should check the lint level for the same node, that the lint will
+/// be emitted at. If the information is buffered to be emitted at a later point, please
+/// make sure to use `span_lint_hir` functions to emit the lint. This ensures that
+/// expectations at the checked nodes will be fulfilled.
 pub fn is_lint_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool {
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
