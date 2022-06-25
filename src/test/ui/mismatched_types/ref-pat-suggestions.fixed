@@ -21,4 +21,17 @@ fn main() {
     let _ = |&mut _a: &mut u32| (); //~ ERROR mismatched types
     let _ = |&_a: &u32| (); //~ ERROR mismatched types
     let _ = |&mut _a: &mut u32| (); //~ ERROR mismatched types
+
+    #[allow(unused_mut)]
+    {
+        struct S(u8);
+
+        let mut _a = 0; //~ ERROR mismatched types
+        let S(_b) = S(0); //~ ERROR mismatched types
+        let (_c,) = (0,); //~ ERROR mismatched types
+
+        match 0 {
+            _d => {} //~ ERROR mismatched types
+        }
+    }
 }
