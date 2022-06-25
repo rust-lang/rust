@@ -80,27 +80,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// version (resolve_vars_if_possible), this version will
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
-    pub(in super::super) fn resolve_vars_with_obligations(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.resolve_vars_with_obligations_and_mutate_fulfillment(ty, |_| {})
+    pub(in super::super) fn resolve_vars_with_obligations<T: TypeFoldable<'tcx>>(&self, t: T) -> T {
+        self.resolve_vars_with_obligations_and_mutate_fulfillment(t, |_| {})
     }
 
     #[instrument(skip(self, mutate_fulfillment_errors), level = "debug")]
-    pub(in super::super) fn resolve_vars_with_obligations_and_mutate_fulfillment(
+    pub(in super::super) fn resolve_vars_with_obligations_and_mutate_fulfillment<
+        T: TypeFoldable<'tcx>,
+    >(
         &self,
-        mut ty: Ty<'tcx>,
+        mut t: T,
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
-    ) -> Ty<'tcx> {
+    ) -> T {
         // No Infer()? Nothing needs doing.
-        if !ty.has_infer_types_or_consts() {
+        if !t.has_infer_types_or_consts() {
             debug!("no inference var, nothing needs doing");
-            return ty;
+            return t;
         }
 
         // If `ty` is a type variable, see whether we already know what it is.
-        ty = self.resolve_vars_if_possible(ty);
-        if !ty.has_infer_types_or_consts() {
-            debug!(?ty);
-            return ty;
+        t = self.resolve_vars_if_possible(t);
+        if !t.has_infer_types_or_consts() {
+            debug!(?t);
+            return t;
         }
 
         // If not, try resolving pending obligations as much as
@@ -108,10 +110,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // indirect dependencies that don't seem worth tracking
         // precisely.
         self.select_obligations_where_possible(false, mutate_fulfillment_errors);
-        ty = self.resolve_vars_if_possible(ty);
+        t = self.resolve_vars_if_possible(t);
 
-        debug!(?ty);
-        ty
+        debug!(?t);
+        t
     }
 
     pub(in super::super) fn record_deferred_call_resolution(

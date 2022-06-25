@@ -1656,6 +1656,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.resolve_vars_if_possible(fresh_base_ty),
                         |_| {},
                     );
+                    // ...
+                    let variances = tcx.variances_of(adt.did());
+                    let constrained_substs = self.resolve_vars_with_obligations(fresh_substs);
+                    for i in 0..substs.len() {
+                        if constrained_substs[i] == fresh_substs[i] {
+                            match self.at(&self.misc(base_expr.span), self.param_env).relate(
+                                substs[i],
+                                variances[i],
+                                constrained_substs[i],
+                            ) {
+                                Ok(InferOk { obligations, value: () }) => {
+                                    self.register_predicates(obligations)
+                                }
+                                Err(_) => {
+                                    bug!();
+                                }
+                            }
+                        }
+                    }
                     fru_tys
                 } else {
                     // Check the base_expr, regardless of a bad expected adt_ty, so we can get

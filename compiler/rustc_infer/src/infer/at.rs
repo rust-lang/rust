@@ -368,6 +368,29 @@ impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
     }
 }
 
+impl<'tcx> ToTrace<'tcx> for GenericArg<'tcx> {
+    fn to_trace(
+        tcx: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        match (a.unpack(), b.unpack()) {
+            (GenericArgKind::Type(a), GenericArgKind::Type(b)) => {
+                <_>::to_trace(tcx, cause, a_is_expected, a, b)
+            }
+            (GenericArgKind::Lifetime(a), GenericArgKind::Lifetime(b)) => {
+                <_>::to_trace(tcx, cause, a_is_expected, a, b)
+            }
+            (GenericArgKind::Const(a), GenericArgKind::Const(b)) => {
+                <_>::to_trace(tcx, cause, a_is_expected, a, b)
+            }
+            _ => bug!("cannot trace GenericArgs of different kinds"),
+        }
+    }
+}
+
 impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
     fn to_trace(
         _: TyCtxt<'tcx>,
