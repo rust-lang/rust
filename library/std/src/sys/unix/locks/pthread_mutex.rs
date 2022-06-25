@@ -1,5 +1,5 @@
 use crate::cell::UnsafeCell;
-use crate::mem::MaybeUninit;
+use crate::mem::{forget, MaybeUninit};
 use crate::sys::cvt_nz;
 use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
@@ -22,6 +22,24 @@ impl LazyInit for Mutex {
         let mut mutex = Box::new(Self::new());
         unsafe { mutex.init() };
         mutex
+    }
+
+    fn destroy(mutex: Box<Self>) {
+        // We're not allowed to pthread_mutex_destroy a locked mutex,
+        // so check first if it's unlocked.
+        if unsafe { mutex.try_lock() } {
+            unsafe { mutex.unlock() };
+            drop(mutex);
+        } else {
+            // The mutex is locked. This happens if a MutexGuard is leaked.
+            // In this case, we just leak the Mutex too.
+            forget(mutex);
+        }
+    }
+
+    fn cancel_init(_: Box<Self>) {
+        // In this case, we can just drop it without any checks,
+        // since it cannot have been locked yet.
     }
 }
 
