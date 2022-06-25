@@ -451,6 +451,21 @@ fn foo() { S.bar($01$0, 2) }
     }
 
     #[test]
+    fn method_on_impl_trait() {
+        check(
+            r#"
+struct S;
+trait T {
+    fn bar(&self, n: i32, m: u32);
+}
+impl T for S { fn bar(&self, n: i32, m: u32); }
+fn foo() { S.bar($01$0, 2) }
+"#,
+            "n",
+        );
+    }
+
+    #[test]
     fn method_ufcs() {
         check(
             r#"

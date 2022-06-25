@@ -43,8 +43,8 @@ use syntax::{
 
 use crate::{
     db::HirDatabase, semantics::PathResolution, Adt, AssocItem, BindingMode, BuiltinAttr,
-    BuiltinType, Const, Field, Function, Local, Macro, ModuleDef, Static, Struct, ToolModule,
-    Trait, Type, TypeAlias, Variant,
+    BuiltinType, Callable, Const, Field, Function, Local, Macro, ModuleDef, Static, Struct,
+    ToolModule, Trait, Type, TypeAlias, Variant,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -239,15 +239,29 @@ impl SourceAnalyzer {
         )
     }
 
+    pub(crate) fn resolve_method_call_as_callable(
+        &self,
+        db: &dyn HirDatabase,
+        call: &ast::MethodCallExpr,
+    ) -> Option<Callable> {
+        let expr_id = self.expr_id(db, &call.clone().into())?;
+        let (func, substs) = self.infer.as_ref()?.method_resolution(expr_id)?;
+        let ty = db.value_ty(func.into()).substitute(Interner, &substs);
+        let ty = Type::new_with_resolver(db, &self.resolver, ty);
+        let mut res = ty.as_callable(db)?;
+        res.is_bound_method = true;
+        Some(res)
+    }
+
     pub(crate) fn resolve_method_call(
         &self,
         db: &dyn HirDatabase,
         call: &ast::MethodCallExpr,
-    ) -> Option<(FunctionId, Substitution)> {
+    ) -> Option<FunctionId> {
         let expr_id = self.expr_id(db, &call.clone().into())?;
         let (f_in_trait, substs) = self.infer.as_ref()?.method_resolution(expr_id)?;
         let f_in_impl = self.resolve_impl_method(db, f_in_trait, &substs);
-        Some((f_in_impl.unwrap_or(f_in_trait), substs))
+        f_in_impl.or(Some(f_in_trait))
     }
 
     pub(crate) fn resolve_field(
