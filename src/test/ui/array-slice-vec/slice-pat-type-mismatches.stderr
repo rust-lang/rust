@@ -27,8 +27,6 @@ error[E0282]: type annotations needed
    |
 LL |         [] => {}
    |         ^^ cannot infer type
-   |
-   = note: type must be known at this point
 
 error: aborting due to 5 previous errors
 

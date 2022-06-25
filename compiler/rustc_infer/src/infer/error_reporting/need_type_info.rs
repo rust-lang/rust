@@ -313,11 +313,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn emit_inference_failure_err(
         &self,
         body_id: Option<hir::BodyId>,
-        span: Span,
+        failure_span: Span,
         arg: GenericArg<'tcx>,
         // FIXME(#94483): Either use this or remove it.
         _impl_candidates: Vec<ty::TraitRef<'tcx>>,
         error_code: TypeAnnotationNeeded,
+        should_label_span: bool,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
@@ -326,7 +327,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // If we don't have any typeck results we're outside
             // of a body, so we won't be able to get better info
             // here.
-            return self.bad_inference_failure_err(span, arg_data, error_code);
+            return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
         let typeck_results = typeck_results.borrow();
         let typeck_results = &typeck_results;
@@ -338,7 +339,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         let Some(InferSource { span, kind }) = local_visitor.infer_source else {
-            return self.bad_inference_failure_err(span, arg_data, error_code)
+            return self.bad_inference_failure_err(failure_span, arg_data, error_code)
         };
 
         let error_code = error_code.into();
@@ -347,6 +348,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             &format!("type annotations needed{}", kind.ty_msg(self)),
             error_code,
         );
+
+        if should_label_span && !failure_span.overlaps(span) {
+            err.span_label(failure_span, "type must be known at this point");
+        }
+
         match kind {
             InferSourceKind::LetBinding { insert_span, pattern_name, ty } => {
                 let suggestion_msg = if let Some(name) = pattern_name {

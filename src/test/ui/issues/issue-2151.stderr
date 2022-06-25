@@ -3,8 +3,9 @@ error[E0282]: type annotations needed
    |
 LL |     let x = panic!();
    |         ^
+LL |     x.clone();
+   |     - type must be known at this point
    |
-   = note: type must be known at this point
 help: consider giving `x` an explicit type
    |
 LL |     let x: _ = panic!();

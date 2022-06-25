@@ -12,8 +12,6 @@ error[E0282]: type annotations needed
    |
 LL |         Zero::ZERO ..= Zero::ZERO => {},
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
-   |
-   = note: type must be known at this point
 
 error: aborting due to 2 previous errors
 

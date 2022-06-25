@@ -2002,6 +2002,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                             subst,
                             vec![],
                             ErrorCode::E0282,
+                            false,
                         )
                         .emit();
                     }
@@ -2019,6 +2020,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     subst,
                     impl_candidates,
                     ErrorCode::E0283,
+                    false,
                 );
 
                 let obligation = Obligation::new(
@@ -2110,7 +2112,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                self.emit_inference_failure_err(body_id, span, arg, vec![], ErrorCode::E0282)
+                self.emit_inference_failure_err(body_id, span, arg, vec![], ErrorCode::E0282, false)
             }
 
             ty::PredicateKind::Subtype(data) => {
@@ -2124,7 +2126,14 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
-                self.emit_inference_failure_err(body_id, span, a.into(), vec![], ErrorCode::E0282)
+                self.emit_inference_failure_err(
+                    body_id,
+                    span,
+                    a.into(),
+                    vec![],
+                    ErrorCode::E0282,
+                    false,
+                )
             }
             ty::PredicateKind::Projection(data) => {
                 let self_ty = data.projection_ty.self_ty();
@@ -2140,6 +2149,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         self_ty.into(),
                         vec![],
                         ErrorCode::E0284,
+                        false,
                     );
                     err.note(&format!("cannot satisfy `{}`", predicate));
                     err
