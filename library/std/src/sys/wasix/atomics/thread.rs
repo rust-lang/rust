@@ -13,7 +13,7 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 // Callback when a new thread is spawned
 #[no_mangle]
-pub extern "C" fn _thread_start(entry: u64) {
+pub extern "C" fn _start_thread(entry: u64) {
     let cb = unsafe {
         let cb = entry as *mut ThreadCallback;
         Box::from_raw(cb)
@@ -22,25 +22,14 @@ pub extern "C" fn _thread_start(entry: u64) {
     (cb.callback)();
 }
 
-// Callback when reactor work is initiated
-// (this leaks the memory until _reactor_finish is called)
+// Callback when reactor work needs to be processed
 #[no_mangle]
-pub extern "C" fn _reactor_work(entry: u64) {
+pub extern "C" fn _react(entry: u64) {
     let cb = unsafe {
         let cb = entry as *mut ReactorCallback;
         mem::ManuallyDrop::new(Box::from_raw(cb))
     };
     (cb.callback)();
-}
-
-// Cleans up all the resources associated with this reactor
-#[no_mangle]
-pub extern "C" fn _reactor_finish(entry: u64) {
-    let cb = unsafe {
-        let cb = entry as *mut ReactorCallback;
-        Box::from_raw(cb)
-    };
-    mem::drop(cb);
 }
 
 // Frees memory that was passed to the operating system by
@@ -89,7 +78,7 @@ impl Thread {
         });
         let handle = unsafe {
             let raw = Box::into_raw(cb) as *mut ThreadCallback;
-            wasi::thread_spawn("_thread_start", raw as u64, wasi::BOOL_FALSE)
+            wasi::thread_spawn(raw as u64, wasi::BOOL_FALSE)
                 .map_err(err2io)?
         };
 
@@ -108,7 +97,7 @@ impl Thread {
         });
         let handle = unsafe {
             let raw = Box::into_raw(cb) as *mut ReactorCallback;
-            wasi::thread_spawn("_reactor_work", raw as u64, wasi::BOOL_TRUE)
+            wasi::thread_spawn(raw as u64, wasi::BOOL_TRUE)
                 .map_err(err2io)?
         };
 

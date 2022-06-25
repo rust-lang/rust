@@ -943,9 +943,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.9"
+version = "0.8.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ff1f980957787286a554052d03c7aee98d99cc32e09f6d45f0a814133c87978"
+checksum = "7d82ee10ce34d7bc12c2122495e7593a9c41347ecdd64185af4ecf72cb1a7f83"
 dependencies = [
  "cfg-if 1.0.0",
  "once_cell",
@@ -1729,9 +1729,9 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c71a9c6ee0d06d82b89ae2674096d2ba1b832a5ee0b1c9a5a6b013deeab5b11f"
+checksum = "6c757b269857055a7be0d1b60448b8696b00c5a00777f515a96ca651f1fcef2b"
 dependencies = [
  "compiler_builtins",
  "libc 0.2.126 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1937,9 +1937,9 @@ checksum = "112c678d4050afce233f4f2852bb2eb519230b3cf12f33585275537d7e41578d"
 
 [[package]]
 name = "jemalloc-sys"
-version = "0.5.0+5.3.0"
+version = "0.5.1+5.3.0-patched"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f655c3ecfa6b0d03634595b4b54551d4bd5ac208b9e0124873949a7ab168f70b"
+checksum = "b7c2b313609b95939cb0c5a5c6917fb9b7c9394562aa3ef44eb66ffa51736432"
 dependencies = [
  "cc",
  "fs_extra",
@@ -2371,9 +2371,9 @@ dependencies = [
 
 [[package]]
 name = "measureme"
-version = "10.0.0"
+version = "10.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd460fad6e55ca82fa0cd9dab0d315294188fd9ec6efbf4105e5635d4872ef9c"
+checksum = "cbdc226fa10994e8f66a4d2f6f000148bc563a1c671b6dcd2135737018033d8a"
 dependencies = [
  "log",
  "memmap2",
@@ -3674,7 +3674,7 @@ dependencies = [
  "cstr",
  "libc 0.2.126 (registry+https://github.com/rust-lang/crates.io-index)",
  "libloading",
- "measureme 10.0.0",
+ "measureme 10.1.0",
  "rustc-demangle",
  "rustc_arena",
  "rustc_ast",
@@ -3771,7 +3771,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc 0.2.126 (registry+https://github.com/rust-lang/crates.io-index)",
- "measureme 10.0.0",
+ "measureme 10.1.0",
  "memmap2",
  "parking_lot 0.11.2",
  "rustc-hash",
@@ -4332,7 +4332,7 @@ dependencies = [
 name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
- "measureme 10.0.0",
+ "measureme 10.1.0",
  "rustc-rayon-core",
  "rustc_ast",
  "rustc_data_structures",
@@ -4945,9 +4945,9 @@ checksum = "eb703cfe953bccee95685111adeedb76fabe4e97549a58d16f03ea7b9367bb32"
 
 [[package]]
 name = "smallvec"
-version = "1.8.0"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
+checksum = "cc88c725d61fc6c3132893370cac4a0200e3fedf5da8331c570664b1987f5ca2"
 
 [[package]]
 name = "snap"
@@ -5026,7 +5026,7 @@ dependencies = [
  "dlmalloc",
  "fortanix-sgx-abi",
  "hashbrown 0.12.1",
- "hermit-abi 0.2.1",
+ "hermit-abi 0.2.2",
  "libc 0.2.126 (git+https://github.com/john-sharratt/libc.git)",
  "miniz_oxide 0.4.4",
  "object 0.26.2",
@@ -5472,9 +5472,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.27"
+version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7709595b8878a4965ce5e87ebf880a7d39c9afc6837721b21a5a816a8117d921"
+checksum = "7b7358be39f2f274f322d2aaed611acc57f382e8eb1e5b48cb9ae30933495ce7"
 dependencies = [
  "once_cell",
  "valuable",
@@ -5668,9 +5668,9 @@ checksum = "5bd2fe26506023ed7b5e1e315add59d6f584c621d037f9368fea9cfb988f368c"
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.19"
+version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d54590932941a9e9266f0832deed84ebe1bf2e4c9e4a3554d393d18f5e854bf9"
+checksum = "81dee68f85cab8cf68dec42158baf3a79a1cdc065a8b103025965d6ccb7f6cbd"
 dependencies = [
  "tinyvec",
 ]
@@ -5881,9 +5881,9 @@ dependencies = [
 
 [[package]]
 name = "wasix"
-version = "0.11.24+wasix-snapshot-preview1"
+version = "0.11.28+wasix-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cbd20c598dc95b520965efb723c2c7554458827482db8abfb5a260551bc3c23"
+checksum = "314585be3325be8dc757aa349f97c7dae6d94aa5d8a3e4637bff90d7fdc83e2b"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",
