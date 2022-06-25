@@ -4,7 +4,7 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
 LL |         Box::new(AssocNoCopy)
    |         ^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
    |
-   = note: required for the cast to the object type `dyn Bar<Assoc = <AssocNoCopy as Thing>::Out::{opaque#0}>`
+   = note: required for the cast from `AssocNoCopy` to the object type `dyn Bar<Assoc = <AssocNoCopy as Thing>::Out::{opaque#0}>`
 
 error: aborting due to previous error
 
