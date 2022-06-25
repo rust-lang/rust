@@ -57,13 +57,11 @@ LL |     a + 1
 error[E0787]: naked functions must contain a single asm block
   --> $DIR/naked-functions.rs:33:1
    |
-LL | / pub unsafe extern "C" fn inc(a: u32) -> u32 {
-LL | |
-LL | |     a + 1
-   | |     ----- non-asm is unsupported in naked functions
-LL | |
-LL | | }
-   | |_^
+LL | pub unsafe extern "C" fn inc(a: u32) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     a + 1
+   |     ----- non-asm is unsupported in naked functions
 
 error: referencing function parameters is not allowed in naked functions
   --> $DIR/naked-functions.rs:42:31
@@ -82,12 +80,11 @@ LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
 error[E0787]: naked functions must contain a single asm block
   --> $DIR/naked-functions.rs:48:1
    |
-LL | / pub unsafe extern "C" fn inc_closure(a: u32) -> u32 {
-LL | |
-LL | |     (|| a + 1)()
-   | |     ------------ non-asm is unsupported in naked functions
-LL | | }
-   | |_^
+LL | pub unsafe extern "C" fn inc_closure(a: u32) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     (|| a + 1)()
+   |     ------------ non-asm is unsupported in naked functions
 
 error[E0787]: only `const` and `sym` operands are supported in naked functions
   --> $DIR/naked-functions.rs:65:10
@@ -124,30 +121,25 @@ LL |          sym G, options(noreturn),
 error[E0787]: naked functions must contain a single asm block
   --> $DIR/naked-functions.rs:54:1
    |
-LL | / pub unsafe extern "C" fn unsupported_operands() {
-LL | |
-LL | |     let mut a = 0usize;
-   | |     ------------------- non-asm is unsupported in naked functions
-LL | |     let mut b = 0usize;
-   | |     ------------------- non-asm is unsupported in naked functions
-LL | |     let mut c = 0usize;
-   | |     ------------------- non-asm is unsupported in naked functions
-LL | |     let mut d = 0usize;
-   | |     ------------------- non-asm is unsupported in naked functions
-LL | |     let mut e = 0usize;
-   | |     ------------------- non-asm is unsupported in naked functions
-...  |
-LL | |     );
-LL | | }
-   | |_^
+LL | pub unsafe extern "C" fn unsupported_operands() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     let mut a = 0usize;
+   |     ------------------- non-asm is unsupported in naked functions
+LL |     let mut b = 0usize;
+   |     ------------------- non-asm is unsupported in naked functions
+LL |     let mut c = 0usize;
+   |     ------------------- non-asm is unsupported in naked functions
+LL |     let mut d = 0usize;
+   |     ------------------- non-asm is unsupported in naked functions
+LL |     let mut e = 0usize;
+   |     ------------------- non-asm is unsupported in naked functions
 
 error[E0787]: naked functions must contain a single asm block
   --> $DIR/naked-functions.rs:77:1
    |
-LL | / pub extern "C" fn missing_assembly() {
-LL | |
-LL | | }
-   | |_^
+LL | pub extern "C" fn missing_assembly() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0787]: asm in naked functions must use `noreturn` option
   --> $DIR/naked-functions.rs:84:5
@@ -185,20 +177,17 @@ LL |     asm!("", options(noreturn));
 error[E0787]: naked functions must contain a single asm block
   --> $DIR/naked-functions.rs:82:1
    |
-LL | / pub extern "C" fn too_many_asm_blocks() {
-LL | |
-LL | |     asm!("");
-LL | |
-LL | |     asm!("");
-   | |     -------- multiple asm blocks are unsupported in naked functions
-LL | |
-LL | |     asm!("");
-   | |     -------- multiple asm blocks are unsupported in naked functions
-LL | |
-LL | |     asm!("", options(noreturn));
-   | |     --------------------------- multiple asm blocks are unsupported in naked functions
-LL | | }
-   | |_^
+LL | pub extern "C" fn too_many_asm_blocks() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     asm!("");
+   |     -------- multiple asm blocks are unsupported in naked functions
+LL |
+LL |     asm!("");
+   |     -------- multiple asm blocks are unsupported in naked functions
+LL |
+LL |     asm!("", options(noreturn));
+   |     --------------------------- multiple asm blocks are unsupported in naked functions
 
 error: referencing function parameters is not allowed in naked functions
   --> $DIR/naked-functions.rs:97:11
@@ -211,13 +200,11 @@ LL |         *&y
 error[E0787]: naked functions must contain a single asm block
   --> $DIR/naked-functions.rs:95:5
    |
-LL | /     pub extern "C" fn inner(y: usize) -> usize {
-LL | |
-LL | |         *&y
-   | |         --- non-asm is unsupported in naked functions
-LL | |
-LL | |     }
-   | |_____^
+LL |     pub extern "C" fn inner(y: usize) -> usize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         *&y
+   |         --- non-asm is unsupported in naked functions
 
 error[E0787]: asm options unsupported in naked functions: `nomem`, `preserves_flags`
   --> $DIR/naked-functions.rs:105:5
@@ -249,18 +236,18 @@ LL |     asm!("", options(noreturn, may_unwind));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:124:15
+  --> $DIR/naked-functions.rs:124:1
    |
 LL | pub unsafe fn default_abi() {
-   |               ^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(undefined_naked_function_abi)]` on by default
 
 warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:130:15
+  --> $DIR/naked-functions.rs:130:1
    |
 LL | pub unsafe fn rust_abi() {
-   |               ^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: naked functions cannot be inlined
   --> $DIR/naked-functions.rs:170:1
