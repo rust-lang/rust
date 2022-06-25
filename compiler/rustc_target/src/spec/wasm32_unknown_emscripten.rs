@@ -1,5 +1,5 @@
 use super::{cvs, wasm_base};
-use super::{LinkArgs, LinkerFlavor, PanicStrategy, Target, TargetOptions};
+use super::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
@@ -26,6 +26,7 @@ pub fn target() -> Target {
         // functionality, and a .wasm file.
         exe_suffix: ".js".into(),
         linker: None,
+        relocation_model: RelocModel::Pic,
         panic_strategy: PanicStrategy::Unwind,
         no_default_libraries: false,
         post_link_args,
