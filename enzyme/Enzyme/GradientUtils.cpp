@@ -3594,7 +3594,7 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
       shadow->setAlignment(arg->getAlignment());
 #endif
       shadow->setUnnamedAddr(arg->getUnnamedAddr());
-      if (arg->getInitializer())
+      if (arg->hasInitializer())
         shadow->setInitializer(GetOrCreateShadowConstant(
             Logic, TLI, TA, cast<Constant>(arg->getOperand(0)), mode, width,
             AtomicAdd));
@@ -4124,7 +4124,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 
         Value *shadow = applyChainRule(oval->getType(), BuilderM, rule);
 
-        if (arg->getInitializer()) {
+        if (arg->hasInitializer()) {
           applyChainRule(
               BuilderM,
               [&](Value *shadow, Value *ip) {
