@@ -3,8 +3,8 @@ error[E0599]: the method `clone` exists for union `U5<CloneNoCopy>`, but its tra
    |
 LL | union U5<T> {
    | -----------
-   | |
-   | method `clone` not found for this
+   | |     |
+   | |     method `clone` not found for this union
    | doesn't satisfy `U5<CloneNoCopy>: Clone`
 ...
 LL | struct CloneNoCopy;

@@ -2,7 +2,7 @@ error[E0599]: no function or associated item named `new` found for struct `T` in
   --> $DIR/dont-suggest-private-trait-method.rs:4:8
    |
 LL | struct T;
-   | --------- function or associated item `new` not found for this
+   |        - function or associated item `new` not found for this struct
 ...
 LL |     T::new();
    |        ^^^ function or associated item not found in `T`
