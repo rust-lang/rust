@@ -107,8 +107,6 @@ static inline bool is_use_directly_needed_in_reverse(
 
   if (isa<CmpInst>(user) || isa<BranchInst>(user) || isa<ReturnInst>(user) ||
       isa<FPExtInst>(user) || isa<FPTruncInst>(user) ||
-      (isa<InsertElementInst>(user) &&
-       cast<InsertElementInst>(user)->getOperand(2) != val) ||
       (isa<ExtractElementInst>(user) &&
        cast<ExtractElementInst>(user)->getIndexOperand() != val)
 #if LLVM_VERSION_MAJOR >= 10
@@ -119,6 +117,44 @@ static inline bool is_use_directly_needed_in_reverse(
       // isa<ExtractValueInst>(use) || isa<AllocaInst>(use)
       /*|| isa<StoreInst>(use)*/) {
     return false;
+  }
+
+  if (auto IEI = dyn_cast<InsertElementInst>(user)) {
+    // Only need the index in the reverse, so if the value is not
+    // the index, short circuit and say we don't need
+    if (IEI->getOperand(2) != val) {
+      return false;
+    }
+    // The index is only needed in the reverse if the value being inserted
+    // is a possible active floating point value
+    if (gutils->isConstantValue(const_cast<InsertElementInst *>(IEI)) ||
+        TR.query(const_cast<InsertElementInst *>(IEI))[{-1}] ==
+            BaseType::Pointer)
+      return false;
+    // Otherwise, we need the value.
+    return true;
+  }
+
+  if (auto IVI = dyn_cast<InsertValueInst>(user)) {
+    // Only need the index in the reverse, so if the value is not
+    // the index, short circuit and say we don't need
+    bool valueIsIndex = false;
+    for (unsigned i = 2; i < IVI->getNumOperands(); ++i) {
+      if (IVI->getOperand(i) == val) {
+        valueIsIndex = true;
+      }
+    }
+
+    if (!valueIsIndex)
+      return false;
+
+    // The index is only needed in the reverse if the value being inserted
+    // is a possible active floating point value
+    if (gutils->isConstantValue(const_cast<InsertValueInst *>(IVI)) ||
+        TR.query(const_cast<InsertValueInst *>(IVI))[{-1}] == BaseType::Pointer)
+      return false;
+    // Otherwise, we need the value.
+    return true;
   }
 
   Intrinsic::ID ID = Intrinsic::not_intrinsic;
