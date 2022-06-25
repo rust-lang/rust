@@ -474,7 +474,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                     };
                     return Some(PtrArg {
                         idx: i,
-                        emission_id: emission_id,
+                        emission_id,
                         span: hir_ty.span,
                         ty_did: adt.did(),
                         ty_name: name.ident.name,
