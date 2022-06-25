@@ -1,5 +1,5 @@
 // Verify that lifetime resolution correctly accounts for `Fn` bare trait objects.
-
+// check-pass
 #![allow(bare_trait_objects)]
 
 // This should work as: fn next_u32(fill_buf: &mut dyn FnMut(&mut [u8]))
@@ -15,10 +15,8 @@ fn explicit(fill_buf: &mut dyn FnMut(&mut [u8])) {
 
 fn main() {
     let _: fn(&mut FnMut(&mut [u8])) = next_u32;
-    //~^ ERROR mismatched types
     let _: &dyn Fn(&mut FnMut(&mut [u8])) = &next_u32;
     let _: fn(&mut FnMut(&mut [u8])) = explicit;
-    //~^ ERROR mismatched types
     let _: &dyn Fn(&mut FnMut(&mut [u8])) = &explicit;
     let _: fn(&mut dyn FnMut(&mut [u8])) = next_u32;
     let _: &dyn Fn(&mut dyn FnMut(&mut [u8])) = &next_u32;
