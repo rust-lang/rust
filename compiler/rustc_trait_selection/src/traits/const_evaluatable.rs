@@ -672,7 +672,13 @@ where
         let root = ct.root(tcx);
         debug!(?root);
         match root {
-            Node::Leaf(_) => ControlFlow::CONTINUE,
+            Node::Leaf(ct) => {
+                if let Ok(Some(ac)) = AbstractConst::from_const(tcx, ct) {
+                    recurse(tcx, ac, f)
+                } else {
+                    ControlFlow::CONTINUE
+                }
+            }
             Node::Binop(_, l, r) => {
                 recurse(tcx, ct.subtree(l), f)?;
                 recurse(tcx, ct.subtree(r), f)
