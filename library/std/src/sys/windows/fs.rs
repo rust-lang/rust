@@ -84,8 +84,8 @@ pub struct FilePermissions {
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct FileTimes {
-    accessed: c::FILETIME,
-    modified: c::FILETIME,
+    accessed: Option<c::FILETIME>,
+    modified: Option<c::FILETIME>,
 }
 
 #[derive(Debug)]
@@ -558,8 +558,15 @@ impl File {
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        let is_zero = |t: c::FILETIME| t.dwLowDateTime == 0 && t.dwHighDateTime == 0;
+        if times.accessed.map_or(false, is_zero) || times.modified.map_or(false, is_zero) {
+            return Err(io::const_io_error!(
+                io::ErrorKind::InvalidInput,
+                "Cannot set file timestamp to 0",
+            ));
+        }
         cvt(unsafe {
-            c::SetFileTime(self.as_handle(), None, Some(&times.accessed), Some(&times.modified))
+            c::SetFileTime(self.as_handle(), None, times.accessed.as_ref(), times.modified.as_ref())
         })?;
         Ok(())
     }
@@ -911,11 +918,11 @@ impl FilePermissions {
 
 impl FileTimes {
     pub fn set_accessed(&mut self, t: SystemTime) {
-        self.accessed = t.into_inner();
+        self.accessed = Some(t.into_inner());
     }
 
     pub fn set_modified(&mut self, t: SystemTime) {
-        self.modified = t.into_inner();
+        self.modified = Some(t.into_inner());
     }
 }
 
