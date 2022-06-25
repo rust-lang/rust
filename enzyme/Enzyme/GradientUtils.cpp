@@ -4101,13 +4101,12 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
           (arg->hasExternalLinkage() && arg->hasInitializer()) ||
           arg->isConstant()) {
         Type *elemTy = arg->getType()->getPointerElementType();
-        Type *type = getShadowType(elemTy);
         IRBuilder<> B(inversionAllocs);
 
         auto rule = [&]() {
           auto shadow = new GlobalVariable(
               *arg->getParent(), elemTy, arg->isConstant(), arg->getLinkage(),
-              Constant::getNullValue(type), arg->getName() + "_shadow", arg,
+              Constant::getNullValue(elemTy), arg->getName() + "_shadow", arg,
               arg->getThreadLocalMode(), arg->getType()->getAddressSpace(),
               arg->isExternallyInitialized());
           arg->setMetadata("enzyme_shadow",
