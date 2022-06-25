@@ -1671,10 +1671,6 @@ impl Type {
         matches!(self, Type::ImplTrait(_))
     }
 
-    pub(crate) fn is_primitive(&self) -> bool {
-        self.primitive_type().is_some()
-    }
-
     pub(crate) fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
         if let QPath { self_type, trait_, assoc, .. } = self {
             Some((self_type, trait_.def_id(), *assoc.clone()))
