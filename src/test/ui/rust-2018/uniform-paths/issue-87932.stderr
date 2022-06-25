@@ -2,7 +2,7 @@ error[E0599]: no function or associated item named `deserialize` found for struc
   --> $DIR/issue-87932.rs:13:8
    |
 LL | pub struct A {}
-   | ------------ function or associated item `deserialize` not found for this
+   |            - function or associated item `deserialize` not found for this struct
 ...
 LL |     A::deserialize();
    |        ^^^^^^^^^^^ function or associated item not found in `A`

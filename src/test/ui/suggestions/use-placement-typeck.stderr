@@ -8,7 +8,7 @@ LL |         fn abc(&self) {}
    |            --- the method is available for `S` here
 LL |     }
 LL |     pub struct S;
-   |     ------------- method `abc` not found for this
+   |                - method `abc` not found for this struct
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:

@@ -2,7 +2,7 @@ error[E0599]: no function or associated item named `assert` found for struct `Bo
   --> $DIR/const-needs_drop-monomorphic.rs:11:46
    |
 LL | struct Bool<const B: bool> {}
-   | -------------------------- function or associated item `assert` not found for this
+   |        ---- function or associated item `assert` not found for this struct
 ...
 LL |     Bool::<{ std::mem::needs_drop::<T>() }>::assert();
    |                                              ^^^^^^ function or associated item cannot be called on `Bool<{ std::mem::needs_drop::<T>() }>` due to unsatisfied trait bounds

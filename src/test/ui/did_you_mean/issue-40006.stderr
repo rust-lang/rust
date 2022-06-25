@@ -88,7 +88,7 @@ error[E0599]: no method named `hello_method` found for struct `S` in the current
   --> $DIR/issue-40006.rs:38:7
    |
 LL | struct S;
-   | --------- method `hello_method` not found for this
+   |        - method `hello_method` not found for this struct
 ...
 LL |     S.hello_method();
    |       ^^^^^^^^^^^^ method not found in `S`
