@@ -30,13 +30,6 @@ macro_rules! associated_fn {
     ($($item:tt)*) => ($($item)*;)
 }
 
-/// Helper methods defined by `Server` types not invoked over RPC.
-pub trait Context: Types {
-    fn def_site(&mut self) -> Self::Span;
-    fn call_site(&mut self) -> Self::Span;
-    fn mixed_site(&mut self) -> Self::Span;
-}
-
 macro_rules! declare_server_traits {
     ($($name:ident {
         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
@@ -45,23 +38,26 @@ macro_rules! declare_server_traits {
             $(associated_fn!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
         })*
 
-        pub trait Server: Types + Context $(+ $name)* {}
-        impl<S: Types + Context $(+ $name)*> Server for S {}
+        pub trait Server: Types $(+ $name)* {
+            fn def_site(&mut self) -> Self::Span;
+            fn call_site(&mut self) -> Self::Span;
+            fn mixed_site(&mut self) -> Self::Span;
+        }
     }
 }
 with_api!(Self, self_, declare_server_traits);
 
 pub(super) struct MarkedTypes<S: Types>(S);
 
-impl<S: Context> Context for MarkedTypes<S> {
+impl<S: Server> Server for MarkedTypes<S> {
     fn def_site(&mut self) -> Self::Span {
-        <_>::mark(Context::def_site(&mut self.0))
+        <_>::mark(Server::def_site(&mut self.0))
     }
     fn call_site(&mut self) -> Self::Span {
-        <_>::mark(Context::call_site(&mut self.0))
+        <_>::mark(Server::call_site(&mut self.0))
     }
     fn mixed_site(&mut self) -> Self::Span {
-        <_>::mark(Context::mixed_site(&mut self.0))
+        <_>::mark(Server::mixed_site(&mut self.0))
     }
 }
 
