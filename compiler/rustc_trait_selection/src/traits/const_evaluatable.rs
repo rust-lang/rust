@@ -236,7 +236,7 @@ impl<'tcx> AbstractConst<'tcx> {
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
         let inner = tcx.thir_abstract_const_opt_const_arg(uv.def)?;
         debug!("AbstractConst::new({:?}) = {:?}", uv, inner);
-        Ok(inner.map(|inner| AbstractConst { inner, substs: uv.substs }))
+        Ok(inner.map(|inner| AbstractConst { inner, substs: tcx.erase_regions(uv.substs) }))
     }
 
     pub fn from_const(
@@ -416,6 +416,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     // `AbstractConst`s should not contain any promoteds as they require references which
                     // are not allowed.
                     assert_eq!(ct.promoted, None);
+                    assert_eq!(ct, self.tcx.erase_regions(ct));
                 }
             }
         }
