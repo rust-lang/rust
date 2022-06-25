@@ -366,15 +366,9 @@ fn object_safety_violation_for_method(
     // Get an accurate span depending on the violation.
     violation.map(|v| {
         let node = tcx.hir().get_if_local(method.def_id);
-        let span = match (v, node) {
-            (MethodViolationCode::ReferencesSelfInput(arg), Some(node)) => node
-                .fn_decl()
-                .and_then(|decl| decl.inputs.get(arg + 1))
-                .map_or(method.ident(tcx).span, |arg| arg.span),
-            (MethodViolationCode::UndispatchableReceiver, Some(node)) => node
-                .fn_decl()
-                .and_then(|decl| decl.inputs.get(0))
-                .map_or(method.ident(tcx).span, |arg| arg.span),
+        let span = match (&v, node) {
+            (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
+            (MethodViolationCode::UndispatchableReceiver(Some(span)), _) => *span,
             (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
                 node.fn_decl().map_or(method.ident(tcx).span, |decl| decl.output.span())
             }
@@ -397,32 +391,41 @@ fn virtual_call_violation_for_method<'tcx>(
 
     // The method's first parameter must be named `self`
     if !method.fn_has_self_parameter {
-        // We'll attempt to provide a structured suggestion for `Self: Sized`.
-        let sugg =
-            tcx.hir().get_if_local(method.def_id).as_ref().and_then(|node| node.generics()).map(
-                |generics| match generics.predicates {
-                    [] => (" where Self: Sized", generics.where_clause_span),
-                    [.., pred] => (", Self: Sized", pred.span().shrink_to_hi()),
-                },
-            );
-        // Get the span pointing at where the `self` receiver should be.
-        let sm = tcx.sess.source_map();
-        let self_span = method.ident(tcx).span.to(tcx
-            .hir()
-            .span_if_local(method.def_id)
-            .unwrap_or_else(|| sm.next_point(method.ident(tcx).span))
-            .shrink_to_hi());
-        let self_span = sm.span_through_char(self_span, '(').shrink_to_hi();
-        return Some(MethodViolationCode::StaticMethod(
-            sugg,
-            self_span,
-            !sig.inputs().skip_binder().is_empty(),
-        ));
+        let sugg = if let Some(hir::Node::TraitItem(hir::TraitItem {
+            generics,
+            kind: hir::TraitItemKind::Fn(sig, _),
+            ..
+        })) = tcx.hir().get_if_local(method.def_id).as_ref()
+        {
+            let sm = tcx.sess.source_map();
+            Some((
+                (
+                    format!("&self{}", if sig.decl.inputs.is_empty() { "" } else { ", " }),
+                    sm.span_through_char(sig.span, '(').shrink_to_hi(),
+                ),
+                (
+                    format!("{} Self: Sized", generics.add_where_or_trailing_comma()),
+                    generics.tail_span_for_predicate_suggestion(),
+                ),
+            ))
+        } else {
+            None
+        };
+        return Some(MethodViolationCode::StaticMethod(sugg));
     }
 
-    for (i, &input_ty) in sig.skip_binder().inputs()[1..].iter().enumerate() {
+    for (i, &input_ty) in sig.skip_binder().inputs().iter().enumerate().skip(1) {
         if contains_illegal_self_type_reference(tcx, trait_def_id, sig.rebind(input_ty)) {
-            return Some(MethodViolationCode::ReferencesSelfInput(i));
+            let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(sig, _),
+                ..
+            })) = tcx.hir().get_if_local(method.def_id).as_ref()
+            {
+                Some(sig.decl.inputs[i].span)
+            } else {
+                None
+            };
+            return Some(MethodViolationCode::ReferencesSelfInput(span));
         }
     }
     if contains_illegal_self_type_reference(tcx, trait_def_id, sig.output()) {
@@ -456,7 +459,16 @@ fn virtual_call_violation_for_method<'tcx>(
     // `Receiver: Unsize<Receiver[Self => dyn Trait]>`.
     if receiver_ty != tcx.types.self_param {
         if !receiver_is_dispatchable(tcx, method, receiver_ty) {
-            return Some(MethodViolationCode::UndispatchableReceiver);
+            let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(sig, _),
+                ..
+            })) = tcx.hir().get_if_local(method.def_id).as_ref()
+            {
+                Some(sig.decl.inputs[0].span)
+            } else {
+                None
+            };
+            return Some(MethodViolationCode::UndispatchableReceiver(span));
         } else {
             // Do sanity check to make sure the receiver actually has the layout of a pointer.
 
