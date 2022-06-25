@@ -14,6 +14,9 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{InnerSpan, Span};
 use smallvec::SmallVec;
 
+use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
+use rustc_parse_format::{Count, FormatSpec};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
@@ -57,7 +60,7 @@ struct Context<'a, 'b> {
     /// Unique format specs seen for each argument.
     arg_unique_types: Vec<Vec<ArgumentType>>,
     /// Map from named arguments to their resolved indices.
-    names: FxHashMap<Symbol, usize>,
+    names: FxHashMap<Symbol, (usize, Span)>,
 
     /// The latest consecutive literal strings, or empty if there weren't any.
     literal: String,
@@ -130,9 +133,9 @@ fn parse_args<'a>(
     ecx: &mut ExtCtxt<'a>,
     sp: Span,
     tts: TokenStream,
-) -> PResult<'a, (P<ast::Expr>, Vec<P<ast::Expr>>, FxHashMap<Symbol, usize>)> {
+) -> PResult<'a, (P<ast::Expr>, Vec<P<ast::Expr>>, FxHashMap<Symbol, (usize, Span)>)> {
     let mut args = Vec::<P<ast::Expr>>::new();
-    let mut names = FxHashMap::<Symbol, usize>::default();
+    let mut names = FxHashMap::<Symbol, (usize, Span)>::default();
 
     let mut p = ecx.new_parser_from_tts(tts);
 
@@ -197,7 +200,7 @@ fn parse_args<'a>(
                 p.bump();
                 p.expect(&token::Eq)?;
                 let e = p.parse_expr()?;
-                if let Some(prev) = names.get(&ident.name) {
+                if let Some((prev, _)) = names.get(&ident.name) {
                     ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", ident))
                         .span_label(args[*prev].span, "previously here")
                         .span_label(e.span, "duplicate argument")
@@ -210,7 +213,7 @@ fn parse_args<'a>(
                 // if the input is valid, we can simply append to the positional
                 // args. And remember the names.
                 let slot = args.len();
-                names.insert(ident.name, slot);
+                names.insert(ident.name, (slot, ident.span));
                 args.push(e);
             }
             _ => {
@@ -222,7 +225,7 @@ fn parse_args<'a>(
                     );
                     err.span_label(e.span, "positional arguments must be before named arguments");
                     for pos in names.values() {
-                        err.span_label(args[*pos].span, "named argument");
+                        err.span_label(args[pos.0].span, "named argument");
                     }
                     err.emit();
                 }
@@ -242,7 +245,8 @@ impl<'a, 'b> Context<'a, 'b> {
     fn resolve_name_inplace(&self, p: &mut parse::Piece<'_>) {
         // NOTE: the `unwrap_or` branch is needed in case of invalid format
         // arguments, e.g., `format_args!("{foo}")`.
-        let lookup = |s: &str| *self.names.get(&Symbol::intern(s)).unwrap_or(&0);
+        let lookup =
+            |s: &str| self.names.get(&Symbol::intern(s)).unwrap_or(&(0, Span::default())).0;
 
         match *p {
             parse::String(_) => {}
@@ -548,7 +552,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 match self.names.get(&name) {
                     Some(&idx) => {
                         // Treat as positional arg.
-                        self.verify_arg_type(Capture(idx), ty)
+                        self.verify_arg_type(Capture(idx.0), ty)
                     }
                     None => {
                         // For the moment capturing variables from format strings expanded from macros is
@@ -565,7 +569,7 @@ impl<'a, 'b> Context<'a, 'b> {
                             };
                             self.num_captured_args += 1;
                             self.args.push(self.ecx.expr_ident(span, Ident::new(name, span)));
-                            self.names.insert(name, idx);
+                            self.names.insert(name, (idx, span));
                             self.verify_arg_type(Capture(idx), ty)
                         } else {
                             let msg = format!("there is no argument named `{}`", name);
@@ -967,6 +971,49 @@ pub fn expand_format_args_nl<'cx>(
     expand_format_args_impl(ecx, sp, tts, true)
 }
 
+fn lint_named_arguments_used_positionally(
+    names: FxHashMap<Symbol, (usize, Span)>,
+    cx: &mut Context<'_, '_>,
+    unverified_pieces: Vec<parse::Piece<'_>>,
+) {
+    let mut used_argument_names = FxHashSet::<&str>::default();
+    for piece in unverified_pieces {
+        if let rustc_parse_format::Piece::NextArgument(a) = piece {
+            match a.position {
+                rustc_parse_format::Position::ArgumentNamed(arg_name, _) => {
+                    used_argument_names.insert(arg_name);
+                }
+                _ => {}
+            };
+            match a.format {
+                FormatSpec { width: Count::CountIsName(s, _), .. }
+                | FormatSpec { precision: Count::CountIsName(s, _), .. } => {
+                    used_argument_names.insert(s);
+                }
+                _ => {}
+            };
+        }
+    }
+
+    for (symbol, (index, span)) in names {
+        if !used_argument_names.contains(symbol.as_str()) {
+            let msg = format!("named argument `{}` is not used by name", symbol.as_str());
+            let arg_span = cx.arg_spans[index];
+            cx.ecx.buffered_early_lint.push(BufferedEarlyLint {
+                span: MultiSpan::from_span(span),
+                msg: msg.clone(),
+                node_id: ast::CRATE_NODE_ID,
+                lint_id: LintId::of(&NAMED_ARGUMENTS_USED_POSITIONALLY),
+                diagnostic: BuiltinLintDiagnostics::NamedArgumentUsedPositionally(
+                    arg_span,
+                    span,
+                    symbol.to_string(),
+                ),
+            });
+        }
+    }
+}
+
 /// Take the various parts of `format_args!(efmt, args..., name=names...)`
 /// and construct the appropriate formatting expression.
 pub fn expand_preparsed_format_args(
@@ -974,7 +1021,7 @@ pub fn expand_preparsed_format_args(
     sp: Span,
     efmt: P<ast::Expr>,
     args: Vec<P<ast::Expr>>,
-    names: FxHashMap<Symbol, usize>,
+    names: FxHashMap<Symbol, (usize, Span)>,
     append_newline: bool,
 ) -> P<ast::Expr> {
     // NOTE: this verbose way of initializing `Vec<Vec<ArgumentType>>` is because
@@ -1073,7 +1120,12 @@ pub fn expand_preparsed_format_args(
         .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
         .collect();
 
-    let named_pos: FxHashSet<usize> = names.values().cloned().collect();
+    let named_pos: FxHashSet<usize> = names.values().cloned().map(|(i, _)| i).collect();
+
+    // Clone `names` because `names` in Context get updated by verify_piece, which includes usages
+    // of the names of named arguments, resulting in incorrect errors if a name argument is used
+    // but not declared, such as: `println!("x = {x}");`
+    let named_arguments = names.clone();
 
     let mut cx = Context {
         ecx,
@@ -1101,9 +1153,11 @@ pub fn expand_preparsed_format_args(
         is_literal: parser.is_literal,
     };
 
-    // This needs to happen *after* the Parser has consumed all pieces to create all the spans
+    // This needs to happen *after* the Parser has consumed all pieces to create all the spans.
+    // unverified_pieces is used later to check named argument names are used, so clone each piece.
     let pieces = unverified_pieces
-        .into_iter()
+        .iter()
+        .cloned()
         .map(|mut piece| {
             cx.verify_piece(&piece);
             cx.resolve_name_inplace(&mut piece);
@@ -1265,6 +1319,11 @@ pub fn expand_preparsed_format_args(
         }
 
         diag.emit();
+    } else if cx.invalid_refs.is_empty() && !named_arguments.is_empty() {
+        // Only check for unused named argument names if there are no other errors to avoid causing
+        // too much noise in output errors, such as when a named argument is entirely unused.
+        // We also only need to perform this check if there are actually named arguments.
+        lint_named_arguments_used_positionally(named_arguments, &mut cx, unverified_pieces);
     }
 
     cx.into_expr()
