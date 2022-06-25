@@ -19,8 +19,8 @@ struct S<const I: u32, const J: u32>;
 impl<const I: u32, const J: u32> S<I, J>
 where
     IsLessOrEqual<I, 8>: True,
-//[min]~^ Error type annotations needed [E0283]
-//[min]~| Error type annotations needed [E0283]
+//[min]~^ Error type annotations needed
+//[min]~| Error type annotations needed
     IsLessOrEqual<J, 8>: True,
     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
 //[min]~^ Error generic parameters may not be used in const operations

@@ -1970,13 +1970,31 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
 
                 // Pick the first substitution that still contains inference variables as the one
                 // we're going to emit an error for. If there are none (see above), fall back to
-                // the substitution for `Self`.
-                let subst = {
-                    let substs = data.trait_ref.substs;
-                    substs
-                        .iter()
-                        .find(|s| s.has_infer_types_or_consts())
-                        .unwrap_or_else(|| substs[0])
+                // a more general error.
+                let subst = data.trait_ref.substs.iter().find(|s| s.has_infer_types_or_consts());
+
+                let mut err = if let Some(subst) = subst {
+                    let impl_candidates = self
+                        .find_similar_impl_candidates(trait_ref)
+                        .into_iter()
+                        .map(|candidate| candidate.trait_ref)
+                        .collect();
+                    self.emit_inference_failure_err(
+                        body_id,
+                        span,
+                        subst,
+                        impl_candidates,
+                        ErrorCode::E0283,
+                        true,
+                    )
+                } else {
+                    struct_span_err!(
+                        self.tcx.sess,
+                        span,
+                        E0283,
+                        "type annotations needed: cannot satisfy `{}`",
+                        predicate,
+                    )
                 };
 
                 // This is kind of a hack: it frequently happens that some earlier
@@ -1999,29 +2017,16 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         self.emit_inference_failure_err(
                             body_id,
                             span,
-                            subst,
+                            trait_ref.self_ty().skip_binder().into(),
                             vec![],
                             ErrorCode::E0282,
                             false,
                         )
                         .emit();
                     }
+                    err.cancel();
                     return;
                 }
-
-                let impl_candidates = self
-                    .find_similar_impl_candidates(trait_ref)
-                    .into_iter()
-                    .map(|candidate| candidate.trait_ref)
-                    .collect();
-                let mut err = self.emit_inference_failure_err(
-                    body_id,
-                    span,
-                    subst,
-                    impl_candidates,
-                    ErrorCode::E0283,
-                    true,
-                );
 
                 let obligation = Obligation::new(
                     obligation.cause.clone(),
@@ -2136,17 +2141,20 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 )
             }
             ty::PredicateKind::Projection(data) => {
-                let self_ty = data.projection_ty.self_ty();
-                let term = data.term;
                 if predicate.references_error() || self.is_tainted_by_errors() {
                     return;
                 }
-                if self_ty.needs_infer() && term.needs_infer() {
-                    // We do this for the `foo.collect()?` case to produce a suggestion.
+                let subst = data
+                    .projection_ty
+                    .substs
+                    .iter()
+                    .chain(Some(data.term.into_arg()))
+                    .find(|g| g.has_infer_types_or_consts());
+                if let Some(subst) = subst {
                     let mut err = self.emit_inference_failure_err(
                         body_id,
                         span,
-                        self_ty.into(),
+                        subst,
                         vec![],
                         ErrorCode::E0284,
                         true,
@@ -2154,6 +2162,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     err.note(&format!("cannot satisfy `{}`", predicate));
                     err
                 } else {
+                    // If we can't find a substitution, just print a generic error
                     let mut err = struct_span_err!(
                         self.tcx.sess,
                         span,
