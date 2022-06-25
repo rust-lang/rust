@@ -330,9 +330,9 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("repr(…)", Some("repr"), Some("repr(${0:C})")),
     attr("should_panic", Some("should_panic"), Some(r#"should_panic"#)),
     attr(
-        r#"target_feature = "…""#,
+        r#"target_feature(enable = "…")"#,
         Some("target_feature"),
-        Some(r#"target_feature = "${0:feature}""#),
+        Some(r#"target_feature(enable = "${0:feature}")"#),
     ),
     attr("test", None, None),
     attr("track_caller", None, None),
