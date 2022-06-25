@@ -1,5 +1,6 @@
 // run-rustfix
 
+#![feature(lint_reasons)]
 #![feature(let_else)]
 #![allow(unused)]
 #![allow(
@@ -225,6 +226,15 @@ fn needless_return_macro() -> String {
     let _ = "foo";
     let _ = "bar";
     format!("Hello {}", "world!")
+}
+
+fn check_expect() -> bool {
+    if true {
+        // no error!
+        return true;
+    }
+    #[expect(clippy::needless_return)]
+    return true;
 }
 
 fn main() {}
