@@ -23,8 +23,22 @@ pub trait SimdConstPtr: Copy + Sealed {
 
     /// Gets the "address" portion of the pointer.
     ///
+    /// This method discards pointer semantic metadata, so the result cannot be
+    /// directly cast into a valid pointer.
+    ///
+    /// This method semantically discards *provenance* and
+    /// *address-space* information. To properly restore that information, use [`with_addr`].
+    ///
     /// Equivalent to calling [`pointer::addr`] on each lane.
     fn addr(self) -> Self::Usize;
+
+    /// Creates a new pointer with the given address.
+    ///
+    /// This performs the same operation as a cast, but copies the *address-space* and
+    /// *provenance* of `self` to the new pointer.
+    ///
+    /// Equivalent to calling [`pointer::with_addr`] on each lane.
+    fn with_addr(self, addr: Self::Usize) -> Self;
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     ///
@@ -63,12 +77,27 @@ where
 
     #[inline]
     fn as_mut(self) -> Self::MutPtr {
-        self.cast()
+        unimplemented!()
+        //self.cast()
     }
 
     #[inline]
     fn addr(self) -> Self::Usize {
-        self.cast()
+        // Safety: Since `addr` discards provenance, this is safe.
+        unsafe { core::mem::transmute_copy(&self) }
+
+        //TODO switch to casts when available
+        //self.cast()
+    }
+
+    #[inline]
+    fn with_addr(self, addr: Self::Usize) -> Self {
+        unimplemented!()
+        /*
+        self.cast::<*const u8>()
+            .wrapping_offset(addr.cast::<isize>() - self.addr().cast::<isize>())
+            .cast()
+        */
     }
 
     #[inline]

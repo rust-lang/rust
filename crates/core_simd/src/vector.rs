@@ -237,9 +237,8 @@ where
         T: core::convert::FloatToInt<I> + SimdCast<I>,
         I: SimdElement,
     {
-        // Safety: `self` is a vector, and `FloatToInt` ensures the type can be casted to
-        // an integer.
-        unsafe { intrinsics::simd_cast(self) }
+        // Safety: the caller is responsible for the invariants
+        unsafe { SimdCast::cast_unchecked(self) }
     }
 
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
