@@ -1,5 +1,5 @@
 #![allow(bare_trait_objects)]
-
+// check-pass
 pub struct FormatWith<'a, I, F> {
     sep: &'a str,
     /// FormatWith uses interior mutability because Display::fmt takes &self.
@@ -21,7 +21,4 @@ where
 
 fn main() {
     let _ = new_format(0..32, " | ", |i, f| f(&format_args!("0x{:x}", i)));
-    //~^ ERROR temporary value dropped while borrowed
-    //~| ERROR temporary value dropped while borrowed
-    //~| ERROR `i` does not live long enough
 }
