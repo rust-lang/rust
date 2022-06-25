@@ -780,8 +780,8 @@ where
 }
 
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
-/// yields fewer than `N` items, `None` is returned and all already yielded
-/// items are dropped.
+/// yields fewer than `N` items, `Err` is returned containing an iterator over
+/// the already yielded items.
 ///
 /// Since the iterator is passed as a mutable reference and this function calls
 /// `next` at most `N` times, the iterator can still be used afterwards to
@@ -789,7 +789,10 @@ where
 ///
 /// If `iter.next()` panicks, all items already yielded by the iterator are
 /// dropped.
-fn try_collect_into_array<I, T, R, const N: usize>(iter: &mut I) -> Option<R::TryType>
+#[inline]
+fn try_collect_into_array<I, T, R, const N: usize>(
+    iter: &mut I,
+) -> Result<R::TryType, IntoIter<T, N>>
 where
     I: Iterator,
     I::Item: Try<Output = T, Residual = R>,
@@ -797,7 +800,7 @@ where
 {
     if N == 0 {
         // SAFETY: An empty array is always inhabited and has no validity invariants.
-        return unsafe { Some(Try::from_output(mem::zeroed())) };
+        return Ok(Try::from_output(unsafe { mem::zeroed() }));
     }
 
     struct Guard<'a, T, const N: usize> {
@@ -821,35 +824,49 @@ where
     let mut array = MaybeUninit::uninit_array::<N>();
     let mut guard = Guard { array_mut: &mut array, initialized: 0 };
 
-    while let Some(item_rslt) = iter.next() {
-        let item = match item_rslt.branch() {
-            ControlFlow::Break(r) => {
-                return Some(FromResidual::from_residual(r));
+    for _ in 0..N {
+        match iter.next() {
+            Some(item_rslt) => {
+                let item = match item_rslt.branch() {
+                    ControlFlow::Break(r) => {
+                        return Ok(FromResidual::from_residual(r));
+                    }
+                    ControlFlow::Continue(elem) => elem,
+                };
+
+                // SAFETY: `guard.initialized` starts at 0, is increased by one in the
+                // loop and the loop is aborted once it reaches N (which is
+                // `array.len()`).
+                unsafe {
+                    guard.array_mut.get_unchecked_mut(guard.initialized).write(item);
+                }
+                guard.initialized += 1;
             }
-            ControlFlow::Continue(elem) => elem,
-        };
-
-        // SAFETY: `guard.initialized` starts at 0, is increased by one in the
-        // loop and the loop is aborted once it reaches N (which is
-        // `array.len()`).
-        unsafe {
-            guard.array_mut.get_unchecked_mut(guard.initialized).write(item);
-        }
-        guard.initialized += 1;
-
-        // Check if the whole array was initialized.
-        if guard.initialized == N {
-            mem::forget(guard);
-
-            // SAFETY: the condition above asserts that all elements are
-            // initialized.
-            let out = unsafe { MaybeUninit::array_assume_init(array) };
-            return Some(Try::from_output(out));
+            None => {
+                let alive = 0..guard.initialized;
+                mem::forget(guard);
+                // SAFETY: `array` was initialized with exactly `initialized`
+                // number of elements.
+                return Err(unsafe { IntoIter::new_unchecked(array, alive) });
+            }
         }
     }
 
-    // This is only reached if the iterator is exhausted before
-    // `guard.initialized` reaches `N`. Also note that `guard` is dropped here,
-    // dropping all already initialized elements.
-    None
+    mem::forget(guard);
+    // SAFETY: All elements of the array were populated in the loop above.
+    let output = unsafe { MaybeUninit::array_assume_init(array) };
+    Ok(Try::from_output(output))
+}
+
+/// Returns the next chunk of `N` items from the iterator or errors with an
+/// iterator over the remainder. Used for `Iterator::next_chunk`.
+#[inline]
+pub(crate) fn iter_next_chunk<I, const N: usize>(
+    iter: &mut I,
+) -> Result<[I::Item; N], IntoIter<I::Item, N>>
+where
+    I: Iterator,
+{
+    let mut map = iter.map(NeverShortCircuit);
+    try_collect_into_array(&mut map).map(|NeverShortCircuit(arr)| arr)
 }
