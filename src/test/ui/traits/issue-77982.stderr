@@ -26,7 +26,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-77982.rs:8:10
    |
 LL |     opts.get(opt.as_ref());
-   |          ^^^ cannot infer type of the type parameter `Q` declared on the associated function `get`
+   |          ^^^     ------ type must be known at this point
+   |          |
+   |          cannot infer type of the type parameter `Q` declared on the associated function `get`
    |
    = note: multiple `impl`s satisfying `String: AsRef<_>` found in the following crates: `alloc`, `std`:
            - impl AsRef<OsStr> for String;
@@ -42,7 +44,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-77982.rs:13:59
    |
 LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect();
-   |                                                           ^^^^
+   |                                            ---------      ^^^^
+   |                                            |
+   |                                            type must be known at this point
    |
    = note: multiple `impl`s satisfying `u32: From<_>` found in the following crates: `core`, `std`:
            - impl From<Ipv4Addr> for u32;
@@ -59,7 +63,7 @@ error[E0283]: type annotations needed for `Box<T>`
   --> $DIR/issue-77982.rs:36:9
    |
 LL |     let _ = ().foo();
-   |         ^
+   |         ^      --- type must be known at this point
    |
 note: multiple `impl`s satisfying `(): Foo<'_, _>` found
   --> $DIR/issue-77982.rs:29:1
@@ -77,7 +81,7 @@ error[E0283]: type annotations needed for `Box<T>`
   --> $DIR/issue-77982.rs:40:9
    |
 LL |     let _ = (&()).bar();
-   |         ^
+   |         ^         --- type must be known at this point
    |
 note: multiple `impl`s satisfying `&(): Bar<'_, _>` found
   --> $DIR/issue-77982.rs:32:1

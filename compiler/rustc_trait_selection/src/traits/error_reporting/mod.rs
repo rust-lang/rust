@@ -2020,7 +2020,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     subst,
                     impl_candidates,
                     ErrorCode::E0283,
-                    false,
+                    true,
                 );
 
                 let obligation = Obligation::new(
@@ -2132,7 +2132,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     a.into(),
                     vec![],
                     ErrorCode::E0282,
-                    false,
+                    true,
                 )
             }
             ty::PredicateKind::Projection(data) => {
@@ -2149,7 +2149,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         self_ty.into(),
                         vec![],
                         ErrorCode::E0284,
-                        false,
+                        true,
                     );
                     err.note(&format!("cannot satisfy `{}`", predicate));
                     err
