@@ -1,5 +1,5 @@
 error[E0767]: use of unreachable label `'a`
-  --> $DIR/issue-73541.rs:4:29
+  --> $DIR/issue-73541-4.rs:4:29
    |
 LL |     'a: loop {
    |     -- unreachable label defined here
