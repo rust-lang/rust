@@ -70,6 +70,7 @@ This API is completely unstable and subject to change.
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(once_cell)]
+#![feature(round_char_boundary)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]

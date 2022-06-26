@@ -2347,16 +2347,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggested_field_name.to_string(),
                 Applicability::MaybeIncorrect,
             );
+            return;
+        }
+
+        let struct_variant_def = def.non_enum_variant();
+        let field_names = self.available_field_names(struct_variant_def, access_span);
+        let name = field.name.as_str();
+
+        fn get_common_prefix_len(a: &str, b: &str) -> usize {
+            let common_bytes_count =
+                a.as_bytes().iter().zip(b.as_bytes().iter()).take_while(|(c, d)| c == d).count();
+
+            return a.floor_char_boundary(common_bytes_count);
+        }
+
+        // Calculate the field programmer most likely wanted to use.
+        let longest_prefix_len = field_names
+            .iter()
+            .map(Symbol::as_str)
+            .map(move |s| get_common_prefix_len(s, name))
+            .max()
+            .unwrap_or(0);
+
+        // Field name will have at least one character.
+        let last_letter = name.chars().last().unwrap();
+        // When the keyboard gets hit, first there will be a few keystrokes registered,
+        // then one button will be "chosen" as continuation.
+        let gibberish = name[longest_prefix_len..].trim_end_matches(last_letter);
+        let letters_asleep = name.len() - longest_prefix_len - gibberish.len();
+
+        use std::time::Duration;
+        const KEY_REPEAT_PER_SEC: u64 = 25;
+        const KEY_REPEAT_DELAY: Duration = Duration::from_millis(600);
+        const TIME_PER_KEY_REPEAT: Duration = Duration::from_millis(1000 / KEY_REPEAT_PER_SEC);
+
+        let asleep_for = KEY_REPEAT_DELAY + TIME_PER_KEY_REPEAT * letters_asleep as u32;
+        if asleep_for > Duration::from_secs(1) {
+            // Cut the span to show where the programmer has fallen asleep.
+            let mut sleep_span = field.span.data();
+            // Prefix length will be always less than the full span length.
+            sleep_span.lo.0 += longest_prefix_len as u32;
+            let sleep_span = sleep_span.span();
+
+            err.clear_code();
+            err.set_primary_message("it seems like you've fallen asleep and hit your keyboard");
+            err.replace_span_with(sleep_span);
+            err.span_label(sleep_span, "you fell asleep here");
+            err.help("try improving your sleep schedule or reducing your hours");
+            err.note(&format!(
+                "you have been asleep for about {:.02} seconds",
+                asleep_for.as_secs_f64(),
+            ));
         } else {
             err.span_label(field.span, "unknown field");
-            let struct_variant_def = def.non_enum_variant();
-            let field_names = self.available_field_names(struct_variant_def, access_span);
-            if !field_names.is_empty() {
-                err.note(&format!(
-                    "available fields are: {}",
-                    self.name_series_display(field_names),
-                ));
-            }
+        }
+
+        if !field_names.is_empty() {
+            err.note(&format!("available fields are: {}", self.name_series_display(field_names)));
         }
     }
 
