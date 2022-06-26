@@ -499,10 +499,10 @@ kbd {
 #source-sidebar > .title {
 	border-bottom-color: #ccc;
 }
-div.files > a:hover, div.name:hover {
+#source-sidebar div.files > a:hover, div.name:hover {
 	background-color: #444;
 }
-div.files > .selected {
+#source-sidebar div.files > .selected {
 	background-color: #333;
 }
 

@@ -994,6 +994,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         rcvr_ty,
                         item_name,
+                        args.map(|args| args.len()),
                         source,
                         out_of_scope_traits,
                         &unsatisfied_predicates,
@@ -1732,6 +1733,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
+        inputs_len: Option<usize>,
         source: SelfSource<'tcx>,
         valid_out_of_scope_traits: Vec<DefId>,
         unsatisfied_predicates: &[(
@@ -1808,7 +1810,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Explicitly ignore the `Pin::as_ref()` method as `Pin` does not
                         // implement the `AsRef` trait.
                         let skip = skippable.contains(&did)
-                            || (("Pin::new" == *pre) && (sym::as_ref == item_name.name));
+                            || (("Pin::new" == *pre) && (sym::as_ref == item_name.name))
+                            || inputs_len.map_or(false, |inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().inputs().len() != inputs_len);
                         // Make sure the method is defined for the *actual* receiver: we don't
                         // want to treat `Box<Self>` as a receiver if it only works because of
                         // an autoderef to `&self`

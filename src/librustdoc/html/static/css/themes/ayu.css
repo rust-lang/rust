@@ -629,11 +629,11 @@ kbd {
 	color: #fff;
 	border-bottom-color: #5c6773;
 }
-div.files > a:hover, div.name:hover {
+#source-sidebar div.files > a:hover, div.name:hover {
 	background-color: #14191f;
 	color: #ffb44c;
 }
-div.files > .selected {
+#source-sidebar div.files > .selected {
 	background-color: #14191f;
 	color: #ffb44c;
 }

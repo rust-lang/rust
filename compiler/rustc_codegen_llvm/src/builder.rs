@@ -1064,11 +1064,25 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         dst: &'ll Value,
         cmp: &'ll Value,
         src: &'ll Value,
-        order: rustc_codegen_ssa::common::AtomicOrdering,
+        mut order: rustc_codegen_ssa::common::AtomicOrdering,
         failure_order: rustc_codegen_ssa::common::AtomicOrdering,
         weak: bool,
     ) -> &'ll Value {
         let weak = if weak { llvm::True } else { llvm::False };
+        if llvm_util::get_version() < (13, 0, 0) {
+            use rustc_codegen_ssa::common::AtomicOrdering::*;
+            // Older llvm has the pre-C++17 restriction on
+            // success and failure memory ordering,
+            // requiring the former to be at least as strong as the latter.
+            // So, for llvm 12, we upgrade the success ordering to a stronger
+            // one if necessary.
+            match (order, failure_order) {
+                (Relaxed, Acquire) => order = Acquire,
+                (Release, Acquire) => order = AcquireRelease,
+                (_, SequentiallyConsistent) => order = SequentiallyConsistent,
+                _ => {}
+            }
+        }
         unsafe {
             llvm::LLVMRustBuildAtomicCmpXchg(
                 self.llbuilder,
