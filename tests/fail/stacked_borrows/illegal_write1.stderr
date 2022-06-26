@@ -17,8 +17,8 @@ LL |     let xref = &*target;
 help: <TAG> was later invalidated at offsets [0x0..0x4]
   --> $DIR/illegal_write1.rs:LL:CC
    |
-LL |             *x = 42; // invalidates shared ref, activates raw
-   |             ^^^^^^^
+LL |         unsafe { *x = 42 }; // invalidates shared ref, activates raw
+   |                  ^^^^^^^
    = note: inside `main` at $DIR/illegal_write1.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

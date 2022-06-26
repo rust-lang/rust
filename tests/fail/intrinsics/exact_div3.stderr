@@ -1,8 +1,8 @@
 error: Undefined Behavior: exact_div: -19_i8 cannot be divided by 2_i8 without remainder
   --> $DIR/exact_div3.rs:LL:CC
    |
-LL |         std::intrinsics::exact_div(-19i8, 2);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exact_div: -19_i8 cannot be divided by 2_i8 without remainder
+LL |     unsafe { std::intrinsics::exact_div(-19i8, 2) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exact_div: -19_i8 cannot be divided by 2_i8 without remainder
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
