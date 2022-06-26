@@ -739,6 +739,26 @@ impl<T> Option<T> {
         }
     }
 
+    /// Like `.expect()` but with a `&self` receiver.
+    ///
+    /// Convenience shorthand for `.as_ref().expect()`.
+    #[inline]
+    #[doc(alias = "ref_expect")]
+    #[unstable(feature = "option_borrowing_adapters", issue = "none")]
+    pub fn expect_ref(&self, msg: &str) -> &T {
+        self.as_ref().expect(msg)
+    }
+
+    /// Like `.expect()` but with a `&mut self` receiver.
+    ///
+    /// Convenience shorthand for `.as_mut().expect()`.
+    #[inline]
+    #[doc(alias = "mut_expect")]
+    #[unstable(feature = "option_borrowing_adapters", issue = "none")]
+    pub fn expect_mut(&mut self, msg: &str) -> &mut T {
+        self.as_mut().expect(msg)
+    }
+
     /// Returns the contained [`Some`] value, consuming the `self` value.
     ///
     /// Because this function may panic, its use is generally discouraged.
@@ -774,6 +794,26 @@ impl<T> Option<T> {
             Some(val) => val,
             None => panic("called `Option::unwrap()` on a `None` value"),
         }
+    }
+
+    /// Like `.unwrap()` but with a `&self` receiver.
+    ///
+    /// Convenience shorthand for `.as_ref().unwrap()`.
+    #[inline]
+    #[doc(alias = "ref_unwrap")]
+    #[unstable(feature = "option_borrowing_adapters", issue = "none")]
+    pub fn unwrap_ref(&self) -> &T {
+        self.as_ref().unwrap()
+    }
+
+    /// Like `.unwrap()` but with a `&mut self` receiver.
+    ///
+    /// Convenience shorthand for `.as_mut().unwrap()`.
+    #[inline]
+    #[doc(alias = "mut_unwrap")]
+    #[unstable(feature = "option_borrowing_adapters", issue = "none")]
+    pub fn unwrap_mut(&mut self) -> &mut T {
+        self.as_mut().unwrap()
     }
 
     /// Returns the contained [`Some`] value or a provided default.
@@ -929,6 +969,32 @@ impl<T> Option<T> {
             Some(x) => Some(f(x)),
             None => None,
         }
+    }
+
+    /// Like `.map()` but with a `&self` receiver.
+    ///
+    /// Convenience shorthand for `.as_ref().map()`.
+    #[inline]
+    #[doc(alias = "ref_map")]
+    #[unstable(feature = "option_borrowing_adapters", issue = "none")]
+    pub fn map_ref<'r, U, F>(&'r self, f: F) -> Option<U>
+    where
+        F: FnOnce(&'r T) -> U,
+    {
+        self.as_ref().map(f)
+    }
+
+    /// Like `.map()` but with a `&mut self` receiver.
+    ///
+    /// Convenience shorthand for `.as_mut().map()`.
+    #[inline]
+    #[doc(alias = "mut_map")]
+    #[unstable(feature = "option_borrowing_adapters", issue = "none")]
+    pub fn map_mut<'r, U, F>(&'r mut self, f: F) -> Option<U>
+    where
+        F: FnOnce(&'r mut T) -> U,
+    {
+        self.as_mut().map(f)
     }
 
     /// Calls the provided closure with a reference to the contained value (if [`Some`]).
@@ -1262,6 +1328,32 @@ impl<T> Option<T> {
             Some(x) => f(x),
             None => None,
         }
+    }
+
+    /// Like `.and_then()`, but with a `&self` receiver.
+    ///
+    /// Convenience shorthand for `.as_ref().and_then()`.
+    #[inline]
+    #[doc(alias = "ref_and_then")]
+    #[unstable(feature = "option_borrowing_adapters", issue = "none")]
+    pub fn and_then_ref<'r, U, F>(&'r self, f: F) -> Option<U>
+    where
+        F: FnOnce(&'r T) -> Option<U>,
+    {
+        self.as_ref().and_then(f)
+    }
+
+    /// Like `.and_then()`, but with a `&mut self` receiver.
+    ///
+    /// Convenience shorthand for `.as_mut().and_then()`.
+    #[inline]
+    #[doc(alias = "mut_and_then")]
+    #[unstable(feature = "option_borrowing_adapters", issue = "none")]
+    pub fn and_then_mut<'r, U, F>(&'r mut self, f: F) -> Option<U>
+    where
+        F: FnOnce(&'r mut T) -> Option<U>,
+    {
+        self.as_mut().and_then(f)
     }
 
     /// Returns [`None`] if the option is [`None`], otherwise calls `predicate`
