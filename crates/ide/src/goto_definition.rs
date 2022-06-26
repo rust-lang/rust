@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+use std::{convert::TryInto, mem::discriminant};
 
 use crate::{doc_links::token_as_doc_comment, FilePosition, NavigationTarget, RangeInfo, TryToNav};
 use hir::{AsAssocItem, AssocItem, Semantics};
@@ -126,9 +126,11 @@ fn try_filter_trait_item_definition(
             };
             let trait_ = imp.trait_(db)?;
             let name = def.name(db)?;
+            let discri_value = discriminant(&assoc);
             trait_
                 .items(db)
                 .iter()
+                .filter(|itm| discriminant(*itm) == discri_value)
                 .find_map(|itm| (itm.name(db)? == name).then(|| itm.try_to_nav(db)).flatten())
                 .map(|it| vec![it])
         }
@@ -175,6 +177,23 @@ mod tests {
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {:?}", navs)
     }
 
+    #[test]
+    fn goto_def_if_items_same_name() {
+        check(
+            r#"
+trait Trait {
+    type A;
+    const A: i32;
+        //^
+}
+
+struct T;
+impl Trait for T {
+    type A = i32;
+    const A$0: i32 = -9;
+}"#,
+        );
+    }
     #[test]
     fn goto_def_in_mac_call_in_attr_invoc() {
         check(
