@@ -159,7 +159,8 @@ const std::set<std::string> InactiveGlobals = {
     "_ZTTNSt7__cxx1118basic_stringstreamIcSt11char_traitsIcESaIcEEE",
     // vtable for __cxxabiv1::__si_class_type_info
     "_ZTVN10__cxxabiv120__si_class_type_infoE",
-    "_ZTVN10__cxxabiv117__class_type_infoE"};
+    "_ZTVN10__cxxabiv117__class_type_infoE",
+    "_ZTVN10__cxxabiv121__vmi_class_type_infoE"};
 
 const std::map<std::string, size_t> MPIInactiveCommAllocators = {
     {"MPI_Graph_create", 5},

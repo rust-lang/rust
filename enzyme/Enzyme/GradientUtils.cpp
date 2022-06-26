@@ -3566,7 +3566,8 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
     }
   } else if (auto arg = dyn_cast<GlobalVariable>(oval)) {
     if (arg->getName() == "_ZTVN10__cxxabiv120__si_class_type_infoE" ||
-        arg->getName() == "_ZTVN10__cxxabiv117__class_type_infoE")
+        arg->getName() == "_ZTVN10__cxxabiv117__class_type_infoE" ||
+        arg->getName() == "_ZTVN10__cxxabiv121__vmi_class_type_infoE")
       return arg;
 
     if (hasMetadata(arg, "enzyme_shadow")) {
