@@ -614,9 +614,48 @@ impl<T, A: Allocator> Box<T, A> {
     /// ```
     /// #![feature(box_into_inner)]
     ///
-    /// let c = Box::new(5);
+    /// // if you have a type `Point` which is `Copy` 
+    /// // and you have a `Box<Point>` value,
+    /// // and you want to take the `Point` value out, 
+    /// // and drop the box memory.
+    /// 
+    /// #[derive(Copy, Clone, Debug)]
+    /// struct Point {
+    ///    x: i32,
+    ///    y: i32,
+    /// }
     ///
-    /// assert_eq!(Box::into_inner(c), 5);
+    /// let boxed_point = Box::new(Point { x: 0, y: 0});
+    /// 
+    /// // this moves the wrapped value, and the memory will be deallocated.
+    /// let mut point = Box::into_inner(boxed_point);
+    /// 
+    /// point.x = 1;
+    /// point.y = 2;
+    ///
+    /// assert_eq!(1, point.x);
+    /// assert_eq!(2, point.y);
+    ///
+    /// // error[E0382]: borrow of moved value: `boxed_point`
+    /// // println!("{:?}", boxed_point);
+    ///
+    /// // Note the difference between `into_inner` and `*`. 
+    /// // The language actually supports `*x` as a special case. 
+    /// // However it can't be generalized to other types easily. 
+    /// // It also doesn't consume the `Box` value immediately if `T` is `Copy`, which is quite a footgun.
+    ///
+    /// let boxed_point = Box::new(Point { x: 0, y: 0});
+    /// 
+    /// // this copies the wrapped value out, but the memory is not deallocated.
+    /// let mut point = *boxed_point;
+    /// 
+    /// point.x = 1;
+    /// point.y = 2;
+    /// 
+    /// assert_eq!(1, point.x);
+    /// assert_eq!(2, point.y);
+    /// 
+    /// println!("{:?}", boxed_point); // it's still alive now, needs another `drop` to deallocate.
     /// ```
     #[unstable(feature = "box_into_inner", issue = "80437")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
