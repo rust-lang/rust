@@ -151,9 +151,6 @@ macro_rules! with_api {
             },
             Span {
                 fn debug($self: $S::Span) -> String;
-                fn def_site() -> $S::Span;
-                fn call_site() -> $S::Span;
-                fn mixed_site() -> $S::Span;
                 fn source_file($self: $S::Span) -> $S::SourceFile;
                 fn parent($self: $S::Span) -> Option<$S::Span>;
                 fn source($self: $S::Span) -> $S::Span;
@@ -213,16 +210,15 @@ use buffer::Buffer;
 pub use rpc::PanicMessage;
 use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
 
-/// An active connection between a server and a client.
-/// The server creates the bridge (`Bridge::run_server` in `server.rs`),
-/// then passes it to the client through the function pointer in the `run`
-/// field of `client::Client`. The client holds its copy of the `Bridge`
+/// Configuration for establishing an active connection between a server and a
+/// client.  The server creates the bridge config (`run_server` in `server.rs`),
+/// then passes it to the client through the function pointer in the `run` field
+/// of `client::Client`. The client constructs a local `Bridge` from the config
 /// in TLS during its execution (`Bridge::{enter, with}` in `client.rs`).
 #[repr(C)]
-pub struct Bridge<'a> {
-    /// Reusable buffer (only `clear`-ed, never shrunk), primarily
-    /// used for making requests, but also for passing input to client.
-    cached_buffer: Buffer,
+pub struct BridgeConfig<'a> {
+    /// Buffer used to pass initial input to the client.
+    input: Buffer,
 
     /// Server-side function that the client uses to make requests.
     dispatch: closure::Closure<'a, Buffer, Buffer>,
@@ -379,6 +375,25 @@ rpc_encode_decode!(
 );
 
 macro_rules! mark_compound {
+    (struct $name:ident <$($T:ident),+> { $($field:ident),* $(,)? }) => {
+        impl<$($T: Mark),+> Mark for $name <$($T),+> {
+            type Unmarked = $name <$($T::Unmarked),+>;
+            fn mark(unmarked: Self::Unmarked) -> Self {
+                $name {
+                    $($field: Mark::mark(unmarked.$field)),*
+                }
+            }
+        }
+
+        impl<$($T: Unmark),+> Unmark for $name <$($T),+> {
+            type Unmarked = $name <$($T::Unmarked),+>;
+            fn unmark(self) -> Self::Unmarked {
+                $name {
+                    $($field: Unmark::unmark(self.$field)),*
+                }
+            }
+        }
+    };
     (enum $name:ident <$($T:ident),+> { $($variant:ident $(($field:ident))?),* $(,)? }) => {
         impl<$($T: Mark),+> Mark for $name <$($T),+> {
             type Unmarked = $name <$($T::Unmarked),+>;
@@ -448,4 +463,17 @@ compound_traits!(
         Ident(tt),
         Literal(tt),
     }
+);
+
+/// Globals provided alongside the initial inputs for a macro expansion.
+/// Provides values such as spans which are used frequently to avoid RPC.
+#[derive(Clone)]
+pub struct ExpnGlobals<S> {
+    pub def_site: S,
+    pub call_site: S,
+    pub mixed_site: S,
+}
+
+compound_traits!(
+    struct ExpnGlobals<Sp> { def_site, call_site, mixed_site }
 );
