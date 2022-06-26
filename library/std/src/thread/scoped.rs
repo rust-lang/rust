@@ -72,8 +72,8 @@ impl ScopeData {
             //   - it can spuriously unpark / wake up, **so `self` can no longer be used**, even
             //     before we, ourselves, unpark. Hence why we've cloned the `main_thread`'s handle.
             //   - no matter how it unparks, `*self` may be deallocated before this function
-            //     returns, so all of `*self` data, **including `main_thread`**, must be interiorly
-            //     mutable. See https://github.com/rust-lang/rust/issues/55005 for more info.
+            //     returns, so all of `*self` fields, *including `main_thread`*, must be interiorly
+            //     mutable. See https://github.com/rust-lang/rust/pull/98017 for more info.
             main_thread.unpark();
         }
     }
