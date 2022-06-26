@@ -1,5 +1,6 @@
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::util::t;
+use crate::Config;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
@@ -96,14 +97,9 @@ fn print_error(tool: &str, submodule: &str) {
     std::process::exit(3);
 }
 
-fn check_changed_files(toolstates: &HashMap<Box<str>, ToolState>) {
+fn check_changed_files(toolstates: &HashMap<Box<str>, ToolState>, config: &Config) {
     // Changed files
-    let output = std::process::Command::new("git")
-        .arg("diff")
-        .arg("--name-status")
-        .arg("HEAD")
-        .arg("HEAD^")
-        .output();
+    let output = config.git().arg("diff").arg("--name-status").arg("HEAD").arg("HEAD^").output();
     let output = match output {
         Ok(o) => o,
         Err(e) => {
@@ -182,8 +178,8 @@ impl Step for ToolStateCheck {
             std::process::exit(1);
         }
 
-        check_changed_files(&toolstates);
-        checkout_toolstate_repo();
+        check_changed_files(&toolstates, &builder.config);
+        checkout_toolstate_repo(&builder.config);
         let old_toolstate = read_old_toolstate();
 
         for (tool, _) in STABLE_TOOLS.iter() {
@@ -229,7 +225,7 @@ impl Step for ToolStateCheck {
         }
 
         if builder.config.channel == "nightly" && env::var_os("TOOLSTATE_PUBLISH").is_some() {
-            commit_toolstate_change(&toolstates);
+            commit_toolstate_change(&toolstates, &builder.config);
         }
     }
 
@@ -302,16 +298,17 @@ fn toolstate_repo() -> String {
 const TOOLSTATE_DIR: &str = "rust-toolstate";
 
 /// Checks out the toolstate repo into `TOOLSTATE_DIR`.
-fn checkout_toolstate_repo() {
+fn checkout_toolstate_repo(config: &Config) {
     if let Ok(token) = env::var("TOOLSTATE_REPO_ACCESS_TOKEN") {
-        prepare_toolstate_config(&token);
+        prepare_toolstate_config(&token, config);
     }
     if Path::new(TOOLSTATE_DIR).exists() {
         eprintln!("Cleaning old toolstate directory...");
         t!(fs::remove_dir_all(TOOLSTATE_DIR));
     }
 
-    let status = Command::new("git")
+    let status = config
+        .git()
         .arg("clone")
         .arg("--depth=1")
         .arg(toolstate_repo())
@@ -327,9 +324,9 @@ fn checkout_toolstate_repo() {
 }
 
 /// Sets up config and authentication for modifying the toolstate repo.
-fn prepare_toolstate_config(token: &str) {
-    fn git_config(key: &str, value: &str) {
-        let status = Command::new("git").arg("config").arg("--global").arg(key).arg(value).status();
+fn prepare_toolstate_config(token: &str, config: &Config) {
+    let git_config = |key: &str, value: &str| {
+        let status = config.git().arg("config").arg("--global").arg(key).arg(value).status();
         let success = match status {
             Ok(s) => s.success(),
             Err(_) => false,
@@ -337,7 +334,7 @@ fn prepare_toolstate_config(token: &str) {
         if !success {
             panic!("git config key={} value={} failed (status: {:?})", key, value, status);
         }
-    }
+    };
 
     // If changing anything here, then please check that `src/ci/publish_toolstate.sh` is up to date
     // as well.
@@ -383,14 +380,14 @@ fn read_old_toolstate() -> Vec<RepoState> {
 ///
 ///       * See <https://help.github.com/articles/about-commit-email-addresses/>
 ///           if a private email by GitHub is wanted.
-fn commit_toolstate_change(current_toolstate: &ToolstateData) {
+fn commit_toolstate_change(current_toolstate: &ToolstateData, config: &Config) {
     let message = format!("({} CI update)", OS.expect("linux/windows only"));
     let mut success = false;
     for _ in 1..=5 {
         // Upload the test results (the new commit-to-toolstate mapping) to the toolstate repo.
         // This does *not* change the "current toolstate"; that only happens post-landing
         // via `src/ci/docker/publish_toolstate.sh`.
-        publish_test_results(&current_toolstate);
+        publish_test_results(&current_toolstate, config);
 
         // `git commit` failing means nothing to commit.
         let status = t!(Command::new("git")
@@ -444,8 +441,8 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData) {
 /// These results will later be promoted to `latest.json` by the
 /// `publish_toolstate.py` script if the PR passes all tests and is merged to
 /// master.
-fn publish_test_results(current_toolstate: &ToolstateData) {
-    let commit = t!(std::process::Command::new("git").arg("rev-parse").arg("HEAD").output());
+fn publish_test_results(current_toolstate: &ToolstateData, config: &Config) {
+    let commit = t!(config.git().arg("rev-parse").arg("HEAD").output());
     let commit = t!(String::from_utf8(commit.stdout));
 
     let toolstate_serialized = t!(serde_json::to_string(&current_toolstate));

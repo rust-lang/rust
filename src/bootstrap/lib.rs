@@ -634,7 +634,8 @@ impl Build {
             return;
         }
         let output = output(
-            Command::new("git")
+            self.config
+                .git()
                 .args(&["config", "--file"])
                 .arg(&self.config.src.join(".gitmodules"))
                 .args(&["--get-regexp", "path"]),
@@ -1271,12 +1272,12 @@ impl Build {
         // That's our beta number!
         // (Note that we use a `..` range, not the `...` symmetric difference.)
         let count = output(
-            Command::new("git")
+            self.config
+                .git()
                 .arg("rev-list")
                 .arg("--count")
                 .arg("--merges")
-                .arg("refs/remotes/origin/master..HEAD")
-                .current_dir(&self.src),
+                .arg("refs/remotes/origin/master..HEAD"),
         );
         let n = count.trim().parse().unwrap();
         self.prerelease_version.set(Some(n));
