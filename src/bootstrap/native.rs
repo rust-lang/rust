@@ -160,7 +160,7 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
         // files in the tarball are in the past, so it doesn't trigger a
         // rebuild.
         let now = filetime::FileTime::from_system_time(std::time::SystemTime::now());
-        let llvm_config = llvm_root.join("bin/llvm-config");
+        let llvm_config = llvm_root.join("bin").join(exe("llvm-config", builder.config.build));
         t!(filetime::set_file_times(&llvm_config, now, now));
 
         let llvm_lib = llvm_root.join("lib");
