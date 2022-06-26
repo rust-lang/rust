@@ -1,4 +1,4 @@
-//! Construct version in the `commit-hash date chanel` format
+//! Construct version in the `commit-hash date channel` format
 
 use std::{env, path::PathBuf, process::Command};
 
