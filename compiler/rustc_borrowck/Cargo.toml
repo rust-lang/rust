@@ -11,7 +11,7 @@ either = "1.5.0"
 itertools = "0.10.1"
 tracing = "0.1"
 polonius-engine = "0.13.0"
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_graphviz = { path = "../rustc_graphviz" }
