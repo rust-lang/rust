@@ -222,6 +222,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     else {
                         assert!(!((actual_ty.is_vector() && !expected_ty.is_vector()) || (!actual_ty.is_vector() && expected_ty.is_vector())), "{:?} ({}) -> {:?} ({}), index: {:?}[{}]", actual_ty, actual_ty.is_vector(), expected_ty, expected_ty.is_vector(), func_ptr, index);
                         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
+                        // TODO: remove bitcast now that vector types can be compared?
                         self.bitcast(actual_val, expected_ty)
                     }
                 }
@@ -1497,6 +1498,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // NOTE: sometimes, the type of else_val can be different than the type of then_val in
         // libgccjit (vector of int vs vector of int32_t), but they should be the same for the AND
         // operation to work.
+        // TODO: remove bitcast now that vector types can be compared?
         let else_val = self.context.new_bitcast(None, else_val, then_val.get_type());
         let else_vals = inverted_masks & else_val;
 
