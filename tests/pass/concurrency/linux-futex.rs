@@ -222,11 +222,17 @@ fn wait_wake_bitset() {
     t.join().unwrap();
 }
 
-const FREE: i32 = 0;
-const HELD: i32 = 1;
 fn concurrent_wait_wake() {
+    const FREE: i32 = 0;
+    const HELD: i32 = 1;
+
     static FUTEX: AtomicI32 = AtomicI32::new(0);
-    for _ in 0..20 {
+    static mut DATA: i32 = 0;
+    static WOKEN: AtomicI32 = AtomicI32::new(0);
+
+    let rounds = 50;
+    for _ in 0..rounds {
+        unsafe { DATA = 0 }; // Reset
         // Suppose the main thread is holding a lock implemented using futex...
         FUTEX.store(HELD, Ordering::Relaxed);
 
@@ -239,23 +245,41 @@ fn concurrent_wait_wake() {
             // the FUTEX is FREE != HELD and return without waiting
             // or we'll deadlock.
             unsafe {
-                libc::syscall(
+                let ret = libc::syscall(
                     libc::SYS_futex,
                     &FUTEX as *const AtomicI32,
                     libc::FUTEX_WAIT,
                     HELD,
                     ptr::null::<libc::timespec>(),
                 );
+                if ret == 0 {
+                    // We actually slept. And then woke up again. So we should be ordered-after
+                    // what happened-before the FUTEX_WAKE. So this is not a race.
+                    assert_eq!(DATA, 1);
+                    // Also remember that this happened at least once.
+                    WOKEN.fetch_add(1, Ordering::Relaxed);
+                }
             }
         });
+        // Increase the chance that the other thread actually goes to sleep.
+        // (5 yields in a loop seem to make that happen around 40% of the time.)
+        for _ in 0..5 {
+            thread::yield_now();
+        }
 
         FUTEX.store(FREE, Ordering::Relaxed);
         unsafe {
+            DATA = 1;
             libc::syscall(libc::SYS_futex, &FUTEX as *const AtomicI32, libc::FUTEX_WAKE, 1);
         }
 
         t.join().unwrap();
     }
+
+    // Make sure we got the interesting case (of having woken a thread) at least once, but not *each* time.
+    let woken = WOKEN.load(Ordering::Relaxed);
+    assert!(woken > 0 && woken < rounds);
+    //eprintln!("waking happened {woken} times");
 }
 
 fn main() {
