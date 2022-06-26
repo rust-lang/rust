@@ -615,7 +615,7 @@ fn find_matching_impl(
                     let wh_goals =
                         crate::chalk_db::convert_where_clauses(db, impl_.into(), &substs)
                             .into_iter()
-                            .map(|b| b.into_well_formed_goal(Interner).cast(Interner));
+                            .map(|b| b.cast(Interner));
 
                     let goal = crate::Goal::all(Interner, wh_goals);
 

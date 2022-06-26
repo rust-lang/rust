@@ -1445,6 +1445,32 @@ fn f() {
                 "#,
             );
         }
+        #[test]
+        fn wc_case_is_ok() {
+            check(
+                r#"
+trait G {
+    fn g(&self);
+}
+trait BParent{}
+trait Bound: BParent{}
+struct Gen<T>(T);
+impl <T> G for Gen<T>
+where T : Bound
+{
+    fn g(&self){
+     //^
+    }
+}
+struct A;
+impl Bound for A{}
+fn f() {
+    let gen = Gen::<A>(A);
+    gen.g$0();
+}
+"#,
+            );
+        }
 
         #[test]
         fn method_call_defaulted() {
