@@ -1,0 +1,12 @@
+error: it seems like you've fallen asleep and hit your keyboard
+  --> $DIR/struct-field-asleep-hint.rs:4:17
+   |
+LL |         self.prehopjpokppppppppppppppppppp
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ you fell asleep here
+   |
+   = help: try improving your sleep schedule or reducing your hours
+   = note: you have been asleep for about 1.36 seconds
+   = note: available fields are: `pre`
+
+error: aborting due to previous error
+
