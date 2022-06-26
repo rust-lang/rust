@@ -21,17 +21,6 @@ wait-for: "#alternative-display #search"
 assert-attribute: ("#main-content", {"class": "content hidden"})
 assert-document-property: ({"URL": "index.html?search=test"}, ENDS_WITH)
 
-// Now let's check that when the help popup is displayed and we press Escape, it doesn't
-// hide the search results too.
-click: "#help-button"
-assert-document-property: ({"URL": "index.html?search=test"}, [ENDS_WITH])
-assert-attribute: ("#help", {"class": ""})
-press-key: "Escape"
-wait-for: "#alternative-display #search"
-assert-attribute: ("#help", {"class": "hidden"})
-assert-attribute: ("#main-content", {"class": "content hidden"})
-assert-document-property: ({"URL": "index.html?search=test"}, [ENDS_WITH])
-
 // Check that Escape hides the search results when a search result is focused.
 focus: ".search-input"
 assert: ".search-input:focus"
@@ -39,7 +28,6 @@ press-key: "ArrowDown"
 assert-false: ".search-input:focus"
 assert: "#results a:focus"
 press-key: "Escape"
-assert-attribute: ("#help", {"class": "hidden"})
 wait-for: "#not-displayed #search"
 assert-false: "#alternative-display #search"
 assert-attribute: ("#main-content", {"class": "content"})
