@@ -80,8 +80,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
-
-
             // Threading
             "prctl" => {
                 // prctl is variadic. (It is not documented like that in the manpage, but defined like that in the libc crate.)
