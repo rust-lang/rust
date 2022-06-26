@@ -102,20 +102,33 @@ attributes #4 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 ; CHECK-NEXT:   %alloc = alloca double
 ; CHECK-NEXT:   store double %x, double* %alloc
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds [1 x void (double*)*], [1 x void (double*)*]* @global_shadow, i64 0, i64 %idx
+; CHECK-NEXT:   %arrayidx = getelementptr inbounds [1 x void (double*)*], [1 x void (double*)*]* @global, i64 0, i64 %idx
 ; CHECK-NEXT:   %"fp'ipl" = load void (double*)*, void (double*)** %"arrayidx'ipg", align 8
-; CHECK-NEXT:   %0 = bitcast void (double*)* %"fp'ipl" to { i8* } (double*, double*)**
-; CHECK-NEXT:   %1 = load { i8* } (double*, double*)*, { i8* } (double*, double*)** %0
-; CHECK-NEXT:   %_augmented = call { i8* } %1(double* %alloc, double* %"alloc'ipa")
+; CHECK-NEXT:   %fp = load void (double*)*, void (double*)** %arrayidx, align 8
+; CHECK-NEXT:   %0 = bitcast void (double*)* %fp to i8*
+; CHECK-NEXT:   %1 = bitcast void (double*)* %"fp'ipl" to i8*
+; CHECK-NEXT:   %2 = icmp eq i8* %0, %1
+; CHECK-NEXT:   br i1 %2, label %error.i, label %__enzyme_runtimeinactiveerr.exit
+
+; CHECK: error.i:                                          ; preds = %entry
+; CHECK-NEXT:   %3 = call i32 @puts(i8* getelementptr inbounds ([79 x i8], [79 x i8]* @.str.2, i32 0, i32 0))
+; CHECK-NEXT:   call void @exit(i32 1)
+; CHECK-NEXT:   unreachable
+
+; CHECK: __enzyme_runtimeinactiveerr.exit:                 ; preds = %entry
+; CHECK-NEXT:   %4 = bitcast void (double*)* %"fp'ipl" to { i8* } (double*, double*)**
+; CHECK-NEXT:   %5 = load { i8* } (double*, double*)*, { i8* } (double*, double*)** %4
+; CHECK-NEXT:   %_augmented = call { i8* } %5(double* %alloc, double* %"alloc'ipa")
 ; CHECK-NEXT:   %subcache = extractvalue { i8* } %_augmented, 0
-; CHECK-NEXT:   %2 = load double, double* %"alloc'ipa"
-; CHECK-NEXT:   %3 = fadd fast double %2, %differeturn
-; CHECK-NEXT:   store double %3, double* %"alloc'ipa"
-; CHECK-NEXT:   %4 = bitcast void (double*)* %"fp'ipl" to {} (double*, double*, i8*)**
-; CHECK-NEXT:   %5 = getelementptr {} (double*, double*, i8*)*, {} (double*, double*, i8*)** %4, i64 1
-; CHECK-NEXT:   %6 = load {} (double*, double*, i8*)*, {} (double*, double*, i8*)** %5
-; CHECK-NEXT:   %7 = call {} %6(double* %alloc, double* %"alloc'ipa", i8* %subcache)
-; CHECK-NEXT:   %8 = load double, double* %"alloc'ipa"
+; CHECK-NEXT:   %6 = load double, double* %"alloc'ipa"
+; CHECK-NEXT:   %7 = fadd fast double %6, %differeturn
+; CHECK-NEXT:   store double %7, double* %"alloc'ipa"
+; CHECK-NEXT:   %8 = bitcast void (double*)* %"fp'ipl" to {} (double*, double*, i8*)**
+; CHECK-NEXT:   %9 = getelementptr {} (double*, double*, i8*)*, {} (double*, double*, i8*)** %8, i64 1
+; CHECK-NEXT:   %10 = load {} (double*, double*, i8*)*, {} (double*, double*, i8*)** %9
+; CHECK-NEXT:   %11 = call {} %10(double* %alloc, double* %"alloc'ipa", i8* %subcache)
+; CHECK-NEXT:   %12 = load double, double* %"alloc'ipa"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"alloc'ipa"
-; CHECK-NEXT:   %9 = insertvalue { double } undef, double %8, 0
-; CHECK-NEXT:   ret { double } %9
+; CHECK-NEXT:   %13 = insertvalue { double } undef, double %12, 0
+; CHECK-NEXT:   ret { double } %13
 ; CHECK-NEXT: }

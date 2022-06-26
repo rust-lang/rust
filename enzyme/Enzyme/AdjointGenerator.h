@@ -8858,6 +8858,41 @@ public:
         return;
       }
 
+      // Functions that initialize a shadow data structure (with no
+      // other arguments) needs to be run on shadow in primal.
+      if (funcName == "_ZNSt8ios_baseC2Ev" ||
+          funcName == "_ZNSt8ios_baseD2Ev" || funcName == "_ZNSt6localeC1Ev" ||
+          funcName == "_ZNSt6localeD1Ev" ||
+          funcName == "_ZNKSt5ctypeIcE13_M_widen_initEv") {
+        if (Mode == DerivativeMode::ReverseModeGradient ||
+            Mode == DerivativeMode::ForwardModeSplit) {
+          eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+          return;
+        }
+        if (gutils->isConstantValue(orig->getArgOperand(0)))
+          return;
+        Value *args[] = {
+            gutils->invertPointerM(orig->getArgOperand(0), BuilderZ)};
+        BuilderZ.CreateCall(called, args);
+        return;
+      }
+
+      if (funcName == "_ZNSt9basic_iosIcSt11char_traitsIcEE4initEPSt15basic_"
+                      "streambufIcS1_E") {
+        if (Mode == DerivativeMode::ReverseModeGradient ||
+            Mode == DerivativeMode::ForwardModeSplit) {
+          eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+          return;
+        }
+        if (gutils->isConstantValue(orig->getArgOperand(0)))
+          return;
+        Value *args[] = {
+            gutils->invertPointerM(orig->getArgOperand(0), BuilderZ),
+            gutils->invertPointerM(orig->getArgOperand(1), BuilderZ)};
+        BuilderZ.CreateCall(called, args);
+        return;
+      }
+
       // if constant instruction and readonly (thus must be pointer return)
       // and shadow return recomputable from shadow arguments.
       if (funcName == "__dynamic_cast" ||
@@ -11053,6 +11088,11 @@ public:
           newcalled = BuilderZ.CreateExtractValue(newcalled, {0});
         }
 
+        ErrorIfRuntimeInactive(BuilderZ, gutils->getNewFromOriginal(callval),
+                               newcalled,
+                               "Attempting to call an indirect active function "
+                               "whose runtime value is inactive");
+
         auto ft =
             cast<FunctionType>(callval->getType()->getPointerElementType());
         bool retActive = subretType != DIFFE_TYPE::CONSTANT;
@@ -11295,6 +11335,12 @@ public:
         auto callval = orig->getCalledValue();
 #endif
         newcalled = gutils->invertPointerM(callval, BuilderZ);
+
+        if (Mode != DerivativeMode::ReverseModeGradient)
+          ErrorIfRuntimeInactive(
+              BuilderZ, gutils->getNewFromOriginal(callval), newcalled,
+              "Attempting to call an indirect active function "
+              "whose runtime value is inactive");
 
         auto ft =
             cast<FunctionType>(callval->getType()->getPointerElementType());

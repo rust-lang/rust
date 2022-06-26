@@ -67,6 +67,17 @@ attributes #2 = { nounwind }
 
 ; CHECK: define internal { double } @diffeindirect(double (double)* nocapture %callee, double (double)* nocapture %"callee'", double %x, double %differeturn)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = bitcast double (double)* %callee to i8*
+; CHECK-NEXT:   %1 = bitcast double (double)* %"callee'" to i8*
+; CHECK-NEXT:   %2 = icmp eq i8* %0, %1
+; CHECK-NEXT:   br i1 %2, label %error.i, label %__enzyme_runtimeinactiveerr.exit
+
+; CHECK: error.i:                                          ; preds = %entry
+; CHECK-NEXT:   %3 = call i32 @puts(i8* getelementptr inbounds ([79 x i8], [79 x i8]* @.str, i32 0, i32 0))
+; CHECK-NEXT:   call void @exit(i32 1)
+; CHECK-NEXT:   unreachable
+
+; CHECK: __enzyme_runtimeinactiveerr.exit:                 ; preds = %entry
 ; CHECK-NEXT:   %[[augloc:.+]] = bitcast double (double)* %"callee'" to { i8*, double } (double)**
 ; CHECK-NEXT:   %[[augmentptr:.+]] = load { i8*, double } (double)*, { i8*, double } (double)** %[[augloc]]
 ; CHECK-NEXT:   %call_augmented = call { i8*, double } %[[augmentptr]](double %x)

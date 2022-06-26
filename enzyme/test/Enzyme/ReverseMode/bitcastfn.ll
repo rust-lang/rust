@@ -336,9 +336,21 @@ attributes #8 = { noreturn nounwind "correctly-rounded-divide-sqrt-fp-math"="fal
 ; CHECK: define internal i8* @augmented_sub(i64 %.unpack.i, i64 %".unpack.i'", %"class.boost::array.1"* %Arg, %"class.boost::array.1"* %"Arg'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"fn'ipc" = inttoptr i64 %".unpack.i'" to void (%"class.boost::array.1"*)*
-; CHECK-NEXT:   %0 = bitcast void (%"class.boost::array.1"*)* %"fn'ipc" to { i8* } (%"class.boost::array.1"*, %"class.boost::array.1"*)**
-; CHECK-NEXT:   %1 = load { i8* } (%"class.boost::array.1"*, %"class.boost::array.1"*)*, { i8* } (%"class.boost::array.1"*, %"class.boost::array.1"*)** %0
-; CHECK-NEXT:   %_augmented = call { i8* } %1(%"class.boost::array.1"* %Arg, %"class.boost::array.1"* %"Arg'")
+; CHECK-NEXT:   %fn = inttoptr i64 %.unpack.i to void (%"class.boost::array.1"*)*
+; CHECK-NEXT:   %0 = bitcast void (%"class.boost::array.1"*)* %fn to i8*
+; CHECK-NEXT:   %1 = bitcast void (%"class.boost::array.1"*)* %"fn'ipc" to i8*
+; CHECK-NEXT:   %2 = icmp eq i8* %0, %1
+; CHECK-NEXT:   br i1 %2, label %error.i, label %__enzyme_runtimeinactiveerr.exit
+
+; CHECK: error.i:                                          ; preds = %entry
+; CHECK-NEXT:   %3 = call i32 @puts(i8* getelementptr inbounds ([79 x i8], [79 x i8]* @.str.1, i32 0, i32 0))
+; CHECK-NEXT:   call void @exit(i32 1)
+; CHECK-NEXT:   unreachable
+
+; CHECK: __enzyme_runtimeinactiveerr.exit:                 ; preds = %entry
+; CHECK-NEXT:   %4 = bitcast void (%"class.boost::array.1"*)* %"fn'ipc" to { i8* } (%"class.boost::array.1"*, %"class.boost::array.1"*)**
+; CHECK-NEXT:   %5 = load { i8* } (%"class.boost::array.1"*, %"class.boost::array.1"*)*, { i8* } (%"class.boost::array.1"*, %"class.boost::array.1"*)** %4
+; CHECK-NEXT:   %_augmented = call { i8* } %5(%"class.boost::array.1"* %Arg, %"class.boost::array.1"* %"Arg'")
 ; CHECK-NEXT:   %subcache = extractvalue { i8* } %_augmented, 0
 ; CHECK-NEXT:   ret i8* %subcache
 ; CHECK-NEXT: }

@@ -62,15 +62,28 @@ declare void @__enzyme_autodiff(...)
 ; CHECK-NEXT:   store double (double*)* bitcast ({ { i8*, double } (double*, double*)*, void (double*, double*, double, i8*)* }* @"_enzyme_reverse_inner2'" to double (double*)*), double (double*)** %"a1'ipg", align 8
 ; CHECK-NEXT:   store double (double*)* @inner2, double (double*)** %a1, align 8
 ; CHECK-NEXT:   %"fa'ipg" = getelementptr double (double*)*, double (double*)** %"a'ipc", i64 %v
+; CHECK-NEXT:   %fa = getelementptr double (double*)*, double (double*)** %a, i64 %v
 ; CHECK-NEXT:   %"f'ipl" = load double (double*)*, double (double*)** %"fa'ipg", align 8
-; CHECK-NEXT:   %3 = bitcast double (double*)* %"f'ipl" to { i8*, double } (double*, double*)**
-; CHECK-NEXT:   %4 = load { i8*, double } (double*, double*)*, { i8*, double } (double*, double*)** %3
-; CHECK-NEXT:   %r_augmented = call { i8*, double } %4(double* %in, double* %"in'")
+; CHECK-NEXT:   %f = load double (double*)*, double (double*)** %fa, align 8
+; CHECK-NEXT:   %3 = bitcast double (double*)* %f to i8*
+; CHECK-NEXT:   %4 = bitcast double (double*)* %"f'ipl" to i8*
+; CHECK-NEXT:   %5 = icmp eq i8* %3, %4
+; CHECK-NEXT:   br i1 %5, label %error.i, label %__enzyme_runtimeinactiveerr.exit
+
+; CHECK: error.i:                                          ; preds = %entry
+; CHECK-NEXT:   %6 = call i32 @puts(i8* getelementptr inbounds ([79 x i8], [79 x i8]* @.str, i32 0, i32 0))
+; CHECK-NEXT:   call void @exit(i32 1)
+; CHECK-NEXT:   unreachable
+
+; CHECK: __enzyme_runtimeinactiveerr.exit:                 ; preds = %entry
+; CHECK-NEXT:   %7 = bitcast double (double*)* %"f'ipl" to { i8*, double } (double*, double*)**
+; CHECK-NEXT:   %8 = load { i8*, double } (double*, double*)*, { i8*, double } (double*, double*)** %7
+; CHECK-NEXT:   %r_augmented = call { i8*, double } %8(double* %in, double* %"in'")
 ; CHECK-NEXT:   %subcache = extractvalue { i8*, double } %r_augmented, 0
 ; CHECK-NEXT:   store i8* %subcache, i8** %1
 ; CHECK-NEXT:   %r = extractvalue { i8*, double } %r_augmented, 1
-; CHECK-NEXT:   %5 = getelementptr inbounds { i8*, double }, { i8*, double }* %0, i32 0, i32 1
-; CHECK-NEXT:   store double %r, double* %5
-; CHECK-NEXT:   %6 = load { i8*, double }, { i8*, double }* %0
-; CHECK-NEXT:   ret { i8*, double } %6
+; CHECK-NEXT:   %9 = getelementptr inbounds { i8*, double }, { i8*, double }* %0, i32 0, i32 1
+; CHECK-NEXT:   store double %r, double* %9
+; CHECK-NEXT:   %10 = load { i8*, double }, { i8*, double }* %0
+; CHECK-NEXT:   ret { i8*, double } %10
 ; CHECK-NEXT: }

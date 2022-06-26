@@ -356,8 +356,42 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
       MPIInactiveCommAllocators.end()) {
     return true;
   }
-  if (F->getIntrinsicID() == Intrinsic::trap)
+  switch (F->getIntrinsicID()) {
+  case Intrinsic::nvvm_barrier0:
+  case Intrinsic::nvvm_barrier0_popc:
+  case Intrinsic::nvvm_barrier0_and:
+  case Intrinsic::nvvm_barrier0_or:
+  case Intrinsic::nvvm_membar_cta:
+  case Intrinsic::nvvm_membar_gl:
+  case Intrinsic::nvvm_membar_sys:
+  case Intrinsic::amdgcn_s_barrier:
+  case Intrinsic::assume:
+  case Intrinsic::stacksave:
+  case Intrinsic::stackrestore:
+  case Intrinsic::lifetime_start:
+  case Intrinsic::lifetime_end:
+  case Intrinsic::dbg_addr:
+  case Intrinsic::dbg_declare:
+  case Intrinsic::dbg_value:
+  case Intrinsic::invariant_start:
+  case Intrinsic::invariant_end:
+  case Intrinsic::var_annotation:
+  case Intrinsic::ptr_annotation:
+  case Intrinsic::annotation:
+  case Intrinsic::codeview_annotation:
+  case Intrinsic::expect:
+  case Intrinsic::type_test:
+  case Intrinsic::donothing:
+  case Intrinsic::prefetch:
+  case Intrinsic::trap:
+#if LLVM_VERSION_MAJOR >= 8
+  case Intrinsic::is_constant:
+#endif
+  case Intrinsic::memset:
     return true;
+  default:
+    break;
+  }
 
   /// Only the first argument (magnitude) of copysign is active
   if (F->getIntrinsicID() == Intrinsic::copysign &&
@@ -365,11 +399,6 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
     return true;
   }
 
-  /// Use of the value as a non-src/dst in memset/memcpy/memmove is an inactive
-  /// use
-  if (F->getIntrinsicID() == Intrinsic::memset && CI->getArgOperand(0) != val &&
-      CI->getArgOperand(1) != val)
-    return true;
   if (F->getIntrinsicID() == Intrinsic::memcpy && CI->getArgOperand(0) != val &&
       CI->getArgOperand(1) != val)
     return true;
@@ -457,13 +486,45 @@ static inline void propagateArgumentInformation(
       return;
     }
 
-    /// Only the src/dst in memset/memcpy/memmove impact the activity of the
-    /// instruction
-    // memset cannot propagate activity as it sets
-    // data to a given single byte which is inactive
-    if (F->getIntrinsicID() == Intrinsic::memset) {
+    // Certain intrinsics are inactive by definition
+    // and have nothing to propagate.
+    switch (F->getIntrinsicID()) {
+    case Intrinsic::nvvm_barrier0:
+    case Intrinsic::nvvm_barrier0_popc:
+    case Intrinsic::nvvm_barrier0_and:
+    case Intrinsic::nvvm_barrier0_or:
+    case Intrinsic::nvvm_membar_cta:
+    case Intrinsic::nvvm_membar_gl:
+    case Intrinsic::nvvm_membar_sys:
+    case Intrinsic::amdgcn_s_barrier:
+    case Intrinsic::assume:
+    case Intrinsic::stacksave:
+    case Intrinsic::stackrestore:
+    case Intrinsic::lifetime_start:
+    case Intrinsic::lifetime_end:
+    case Intrinsic::dbg_addr:
+    case Intrinsic::dbg_declare:
+    case Intrinsic::dbg_value:
+    case Intrinsic::invariant_start:
+    case Intrinsic::invariant_end:
+    case Intrinsic::var_annotation:
+    case Intrinsic::ptr_annotation:
+    case Intrinsic::annotation:
+    case Intrinsic::codeview_annotation:
+    case Intrinsic::expect:
+    case Intrinsic::type_test:
+    case Intrinsic::donothing:
+    case Intrinsic::prefetch:
+    case Intrinsic::trap:
+#if LLVM_VERSION_MAJOR >= 8
+    case Intrinsic::is_constant:
+#endif
+    case Intrinsic::memset:
       return;
+    default:
+      break;
     }
+
     if (F->getIntrinsicID() == Intrinsic::memcpy ||
         F->getIntrinsicID() == Intrinsic::memmove) {
       propagateFromOperand(CI.getOperand(0));
@@ -630,15 +691,6 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults const &TR,
     }
   }
 
-  if (isa<MemSetInst>(I)) {
-    // memset's are definitionally inactive since
-    // they copy a byte which cannot be active
-    if (EnzymePrintActivity)
-      llvm::errs() << " constant instruction as memset " << *I << "\n";
-    InsertConstantInstruction(TR, I);
-    return true;
-  }
-
   if (EnzymePrintActivity)
     llvm::errs() << "checking if is constant[" << (int)directions << "] " << *I
                  << "\n";
@@ -675,6 +727,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults const &TR,
 #if LLVM_VERSION_MAJOR >= 8
     case Intrinsic::is_constant:
 #endif
+    case Intrinsic::memset:
       if (EnzymePrintActivity)
         llvm::errs() << "known inactive intrinsic " << *I << "\n";
       InsertConstantInstruction(TR, I);
@@ -2013,14 +2066,6 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults const &TR,
     }
   }
 
-  if (isa<MemSetInst>(inst)) {
-    // memset's are definitionally inactive since
-    // they copy a byte which cannot be active
-    if (EnzymePrintActivity)
-      llvm::errs() << " constant instruction as memset " << *inst << "\n";
-    return true;
-  }
-
   if (auto SI = dyn_cast<StoreInst>(inst)) {
     // if either src or dst is inactive, there cannot be a transfer of active
     // values and thus the store is inactive
@@ -2039,7 +2084,8 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults const &TR,
     if (isConstantValue(TR, MTI->getArgOperand(0)) ||
         isConstantValue(TR, MTI->getArgOperand(1))) {
       if (EnzymePrintActivity)
-        llvm::errs() << " constant instruction as memset " << *inst << "\n";
+        llvm::errs() << " constant instruction as memtransfer " << *inst
+                     << "\n";
       return true;
     }
   }
@@ -2148,6 +2194,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults const &TR,
 #if LLVM_VERSION_MAJOR >= 8
     case Intrinsic::is_constant:
 #endif
+    case Intrinsic::memset:
       if (EnzymePrintActivity)
         llvm::errs() << "constant(" << (int)directions << ") up-intrinsic "
                      << *inst << "\n";
@@ -2282,9 +2329,30 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
     // Only ignore stores to the operand, not storing the operand
     // somewhere
     if (auto SI = dyn_cast<StoreInst>(a)) {
-      if (UA == UseActivity::OnlyLoads) {
-        if (SI->getValueOperand() != parent) {
+      if (SI->getValueOperand() != parent) {
+        if (UA == UseActivity::OnlyLoads) {
           continue;
+        }
+        if (ConstantValues.count(SI->getValueOperand()) ||
+            isa<ConstantInt>(SI->getValueOperand()))
+          continue;
+        if (UA == UseActivity::None) {
+          auto TmpOrig =
+#if LLVM_VERSION_MAJOR >= 12
+              getUnderlyingObject(SI->getPointerOperand(), 100);
+#else
+              GetUnderlyingObject(
+                  SI->getPointerOperand(),
+                  TR.getFunction()->getParent()->getDataLayout(), 100);
+#endif
+          if (isa<AllocaInst>(TmpOrig)) {
+            done.insert(
+                std::make_tuple((User *)SI, SI->getPointerOperand(), UA));
+            for (const auto a : TmpOrig->users()) {
+              todo.push_back(std::make_tuple(a, TmpOrig, UA));
+            }
+            continue;
+          }
         }
       }
       if (PUA == UseActivity::OnlyLoads) {
@@ -2376,6 +2444,37 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
                        << " user " << *call << "\n";
         }
         continue;
+      }
+      if (Function *F = getFunctionFromCall(call)) {
+        if (F->getIntrinsicID() == Intrinsic::memcpy ||
+            F->getIntrinsicID() == Intrinsic::memmove) {
+          // Only need to care about loads from
+          if (UA == UseActivity::OnlyLoads && call->getArgOperand(1) != parent)
+            continue;
+
+          // Only need to care about store from
+          if (UA == UseActivity::OnlyStores && call->getArgOperand(0) != parent)
+            continue;
+
+          if (call->getArgOperand(0) != parent) {
+            auto TmpOrig =
+#if LLVM_VERSION_MAJOR >= 12
+                getUnderlyingObject(call->getArgOperand(0), 100);
+#else
+                GetUnderlyingObject(
+                    call->getArgOperand(0),
+                    TR.getFunction()->getParent()->getDataLayout(), 100);
+#endif
+            if (isa<AllocaInst>(TmpOrig)) {
+              done.insert(
+                  std::make_tuple((User *)call, call->getArgOperand(0), UA));
+              for (const auto a : TmpOrig->users()) {
+                todo.push_back(std::make_tuple(a, TmpOrig, UA));
+              }
+              continue;
+            }
+          }
+        }
       }
     }
 

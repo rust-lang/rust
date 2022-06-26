@@ -83,10 +83,23 @@ attributes #4 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 ; CHECK-NEXT:   store double %x, double* %alloc
 ; CHECK-NEXT:   store double %"x'", double* %"alloc'ipa"
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds [1 x void (double*)*], [1 x void (double*)*]* @global_shadow, i64 0, i64 %idx
-; CHECK-NEXT:   %"fp'ipl" = load void (double*)*, void (double*)** %"arrayidx'ipg"
-; CHECK-NEXT:   %0 = bitcast void (double*)* %"fp'ipl" to void (double*, double*)**
-; CHECK-NEXT:   %1 = load void (double*, double*)*, void (double*, double*)** %0
-; CHECK-NEXT:   call void %1(double* %alloc, double* %"alloc'ipa")
+; CHECK-NEXT:   %arrayidx = getelementptr inbounds [1 x void (double*)*], [1 x void (double*)*]* @global, i64 0, i64 %idx
+; CHECK-NEXT:   %"fp'ipl" = load void (double*)*, void (double*)** %"arrayidx'ipg", align 8
+; CHECK-NEXT:   %fp = load void (double*)*, void (double*)** %arrayidx, align 8
+; CHECK-NEXT:   %0 = bitcast void (double*)* %fp to i8*
+; CHECK-NEXT:   %1 = bitcast void (double*)* %"fp'ipl" to i8*
+; CHECK-NEXT:   %2 = icmp eq i8* %0, %1
+; CHECK-NEXT:   br i1 %2, label %error.i, label %__enzyme_runtimeinactiveerr.exit
+
+; CHECK: error.i:                                          ; preds = %entry
+; CHECK-NEXT:   %3 = call i32 @puts(i8* getelementptr inbounds ([79 x i8], [79 x i8]* @.str.2, i32 0, i32 0))
+; CHECK-NEXT:   call void @exit(i32 1)
+; CHECK-NEXT:   unreachable
+
+; CHECK: __enzyme_runtimeinactiveerr.exit:
+; CHECK-NEXT:   %[[a0:.+]] = bitcast void (double*)* %"fp'ipl" to void (double*, double*)**
+; CHECK-NEXT:   %[[a1:.+]] = load void (double*, double*)*, void (double*, double*)** %[[a0]]
+; CHECK-NEXT:   call void %[[a1]](double* %alloc, double* %"alloc'ipa")
 ; CHECK-NEXT:   %[[i2:.+]] = load double, double* %"alloc'ipa"
 ; CHECK-NEXT:   ret double %[[i2]]
 ; CHECK-NEXT: }
