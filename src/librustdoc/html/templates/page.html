@@ -119,7 +119,9 @@
                                 spellcheck="false" {# -#}
                                 placeholder="Click or press ‘S’ to search, ‘?’ for more options…" {# -#}
                                 type="search"> {#- -#}
-                            <button type="button" id="help-button" title="help">?</button> {#- -#}
+                            <div id="help-button" title="help" tabindex="-1"> {#- -#}
+                                <button type="button">?</button> {#- -#}
+                            </div> {#- -#}
                             <div id="settings-menu" tabindex="-1">
                                 <a href="{{page.root_path|safe}}settings.html" title="settings"> {#- -#}
                                     <img width="22" height="22" alt="Change settings" {# -#}

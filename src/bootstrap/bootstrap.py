@@ -743,7 +743,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
 
-    def build_bootstrap(self):
+    def build_bootstrap(self, color):
         """Build bootstrap"""
         print("Building rustbuild")
         build_dir = os.path.join(self.build_dir, "bootstrap")
@@ -800,6 +800,11 @@ class RustBuild(object):
         if self.get_toml("metrics", "build"):
             args.append("--features")
             args.append("build-metrics")
+        if color == "always":
+            args.append("--color=always")
+        elif color == "never":
+            args.append("--color=never")
+
         run(args, env=env, verbose=self.verbose)
 
     def build_triple(self):
@@ -862,6 +867,7 @@ def bootstrap(help_triggered):
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--build')
+    parser.add_argument('--color', choices=['always', 'never', 'auto'])
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
@@ -930,7 +936,7 @@ def bootstrap(help_triggered):
     # Fetch/build the bootstrap
     build.download_toolchain()
     sys.stdout.flush()
-    build.build_bootstrap()
+    build.build_bootstrap(args.color)
     sys.stdout.flush()
 
     # Run the bootstrap

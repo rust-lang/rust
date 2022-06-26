@@ -17,6 +17,7 @@ fn main() {
     //~| ERROR `let` expressions are not supported here
     //~| ERROR mismatched types
     //~| ERROR mismatched types
+    //~| ERROR expected expression, found `let` statement
         return;
     };
 
