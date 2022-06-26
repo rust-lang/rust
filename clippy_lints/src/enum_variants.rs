@@ -213,7 +213,7 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
 }
 
 #[must_use]
-fn have_no_extra_prefix(prefixes: &Vec<&str>) -> bool {
+fn have_no_extra_prefix(prefixes: &[&str]) -> bool {
     prefixes.is_empty() || prefixes.join("") == "_"
 }
 
