@@ -176,3 +176,66 @@ LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
 error: aborting due to 16 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
+Future incompatibility report: Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/ub-ref-ptr.rs:31:1
+   |
+LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/ub-ref-ptr.rs:35:39
+   |
+LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
+   | --------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                       |
+   |                                       unable to turn pointer into raw bytes
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/ub-ref-ptr.rs:35:38
+   |
+LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
+   | -------------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                      |
+   |                                      referenced constant has errors
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/ub-ref-ptr.rs:41:86
+   |
+LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
+   | -------------------------------------------------------------------------------------^^^^^^^^^^^^^^^^^^^^----
+   |                                                                                      |
+   |                                                                                      unable to turn pointer into raw bytes
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/ub-ref-ptr.rs:41:85
+   |
+LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
+   | ------------------------------------------------------------------------------------^^^^^^^^^^^^^^^^^^^^^----
+   |                                                                                     |
+   |                                                                                     referenced constant has errors
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
