@@ -144,7 +144,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::fmt;
-use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
+use core::iter::{FromIterator, FusedIterator, InPlaceIterable, Rev, SourceIter, TrustedLen};
 use core::mem::{self, swap, ManuallyDrop};
 use core::ops::{Deref, DerefMut};
 use core::ptr;
@@ -153,6 +153,7 @@ use crate::collections::TryReserveError;
 use crate::slice;
 use crate::vec::{self, AsVecIntoIter, Vec};
 
+use super::btree::borrow::DormantMutRef;
 use super::SpecExtend;
 
 #[cfg(test)]
@@ -819,6 +820,33 @@ impl<T: Ord> BinaryHeap<T> {
         // data[0..first_removed] is untouched, so we only need to rebuild the tail:
         self.rebuild_tail(first_removed);
     }
+
+    /// Returns a mutable iterator visiting all values in the underlying vector, in
+    /// arbitrary order. When `IterMut` is dropped, the binary heap is rebuilt.
+    ///
+    /// Note: If the `IterMut` value is leaked, the heap may be in an
+    /// inconsistent state.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_iter_mut)]
+    /// use std::collections::BinaryHeap;
+    ///
+    /// let mut heap = BinaryHeap::from([-10, -5, 1, 2, 4, 13]);
+    ///
+    /// heap.iter_mut().for_each(|x| *x += 1);
+    ///
+    /// assert_eq!(vec![-9, -4, 2, 3, 5, 14], heap.into_sorted_vec());
+    /// ```
+    #[unstable(feature = "binary_heap_iter_mut", issue = "98524")]
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+        let (this, dormant) = DormantMutRef::new(self);
+        let it = this.data.iter_mut().rev(); // reversed to take advantage of `rebuild_tail` on drop
+        IterMut { iter_mut: ManuallyDrop::new(it), heap: ManuallyDrop::new(dormant) }
+    }
 }
 
 impl<T> BinaryHeap<T> {
@@ -1357,6 +1385,65 @@ impl<T> ExactSizeIterator for Iter<'_, T> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Iter<'_, T> {}
 
+/// A mutable iterator over the elements of a `BinaryHeap`.
+///
+/// This `struct` is created by [`BinaryHeap::iter_mut()`]. See its
+/// documentation for more.
+///
+/// [`iter_mut`]: BinaryHeap::iter_mut
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[unstable(feature = "binary_heap_iter_mut", issue = "98524")]
+pub struct IterMut<'a, T: 'a + Ord> {
+    iter_mut: ManuallyDrop<Rev<slice::IterMut<'a, T>>>,
+    heap: ManuallyDrop<DormantMutRef<'a, BinaryHeap<T>>>,
+}
+
+#[unstable(feature = "binary_heap_iter_mut", issue = "98524")]
+impl<'a, T: Ord> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a mut T> {
+        self.iter_mut.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter_mut.size_hint()
+    }
+}
+
+#[unstable(feature = "binary_heap_iter_mut", issue = "98524")]
+impl<T: fmt::Debug + Ord> fmt::Debug for IterMut<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("IterMut").field(&self.iter_mut).finish()
+    }
+}
+
+#[unstable(feature = "binary_heap_iter_mut", issue = "98524")]
+impl<T: Ord> Drop for IterMut<'_, T> {
+    fn drop(&mut self) {
+        let remaining = self.iter_mut.len();
+
+        // Early drop to avoid alias after recovering &mut BinaryHeap
+        // SAFETY: we're done using it.
+        unsafe { ManuallyDrop::drop(&mut self.iter_mut) };
+
+        // SAFETY:
+        //   take: `self.heap` is not used again.
+        //   awaken: `self.iter_mut` has been dropped and hence no references to the heap remain.
+        let heap = unsafe { ManuallyDrop::take(&mut self.heap).awaken() };
+        heap.rebuild_tail(remaining);
+    }
+}
+
+#[unstable(feature = "binary_heap_iter_mut", issue = "98524")]
+impl<T: Ord> ExactSizeIterator for IterMut<'_, T> {
+    fn is_empty(&self) -> bool {
+        self.iter_mut.is_empty()
+    }
+}
+
 /// An owning iterator over the elements of a `BinaryHeap`.
 ///
 /// This `struct` is created by [`BinaryHeap::into_iter()`]
@@ -1650,6 +1737,16 @@ impl<'a, T> IntoIterator for &'a BinaryHeap<T> {
 
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T: Ord> IntoIterator for &'a mut BinaryHeap<T> {
+    type Item = &'a mut T;
+    type IntoIter = IterMut<'a, T>;
+
+    fn into_iter(self) -> IterMut<'a, T> {
+        self.iter_mut()
     }
 }
 

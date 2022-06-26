@@ -1,5 +1,5 @@
 mod append;
-mod borrow;
+pub(super) mod borrow;
 mod dedup_sorted_iter;
 mod fix;
 pub mod map;

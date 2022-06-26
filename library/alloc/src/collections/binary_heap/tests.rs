@@ -95,8 +95,9 @@ fn check_exact_size_iterator<I: ExactSizeIterator>(len: usize, it: I) {
 
 #[test]
 fn test_exact_size_iterator() {
-    let heap = BinaryHeap::from(vec![2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1]);
+    let mut heap = BinaryHeap::from(vec![2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1]);
     check_exact_size_iterator(heap.len(), heap.iter());
+    check_exact_size_iterator(heap.len(), heap.iter_mut());
     check_exact_size_iterator(heap.len(), heap.clone().into_iter());
     check_exact_size_iterator(heap.len(), heap.clone().into_iter_sorted());
     check_exact_size_iterator(heap.len(), heap.clone().drain());
@@ -120,6 +121,28 @@ fn test_trusted_len() {
     let heap = BinaryHeap::from(vec![2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1]);
     check_trusted_len(heap.len(), heap.clone().into_iter_sorted());
     check_trusted_len(heap.len(), heap.clone().drain_sorted());
+}
+
+#[test]
+fn test_iter_mut() {
+    let mut heap = BinaryHeap::from([5, 9, 3]);
+    heap.iter_mut().for_each(|e| *e += 1);
+    assert_eq!(heap.into_vec(), vec![10, 6, 4]);
+
+    let mut heap = BinaryHeap::from([5, 9, 3]);
+    *heap.iter_mut().next().unwrap() -= 10;
+    assert_eq!(heap.into_vec(), vec![9, 5, -7]);
+
+    let mut heap = BinaryHeap::from([5, 9, 3]);
+    *heap.iter_mut().next().unwrap() += 10;
+    assert_eq!(heap.into_vec(), vec![13, 5, 9]);
+
+    let mut heap = BinaryHeap::from([5, 9, 3]);
+    *heap.iter_mut().last().unwrap() += 10;
+    assert_eq!(heap.into_vec(), vec![19, 5, 3]);
+
+    let mut heap = BinaryHeap::<i32>::new();
+    assert_eq!(heap.iter_mut().next(), None);
 }
 
 #[test]
