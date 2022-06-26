@@ -872,6 +872,7 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```
+    /// #![feature(atomic_bool_fetch_not)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let foo = AtomicBool::new(true);
