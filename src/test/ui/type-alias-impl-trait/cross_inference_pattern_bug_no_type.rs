@@ -1,4 +1,4 @@
-// known-bug
+// known-bug: #96572
 // compile-flags: --edition=2021 --crate-type=lib
 // rustc-env:RUST_BACKTRACE=0
 
