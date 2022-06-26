@@ -232,15 +232,15 @@ impl Clone for SourceFile {
 
 impl Span {
     pub(crate) fn def_site() -> Span {
-        Bridge::with(|bridge| bridge.context.def_site)
+        Bridge::with(|bridge| bridge.globals.def_site)
     }
 
     pub(crate) fn call_site() -> Span {
-        Bridge::with(|bridge| bridge.context.call_site)
+        Bridge::with(|bridge| bridge.globals.call_site)
     }
 
     pub(crate) fn mixed_site() -> Span {
-        Bridge::with(|bridge| bridge.context.mixed_site)
+        Bridge::with(|bridge| bridge.globals.mixed_site)
     }
 }
 
@@ -285,8 +285,8 @@ struct Bridge<'a> {
     /// Server-side function that the client uses to make requests.
     dispatch: closure::Closure<'a, Buffer, Buffer>,
 
-    /// Provided context for this macro expansion.
-    context: ExpnContext<Span>,
+    /// Provided globals for this macro expansion.
+    globals: ExpnGlobals<Span>,
 }
 
 impl<'a> !Send for Bridge<'a> {}
@@ -414,11 +414,11 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
         maybe_install_panic_hook(force_show_panics);
 
         let reader = &mut &buf[..];
-        let (input, context) = <(A, ExpnContext<Span>)>::decode(reader, &mut ());
+        let (globals, input) = <(ExpnGlobals<Span>, A)>::decode(reader, &mut ());
 
         // Put the buffer we used for input back in the `Bridge` for requests.
         let new_state =
-            BridgeState::Connected(Bridge { cached_buffer: buf.take(), dispatch, context });
+            BridgeState::Connected(Bridge { cached_buffer: buf.take(), dispatch, globals });
 
         BRIDGE_STATE.with(|state| {
             state.set(new_state, || {

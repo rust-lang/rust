@@ -39,9 +39,7 @@ macro_rules! declare_server_traits {
         })*
 
         pub trait Server: Types $(+ $name)* {
-            fn def_site(&mut self) -> Self::Span;
-            fn call_site(&mut self) -> Self::Span;
-            fn mixed_site(&mut self) -> Self::Span;
+            fn globals(&mut self) -> ExpnGlobals<Self::Span>;
         }
     }
 }
@@ -50,14 +48,8 @@ with_api!(Self, self_, declare_server_traits);
 pub(super) struct MarkedTypes<S: Types>(S);
 
 impl<S: Server> Server for MarkedTypes<S> {
-    fn def_site(&mut self) -> Self::Span {
-        <_>::mark(Server::def_site(&mut self.0))
-    }
-    fn call_site(&mut self) -> Self::Span {
-        <_>::mark(Server::call_site(&mut self.0))
-    }
-    fn mixed_site(&mut self) -> Self::Span {
-        <_>::mark(Server::mixed_site(&mut self.0))
+    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
+        <_>::mark(Server::globals(&mut self.0))
     }
 }
 
@@ -279,14 +271,10 @@ fn run_server<
     let mut dispatcher =
         Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
 
-    let expn_context = ExpnContext {
-        def_site: dispatcher.server.def_site(),
-        call_site: dispatcher.server.call_site(),
-        mixed_site: dispatcher.server.mixed_site(),
-    };
+    let globals = dispatcher.server.globals();
 
     let mut buf = Buffer::new();
-    (input, expn_context).encode(&mut buf, &mut dispatcher.handle_store);
+    (globals, input).encode(&mut buf, &mut dispatcher.handle_store);
 
     buf = strategy.run_bridge_and_client(&mut dispatcher, buf, run_client, force_show_panics);
 

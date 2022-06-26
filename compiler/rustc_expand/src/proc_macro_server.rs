@@ -14,7 +14,7 @@ use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 
-use pm::bridge::{server, TokenTree};
+use pm::bridge::{server, ExpnGlobals, TokenTree};
 use pm::{Delimiter, Level, LineColumn, Spacing};
 use std::ops::Bound;
 use std::{ascii, panic};
@@ -370,10 +370,7 @@ impl<'a, 'b> Rustc<'a, 'b> {
     }
 
     fn lit(&mut self, kind: token::LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Literal {
-        Literal {
-            lit: token::Lit::new(kind, symbol, suffix),
-            span: server::Server::call_site(self),
-        }
+        Literal { lit: token::Lit::new(kind, symbol, suffix), span: self.call_site }
     }
 }
 
@@ -550,7 +547,7 @@ impl server::Group for Rustc<'_, '_> {
         Group {
             delimiter,
             stream: stream.unwrap_or_default(),
-            span: DelimSpan::from_single(server::Server::call_site(self)),
+            span: DelimSpan::from_single(self.call_site),
             flatten: false,
         }
     }
@@ -582,7 +579,7 @@ impl server::Group for Rustc<'_, '_> {
 
 impl server::Punct for Rustc<'_, '_> {
     fn new(&mut self, ch: char, spacing: Spacing) -> Self::Punct {
-        Punct::new(ch, spacing == Spacing::Joint, server::Server::call_site(self))
+        Punct::new(ch, spacing == Spacing::Joint, self.call_site)
     }
 
     fn as_char(&mut self, punct: Self::Punct) -> char {
@@ -919,15 +916,11 @@ impl server::Span for Rustc<'_, '_> {
 }
 
 impl server::Server for Rustc<'_, '_> {
-    fn def_site(&mut self) -> Self::Span {
-        self.def_site
-    }
-
-    fn call_site(&mut self) -> Self::Span {
-        self.call_site
-    }
-
-    fn mixed_site(&mut self) -> Self::Span {
-        self.mixed_site
+    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
+        ExpnGlobals {
+            def_site: self.def_site,
+            call_site: self.call_site,
+            mixed_site: self.mixed_site,
+        }
     }
 }

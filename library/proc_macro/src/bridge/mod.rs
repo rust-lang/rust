@@ -465,15 +465,15 @@ compound_traits!(
     }
 );
 
-/// Context provided alongside the initial inputs for a macro expansion.
+/// Globals provided alongside the initial inputs for a macro expansion.
 /// Provides values such as spans which are used frequently to avoid RPC.
 #[derive(Clone)]
-struct ExpnContext<S> {
-    def_site: S,
-    call_site: S,
-    mixed_site: S,
+pub struct ExpnGlobals<S> {
+    pub def_site: S,
+    pub call_site: S,
+    pub mixed_site: S,
 }
 
 compound_traits!(
-    struct ExpnContext<Sp> { def_site, call_site, mixed_site }
+    struct ExpnGlobals<Sp> { def_site, call_site, mixed_site }
 );
