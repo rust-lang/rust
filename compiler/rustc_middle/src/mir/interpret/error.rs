@@ -373,9 +373,11 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             ),
             WriteToReadOnly(a) => write!(f, "writing to {} which is read-only", a),
             DerefFunctionPointer(a) => write!(f, "accessing {} which contains a function", a),
-            ValidationFailure { path: None, msg } => write!(f, "type validation failed: {}", msg),
+            ValidationFailure { path: None, msg } => {
+                write!(f, "constructing invalid value: {}", msg)
+            }
             ValidationFailure { path: Some(path), msg } => {
-                write!(f, "type validation failed at {}: {}", path, msg)
+                write!(f, "constructing invalid value at {}: {}", path, msg)
             }
             InvalidBool(b) => {
                 write!(f, "interpreting an invalid 8-bit value as a bool: 0x{:02x}", b)

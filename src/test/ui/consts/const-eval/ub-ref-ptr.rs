@@ -12,11 +12,11 @@ union MaybeUninit<T: Copy> {
 
 const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
 //~^ ERROR it is undefined behavior to use this value
-//~| type validation failed: encountered an unaligned reference (required 2 byte alignment but found 1)
+//~| constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
 
 const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
 //~^ ERROR it is undefined behavior to use this value
-//~| type validation failed: encountered an unaligned box (required 2 byte alignment but found 1)
+//~| constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
 
 const NULL: &u16 = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
