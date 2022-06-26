@@ -41,7 +41,10 @@ pub struct ScopedJoinHandle<'scope, T>(JoinInner<'scope, T>);
 pub(super) struct ScopeData {
     num_running_threads: AtomicUsize,
     a_thread_panicked: AtomicBool,
-    main_thread: UnsafeCell<Thread>,
+    // SAFETY: `ScopeData` is `&`-shared by all the scoped threads, with no
+    // mutation whatsoever, except when `num_running_threads` drops down to `0`,
+    // which is when the main thread's `scope()` may deallocate this data.
+    main_thread: crate::cell::SyncUnsafeCell<Thread>,
 }
 
 impl ScopeData {
