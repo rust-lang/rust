@@ -124,6 +124,8 @@ pub struct MiriConfig {
     pub mute_stdout_stderr: bool,
     /// The probability of the active thread being preempted at the end of each basic block.
     pub preemption_rate: f64,
+    /// Report the current instruction being executed every N basic blocks.
+    pub report_progress: Option<u32>,
 }
 
 impl Default for MiriConfig {
@@ -154,6 +156,7 @@ impl Default for MiriConfig {
             provenance_mode: ProvenanceMode::Legacy,
             mute_stdout_stderr: false,
             preemption_rate: 0.01, // 1%
+            report_progress: None,
         }
     }
 }

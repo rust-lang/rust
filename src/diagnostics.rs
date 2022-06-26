@@ -68,6 +68,7 @@ pub enum NonHaltingDiagnostic {
     CreatedAlloc(AllocId),
     FreedAlloc(AllocId),
     RejectedIsolatedOp(String),
+    ProgressReport,
 }
 
 /// Level of Miri specific diagnostics
@@ -465,6 +466,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
                     RejectedIsolatedOp(ref op) =>
                         format!("{op} was made to return an error due to isolation"),
+                    ProgressReport =>
+                        format!("progress report: current operation being executed is here"),
                 };
 
                 let (title, diag_level) = match e {

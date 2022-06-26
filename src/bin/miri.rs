@@ -468,6 +468,15 @@ fn main() {
                     ),
             };
             miri_config.preemption_rate = rate;
+        } else if arg == "-Zmiri-report-progress" {
+            // This makes it take a few seconds between progress reports on my laptop.
+            miri_config.report_progress = Some(1_000_000);
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-report-progress=") {
+            let interval = match param.parse::<u32>() {
+                Ok(i) => i,
+                Err(err) => panic!("-Zmiri-report-progress requires a `u32`: {}", err),
+            };
+            miri_config.report_progress = Some(interval);
         } else if let Some(param) = arg.strip_prefix("-Zmiri-measureme=") {
             miri_config.measureme_out = Some(param.to_string());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-backtrace=") {

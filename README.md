@@ -292,6 +292,10 @@ environment variable. We first document the most relevant and most commonly used
 * `-Zmiri-preemption-rate` configures the probability that at the end of a basic block, the active
   thread will be preempted. The default is `0.01` (i.e., 1%). Setting this to `0` disables
   preemption.
+* `-Zmiri-report-progress` makes Miri print the current stacktrace every now and then, so you can
+  tell what it is doing when a program just keeps running. You can customize how frequently the
+  report is printed via `-Zmiri-report-progress=<blocks>`, which prints the report every N basic
+  blocks.
 * `-Zmiri-seed=<hex>` configures the seed of the RNG that Miri uses to resolve non-determinism. This
   RNG is used to pick base addresses for allocations, to determine preemption and failure of
   `compare_exchange_weak`, and to control store buffering for weak memory emulation. When isolation
