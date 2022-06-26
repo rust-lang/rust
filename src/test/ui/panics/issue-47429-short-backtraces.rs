@@ -1,6 +1,7 @@
 // Regression test for #47429: short backtraces were not terminating correctly
 
 // compile-flags: -O
+// compile-flags:-Cstrip=none
 // run-fail
 // check-run-results
 // exec-env:RUST_BACKTRACE=1
