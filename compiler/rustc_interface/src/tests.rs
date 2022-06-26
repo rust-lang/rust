@@ -649,6 +649,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(dlltool, Some(PathBuf::from("custom_dlltool.exe")));
     untracked!(dont_buffer_diagnostics, true);
     untracked!(dump_dep_graph, true);
+    untracked!(dump_drop_tracking_cfg, Some("cfg.dot".to_string()));
     untracked!(dump_mir, Some(String::from("abc")));
     untracked!(dump_mir_dataflow, true);
     untracked!(dump_mir_dir, String::from("abc"));

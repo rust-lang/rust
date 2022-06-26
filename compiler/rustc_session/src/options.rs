@@ -1245,6 +1245,8 @@ options! {
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv) \
         (default: no)"),
+    dump_drop_tracking_cfg: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "dump drop-tracking control-flow graph as a `.dot` file (default: no)"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "dump MIR state to file.
         `val` is used to select which passes and functions to dump. For example:
