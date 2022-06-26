@@ -668,17 +668,16 @@ where
         ct: AbstractConst<'tcx>,
         f: &mut dyn FnMut(AbstractConst<'tcx>) -> ControlFlow<R>,
     ) -> ControlFlow<R> {
-        f(ct)?;
         let root = ct.root(tcx);
-        debug!(?root);
-        match root {
-            Node::Leaf(ct) => {
-                if let Ok(Some(ac)) = AbstractConst::from_const(tcx, ct) {
-                    recurse(tcx, ac, f)
-                } else {
-                    ControlFlow::CONTINUE
-                }
+        if let Node::Leaf(leaf) = root {
+            if let Ok(Some(ac)) = AbstractConst::from_const(tcx, leaf) {
+                return recurse(tcx, ac, f);
             }
+            return ControlFlow::CONTINUE;
+        };
+        f(ct)?;
+        match ct.root(tcx) {
+            Node::Leaf(_) => ControlFlow::CONTINUE,
             Node::Binop(_, l, r) => {
                 recurse(tcx, ct.subtree(l), f)?;
                 recurse(tcx, ct.subtree(r), f)
