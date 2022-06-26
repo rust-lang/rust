@@ -337,7 +337,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     }
                 };
 
-                Err(err.report_as_error(ecx.tcx.at(ecx.cur_span()), &msg))
+                Err(err.report_as_error(ecx.tcx.at(err.span), &msg))
             } else {
                 let hir_id = tcx.hir().local_def_id_to_hir_id(def.as_local().unwrap().did);
                 Err(err.report_as_lint(
