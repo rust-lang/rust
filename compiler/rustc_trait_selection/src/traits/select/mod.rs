@@ -488,20 +488,70 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::WellFormed(arg) => match wf::obligations(
-                    self.infcx,
-                    obligation.param_env,
-                    obligation.cause.body_id,
-                    obligation.recursion_depth + 1,
-                    arg,
-                    obligation.cause.span,
-                ) {
-                    Some(mut obligations) => {
-                        self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
-                        self.evaluate_predicates_recursively(previous_stack, obligations)
+                ty::PredicateKind::WellFormed(arg) => {
+                    // So, there is a bit going on here. First, `WellFormed` predicates
+                    // are coinductive, like trait predicates with auto traits.
+                    // This means that we need to detect if we have recursively
+                    // evaluated `WellFormed(X)`. Otherwise, we would run into
+                    // a "natural" overflow error.
+                    //
+                    // Now, the next question is whether we need to do anything
+                    // special with caching. Considering the following tree:
+                    // - `WF(Foo<T>)`
+                    //   - `Bar<T>: Send`
+                    //     - `WF(Foo<T>)`
+                    //   - `Foo<T>: Trait`
+                    // In this case, the innermost `WF(Foo<T>)` should return
+                    // `EvaluatedToOk`, since it's coinductive. Then if
+                    // `Bar<T>: Send` is resolved to `EvaluatedToOk`, it can be
+                    // inserted into a cache (because without thinking about `WF`
+                    // goals, it isn't in a cycle). If `Foo<T>: Trait` later doesn't
+                    // hold, then `Bar<T>: Send` shouldn't hold. Therefore, we
+                    // *do* need to keep track of coinductive cycles.
+
+                    let cache = previous_stack.cache;
+                    let dfn = cache.next_dfn();
+
+                    for stack_arg in previous_stack.cache.wf_tys.borrow().iter().rev() {
+                        if stack_arg.0 != arg {
+                            continue;
+                        }
+                        debug!("WellFormed({:?}) on stack", arg);
+                        if let Some(stack) = previous_stack.head {
+                            stack.update_reached_depth(stack_arg.1);
+                        }
+                        return Ok(EvaluatedToOk);
                     }
-                    None => Ok(EvaluatedToAmbig),
-                },
+
+                    match wf::obligations(
+                        self.infcx,
+                        obligation.param_env,
+                        obligation.cause.body_id,
+                        obligation.recursion_depth + 1,
+                        arg,
+                        obligation.cause.span,
+                    ) {
+                        Some(mut obligations) => {
+                            self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
+
+                            cache.wf_tys.borrow_mut().push((arg, previous_stack.depth()));
+                            let result =
+                                self.evaluate_predicates_recursively(previous_stack, obligations);
+                            cache.wf_tys.borrow_mut().pop();
+
+                            let result = result?;
+
+                            if !result.must_apply_modulo_regions() {
+                                cache.on_failure(dfn);
+                            }
+
+                            cache.on_completion(dfn);
+
+                            Ok(result)
+                        }
+                        None => Ok(EvaluatedToAmbig),
+                    }
+                }
 
                 ty::PredicateKind::TypeOutlives(pred) => {
                     // A global type with no late-bound regions can only
@@ -718,6 +768,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?fresh_trait_pred);
 
+        // If a trait predicate is in the (local or global) evaluation cache,
+        // then we know it holds without cycles.
         if let Some(result) = self.check_evaluation_cache(param_env, fresh_trait_pred) {
             debug!(?result, "CACHE HIT");
             return Ok(result);
@@ -921,7 +973,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// - it also appears in the backtrace at some position `X`,
     /// - all the predicates at positions `X..` between `X` and the top are
     ///   also defaulted traits.
-    pub fn coinductive_match<I>(&mut self, mut cycle: I) -> bool
+    pub(crate) fn coinductive_match<I>(&mut self, mut cycle: I) -> bool
     where
         I: Iterator<Item = ty::Predicate<'tcx>>,
     {
@@ -931,6 +983,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
         let result = match predicate.kind().skip_binder() {
             ty::PredicateKind::Trait(ref data) => self.tcx().trait_is_auto(data.def_id()),
+            ty::PredicateKind::WellFormed(_) => true,
             _ => false,
         };
         debug!(?predicate, ?result, "coinductive_predicate");
@@ -2411,6 +2464,8 @@ struct ProvisionalEvaluationCache<'tcx> {
     ///   all cache values whose DFN is >= 4 -- in this case, that
     ///   means the cached value for `F`.
     map: RefCell<FxHashMap<ty::PolyTraitPredicate<'tcx>, ProvisionalEvaluation>>,
+
+    wf_tys: RefCell<Vec<(ty::GenericArg<'tcx>, usize)>>,
 }
 
 /// A cache value for the provisional cache: contains the depth-first
@@ -2424,7 +2479,7 @@ struct ProvisionalEvaluation {
 
 impl<'tcx> Default for ProvisionalEvaluationCache<'tcx> {
     fn default() -> Self {
-        Self { dfn: Cell::new(0), map: Default::default() }
+        Self { dfn: Cell::new(0), map: Default::default(), wf_tys: Default::default() }
     }
 }
 
