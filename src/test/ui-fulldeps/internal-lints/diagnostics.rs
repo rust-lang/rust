@@ -16,14 +16,14 @@ use rustc_session::{parse::ParseSess, SessionDiagnostic};
 use rustc_span::Span;
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "parser-expect-path")]
+#[error(parser::expect_path)]
 struct DeriveSessionDiagnostic {
     #[primary_span]
     span: Span,
 }
 
 #[derive(SessionSubdiagnostic)]
-#[note(slug = "note")]
+#[note(parser::add_paren)]
 struct Note {
     #[primary_span]
     span: Span,
