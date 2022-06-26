@@ -96,11 +96,6 @@ pub(super) fn note_and_explain_region<'tcx>(
             msg_span_from_free_region(tcx, region, alt_span)
         }
 
-        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("the empty lifetime".to_owned(), alt_span),
-
-        // uh oh, hope no user ever sees THIS
-        ty::ReEmpty(ui) => (format!("the empty lifetime in universe {:?}", ui), alt_span),
-
         ty::RePlaceholder(_) => return,
 
         // FIXME(#13998) RePlaceholder should probably print like
@@ -139,8 +134,6 @@ fn msg_span_from_free_region<'tcx>(
             (msg, Some(span))
         }
         ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
-        ty::ReEmpty(ty::UniverseIndex::ROOT) => ("an empty lifetime".to_owned(), alt_span),
-        ty::ReEmpty(ui) => (format!("an empty lifetime in universe {:?}", ui), alt_span),
         _ => bug!("{:?}", region),
     }
 }
@@ -250,17 +243,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 
     // Explain the region we are capturing.
     match *hidden_region {
-        ty::ReEmpty(ty::UniverseIndex::ROOT) => {
-            // All lifetimes shorter than the function body are `empty` in
-            // lexical region resolution. The default explanation of "an empty
-            // lifetime" isn't really accurate here.
-            let message = format!(
-                "hidden type `{}` captures lifetime smaller than the function body",
-                hidden_ty
-            );
-            err.span_note(span, &message);
-        }
-        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty(_) => {
+        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
             // Assuming regionck succeeded (*), we ought to always be
             // capturing *some* region from the fn header, and hence it
             // ought to be free. So under normal circumstances, we will go

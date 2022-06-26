@@ -485,10 +485,6 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
                 })
                 .intern(interner)
             }
-            ty::ReEmpty(ui) => {
-                chalk_ir::LifetimeData::Empty(chalk_ir::UniverseIndex { counter: ui.index() })
-                    .intern(interner)
-            }
             ty::ReErased => chalk_ir::LifetimeData::Erased.intern(interner),
         }
     }
@@ -510,8 +506,8 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
                 name: ty::BoundRegionKind::BrAnon(p.idx as u32),
             }),
             chalk_ir::LifetimeData::Static => return interner.tcx.lifetimes.re_static,
-            chalk_ir::LifetimeData::Empty(ui) => {
-                ty::ReEmpty(ty::UniverseIndex::from_usize(ui.counter))
+            chalk_ir::LifetimeData::Empty(_) => {
+                bug!("Chalk should not have been passed an empty lifetime.")
             }
             chalk_ir::LifetimeData::Erased => return interner.tcx.lifetimes.re_erased,
             chalk_ir::LifetimeData::Phantom(void, _) => match *void {},

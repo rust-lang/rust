@@ -16,7 +16,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
+use rustc_middle::ty::{ReEarlyBound, ReErased, ReFree, ReStatic};
 use rustc_middle::ty::{ReLateBound, RePlaceholder, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
@@ -261,13 +261,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                                         cur_region
                                     }
 
-                                    ReEmpty(b_ui) => {
-                                        // Empty regions are ordered according to the universe
-                                        // they are associated with.
-                                        let ui = a_universe.min(b_ui);
-                                        self.tcx().mk_region(ReEmpty(ui))
-                                    }
-
                                     RePlaceholder(placeholder) => {
                                         // If the empty and placeholder regions are in the same universe,
                                         // then the LUB is the Placeholder region (which is the cur_region).
@@ -399,13 +392,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         a_region
                     }
 
-                    ReEmpty(a_ui) => {
-                        // Empty regions are ordered according to the universe
-                        // they are associated with.
-                        let ui = a_ui.min(empty_ui);
-                        self.tcx().mk_region(ReEmpty(ui))
-                    }
-
                     RePlaceholder(placeholder) => {
                         // If this empty region is from a universe that can
                         // name the placeholder, then the placeholder is
@@ -428,9 +414,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 // check below for a common case, here purely as an
                 // optimization.
                 let b_universe = self.var_infos[b_vid].universe;
-                if let ReEmpty(a_universe) = *a_region && a_universe == b_universe {
-                    return false;
-                }
 
                 let mut lub = self.lub_concrete_regions(a_region, cur_region);
                 if lub == cur_region {
@@ -470,7 +453,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 // they are associated with.
                 a_ui.min(b_ui) == b_ui
             }
-            (VarValue::Value(a), VarValue::Empty(b_ui)) => {
+            (VarValue::Value(a), VarValue::Empty(_)) => {
                 match *a {
                     ReLateBound(..) | ReErased => {
                         bug!("cannot relate region: {:?}", a);
@@ -491,12 +474,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         // and scope regions.
 
                         false
-                    }
-
-                    ReEmpty(a_ui) => {
-                        // Empty regions are ordered according to the universe
-                        // they are associated with.
-                        a_ui.min(b_ui) == b_ui
                     }
 
                     RePlaceholder(_) => {
@@ -524,12 +501,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         // All empty regions are less than early-bound, free,
                         // and scope regions.
                         true
-                    }
-
-                    ReEmpty(b_ui) => {
-                        // Empty regions are ordered according to the universe
-                        // they are associated with.
-                        a_ui.min(b_ui) == b_ui
                     }
 
                     RePlaceholder(placeholder) => {
@@ -597,37 +568,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             (ReStatic, _) | (_, ReStatic) => {
                 // nothing lives longer than `'static`
                 self.tcx().lifetimes.re_static
-            }
-
-            (ReEmpty(_), ReEarlyBound(_) | ReFree(_)) => {
-                // All empty regions are less than early-bound, free,
-                // and scope regions.
-                b
-            }
-
-            (ReEarlyBound(_) | ReFree(_), ReEmpty(_)) => {
-                // All empty regions are less than early-bound, free,
-                // and scope regions.
-                a
-            }
-
-            (ReEmpty(a_ui), ReEmpty(b_ui)) => {
-                // Empty regions are ordered according to the universe
-                // they are associated with.
-                let ui = a_ui.min(b_ui);
-                self.tcx().mk_region(ReEmpty(ui))
-            }
-
-            (ReEmpty(empty_ui), RePlaceholder(placeholder))
-            | (RePlaceholder(placeholder), ReEmpty(empty_ui)) => {
-                // If this empty region is from a universe that can
-                // name the placeholder, then the placeholder is
-                // larger; otherwise, the only ancestor is `'static`.
-                if empty_ui.can_name(placeholder.universe) {
-                    self.tcx().mk_region(RePlaceholder(placeholder))
-                } else {
-                    self.tcx().lifetimes.re_static
-                }
             }
 
             (ReEarlyBound(_) | ReFree(_), ReEarlyBound(_) | ReFree(_)) => {
@@ -1088,9 +1028,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 ty::ReVar(rid) => match var_values.values[rid] {
                     VarValue::ErrorValue => false,
                     VarValue::Empty(_) => true,
-                    VarValue::Value(min) => matches!(*min, ty::ReEmpty(_)),
+                    VarValue::Value(_) => false,
                 },
-                _ => matches!(*min, ty::ReEmpty(_)),
+                _ => false,
             },
 
             VerifyBound::AnyBound(bs) => {

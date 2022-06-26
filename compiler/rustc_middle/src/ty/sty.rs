@@ -1511,7 +1511,6 @@ impl<'tcx> Region<'tcx> {
             ty::ReStatic => true,
             ty::ReVar(..) => false,
             ty::RePlaceholder(placeholder) => placeholder.name.is_named(),
-            ty::ReEmpty(_) => false,
             ty::ReErased => false,
         }
     }
@@ -1534,11 +1533,6 @@ impl<'tcx> Region<'tcx> {
     #[inline]
     pub fn is_placeholder(self) -> bool {
         matches!(*self, ty::RePlaceholder(..))
-    }
-
-    #[inline]
-    pub fn is_empty(self) -> bool {
-        matches!(*self, ty::ReEmpty(..))
     }
 
     #[inline]
@@ -1572,7 +1566,7 @@ impl<'tcx> Region<'tcx> {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
             }
-            ty::ReEmpty(_) | ty::ReStatic => {
+            ty::ReStatic => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReLateBound(..) => {

@@ -305,8 +305,7 @@ fn encode_region<'tcx>(
         | RegionKind::ReFree(..)
         | RegionKind::ReStatic
         | RegionKind::ReVar(..)
-        | RegionKind::RePlaceholder(..)
-        | RegionKind::ReEmpty(..) => {
+        | RegionKind::RePlaceholder(..) => {
             bug!("encode_region: unexpected `{:?}`", region.kind());
         }
     }

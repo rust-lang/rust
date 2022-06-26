@@ -241,7 +241,6 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
         | ty::ReFree(..)
         | ty::ReVar(..)
         | ty::RePlaceholder(..)
-        | ty::ReEmpty(_)
         | ty::ReErased => {
             debug!("cannot clean region {:?}", region);
             None
@@ -338,10 +337,6 @@ fn clean_region_outlives_predicate<'tcx>(
 ) -> Option<WherePredicate> {
     let ty::OutlivesPredicate(a, b) = pred;
 
-    if a.is_empty() && b.is_empty() {
-        return None;
-    }
-
     Some(WherePredicate::RegionPredicate {
         lifetime: clean_middle_region(a).expect("failed to clean lifetime"),
         bounds: vec![GenericBound::Outlives(
@@ -355,10 +350,6 @@ fn clean_type_outlives_predicate<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
     let ty::OutlivesPredicate(ty, lt) = pred;
-
-    if lt.is_empty() {
-        return None;
-    }
 
     Some(WherePredicate::BoundPredicate {
         ty: clean_middle_ty(ty, cx, None),

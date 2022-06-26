@@ -688,7 +688,6 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
 
             ty::RePlaceholder(..)
             | ty::ReVar(..)
-            | ty::ReEmpty(_)
             | ty::ReStatic
             | ty::ReEarlyBound(..)
             | ty::ReFree(..) => {
@@ -900,7 +899,6 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
 
             ty::RePlaceholder(..)
             | ty::ReVar(..)
-            | ty::ReEmpty(_)
             | ty::ReStatic
             | ty::ReEarlyBound(..)
             | ty::ReFree(..) => {

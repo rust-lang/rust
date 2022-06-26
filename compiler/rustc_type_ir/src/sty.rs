@@ -3,14 +3,14 @@
 use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 use std::{fmt, hash};
 
+use crate::DebruijnIndex;
 use crate::FloatTy;
+use crate::HashStableContext;
 use crate::IntTy;
 use crate::Interner;
 use crate::TyDecoder;
 use crate::TyEncoder;
 use crate::UintTy;
-use crate::UniverseIndex;
-use crate::{DebruijnIndex, HashStableContext};
 
 use self::RegionKind::*;
 use self::TyKind::*;
@@ -1023,14 +1023,6 @@ pub enum RegionKind<I: Interner> {
     /// Should not exist outside of type inference.
     RePlaceholder(I::PlaceholderRegion),
 
-    /// Empty lifetime is for data that is never accessed.  We tag the
-    /// empty lifetime with a universe -- the idea is that we don't
-    /// want `exists<'a> { forall<'b> { 'b: 'a } }` to be satisfiable.
-    /// Therefore, the `'empty` in a universe `U` is less than all
-    /// regions visible from `U`, but not less than regions not visible
-    /// from `U`.
-    ReEmpty(UniverseIndex),
-
     /// Erased region, used by trait selection, in MIR and during codegen.
     ReErased,
 }
@@ -1046,8 +1038,7 @@ const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
         ReStatic => 3,
         ReVar(_) => 4,
         RePlaceholder(_) => 5,
-        ReEmpty(_) => 6,
-        ReErased => 7,
+        ReErased => 6,
     }
 }
 
@@ -1072,7 +1063,6 @@ impl<I: Interner> Clone for RegionKind<I> {
             ReStatic => ReStatic,
             ReVar(a) => ReVar(a.clone()),
             RePlaceholder(a) => RePlaceholder(a.clone()),
-            ReEmpty(a) => ReEmpty(a.clone()),
             ReErased => ReErased,
         }
     }
@@ -1099,7 +1089,6 @@ impl<I: Interner> PartialEq for RegionKind<I> {
                 (&RePlaceholder(ref __self_0), &RePlaceholder(ref __arg_1_0)) => {
                     __self_0 == __arg_1_0
                 }
-                (&ReEmpty(ref __self_0), &ReEmpty(ref __arg_1_0)) => __self_0 == __arg_1_0,
                 (&ReErased, &ReErased) => true,
                 _ => true,
             }
@@ -1144,7 +1133,6 @@ impl<I: Interner> Ord for RegionKind<I> {
                 (&RePlaceholder(ref __self_0), &RePlaceholder(ref __arg_1_0)) => {
                     Ord::cmp(__self_0, __arg_1_0)
                 }
-                (&ReEmpty(ref __self_0), &ReEmpty(ref __arg_1_0)) => Ord::cmp(__self_0, __arg_1_0),
                 (&ReErased, &ReErased) => Ordering::Equal,
                 _ => Ordering::Equal,
             }
@@ -1182,10 +1170,6 @@ impl<I: Interner> hash::Hash for RegionKind<I> {
                 hash::Hash::hash(&regionkind_discriminant(self), state);
                 hash::Hash::hash(__self_0, state)
             }
-            (&ReEmpty(ref __self_0),) => {
-                hash::Hash::hash(&regionkind_discriminant(self), state);
-                hash::Hash::hash(__self_0, state)
-            }
             (&ReErased,) => {
                 hash::Hash::hash(&regionkind_discriminant(self), state);
             }
@@ -1210,8 +1194,6 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
             ReVar(ref vid) => vid.fmt(f),
 
             RePlaceholder(placeholder) => write!(f, "RePlaceholder({:?})", placeholder),
-
-            ReEmpty(ui) => write!(f, "ReEmpty({:?})", ui),
 
             ReErased => write!(f, "ReErased"),
         }
@@ -1247,9 +1229,6 @@ where
             RePlaceholder(a) => e.emit_enum_variant(disc, |e| {
                 a.encode(e);
             }),
-            ReEmpty(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
             ReErased => e.emit_enum_variant(disc, |_| {}),
         }
     }
@@ -1272,8 +1251,7 @@ where
             3 => ReStatic,
             4 => ReVar(Decodable::decode(d)),
             5 => RePlaceholder(Decodable::decode(d)),
-            6 => ReEmpty(Decodable::decode(d)),
-            7 => ReErased,
+            6 => ReErased,
             _ => panic!(
                 "{}",
                 format!(
@@ -1304,9 +1282,6 @@ where
         match self {
             ReErased | ReStatic => {
                 // No variant fields to hash for these ...
-            }
-            ReEmpty(universe) => {
-                universe.hash_stable(hcx, hasher);
             }
             ReLateBound(db, br) => {
                 db.hash_stable(hcx, hasher);
