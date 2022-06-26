@@ -44,7 +44,7 @@ impl Thread {
     pub fn join(self) {}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct BuilderOptions;
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {

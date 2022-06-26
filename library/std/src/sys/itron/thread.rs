@@ -292,7 +292,7 @@ impl Drop for Thread {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct BuilderOptions;
 
 pub mod guard {

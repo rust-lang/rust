@@ -35,7 +35,7 @@ impl Thread {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct BuilderOptions;
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
