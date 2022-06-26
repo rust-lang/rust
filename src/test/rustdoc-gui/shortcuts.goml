@@ -8,7 +8,6 @@ press-key: "Escape"
 assert-false: "input.search-input:focus"
 // We now check for the help popup.
 press-key: "?"
-assert-css: ("#help", {"display": "flex"})
-assert-false: "#help.hidden"
+assert-css: ("#help-button .popover", {"display": "block"})
 press-key: "Escape"
-assert-css: ("#help.hidden", {"display": "none"})
+assert-css: ("#help-button .popover", {"display": "none"})
