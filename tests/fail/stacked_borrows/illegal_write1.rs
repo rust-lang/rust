@@ -3,9 +3,7 @@ fn main() {
     let xref = &*target;
     {
         let x: *mut u32 = xref as *const _ as *mut _;
-        unsafe {
-            *x = 42; // invalidates shared ref, activates raw
-        }
+        unsafe { *x = 42 }; // invalidates shared ref, activates raw
     }
     let _x = *xref; //~ ERROR borrow stack
 }

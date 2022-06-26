@@ -1,8 +1,8 @@
 error: Undefined Behavior: pointer to ALLOC was dereferenced after this allocation got freed
   --> $DIR/zst2.rs:LL:CC
    |
-LL |         *x = zst_val;
-   |         ^^^^^^^^^^^^ pointer to ALLOC was dereferenced after this allocation got freed
+LL |     unsafe { *x = zst_val };
+   |              ^^^^^^^^^^^^ pointer to ALLOC was dereferenced after this allocation got freed
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

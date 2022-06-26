@@ -18,9 +18,7 @@ fn test_fence_sync() {
     let evil_ptr = EvilSend(ptr);
 
     let j1 = spawn(move || {
-        unsafe {
-            *evil_ptr.0 = 1;
-        }
+        unsafe { *evil_ptr.0 = 1 };
         fence(Ordering::Release);
         SYNC.store(1, Ordering::Relaxed)
     });
