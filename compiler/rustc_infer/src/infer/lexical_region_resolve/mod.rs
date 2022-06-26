@@ -460,6 +460,90 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
     }
 
+    /// True if `a <= b`.
+    fn sub_region_values(&self, a: VarValue<'tcx>, b: VarValue<'tcx>) -> bool {
+        match (a, b) {
+            // Error region is `'static`
+            (VarValue::ErrorValue, _) | (_, VarValue::ErrorValue) => return true,
+            (VarValue::Empty(a_ui), VarValue::Empty(b_ui)) => {
+                // Empty regions are ordered according to the universe
+                // they are associated with.
+                a_ui.min(b_ui) == b_ui
+            }
+            (VarValue::Value(a), VarValue::Empty(b_ui)) => {
+                match *a {
+                    ReLateBound(..) | ReErased => {
+                        bug!("cannot relate region: {:?}", a);
+                    }
+
+                    ReVar(v_id) => {
+                        span_bug!(
+                            self.var_infos[v_id].origin.span(),
+                            "lub_concrete_regions invoked with non-concrete region: {:?}",
+                            a
+                        );
+                    }
+
+                    ReStatic | ReEarlyBound(_) | ReFree(_) => {
+                        // nothing lives longer than `'static`
+
+                        // All empty regions are less than early-bound, free,
+                        // and scope regions.
+
+                        false
+                    }
+
+                    ReEmpty(a_ui) => {
+                        // Empty regions are ordered according to the universe
+                        // they are associated with.
+                        a_ui.min(b_ui) == b_ui
+                    }
+
+                    RePlaceholder(_) => {
+                        // The LUB is either `a` or `'static`
+                        false
+                    }
+                }
+            }
+            (VarValue::Empty(a_ui), VarValue::Value(b)) => {
+                match *b {
+                    ReLateBound(..) | ReErased => {
+                        bug!("cannot relate region: {:?}", b);
+                    }
+
+                    ReVar(v_id) => {
+                        span_bug!(
+                            self.var_infos[v_id].origin.span(),
+                            "lub_concrete_regions invoked with non-concrete regions: {:?}",
+                            b
+                        );
+                    }
+
+                    ReStatic | ReEarlyBound(_) | ReFree(_) => {
+                        // nothing lives longer than `'static`
+                        // All empty regions are less than early-bound, free,
+                        // and scope regions.
+                        true
+                    }
+
+                    ReEmpty(b_ui) => {
+                        // Empty regions are ordered according to the universe
+                        // they are associated with.
+                        a_ui.min(b_ui) == b_ui
+                    }
+
+                    RePlaceholder(placeholder) => {
+                        // If this empty region is from a universe that can
+                        // name the placeholder, then the placeholder is
+                        // larger; otherwise, the only ancestor is `'static`.
+                        if a_ui.can_name(placeholder.universe) { true } else { false }
+                    }
+                }
+            }
+            (VarValue::Value(a), VarValue::Value(b)) => self.sub_concrete_regions(a, b),
+        }
+    }
+
     /// True if `a <= b`, but not defined over inference variables.
     #[instrument(level = "trace", skip(self))]
     fn sub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> bool {
@@ -989,12 +1073,25 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
 
             VerifyBound::OutlivedBy(r) => {
-                self.sub_concrete_regions(min, var_values.normalize(self.tcx(), *r))
+                let a = match *min {
+                    ty::ReVar(rid) => var_values.values[rid],
+                    _ => VarValue::Value(min),
+                };
+                let b = match **r {
+                    ty::ReVar(rid) => var_values.values[rid],
+                    _ => VarValue::Value(*r),
+                };
+                self.sub_region_values(a, b)
             }
 
-            VerifyBound::IsEmpty => {
-                matches!(*min, ty::ReEmpty(_))
-            }
+            VerifyBound::IsEmpty => match *min {
+                ty::ReVar(rid) => match var_values.values[rid] {
+                    VarValue::ErrorValue => false,
+                    VarValue::Empty(_) => true,
+                    VarValue::Value(min) => matches!(*min, ty::ReEmpty(_)),
+                },
+                _ => matches!(*min, ty::ReEmpty(_)),
+            },
 
             VerifyBound::AnyBound(bs) => {
                 bs.iter().any(|b| self.bound_is_met(b, var_values, generic_ty, min))
@@ -1036,7 +1133,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
     ) -> ty::Region<'tcx> {
         let result = match *r {
             ty::ReVar(rid) => match self.values[rid] {
-                VarValue::Empty(vid_universe) => tcx.mk_region(ty::ReEmpty(vid_universe)),
+                VarValue::Empty(_) => r,
                 VarValue::Value(r) => r,
                 VarValue::ErrorValue => tcx.lifetimes.re_static,
             },
