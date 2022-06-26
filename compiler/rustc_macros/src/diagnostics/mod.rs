@@ -22,14 +22,14 @@ use synstructure::Structure;
 /// # extern crate rust_middle;
 /// # use rustc_middle::ty::Ty;
 /// #[derive(SessionDiagnostic)]
-/// #[error(code = "E0505", slug = "borrowck-move-out-of-borrow")]
+/// #[error(borrowck::move_out_of_borrow, code = "E0505")]
 /// pub struct MoveOutOfBorrowError<'tcx> {
 ///     pub name: Ident,
 ///     pub ty: Ty<'tcx>,
 ///     #[primary_span]
 ///     #[label]
 ///     pub span: Span,
-///     #[label = "first-borrow-label"]
+///     #[label(borrowck::first_borrow_label)]
 ///     pub first_borrow_span: Span,
 ///     #[suggestion(code = "{name}.clone()")]
 ///     pub clone_sugg: Option<(Span, Applicability)>
@@ -72,12 +72,12 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// ```ignore (rust)
 /// #[derive(SessionSubdiagnostic)]
 /// pub enum ExpectedIdentifierLabel<'tcx> {
-///     #[label(slug = "parser-expected-identifier")]
+///     #[label(parser::expected_identifier)]
 ///     WithoutFound {
 ///         #[primary_span]
 ///         span: Span,
 ///     }
-///     #[label(slug = "parser-expected-identifier-found")]
+///     #[label(parser::expected_identifier_found)]
 ///     WithFound {
 ///         #[primary_span]
 ///         span: Span,
@@ -86,7 +86,7 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// }
 ///
 /// #[derive(SessionSubdiagnostic)]
-/// #[suggestion_verbose(slug = "parser-raw-identifier")]
+/// #[suggestion_verbose(parser::raw_identifier)]
 /// pub struct RawIdentifierSuggestion<'tcx> {
 ///     #[primary_span]
 ///     span: Span,

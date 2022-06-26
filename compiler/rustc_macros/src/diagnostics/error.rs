@@ -39,6 +39,19 @@ pub(crate) fn _throw_err(
     SessionDiagnosticDeriveError::ErrorHandled
 }
 
+/// Helper function for printing `syn::Path` - doesn't handle arguments in paths and these are
+/// unlikely to come up much in use of the macro.
+fn path_to_string(path: &syn::Path) -> String {
+    let mut out = String::new();
+    for (i, segment) in path.segments.iter().enumerate() {
+        if i > 0 || path.leading_colon.is_some() {
+            out.push_str("::");
+        }
+        out.push_str(&segment.ident.to_string());
+    }
+    out
+}
+
 /// Returns an error diagnostic on span `span` with msg `msg`.
 pub(crate) fn span_err(span: impl MultiSpan, msg: &str) -> Diagnostic {
     Diagnostic::spanned(span, Level::Error, msg)
@@ -61,15 +74,13 @@ pub(crate) use throw_span_err;
 /// Returns an error diagnostic for an invalid attribute.
 pub(crate) fn invalid_attr(attr: &Attribute, meta: &Meta) -> Diagnostic {
     let span = attr.span().unwrap();
-    let name = attr.path.segments.last().unwrap().ident.to_string();
-    let name = name.as_str();
-
+    let path = path_to_string(&attr.path);
     match meta {
-        Meta::Path(_) => span_err(span, &format!("`#[{}]` is not a valid attribute", name)),
+        Meta::Path(_) => span_err(span, &format!("`#[{}]` is not a valid attribute", path)),
         Meta::NameValue(_) => {
-            span_err(span, &format!("`#[{} = ...]` is not a valid attribute", name))
+            span_err(span, &format!("`#[{} = ...]` is not a valid attribute", path))
         }
-        Meta::List(_) => span_err(span, &format!("`#[{}(...)]` is not a valid attribute", name)),
+        Meta::List(_) => span_err(span, &format!("`#[{}(...)]` is not a valid attribute", path)),
     }
 }
 
@@ -101,18 +112,16 @@ pub(crate) fn invalid_nested_attr(attr: &Attribute, nested: &NestedMeta) -> Diag
     };
 
     let span = meta.span().unwrap();
-    let nested_name = meta.path().segments.last().unwrap().ident.to_string();
-    let nested_name = nested_name.as_str();
+    let path = path_to_string(meta.path());
     match meta {
-        Meta::NameValue(..) => span_err(
-            span,
-            &format!("`#[{}({} = ...)]` is not a valid attribute", name, nested_name),
-        ),
+        Meta::NameValue(..) => {
+            span_err(span, &format!("`#[{}({} = ...)]` is not a valid attribute", name, path))
+        }
         Meta::Path(..) => {
-            span_err(span, &format!("`#[{}({})]` is not a valid attribute", name, nested_name))
+            span_err(span, &format!("`#[{}({})]` is not a valid attribute", name, path))
         }
         Meta::List(..) => {
-            span_err(span, &format!("`#[{}({}(...))]` is not a valid attribute", name, nested_name))
+            span_err(span, &format!("`#[{}({}(...))]` is not a valid attribute", name, path))
         }
     }
 }
