@@ -1560,6 +1560,12 @@ public:
             Fn->getName() == "__mth_i_ipowi") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
         }
+        if (Fn->getName().contains("strcmp")) {
+          Fn->addParamAttr(0, Attribute::ReadOnly);
+          Fn->addParamAttr(1, Attribute::ReadOnly);
+          Fn->addFnAttr(Attribute::ReadOnly);
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadOnly);
+        }
         if (Fn->getName() == "f90io_fmtw_end" ||
             Fn->getName() == "f90io_unf_end") {
           Fn->addFnAttr(Attribute::InaccessibleMemOnly);

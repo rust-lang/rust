@@ -4039,6 +4039,14 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
+    if (funcName == "strcmp") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      return;
+    }
     if (funcName == "bcmp") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
