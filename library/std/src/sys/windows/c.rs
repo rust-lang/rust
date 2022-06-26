@@ -607,7 +607,7 @@ pub struct SOCKADDR {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct FILETIME {
     pub dwLowDateTime: DWORD,
     pub dwHighDateTime: DWORD,
@@ -875,6 +875,12 @@ extern "system" {
     pub fn GetSystemDirectoryW(lpBuffer: LPWSTR, uSize: UINT) -> UINT;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
     pub fn SetFileAttributesW(lpFileName: LPCWSTR, dwFileAttributes: DWORD) -> BOOL;
+    pub fn SetFileTime(
+        hFile: BorrowedHandle<'_>,
+        lpCreationTime: Option<&FILETIME>,
+        lpLastAccessTime: Option<&FILETIME>,
+        lpLastWriteTime: Option<&FILETIME>,
+    ) -> BOOL;
     pub fn SetLastError(dwErrCode: DWORD);
     pub fn GetCommandLineW() -> LPWSTR;
     pub fn GetTempPathW(nBufferLength: DWORD, lpBuffer: LPCWSTR) -> DWORD;
