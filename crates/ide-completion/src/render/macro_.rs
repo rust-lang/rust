@@ -46,7 +46,7 @@ fn render(
         ctx.source_range()
     };
 
-    let name = name.to_smol_str();
+    let (name, escaped_name) = (name.to_smol_str(), name.escaped().to_smol_str());
     let docs = ctx.docs(macro_);
     let docs_str = docs.as_ref().map(Documentation::as_str).unwrap_or_default();
     let is_fn_like = macro_.is_fn_like(completion.db);
@@ -64,20 +64,18 @@ fn render(
         .set_documentation(docs)
         .set_relevance(ctx.completion_relevance());
 
-    let name = &*name;
     match ctx.snippet_cap() {
         Some(cap) if needs_bang && !has_call_parens => {
-            let snippet = format!("{}!{}$0{}", name, bra, ket);
-            let lookup = banged_name(name);
+            let snippet = format!("{}!{}$0{}", escaped_name, bra, ket);
+            let lookup = banged_name(&name);
             item.insert_snippet(cap, snippet).lookup_by(lookup);
         }
         _ if needs_bang => {
-            let banged_name = banged_name(name);
-            item.insert_text(banged_name.clone()).lookup_by(banged_name);
+            item.insert_text(banged_name(&escaped_name)).lookup_by(banged_name(&name));
         }
         _ => {
             cov_mark::hit!(dont_insert_macro_call_parens_unncessary);
-            item.insert_text(name);
+            item.insert_text(escaped_name);
         }
     };
     if let Some(import_to_add) = ctx.import_to_add {

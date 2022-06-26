@@ -20,6 +20,9 @@ pub struct ModPath {
     segments: Vec<Name>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct EscapedModPath<'a>(&'a ModPath);
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PathKind {
     Plain,
@@ -97,10 +100,12 @@ impl ModPath {
             _ => None,
         }
     }
-}
 
-impl Display for ModPath {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    pub fn escaped(&self) -> EscapedModPath {
+        EscapedModPath(self)
+    }
+
+    fn _fmt(&self, f: &mut fmt::Formatter<'_>, escaped: bool) -> fmt::Result {
         let mut first_segment = true;
         let mut add_segment = |s| -> fmt::Result {
             if !first_segment {
@@ -127,9 +132,25 @@ impl Display for ModPath {
                 f.write_str("::")?;
             }
             first_segment = false;
-            segment.fmt(f)?;
+            if escaped {
+                segment.escaped().fmt(f)?
+            } else {
+                segment.fmt(f)?
+            };
         }
         Ok(())
+    }
+}
+
+impl Display for ModPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self._fmt(f, false)
+    }
+}
+
+impl<'a> Display for EscapedModPath<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0._fmt(f, true)
     }
 }
 

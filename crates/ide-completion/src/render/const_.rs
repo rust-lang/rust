@@ -12,7 +12,8 @@ pub(crate) fn render_const(ctx: RenderContext<'_>, const_: hir::Const) -> Option
 
 fn render(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> {
     let db = ctx.db();
-    let name = const_.name(db)?.to_smol_str();
+    let name = const_.name(db)?;
+    let (name, escaped_name) = (name.to_smol_str(), name.escaped().to_smol_str());
     let detail = const_.display(db).to_string();
 
     let mut item = CompletionItem::new(SymbolKind::Const, ctx.source_range(), name.clone());
@@ -24,9 +25,9 @@ fn render(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> 
     if let Some(actm) = const_.as_assoc_item(db) {
         if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
             item.trait_name(trt.name(db).to_smol_str());
-            item.insert_text(name);
         }
     }
+    item.insert_text(escaped_name);
 
     Some(item.build())
 }
