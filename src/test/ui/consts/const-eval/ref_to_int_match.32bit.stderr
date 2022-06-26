@@ -24,3 +24,16 @@ LL |         10..=BAR => {},
 
 error: aborting due to 3 previous errors
 
+Future incompatibility report: Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/ref_to_int_match.rs:25:27
+   |
+LL | const BAR: Int = unsafe { Foo { r: &42 }.f };
+   | --------------------------^^^^^^^^^^^^^^^^---
+   |                           |
+   |                           unable to turn pointer into raw bytes
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
