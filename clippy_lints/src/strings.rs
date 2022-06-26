@@ -60,6 +60,12 @@ declare_clippy_lint! {
     /// let x = "Hello".to_owned();
     /// x + ", World";
     /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// let x = "Hello".to_owned();
+    /// x.push_str(", World");
+    /// ```
     #[clippy::version = "pre 1.29.0"]
     pub STRING_ADD,
     restriction,
