@@ -123,6 +123,7 @@ pub struct Generics {
 
     pub has_self: bool,
     pub has_constness: bool,
+    pub parent_has_constness: bool,
     pub has_late_bound_regions: Option<Span>,
 }
 
@@ -240,6 +241,7 @@ impl<'tcx> Generics {
     }
 
     /// Returns the `ConstnessArg`
+    // TODO just use self.has_constness?
     pub fn has_constness_param(&'tcx self) -> bool {
         self.params.iter().any(|param| matches!(param.kind, ty::GenericParamDefKind::Constness))
     }
@@ -294,6 +296,15 @@ impl<'tcx> Generics {
     ) -> &'tcx [ty::GenericArg<'tcx>] {
         let own = &substs[self.parent_count..][..self.params.len()];
         if self.has_self && self.parent.is_none() { &own[1..] } else { &own }
+    }
+
+    /*pub fn expected_arg_count(&self) -> std::ops::RangeInclusive<usize> {
+        self.count()
+        todo!()
+    }*/
+
+    pub fn expected_parent_count(&self) -> std::ops::RangeInclusive<usize> {
+        self.parent_count..=self.parent_count + self.parent_has_constness as usize
     }
 }
 

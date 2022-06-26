@@ -580,8 +580,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                     _ => {
                         let msg = format!(
                             "Region parameter out of range \
-                             when substituting in region {} (index={})",
-                            data.name, data.index
+                             when substituting in region {} (index={}, substs={:?})",
+                            data.name, data.index, self.substs
                         );
                         span_bug!(DUMMY_SP, "{}", msg);
                     }

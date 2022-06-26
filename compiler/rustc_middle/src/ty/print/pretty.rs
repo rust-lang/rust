@@ -1824,11 +1824,15 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                 GenericArgKind::Lifetime(r) => !r.is_erased(),
                 _ => false,
             });
-        let mut args = args.iter().cloned().filter(|arg| match arg.unpack() {
-            GenericArgKind::Lifetime(_) => print_regions,
-            GenericArgKind::Constness(_) => false,
-            _ => true,
-        }).peekable();
+        let mut args = args
+            .iter()
+            .cloned()
+            .filter(|arg| match arg.unpack() {
+                GenericArgKind::Lifetime(_) => print_regions,
+                GenericArgKind::Constness(_) => false,
+                _ => true,
+            })
+            .peekable();
 
         if args.peek().is_some() {
             if self.in_value {

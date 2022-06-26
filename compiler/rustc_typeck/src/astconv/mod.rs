@@ -376,7 +376,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // non-`Self` generic parameters.
         if generics.params.is_empty() {
             return (
-                tcx.intern_substs(&constness.map(Into::into).into_iter().collect::<Vec<_>>()),
+                tcx.intern_substs(&if let Some(ty::ConstnessArg::Const) = constness {
+                    vec![ty::ConstnessArg::Const.into()]
+                } else {
+                    vec![]
+                }),
                 arg_count,
             );
         }

@@ -963,7 +963,10 @@ fn has_expected_num_generic_args<'tcx>(
 ) -> bool {
     trait_did.map_or(true, |trait_did| {
         let generics = tcx.generics_of(trait_did);
-        generics.count() == expected + if generics.has_self { 1 } else { 0 } + if generics.has_constness { 1 } else { 0 }
+        generics.count()
+            == expected
+                + if generics.has_self { 1 } else { 0 }
+                + if generics.has_constness { 1 } else { 0 }
     })
 }
 

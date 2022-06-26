@@ -2964,6 +2964,15 @@ impl<'tcx> TyCtxt<'tcx> {
             })
         )
     }
+
+    pub fn should_have_constness(self, def_id: DefId) -> bool {
+        match self.def_kind(def_id) {
+            DefKind::Trait => true,
+            DefKind::Impl if self.constness(def_id) == hir::Constness::Const => true,
+            DefKind::AssocFn => self.should_have_constness(self.parent(def_id)),
+            _ => false,
+        }
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {

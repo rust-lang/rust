@@ -345,7 +345,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
-        assert_eq!(generics.parent_count, parent_substs.len());
+        assert!(generics.expected_parent_count().contains(&parent_substs.len()));
 
         struct MethodSubstsCtxt<'a, 'tcx> {
             cfcx: &'a ConfirmContext<'a, 'tcx>,

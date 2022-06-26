@@ -1783,9 +1783,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // method yet. So create fresh variables here for those too,
         // if there are any.
         let generics = self.tcx.generics_of(method);
-        assert_eq!(
-            substs.len(),
-            generics.parent_count as usize,
+        assert!(
+            generics.expected_parent_count().contains(&substs.len()),
             "substs: {:#?}\ngenerics: {:#?}",
             substs,
             generics

@@ -237,6 +237,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
     #[lang = "fn_once_output"]

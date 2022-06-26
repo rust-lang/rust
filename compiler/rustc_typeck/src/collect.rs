@@ -1519,6 +1519,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         param_def_id_to_index,
                         has_self: generics.has_self,
                         has_constness: generics.has_constness,
+                        parent_has_constness: generics.parent_has_constness,
                         has_late_bound_regions: generics.has_late_bound_regions,
                     };
                 }
@@ -1624,9 +1625,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     };
 
     let has_self = opt_self.is_some();
-    let has_constness = tcx.has_attr(def_id, sym::const_trait)
-        || (tcx.def_kind(def_id) == DefKind::Impl
-            && tcx.impl_constness(def_id) == hir::Constness::Const);
+    let has_constness = tcx.should_have_constness(def_id);
     let mut parent_has_self = false;
     let mut parent_has_constness = false;
     let mut own_start = has_self as u32;
@@ -1783,6 +1782,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
         has_constness: has_constness || parent_has_constness,
+        parent_has_constness: parent_has_constness,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
     };
     trace!("{:#?}", generics);

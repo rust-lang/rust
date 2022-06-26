@@ -166,8 +166,10 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         a: ty::ConstnessArg,
         b: ty::ConstnessArg,
     ) -> RelateResult<'tcx, ty::ConstnessArg> {
-        // TODO handle infer
-        relate::super_relate_constness(self, a, b)
+        match (a, b) {
+            (ty::ConstnessArg::Infer, x) | (x, ty::ConstnessArg::Infer) => Ok(x),
+            _ => relate::super_relate_constness(self, a, b),
+        }
     }
 }
 
