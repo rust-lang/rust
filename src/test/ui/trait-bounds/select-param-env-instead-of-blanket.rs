@@ -1,4 +1,4 @@
-// known-bug
+// known-bug: #93008
 // build-fail
 // failure-status: 101
 // compile-flags:--crate-type=lib -Zmir-opt-level=3

@@ -1,5 +1,5 @@
 // check-fail
-// known-bug
+// known-bug: #80626
 
 // This should pass, but it requires `Sized` to be coinductive.
 
