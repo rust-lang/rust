@@ -7,6 +7,7 @@ use super::{
 };
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
+use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
@@ -26,7 +27,6 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
-use std::mem;
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of
@@ -2343,7 +2343,9 @@ impl<'a> Parser<'a> {
 
     /// Parses the condition of a `if` or `while` expression.
     fn parse_cond_expr(&mut self) -> PResult<'a, P<Expr>> {
-        let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+        let cond = self.with_let_management(true, |local_self| {
+            local_self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)
+        })?;
 
         if let ExprKind::Let(..) = cond.kind {
             // Remove the last feature gating of a `let` expression since it's stable.
@@ -2356,6 +2358,13 @@ impl<'a> Parser<'a> {
     /// Parses a `let $pat = $expr` pseudo-expression.
     /// The `let` token has already been eaten.
     fn parse_let_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+        if !self.let_expr_allowed {
+            self.struct_span_err(
+                self.prev_token.span,
+                "expected expression, found `let` statement",
+            )
+            .emit();
+        }
         let lo = self.prev_token.span;
         let pat = self.parse_pat_allow_top_alt(
             None,
@@ -2672,6 +2681,8 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
+        // Used to check the `let_chains` and `if_let_guard` features mostly by scaning
+        // `&&` tokens.
         fn check_let_expr(expr: &Expr) -> (bool, bool) {
             match expr.kind {
                 ExprKind::Binary(_, ref lhs, ref rhs) => {
@@ -2694,7 +2705,7 @@ impl<'a> Parser<'a> {
             )?;
             let guard = if this.eat_keyword(kw::If) {
                 let if_span = this.prev_token.span;
-                let cond = this.parse_expr()?;
+                let cond = this.with_let_management(true, |local_this| local_this.parse_expr())?;
                 let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
                 if has_let_expr {
                     if does_not_have_bin_op {
@@ -3255,5 +3266,18 @@ impl<'a> Parser<'a> {
             };
             Ok((res, trailing))
         })
+    }
+
+    // Calls `f` with the internal `let_expr_allowed` set to `let_expr_allowed` and then
+    // sets the internal `let_expr_allowed` back to its original value.
+    fn with_let_management<T>(
+        &mut self,
+        let_expr_allowed: bool,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let last_let_expr_allowed = mem::replace(&mut self.let_expr_allowed, let_expr_allowed);
+        let rslt = f(self);
+        self.let_expr_allowed = last_let_expr_allowed;
+        rslt
     }
 }
