@@ -123,14 +123,14 @@ LL |             .unwrap_or(String::new());
 error: use of `unwrap_or` followed by a call to `new`
   --> $DIR/or_fun_call.rs:208:9
    |
-LL | /         iter.map(|f: &String| f.to_lowercase())
-LL | |             .reduce(|mut acc, f| {
-LL | |                 let _ = "";
-LL | |                 acc.push_str(&f);
-LL | |                 acc
-LL | |             })
-LL | |             .unwrap_or(String::new());
-   | |_____________________________________^
+LL |           iter.map(|f: &String| f.to_lowercase())
+LL |               .reduce(|mut acc, f| {
+LL |                   let _ = "";
+LL |                   acc.push_str(&f);
+LL |                   acc
+LL |               })
+LL |               .unwrap_or(String::new());
+   | /______________^
    |
 help: try this
    |
@@ -145,12 +145,12 @@ LL ~             }).unwrap_or_default();
 error: use of `unwrap_or` followed by a call to `new`
   --> $DIR/or_fun_call.rs:221:9
    |
-LL | /         map.reduce(|mut acc, f| {
-LL | |             acc.push_str(&f);
-LL | |             acc
-LL | |         })
-LL | |         .unwrap_or(String::new());
-   | |_________________________________^
+LL |           map.reduce(|mut acc, f| {
+LL |               acc.push_str(&f);
+LL |               acc
+LL |           })
+LL |           .unwrap_or(String::new());
+   | /__________^
    |
 help: try this
    |
