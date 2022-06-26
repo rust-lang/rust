@@ -83,17 +83,21 @@ where
 
     #[inline]
     fn addr(self) -> Self::Usize {
-        // Safety: Since `addr` discards provenance, this is safe.
+        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
+        // provenance).
         unsafe { core::mem::transmute_copy(&self) }
-
-        //TODO switch to casts when available
-        //self.cast()
     }
 
     #[inline]
-    fn with_addr(self, addr: Self::Usize) -> Self {
+    fn with_addr(self, _addr: Self::Usize) -> Self {
         unimplemented!()
         /*
+        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        //
+        // In the mean-time, this operation is defined to be "as if" it was
+        // a wrapping_offset, so we can emulate it as such. This should properly
+        // restore pointer provenance even under today's compiler.
         self.cast::<*const u8>()
             .wrapping_offset(addr.cast::<isize>() - self.addr().cast::<isize>())
             .cast()
