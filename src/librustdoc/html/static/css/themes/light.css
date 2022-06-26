@@ -483,10 +483,10 @@ kbd {
 #source-sidebar > .title {
 	border-bottom-color: #ccc;
 }
-div.files > a:hover, div.name:hover {
+#source-sidebar div.files > a:hover, div.name:hover {
 	background-color: #E0E0E0;
 }
-div.files > .selected {
+#source-sidebar div.files > .selected {
 	background-color: #fff;
 }
 
