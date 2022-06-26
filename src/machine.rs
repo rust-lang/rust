@@ -333,6 +333,11 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// The probability of the active thread being preempted at the end of each basic block.
     pub(crate) preemption_rate: f64,
+
+    /// If `Some`, we will report the current stack every N basic blocks.
+    pub(crate) report_progress: Option<u32>,
+    /// The number of blocks that passed since the last progress report.
+    pub(crate) since_progress_report: u32,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -390,6 +395,8 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             mute_stdout_stderr: config.mute_stdout_stderr,
             weak_memory: config.weak_memory_emulation,
             preemption_rate: config.preemption_rate,
+            report_progress: config.report_progress,
+            since_progress_report: 0,
         }
     }
 
@@ -862,6 +869,16 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        // Possibly report our progress.
+        if let Some(report_progress) = ecx.machine.report_progress {
+            if ecx.machine.since_progress_report >= report_progress {
+                register_diagnostic(NonHaltingDiagnostic::ProgressReport);
+                ecx.machine.since_progress_report = 0;
+            }
+            // Cannot overflow, since it is strictly less than `report_progress`.
+            ecx.machine.since_progress_report += 1;
+        }
+        // These are our preemption points.
         ecx.maybe_preempt_active_thread();
         Ok(())
     }
