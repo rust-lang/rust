@@ -594,7 +594,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 Ok(true)
             }
             ty::Adt(def, ..) if def.is_box() => {
-                self.check_safe_pointer(value, "box")?;
+                let unique = self.ecx.operand_field(value, 0)?;
+                let nonnull = self.ecx.operand_field(&unique, 0)?;
+                let ptr = self.ecx.operand_field(&nonnull, 0)?;
+                self.check_safe_pointer(&ptr, "box")?;
                 Ok(true)
             }
             ty::FnPtr(_sig) => {
