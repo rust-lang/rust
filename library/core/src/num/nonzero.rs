@@ -330,8 +330,8 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -365,8 +365,8 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -431,8 +431,8 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -533,8 +533,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -565,8 +565,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -601,8 +601,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -641,8 +641,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -676,8 +676,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -711,8 +711,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -760,8 +760,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -796,8 +796,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -869,8 +869,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -913,8 +913,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[stable(feature = "nonzero_checked_ops", since = "1.63.0")]
-                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.63.0")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
