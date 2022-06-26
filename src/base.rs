@@ -79,7 +79,7 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         // TODO(antoyo): only set on x86 platforms.
         context.add_command_line_option("-masm=intel");
         // TODO(antoyo): only add the following cli argument if the feature is supported.
-        /*context.add_command_line_option("-msse2");
+        context.add_command_line_option("-msse2");
         context.add_command_line_option("-mavx2");
         // FIXME(antoyo): the following causes an illegal instruction on vmovdqu64 in std_example on my CPU.
         // Only add if the CPU supports it.
@@ -112,7 +112,7 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
             context.add_command_line_option("-mavx512vbmi");
             context.add_command_line_option("-mavx512ifma");
             context.add_command_line_option("-mavx512cd");
-        }*/
+        }
 
         for arg in &tcx.sess.opts.cg.llvm_args {
             context.add_command_line_option(arg);
