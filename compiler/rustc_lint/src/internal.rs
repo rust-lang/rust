@@ -423,8 +423,7 @@ impl LateLintPass<'_> for Diagnostics {
         debug!(?found_impl);
         if !found_impl {
             cx.struct_span_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, span, |lint| {
-                lint.build("diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls")
-                    .emit();
+                lint.build(fluent::lint::diag_out_of_impl).emit();
             })
         }
 
@@ -442,7 +441,7 @@ impl LateLintPass<'_> for Diagnostics {
         debug!(?found_diagnostic_message);
         if !found_diagnostic_message {
             cx.struct_span_lint(UNTRANSLATABLE_DIAGNOSTIC, span, |lint| {
-                lint.build("diagnostics should be created using translatable messages").emit();
+                lint.build(fluent::lint::untranslatable_diag).emit();
             })
         }
     }

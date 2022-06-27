@@ -49,3 +49,8 @@ lint-lintpass-by-hand = implementing `LintPass` by hand
 
 lint-non-existant-doc-keyword = found non-existing keyword `{$keyword}` used in `#[doc(keyword = \"...\")]`
     .help = only existing keywords are allowed in core/std
+
+lint-diag-out-of-impl =
+    diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
+
+lint-untranslatable-diag = diagnostics should be created using translatable messages
