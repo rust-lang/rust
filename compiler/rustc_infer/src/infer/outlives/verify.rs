@@ -268,8 +268,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         //     fn foo<'a, A>(x: &'a A) { x.bar() }
         //
         // The problem is that the type of `x` is `&'a A`. To be
-        // well-formed, then, A must be lower-generic by `'a`, but we
-        // don't know that this holds from first principles.
+        // well-formed, then, A must outlive `'a`, but we don't know that
+        // this holds from first principles.
         let from_region_bound_pairs = self.region_bound_pairs.iter().filter_map(|&(r, p)| {
             debug!(
                 "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
