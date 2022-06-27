@@ -28,3 +28,6 @@ lint-hidden-unicode-codepoints = unicode codepoint changing visible direction of
     .suggestion-remove = if their presence wasn't intentional, you can remove them
     .suggestion-escape = if you want to keep them but make them visible in your source code, you can escape them
     .no-suggestion-note-escape = if you want to keep them but make them visible in your source code, you can escape them: {$escaped}
+
+lint-default-hash-types = prefer `{$preferred}` over `{$used}`, it has better performance
+    .note = a `use rustc_data_structures::fx::{$preferred}` may be necessary

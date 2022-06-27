@@ -3,7 +3,7 @@
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
-use rustc_errors::Applicability;
+use rustc_errors::{fluent, Applicability};
 use rustc_hir::def::Res;
 use rustc_hir::{def_id::DefId, Expr, ExprKind, GenericArg, PatKind, Path, PathSegment, QPath};
 use rustc_hir::{HirId, Impl, Item, ItemKind, Node, Pat, Ty, TyKind};
@@ -36,13 +36,10 @@ impl LateLintPass<'_> for DefaultHashTypes {
             _ => return,
         };
         cx.struct_span_lint(DEFAULT_HASH_TYPES, path.span, |lint| {
-            let msg = format!(
-                "prefer `{}` over `{}`, it has better performance",
-                replace,
-                cx.tcx.item_name(def_id)
-            );
-            lint.build(&msg)
-                .note(&format!("a `use rustc_data_structures::fx::{}` may be necessary", replace))
+            lint.build(fluent::lint::default_hash_types)
+                .set_arg("preferred", replace)
+                .set_arg("used", cx.tcx.item_name(def_id))
+                .note(fluent::lint::note)
                 .emit();
         });
     }
