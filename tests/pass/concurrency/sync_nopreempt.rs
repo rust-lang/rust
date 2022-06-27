@@ -46,7 +46,7 @@ fn check_rwlock_unlock_bug1() {
 
     // Make a waiting writer.
     let l2 = l.clone();
-    thread::spawn(move || {
+    let t = thread::spawn(move || {
         let mut w = l2.write().unwrap();
         *w += 1;
     });
@@ -59,6 +59,7 @@ fn check_rwlock_unlock_bug1() {
     thread::yield_now();
     assert_eq!(*r2, 0);
     drop(r2);
+    t.join().unwrap();
 }
 
 fn check_rwlock_unlock_bug2() {
