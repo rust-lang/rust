@@ -163,6 +163,8 @@ fn _returns_generic() {
             let _: () = opt;
         }
     }
+
+    let () = f();
 }
 
 fn attributes() {

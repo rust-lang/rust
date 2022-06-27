@@ -18,20 +18,23 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
         && !in_external_macro(cx.sess(), local.span)
         && cx.typeck_results().pat_ty(local.pat).is_unit()
     {
-        if local.ty.is_some() && expr_needs_inferred_result(cx, init) {
-            if !matches!(local.pat.kind, PatKind::Wild) {
+        if (local.ty.map_or(false, |ty| !matches!(ty.kind, TyKind::Infer))
+            || matches!(local.pat.kind, PatKind::Tuple([], None)))
+            && expr_needs_inferred_result(cx, init)
+        {
+            if !matches!(local.pat.kind, PatKind::Wild | PatKind::Tuple([], None)) {
                 span_lint_and_then(
                     cx,
                     LET_UNIT_VALUE,
                     local.span,
                     "this let-binding has unit value",
                     |diag| {
-                            diag.span_suggestion(
-                                local.pat.span,
-                                "use a wild (`_`) binding",
-                                "_",
-                                Applicability::MaybeIncorrect, // snippet
-                            );
+                        diag.span_suggestion(
+                            local.pat.span,
+                            "use a wild (`_`) binding",
+                            "_",
+                            Applicability::MaybeIncorrect, // snippet
+                        );
                     },
                 );
             }
