@@ -1,5 +1,7 @@
 // compile-flags: -Zmiri-permissive-provenance
 
+use std::mem;
+
 // This strips provenance
 fn transmute_ptr_to_int<T>(x: *const T) -> usize {
     unsafe { std::mem::transmute(x) }
@@ -100,6 +102,51 @@ fn zst_deref_of_dangling() {
     let _val = unsafe { *zst };
 }
 
+fn functions() {
+    // Roundtrip a few functions through integers. Do this multiple times to make sure this does not
+    // work by chance. If we did not give unique addresses to ZST allocations -- which fn
+    // allocations are -- then we might be unable to cast back, or we might call the wrong function!
+    // Every function gets at most one address so doing a loop would not help...
+    fn fn0() -> i32 {
+        0
+    }
+    fn fn1() -> i32 {
+        1
+    }
+    fn fn2() -> i32 {
+        2
+    }
+    fn fn3() -> i32 {
+        3
+    }
+    fn fn4() -> i32 {
+        4
+    }
+    fn fn5() -> i32 {
+        5
+    }
+    fn fn6() -> i32 {
+        6
+    }
+    fn fn7() -> i32 {
+        7
+    }
+    let fns = [
+        fn0 as fn() -> i32 as *const () as usize,
+        fn1 as fn() -> i32 as *const () as usize,
+        fn2 as fn() -> i32 as *const () as usize,
+        fn3 as fn() -> i32 as *const () as usize,
+        fn4 as fn() -> i32 as *const () as usize,
+        fn5 as fn() -> i32 as *const () as usize,
+        fn6 as fn() -> i32 as *const () as usize,
+        fn7 as fn() -> i32 as *const () as usize,
+    ];
+    for (idx, &addr) in fns.iter().enumerate() {
+        let fun: fn() -> i32 = unsafe { mem::transmute(addr as *const ()) };
+        assert_eq!(fun(), idx as i32);
+    }
+}
+
 fn main() {
     cast();
     cast_dangling();
@@ -112,4 +159,5 @@ fn main() {
     ptr_eq_out_of_bounds_null();
     ptr_eq_integer();
     zst_deref_of_dangling();
+    functions();
 }
