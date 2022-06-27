@@ -7,6 +7,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::hir::place::Projection as HirProjection;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
+use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -104,8 +105,9 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
                 variant = Some(*idx);
                 continue;
             }
+            // These do not affect anything, they just make sure we know the right type.
+            ProjectionElem::OpaqueCast(_) => continue,
             ProjectionElem::Index(..)
-            | ProjectionElem::OpaqueCast(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. } => {
                 // We don't capture array-access projections.
@@ -297,16 +299,21 @@ fn strip_prefix<'tcx>(
     prefix_projections: &[HirProjection<'tcx>],
 ) -> impl Iterator<Item = PlaceElem<'tcx>> {
     let mut iter = projections.into_iter();
+    let mut next = || match iter.next()? {
+        // Filter out opaque casts, they are unnecessary in the prefix.
+        ProjectionElem::OpaqueCast(..) => iter.next(),
+        other => Some(other),
+    };
     for projection in prefix_projections {
         match projection.kind {
             HirProjectionKind::Deref => {
-                assert!(matches!(iter.next(), Some(ProjectionElem::Deref)));
+                assert!(matches!(next(), Some(ProjectionElem::Deref)));
             }
             HirProjectionKind::Field(..) => {
                 if base_ty.is_enum() {
-                    assert!(matches!(iter.next(), Some(ProjectionElem::Downcast(..))));
+                    assert!(matches!(next(), Some(ProjectionElem::Downcast(..))));
                 }
-                assert!(matches!(iter.next(), Some(ProjectionElem::Field(..))));
+                assert!(matches!(next(), Some(ProjectionElem::Field(..))));
             }
             HirProjectionKind::Index | HirProjectionKind::Subslice => {
                 bug!("unexpected projection kind: {:?}", projection);
@@ -320,7 +327,23 @@ fn strip_prefix<'tcx>(
 impl<'tcx> PlaceBuilder<'tcx> {
     pub(crate) fn into_place(self, cx: &Builder<'_, 'tcx>) -> Place<'tcx> {
         if let PlaceBase::Local(local) = self.base {
-            Place { local, projection: cx.tcx.intern_place_elems(&self.projection) }
+            let mut projections = vec![];
+            let mut ty = PlaceTy::from_ty(cx.local_decls[local].ty);
+            for projection in self.projection {
+                // Only preserve those opaque casts that actually go from an opaque type
+                // to another type.
+                if let ProjectionElem::OpaqueCast(t) = projection {
+                    if let ty::Opaque(..) = ty.ty.kind() {
+                        if t != ty.ty {
+                            projections.push(ProjectionElem::OpaqueCast(t));
+                        }
+                    }
+                } else {
+                    projections.push(projection);
+                }
+                ty = ty.projection_ty(cx.tcx, projection);
+            }
+            Place { local, projection: cx.tcx.intern_place_elems(&projections) }
         } else {
             self.expect_upvars_resolved(cx).into_place(cx)
         }

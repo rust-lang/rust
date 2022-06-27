@@ -867,7 +867,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
         Candidate {
             span: pattern.span,
             has_guard,
-            match_pairs: smallvec![MatchPair { place, pattern }],
+            match_pairs: smallvec![MatchPair::new(place, pattern)],
             bindings: Vec::new(),
             ascriptions: Vec::new(),
             subcandidates: Vec::new(),

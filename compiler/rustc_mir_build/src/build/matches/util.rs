@@ -98,6 +98,10 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         place: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
     ) -> MatchPair<'pat, 'tcx> {
+        // Force the place type to the pattern's type.
+        // FIXME(oli-obk): only do this when we don't already know the place type.
+        // FIXME(oli-obk): can we use this to simplify slice/array pattern hacks?
+        let place = place.project(ProjectionElem::OpaqueCast(pattern.ty));
         MatchPair { place, pattern }
     }
 }
