@@ -1,5 +1,5 @@
 // check-fail
-// known-bug
+// known-bug: #87748
 
 // This should pass, but unnormalized input args aren't treated as implied.
 

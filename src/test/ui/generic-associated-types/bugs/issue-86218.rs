@@ -1,5 +1,5 @@
 // check-fail
-// known-bug
+// known-bug: #86218
 
 // This should pass, but seems to run into a TAIT issue.
 
