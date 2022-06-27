@@ -138,7 +138,7 @@ fn to_camel_case(name: &str) -> String {
         .collect()
 }
 
-fn get_stabilization_version() -> String {
+pub(crate) fn get_stabilization_version() -> String {
     fn parse_manifest(contents: &str) -> Option<String> {
         let version = contents
             .lines()

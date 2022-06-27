@@ -159,7 +159,7 @@ macro_rules! declare_clippy_lint {
 }
 
 #[cfg(feature = "internal")]
-mod deprecated_lints;
+pub mod deprecated_lints;
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 

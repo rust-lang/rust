@@ -847,7 +847,7 @@ fn get_lint_level_from_group(lint_group: &str) -> Option<&'static str> {
         .find_map(|(group_name, group_level)| (*group_name == lint_group).then(|| *group_level))
 }
 
-fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
+pub(super) fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     if let hir::TyKind::Path(ref path) = ty.kind {
         if let hir::def::Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, ty.hir_id) {
             return match_def_path(cx, def_id, &DEPRECATED_LINT_TYPE);
