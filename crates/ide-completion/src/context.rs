@@ -506,7 +506,11 @@ impl<'a> CompletionContext<'a> {
 
         let original_token = original_file.syntax().token_at_offset(offset).left_biased()?;
         let token = sema.descend_into_macros_single(original_token.clone());
-        let scope = sema.scope_at_offset(&token.parent()?, offset)?;
+
+        // adjust for macro input, this still fails if there is no token written yet
+        let scope_offset = if original_token == token { offset } else { token.text_range().end() };
+        let scope = sema.scope_at_offset(&token.parent()?, scope_offset)?;
+
         let krate = scope.krate();
         let module = scope.module();
 
