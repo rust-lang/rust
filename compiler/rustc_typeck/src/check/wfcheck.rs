@@ -62,7 +62,11 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
             }
             let wf_tys = f(&fcx);
             fcx.select_all_obligations_or_error();
-            fcx.regionck_item(id, span, wf_tys);
+
+            let mut outlives_environment = OutlivesEnvironment::new(param_env);
+            outlives_environment.add_implied_bounds(&fcx.infcx, wf_tys, id);
+            outlives_environment.save_implied_bounds(id);
+            fcx.infcx.check_region_obligations_and_report_errors(&outlives_environment);
         });
     }
 }
@@ -655,7 +659,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     // call individually.
     tcx.infer_ctxt().enter(|infcx| {
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id, DUMMY_SP);
+        outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id);
         outlives_environment.save_implied_bounds(id);
         let region_bound_pairs = outlives_environment.region_bound_pairs_map().get(&id).unwrap();
 

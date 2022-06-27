@@ -69,6 +69,7 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 
+use crate::infer::outlives::env::OutlivesEnvironment;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_hir as hir;
@@ -176,6 +177,18 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 );
             }
         }
+    }
+
+    pub fn check_region_obligations_and_report_errors(
+        &self,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+    ) {
+        self.process_registered_region_obligations(
+            outlives_env.region_bound_pairs_map(),
+            outlives_env.param_env,
+        );
+
+        self.resolve_regions_and_report_errors(outlives_env)
     }
 }
 

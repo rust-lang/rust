@@ -13,6 +13,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemKind, Node, PathSegment};
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
@@ -736,10 +737,9 @@ fn check_opaque_meets_bounds<'tcx>(
             hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {}
             // Can have different predicates to their defining use
             hir::OpaqueTyOrigin::TyAlias => {
-                // Finally, resolve all regions. This catches wily misuses of
-                // lifetime parameters.
-                let fcx = FnCtxt::new(&inh, param_env, hir_id);
-                fcx.regionck_item(hir_id, span, FxHashSet::default());
+                let mut outlives_environment = OutlivesEnvironment::new(param_env);
+                outlives_environment.save_implied_bounds(hir_id);
+                infcx.check_region_obligations_and_report_errors(&outlives_environment);
             }
         }
 

@@ -108,7 +108,6 @@ pub(crate) trait OutlivesEnvironmentExt<'tcx> {
         infcx: &InferCtxt<'_, 'tcx>,
         fn_sig_tys: FxHashSet<Ty<'tcx>>,
         body_id: hir::HirId,
-        span: Span,
     );
 }
 
@@ -135,11 +134,10 @@ impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironment<'tcx> {
         infcx: &InferCtxt<'a, 'tcx>,
         fn_sig_tys: FxHashSet<Ty<'tcx>>,
         body_id: hir::HirId,
-        span: Span,
     ) {
         for ty in fn_sig_tys {
             let ty = infcx.resolve_vars_if_possible(ty);
-            let implied_bounds = infcx.implied_outlives_bounds(self.param_env, body_id, ty, span);
+            let implied_bounds = infcx.implied_outlives_bounds(self.param_env, body_id, ty);
             self.add_outlives_bounds(Some(infcx), implied_bounds)
         }
     }
@@ -166,18 +164,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcx.fcx.skip_region_resolution();
     }
 
-    /// Region checking during the WF phase for items. `wf_tys` are the
-    /// types from which we should derive implied bounds, if any.
-    #[instrument(level = "debug", skip(self))]
-    pub fn regionck_item(&self, item_id: hir::HirId, span: Span, wf_tys: FxHashSet<Ty<'tcx>>) {
-        let body_owner = self.tcx.hir().local_def_id(item_id);
-        let mut rcx = RegionCtxt::new(self, body_owner, self.param_env);
-        rcx.outlives_environment.add_implied_bounds(self, wf_tys, item_id, span);
-        rcx.outlives_environment.save_implied_bounds(rcx.body_id());
-        rcx.visit_region_obligations(item_id);
-        rcx.resolve_regions_and_report_errors();
-    }
-
     /// Region check a function body. Not invoked on closures, but
     /// only on the "root" fn item (in which closures may be
     /// embedded). Walks the function body and adds various add'l
@@ -190,19 +176,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         fn_id: hir::HirId,
         body: &'tcx hir::Body<'tcx>,
-        span: Span,
         wf_tys: FxHashSet<Ty<'tcx>>,
     ) {
         debug!("regionck_fn(id={})", fn_id);
         let body_owner = self.tcx.hir().body_owner_def_id(body.id());
         let mut rcx = RegionCtxt::new(self, body_owner, self.param_env);
         // We need to add the implied bounds from the function signature
-        rcx.outlives_environment.add_implied_bounds(self, wf_tys, fn_id, span);
+        rcx.outlives_environment.add_implied_bounds(self, wf_tys, fn_id);
         rcx.outlives_environment.save_implied_bounds(fn_id);
 
         if !self.errors_reported_since_creation() {
             // regionck assumes typeck succeeded
-            rcx.visit_fn_body(fn_id, body, self.tcx.hir().span(fn_id));
+            rcx.visit_fn_body(fn_id, body);
         }
 
         // Checked by NLL
@@ -294,7 +279,6 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         &mut self,
         id: hir::HirId, // the id of the fn itself
         body: &'tcx hir::Body<'tcx>,
-        span: Span,
     ) {
         // When we enter a function, we can derive
         debug!("visit_fn_body(id={:?})", id);
@@ -313,7 +297,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         let fn_sig_tys: FxHashSet<_> =
             fn_sig.inputs().iter().cloned().chain(Some(fn_sig.output())).collect();
 
-        self.outlives_environment.add_implied_bounds(self.fcx, fn_sig_tys, body_id.hir_id, span);
+        self.outlives_environment.add_implied_bounds(self.fcx, fn_sig_tys, body_id.hir_id);
         self.outlives_environment.save_implied_bounds(body_id.hir_id);
         self.link_fn_params(body.params);
         self.visit_body(body);
@@ -349,15 +333,6 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         self.select_all_obligations_or_error();
     }
 
-    fn resolve_regions_and_report_errors(&self) {
-        self.infcx.process_registered_region_obligations(
-            self.outlives_environment.region_bound_pairs_map(),
-            self.param_env,
-        );
-
-        self.fcx.resolve_regions_and_report_errors(&self.outlives_environment);
-    }
-
     fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat<'_>) {
         debug!("regionck::visit_pat(pat={:?})", pat);
         pat.each_binding(|_, hir_id, span, _| {
@@ -382,7 +357,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         fk: intravisit::FnKind<'tcx>,
         _: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
-        span: Span,
+        _span: Span,
         hir_id: hir::HirId,
     ) {
         assert!(
@@ -396,7 +371,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         let env_snapshot = self.outlives_environment.push_snapshot_pre_typeck_child();
 
         let body = self.tcx.hir().body(body_id);
-        self.visit_fn_body(hir_id, body, span);
+        self.visit_fn_body(hir_id, body);
 
         // Restore state from previous function.
         self.outlives_environment.pop_snapshot_post_typeck_child(env_snapshot);

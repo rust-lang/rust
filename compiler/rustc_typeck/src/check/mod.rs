@@ -491,7 +491,7 @@ fn typeck_with_fallback<'tcx>(
         fcx.check_asms();
 
         if fn_sig.is_some() {
-            fcx.regionck_fn(id, body, span, wf_tys);
+            fcx.regionck_fn(id, body, wf_tys);
         } else {
             fcx.regionck_body(body);
         }
