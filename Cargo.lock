@@ -1753,12 +1753,13 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
-version = "0.2.0"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ab7905ea95c6d9af62940f9d7dd9596d54c334ae2c15300c482051292d5637f"
+checksum = "d37fb7dc756218a0559bfc21e4381f03cbb696cdaf959e7e95e927496f0564cd"
 dependencies = [
  "compiler_builtins",
  "libc",
+ "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
 ]
 
@@ -5048,7 +5049,7 @@ dependencies = [
  "dlmalloc",
  "fortanix-sgx-abi",
  "hashbrown",
- "hermit-abi 0.2.0",
+ "hermit-abi 0.2.3",
  "libc",
  "miniz_oxide 0.4.0",
  "object 0.26.2",

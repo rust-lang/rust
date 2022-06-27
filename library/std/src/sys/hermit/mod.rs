@@ -43,6 +43,7 @@ pub mod thread;
 pub mod thread_local_dtor;
 #[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
+pub mod thread_parker;
 pub mod time;
 
 mod condvar;

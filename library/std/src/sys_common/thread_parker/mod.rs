@@ -13,7 +13,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "solid_asp3")] {
         mod wait_flag;
         pub use wait_flag::Parker;
-    } else if #[cfg(any(windows, target_family = "unix"))] {
+    } else if #[cfg(any(windows, target_family = "unix", target_os = "hermit"))] {
         pub use crate::sys::thread_parker::Parker;
     } else {
         mod generic;
