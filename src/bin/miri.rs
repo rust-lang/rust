@@ -385,7 +385,7 @@ fn main() {
             miri_config.mute_stdout_stderr = true;
         } else if arg == "-Zmiri-track-raw-pointers" {
             eprintln!(
-                "WARNING: -Zmiri-track-raw-pointers has been renamed to -Zmiri-tag-raw-pointers, the old name is deprecated."
+                "WARNING: `-Zmiri-track-raw-pointers` has no effect; it is enabled by default"
             );
         } else if let Some(param) = arg.strip_prefix("-Zmiri-seed=") {
             if miri_config.seed.is_some() {
