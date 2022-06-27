@@ -76,27 +76,17 @@ impl<'mir, 'tcx> GlobalStateInner {
                 // This never overflows because `addr >= glb`
                 let offset = addr - glb;
                 // If the offset exceeds the size of the allocation, don't use this `alloc_id`.
-
-                if offset
-                    <= ecx
-                        .get_alloc_size_and_align(alloc_id, AllocCheck::MaybeDead)
-                        .unwrap()
-                        .0
-                        .bytes()
-                {
-                    Some(alloc_id)
-                } else {
-                    None
-                }
+                let size = ecx.get_alloc_info(alloc_id).0;
+                if offset <= size.bytes() { Some(alloc_id) } else { None }
             }
         }?;
 
         // We only use this provenance if it has been exposed, *and* is still live.
         if global_state.exposed.contains(&alloc_id) {
-            // FIXME: this catches `InterpError`, which we should not usually do.
-            // We might need a proper fallible API from `memory.rs` to avoid this though.
-            if ecx.get_alloc_size_and_align(alloc_id, AllocCheck::Live).is_ok() {
-                return Some(alloc_id);
+            let (_size, _align, kind) = ecx.get_alloc_info(alloc_id);
+            match kind {
+                AllocKind::LiveData | AllocKind::Function => return Some(alloc_id),
+                AllocKind::Dead => {}
             }
         }
 
@@ -174,9 +164,8 @@ impl<'mir, 'tcx> GlobalStateInner {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
                 // There is nothing wrong with a raw pointer being cast to an integer only after
-                // it became dangling.  Hence `MaybeDead`.
-                let (size, align) =
-                    ecx.get_alloc_size_and_align(alloc_id, AllocCheck::MaybeDead).unwrap();
+                // it became dangling.  Hence we allow dead allocations.
+                let (size, align, _kind) = ecx.get_alloc_info(alloc_id);
 
                 // This allocation does not have a base address yet, pick one.
                 // Leave some space to the previous allocation, to give it some chance to be less aligned.

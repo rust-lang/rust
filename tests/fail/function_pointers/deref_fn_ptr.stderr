@@ -1,8 +1,8 @@
-error: Undefined Behavior: accessing ALLOC which contains a function
+error: Undefined Behavior: dereferencing pointer failed: ALLOC has size 0, so pointer to 1 byte starting at offset 0 is out-of-bounds
   --> $DIR/deref_fn_ptr.rs:LL:CC
    |
 LL |         *std::mem::transmute::<fn(), *const u8>(f)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing ALLOC which contains a function
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: ALLOC has size 0, so pointer to 1 byte starting at offset 0 is out-of-bounds
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
