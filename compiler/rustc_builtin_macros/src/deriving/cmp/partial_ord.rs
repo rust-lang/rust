@@ -102,8 +102,8 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
             cx.expr_match(span, new, vec![eq_arm, neq_arm])
         },
         equals_expr,
-        Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
-            if self_args.len() != 2 {
+        Box::new(|cx, span, tag_tuple| {
+            if tag_tuple.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
             } else {
                 let lft = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[0]));

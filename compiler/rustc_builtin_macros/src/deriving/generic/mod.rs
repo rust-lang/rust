@@ -146,8 +146,6 @@
 //!
 //! ```{.text}
 //! EnumNonMatchingCollapsed(
-//!     vec![<ident of self>, <ident of __arg_1>],
-//!     &[<ast::Variant for C0>, <ast::Variant for C1>],
 //!     &[<ident for self index value>, <ident of __arg_1 index value>])
 //! ```
 //!
@@ -299,13 +297,10 @@ pub enum SubstructureFields<'a> {
     /// variant.
     EnumMatching(usize, usize, &'a ast::Variant, Vec<FieldInfo<'a>>),
 
-    /// Non-matching variants of the enum, but with all state hidden from
-    /// the consequent code. The first component holds `Ident`s for all of
-    /// the `Self` arguments; the second component is a slice of all of the
-    /// variants for the enum itself, and the third component is a list of
-    /// `Ident`s bound to the variant index values for each of the actual
-    /// input `Self` arguments.
-    EnumNonMatchingCollapsed(Vec<Ident>, &'a [ast::Variant], &'a [Ident]),
+    /// Non-matching variants of the enum, but with all state hidden from the
+    /// consequent code. The field is a list of `Ident`s bound to the variant
+    /// index values for each of the actual input `Self` arguments.
+    EnumNonMatchingCollapsed(&'a [Ident]),
 
     /// A static method where `Self` is a struct.
     StaticStruct(&'a ast::VariantData, StaticFields),
@@ -318,13 +313,10 @@ pub enum SubstructureFields<'a> {
 pub type CombineSubstructureFunc<'a> =
     Box<dyn FnMut(&mut ExtCtxt<'_>, Span, &Substructure<'_>) -> P<Expr> + 'a>;
 
-/// Deal with non-matching enum variants. The tuple is a list of
-/// identifiers (one for each `Self` argument, which could be any of the
-/// variants since they have been collapsed together) and the identifiers
-/// holding the variant index value for each of the `Self` arguments. The
-/// last argument is all the non-`Self` args of the method being derived.
+/// Deal with non-matching enum variants. The slice is the identifiers holding
+/// the variant index value for each of the `Self` arguments.
 pub type EnumNonMatchCollapsedFunc<'a> =
-    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
+    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, &[Ident]) -> P<Expr> + 'a>;
 
 pub fn combine_substructure(
     f: CombineSubstructureFunc<'_>,
@@ -1184,11 +1176,6 @@ impl<'a> MethodDef<'a> {
             )
             .collect::<Vec<String>>();
 
-        let self_arg_idents = self_arg_names
-            .iter()
-            .map(|name| Ident::from_str_and_span(name, span))
-            .collect::<Vec<Ident>>();
-
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to an int
         // value corresponding to its discriminant.
@@ -1203,8 +1190,7 @@ impl<'a> MethodDef<'a> {
         // Builds, via callback to call_substructure_method, the
         // delegated expression that handles the catch-all case,
         // using `__variants_tuple` to drive logic if necessary.
-        let catch_all_substructure =
-            EnumNonMatchingCollapsed(self_arg_idents, &variants, &vi_idents);
+        let catch_all_substructure = EnumNonMatchingCollapsed(&vi_idents);
 
         let first_fieldless = variants.iter().find(|v| v.data.fields().is_empty());
 
@@ -1657,9 +1643,7 @@ pub fn cs_fold_enumnonmatch(
     substructure: &Substructure<'_>,
 ) -> P<Expr> {
     match *substructure.fields {
-        EnumNonMatchingCollapsed(ref all_args, _, tuple) => {
-            enum_nonmatch_f(cx, trait_span, (&all_args[..], tuple), substructure.nonself_args)
-        }
+        EnumNonMatchingCollapsed(tuple) => enum_nonmatch_f(cx, trait_span, tuple),
         _ => cx.span_bug(trait_span, "cs_fold_enumnonmatch expected an EnumNonMatchingCollapsed"),
     }
 }

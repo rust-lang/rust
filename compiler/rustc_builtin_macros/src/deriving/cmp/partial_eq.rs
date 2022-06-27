@@ -48,7 +48,7 @@ pub fn expand_deriving_partial_eq(
                     None => cx.expr_bool(span, base),
                 }
             },
-            Box::new(|cx, span, _, _| cx.expr_bool(span, !base)),
+            Box::new(|cx, span, _| cx.expr_bool(span, !base)),
             cx,
             span,
             substr,

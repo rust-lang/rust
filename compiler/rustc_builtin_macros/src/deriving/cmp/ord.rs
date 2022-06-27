@@ -99,8 +99,8 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<
             cx.expr_match(span, new, vec![eq_arm, neq_arm])
         },
         cx.expr_path(equals_path.clone()),
-        Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
-            if self_args.len() != 2 {
+        Box::new(|cx, span, tag_tuple| {
+            if tag_tuple.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`")
             } else {
                 ordering_collapsed(cx, span, tag_tuple)
