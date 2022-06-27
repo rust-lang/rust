@@ -119,6 +119,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(loops::FOR_KV_MAP),
     LintId::of(loops::FOR_LOOPS_OVER_FALLIBLES),
     LintId::of(loops::ITER_NEXT_LOOP),
+    LintId::of(loops::MANUAL_FIND),
     LintId::of(loops::MANUAL_FLATTEN),
     LintId::of(loops::MANUAL_MEMCPY),
     LintId::of(loops::MISSING_SPIN_LOOP),

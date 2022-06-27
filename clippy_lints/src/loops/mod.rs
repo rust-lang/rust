@@ -5,6 +5,7 @@ mod explicit_iter_loop;
 mod for_kv_map;
 mod for_loops_over_fallibles;
 mod iter_next_loop;
+mod manual_find;
 mod manual_flatten;
 mod manual_memcpy;
 mod missing_spin_loop;
@@ -609,6 +610,37 @@ declare_clippy_lint! {
     "An empty busy waiting loop"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Check for manual implementations of Iterator::find
+    ///
+    /// ### Why is this bad?
+    /// It doesn't affect performance, but using `find` is shorter and easier to read.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn example(arr: Vec<i32>) -> Option<i32> {
+    ///     for el in arr {
+    ///         if el == 1 {
+    ///             return Some(el);
+    ///         }
+    ///     }
+    ///     None
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// fn example(arr: Vec<i32>) -> Option<i32> {
+    ///     arr.into_iter().find(|&el| el == 1)
+    /// }
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub MANUAL_FIND,
+    complexity,
+    "manual implementation of `Iterator::find`"
+}
+
 declare_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     MANUAL_FLATTEN,
@@ -629,6 +661,7 @@ declare_lint_pass!(Loops => [
     SAME_ITEM_PUSH,
     SINGLE_ELEMENT_LOOP,
     MISSING_SPIN_LOOP,
+    MANUAL_FIND,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -703,6 +736,7 @@ fn check_for_loop<'tcx>(
     single_element_loop::check(cx, pat, arg, body, expr);
     same_item_push::check(cx, pat, arg, body, expr);
     manual_flatten::check(cx, pat, arg, body, span);
+    manual_find::check(cx, pat, arg, body, span, expr);
 }
 
 fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
