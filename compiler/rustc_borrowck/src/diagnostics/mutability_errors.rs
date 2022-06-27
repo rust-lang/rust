@@ -903,9 +903,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(span) = arg {
                     err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
                     err.span_label(func.span, "expects `Fn` instead of `FnMut`");
-                    if self.infcx.tcx.sess.source_map().is_multiline(self.body.span) {
-                        err.span_label(self.body.span, "in this closure");
-                    }
+                    err.span_label(self.body.span, "in this closure");
                     look_at_return = false;
                 }
             }

@@ -123,7 +123,9 @@ LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     fn_ref(|| {
-   |     ------ expects `Fn` instead of `FnMut`
+   |     ------ -- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
 LL |         x = (1,);
    |         ^^^^^^^^ cannot assign
 
@@ -134,7 +136,9 @@ LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     fn_ref(|| {
-   |     ------ expects `Fn` instead of `FnMut`
+   |     ------ -- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
 LL |         x = (1,);
 LL |         x.0 = 1;
    |         ^^^^^^^ cannot assign
@@ -146,7 +150,9 @@ LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     fn_ref(|| {
-   |     ------ expects `Fn` instead of `FnMut`
+   |     ------ -- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
 ...
 LL |         &mut x;
    |         ^^^^^^ cannot borrow as mutable
@@ -158,7 +164,9 @@ LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     fn_ref(|| {
-   |     ------ expects `Fn` instead of `FnMut`
+   |     ------ -- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
 ...
 LL |         &mut x.0;
    |         ^^^^^^^^ cannot borrow as mutable
@@ -170,7 +178,9 @@ LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     fn_ref(move || {
-   |     ------ expects `Fn` instead of `FnMut`
+   |     ------ ------- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
 LL |         x = (1,);
    |         ^^^^^^^^ cannot assign
 
@@ -181,7 +191,9 @@ LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     fn_ref(move || {
-   |     ------ expects `Fn` instead of `FnMut`
+   |     ------ ------- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
 LL |         x = (1,);
 LL |         x.0 = 1;
    |         ^^^^^^^ cannot assign
@@ -193,7 +205,9 @@ LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     fn_ref(move || {
-   |     ------ expects `Fn` instead of `FnMut`
+   |     ------ ------- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
 ...
 LL |         &mut x;
    |         ^^^^^^ cannot borrow as mutable
@@ -205,7 +219,9 @@ LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     fn_ref(move || {
-   |     ------ expects `Fn` instead of `FnMut`
+   |     ------ ------- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
 ...
 LL |         &mut x.0;
    |         ^^^^^^^^ cannot borrow as mutable

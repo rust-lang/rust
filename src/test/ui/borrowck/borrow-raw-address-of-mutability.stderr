@@ -33,7 +33,9 @@ LL | fn make_fn<F: Fn()>(f: F) -> F { f }
    |                        - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     let f = make_fn(|| {
-   |             ------- expects `Fn` instead of `FnMut`
+   |             ------- -- in this closure
+   |             |
+   |             expects `Fn` instead of `FnMut`
 LL |         let y = &raw mut x;
    |                 ^^^^^^^^^^ cannot borrow as mutable
 
@@ -44,7 +46,9 @@ LL | fn make_fn<F: Fn()>(f: F) -> F { f }
    |                        - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     let f = make_fn(move || {
-   |             ------- expects `Fn` instead of `FnMut`
+   |             ------- ------- in this closure
+   |             |
+   |             expects `Fn` instead of `FnMut`
 LL |         let y = &raw mut x;
    |                 ^^^^^^^^^^ cannot borrow as mutable
 

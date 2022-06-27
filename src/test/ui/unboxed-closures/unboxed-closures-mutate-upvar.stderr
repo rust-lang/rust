@@ -32,7 +32,9 @@ LL | fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
    |                        - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     let mut f = to_fn(move || {
-   |                 ----- expects `Fn` instead of `FnMut`
+   |                 ----- ------- in this closure
+   |                 |
+   |                 expects `Fn` instead of `FnMut`
 LL |         n += 1;
    |         ^^^^^^ cannot assign
 
