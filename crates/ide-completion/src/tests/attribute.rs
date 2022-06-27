@@ -568,7 +568,7 @@ fn attr_on_fn() {
             at proc_macro_attribute
             at proc_macro_derive(…)
             at should_panic
-            at target_feature = "…"
+            at target_feature(enable = "…")
             at test
             at track_caller
             at warn(…)
@@ -615,7 +615,7 @@ fn attr_in_source_file_end() {
             at proc_macro_derive(…)
             at repr(…)
             at should_panic
-            at target_feature = "…"
+            at target_feature(enable = "…")
             at test
             at track_caller
             at used
