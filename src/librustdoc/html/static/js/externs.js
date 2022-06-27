@@ -83,7 +83,7 @@ let ResultsTable;
 let Results;
 
 /**
- * A pair of [inputs, outputs], or 0 for null. This is gets stored in the search index.
+ * A pair of [inputs, outputs], or 0 for null. This is stored in the search index.
  * The JavaScript deserializes this into FunctionSearchType.
  *
  * An input or output can be encoded as just a number if there is only one of them, AND
