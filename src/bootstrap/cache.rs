@@ -162,6 +162,7 @@ impl<T: Hash + Clone + Eq> TyIntern<T> {
 pub struct Interner {
     strs: Mutex<TyIntern<String>>,
     paths: Mutex<TyIntern<PathBuf>>,
+    lists: Mutex<TyIntern<Vec<String>>>,
 }
 
 trait Internable: Clone + Eq + Hash + 'static {
@@ -184,6 +185,12 @@ impl Internable for PathBuf {
     }
 }
 
+impl Internable for Vec<String> {
+    fn intern_cache() -> &'static Mutex<TyIntern<Self>> {
+        &INTERNER.lists
+    }
+}
+
 impl Interner {
     pub fn intern_str(&self, s: &str) -> Interned<String> {
         self.strs.lock().unwrap().intern_borrow(s)
@@ -194,6 +201,10 @@ impl Interner {
 
     pub fn intern_path(&self, s: PathBuf) -> Interned<PathBuf> {
         self.paths.lock().unwrap().intern(s)
+    }
+
+    pub fn intern_list(&self, v: Vec<String>) -> Interned<Vec<String>> {
+        self.lists.lock().unwrap().intern(v)
     }
 }
 

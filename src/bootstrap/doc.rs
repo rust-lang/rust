@@ -534,7 +534,9 @@ impl Step for Rustc {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.krate("rustc-main").path("compiler").default_condition(builder.config.compiler_docs)
+        run.crate_or_deps("rustc-main")
+            .path("compiler")
+            .default_condition(builder.config.compiler_docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -567,7 +569,7 @@ impl Step for Rustc {
         // Build the standard library, so that proc-macros can use it.
         // (Normally, only the metadata would be necessary, but proc-macros are special since they run at compile-time.)
         let compiler = builder.compiler(stage, builder.config.build);
-        builder.ensure(compile::Std { compiler, target: builder.config.build });
+        builder.ensure(compile::Std::new(compiler, builder.config.build));
 
         builder.info(&format!("Documenting stage{} compiler ({})", stage, target));
 
@@ -656,7 +658,7 @@ macro_rules! tool_doc {
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 let builder = run.builder;
-                run.krate($should_run).default_condition(builder.config.compiler_docs)
+                run.crate_or_deps($should_run).default_condition(builder.config.compiler_docs)
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -683,7 +685,7 @@ macro_rules! tool_doc {
                 // FIXME: is there a way to only ensure `check::Rustc` here? Last time I tried it failed
                 // with strange errors, but only on a full bors test ...
                 let compiler = builder.compiler(stage, builder.config.build);
-                builder.ensure(compile::Rustc { compiler, target });
+                builder.ensure(compile::Rustc::new(compiler, target));
 
                 builder.info(
                     &format!(
@@ -866,7 +868,7 @@ impl Step for RustcBook {
         let rustc = builder.rustc(self.compiler);
         // The tool runs `rustc` for extracting output examples, so it needs a
         // functional sysroot.
-        builder.ensure(compile::Std { compiler: self.compiler, target: self.target });
+        builder.ensure(compile::Std::new(self.compiler, self.target));
         let mut cmd = builder.tool_cmd(Tool::LintDocs);
         cmd.arg("--src");
         cmd.arg(builder.src.join("compiler"));

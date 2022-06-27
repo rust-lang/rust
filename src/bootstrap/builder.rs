@@ -13,7 +13,6 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use crate::cache::{Cache, Interned, INTERNER};
-use crate::compile;
 use crate::config::{SplitDebuginfo, TargetSelection};
 use crate::dist;
 use crate::doc;
@@ -26,6 +25,7 @@ use crate::tool::{self, SourceType};
 use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
 use crate::EXTRA_CHECK_CFGS;
 use crate::{check, Config};
+use crate::{compile, Crate};
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -422,8 +422,16 @@ impl<'a> ShouldRun<'a> {
     /// any of its (local) dependencies.
     ///
     /// `make_run` will be called a single time with all matching command-line paths.
-    pub fn krate(mut self, name: &str) -> Self {
-        for krate in self.builder.in_tree_crates(name, None) {
+    pub fn crate_or_deps(self, name: &str) -> Self {
+        let crates = self.builder.in_tree_crates(name, None);
+        self.crates(crates)
+    }
+
+    /// Indicates it should run if the command-line selects any of the given crates.
+    ///
+    /// `make_run` will be called a single time with all matching command-line paths.
+    pub(crate) fn crates(mut self, crates: Vec<&Crate>) -> Self {
+        for krate in crates {
             let path = krate.local_path(self.builder);
             self.paths.insert(PathSet::one(path, self.kind));
         }
@@ -579,6 +587,7 @@ impl<'a> Builder<'a> {
         match kind {
             Kind::Build => describe!(
                 compile::Std,
+                compile::Rustc,
                 compile::Assemble,
                 compile::CodegenBackend,
                 compile::StartupObjects,

@@ -51,10 +51,10 @@ impl Step for ToolBuild {
 
         match self.mode {
             Mode::ToolRustc => {
-                builder.ensure(compile::Std { compiler, target: compiler.host });
-                builder.ensure(compile::Rustc { compiler, target });
+                builder.ensure(compile::Std::new(compiler, compiler.host));
+                builder.ensure(compile::Rustc::new(compiler, target));
             }
-            Mode::ToolStd => builder.ensure(compile::Std { compiler, target }),
+            Mode::ToolStd => builder.ensure(compile::Std::new(compiler, target)),
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build"),
         }
@@ -512,8 +512,8 @@ impl Step for Rustdoc {
         // When using `download-rustc` and a stage0 build_compiler, copying rustc doesn't actually
         // build stage0 libstd (because the libstd in sysroot has the wrong ABI). Explicitly build
         // it.
-        builder.ensure(compile::Std { compiler: build_compiler, target: target_compiler.host });
-        builder.ensure(compile::Rustc { compiler: build_compiler, target: target_compiler.host });
+        builder.ensure(compile::Std::new(build_compiler, target_compiler.host));
+        builder.ensure(compile::Rustc::new(build_compiler, target_compiler.host));
         // NOTE: this implies that `download-rustc` is pretty useless when compiling with the stage0
         // compiler, since you do just as much work.
         if !builder.config.dry_run && builder.download_rustc() && build_compiler.stage == 0 {
