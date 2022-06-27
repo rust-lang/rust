@@ -19,7 +19,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
     target_os = "ios",
 ))]
 use crate::sys::weak::syscall;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "android", target_os = "macos"))]
 use crate::sys::weak::weak;
 
 use libc::{c_int, mode_t};
@@ -1064,8 +1064,8 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         cfg_if::cfg_if! {
-            // futimens requires macOS 10.13
-            if #[cfg(target_os = "macos")] {
+            // futimens requires macOS 10.13, and Android API level 19
+            if #[cfg(any(target_os = "android", target_os = "macos"))] {
                 fn ts_to_tv(ts: &libc::timespec) -> libc::timeval {
                     libc::timeval { tv_sec: ts.tv_sec, tv_usec: (ts.tv_nsec / 1000) as _ }
                 }
