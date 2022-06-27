@@ -1,24 +1,22 @@
-use crate::spec::{LinkerFlavor, LldFlavor, Target};
+use crate::spec::{LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut base = super::windows_msvc_base::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
 
-    let pre_link_args_msvc = vec![
-        // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
-        // space available to x86 Windows binaries on x86_64.
-        "/LARGEADDRESSAWARE".into(),
-        // Ensure the linker will only produce an image if it can also produce a table of
-        // the image's safe exception handlers.
-        // https://docs.microsoft.com/en-us/cpp/build/reference/safeseh-image-has-safe-exception-handlers
-        "/SAFESEH".into(),
-    ];
-    base.pre_link_args.entry(LinkerFlavor::Msvc).or_default().extend(pre_link_args_msvc.clone());
-    base.pre_link_args
-        .entry(LinkerFlavor::Lld(LldFlavor::Link))
-        .or_default()
-        .extend(pre_link_args_msvc);
+    base.add_pre_link_args(
+        LinkerFlavor::Msvc,
+        &[
+            // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
+            // space available to x86 Windows binaries on x86_64.
+            "/LARGEADDRESSAWARE",
+            // Ensure the linker will only produce an image if it can also produce a table of
+            // the image's safe exception handlers.
+            // https://docs.microsoft.com/en-us/cpp/build/reference/safeseh-image-has-safe-exception-handlers
+            "/SAFESEH",
+        ],
+    );
     // Workaround for #95429
     base.has_thread_local = false;
 

@@ -1,14 +1,9 @@
-use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, SplitDebuginfo, TargetOptions};
+use crate::spec::{LinkerFlavor, LldFlavor, SplitDebuginfo, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let pre_link_args_msvc = vec![
-        // Suppress the verbose logo and authorship debugging output, which would needlessly
-        // clog any log files.
-        "/NOLOGO".into(),
-    ];
-    let mut pre_link_args = LinkArgs::new();
-    pre_link_args.insert(LinkerFlavor::Msvc, pre_link_args_msvc.clone());
-    pre_link_args.insert(LinkerFlavor::Lld(LldFlavor::Link), pre_link_args_msvc);
+    // Suppress the verbose logo and authorship debugging output, which would needlessly
+    // clog any log files.
+    let pre_link_args = TargetOptions::link_args(LinkerFlavor::Msvc, &["/NOLOGO"]);
 
     TargetOptions {
         linker_flavor: LinkerFlavor::Msvc,

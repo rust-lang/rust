@@ -2,20 +2,13 @@
 // uefi-base module for generic UEFI options.
 
 use super::uefi_msvc_base;
-use crate::spec::{LinkerFlavor, LldFlavor, Target};
+use crate::spec::{LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut base = uefi_msvc_base::opts();
 
     base.max_atomic_width = Some(64);
-
-    let pre_link_args_msvc = vec!["/machine:arm64".into()];
-
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().extend(pre_link_args_msvc.clone());
-    base.pre_link_args
-        .get_mut(&LinkerFlavor::Lld(LldFlavor::Link))
-        .unwrap()
-        .extend(pre_link_args_msvc);
+    base.add_pre_link_args(LinkerFlavor::Msvc, &["/machine:arm64"]);
 
     Target {
         llvm_target: "aarch64-unknown-windows".into(),

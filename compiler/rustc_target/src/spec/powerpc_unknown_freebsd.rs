@@ -3,12 +3,8 @@ use crate::spec::{LinkerFlavor, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::freebsd_base::opts();
-    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m32".into());
     // Extra hint to linker that we are generating secure-PLT code.
-    base.pre_link_args
-        .entry(LinkerFlavor::Gcc)
-        .or_default()
-        .push("--target=powerpc-unknown-freebsd13.0".into());
+    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m32", "--target=powerpc-unknown-freebsd13.0"]);
     base.max_atomic_width = Some(32);
 
     Target {

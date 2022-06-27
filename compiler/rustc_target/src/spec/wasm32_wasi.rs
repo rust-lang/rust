@@ -80,11 +80,7 @@ pub fn target() -> Target {
 
     options.os = "wasi".into();
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
-    options
-        .pre_link_args
-        .entry(LinkerFlavor::Gcc)
-        .or_insert(Vec::new())
-        .push("--target=wasm32-wasi".into());
+    options.add_pre_link_args(LinkerFlavor::Gcc, &["--target=wasm32-wasi"]);
 
     options.pre_link_objects_fallback = crt_objects::pre_wasi_fallback();
     options.post_link_objects_fallback = crt_objects::post_wasi_fallback();

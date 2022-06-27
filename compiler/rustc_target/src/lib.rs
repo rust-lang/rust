@@ -8,6 +8,7 @@
 //! LLVM.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(exhaustive_patterns)]
 #![feature(let_else)]
