@@ -213,7 +213,7 @@ macro_rules! nonzero_leading_trailing_zeros {
                               without modifying the original"]
                 #[inline]
                 pub const fn leading_zeros(self) -> u32 {
-                    // SAFETY: since `self` can not be zero it is safe to call ctlz_nonzero
+                    // SAFETY: since `self` cannot be zero, it is safe to call `ctlz_nonzero`.
                     unsafe { intrinsics::ctlz_nonzero(self.0 as $Uint) as u32 }
                 }
 
@@ -237,7 +237,7 @@ macro_rules! nonzero_leading_trailing_zeros {
                               without modifying the original"]
                 #[inline]
                 pub const fn trailing_zeros(self) -> u32 {
-                    // SAFETY: since `self` can not be zero it is safe to call cttz_nonzero
+                    // SAFETY: since `self` cannot be zero, it is safe to call `cttz_nonzero`.
                     unsafe { intrinsics::cttz_nonzero(self.0 as $Uint) as u32 }
                 }
 
