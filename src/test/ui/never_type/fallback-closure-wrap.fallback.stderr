@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<[closure@$DIR/fallback-closure-wrap.rs:18:40: 21:6] as FnOnce<()>>::Output == ()`
+error[E0271]: type mismatch resolving `<[closure@$DIR/fallback-closure-wrap.rs:18:40: 18:47] as FnOnce<()>>::Output == ()`
   --> $DIR/fallback-closure-wrap.rs:18:31
    |
 LL |       let error = Closure::wrap(Box::new(move || {
@@ -10,7 +10,7 @@ LL | |     }) as Box<dyn FnMut()>);
    |
    = note: expected unit type `()`
                    found type `!`
-   = note: required for the cast from `[closure@$DIR/fallback-closure-wrap.rs:18:40: 21:6]` to the object type `dyn FnMut()`
+   = note: required for the cast from `[closure@$DIR/fallback-closure-wrap.rs:18:40: 18:47]` to the object type `dyn FnMut()`
 
 error: aborting due to previous error
 

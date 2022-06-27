@@ -121,7 +121,7 @@ fn main() -> () {
                                          // ]
         Retag(_14);                      // scope 1 at $DIR/retag.rs:40:31: 43:6
         _13 = move _14 as for<'r> fn(&'r i32) -> &'r i32 (Pointer(ClosureFnPointer(Normal))); // scope 1 at $DIR/retag.rs:40:31: 43:6
-        StorageDead(_14);                // scope 1 at $DIR/retag.rs:43:5: 43:6
+        StorageDead(_14);                // scope 1 at $DIR/retag.rs:40:47: 40:48
         StorageLive(_15);                // scope 6 at $DIR/retag.rs:44:9: 44:11
         StorageLive(_16);                // scope 6 at $DIR/retag.rs:44:14: 44:15
         _16 = _13;                       // scope 6 at $DIR/retag.rs:44:14: 44:15

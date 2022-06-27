@@ -10,7 +10,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
   --> $DIR/missing-lifetimes-in-signature.rs:19:5
    |
 LL |   fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
-   |                            ------ hidden type `[closure@$DIR/missing-lifetimes-in-signature.rs:19:5: 22:6]` captures the anonymous lifetime defined here
+   |                            ------ hidden type `[closure@$DIR/missing-lifetimes-in-signature.rs:19:5: 19:12]` captures the anonymous lifetime defined here
 ...
 LL | /     move || {
 LL | |

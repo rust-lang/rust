@@ -1020,6 +1020,7 @@ impl<'hir> Map<'hir> {
                 _ => named_span(item.span, item.ident, None),
             },
             Node::Ctor(_) => return self.opt_span(self.get_parent_node(hir_id)),
+            Node::Expr(Expr { kind: ExprKind::Closure { fn_decl_span, .. }, .. }) => *fn_decl_span,
             _ => self.span_with_body(hir_id),
         };
         Some(span)

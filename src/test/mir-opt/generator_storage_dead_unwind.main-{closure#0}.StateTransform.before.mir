@@ -1,6 +1,6 @@
 // MIR for `main::{closure#0}` before StateTransform
 
-fn main::{closure#0}(_1: [generator@$DIR/generator-storage-dead-unwind.rs:22:16: 28:6], _2: ()) -> ()
+fn main::{closure#0}(_1: [generator@$DIR/generator-storage-dead-unwind.rs:22:16: 22:18], _2: ()) -> ()
 yields ()
  {
     let mut _0: ();                      // return place in scope 0 at $DIR/generator-storage-dead-unwind.rs:22:19: 22:19
@@ -66,7 +66,7 @@ yields ()
     }
 
     bb4: {
-        return;                          // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:6: 28:6
+        return;                          // scope 0 at $DIR/generator-storage-dead-unwind.rs:22:18: 22:18
     }
 
     bb5: {
@@ -82,7 +82,7 @@ yields ()
     }
 
     bb7: {
-        generator_drop;                  // scope 0 at $DIR/generator-storage-dead-unwind.rs:22:16: 28:6
+        generator_drop;                  // scope 0 at $DIR/generator-storage-dead-unwind.rs:22:16: 22:18
     }
 
     bb8 (cleanup): {
@@ -104,7 +104,7 @@ yields ()
     }
 
     bb11 (cleanup): {
-        resume;                          // scope 0 at $DIR/generator-storage-dead-unwind.rs:22:16: 28:6
+        resume;                          // scope 0 at $DIR/generator-storage-dead-unwind.rs:22:16: 22:18
     }
 
     bb12 (cleanup): {

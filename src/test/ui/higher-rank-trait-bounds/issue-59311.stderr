@@ -4,7 +4,7 @@ error: higher-ranked lifetime error
 LL |     v.t(|| {});
    |     ^^^^^^^^^^
    |
-   = note: could not prove `[closure@$DIR/issue-59311.rs:17:9: 17:14] well-formed`
+   = note: could not prove `[closure@$DIR/issue-59311.rs:17:9: 17:11] well-formed`
 
 error: higher-ranked lifetime error
   --> $DIR/issue-59311.rs:17:9

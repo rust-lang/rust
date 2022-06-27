@@ -861,7 +861,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let arg_pos = args
                 .iter()
                 .enumerate()
-                .filter(|(_, arg)| arg.span == self.body.span)
+                .filter(|(_, arg)| arg.hir_id == closure_id)
                 .map(|(pos, _)| pos)
                 .next();
             let def_id = hir.local_def_id(item_id);

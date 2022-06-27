@@ -8,7 +8,7 @@ LL |     panic!()
    |     ^^^^^^^^
    |     |
    |     the evaluated program panicked at 'explicit panic', $DIR/issue-88434-removal-index-should-be-less.rs:11:5
-   |     inside `f::<[closure@$DIR/issue-88434-removal-index-should-be-less.rs:3:31: 3:37]>` at $SRC_DIR/std/src/panic.rs:LL:COL
+   |     inside `f::<[closure@$DIR/issue-88434-removal-index-should-be-less.rs:3:31: 3:34]>` at $SRC_DIR/std/src/panic.rs:LL:COL
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 

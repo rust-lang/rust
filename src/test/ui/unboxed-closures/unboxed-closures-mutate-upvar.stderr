@@ -28,17 +28,13 @@ LL |         n += 1;
 error[E0594]: cannot assign to `n`, as it is a captured variable in a `Fn` closure
   --> $DIR/unboxed-closures-mutate-upvar.rs:53:9
    |
-LL |   fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
-   |                          - change this to accept `FnMut` instead of `Fn`
+LL | fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
+   |                        - change this to accept `FnMut` instead of `Fn`
 ...
-LL |       let mut f = to_fn(move || {
-   |  _________________-----_-
-   | |                 |
-   | |                 expects `Fn` instead of `FnMut`
-LL | |         n += 1;
-   | |         ^^^^^^ cannot assign
-LL | |     });
-   | |_____- in this closure
+LL |     let mut f = to_fn(move || {
+   |                 ----- expects `Fn` instead of `FnMut`
+LL |         n += 1;
+   |         ^^^^^^ cannot assign
 
 error: aborting due to 4 previous errors
 

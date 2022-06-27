@@ -1249,7 +1249,7 @@ LL |     if let Range { start: F, end } = F..|| true {}
    |                                         ^^^^^^^ expected `bool`, found closure
    |
    = note: expected type `bool`
-           found closure `[closure@$DIR/disallowed-positions.rs:138:41: 138:48]`
+           found closure `[closure@$DIR/disallowed-positions.rs:138:41: 138:43]`
 help: use parentheses to call this closure
    |
 LL |     if let Range { start: F, end } = F..(|| true)() {}
@@ -1449,7 +1449,7 @@ LL |     while let Range { start: F, end } = F..|| true {}
    |                                            ^^^^^^^ expected `bool`, found closure
    |
    = note: expected type `bool`
-           found closure `[closure@$DIR/disallowed-positions.rs:203:44: 203:51]`
+           found closure `[closure@$DIR/disallowed-positions.rs:203:44: 203:46]`
 help: use parentheses to call this closure
    |
 LL |     while let Range { start: F, end } = F..(|| true)() {}

@@ -23,7 +23,7 @@ LL |     || -> Closure { || () }
    |                     ^^^^^ expected `()`, found closure
    |
    = note: expected unit type `()`
-                found closure `[closure@$DIR/issue-63279.rs:9:21: 9:26]`
+                found closure `[closure@$DIR/issue-63279.rs:9:21: 9:23]`
 help: use parentheses to call this closure
    |
 LL |     || -> Closure { (|| ())() }
@@ -36,7 +36,7 @@ LL |     || -> Closure { || () }
    |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found closure
    |
    = note: expected unit type `()`
-                found closure `[closure@$DIR/issue-63279.rs:9:5: 9:28]`
+                found closure `[closure@$DIR/issue-63279.rs:9:5: 9:18]`
 help: use parentheses to call this closure
    |
 LL |     (|| -> Closure { || () })()

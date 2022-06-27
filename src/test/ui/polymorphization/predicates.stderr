@@ -19,7 +19,7 @@ LL | impl<'a, I, T: 'a, E> Iterator for Foo<'a, I, E>
    |          generic parameter `I` is unused
 ...
 LL |         self.find(|_| true)
-   |                   ^^^^^^^^
+   |                   ^^^
 
 error: item has unused generic parameters
   --> $DIR/predicates.rs:59:4
