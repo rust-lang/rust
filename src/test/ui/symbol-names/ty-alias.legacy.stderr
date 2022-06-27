@@ -1,0 +1,38 @@
+error: symbol-name(_ZN8ty_alias5Trait6method17ha7d0f40d408a4a48E)
+  --> $DIR/ty-alias.rs:11:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(ty_alias::Trait::method::ha7d0f40d408a4a48)
+  --> $DIR/ty-alias.rs:11:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(ty_alias::Trait::method)
+  --> $DIR/ty-alias.rs:11:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN118_$LT$ty_alias..Foo$LT$T$GT$$u20$as$u20$ty_alias..Trait$LT$$LT$T$u20$as$u20$core..ops..deref..Deref$GT$..Target$GT$$GT$6method17he3e1099a8910c704E)
+  --> $DIR/ty-alias.rs:23:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<ty_alias::Foo<T> as ty_alias::Trait<<T as core::ops::deref::Deref>::Target>>::method::he3e1099a8910c704)
+  --> $DIR/ty-alias.rs:23:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<ty_alias::Foo<T> as ty_alias::Trait<<T as core::ops::deref::Deref>::Target>>::method)
+  --> $DIR/ty-alias.rs:23:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
