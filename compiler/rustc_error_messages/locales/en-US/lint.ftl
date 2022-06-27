@@ -54,3 +54,9 @@ lint-diag-out-of-impl =
     diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
 
 lint-untranslatable-diag = diagnostics should be created using translatable messages
+
+lint-cstring-ptr = getting the inner pointer of a temporary `CString`
+    .as-ptr-label = this pointer will be invalid
+    .unwrap-label = this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+    .note = pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+    .help = for more information, see https://doc.rust-lang.org/reference/destructors.html
