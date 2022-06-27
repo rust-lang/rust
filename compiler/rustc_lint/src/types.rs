@@ -2,7 +2,7 @@ use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::Applicability;
+use rustc_errors::{fluent, Applicability};
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
@@ -139,7 +139,8 @@ fn lint_overflowing_range_endpoint<'tcx>(
         // overflowing and only by 1.
         if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
             cx.struct_span_lint(OVERFLOWING_LITERALS, parent_expr.span, |lint| {
-                let mut err = lint.build(&format!("range endpoint is out of range for `{}`", ty));
+                let mut err = lint.build(fluent::lint::range_endpoint_out_of_range);
+                err.set_arg("ty", ty);
                 if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
                     use ast::{LitIntType, LitKind};
                     // We need to preserve the literal's suffix,
@@ -153,7 +154,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
                     let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
                     err.span_suggestion(
                         parent_expr.span,
-                        "use an inclusive range instead",
+                        fluent::lint::suggestion,
                         suggestion,
                         Applicability::MachineApplicable,
                     );
@@ -229,38 +230,35 @@ fn report_bin_hex_error(
                 (t.name_str(), actually.to_string())
             }
         };
-        let mut err = lint.build(&format!("literal out of range for `{}`", t));
+        let mut err = lint.build(fluent::lint::overflowing_bin_hex);
         if negative {
             // If the value is negative,
             // emits a note about the value itself, apart from the literal.
-            err.note(&format!(
-                "the literal `{}` (decimal `{}`) does not fit into \
-                 the type `{}`",
-                repr_str, val, t
-            ));
-            err.note(&format!("and the value `-{}` will become `{}{}`", repr_str, actually, t));
+            err.note(fluent::lint::negative_note);
+            err.note(fluent::lint::negative_becomes_note);
         } else {
-            err.note(&format!(
-                "the literal `{}` (decimal `{}`) does not fit into \
-                 the type `{}` and will become `{}{}`",
-                repr_str, val, t, actually, t
-            ));
+            err.note(fluent::lint::positive_note);
         }
         if let Some(sugg_ty) =
             get_type_suggestion(cx.typeck_results().node_type(expr.hir_id), val, negative)
         {
+            err.set_arg("suggestion_ty", sugg_ty);
             if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
                 let (sans_suffix, _) = repr_str.split_at(pos);
                 err.span_suggestion(
                     expr.span,
-                    &format!("consider using the type `{}` instead", sugg_ty),
+                    fluent::lint::suggestion,
                     format!("{}{}", sans_suffix, sugg_ty),
                     Applicability::MachineApplicable,
                 );
             } else {
-                err.help(&format!("consider using the type `{}` instead", sugg_ty));
+                err.help(fluent::lint::help);
             }
         }
+        err.set_arg("ty", t);
+        err.set_arg("lit", repr_str);
+        err.set_arg("dec", val);
+        err.set_arg("actually", actually);
         err.emit();
     });
 }
@@ -353,21 +351,23 @@ fn lint_int_literal<'tcx>(
         }
 
         cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-            let mut err = lint.build(&format!("literal out of range for `{}`", t.name_str()));
-            err.note(&format!(
-                "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
+            let mut err = lint.build(fluent::lint::overflowing_int);
+            err.set_arg("ty", t.name_str());
+            err.set_arg(
+                "lit",
                 cx.sess()
                     .source_map()
                     .span_to_snippet(lit.span)
                     .expect("must get snippet from literal"),
-                t.name_str(),
-                min,
-                max,
-            ));
+            );
+            err.set_arg("min", min);
+            err.set_arg("max", max);
+            err.note(fluent::lint::note);
             if let Some(sugg_ty) =
                 get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
             {
-                err.help(&format!("consider using the type `{}` instead", sugg_ty));
+                err.set_arg("suggestion_ty", sugg_ty);
+                err.help(fluent::lint::help);
             }
             err.emit();
         });
@@ -395,10 +395,10 @@ fn lint_uint_literal<'tcx>(
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
                         cx.struct_span_lint(OVERFLOWING_LITERALS, par_e.span, |lint| {
-                            lint.build("only `u8` can be cast into `char`")
+                            lint.build(fluent::lint::only_cast_u8_to_char)
                                 .span_suggestion(
                                     par_e.span,
-                                    "use a `char` literal instead",
+                                    fluent::lint::suggestion,
                                     format!("'\\u{{{:X}}}'", lit_val),
                                     Applicability::MachineApplicable,
                                 )
@@ -429,17 +429,18 @@ fn lint_uint_literal<'tcx>(
             return;
         }
         cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-            lint.build(&format!("literal out of range for `{}`", t.name_str()))
-                .note(&format!(
-                    "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
+            lint.build(fluent::lint::overflowing_uint)
+                .set_arg("ty", t.name_str())
+                .set_arg(
+                    "lit",
                     cx.sess()
                         .source_map()
                         .span_to_snippet(lit.span)
                         .expect("must get snippet from literal"),
-                    t.name_str(),
-                    min,
-                    max,
-                ))
+                )
+                .set_arg("min", min)
+                .set_arg("max", max)
+                .note(fluent::lint::note)
                 .emit();
         });
     }
@@ -471,16 +472,16 @@ fn lint_literal<'tcx>(
             };
             if is_infinite == Ok(true) {
                 cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-                    lint.build(&format!("literal out of range for `{}`", t.name_str()))
-                        .note(&format!(
-                            "the literal `{}` does not fit into the type `{}` and will be converted to `{}::INFINITY`",
+                    lint.build(fluent::lint::overflowing_literal)
+                        .set_arg("ty", t.name_str())
+                        .set_arg(
+                            "lit",
                             cx.sess()
                                 .source_map()
                                 .span_to_snippet(lit.span)
                                 .expect("must get snippet from literal"),
-                            t.name_str(),
-                            t.name_str(),
-                        ))
+                        )
+                        .note(fluent::lint::note)
                         .emit();
                 });
             }
@@ -501,7 +502,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
                     cx.struct_span_lint(UNUSED_COMPARISONS, e.span, |lint| {
-                        lint.build("comparison is useless due to type limits").emit();
+                        lint.build(fluent::lint::unused_comparisons).emit();
                     });
                 }
             }

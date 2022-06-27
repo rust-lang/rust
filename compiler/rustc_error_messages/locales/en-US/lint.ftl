@@ -147,3 +147,28 @@ lint-drop-trait-constraints =
 
 lint-drop-glue =
     types that do not implement `Drop` can still have drop glue, consider instead using `{$needs_drop}` to detect whether a type is trivially dropped
+
+lint-range-endpoint-out-of-range = range endpoint is out of range for `{$ty}`
+    .suggestion = use an inclusive range instead
+
+lint-overflowing-bin-hex = literal out of range for `{$ty}`
+    .negative-note = the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}`
+    .negative-becomes-note = and the value `-{$lit}` will become `{$actually}{$ty}`
+    .positive-note = the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}` and will become `{$actually}{$ty}`
+    .suggestion = consider using the type `{$suggestion_ty}` instead
+    .help = consider using the type `{$suggestion_ty}` instead
+
+lint-overflowing-int = literal out of range for `{$ty}`
+    .note = the literal `{$lit}` does not fit into the type `{$ty}` whose range is `{$min}..={$max}`
+    .help = consider using the type `{$suggestion_ty}` instead
+
+lint-only-cast-u8-to-char = only `u8` can be cast into `char`
+    .suggestion = use a `char` literal instead
+
+lint-overflowing-uint = literal out of range for `{$ty}`
+    .note = the literal `{$lit}` does not fit into the type `{$ty}` whose range is `{$min}..={$max}`
+
+lint-overflowing-literal = literal out of range for `{$ty}`
+    .note = the literal `{$lit}` does not fit into the type `{$ty}` and will be converted to `{$ty}::INFINITY`
+
+lint-unused-comparisons = comparison is useless due to type limits

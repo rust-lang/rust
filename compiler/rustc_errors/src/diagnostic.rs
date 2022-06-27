@@ -49,6 +49,18 @@ impl IntoDiagnosticArg for bool {
     }
 }
 
+impl IntoDiagnosticArg for i128 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for u128 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
 impl IntoDiagnosticArg for String {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(self))
