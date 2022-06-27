@@ -198,17 +198,13 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
     }
 }
 
+#[instrument(level = "debug", skip(tcx, elaborated_env))]
 fn do_normalize_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    region_context: DefId,
     cause: ObligationCause<'tcx>,
     elaborated_env: ty::ParamEnv<'tcx>,
     predicates: Vec<ty::Predicate<'tcx>>,
 ) -> Result<Vec<ty::Predicate<'tcx>>, ErrorGuaranteed> {
-    debug!(
-        "do_normalize_predicates(predicates={:?}, region_context={:?}, cause={:?})",
-        predicates, region_context, cause,
-    );
     let span = cause.span;
     tcx.infer_ctxt().enter(|infcx| {
         // FIXME. We should really... do something with these region
@@ -240,7 +236,7 @@ fn do_normalize_predicates<'tcx>(
         // cares about declarations like `'a: 'b`.
         let outlives_env = OutlivesEnvironment::new(elaborated_env);
 
-        infcx.resolve_regions_and_report_errors(region_context, &outlives_env);
+        infcx.resolve_regions_and_report_errors(&outlives_env);
 
         let predicates = match infcx.fully_resolve(predicates) {
             Ok(predicates) => predicates,
@@ -269,9 +265,9 @@ fn do_normalize_predicates<'tcx>(
 
 // FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
+#[instrument(level = "debug", skip(tcx))]
 pub fn normalize_param_env_or_error<'tcx>(
     tcx: TyCtxt<'tcx>,
-    region_context: DefId,
     unnormalized_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
 ) -> ty::ParamEnv<'tcx> {
@@ -289,12 +285,6 @@ pub fn normalize_param_env_or_error<'tcx>(
     // parameter environments once for every fn as it goes,
     // and errors will get reported then; so outside of type inference we
     // can be sure that no errors should occur.
-
-    debug!(
-        "normalize_param_env_or_error(region_context={:?}, unnormalized_env={:?}, cause={:?})",
-        region_context, unnormalized_env, cause
-    );
-
     let mut predicates: Vec<_> =
         util::elaborate_predicates(tcx, unnormalized_env.caller_bounds().into_iter())
             .map(|obligation| obligation.predicate)
@@ -338,7 +328,6 @@ pub fn normalize_param_env_or_error<'tcx>(
     );
     let Ok(non_outlives_predicates) = do_normalize_predicates(
         tcx,
-        region_context,
         cause.clone(),
         elaborated_env,
         predicates,
@@ -362,7 +351,6 @@ pub fn normalize_param_env_or_error<'tcx>(
     );
     let Ok(outlives_predicates) = do_normalize_predicates(
         tcx,
-        region_context,
         cause,
         outlives_env,
         outlives_predicates,

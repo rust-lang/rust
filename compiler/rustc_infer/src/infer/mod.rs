@@ -1267,7 +1267,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
     pub fn resolve_regions(
         &self,
-        region_context: DefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) -> Vec<RegionResolutionError<'tcx>> {
         let (var_infos, data) = {
@@ -1286,8 +1285,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .into_infos_and_data()
         };
 
-        let region_rels =
-            &RegionRelations::new(self.tcx, region_context, outlives_env.free_region_map());
+        let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
 
         let (lexical_region_resolutions, errors) =
             lexical_region_resolve::resolve(outlives_env.param_env, region_rels, var_infos, data);
@@ -1302,12 +1300,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
-    pub fn resolve_regions_and_report_errors(
-        &self,
-        region_context: DefId,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) {
-        let errors = self.resolve_regions(region_context, outlives_env);
+    pub fn resolve_regions_and_report_errors(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
+        let errors = self.resolve_regions(outlives_env);
 
         if !self.is_tainted_by_errors() {
             // As a heuristic, just skip reporting region errors

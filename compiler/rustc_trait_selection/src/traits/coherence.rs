@@ -317,14 +317,13 @@ fn negative_impl<'cx, 'tcx>(
         let (subject2, obligations) =
             impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
 
-        !equate(&infcx, impl_env, impl1_def_id, subject1, subject2, obligations)
+        !equate(&infcx, impl_env, subject1, subject2, obligations)
     })
 }
 
 fn equate<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     impl_env: ty::ParamEnv<'tcx>,
-    impl1_def_id: DefId,
     subject1: ImplSubject<'tcx>,
     subject2: ImplSubject<'tcx>,
     obligations: impl Iterator<Item = PredicateObligation<'tcx>>,
@@ -341,7 +340,7 @@ fn equate<'cx, 'tcx>(
     let opt_failing_obligation = obligations
         .into_iter()
         .chain(more_obligations)
-        .find(|o| negative_impl_exists(selcx, impl_env, impl1_def_id, o));
+        .find(|o| negative_impl_exists(selcx, impl_env, o));
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -356,18 +355,17 @@ fn equate<'cx, 'tcx>(
 fn negative_impl_exists<'cx, 'tcx>(
     selcx: &SelectionContext<'cx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    region_context: DefId,
     o: &PredicateObligation<'tcx>,
 ) -> bool {
     let infcx = &selcx.infcx().fork();
 
-    if resolve_negative_obligation(infcx, param_env, region_context, o) {
+    if resolve_negative_obligation(infcx, param_env, o) {
         return true;
     }
 
     // Try to prove a negative obligation exists for super predicates
     for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
-        if resolve_negative_obligation(infcx, param_env, region_context, &o) {
+        if resolve_negative_obligation(infcx, param_env, &o) {
             return true;
         }
     }
@@ -379,7 +377,6 @@ fn negative_impl_exists<'cx, 'tcx>(
 fn resolve_negative_obligation<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    region_context: DefId,
     o: &PredicateObligation<'tcx>,
 ) -> bool {
     let tcx = infcx.tcx;
@@ -409,7 +406,7 @@ fn resolve_negative_obligation<'cx, 'tcx>(
 
     infcx.process_registered_region_obligations(outlives_env.region_bound_pairs_map(), param_env);
 
-    let errors = infcx.resolve_regions(region_context, &outlives_env);
+    let errors = infcx.resolve_regions(&outlives_env);
 
     if !errors.is_empty() {
         return false;

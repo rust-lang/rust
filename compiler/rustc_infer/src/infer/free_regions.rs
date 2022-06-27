@@ -4,7 +4,6 @@
 //! and use that to decide when one free region outlives another, and so forth.
 
 use rustc_data_structures::transitive_relation::TransitiveRelation;
-use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Lift, Region, TyCtxt};
 
 /// Combines a `FreeRegionMap` and a `TyCtxt`.
@@ -14,16 +13,13 @@ use rustc_middle::ty::{self, Lift, Region, TyCtxt};
 pub(crate) struct RegionRelations<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
 
-    /// The context used for debug messages
-    pub context: DefId,
-
     /// Free-region relationships.
     pub free_regions: &'a FreeRegionMap<'tcx>,
 }
 
 impl<'a, 'tcx> RegionRelations<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, context: DefId, free_regions: &'a FreeRegionMap<'tcx>) -> Self {
-        Self { tcx, context, free_regions }
+    pub fn new(tcx: TyCtxt<'tcx>, free_regions: &'a FreeRegionMap<'tcx>) -> Self {
+        Self { tcx, free_regions }
     }
 
     pub fn lub_free_regions(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> Region<'tcx> {

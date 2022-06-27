@@ -661,7 +661,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
 
         add_constraints(&infcx, region_bound_pairs);
 
-        let errors = infcx.resolve_regions(id.expect_owner().to_def_id(), &outlives_environment);
+        let errors = infcx.resolve_regions(&outlives_environment);
 
         debug!(?errors, "errors");
 

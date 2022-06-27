@@ -120,13 +120,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ) -> LexicalRegionResolutions<'tcx> {
         let mut var_data = self.construct_var_data(self.tcx());
 
-        // Dorky hack to cause `dump_constraints` to only get called
-        // if debug mode is enabled:
-        debug!(
-            "----() End constraint listing (context={:?}) {:?}---",
-            self.region_rels.context,
-            self.dump_constraints(self.region_rels)
-        );
+        if cfg!(debug_assertions) {
+            self.dump_constraints();
+        }
 
         let graph = self.construct_graph();
         self.expand_givens(&graph);
@@ -156,8 +152,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
     }
 
-    fn dump_constraints(&self, free_regions: &RegionRelations<'_, 'tcx>) {
-        debug!("----() Start constraint listing (context={:?}) ()----", free_regions.context);
+    #[instrument(level = "debug", skip(self))]
+    fn dump_constraints(&self) {
         for (idx, (constraint, _)) in self.data.constraints.iter().enumerate() {
             debug!("Constraint {} => {:?}", idx, constraint);
         }

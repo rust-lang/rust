@@ -222,10 +222,8 @@ pub struct RegionCtxt<'a, 'tcx> {
 
     // id of innermost fn body id
     body_id: hir::HirId,
+    // TODO: is this always equal to `body_id`?
     body_owner: LocalDefId,
-
-    // id of AST node being analyzed (the subject of the analysis).
-    subject_def_id: LocalDefId,
 }
 
 impl<'a, 'tcx> Deref for RegionCtxt<'a, 'tcx> {
@@ -245,13 +243,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> RegionCtxt<'a, 'tcx> {
         let outlives_environment = OutlivesEnvironment::new(param_env);
-        RegionCtxt {
-            fcx,
-            body_id: initial_body_id,
-            body_owner: subject,
-            subject_def_id: subject,
-            outlives_environment,
-        }
+        RegionCtxt { fcx, body_id: initial_body_id, body_owner: subject, outlives_environment }
     }
 
     /// Try to resolve the type for the given node, returning `t_err` if an error results. Note that
@@ -369,10 +361,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             self.param_env,
         );
 
-        self.fcx.resolve_regions_and_report_errors(
-            self.subject_def_id.to_def_id(),
-            &self.outlives_environment,
-        );
+        self.fcx.resolve_regions_and_report_errors(&self.outlives_environment);
     }
 
     fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat<'_>) {

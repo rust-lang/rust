@@ -208,8 +208,7 @@ fn compare_predicate_entailment<'tcx>(
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
-    let param_env =
-        traits::normalize_param_env_or_error(tcx, impl_m.def_id, param_env, normalize_cause);
+    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
 
     tcx.infer_ctxt().enter(|infcx| {
         let inh = Inherited::new(infcx, impl_m.def_id.expect_local());
@@ -1247,12 +1246,7 @@ fn compare_type_predicate_entailment<'tcx>(
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
-    let param_env = traits::normalize_param_env_or_error(
-        tcx,
-        impl_ty.def_id,
-        param_env,
-        normalize_cause.clone(),
-    );
+    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause.clone());
     tcx.infer_ctxt().enter(|infcx| {
         let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
         let infcx = &inh.infcx;
