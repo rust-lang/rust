@@ -131,3 +131,13 @@ lint-noop-method-call = call to `.{$method}()` on a reference in this situation 
 
 lint-pass-by-value = passing `{$ty}` by reference
     .suggestion = try passing by value
+
+lint-redundant-semicolons =
+    unnecessary trailing {$multiple ->
+        [true] semicolons
+        *[false] semicolon
+    }
+    .suggestion = remove {$multiple ->
+        [true] these semicolons
+        *[false] this semicolon
+    }
