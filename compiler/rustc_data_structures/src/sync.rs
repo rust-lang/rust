@@ -21,6 +21,7 @@ use crate::owning_ref::{Erased, OwningRef};
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
+use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
@@ -41,7 +42,6 @@ cfg_if! {
         }
 
         use std::ops::Add;
-        use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
         /// This is a single threaded variant of `AtomicU64`, `AtomicUsize`, etc.
         /// It has explicit ordering arguments and is only intended for use with
@@ -339,7 +339,10 @@ cfg_if! {
             t: T,
             for_each: impl Fn(T::Item) + Sync + Send,
         ) {
-            t.into_par_iter().for_each(for_each)
+            let ps: Vec<_> = t.into_par_iter().map(|i| catch_unwind(AssertUnwindSafe(|| for_each(i)))).collect();
+            ps.into_iter().for_each(|p| if let Err(panic) = p {
+                resume_unwind(panic)
+            });
         }
 
         pub type MetadataRef = OwningRef<Box<dyn Erased + Send + Sync>, [u8]>;
