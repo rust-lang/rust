@@ -5,6 +5,7 @@ mod fs;
 mod sync;
 mod thread;
 
+mod freebsd;
 mod linux;
 mod macos;
 

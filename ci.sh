@@ -42,6 +42,16 @@ function run_tests {
   echo
 }
 
+function run_tests_minimal {
+  if [ -n "${MIRI_TEST_TARGET+exists}" ]; then
+    echo "Testing MINIMAL foreign architecture $MIRI_TEST_TARGET: only testing $@"
+  else
+    echo "Testing MINIMAL host architecture: only testing $@"
+  fi
+
+  ./miri test --locked -- "$@"
+}
+
 # host
 run_tests
 
@@ -50,6 +60,7 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
     MIRI_TEST_TARGET=i686-pc-windows-msvc run_tests
+    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec
     ;;
   x86_64-apple-darwin)
     MIRI_TEST_TARGET=mips64-unknown-linux-gnuabi64 run_tests # big-endian architecture

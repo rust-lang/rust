@@ -910,5 +910,5 @@ impl std::fmt::Display for HexRange {
 /// Helper function used inside the shims of foreign functions to check that
 /// `target_os` is a supported UNIX OS.
 pub fn target_os_is_unix(target_os: &str) -> bool {
-    matches!(target_os, "linux" | "macos")
+    matches!(target_os, "linux" | "macos" | "freebsd")
 }
