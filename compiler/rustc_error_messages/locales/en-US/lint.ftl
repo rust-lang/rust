@@ -141,3 +141,9 @@ lint-redundant-semicolons =
         [true] these semicolons
         *[false] this semicolon
     }
+
+lint-drop-trait-constraints =
+    bounds on `{$predicate}` are most likely incorrect, consider instead using `{$needs_drop}` to detect whether a type can be trivially dropped
+
+lint-drop-glue =
+    types that do not implement `Drop` can still have drop glue, consider instead using `{$needs_drop}` to detect whether a type is trivially dropped
