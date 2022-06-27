@@ -60,3 +60,15 @@ lint-cstring-ptr = getting the inner pointer of a temporary `CString`
     .unwrap-label = this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
     .note = pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
     .help = for more information, see https://doc.rust-lang.org/reference/destructors.html
+
+lint-identifier-non-ascii-char = identifier contains non-ASCII characters
+
+lint-identifier-uncommon-codepoints = identifier contains uncommon Unicode codepoints
+
+lint-confusable-identifier-pair = identifier pair considered confusable between `{$existing_sym}` and `{$sym}`
+    .label = this is where the previous identifier occurred
+
+lint-mixed-script-confusables =
+    the usage of Script Group `{$set}` in this crate consists solely of mixed script confusables
+    .includes-note = the usage includes {$includes}
+    .note = please recheck to make sure their usages are indeed what you want
