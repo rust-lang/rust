@@ -1,3 +1,254 @@
+Version 1.62.0 (2022-06-30)
+==========================
+
+Language
+--------
+
+- [Stabilize `#[derive(Default)]` on enums with a `#[default]` variant][94457]
+- [Stop validating some checks in dead code after functions with uninhabited return types][93313]
+- [Fix constants not getting dropped if part of a diverging expression][94775]
+- [Support unit struct/enum variant in destructuring assignment][95380]
+- [Remove mutable_borrow_reservation_conflict lint and allow the code pattern][96268]
+
+Compiler
+--------
+
+- [linker: Stop using whole-archive on dependencies of dylibs][96436]
+- [Make `unaligned_references` lint deny-by-default][95372]
+  This lint is also a future compatibility lint, and is expected to eventually
+  become a hard error.
+- [Only add codegen backend to dep info if -Zbinary-dep-depinfo is used][93969]
+- [Reject `#[thread_local]` attribute on non-static items][95006]
+- [Add tier 3 `aarch64-pc-windows-gnullvm` and `x86_64-pc-windows-gnullvm` targets\*][94872]
+- [Implement a lint to warn about unused macro rules][96150]
+- [Promote `x86_64-unknown-none` target to Tier 2\*][95705]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
+
+Libraries
+---------
+
+- [Move `CStr` to libcore, and `CString` to liballoc][94079]
+- [Windows: Use a pipe relay for chaining pipes][95841]
+- [Replace Linux Mutex and Condvar with futex based ones.][95035]
+- [Replace RwLock by a futex based one on Linux][95801]
+- [std: directly use pthread in UNIX parker implementation][96393]
+
+Stabilized APIs
+---------------
+
+- [`bool::then_some`]
+- [`f32::total_cmp`]
+- [`f64::total_cmp`]
+- [`Stdin::lines`]
+- [`windows::CommandExt::raw_arg`]
+- [`impl<T: Default> Default for AssertUnwindSafe<T>`]
+- [`From<Rc<str>> for Rc<[u8]>`][rc-u8-from-str]
+- [`From<Arc<str>> for Arc<[u8]>`][arc-u8-from-str]
+- [`FusedIterator for EncodeWide`]
+- [RDM intrinsics on aarch64][stdarch/1285]
+
+Clippy
+------
+
+- [Create clippy lint against unexpectedly late drop for temporaries in match scrutinee expressions][94206]
+
+Cargo
+-----
+
+- Added the `cargo add` command for adding dependencies to `Cargo.toml` from
+  the command-line.
+  [docs](https://doc.rust-lang.org/nightly/cargo/commands/cargo-add.html)
+- Package ID specs now support `name@version` syntax in addition to the
+  previous `name:version` to align with the behavior in `cargo add` and other
+  tools. `cargo install` and `cargo yank` also now support this syntax so the
+  version does not need to passed as a separate flag.
+- The `git` and `registry` directories in Cargo's home directory (usually
+  `~/.cargo`) are now marked as cache directories so that they are not
+  included in backups or content indexing (on Windows).
+- Added automatic `@` argfile support, which will use "response files" if the
+  command-line to `rustc` exceeds the operating system's limit.
+
+Compatibility Notes
+-------------------
+
+- `cargo test` now passes `--target` to `rustdoc` if the specified target is
+  the same as the host target.
+  [#10594](https://github.com/rust-lang/cargo/pull/10594)
+- [rustdoc: Remove .woff font files][96279]
+- [Enforce Copy bounds for repeat elements while considering lifetimes][95819]
+
+Internal Changes
+----------------
+
+- [Unify ReentrantMutex implementations across all platforms][96042]
+
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+[93313]: https://github.com/rust-lang/rust/pull/93313/
+[93969]: https://github.com/rust-lang/rust/pull/93969/
+[94079]: https://github.com/rust-lang/rust/pull/94079/
+[94206]: https://github.com/rust-lang/rust/pull/94206/
+[94457]: https://github.com/rust-lang/rust/pull/94457/
+[94775]: https://github.com/rust-lang/rust/pull/94775/
+[94872]: https://github.com/rust-lang/rust/pull/94872/
+[95006]: https://github.com/rust-lang/rust/pull/95006/
+[95035]: https://github.com/rust-lang/rust/pull/95035/
+[95372]: https://github.com/rust-lang/rust/pull/95372/
+[95380]: https://github.com/rust-lang/rust/pull/95380/
+[95431]: https://github.com/rust-lang/rust/pull/95431/
+[95705]: https://github.com/rust-lang/rust/pull/95705/
+[95801]: https://github.com/rust-lang/rust/pull/95801/
+[95819]: https://github.com/rust-lang/rust/pull/95819/
+[95841]: https://github.com/rust-lang/rust/pull/95841/
+[96042]: https://github.com/rust-lang/rust/pull/96042/
+[96150]: https://github.com/rust-lang/rust/pull/96150/
+[96268]: https://github.com/rust-lang/rust/pull/96268/
+[96279]: https://github.com/rust-lang/rust/pull/96279/
+[96393]: https://github.com/rust-lang/rust/pull/96393/
+[96436]: https://github.com/rust-lang/rust/pull/96436/
+[96557]: https://github.com/rust-lang/rust/pull/96557/
+
+[`bool::then_some`]: https://doc.rust-lang.org/stable/std/primitive.bool.html#method.then_some
+[`f32::total_cmp`]: https://doc.rust-lang.org/stable/std/primitive.f32.html#method.total_cmp
+[`f64::total_cmp`]: https://doc.rust-lang.org/stable/std/primitive.f64.html#method.total_cmp
+[`Stdin::lines`]: https://doc.rust-lang.org/stable/std/io/struct.Stdin.html#method.lines
+[`impl<T: Default> Default for AssertUnwindSafe<T>`]: https://doc.rust-lang.org/stable/std/panic/struct.AssertUnwindSafe.html#impl-Default
+[rc-u8-from-str]: https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#impl-From%3CRc%3Cstr%3E%3E
+[arc-u8-from-str]: https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#impl-From%3CArc%3Cstr%3E%3E
+[stdarch/1285]: https://github.com/rust-lang/stdarch/pull/1285
+[`windows::CommandExt::raw_arg`]: https://doc.rust-lang.org/stable/std/os/windows/process/trait.CommandExt.html#tymethod.raw_arg
+[`FusedIterator for EncodeWide`]: https://doc.rust-lang.org/stable/std/os/windows/ffi/struct.EncodeWide.html#impl-FusedIterator
+
+Version 1.61.0 (2022-05-19)
+==========================
+
+Language
+--------
+
+- [`const fn` signatures can now include generic trait bounds][93827]
+- [`const fn` signatures can now use `impl Trait` in argument and return position][93827]
+- [Function pointers can now be created, cast, and passed around in a `const fn`][93827]
+- [Recursive calls can now set the value of a function's opaque `impl Trait` return type][94081]
+
+Compiler
+--------
+
+- [Linking modifier syntax in `#[link]` attributes and on the command line, as well as the `whole-archive` modifier specifically, are now supported][93901]
+- [The `char` type is now described as UTF-32 in debuginfo][89887]
+- The [`#[target_feature]`][target_feature] attribute [can now be used with aarch64 features][90621]
+- X86 [`#[target_feature = "adx"]` is now stable][93745]
+
+Libraries
+---------
+
+- [`ManuallyDrop<T>` is now documented to have the same layout as `T`][88375]
+- [`#[ignore = "…"]` messages are printed when running tests][92714]
+- [Consistently show absent stdio handles on Windows as NULL handles][93263]
+- [Make `std::io::stdio::lock()` return `'static` handles.][93965] Previously, the creation of locked handles to stdin/stdout/stderr would borrow the handles being locked, which prevented writing `let out = std::io::stdout().lock();` because `out` would outlive the return value of `stdout()`. Such code now works, eliminating a common pitfall that affected many Rust users.
+- [`Vec::from_raw_parts` is now less restrictive about its inputs][95016]
+- [`std::thread::available_parallelism` now takes cgroup quotas into account.][92697] Since `available_parallelism` is often used to create a thread pool for parallel computation, which may be CPU-bound for performance, `available_parallelism` will return a value consistent with the ability to use that many threads continuously, if possible. For instance, in a container with 8 virtual CPUs but quotas only allowing for 50% usage, `available_parallelism` will return 4.
+
+Stabilized APIs
+---------------
+
+- [`Pin::static_mut`]
+- [`Pin::static_ref`]
+- [`Vec::retain_mut`]
+- [`VecDeque::retain_mut`]
+- [`Write` for `Cursor<[u8; N]>`][cursor-write-array]
+- [`std::os::unix::net::SocketAddr::from_pathname`]
+- [`std::process::ExitCode`] and [`std::process::Termination`]. The stabilization of these two APIs now makes it possible for programs to return errors from `main` with custom exit codes.
+- [`std::thread::JoinHandle::is_finished`]
+
+These APIs are now usable in const contexts:
+
+- [`<*const T>::offset` and `<*mut T>::offset`][ptr-offset]
+- [`<*const T>::wrapping_offset` and `<*mut T>::wrapping_offset`][ptr-wrapping_offset]
+- [`<*const T>::add` and `<*mut T>::add`][ptr-add]
+- [`<*const T>::sub` and `<*mut T>::sub`][ptr-sub]
+- [`<*const T>::wrapping_add` and `<*mut T>::wrapping_add`][ptr-wrapping_add]
+- [`<*const T>::wrapping_sub` and `<*mut T>::wrapping_sub`][ptr-wrapping_sub]
+- [`<[T]>::as_mut_ptr`][slice-as_mut_ptr]
+- [`<[T]>::as_ptr_range`][slice-as_ptr_range]
+- [`<[T]>::as_mut_ptr_range`][slice-as_mut_ptr_range]
+
+Cargo
+-----
+
+No feature changes, but see compatibility notes.
+
+Compatibility Notes
+-------------------
+
+- Previously native static libraries were linked as `whole-archive` in some cases, but now rustc tries not to use `whole-archive` unless explicitly requested. This [change][93901] may result in linking errors in some cases. To fix such errors, native libraries linked from the command line, build scripts, or [`#[link]` attributes][link-attr] need to
+  - (more common) either be reordered to respect dependencies between them (if `a` depends on `b` then `a` should go first and `b` second)
+  - (less common) or be updated to use the [`+whole-archive`] modifier.
+- [Catching a second unwind from FFI code while cleaning up from a Rust panic now causes the process to abort][92911]
+- [Proc macros no longer see `ident` matchers wrapped in groups][92472]
+- [The number of `#` in `r#` raw string literals is now required to be less than 256][95251]
+- [When checking that a dyn type satisfies a trait bound, supertrait bounds are now enforced][92285]
+- [`cargo vendor` now only accepts one value for each `--sync` flag][cargo/10448]
+- [`cfg` predicates in `all()` and `any()` are always evaluated to detect errors, instead of short-circuiting.][94295] The compatibility considerations here arise in nightly-only code that used the short-circuiting behavior of `all` to write something like `cfg(all(feature = "nightly", syntax-requiring-nightly))`, which will now fail to compile. Instead, use either `cfg_attr(feature = "nightly", ...)` or nested uses of `cfg`.
+- [bootstrap: static-libstdcpp is now enabled by default, and can now be disabled when llvm-tools is enabled][94832]
+
+Internal Changes
+----------------
+
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+- [debuginfo: Refactor debuginfo generation for types][94261]
+- [Remove the everybody loops pass][93913]
+
+[88375]: https://github.com/rust-lang/rust/pull/88375/
+[89887]: https://github.com/rust-lang/rust/pull/89887/
+[90621]: https://github.com/rust-lang/rust/pull/90621/
+[92285]: https://github.com/rust-lang/rust/pull/92285/
+[92472]: https://github.com/rust-lang/rust/pull/92472/
+[92697]: https://github.com/rust-lang/rust/pull/92697/
+[92714]: https://github.com/rust-lang/rust/pull/92714/
+[92911]: https://github.com/rust-lang/rust/pull/92911/
+[93263]: https://github.com/rust-lang/rust/pull/93263/
+[93745]: https://github.com/rust-lang/rust/pull/93745/
+[93827]: https://github.com/rust-lang/rust/pull/93827/
+[93901]: https://github.com/rust-lang/rust/pull/93901/
+[93913]: https://github.com/rust-lang/rust/pull/93913/
+[93965]: https://github.com/rust-lang/rust/pull/93965/
+[94081]: https://github.com/rust-lang/rust/pull/94081/
+[94261]: https://github.com/rust-lang/rust/pull/94261/
+[94295]: https://github.com/rust-lang/rust/pull/94295/
+[94832]: https://github.com/rust-lang/rust/pull/94832/
+[95016]: https://github.com/rust-lang/rust/pull/95016/
+[95251]: https://github.com/rust-lang/rust/pull/95251/
+[`+whole-archive`]: https://doc.rust-lang.org/stable/rustc/command-line-arguments.html#linking-modifiers-whole-archive
+[`Pin::static_mut`]: https://doc.rust-lang.org/stable/std/pin/struct.Pin.html#method.static_mut
+[`Pin::static_ref`]: https://doc.rust-lang.org/stable/std/pin/struct.Pin.html#method.static_ref
+[`Vec::retain_mut`]: https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.retain_mut
+[`VecDeque::retain_mut`]: https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.retain_mut
+[`std::os::unix::net::SocketAddr::from_pathname`]: https://doc.rust-lang.org/stable/std/os/unix/net/struct.SocketAddr.html#method.from_pathname
+[`std::process::ExitCode`]: https://doc.rust-lang.org/stable/std/process/struct.ExitCode.html
+[`std::process::Termination`]: https://doc.rust-lang.org/stable/std/process/trait.Termination.html
+[`std::thread::JoinHandle::is_finished`]: https://doc.rust-lang.org/stable/std/thread/struct.JoinHandle.html#method.is_finished
+[cargo/10448]: https://github.com/rust-lang/cargo/pull/10448/
+[cursor-write-array]: https://doc.rust-lang.org/stable/std/io/struct.Cursor.html#impl-Write-4
+[link-attr]: https://doc.rust-lang.org/stable/reference/items/external-blocks.html#the-link-attribute
+[ptr-add]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.add
+[ptr-offset]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.offset
+[ptr-sub]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.sub
+[ptr-wrapping_add]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.wrapping_add
+[ptr-wrapping_offset]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.wrapping_offset
+[ptr-wrapping_sub]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.wrapping_sub
+[slice-as_mut_ptr]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_mut_ptr
+[slice-as_mut_ptr_range]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_mut_ptr_range
+[slice-as_ptr_range]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_ptr_range
+[target_feature]: https://doc.rust-lang.org/reference/attributes/codegen.html#the-target_feature-attribute
+
+
 Version 1.60.0 (2022-04-07)
 ==========================
 
