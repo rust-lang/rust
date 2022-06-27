@@ -17,7 +17,7 @@
 //       "body": [
 //         "thread::spawn(move || {",
 //         "\t$0",
-//         ")};",
+//         "});",
 //       ],
 //       "description": "Insert a thread::spawn call",
 //       "requires": "std::thread",
