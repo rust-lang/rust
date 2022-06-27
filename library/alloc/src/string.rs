@@ -819,10 +819,7 @@ impl String {
     ///
     /// # Safety
     ///
-    /// This function is unsafe because it does not check that the bytes passed
-    /// to it are valid UTF-8. If this constraint is violated, it may cause
-    /// memory unsafety issues with future users of the `String`, as the rest of
-    /// the standard library assumes that `String`s are valid UTF-8.
+    /// The provided bytes must be valid UTF-8.
     ///
     /// # Examples
     ///
