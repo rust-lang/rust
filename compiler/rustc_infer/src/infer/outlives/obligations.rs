@@ -141,9 +141,6 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ///   `('a, K)` in this list tells us that the bounds in scope
     ///   indicate that `K: 'a`, where `K` is either a generic
     ///   parameter like `T` or a projection like `T::Item`.
-    /// - `implicit_region_bound`: if some, this is a region bound
-    ///   that is considered to hold for all type parameters (the
-    ///   function body).
     /// - `param_env` is the parameter environment for the enclosing function.
     /// - `body_id` is the body-id whose region obligations are being
     ///   processed.
@@ -151,7 +148,6 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     pub fn process_registered_region_obligations(
         &self,
         region_bound_pairs_map: &FxHashMap<hir::HirId, RegionBoundPairs<'tcx>>,
-        implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
     ) {
         assert!(
@@ -170,13 +166,8 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             let sup_type = self.resolve_vars_if_possible(sup_type);
 
             if let Some(region_bound_pairs) = region_bound_pairs_map.get(&body_id) {
-                let outlives = &mut TypeOutlives::new(
-                    self,
-                    self.tcx,
-                    &region_bound_pairs,
-                    implicit_region_bound,
-                    param_env,
-                );
+                let outlives =
+                    &mut TypeOutlives::new(self, self.tcx, &region_bound_pairs, None, param_env);
                 outlives.type_must_outlive(origin, sup_type, sub_region);
             } else {
                 self.tcx.sess.delay_span_bug(

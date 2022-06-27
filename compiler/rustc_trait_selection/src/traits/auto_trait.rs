@@ -220,7 +220,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 .map(|&(id, _)| (id, vec![]))
                 .collect();
 
-            infcx.process_registered_region_obligations(&body_id_map, None, full_env);
+            infcx.process_registered_region_obligations(&body_id_map, full_env);
 
             let region_data = infcx
                 .inner

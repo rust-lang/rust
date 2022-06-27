@@ -16,6 +16,11 @@ use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 pub struct VerifyBoundCx<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
+    /// During borrowck, if there are no outlives bounds on a generic
+    /// parameter `T`, we assume that `T: 'in_fn_body` holds.
+    ///
+    /// Outside of borrowck the only way to prove `T: '?0` is by
+    /// setting  `'?0` to `'empty`.
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
 }
