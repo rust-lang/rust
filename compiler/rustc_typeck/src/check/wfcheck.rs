@@ -990,6 +990,15 @@ fn check_type_defn<'tcx, F>(
         let packed = tcx.adt_def(item.def_id).repr().packed();
 
         for variant in &variants {
+            // All field types must be well-formed.
+            for field in &variant.fields {
+                fcx.register_wf_obligation(
+                    field.ty.into(),
+                    field.span,
+                    ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(field.def_id))),
+                )
+            }
+
             // For DST, or when drop needs to copy things around, all
             // intermediate types must be sized.
             let needs_drop_copy = || {
@@ -1006,6 +1015,7 @@ fn check_type_defn<'tcx, F>(
                     }
                 }
             };
+            // All fields (except for possibly the last) should be sized.
             let all_sized = all_sized || variant.fields.is_empty() || needs_drop_copy();
             let unsized_len = if all_sized { 0 } else { 1 };
             for (idx, field) in
@@ -1028,15 +1038,6 @@ fn check_type_defn<'tcx, F>(
                         },
                     ),
                 );
-            }
-
-            // All field types must be well-formed.
-            for field in &variant.fields {
-                fcx.register_wf_obligation(
-                    field.ty.into(),
-                    field.span,
-                    ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(field.def_id))),
-                )
             }
 
             // Explicit `enum` discriminant values must const-evaluate successfully.
