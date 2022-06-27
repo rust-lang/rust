@@ -15,3 +15,16 @@ lint-enum-intrinsics-mem-variant =
 
 lint-expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
+
+lint-hidden-unicode-codepoints = unicode codepoint changing visible direction of text present in {$label}
+    .label = this {$label} contains {$count ->
+        [one] an invisible
+        *[other] invisible
+    } unicode text flow control {$count ->
+        [one] codepoint
+        *[other] codepoints
+    }
+    .note = these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+    .suggestion-remove = if their presence wasn't intentional, you can remove them
+    .suggestion-escape = if you want to keep them but make them visible in your source code, you can escape them
+    .no-suggestion-note-escape = if you want to keep them but make them visible in your source code, you can escape them: {$escaped}

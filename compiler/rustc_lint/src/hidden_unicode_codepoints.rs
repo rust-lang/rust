@@ -1,7 +1,7 @@
 use crate::{EarlyContext, EarlyLintPass, LintContext};
 use ast::util::unicode::{contains_text_flow_control_chars, TEXT_FLOW_CONTROL_CHARS};
 use rustc_ast as ast;
-use rustc_errors::{Applicability, SuggestionStyle};
+use rustc_errors::{fluent, Applicability, SuggestionStyle};
 use rustc_span::{BytePos, Span, Symbol};
 
 declare_lint! {
@@ -61,41 +61,25 @@ impl HiddenUnicodeCodepoints {
             .collect();
 
         cx.struct_span_lint(TEXT_DIRECTION_CODEPOINT_IN_LITERAL, span, |lint| {
-            let mut err = lint.build(&format!(
-                "unicode codepoint changing visible direction of text present in {}",
-                label
-            ));
-            let (an, s) = match spans.len() {
-                1 => ("an ", ""),
-                _ => ("", "s"),
-            };
-            err.span_label(
-                span,
-                &format!(
-                    "this {} contains {}invisible unicode text flow control codepoint{}",
-                    label, an, s,
-                ),
-            );
+            let mut err = lint.build(fluent::lint::hidden_unicode_codepoints);
+            err.set_arg("label", label);
+            err.set_arg("count", spans.len());
+            err.span_label(span, fluent::lint::label);
+            err.note(fluent::lint::note);
             if point_at_inner_spans {
                 for (c, span) in &spans {
                     err.span_label(*span, format!("{:?}", c));
                 }
             }
-            err.note(
-                "these kind of unicode codepoints change the way text flows on applications that \
-                 support them, but can cause confusion because they change the order of \
-                 characters on the screen",
-            );
             if point_at_inner_spans && !spans.is_empty() {
                 err.multipart_suggestion_with_style(
-                    "if their presence wasn't intentional, you can remove them",
+                    fluent::lint::suggestion_remove,
                     spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
                     Applicability::MachineApplicable,
                     SuggestionStyle::HideCodeAlways,
                 );
                 err.multipart_suggestion(
-                    "if you want to keep them but make them visible in your source code, you can \
-                    escape them",
+                    fluent::lint::suggestion_escape,
                     spans
                         .into_iter()
                         .map(|(c, span)| {
@@ -109,16 +93,16 @@ impl HiddenUnicodeCodepoints {
                 // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
                 // should do the same here to provide the same good suggestions as we do for
                 // literals above.
-                err.note("if their presence wasn't intentional, you can remove them");
-                err.note(&format!(
-                    "if you want to keep them but make them visible in your source code, you can \
-                     escape them: {}",
+                err.set_arg(
+                    "escaped",
                     spans
                         .into_iter()
-                        .map(|(c, _)| { format!("{:?}", c) })
+                        .map(|(c, _)| format!("{:?}", c))
                         .collect::<Vec<String>>()
                         .join(", "),
-                ));
+                );
+                err.note(fluent::lint::suggestion_remove);
+                err.note(fluent::lint::no_suggestion_note_escape);
             }
             err.emit();
         });
