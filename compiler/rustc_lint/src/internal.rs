@@ -96,12 +96,9 @@ impl LateLintPass<'_> for QueryStability {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
                 cx.struct_span_lint(POTENTIAL_QUERY_INSTABILITY, span, |lint| {
-                    let msg = format!(
-                        "using `{}` can result in unstable query results",
-                        cx.tcx.item_name(def_id)
-                    );
-                    lint.build(&msg)
-                        .note("if you believe this case to be fine, allow this lint and add a comment explaining your rationale")
+                    lint.build(fluent::lint::query_instability)
+                        .set_arg("query", cx.tcx.item_name(def_id))
+                        .note(fluent::lint::note)
                         .emit();
                 })
             }

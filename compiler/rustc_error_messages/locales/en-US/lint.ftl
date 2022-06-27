@@ -31,3 +31,6 @@ lint-hidden-unicode-codepoints = unicode codepoint changing visible direction of
 
 lint-default-hash-types = prefer `{$preferred}` over `{$used}`, it has better performance
     .note = a `use rustc_data_structures::fx::{$preferred}` may be necessary
+
+lint-query-instability = using `{$query}` can result in unstable query results
+    .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
