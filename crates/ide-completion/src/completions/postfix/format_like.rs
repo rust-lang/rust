@@ -115,6 +115,7 @@ impl FormatStrParser {
         // "{MyStruct { val_a: 0, val_b: 1 }}".
         let mut inexpr_open_count = 0;
 
+        // We need to escape '\' and '$'. See the comments on `get_receiver_text()` for detail.
         let mut chars = self.input.chars().peekable();
         while let Some(chr) = chars.next() {
             match (self.state, chr) {
@@ -127,6 +128,9 @@ impl FormatStrParser {
                     self.state = State::MaybeIncorrect;
                 }
                 (State::NotExpr, _) => {
+                    if matches!(chr, '\\' | '$') {
+                        self.output.push('\\');
+                    }
                     self.output.push(chr);
                 }
                 (State::MaybeIncorrect, '}') => {
@@ -150,6 +154,9 @@ impl FormatStrParser {
                     self.state = State::NotExpr;
                 }
                 (State::MaybeExpr, _) => {
+                    if matches!(chr, '\\' | '$') {
+                        current_expr.push('\\');
+                    }
                     current_expr.push(chr);
                     self.state = State::Expr;
                 }
@@ -187,6 +194,9 @@ impl FormatStrParser {
                     inexpr_open_count += 1;
                 }
                 (State::Expr, _) => {
+                    if matches!(chr, '\\' | '$') {
+                        current_expr.push('\\');
+                    }
                     current_expr.push(chr);
                 }
                 (State::FormatOpts, '}') => {
@@ -194,6 +204,9 @@ impl FormatStrParser {
                     self.state = State::NotExpr;
                 }
                 (State::FormatOpts, _) => {
+                    if matches!(chr, '\\' | '$') {
+                        self.output.push('\\');
+                    }
                     self.output.push(chr);
                 }
             }
@@ -241,8 +254,11 @@ mod tests {
     fn format_str_parser() {
         let test_vector = &[
             ("no expressions", expect![["no expressions"]]),
+            (r"no expressions with \$0$1", expect![r"no expressions with \\\$0\$1"]),
             ("{expr} is {2 + 2}", expect![["{} is {}; expr, 2 + 2"]]),
             ("{expr:?}", expect![["{:?}; expr"]]),
+            ("{expr:1$}", expect![[r"{:1\$}; expr"]]),
+            ("{$0}", expect![[r"{}; \$0"]]),
             ("{malformed", expect![["-"]]),
             ("malformed}", expect![["-"]]),
             ("{{correct", expect![["{{correct"]]),
