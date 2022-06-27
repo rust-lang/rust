@@ -230,7 +230,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.infcx,
                 &self.borrowck_context.universal_regions,
                 &self.region_bound_pairs,
-                Some(self.implicit_region_bound),
+                self.implicit_region_bound,
                 self.param_env,
                 Locations::All(DUMMY_SP),
                 DUMMY_SP,

@@ -596,13 +596,7 @@ fn ty_known_to_outlive<'tcx>(
 ) -> bool {
     resolve_regions_with_wf_tys(tcx, id, param_env, &wf_tys, |infcx, region_bound_pairs| {
         let origin = infer::RelateParamBound(DUMMY_SP, ty, None);
-        let outlives = &mut TypeOutlives::new(
-            infcx,
-            tcx,
-            region_bound_pairs,
-            Some(infcx.tcx.lifetimes.re_root_empty),
-            param_env,
-        );
+        let outlives = &mut TypeOutlives::new(infcx, tcx, region_bound_pairs, None, param_env);
         outlives.type_must_outlive(origin, ty, region);
     })
 }

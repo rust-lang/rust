@@ -868,7 +868,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        tcx.fold_regions(value, &mut false, |r, _db| match *r {
+        tcx.fold_regions(value, |r, _db| match *r {
             ty::ReVar(rid) => self.resolve_var(rid),
             _ => r,
         })
