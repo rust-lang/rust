@@ -114,7 +114,7 @@ def test_cargo_miri_test():
     default_ref = "test.cross-target.stdout.ref" if is_foreign else "test.default.stdout.ref"
     filter_ref = "test.filter.cross-target.stdout.ref" if is_foreign else "test.filter.stdout.ref"
 
-    # macOS needs permissive provenance inside getrandom.
+    # macOS needs permissive provenance inside getrandom_1.
     test("`cargo miri test`",
         cargo_miri("test"),
         default_ref, "test.stderr-empty.ref",
