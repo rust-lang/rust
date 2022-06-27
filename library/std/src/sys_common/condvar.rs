@@ -15,6 +15,7 @@ pub struct Condvar {
 impl Condvar {
     /// Creates a new condition variable for use.
     #[inline]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> Self {
         Self { inner: imp::MovableCondvar::new(), check: CondvarCheck::new() }
     }
