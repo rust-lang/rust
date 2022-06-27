@@ -94,7 +94,7 @@ impl<'mir, 'tcx> GlobalStateInner {
         if global_state.exposed.contains(&alloc_id) {
             // FIXME: this catches `InterpError`, which we should not usually do.
             // We might need a proper fallible API from `memory.rs` to avoid this though.
-            if let Ok(_) = ecx.get_alloc_size_and_align(alloc_id, AllocCheck::Live) {
+            if ecx.get_alloc_size_and_align(alloc_id, AllocCheck::Live).is_ok() {
                 return Some(alloc_id);
             }
         }

@@ -403,12 +403,7 @@ impl<'tcx> Stack {
                             tag, item
                         ),
                         None,
-                        tag.and_then(|tag| {
-                            alloc_history.get_logs_relevant_to(
-                                tag,
-                                Some(item.tag),
-                            )
-                        }),
+                        tag.and_then(|tag| alloc_history.get_logs_relevant_to(tag, Some(item.tag))),
                     ))?
                 } else {
                     Err(err_sb_ub(

@@ -89,8 +89,8 @@ pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
-    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, SbTag, SbTagExtra,
-    Stack, Stacks,
+    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, SbTag, SbTagExtra, Stack,
+    Stacks,
 };
 pub use crate::sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId};
 pub use crate::thread::{

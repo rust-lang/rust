@@ -148,9 +148,7 @@ impl AllocHistory {
         err_sb_ub(
             format!("{}{}", action, error_cause(stack, derived_from)),
             Some(operation_summary("a reborrow", alloc_id, alloc_range)),
-            derived_from.and_then(|derived_from| {
-                self.get_logs_relevant_to(derived_from, None)
-            }),
+            derived_from.and_then(|derived_from| self.get_logs_relevant_to(derived_from, None)),
         )
     }
 
