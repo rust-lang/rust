@@ -1,5 +1,3 @@
-// compile-flags: -Zmiri-tag-raw-pointers
-
 trait S: Sized {
     fn tpb(&mut self, _s: Self) {}
 }

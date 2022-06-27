@@ -69,6 +69,7 @@ pub enum NonHaltingDiagnostic {
     FreedAlloc(AllocId),
     RejectedIsolatedOp(String),
     ProgressReport,
+    Int2Ptr,
 }
 
 /// Level of Miri specific diagnostics
@@ -468,15 +469,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         format!("{op} was made to return an error due to isolation"),
                     ProgressReport =>
                         format!("progress report: current operation being executed is here"),
+                    Int2Ptr => format!("pointer-to-integer cast"),
                 };
 
                 let (title, diag_level) = match e {
                     RejectedIsolatedOp(_) =>
                         ("operation rejected by isolation", DiagLevel::Warning),
-                    _ => ("tracking was triggered", DiagLevel::Note),
+                    Int2Ptr => ("pointer-to-integer cast", DiagLevel::Warning),
+                    CreatedPointerTag(..)
+                    | PoppedPointerTag(..)
+                    | CreatedCallId(..)
+                    | CreatedAlloc(..)
+                    | FreedAlloc(..)
+                    | ProgressReport => ("tracking was triggered", DiagLevel::Note),
                 };
 
-                report_msg(this, diag_level, title, vec![msg], vec![], &stacktrace);
+                let helps = match e {
+                    Int2Ptr =>
+                        vec![
+                            (None, format!("this program is using integer-to-pointer casts or (equivalently) `from_exposed_addr`,")),
+                            (None, format!("which means that Miri might miss pointer bugs in this program")),
+                            (None, format!("see https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation")),
+                            (None, format!("to ensure that Miri does not miss bugs in your program, use `with_addr` (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance) instead")),
+                            (None, format!("you can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics")),
+                            (None, format!("alternatively, the `-Zmiri-permissive-provenance` flag disables this warning")),
+                        ],
+                    _ => vec![],
+                };
+
+                report_msg(this, diag_level, title, vec![msg], helps, &stacktrace);
             }
         });
     }

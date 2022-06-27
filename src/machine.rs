@@ -353,7 +353,6 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             Some(RefCell::new(stacked_borrows::GlobalStateInner::new(
                 config.tracked_pointer_tags.clone(),
                 config.tracked_call_ids.clone(),
-                config.tag_raw,
             )))
         } else {
             None
@@ -696,7 +695,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ecx: &MiriEvalContext<'mir, 'tcx>,
         addr: u64,
     ) -> InterpResult<'tcx, Pointer<Option<Self::PointerTag>>> {
-        Ok(intptrcast::GlobalStateInner::ptr_from_addr_cast(ecx, addr))
+        intptrcast::GlobalStateInner::ptr_from_addr_cast(ecx, addr)
     }
 
     #[inline(always)]

@@ -1,4 +1,3 @@
-// compile-flags: -Zmiri-tag-raw-pointers
 use std::cell::{Cell, RefCell, UnsafeCell};
 use std::mem::{self, MaybeUninit};
 

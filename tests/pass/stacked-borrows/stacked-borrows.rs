@@ -1,4 +1,3 @@
-// compile-flags: -Zmiri-tag-raw-pointers
 use std::ptr;
 
 // Test various stacked-borrows-related things.

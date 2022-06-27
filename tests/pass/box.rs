@@ -47,7 +47,7 @@ fn boxed_pair_to_vec() {
     struct Foo(u64);
     fn reinterstruct(box_pair: Box<PairFoo>) -> Vec<Foo> {
         let ref_pair = Box::leak(box_pair) as *mut PairFoo;
-        let ptr_foo = unsafe { &mut (*ref_pair).fst as *mut Foo };
+        let ptr_foo = unsafe { std::ptr::addr_of_mut!((*ref_pair).fst) };
         unsafe { Vec::from_raw_parts(ptr_foo, 2, 2) }
     }
 

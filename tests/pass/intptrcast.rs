@@ -1,3 +1,5 @@
+// compile-flags: -Zmiri-permissive-provenance
+
 // This strips provenance
 fn transmute_ptr_to_int<T>(x: *const T) -> usize {
     unsafe { std::mem::transmute(x) }

@@ -4,6 +4,7 @@
 extern crate libc;
 
 use std::mem;
+use std::ptr;
 
 pub type Key = libc::pthread_key_t;
 
@@ -11,7 +12,7 @@ static mut RECORD: usize = 0;
 static mut KEYS: [Key; 2] = [0; 2];
 static mut GLOBALS: [u64; 2] = [1, 0];
 
-static mut CANNARY: *mut u64 = 0 as *mut _; // this serves as a cannary: if TLS dtors are not run properly, this will not get deallocated, making the test fail.
+static mut CANNARY: *mut u64 = ptr::null_mut(); // this serves as a cannary: if TLS dtors are not run properly, this will not get deallocated, making the test fail.
 
 pub unsafe fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
     let mut key = 0;
@@ -30,7 +31,7 @@ pub fn record(r: usize) {
 }
 
 unsafe extern "C" fn dtor(ptr: *mut u64) {
-    assert!(CANNARY != 0 as *mut _); // make sure we do not get run too often
+    assert!(CANNARY != ptr::null_mut()); // make sure we do not get run too often
     let val = *ptr;
 
     let which_key =
@@ -48,7 +49,7 @@ unsafe extern "C" fn dtor(ptr: *mut u64) {
     // The correct sequence is: First key 0, then key 1, then key 0.
     if RECORD == 0_1_0 {
         drop(Box::from_raw(CANNARY));
-        CANNARY = 0 as *mut _;
+        CANNARY = ptr::null_mut();
     }
 }
 

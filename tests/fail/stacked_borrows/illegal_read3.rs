@@ -5,7 +5,7 @@
 use std::mem;
 
 union HiddenRef {
-    // We avoid retagging at this type, so shared vs mutable does not matter.
+    // We avoid retagging at this type, and we only read, so shared vs mutable does not matter.
     r: &'static i32,
 }
 

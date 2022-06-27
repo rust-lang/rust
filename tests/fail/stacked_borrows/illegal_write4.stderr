@@ -17,7 +17,7 @@ LL |     let reference = unsafe { &*raw }; // freeze
 help: <TAG> was later invalidated at offsets [0x0..0x4]
   --> $DIR/illegal_write4.rs:LL:CC
    |
-LL |     let _mut_ref: &mut i32 = unsafe { mem::transmute(ptr) }; // &mut, with raw tag
+LL |     let _mut_ref: &mut i32 = unsafe { mem::transmute(raw) }; // &mut, with raw tag
    |                                       ^^^^^^^^^^^^^^^^^^^
    = note: inside `main` at $DIR/illegal_write4.rs:LL:CC
 

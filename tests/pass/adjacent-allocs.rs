@@ -1,3 +1,5 @@
+// compile-flags: -Zmiri-permissive-provenance
+
 fn main() {
     // The slack between allocations is random.
     // Loop a few times to hit the zero-slack case.

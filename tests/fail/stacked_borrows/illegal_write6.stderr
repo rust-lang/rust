@@ -1,17 +1,17 @@
-error: Undefined Behavior: not granting access to tag <untagged> because incompatible item is protected: [Unique for <TAG> (call ID)]
+error: Undefined Behavior: not granting access to tag <TAG> because incompatible item is protected: [Unique for <TAG> (call ID)]
   --> $DIR/illegal_write6.rs:LL:CC
    |
 LL |     unsafe { *y = 2 };
-   |              ^^^^^^ not granting access to tag <untagged> because incompatible item is protected: [Unique for <TAG> (call ID)]
+   |              ^^^^^^ not granting access to tag <TAG> because incompatible item is protected: [Unique for <TAG> (call ID)]
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: tag was most recently created at offsets [0x0..0x4]
+help: <TAG> was created by a retag at offsets [0x0..0x4]
   --> $DIR/illegal_write6.rs:LL:CC
    |
 LL |     let p = x as *mut u32;
    |             ^
-help: <TAG> was protected due to a tag which was created here
+help: <TAG> was protected due to <TAG> which was created here
   --> $DIR/illegal_write6.rs:LL:CC
    |
 LL |     foo(x, p);

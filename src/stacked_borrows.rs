@@ -219,11 +219,7 @@ impl fmt::Display for RefKind {
 
 /// Utilities for initialization and ID generation
 impl GlobalStateInner {
-    pub fn new(
-        tracked_pointer_tags: HashSet<PtrId>,
-        tracked_call_ids: HashSet<CallId>,
-        tag_raw: bool,
-    ) -> Self {
+    pub fn new(tracked_pointer_tags: HashSet<PtrId>, tracked_call_ids: HashSet<CallId>) -> Self {
         GlobalStateInner {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
             base_ptr_ids: FxHashMap::default(),
@@ -231,7 +227,7 @@ impl GlobalStateInner {
             active_calls: FxHashSet::default(),
             tracked_pointer_tags,
             tracked_call_ids,
-            tag_raw,
+            tag_raw: true,
         }
     }
 
