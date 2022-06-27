@@ -275,6 +275,11 @@ enum class DIFFE_TYPE {
                  // don't need the forward
 };
 
+enum class BATCH_TYPE {
+  SCALAR = 0,
+  VECTOR = 1,
+};
+
 enum class DerivativeMode {
   ForwardMode = 0,
   ReverseModePrimal = 1,

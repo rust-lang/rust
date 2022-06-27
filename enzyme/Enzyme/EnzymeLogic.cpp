@@ -58,6 +58,7 @@
 
 #include "FunctionUtils.h"
 #include "GradientUtils.h"
+#include "InstructionBatcher.h"
 #include "LibraryFuncs.h"
 #include "Utils.h"
 
@@ -4263,6 +4264,254 @@ Function *EnzymeLogic::CreateForwardDiff(
   }
   return nf;
 }
+
+llvm::Function *EnzymeLogic::CreateBatch(Function *tobatch, unsigned width,
+                                         ArrayRef<BATCH_TYPE> arg_types,
+                                         BATCH_TYPE ret_type) {
+
+  BatchCacheKey tup = std::make_tuple(tobatch, width, arg_types, ret_type);
+  if (BatchCachedFunctions.find(tup) != BatchCachedFunctions.end()) {
+    return BatchCachedFunctions.find(tup)->second;
+  }
+
+  FunctionType *orig_FTy = tobatch->getFunctionType();
+  SmallVector<Type *, 4> params;
+  unsigned long numVecParams =
+      std::count(arg_types.begin(), arg_types.end(), BATCH_TYPE::VECTOR);
+
+  for (unsigned i = 0; i < orig_FTy->getNumParams(); ++i) {
+    if (arg_types[i] == BATCH_TYPE::VECTOR) {
+      Type *ty = GradientUtils::getShadowType(orig_FTy->getParamType(i), width);
+      params.push_back(ty);
+    } else {
+      params.push_back(orig_FTy->getParamType(i));
+    }
+  }
+
+  Type *NewTy = GradientUtils::getShadowType(tobatch->getReturnType(), width);
+
+  FunctionType *FTy = FunctionType::get(NewTy, params, tobatch->isVarArg());
+  Function *NewF =
+      Function::Create(FTy, tobatch->getLinkage(),
+                       "batch_" + tobatch->getName(), tobatch->getParent());
+
+  NewF->setLinkage(Function::LinkageTypes::InternalLinkage);
+
+  ValueToValueMapTy originalToNewFn;
+
+  // Create placeholder for the old arguments
+  BasicBlock *placeholderBB =
+      BasicBlock::Create(NewF->getContext(), "placeholders", NewF);
+
+  IRBuilder<> PlaceholderBuilder(placeholderBB);
+  PlaceholderBuilder.SetCurrentDebugLocation(DebugLoc());
+  ValueToValueMapTy vmap;
+  auto DestArg = NewF->arg_begin();
+  auto SrcArg = tobatch->arg_begin();
+
+  for (unsigned i = 0; i < orig_FTy->getNumParams(); ++i) {
+    Argument *arg = SrcArg;
+    if (arg_types[i] == BATCH_TYPE::VECTOR) {
+      auto placeholder = PlaceholderBuilder.CreatePHI(
+          arg->getType(), 0, "placeholder." + arg->getName());
+      vmap[arg] = placeholder;
+    } else {
+      vmap[arg] = DestArg;
+    }
+    DestArg->setName(arg->getName());
+    DestArg++;
+    SrcArg++;
+  }
+
+  SmallVector<ReturnInst *, 4> Returns;
+#if LLVM_VERSION_MAJOR >= 13
+  CloneFunctionInto(NewF, tobatch, vmap,
+                    CloneFunctionChangeType::LocalChangesOnly, Returns, "",
+                    nullptr);
+#else
+  CloneFunctionInto(NewF, tobatch, vmap, true, Returns, "", nullptr);
+#endif
+
+  NewF->setLinkage(Function::LinkageTypes::InternalLinkage);
+
+  // find instructions to vectorize (going up / overestimation)
+  SmallPtrSet<Value *, 32> toVectorize;
+  SetVector<llvm::Value *, std::deque<llvm::Value *>> refinelist;
+
+  for (unsigned i = 0; i < tobatch->getFunctionType()->getNumParams(); i++) {
+    if (arg_types[i] == BATCH_TYPE::VECTOR) {
+      Argument *arg = tobatch->arg_begin() + i;
+      toVectorize.insert(arg);
+    }
+  }
+
+  for (auto &BB : *tobatch)
+    for (auto &Inst : BB) {
+      toVectorize.insert(&Inst);
+      refinelist.insert(&Inst);
+    }
+
+  // find scalar instructions
+  while (!refinelist.empty()) {
+    Value *todo = *refinelist.begin();
+    refinelist.erase(refinelist.begin());
+
+    if (isa<ReturnInst>(todo) && ret_type == BATCH_TYPE::VECTOR)
+      continue;
+
+    if (auto branch_inst = dyn_cast<BranchInst>(todo)) {
+      if (!branch_inst->isConditional()) {
+        toVectorize.erase(todo);
+        continue;
+      }
+    }
+
+    if (auto call_inst = dyn_cast<CallInst>(todo)) {
+      if (call_inst->getFunctionType()->isVoidTy() &&
+          call_inst->getFunctionType()->getNumParams() == 0)
+        toVectorize.erase(todo);
+      continue;
+    }
+
+    if (auto todo_inst = dyn_cast<Instruction>(todo)) {
+
+      if (todo_inst->mayReadOrWriteMemory())
+        continue;
+
+      if (isa<AllocaInst>(todo_inst))
+        continue;
+
+      SetVector<llvm::Value *, std::deque<llvm::Value *>> toCheck;
+      toCheck.insert(todo_inst->op_begin(), todo_inst->op_end());
+      SmallPtrSet<Value *, 8> safe;
+      bool legal = true;
+      while (!toCheck.empty()) {
+        Value *cur = *toCheck.begin();
+        toCheck.erase(toCheck.begin());
+
+        if (!std::get<1>(safe.insert(cur)))
+          continue;
+
+        if (toVectorize.count(cur) == 0)
+          continue;
+
+        if (Instruction *cur_inst = dyn_cast<Instruction>(cur)) {
+          if (!isa<CallInst>(cur_inst) && !cur_inst->mayReadOrWriteMemory()) {
+            for (auto &op : todo_inst->operands())
+              toCheck.insert(op);
+            continue;
+          }
+        }
+
+        legal = false;
+        break;
+      }
+
+      if (legal)
+        if (toVectorize.erase(todo))
+          for (auto user : todo_inst->users())
+            refinelist.insert(user);
+    }
+  }
+
+  // unwrap arguments
+  ValueMap<const Value *, std::vector<Value *>> vectorizedValues;
+  auto entry = std::next(NewF->begin());
+  IRBuilder<> Builder2(entry->getFirstNonPHI());
+  Builder2.SetCurrentDebugLocation(DebugLoc());
+  for (unsigned i = 0; i < FTy->getNumParams(); ++i) {
+    Argument *orig_arg = tobatch->arg_begin() + i;
+    Argument *arg = NewF->arg_begin() + i;
+
+    if (arg_types[i] == BATCH_TYPE::SCALAR) {
+      originalToNewFn[tobatch->arg_begin() + i] = arg;
+      continue;
+    }
+
+    Instruction *placeholder = cast<Instruction>(vmap[orig_arg]);
+
+    for (unsigned j = 0; j < width; ++j) {
+      ExtractValueInst *argVecElem =
+          cast<ExtractValueInst>(Builder2.CreateExtractValue(
+              arg, {j},
+              "unwrap" + (orig_arg->hasName()
+                              ? "." + orig_arg->getName() + Twine(j)
+                              : "")));
+      if (j == 0) {
+        placeholder->replaceAllUsesWith(argVecElem);
+        placeholder->eraseFromParent();
+      }
+      vectorizedValues[orig_arg].push_back(argVecElem);
+    }
+  }
+
+  placeholderBB->eraseFromParent();
+
+  // update mapping with cloned basic blocks
+  for (auto i = tobatch->begin(), j = NewF->begin();
+       i != tobatch->end() && j != NewF->end(); ++i, ++j) {
+    originalToNewFn[&*i] = &*j;
+  }
+
+  // update mapping with cloned scalar values and the first vectorized values
+  auto J = inst_begin(NewF);
+  // skip the unwrapped vector params
+  std::advance(J, width * numVecParams);
+  for (auto I = inst_begin(tobatch);
+       I != inst_end(tobatch) && J != inst_end(NewF); ++I) {
+    if (toVectorize.count(&*I) != 0) {
+      vectorizedValues[&*I].push_back(&*J);
+      ++J;
+    } else {
+      originalToNewFn[&*I] = &*J;
+      ++J;
+    }
+  }
+
+  // create placeholders for vector instructions 1..<n
+  for (BasicBlock &BB : *tobatch) {
+    for (Instruction &I : BB) {
+      if (I.getType()->isVoidTy())
+        continue;
+
+      auto found = vectorizedValues.find(&I);
+      if (found != vectorizedValues.end()) {
+        Instruction *new_val_1 = cast<Instruction>(found->second.front());
+        if (I.hasName())
+          new_val_1->setName(I.getName() + "0");
+        Instruction *insertPoint =
+            new_val_1->getNextNode() ? new_val_1->getNextNode() : new_val_1;
+        IRBuilder<> Builder2(insertPoint);
+        Builder2.SetCurrentDebugLocation(DebugLoc());
+        for (unsigned i = 1; i < width; ++i) {
+          PHINode *placeholder = Builder2.CreatePHI(I.getType(), 0);
+          vectorizedValues[&I].push_back(placeholder);
+          if (I.hasName())
+            placeholder->setName("placeholder." + I.getName() + Twine(i));
+        }
+      }
+    }
+  }
+
+  InstructionBatcher *batcher =
+      new InstructionBatcher(tobatch, NewF, width, vectorizedValues,
+                             originalToNewFn, toVectorize, *this);
+
+  for (auto val : toVectorize) {
+    if (auto inst = dyn_cast<Instruction>(val))
+      batcher->visit(inst);
+  }
+
+  if (llvm::verifyFunction(*NewF, &llvm::errs())) {
+    llvm::errs() << *tobatch << "\n";
+    llvm::errs() << *NewF << "\n";
+    report_fatal_error("function failed verification (4)");
+  }
+
+  delete batcher;
+
+  return NewF;
+};
 
 void EnzymeLogic::clear() {
   PPC.clear();

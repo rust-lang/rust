@@ -62,6 +62,8 @@
 #include "GradientUtils.h"
 #include "Utils.h"
 
+#include "InstructionBatcher.h"
+
 #include "llvm/Transforms/Utils.h"
 
 #if LLVM_VERSION_MAJOR >= 13
@@ -397,6 +399,131 @@ static Optional<StringRef> getMetadataName(llvm::Value *res) {
   }
 }
 
+static Value *adaptReturnedVector(CallInst *CI, Value *diffret,
+                                  IRBuilder<> &Builder, unsigned width) {
+  /// Actual return type (including struct return)
+  Type *returnType =
+      CI->hasStructRetAttr()
+          ? dyn_cast<PointerType>(CI->getArgOperand(0)->getType())
+                ->getPointerElementType()
+          : CI->getType();
+
+  if (StructType *sty = dyn_cast<StructType>(returnType)) {
+    Value *agg = ConstantAggregateZero::get(sty);
+
+    for (unsigned int i = 0; i < width; i++) {
+      Value *elem = Builder.CreateExtractValue(diffret, {i});
+#if LLVM_VERSION_MAJOR >= 11
+      if (auto vty = dyn_cast<FixedVectorType>(elem->getType())) {
+#else
+      if (auto vty = dyn_cast<VectorType>(elem->getType())) {
+#endif
+        for (unsigned j = 0; j < vty->getNumElements(); ++j) {
+          Value *vecelem = Builder.CreateExtractElement(elem, j);
+          agg = Builder.CreateInsertValue(agg, vecelem, {i * j});
+        }
+      } else {
+        agg = Builder.CreateInsertValue(agg, elem, {i});
+      }
+    }
+    diffret = agg;
+  }
+  return diffret;
+}
+
+static bool replaceOriginalCall(CallInst *CI, Function *fn, Value *diffret,
+                                IRBuilder<> &Builder, DerivativeMode mode) {
+  StructType *CIsty = dyn_cast<StructType>(CI->getType());
+  StructType *diffretsty = dyn_cast<StructType>(diffret->getType());
+  if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy() &&
+      !CI->getType()->isEmptyTy() &&
+      (!CI->getType()->isVoidTy() || CI->hasStructRetAttr())) {
+    if (diffret->getType() == CI->getType()) {
+      CI->replaceAllUsesWith(diffret);
+    } else if (CIsty && diffretsty && CIsty->isLayoutIdentical(diffretsty)) {
+      IRBuilder<> Builder(CI);
+      Value *newStruct = UndefValue::get(CIsty);
+      for (unsigned int i = 0; i < CIsty->getStructNumElements(); i++) {
+        Value *elem = Builder.CreateExtractValue(diffret, {i});
+        newStruct = Builder.CreateInsertValue(newStruct, elem, {i});
+      }
+      CI->replaceAllUsesWith(newStruct);
+    } else if (mode == DerivativeMode::ReverseModePrimal) {
+      auto &DL = fn->getParent()->getDataLayout();
+      if (DL.getTypeSizeInBits(CI->getType()) >=
+          DL.getTypeSizeInBits(diffret->getType())) {
+        IRBuilder<> EB(&CI->getParent()->getParent()->getEntryBlock().front());
+        auto AL = EB.CreateAlloca(CI->getType());
+        Builder.CreateStore(
+            diffret, Builder.CreatePointerCast(
+                         AL, PointerType::getUnqual(diffret->getType())));
+#if LLVM_VERSION_MAJOR > 7
+        Value *cload = Builder.CreateLoad(CI->getType(), AL);
+#else
+        Value *cload = Builder.CreateLoad(AL);
+#endif
+        CI->replaceAllUsesWith(cload);
+      } else {
+        EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
+                    "Cannot cast return type of gradient ", *diffret->getType(),
+                    *diffret, ", to desired type ", *CI->getType());
+        return false;
+      }
+    } else if (CI->hasStructRetAttr()) {
+      Value *sret = CI->getArgOperand(0);
+      PointerType *stype = cast<PointerType>(sret->getType());
+      StructType *st = dyn_cast<StructType>(stype->getElementType());
+
+      // Assign results to struct allocated at the call site.
+      if (st && st->isLayoutIdentical(diffretsty)) {
+        for (unsigned int i = 0; i < st->getNumElements(); i++) {
+#if LLVM_VERSION_MAJOR > 7
+          Value *sgep = Builder.CreateStructGEP(
+              sret->getType()->getPointerElementType(), sret, i);
+#else
+          Value *sgep = Builder.CreateStructGEP(sret, i);
+#endif
+          Builder.CreateStore(Builder.CreateExtractValue(diffret, {i}), sgep);
+        }
+      } else {
+        auto &DL = fn->getParent()->getDataLayout();
+        if (DL.getTypeSizeInBits(stype->getElementType()) !=
+            DL.getTypeSizeInBits(diffret->getType())) {
+          EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
+                      "Cannot cast return type of gradient ",
+                      *diffret->getType(), *diffret, ", to desired type ",
+                      *stype->getElementType());
+          return false;
+        }
+        Builder.CreateStore(
+            diffret, Builder.CreatePointerCast(
+                         sret, PointerType::get(diffret->getType(),
+                                                stype->getAddressSpace())));
+      }
+    } else {
+
+      unsigned idxs[] = {0};
+      auto diffreti = Builder.CreateExtractValue(diffret, idxs);
+      if (diffreti->getType() == CI->getType()) {
+        CI->replaceAllUsesWith(diffreti);
+      } else if (diffret->getType() == CI->getType()) {
+        CI->replaceAllUsesWith(diffret);
+      } else {
+        EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
+                    "Cannot cast return type of gradient ",
+                    *diffreti->getType(), *diffreti, ", to desired type ",
+                    *CI->getType());
+        return false;
+      }
+    }
+  } else {
+    CI->replaceAllUsesWith(UndefValue::get(CI->getType()));
+  }
+  CI->eraseFromParent();
+
+  return true;
+}
+
 class Enzyme : public ModulePass {
 public:
   EnzymeLogic Logic;
@@ -504,6 +631,184 @@ public:
       }
     }
     return width;
+  }
+
+  bool HandleBatch(CallInst *CI) {
+    unsigned width = 1;
+    unsigned truei = 0;
+    std::map<unsigned, Value *> batchOffset;
+    SmallVector<Value *, 4> args;
+    SmallVector<BATCH_TYPE, 4> arg_types;
+    IRBuilder<> Builder(CI);
+    Function *F;
+    auto parsedFunction = parseFunctionParameter(CI);
+    if (parsedFunction.hasValue()) {
+      F = parsedFunction.getValue();
+    } else {
+      return false;
+    }
+
+    assert(F);
+    FunctionType *FT = F->getFunctionType();
+
+    // find and handle enzyme_width
+    auto parsedWidth = parseWidthParameter(CI);
+    if (parsedWidth.hasValue()) {
+      width = parsedWidth.getValue();
+    } else {
+      return false;
+    }
+
+    // handle different argument order for struct return.
+    bool sret =
+        CI->hasStructRetAttr() || F->hasParamAttribute(0, Attribute::StructRet);
+
+    if (F->hasParamAttribute(0, Attribute::StructRet)) {
+      truei = 1;
+      Value *sretPt = CI->getArgOperand(0);
+
+      args.push_back(sretPt);
+      arg_types.push_back(BATCH_TYPE::VECTOR);
+    }
+
+#if LLVM_VERSION_MAJOR >= 14
+    for (unsigned i = 1 + sret; i < CI->arg_size(); ++i)
+#else
+    for (unsigned i = 1 + sret; i < CI->getNumArgOperands(); ++i)
+#endif
+    {
+      Value *res = CI->getArgOperand(i);
+
+      if (truei >= FT->getNumParams()) {
+        EmitFailure("TooManyArgs", CI->getDebugLoc(), CI,
+                    "Had too many arguments to __enzyme_batch", *CI,
+                    " - extra arg - ", *res);
+        return false;
+      }
+      assert(truei < FT->getNumParams());
+      auto PTy = FT->getParamType(truei);
+
+      BATCH_TYPE ty = width == 1 ? BATCH_TYPE::SCALAR : BATCH_TYPE::VECTOR;
+      Optional<StringRef> metaString = getMetadataName(res);
+
+      // handle metadata
+      if (metaString && metaString.getValue().startswith("enzyme_")) {
+        if (*metaString == "enzyme_scalar") {
+          ty = BATCH_TYPE::SCALAR;
+        } else if (*metaString == "enzyme_vector") {
+          ty = BATCH_TYPE::VECTOR;
+        } else if (*metaString == "enzyme_buffer") {
+          ty = BATCH_TYPE::VECTOR;
+          ++i;
+          Value *offset_arg = CI->getArgOperand(i);
+          if (offset_arg->getType()->isIntegerTy()) {
+            batchOffset[i + 1] = offset_arg;
+          } else {
+            EmitFailure("IllegalVectorOffset", CI->getDebugLoc(), CI,
+                        "enzyme_batch must be followd by an integer "
+                        "offset.",
+                        *CI->getArgOperand(i), " in", *CI);
+            return false;
+          }
+          continue;
+        } else if (*metaString == "enzyme_width") {
+          ++i;
+          continue;
+        } else {
+          EmitFailure("IllegalDiffeType", CI->getDebugLoc(), CI,
+                      "illegal enzyme metadata classification ", *CI,
+                      *metaString);
+          return false;
+        }
+        ++i;
+        res = CI->getArgOperand(i);
+      }
+
+      arg_types.push_back(ty);
+
+      // wrap vector
+      if (ty == BATCH_TYPE::VECTOR) {
+        Value *res = nullptr;
+        bool batch = batchOffset.count(i - 1) != 0;
+
+        for (unsigned v = 0; v < width; ++v) {
+#if LLVM_VERSION_MAJOR >= 14
+          if (i >= CI->arg_size())
+#else
+          if (i >= CI->getNumArgOperands())
+#endif
+          {
+            EmitFailure("MissingVectorArg", CI->getDebugLoc(), CI,
+                        "__enzyme_batch missing vector argument at index ", i,
+                        ", need argument of type ", *PTy, " at call ", *CI);
+            return false;
+          }
+
+          // vectorize pointer
+          Value *element = CI->getArgOperand(i);
+          if (batch) {
+            if (auto elementPtrTy = dyn_cast<PointerType>(element->getType())) {
+              element = Builder.CreateBitCast(
+                  element, PointerType::get(Type::getInt8Ty(CI->getContext()),
+                                            elementPtrTy->getAddressSpace()));
+#if LLVM_VERSION_MAJOR >= 7
+              element = Builder.CreateGEP(
+                  Type::getInt8Ty(CI->getContext()), element,
+                  Builder.CreateMul(
+                      batchOffset[i - 1],
+                      ConstantInt::get(batchOffset[i - 1]->getType(), v)));
+#else
+              element = Builder.CreateGEP(
+                  element,
+                  Builder.CreateMul(
+                      batchOffset[i - 1],
+                      ConstantInt::get(batchOffset[i - 1]->getType(), v)));
+#endif
+              element = Builder.CreateBitCast(element, elementPtrTy);
+            } else {
+              return false;
+            }
+          }
+
+          if (width > 1) {
+            res =
+                res ? Builder.CreateInsertValue(res, element, {v})
+                    : Builder.CreateInsertValue(UndefValue::get(ArrayType::get(
+                                                    element->getType(), width)),
+                                                element, {v});
+
+            if (v < width - 1 && !batch) {
+              ++i;
+            }
+
+          } else {
+            res = element;
+          }
+        }
+
+        args.push_back(res);
+
+      } else if (ty == BATCH_TYPE::SCALAR) {
+        args.push_back(res);
+      }
+
+      truei++;
+    }
+
+    BATCH_TYPE ret_type = (F->getReturnType()->isVoidTy() || width == 1)
+                              ? BATCH_TYPE::SCALAR
+                              : BATCH_TYPE::VECTOR;
+
+    auto newFunc = Logic.CreateBatch(F, width, arg_types, ret_type);
+
+    Value *batch =
+        Builder.CreateCall(newFunc->getFunctionType(), newFunc, args);
+
+    batch = adaptReturnedVector(CI, batch, Builder, width);
+
+    replaceOriginalCall(CI, F, batch, Builder, DerivativeMode::ForwardMode);
+
+    return true;
   }
 
   /// Return whether successful
@@ -1185,8 +1490,6 @@ public:
         }
       }
     }
-    StructType *CIsty = dyn_cast<StructType>(CI->getType());
-    StructType *diffretsty = dyn_cast<StructType>(diffret->getType());
 
     // Adapt the returned vector type to the struct type expected by our calling
     // convention.
@@ -1195,122 +1498,10 @@ public:
         (mode == DerivativeMode::ForwardMode ||
          mode == DerivativeMode::ForwardModeSplit)) {
 
-      /// Actual return type (including struct return)
-      Type *returnType =
-          CI->hasStructRetAttr()
-              ? dyn_cast<PointerType>(CI->getArgOperand(0)->getType())
-                    ->getPointerElementType()
-              : CI->getType();
-
-      if (StructType *sty = dyn_cast<StructType>(returnType)) {
-        Value *agg = ConstantAggregateZero::get(sty);
-
-        for (unsigned int i = 0; i < width; i++) {
-          Value *elem = Builder.CreateExtractValue(diffret, {i});
-#if LLVM_VERSION_MAJOR >= 11
-          if (auto vty = dyn_cast<FixedVectorType>(elem->getType())) {
-#else
-          if (auto vty = dyn_cast<VectorType>(elem->getType())) {
-#endif
-            for (unsigned j = 0; j < vty->getNumElements(); ++j) {
-              Value *vecelem = Builder.CreateExtractElement(elem, j);
-              agg = Builder.CreateInsertValue(agg, vecelem, {i * j});
-            }
-          } else {
-            agg = Builder.CreateInsertValue(agg, elem, {i});
-          }
-        }
-        diffret = agg;
-      }
+      diffret = adaptReturnedVector(CI, diffret, Builder, width);
     }
 
-    if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy() &&
-        !CI->getType()->isEmptyTy() &&
-        (!CI->getType()->isVoidTy() || CI->hasStructRetAttr())) {
-      if (diffret->getType() == CI->getType()) {
-        CI->replaceAllUsesWith(diffret);
-      } else if (CIsty && diffretsty && CIsty->isLayoutIdentical(diffretsty)) {
-        IRBuilder<> Builder(CI);
-        Value *newStruct = UndefValue::get(CIsty);
-        for (unsigned int i = 0; i < CIsty->getStructNumElements(); i++) {
-          Value *elem = Builder.CreateExtractValue(diffret, {i});
-          newStruct = Builder.CreateInsertValue(newStruct, elem, {i});
-        }
-        CI->replaceAllUsesWith(newStruct);
-      } else if (mode == DerivativeMode::ReverseModePrimal) {
-        auto &DL = fn->getParent()->getDataLayout();
-        if (DL.getTypeSizeInBits(CI->getType()) >=
-            DL.getTypeSizeInBits(diffret->getType())) {
-          IRBuilder<> EB(
-              &CI->getParent()->getParent()->getEntryBlock().front());
-          auto AL = EB.CreateAlloca(CI->getType());
-          Builder.CreateStore(
-              diffret, Builder.CreatePointerCast(
-                           AL, PointerType::getUnqual(diffret->getType())));
-#if LLVM_VERSION_MAJOR > 7
-          Value *cload = Builder.CreateLoad(CI->getType(), AL);
-#else
-          Value *cload = Builder.CreateLoad(AL);
-#endif
-          CI->replaceAllUsesWith(cload);
-        } else {
-          EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
-                      "Cannot cast return type of gradient ",
-                      *diffret->getType(), *diffret, ", to desired type ",
-                      *CI->getType());
-          return false;
-        }
-      } else if (CI->hasStructRetAttr()) {
-        Value *sret = CI->getArgOperand(0);
-        PointerType *stype = cast<PointerType>(sret->getType());
-        StructType *st = dyn_cast<StructType>(stype->getElementType());
-
-        // Assign results to struct allocated at the call site.
-        if (st && st->isLayoutIdentical(diffretsty)) {
-          for (unsigned int i = 0; i < st->getNumElements(); i++) {
-#if LLVM_VERSION_MAJOR > 7
-            Value *sgep = Builder.CreateStructGEP(
-                sret->getType()->getPointerElementType(), sret, i);
-#else
-            Value *sgep = Builder.CreateStructGEP(sret, i);
-#endif
-            Builder.CreateStore(Builder.CreateExtractValue(diffret, {i}), sgep);
-          }
-        } else {
-          auto &DL = fn->getParent()->getDataLayout();
-          if (DL.getTypeSizeInBits(stype->getElementType()) !=
-              DL.getTypeSizeInBits(diffret->getType())) {
-            EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
-                        "Cannot cast return type of gradient ",
-                        *diffret->getType(), *diffret, ", to desired type ",
-                        *stype->getElementType());
-            return false;
-          }
-          Builder.CreateStore(
-              diffret, Builder.CreatePointerCast(
-                           sret, PointerType::get(diffret->getType(),
-                                                  stype->getAddressSpace())));
-        }
-      } else {
-
-        unsigned idxs[] = {0};
-        auto diffreti = Builder.CreateExtractValue(diffret, idxs);
-        if (diffreti->getType() == CI->getType()) {
-          CI->replaceAllUsesWith(diffreti);
-        } else if (diffret->getType() == CI->getType()) {
-          CI->replaceAllUsesWith(diffret);
-        } else {
-          EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
-                      "Cannot cast return type of gradient ",
-                      *diffreti->getType(), *diffreti, ", to desired type ",
-                      *CI->getType());
-          return false;
-        }
-      }
-    } else {
-      CI->replaceAllUsesWith(UndefValue::get(CI->getType()));
-    }
-    CI->eraseFromParent();
+    replaceOriginalCall(CI, fn, diffret, Builder, mode);
 
     if (Logic.PostOpt) {
 #if LLVM_VERSION_MAJOR >= 11
@@ -1419,7 +1610,8 @@ public:
               Fn->getName().contains("__enzyme_fwdsplit") ||
               Fn->getName().contains("__enzyme_augmentfwd") ||
               Fn->getName().contains("__enzyme_augmentsize") ||
-              Fn->getName().contains("__enzyme_reverse")))
+              Fn->getName().contains("__enzyme_reverse") ||
+              Fn->getName().contains("__enzyme_batch")))
           continue;
 
         SmallVector<Value *, 16> CallArgs(II->arg_begin(), II->arg_end());
@@ -1455,6 +1647,7 @@ public:
     MapVector<CallInst *, DerivativeMode> toLower;
     MapVector<CallInst *, DerivativeMode> toVirtual;
     MapVector<CallInst *, DerivativeMode> toSize;
+    SmallVector<CallInst *, 4> toBatch;
     SetVector<CallInst *> InactiveCalls;
     SetVector<CallInst *> IterCalls;
   retry:;
@@ -1673,6 +1866,7 @@ public:
         bool enableEnzyme = false;
         bool virtualCall = false;
         bool sizeOnly = false;
+        bool batch = false;
         DerivativeMode mode;
         if (Fn->getName().contains("__enzyme_autodiff")) {
           enableEnzyme = true;
@@ -1697,6 +1891,9 @@ public:
           enableEnzyme = true;
           virtualCall = true;
           mode = DerivativeMode::ReverseModeCombined;
+        } else if (Fn->getName().contains("__enzyme_batch")) {
+          enableEnzyme = true;
+          batch = true;
         }
 
         if (enableEnzyme) {
@@ -1736,11 +1933,12 @@ public:
             }
             goto retry;
           }
-
           if (virtualCall)
             toVirtual[CI] = mode;
           else if (sizeOnly)
             toSize[CI] = mode;
+          else if (batch)
+            toBatch.push_back(CI);
           else
             toLower[CI] = mode;
 
@@ -1824,6 +2022,10 @@ public:
       Changed = true;
     }
 
+    for (auto call : toBatch) {
+      HandleBatch(call);
+    }
+
     if (Changed && EnzymeAttributor) {
       // TODO consider enabling when attributor does not delete
       // dead internal functions, which invalidates Enzyme's cache
@@ -1870,8 +2072,8 @@ public:
                    /*DeleteFns*/ false);
 #endif
       for (Function *F : Functions) {
-        // Populate the Attributor with abstract attribute opportunities in the
-        // function and the information cache with IR information.
+        // Populate the Attributor with abstract attribute opportunities in
+        // the function and the information cache with IR information.
         A.identifyDefaultAbstractAttributes(*F);
       }
       A.run();
@@ -2056,8 +2258,8 @@ public:
       auto PM = PB.buildModuleSimplificationPipeline(
           PassBuilder::OptimizationLevel::O2, ThinOrFullLTOPhase::None);
 #else
-    auto PM = PB.buildModuleSimplificationPipeline(
-        PassBuilder::OptimizationLevel::O2, PassBuilder::ThinLTOPhase::None);
+      auto PM = PB.buildModuleSimplificationPipeline(
+          PassBuilder::OptimizationLevel::O2, PassBuilder::ThinLTOPhase::None);
 #endif
       PM.run(M, MAM);
 #if LLVM_VERSION_MAJOR >= 13
