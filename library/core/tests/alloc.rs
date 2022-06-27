@@ -1,5 +1,5 @@
 use core::alloc::Layout;
-use core::ptr::NonNull;
+use core::ptr::{self, NonNull};
 
 #[test]
 fn const_unchecked_layout() {
@@ -9,7 +9,7 @@ fn const_unchecked_layout() {
     const DANGLING: NonNull<u8> = LAYOUT.dangling();
     assert_eq!(LAYOUT.size(), SIZE);
     assert_eq!(LAYOUT.align(), ALIGN);
-    assert_eq!(Some(DANGLING), NonNull::new(ALIGN as *mut u8));
+    assert_eq!(Some(DANGLING), NonNull::new(ptr::invalid_mut(ALIGN)));
 }
 
 #[test]
