@@ -124,3 +124,7 @@ lint-non-snake-case = {$sort} `{$name}` should have a snake case name
 lint-non-upper_case-global = {$sort} `{$name}` should have an upper case name
     .suggestion = convert the identifier to upper case
     .label = should have an UPPER_CASE name
+
+lint-noop-method-call = call to `.{$method}()` on a reference in this situation does nothing
+    .label = unnecessary method call
+    .note = the type `{$receiver_ty}` which `{$method}` is being called on is the same as the type returned from `{$method}`, so the method call does not do anything and can be removed
