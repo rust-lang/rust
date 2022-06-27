@@ -34,3 +34,12 @@ lint-default-hash-types = prefer `{$preferred}` over `{$used}`, it has better pe
 
 lint-query-instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
+lint-tykind-kind = usage of `ty::TyKind::<kind>`
+    .suggestion = try using `ty::<kind>` directly
+
+lint-tykind = usage of `ty::TyKind`
+    .help = try using `Ty` instead
+
+lint-ty-qualified = usage of qualified `ty::{$ty}`
+    .suggestion = try importing it and using it unqualified

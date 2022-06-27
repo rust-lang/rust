@@ -140,10 +140,10 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                 segment.args.map_or(segment.ident.span, |a| a.span_ext).hi()
             );
             cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, |lint| {
-                lint.build("usage of `ty::TyKind::<kind>`")
+                lint.build(fluent::lint::tykind_kind)
                     .span_suggestion(
                         span,
-                        "try using `ty::<kind>` directly",
+                        fluent::lint::suggestion,
                         "ty",
                         Applicability::MaybeIncorrect, // ty maybe needs an import
                     )
@@ -169,10 +169,10 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                 if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                     && qpath_ty.hir_id == ty.hir_id
                                 {
-                                    lint.build("usage of `ty::TyKind::<kind>`")
+                                    lint.build(fluent::lint::tykind_kind)
                                         .span_suggestion(
                                             path.span,
-                                            "try using `ty::<kind>` directly",
+                                            fluent::lint::suggestion,
                                             "ty",
                                             Applicability::MaybeIncorrect, // ty maybe needs an import
                                         )
@@ -187,10 +187,10 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                 if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                     && qpath_ty.hir_id == ty.hir_id
                                 {
-                                    lint.build("usage of `ty::TyKind::<kind>`")
+                                    lint.build(fluent::lint::tykind_kind)
                                         .span_suggestion(
                                             path.span,
-                                            "try using `ty::<kind>` directly",
+                                            fluent::lint::suggestion,
                                             "ty",
                                             Applicability::MaybeIncorrect, // ty maybe needs an import
                                         )
@@ -207,10 +207,10 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                 if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                     && qpath_ty.hir_id == ty.hir_id
                                 {
-                                    lint.build("usage of `ty::TyKind::<kind>`")
+                                    lint.build(fluent::lint::tykind_kind)
                                         .span_suggestion(
                                             path.span,
-                                            "try using `ty::<kind>` directly",
+                                            fluent::lint::suggestion,
                                             "ty",
                                             Applicability::MaybeIncorrect, // ty maybe needs an import
                                         )
@@ -220,15 +220,16 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                             }
                             _ => {}
                         }
-                        lint.build("usage of `ty::TyKind`").help("try using `Ty` instead").emit();
+                        lint.build(fluent::lint::tykind).help(fluent::lint::help).emit();
                     })
                 } else if !ty.span.from_expansion() && let Some(t) = is_ty_or_ty_ctxt(cx, &path) {
                     if path.segments.len() > 1 {
                         cx.struct_span_lint(USAGE_OF_QUALIFIED_TY, path.span, |lint| {
-                            lint.build(&format!("usage of qualified `ty::{}`", t))
+                            lint.build(fluent::lint::ty_qualified)
+                                .set_arg("ty", t.clone())
                                 .span_suggestion(
                                     path.span,
-                                    "try importing it and using it unqualified",
+                                    fluent::lint::suggestion,
                                     t,
                                     // The import probably needs to be changed
                                     Applicability::MaybeIncorrect,
