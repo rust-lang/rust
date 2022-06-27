@@ -2391,12 +2391,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let substs = self.ast_path_substs_for_ty(span, did, item_segment.0);
                 self.normalize_ty(span, tcx.mk_opaque(did, substs))
             }
+            Res::Def(DefKind::TyAlias, def_id) => {
+                assert_eq!(opt_self_ty, None);
+                self.prohibit_generics(path.segments.split_last().unwrap().1.iter(), |_| {});
+                let item_segment = path.segments.split_last().unwrap();
+                let substs = self.ast_path_substs_for_ty(span, def_id, item_segment.0);
+                self.normalize_ty(span, tcx.mk_ty_alias(def_id, substs))
+            }
             Res::Def(
-                DefKind::Enum
-                | DefKind::TyAlias
-                | DefKind::Struct
-                | DefKind::Union
-                | DefKind::ForeignTy,
+                DefKind::Enum | DefKind::Struct | DefKind::Union | DefKind::ForeignTy,
                 did,
             ) => {
                 assert_eq!(opt_self_ty, None);
