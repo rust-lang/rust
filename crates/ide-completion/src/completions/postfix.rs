@@ -193,13 +193,21 @@ pub(crate) fn complete_postfix(
 }
 
 fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: bool) -> String {
-    if receiver_is_ambiguous_float_literal {
+    let text = if receiver_is_ambiguous_float_literal {
         let text = receiver.syntax().text();
         let without_dot = ..text.len() - TextSize::of('.');
         text.slice(without_dot).to_string()
     } else {
         receiver.to_string()
-    }
+    };
+
+    // The receiver texts should be interpreted as-is, as they are expected to be
+    // normal Rust expressions. We escape '\' and '$' so they don't get treated as
+    // snippet-specific constructs.
+    //
+    // Note that we don't need to escape the other characters that can be escaped,
+    // because they wouldn't be treated as snippet-specific constructs without '$'.
+    text.replace('\\', "\\\\").replace('$', "\\$")
 }
 
 fn include_references(initial_element: &ast::Expr) -> ast::Expr {
@@ -494,19 +502,21 @@ fn main() {
 
     #[test]
     fn custom_postfix_completion() {
+        let config = CompletionConfig {
+            snippets: vec![Snippet::new(
+                &[],
+                &["break".into()],
+                &["ControlFlow::Break(${receiver})".into()],
+                "",
+                &["core::ops::ControlFlow".into()],
+                crate::SnippetScope::Expr,
+            )
+            .unwrap()],
+            ..TEST_CONFIG
+        };
+
         check_edit_with_config(
-            CompletionConfig {
-                snippets: vec![Snippet::new(
-                    &[],
-                    &["break".into()],
-                    &["ControlFlow::Break(${receiver})".into()],
-                    "",
-                    &["core::ops::ControlFlow".into()],
-                    crate::SnippetScope::Expr,
-                )
-                .unwrap()],
-                ..TEST_CONFIG
-            },
+            config.clone(),
             "break",
             r#"
 //- minicore: try
@@ -516,6 +526,44 @@ fn main() { 42.$0 }
 use core::ops::ControlFlow;
 
 fn main() { ControlFlow::Break(42) }
+"#,
+        );
+
+        check_edit_with_config(
+            config.clone(),
+            "break",
+            r#"
+//- minicore: try
+fn main() { '\\'.$0 }
+"#,
+            r#"
+use core::ops::ControlFlow;
+
+fn main() { ControlFlow::Break('\\\\') }
+"#,
+        );
+
+        check_edit_with_config(
+            config.clone(),
+            "break",
+            r#"
+//- minicore: try
+fn main() {
+    match true {
+        true => "${1:placeholder}",
+        false => "\$",
+    }.$0
+}
+"#,
+            r#"
+use core::ops::ControlFlow;
+
+fn main() {
+    ControlFlow::Break(match true {
+        true => "\${1:placeholder}",
+        false => "\\\$",
+    })
+}
 "#,
         );
     }
