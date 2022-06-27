@@ -3,6 +3,7 @@
 use std::iter;
 
 use ide_db::SymbolKind;
+use itertools::Itertools;
 use syntax::SyntaxKind;
 
 use crate::{completions::Completions, context::CompletionContext, CompletionItem};
@@ -34,7 +35,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
 
             acc.add(item.build());
         }),
-        None => ctx.krate.potential_cfg(ctx.db).get_cfg_keys().cloned().for_each(|s| {
+        None => ctx.krate.potential_cfg(ctx.db).get_cfg_keys().cloned().unique().for_each(|s| {
             let item = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s);
             acc.add(item.build());
         }),
