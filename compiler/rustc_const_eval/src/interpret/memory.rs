@@ -56,15 +56,14 @@ impl<T: fmt::Display> fmt::Display for MemoryKind<T> {
     }
 }
 
-/// Used by `get_size_and_align` to indicate whether the allocation needs to be live.
-#[derive(Debug, Copy, Clone)]
-pub enum AllocCheck {
-    /// Allocation must be live and not a function pointer.
-    Dereferenceable,
-    /// Allocations needs to be live, but may be a function pointer.
-    Live,
-    /// Allocation may be dead.
-    MaybeDead,
+/// The return value of `get_alloc_info` indicates the "kind" of the allocation.
+pub enum AllocKind {
+    /// A regular live data allocation.
+    LiveData,
+    /// A function allocation (that fn ptrs point to).
+    Function,
+    /// A dead allocation.
+    Dead,
 }
 
 /// The value of a function pointer.
@@ -360,8 +359,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             align,
             CheckInAllocMsg::MemoryAccessTest,
             |alloc_id, offset, tag| {
-                let (size, align) =
-                    self.get_alloc_size_and_align(alloc_id, AllocCheck::Dereferenceable)?;
+                let (size, align) = self.get_live_alloc_size_and_align(alloc_id)?;
                 Ok((size, align, (alloc_id, offset, tag)))
             },
         )
@@ -379,15 +377,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx> {
         self.check_and_deref_ptr(ptr, size, Some(align), msg, |alloc_id, _, _| {
-            let check = match msg {
-                CheckInAllocMsg::DerefTest | CheckInAllocMsg::MemoryAccessTest => {
-                    AllocCheck::Dereferenceable
-                }
-                CheckInAllocMsg::PointerArithmeticTest
-                | CheckInAllocMsg::OffsetFromTest
-                | CheckInAllocMsg::InboundsTest => AllocCheck::Live,
-            };
-            let (size, align) = self.get_alloc_size_and_align(alloc_id, check)?;
+            let (size, align) = self.get_live_alloc_size_and_align(alloc_id)?;
             Ok((size, align, ()))
         })?;
         Ok(())
@@ -655,30 +645,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Obtain the size and alignment of an allocation, even if that allocation has
     /// been deallocated.
-    ///
-    /// If `liveness` is `AllocCheck::MaybeDead`, this function always returns `Ok`.
-    pub fn get_alloc_size_and_align(
-        &self,
-        id: AllocId,
-        liveness: AllocCheck,
-    ) -> InterpResult<'tcx, (Size, Align)> {
+    pub fn get_alloc_info(&self, id: AllocId) -> (Size, Align, AllocKind) {
         // # Regular allocations
         // Don't use `self.get_raw` here as that will
         // a) cause cycles in case `id` refers to a static
         // b) duplicate a global's allocation in miri
         if let Some((_, alloc)) = self.memory.alloc_map.get(id) {
-            return Ok((alloc.size(), alloc.align));
+            return (alloc.size(), alloc.align, AllocKind::LiveData);
         }
 
         // # Function pointers
         // (both global from `alloc_map` and local from `extra_fn_ptr_map`)
         if self.get_fn_alloc(id).is_some() {
-            return if let AllocCheck::Dereferenceable = liveness {
-                // The caller requested no function pointers.
-                throw_ub!(DerefFunctionPointer(id))
-            } else {
-                Ok((Size::ZERO, Align::ONE))
-            };
+            return (Size::ZERO, Align::ONE, AllocKind::Function);
         }
 
         // # Statics
@@ -690,30 +669,36 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Use size and align of the type.
                 let ty = self.tcx.type_of(did);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                Ok((layout.size, layout.align.abi))
+                (layout.size, layout.align.abi, AllocKind::LiveData)
             }
             Some(GlobalAlloc::Memory(alloc)) => {
                 // Need to duplicate the logic here, because the global allocations have
                 // different associated types than the interpreter-local ones.
                 let alloc = alloc.inner();
-                Ok((alloc.size(), alloc.align))
+                (alloc.size(), alloc.align, AllocKind::LiveData)
             }
             Some(GlobalAlloc::Function(_)) => bug!("We already checked function pointers above"),
             // The rest must be dead.
             None => {
-                if let AllocCheck::MaybeDead = liveness {
-                    // Deallocated pointers are allowed, we should be able to find
-                    // them in the map.
-                    Ok(*self
-                        .memory
-                        .dead_alloc_map
-                        .get(&id)
-                        .expect("deallocated pointers should all be recorded in `dead_alloc_map`"))
-                } else {
-                    throw_ub!(PointerUseAfterFree(id))
-                }
+                // Deallocated pointers are allowed, we should be able to find
+                // them in the map.
+                let (size, align) = *self
+                    .memory
+                    .dead_alloc_map
+                    .get(&id)
+                    .expect("deallocated pointers should all be recorded in `dead_alloc_map`");
+                (size, align, AllocKind::Dead)
             }
         }
+    }
+
+    /// Obtain the size and alignment of a live allocation.
+    pub fn get_live_alloc_size_and_align(&self, id: AllocId) -> InterpResult<'tcx, (Size, Align)> {
+        let (size, align, kind) = self.get_alloc_info(id);
+        if matches!(kind, AllocKind::Dead) {
+            throw_ub!(PointerUseAfterFree(id))
+        }
+        Ok((size, align))
     }
 
     fn get_fn_alloc(&self, id: AllocId) -> Option<FnVal<'tcx, M::ExtraFnVal>> {
@@ -1187,9 +1172,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ptr = self.scalar_to_ptr(scalar)?;
                 match self.ptr_try_get_alloc_id(ptr) {
                     Ok((alloc_id, offset, _)) => {
-                        let (size, _align) = self
-                            .get_alloc_size_and_align(alloc_id, AllocCheck::MaybeDead)
-                            .expect("alloc info with MaybeDead cannot fail");
+                        let (size, _align, _kind) = self.get_alloc_info(alloc_id);
                         // If the pointer is out-of-bounds, it may be null.
                         // Note that one-past-the-end (offset == size) is still inbounds, and never null.
                         offset > size

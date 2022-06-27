@@ -23,7 +23,7 @@ pub use self::eval_context::{
 };
 pub use self::intern::{intern_const_alloc_recursive, InternKind};
 pub use self::machine::{compile_time_machine, AllocMap, Machine, MayLeak, StackPopJump};
-pub use self::memory::{AllocCheck, AllocRef, AllocRefMut, FnVal, Memory, MemoryKind};
+pub use self::memory::{AllocKind, AllocRef, AllocRefMut, FnVal, Memory, MemoryKind};
 pub use self::operand::{ImmTy, Immediate, OpTy, Operand};
 pub use self::place::{MPlaceTy, MemPlace, MemPlaceMeta, Place, PlaceTy};
 pub use self::validity::{CtfeValidationMode, RefTracking};
