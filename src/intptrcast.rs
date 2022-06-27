@@ -90,8 +90,16 @@ impl<'mir, 'tcx> GlobalStateInner {
             }
         }?;
 
-        // We only use this provenance if it has been exposed.
-        if global_state.exposed.contains(&alloc_id) { Some(alloc_id) } else { None }
+        // We only use this provenance if it has been exposed, *and* is still live.
+        if global_state.exposed.contains(&alloc_id) {
+            // FIXME: this catches `InterpError`, which we should not usually do.
+            // We might need a proper fallible API from `memory.rs` to avoid this though.
+            if let Ok(_) = ecx.get_alloc_size_and_align(alloc_id, AllocCheck::Live) {
+                return Some(alloc_id);
+            }
+        }
+
+        None
     }
 
     pub fn expose_ptr(ecx: &mut MiriEvalContext<'mir, 'tcx>, alloc_id: AllocId, sb: SbTag) {

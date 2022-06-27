@@ -1,23 +1,8 @@
-warning: pointer-to-integer cast
-  --> $DIR/thread_local_static_dealloc.rs:LL:CC
-   |
-LL |         let _val = *(dangling_ptr as *const u8);
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ pointer-to-integer cast
-   |
-   = help: this program is using integer-to-pointer casts or (equivalently) `from_exposed_addr`,
-   = help: which means that Miri might miss pointer bugs in this program
-   = help: see https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation
-   = help: to ensure that Miri does not miss bugs in your program, use `with_addr` (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance) instead
-   = help: you can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics
-   = help: alternatively, the `-Zmiri-permissive-provenance` flag disables this warning
-           
-   = note: inside `main` at $DIR/thread_local_static_dealloc.rs:LL:CC
-
 error: Undefined Behavior: pointer to ALLOC was dereferenced after this allocation got freed
   --> $DIR/thread_local_static_dealloc.rs:LL:CC
    |
-LL |         let _val = *(dangling_ptr as *const u8);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pointer to ALLOC was dereferenced after this allocation got freed
+LL |         let _val = *dangling_ptr.0;
+   |                    ^^^^^^^^^^^^^^^ pointer to ALLOC was dereferenced after this allocation got freed
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
@@ -26,5 +11,5 @@ LL |         let _val = *(dangling_ptr as *const u8);
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 

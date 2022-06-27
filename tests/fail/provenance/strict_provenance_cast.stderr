@@ -1,0 +1,14 @@
+error: unsupported operation: integer-to-pointer casts and `from_exposed_addr` are not supported with `-Zmiri-strict-provenance`; use `with_addr` instead
+  --> $DIR/strict_provenance_cast.rs:LL:CC
+   |
+LL |     let _ptr = addr as *const i32;
+   |                ^^^^^^^^^^^^^^^^^^ integer-to-pointer casts and `from_exposed_addr` are not supported with `-Zmiri-strict-provenance`; use `with_addr` instead
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+           
+   = note: inside `main` at $DIR/strict_provenance_cast.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

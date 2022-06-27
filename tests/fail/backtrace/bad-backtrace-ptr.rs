@@ -4,6 +4,6 @@ extern "Rust" {
 
 fn main() {
     unsafe {
-        miri_resolve_frame(0 as *mut _, 0); //~ ERROR null pointer is not a valid pointer for this operation
+        miri_resolve_frame(std::ptr::null_mut(), 0); //~ ERROR null pointer is not a valid pointer for this operation
     }
 }

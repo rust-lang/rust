@@ -1,5 +1,5 @@
 error: Undefined Behavior: dereferencing pointer failed: $HEX is not a valid pointer
-  --> $DIR/permissive_provenance_transmute.rs:LL:CC
+  --> $DIR/provenance_transmute.rs:LL:CC
    |
 LL |         let _val = *left_ptr;
    |                    ^^^^^^^^^ dereferencing pointer failed: $HEX is not a valid pointer
@@ -7,9 +7,9 @@ LL |         let _val = *left_ptr;
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
            
-   = note: inside `deref` at $DIR/permissive_provenance_transmute.rs:LL:CC
-note: inside `main` at $DIR/permissive_provenance_transmute.rs:LL:CC
-  --> $DIR/permissive_provenance_transmute.rs:LL:CC
+   = note: inside `deref` at $DIR/provenance_transmute.rs:LL:CC
+note: inside `main` at $DIR/provenance_transmute.rs:LL:CC
+  --> $DIR/provenance_transmute.rs:LL:CC
    |
 LL |         deref(ptr1, ptr2.with_addr(ptr1.addr()));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

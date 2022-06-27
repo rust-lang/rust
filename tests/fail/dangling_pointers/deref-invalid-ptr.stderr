@@ -1,18 +1,3 @@
-warning: pointer-to-integer cast
-  --> $DIR/deref-invalid-ptr.rs:LL:CC
-   |
-LL |     let x = 16usize as *const u32;
-   |             ^^^^^^^^^^^^^^^^^^^^^ pointer-to-integer cast
-   |
-   = help: this program is using integer-to-pointer casts or (equivalently) `from_exposed_addr`,
-   = help: which means that Miri might miss pointer bugs in this program
-   = help: see https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation
-   = help: to ensure that Miri does not miss bugs in your program, use `with_addr` (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance) instead
-   = help: you can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics
-   = help: alternatively, the `-Zmiri-permissive-provenance` flag disables this warning
-           
-   = note: inside `main` at $DIR/deref-invalid-ptr.rs:LL:CC
-
 error: Undefined Behavior: dereferencing pointer failed: 0x10 is not a valid pointer
   --> $DIR/deref-invalid-ptr.rs:LL:CC
    |
@@ -26,5 +11,5 @@ LL |     let _y = unsafe { &*x as *const u32 };
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 

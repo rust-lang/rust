@@ -1,3 +1,5 @@
+// compile-flags: -Zmiri-permissive-provenance
+
 // Make sure we cannot use raw ptrs to access a local that
 // we took the direct address of.
 fn main() {

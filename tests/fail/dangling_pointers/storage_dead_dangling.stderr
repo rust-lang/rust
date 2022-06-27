@@ -1,28 +1,8 @@
-warning: pointer-to-integer cast
+error: Undefined Behavior: dereferencing pointer failed: $HEX is not a valid pointer
   --> $DIR/storage_dead_dangling.rs:LL:CC
    |
 LL |     unsafe { &mut *(LEAK as *mut i32) };
-   |                    ^^^^^^^^^^^^^^^^^^ pointer-to-integer cast
-   |
-   = help: this program is using integer-to-pointer casts or (equivalently) `from_exposed_addr`,
-   = help: which means that Miri might miss pointer bugs in this program
-   = help: see https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation
-   = help: to ensure that Miri does not miss bugs in your program, use `with_addr` (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance) instead
-   = help: you can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics
-   = help: alternatively, the `-Zmiri-permissive-provenance` flag disables this warning
-           
-   = note: inside `evil` at $DIR/storage_dead_dangling.rs:LL:CC
-note: inside `main` at $DIR/storage_dead_dangling.rs:LL:CC
-  --> $DIR/storage_dead_dangling.rs:LL:CC
-   |
-LL |     evil();
-   |     ^^^^^^
-
-error: Undefined Behavior: pointer to ALLOC was dereferenced after this allocation got freed
-  --> $DIR/storage_dead_dangling.rs:LL:CC
-   |
-LL |     unsafe { &mut *(LEAK as *mut i32) };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^ pointer to ALLOC was dereferenced after this allocation got freed
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: $HEX is not a valid pointer
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
@@ -36,5 +16,5 @@ LL |     evil();
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 

@@ -1,4 +1,5 @@
 // error-pattern: is not a valid pointer
+// compile-flags: -Zmiri-permissive-provenance
 
 fn main() {
     // Can't offset an integer pointer by non-zero offset.

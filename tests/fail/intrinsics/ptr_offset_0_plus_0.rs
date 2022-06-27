@@ -1,4 +1,5 @@
 // error-pattern: pointer arithmetic failed: null pointer is not a valid pointer
+// compile-flags: -Zmiri-permissive-provenance
 
 fn main() {
     let x = 0 as *mut i32;

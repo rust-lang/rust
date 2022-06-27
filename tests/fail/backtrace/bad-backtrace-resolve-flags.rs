@@ -15,7 +15,7 @@ extern "Rust" {
 
 fn main() {
     unsafe {
-        let mut buf = vec![0 as *mut _; miri_backtrace_size(0)];
+        let mut buf = vec![std::ptr::null_mut(); miri_backtrace_size(0)];
 
         miri_get_backtrace(1, buf.as_mut_ptr());
 

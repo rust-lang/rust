@@ -1,3 +1,5 @@
+// compile-flags: -Zmiri-permissive-provenance
+
 /// This manually makes sure that we have a pointer with the proper alignment.
 fn manual_alignment() {
     let x = &mut [0u8; 3];
