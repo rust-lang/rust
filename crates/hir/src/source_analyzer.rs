@@ -67,10 +67,7 @@ impl SourceAnalyzer {
         let scopes = db.expr_scopes(def);
         let scope = match offset {
             None => scope_for(&scopes, &source_map, node),
-            Some(offset) => {
-                let file_id = node.file_id.original_file(db.upcast());
-                scope_for_offset(db, &scopes, &source_map, InFile::new(file_id.into(), offset))
-            }
+            Some(offset) => scope_for_offset(db, &scopes, &source_map, node.file_id, offset),
         };
         let resolver = resolver_for_scope(db.upcast(), def, scope);
         SourceAnalyzer {
@@ -91,10 +88,7 @@ impl SourceAnalyzer {
         let scopes = db.expr_scopes(def);
         let scope = match offset {
             None => scope_for(&scopes, &source_map, node),
-            Some(offset) => {
-                let file_id = node.file_id.original_file(db.upcast());
-                scope_for_offset(db, &scopes, &source_map, InFile::new(file_id.into(), offset))
-            }
+            Some(offset) => scope_for_offset(db, &scopes, &source_map, node.file_id, offset),
         };
         let resolver = resolver_for_scope(db.upcast(), def, scope);
         SourceAnalyzer { resolver, def: Some((def, body, source_map)), infer: None, file_id }
@@ -585,14 +579,15 @@ fn scope_for_offset(
     db: &dyn HirDatabase,
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
-    offset: InFile<TextSize>,
+    from_file: HirFileId,
+    offset: TextSize,
 ) -> Option<ScopeId> {
     scopes
         .scope_by_expr()
         .iter()
         .filter_map(|(id, scope)| {
             let InFile { file_id, value } = source_map.expr_syntax(*id).ok()?;
-            if offset.file_id == file_id {
+            if from_file == file_id {
                 let root = db.parse_or_expand(file_id)?;
                 let node = value.to_node(&root);
                 return Some((node.syntax().text_range(), scope));
@@ -602,17 +597,15 @@ fn scope_for_offset(
             let source = iter::successors(file_id.call_node(db.upcast()), |it| {
                 it.file_id.call_node(db.upcast())
             })
-            .find(|it| it.file_id == offset.file_id)
+            .find(|it| it.file_id == from_file)
             .filter(|it| it.value.kind() == SyntaxKind::MACRO_CALL)?;
             Some((source.value.text_range(), scope))
         })
-        .filter(|(expr_range, _scope)| {
-            expr_range.start() <= offset.value && offset.value <= expr_range.end()
-        })
+        .filter(|(expr_range, _scope)| expr_range.start() <= offset && offset <= expr_range.end())
         // find containing scope
         .min_by_key(|(expr_range, _scope)| expr_range.len())
         .map(|(expr_range, scope)| {
-            adjust(db, scopes, source_map, expr_range, offset).unwrap_or(*scope)
+            adjust(db, scopes, source_map, expr_range, from_file, offset).unwrap_or(*scope)
         })
 }
 
@@ -623,7 +616,8 @@ fn adjust(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
     expr_range: TextRange,
-    offset: InFile<TextSize>,
+    from_file: HirFileId,
+    offset: TextSize,
 ) -> Option<ScopeId> {
     let child_scopes = scopes
         .scope_by_expr()
@@ -631,7 +625,7 @@ fn adjust(
         .filter_map(|(id, scope)| {
             let source = source_map.expr_syntax(*id).ok()?;
             // FIXME: correctly handle macro expansion
-            if source.file_id != offset.file_id {
+            if source.file_id != from_file {
                 return None;
             }
             let root = source.file_syntax(db.upcast());
@@ -639,7 +633,7 @@ fn adjust(
             Some((node.syntax().text_range(), scope))
         })
         .filter(|&(range, _)| {
-            range.start() <= offset.value && expr_range.contains_range(range) && range != expr_range
+            range.start() <= offset && expr_range.contains_range(range) && range != expr_range
         });
 
     child_scopes

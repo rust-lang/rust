@@ -782,3 +782,31 @@ fn main() {
         "#]],
     )
 }
+
+#[test]
+fn completes_locals_from_macros() {
+    check(
+        r#"
+
+macro_rules! x {
+    ($x:ident, $expr:expr) => {
+        let $x = 0;
+        $expr
+    };
+}
+fn main() {
+    x! {
+        foobar, {
+            f$0
+        }
+    };
+}
+"#,
+        expect![[r#"
+            fn main() fn()
+            lc foobar i32
+            ma x!(…)  macro_rules! x
+            bt u32
+        "#]],
+    )
+}
