@@ -325,8 +325,8 @@ impl EarlyLintPass for LintPassImpl {
                             LINT_PASS_IMPL_WITHOUT_MACRO,
                             lint_pass.path.span,
                             |lint| {
-                                lint.build("implementing `LintPass` by hand")
-                                    .help("try using `declare_lint_pass!` or `impl_lint_pass!` instead")
+                                lint.build(fluent::lint::lintpass_by_hand)
+                                    .help(fluent::lint::help)
                                     .emit();
                             },
                         )

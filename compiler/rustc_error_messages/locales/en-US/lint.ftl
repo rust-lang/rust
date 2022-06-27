@@ -43,3 +43,6 @@ lint-tykind = usage of `ty::TyKind`
 
 lint-ty-qualified = usage of qualified `ty::{$ty}`
     .suggestion = try importing it and using it unqualified
+
+lint-lintpass-by-hand = implementing `LintPass` by hand
+    .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
