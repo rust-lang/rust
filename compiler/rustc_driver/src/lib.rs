@@ -932,7 +932,7 @@ fn describe_codegen_flags() {
     print_flag_list("-C", config::CG_OPTIONS);
 }
 
-fn print_flag_list<T>(
+pub fn print_flag_list<T>(
     cmdline_opt: &str,
     flag_list: &[(&'static str, T, &'static str, &'static str)],
 ) {
