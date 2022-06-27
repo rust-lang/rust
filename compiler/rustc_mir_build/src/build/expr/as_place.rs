@@ -202,6 +202,7 @@ fn find_capture_matching_projections<'a, 'tcx>(
 /// `PlaceBuilder` now starts from `PlaceBase::Local`.
 ///
 /// Returns a Result with the error being the PlaceBuilder (`from_builder`) that was not found.
+#[instrument(level = "trace", skip(cx))]
 fn to_upvars_resolved_place_builder<'tcx>(
     from_builder: PlaceBuilder<'tcx>,
     cx: &Builder<'_, 'tcx>,
@@ -270,12 +271,14 @@ fn to_upvars_resolved_place_builder<'tcx>(
 
             // We used some of the projections to build the capture itself,
             // now we apply the remaining to the upvar resolved place.
+            trace!(?capture.place, ?from_builder.projection);
             let remaining_projections = strip_prefix(
                 capture.place.base_ty,
                 from_builder.projection,
                 &capture.place.projections,
             );
             upvar_resolved_place_builder.projection.extend(remaining_projections);
+            trace!(?upvar_resolved_place_builder);
 
             Ok(upvar_resolved_place_builder)
         }
