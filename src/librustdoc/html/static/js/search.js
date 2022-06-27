@@ -1825,6 +1825,24 @@ function initSearch(rawSearchIndex) {
             filterCrates);
     }
 
+    /**
+     * Convert a list of RawFunctionType / ID to object-based FunctionType.
+     *
+     * Crates often have lots of functions in them, and it's common to have a large number of
+     * functions that operate on a small set of data types, so the search index compresses them
+     * by encoding function parameter and return types as indexes into an array of names.
+     *
+     * Even when a general-purpose compression algorithm is used, this is still a win. I checked.
+     * https://github.com/rust-lang/rust/pull/98475#issue-1284395985
+     *
+     * The format for individual function types is encoded in
+     * librustdoc/html/render/mod.rs: impl Serialize for RenderType
+     *
+     * @param {null|Array<RawFunctionType>} types
+     * @param {Array<{name: string, ty: number}>} lowercasePaths
+     *
+     * @return {Array<FunctionSearchType>}
+     */
     function buildItemSearchTypeAll(types, lowercasePaths) {
         const PATH_INDEX_DATA = 0;
         const GENERICS_DATA = 1;
@@ -1848,6 +1866,21 @@ function initSearch(rawSearchIndex) {
         });
     }
 
+    /**
+     * Convert from RawFunctionSearchType to FunctionSearchType.
+     *
+     * Crates often have lots of functions in them, and function signatures are sometimes complex,
+     * so rustdoc uses a pretty tight encoding for them. This function converts it to a simpler,
+     * object-based encoding so that the actual search code is more readable and easier to debug.
+     *
+     * The raw function search type format is generated using serde in
+     * librustdoc/html/render/mod.rs: impl Serialize for IndexItemFunctionType
+     *
+     * @param {RawFunctionSearchType} functionSearchType
+     * @param {Array<{name: string, ty: number}>} lowercasePaths
+     *
+     * @return {null|FunctionSearchType}
+     */
     function buildFunctionSearchType(functionSearchType, lowercasePaths) {
         const INPUTS_DATA = 0;
         const OUTPUT_DATA = 1;
@@ -1935,7 +1968,7 @@ function initSearch(rawSearchIndex) {
              *   d: Array<string>,
              *   q: Array<string>,
              *   i: Array<Number>,
-             *   f: Array<0 | Object>,
+             *   f: Array<RawFunctionSearchType>,
              *   p: Array<Object>,
              * }}
              */
