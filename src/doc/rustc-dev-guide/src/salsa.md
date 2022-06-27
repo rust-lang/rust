@@ -60,7 +60,7 @@ is going to be checked, which could be costly. Salsa only needs to check each
 downstream computation until it finds one that isn't changed. At that point, it
 won't check other derived computations since they wouldn't need to change.
 
-It's is helpful to think about this as a graph with nodes. Each derived value
+It's helpful to think about this as a graph with nodes. Each derived value
 has a dependency on other values, which could themselves be either base or
 derived. Base values don't have a dependency.
 
@@ -71,12 +71,12 @@ J <- B <--+
 ```
 
 When an input `I` changes, the derived value `A` could change. The derived
-value `B` , which does not depend on `I`, `A`, or any value derived from `A` or
+value `B`, which does not depend on `I`, `A`, or any value derived from `A` or
 `I`, is not subject to change.  Therefore, Salsa can reuse the computation done
 for `B` in the past, without having to compute it again.
 
 The computation could also terminate early. Keeping the same graph as before,
-say that input `I` has changed in some way (and input `J` hasn't) but, when
+say that input `I` has changed in some way (and input `J` hasn't), but when
 computing `A` again, it's found that `A` hasn't changed from the previous
 computation. This leads to an "early termination", because there's no need to
 check if `C` needs to change, since both `C` direct inputs, `A` and `B`,
