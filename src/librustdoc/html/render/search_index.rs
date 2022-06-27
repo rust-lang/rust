@@ -234,7 +234,33 @@ pub(crate) fn build_index<'tcx>(
             )?;
             crate_data.serialize_field(
                 "f",
-                &self.items.iter().map(|item| &item.search_type).collect::<Vec<_>>(),
+                &self
+                    .items
+                    .iter()
+                    .map(|item| {
+                        // Fake option to get `0` out as a sentinel instead of `null`.
+                        // We want to use `0` because it's three less bytes.
+                        enum FunctionOption<'a> {
+                            Function(&'a IndexItemFunctionType),
+                            None,
+                        }
+                        impl<'a> Serialize for FunctionOption<'a> {
+                            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                            where
+                                S: Serializer,
+                            {
+                                match self {
+                                    FunctionOption::None => 0.serialize(serializer),
+                                    FunctionOption::Function(ty) => ty.serialize(serializer),
+                                }
+                            }
+                        }
+                        match &item.search_type {
+                            Some(ty) => FunctionOption::Function(ty),
+                            None => FunctionOption::None,
+                        }
+                    })
+                    .collect::<Vec<_>>(),
             )?;
             crate_data.serialize_field(
                 "p",

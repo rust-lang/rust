@@ -1846,9 +1846,6 @@ function initSearch(rawSearchIndex) {
     function buildItemSearchTypeAll(types, lowercasePaths) {
         const PATH_INDEX_DATA = 0;
         const GENERICS_DATA = 1;
-        if (types === null) {
-            return [];
-        }
         return types.map(type => {
             let pathIndex, generics;
             if (typeof type === "number") {
@@ -1859,6 +1856,7 @@ function initSearch(rawSearchIndex) {
                 generics = buildItemSearchTypeAll(type[GENERICS_DATA], lowercasePaths);
             }
             return {
+                // `0` is used as a sentinel because it's fewer bytes than `null`
                 name: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].name,
                 ty: pathIndex === 0 ? null : lowercasePaths[pathIndex - 1].ty,
                 generics: generics,
@@ -1884,7 +1882,8 @@ function initSearch(rawSearchIndex) {
     function buildFunctionSearchType(functionSearchType, lowercasePaths) {
         const INPUTS_DATA = 0;
         const OUTPUT_DATA = 1;
-        if (functionSearchType === 0 || functionSearchType === null) {
+        // `0` is used as a sentinel because it's fewer bytes than `null`
+        if (functionSearchType === 0) {
             return null;
         }
         let inputs, output;

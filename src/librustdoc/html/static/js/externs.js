@@ -86,6 +86,9 @@ let Results;
  * A pair of [inputs, outputs], or 0 for null. This is stored in the search index.
  * The JavaScript deserializes this into FunctionSearchType.
  *
+ * Numeric IDs are *ONE-indexed* into the paths array (`p`). Zero is used as a sentinel for `null`
+ * because `null` is four bytes while `0` is one byte.
+ *
  * An input or output can be encoded as just a number if there is only one of them, AND
  * it has no generics. The no generics rule exists to avoid ambiguity: imagine if you had
  * a function with a single output, and that output had a single generic:
@@ -113,6 +116,9 @@ let RawFunctionSearchType;
 /**
  * A single function input or output type. This is either a single path ID, or a pair of
  * [path ID, generics].
+ *
+ * Numeric IDs are *ONE-indexed* into the paths array (`p`). Zero is used as a sentinel for `null`
+ * because `null` is four bytes while `0` is one byte.
  *
  * @typedef {number | [number, Array<RawFunctionType>]}
  */
