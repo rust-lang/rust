@@ -30,7 +30,7 @@ except ImportError:
 # These should be collaborators of the rust-lang/rust repository (with at least
 # read privileges on it). CI will fail otherwise.
 MAINTAINERS = {
-    'miri': {'oli-obk', 'RalfJung', 'eddyb'},
+    'miri': {'oli-obk', 'RalfJung'},
     'rls': {'Xanewok'},
     'rustfmt': {'topecongiro', 'calebcartwright'},
     'book': {'carols10cents', 'steveklabnik'},

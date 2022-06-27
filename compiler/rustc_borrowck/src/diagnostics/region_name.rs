@@ -879,7 +879,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         }
 
         let mut found = false;
-        tcx.fold_regions(tcx.type_of(body_parent_did), &mut true, |r: ty::Region<'tcx>, _| {
+        tcx.fold_regions(tcx.type_of(body_parent_did), |r: ty::Region<'tcx>, _| {
             if *r == ty::ReEarlyBound(region) {
                 found = true;
             }

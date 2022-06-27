@@ -16,6 +16,11 @@ use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 pub struct VerifyBoundCx<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
+    /// During borrowck, if there are no outlives bounds on a generic
+    /// parameter `T`, we assume that `T: 'in_fn_body` holds.
+    ///
+    /// Outside of borrowck the only way to prove `T: '?0` is by
+    /// setting  `'?0` to `'empty`.
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
 }
@@ -263,8 +268,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         //     fn foo<'a, A>(x: &'a A) { x.bar() }
         //
         // The problem is that the type of `x` is `&'a A`. To be
-        // well-formed, then, A must be lower-generic by `'a`, but we
-        // don't know that this holds from first principles.
+        // well-formed, then, A must outlive `'a`, but we don't know that
+        // this holds from first principles.
         let from_region_bound_pairs = self.region_bound_pairs.iter().filter_map(|&(r, p)| {
             debug!(
                 "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",

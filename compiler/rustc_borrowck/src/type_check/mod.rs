@@ -157,7 +157,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     } = free_region_relations::create(
         infcx,
         param_env,
-        Some(implicit_region_bound),
+        implicit_region_bound,
         universal_regions,
         &mut constraints,
     );
@@ -1142,7 +1142,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.infcx,
             self.borrowck_context.universal_regions,
             self.region_bound_pairs,
-            Some(self.implicit_region_bound),
+            self.implicit_region_bound,
             self.param_env,
             locations,
             locations.span(self.body),

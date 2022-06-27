@@ -1009,7 +1009,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         debug!("try_promote_type_test_subject(ty = {:?})", ty);
 
-        let ty = tcx.fold_regions(ty, &mut false, |r, _depth| {
+        let ty = tcx.fold_regions(ty, |r, _depth| {
             let region_vid = self.to_region_vid(r);
 
             // The challenge if this. We have some region variable `r`
@@ -1289,7 +1289,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        tcx.fold_regions(value, &mut false, |r, _db| {
+        tcx.fold_regions(value, |r, _db| {
             let vid = self.to_region_vid(r);
             let scc = self.constraint_sccs.scc(vid);
             let repr = self.scc_representatives[scc];

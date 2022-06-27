@@ -366,7 +366,6 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn resolve_regions_and_report_errors(&self) {
         self.infcx.process_registered_region_obligations(
             self.outlives_environment.region_bound_pairs_map(),
-            Some(self.tcx.lifetimes.re_root_empty),
             self.param_env,
         );
 

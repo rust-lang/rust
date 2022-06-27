@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_driver::print_flag_list;
 use rustc_session::config::{
     self, parse_crate_types_from_list, parse_externs, parse_target_triple, CrateType,
 };
@@ -310,11 +311,15 @@ impl RenderOptions {
 impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
-    pub(crate) fn from_matches(matches: &getopts::Matches) -> Result<Options, i32> {
+    pub(crate) fn from_matches(
+        matches: &getopts::Matches,
+        args: Vec<String>,
+    ) -> Result<Options, i32> {
+        let args = &args[1..];
         // Check for unstable options.
         nightly_options::check_nightly_options(matches, &opts());
 
-        if matches.opt_present("h") || matches.opt_present("help") {
+        if args.is_empty() || matches.opt_present("h") || matches.opt_present("help") {
             crate::usage("rustdoc");
             return Err(0);
         } else if matches.opt_present("version") {
@@ -335,6 +340,21 @@ impl Options {
         // check for deprecated options
         check_deprecated_options(matches, &diag);
 
+        let z_flags = matches.opt_strs("Z");
+        if z_flags.iter().any(|x| *x == "help") {
+            print_flag_list("-Z", config::DB_OPTIONS);
+            return Err(0);
+        }
+        let c_flags = matches.opt_strs("C");
+        if c_flags.iter().any(|x| *x == "help") {
+            print_flag_list("-C", config::CG_OPTIONS);
+            return Err(0);
+        }
+        let w_flags = matches.opt_strs("W");
+        if w_flags.iter().any(|x| *x == "help") {
+            print_flag_list("-W", config::DB_OPTIONS);
+            return Err(0);
+        }
         if matches.opt_strs("passes") == ["list"] {
             println!("Available passes for running rustdoc:");
             for pass in passes::PASSES {
