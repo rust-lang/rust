@@ -114,15 +114,16 @@ def test_cargo_miri_test():
     default_ref = "test.cross-target.stdout.ref" if is_foreign else "test.default.stdout.ref"
     filter_ref = "test.filter.cross-target.stdout.ref" if is_foreign else "test.filter.stdout.ref"
 
+    # macOS needs permissive provenance inside getrandom.
     test("`cargo miri test`",
         cargo_miri("test"),
         default_ref, "test.stderr-empty.ref",
-        env={'MIRIFLAGS': "-Zmiri-seed=feed"},
+        env={'MIRIFLAGS': "-Zmiri-permissive-provenance -Zmiri-seed=feed"},
     )
     test("`cargo miri test` (no isolation, no doctests)",
         cargo_miri("test") + ["--bins", "--tests"], # no `--lib`, we disabled that in `Cargo.toml`
         "test.cross-target.stdout.ref", "test.stderr-empty.ref",
-        env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
+        env={'MIRIFLAGS': "-Zmiri-permissive-provenance -Zmiri-disable-isolation"},
     )
     test("`cargo miri test` (with filter)",
         cargo_miri("test") + ["--", "--format=pretty", "le1"],
@@ -131,6 +132,7 @@ def test_cargo_miri_test():
     test("`cargo miri test` (test target)",
         cargo_miri("test") + ["--test", "test", "--", "--format=pretty"],
         "test.test-target.stdout.ref", "test.stderr-empty.ref",
+        env={'MIRIFLAGS': "-Zmiri-permissive-provenance"},
     )
     test("`cargo miri test` (bin target)",
         cargo_miri("test") + ["--bin", "cargo-miri-test", "--", "--format=pretty"],
@@ -148,11 +150,13 @@ def test_cargo_miri_test():
     test("`cargo miri test` (custom target dir)",
         cargo_miri("test") + ["--target-dir=custom-test"],
         default_ref, "test.stderr-empty.ref",
+        env={'MIRIFLAGS': "-Zmiri-permissive-provenance"},
     )
     del os.environ["CARGO_TARGET_DIR"] # this overrides `build.target-dir` passed by `--config`, so unset it
     test("`cargo miri test` (config-cli)",
         cargo_miri("test") + ["--config=build.target-dir=\"config-cli\"", "-Zunstable-options"],
         default_ref, "test.stderr-empty.ref",
+        env={'MIRIFLAGS': "-Zmiri-permissive-provenance"},
     )
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
