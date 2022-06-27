@@ -4,13 +4,12 @@ use std::cell::RefCell;
 use std::cmp::{Ord, Ordering, PartialOrd};
 use std::collections::HashMap;
 use std::convert::AsRef;
-use std::ffi::OsStr;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 // FIXME: replace with std::lazy after it gets stabilized and reaches beta
@@ -20,15 +19,9 @@ use crate::builder::Step;
 
 pub struct Interned<T>(usize, PhantomData<*const T>);
 
-impl Default for Interned<String> {
+impl<T: Internable + Default> Default for Interned<T> {
     fn default() -> Self {
-        INTERNER.intern_string(String::default())
-    }
-}
-
-impl Default for Interned<PathBuf> {
-    fn default() -> Self {
-        INTERNER.intern_path(PathBuf::default())
+        T::default().intern()
     }
 }
 
@@ -77,87 +70,48 @@ impl fmt::Display for Interned<String> {
     }
 }
 
-impl fmt::Debug for Interned<String> {
+impl<T, U: ?Sized + fmt::Debug> fmt::Debug for Interned<T>
+where
+    Self: Deref<Target = U>,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s: &str = &*self;
-        f.write_fmt(format_args!("{:?}", s))
-    }
-}
-impl fmt::Debug for Interned<PathBuf> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s: &Path = &*self;
+        let s: &U = &*self;
         f.write_fmt(format_args!("{:?}", s))
     }
 }
 
-impl Hash for Interned<String> {
+impl<T: Internable + Hash> Hash for Interned<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let l = INTERNER.strs.lock().unwrap();
+        let l = T::intern_cache().lock().unwrap();
         l.get(*self).hash(state)
     }
 }
 
-impl Hash for Interned<PathBuf> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let l = INTERNER.paths.lock().unwrap();
-        l.get(*self).hash(state)
+impl<T: Internable + Deref> Deref for Interned<T> {
+    type Target = T::Target;
+    fn deref(&self) -> &'static Self::Target {
+        let l = T::intern_cache().lock().unwrap();
+        unsafe { mem::transmute::<&Self::Target, &'static Self::Target>(l.get(*self)) }
     }
 }
 
-impl Deref for Interned<String> {
-    type Target = str;
-    fn deref(&self) -> &'static str {
-        let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&str, &'static str>(l.get(*self)) }
+impl<T: Internable + AsRef<U>, U: ?Sized> AsRef<U> for Interned<T> {
+    fn as_ref(&self) -> &'static U {
+        let l = T::intern_cache().lock().unwrap();
+        unsafe { mem::transmute::<&U, &'static U>(l.get(*self).as_ref()) }
     }
 }
 
-impl Deref for Interned<PathBuf> {
-    type Target = Path;
-    fn deref(&self) -> &'static Path {
-        let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self)) }
-    }
-}
-
-impl AsRef<Path> for Interned<PathBuf> {
-    fn as_ref(&self) -> &'static Path {
-        let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self)) }
-    }
-}
-
-impl AsRef<Path> for Interned<String> {
-    fn as_ref(&self) -> &'static Path {
-        let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self).as_ref()) }
-    }
-}
-
-impl AsRef<OsStr> for Interned<PathBuf> {
-    fn as_ref(&self) -> &'static OsStr {
-        let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&OsStr, &'static OsStr>(l.get(*self).as_ref()) }
-    }
-}
-
-impl AsRef<OsStr> for Interned<String> {
-    fn as_ref(&self) -> &'static OsStr {
-        let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&OsStr, &'static OsStr>(l.get(*self).as_ref()) }
-    }
-}
-
-impl PartialOrd<Interned<String>> for Interned<String> {
+impl<T: Internable + PartialOrd> PartialOrd for Interned<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        let l = INTERNER.strs.lock().unwrap();
+        let l = T::intern_cache().lock().unwrap();
         l.get(*self).partial_cmp(l.get(*other))
     }
 }
 
-impl Ord for Interned<String> {
+impl<T: Internable + Ord> Ord for Interned<T> {
     fn cmp(&self, other: &Self) -> Ordering {
-        let l = INTERNER.strs.lock().unwrap();
+        let l = T::intern_cache().lock().unwrap();
         l.get(*self).cmp(l.get(*other))
     }
 }
@@ -208,6 +162,26 @@ impl<T: Hash + Clone + Eq> TyIntern<T> {
 pub struct Interner {
     strs: Mutex<TyIntern<String>>,
     paths: Mutex<TyIntern<PathBuf>>,
+}
+
+trait Internable: Clone + Eq + Hash + 'static {
+    fn intern_cache() -> &'static Mutex<TyIntern<Self>>;
+
+    fn intern(self) -> Interned<Self> {
+        Self::intern_cache().lock().unwrap().intern(self)
+    }
+}
+
+impl Internable for String {
+    fn intern_cache() -> &'static Mutex<TyIntern<Self>> {
+        &INTERNER.strs
+    }
+}
+
+impl Internable for PathBuf {
+    fn intern_cache() -> &'static Mutex<TyIntern<Self>> {
+        &INTERNER.paths
+    }
 }
 
 impl Interner {
