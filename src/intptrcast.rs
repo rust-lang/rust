@@ -215,7 +215,7 @@ impl<'mir, 'tcx> GlobalStateInner {
         dl.overflowing_offset(base_addr, offset.bytes()).0
     }
 
-    /// Whena  pointer is used for a memory access, this computes where in which allocation the
+    /// When a pointer is used for a memory access, this computes where in which allocation the
     /// access is going.
     pub fn abs_ptr_to_rel(
         ecx: &MiriEvalContext<'mir, 'tcx>,
