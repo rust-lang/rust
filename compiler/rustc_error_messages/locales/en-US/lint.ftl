@@ -108,3 +108,19 @@ lint-non-fmt-panic-braces =
     }
     .note = this message is not used as a format string, but will be in Rust 2021
     .suggestion = add a "{"{"}{"}"}" format string to use the message literally
+
+lint-non-camel-case-type = {$sort} `{$name}` should have an upper camel case name
+    .suggestion = convert the identifier to upper camel case
+    .label = should have an UpperCamelCase name
+
+lint-non-snake-case = {$sort} `{$name}` should have a snake case name
+    .rename-or-convert-suggestion = rename the identifier or convert it to a snake case raw identifier
+    .cannot-convert-note = `{$sc}` cannot be used as a raw identifier
+    .rename-suggestion = rename the identifier
+    .convert-suggestion = convert the identifier to snake case
+    .help = convert the identifier to snake case: `{$sc}`
+    .label = should have a snake_case name
+
+lint-non-upper_case-global = {$sort} `{$name}` should have an upper case name
+    .suggestion = convert the identifier to upper case
+    .label = should have an UPPER_CASE name
