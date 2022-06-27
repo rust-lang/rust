@@ -366,13 +366,10 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
                             return;
                         }
                         cx.struct_span_lint(EXISTING_DOC_KEYWORD, attr.span, |lint| {
-                            lint.build(&format!(
-                                "Found non-existing keyword `{}` used in \
-                                     `#[doc(keyword = \"...\")]`",
-                                v,
-                            ))
-                            .help("only existing keywords are allowed in core/std")
-                            .emit();
+                            lint.build(fluent::lint::non_existant_doc_keyword)
+                                .set_arg("keyword", v)
+                                .help(fluent::lint::help)
+                                .emit();
                         });
                     }
                 }

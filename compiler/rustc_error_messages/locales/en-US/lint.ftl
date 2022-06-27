@@ -46,3 +46,6 @@ lint-ty-qualified = usage of qualified `ty::{$ty}`
 
 lint-lintpass-by-hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
+
+lint-non-existant-doc-keyword = found non-existing keyword `{$keyword}` used in `#[doc(keyword = \"...\")]`
+    .help = only existing keywords are allowed in core/std
