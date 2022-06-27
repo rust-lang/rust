@@ -12,3 +12,6 @@ lint-enum-intrinsics-mem-discriminant =
 lint-enum-intrinsics-mem-variant =
     the return value of `mem::variant_count` is unspecified when called with a non-enum type
     .note = the type parameter of `variant_count` should be an enum, but it was instantiated with the type `{$ty_param}`, which is not an enum.
+
+lint-expectation = this lint expectation is unfulfilled
+    .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
