@@ -1910,7 +1910,7 @@ function initSearch(rawSearchIndex) {
                 output = buildItemSearchTypeAll(functionSearchType[OUTPUT_DATA], lowercasePaths);
             }
         } else {
-            output = null;
+            output = [];
         }
         return {
             inputs, output,

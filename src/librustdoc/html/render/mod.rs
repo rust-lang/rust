@@ -170,6 +170,7 @@ impl Serialize for IndexItemFunctionType {
                 _ => seq.serialize_element(&self.inputs)?,
             }
             match &self.output[..] {
+                [] => {}
                 [one] if one.generics.is_none() => seq.serialize_element(one)?,
                 _ => seq.serialize_element(&self.output)?,
             }
