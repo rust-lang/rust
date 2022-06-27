@@ -108,7 +108,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 // create new region variables, which can't be done later when
                 // verifying these bounds.
                 if t1.has_placeholders() {
-                    t1 = tcx.fold_regions(t1, &mut false, |r, _| match *r {
+                    t1 = tcx.fold_regions(t1, |r, _| match *r {
                         ty::RePlaceholder(placeholder) => {
                             self.constraints.placeholder_region(self.infcx, placeholder)
                         }
