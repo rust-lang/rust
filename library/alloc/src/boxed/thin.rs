@@ -29,7 +29,9 @@ use core::ptr::{self, NonNull};
 /// ```
 #[unstable(feature = "thin_box", issue = "92791")]
 pub struct ThinBox<T: ?Sized> {
-    ptr: WithHeader<<T as Pointee>::Metadata>,
+    // This is essentially `WithHeader<<T as Pointee>::Metadata>`,
+    // but that would be invariant in `T`, and we want covariance.
+    ptr: WithOpaqueHeader,
     _marker: PhantomData<T>,
 }
 
@@ -49,7 +51,7 @@ impl<T> ThinBox<T> {
     #[cfg(not(no_global_oom_handling))]
     pub fn new(value: T) -> Self {
         let meta = ptr::metadata(&value);
-        let ptr = WithHeader::new(meta, value);
+        let ptr = WithOpaqueHeader::new(meta, value);
         ThinBox { ptr, _marker: PhantomData }
     }
 }
@@ -73,7 +75,7 @@ impl<Dyn: ?Sized> ThinBox<Dyn> {
         T: Unsize<Dyn>,
     {
         let meta = ptr::metadata(&value as &Dyn);
-        let ptr = WithHeader::new(meta, value);
+        let ptr = WithOpaqueHeader::new(meta, value);
         ThinBox { ptr, _marker: PhantomData }
     }
 }
@@ -120,7 +122,7 @@ impl<T: ?Sized> Drop for ThinBox<T> {
         unsafe {
             let value = self.deref_mut();
             let value = value as *mut T;
-            self.ptr.drop::<T>(value);
+            self.with_header().drop::<T>(value);
         }
     }
 }
@@ -130,11 +132,16 @@ impl<T: ?Sized> ThinBox<T> {
     fn meta(&self) -> <T as Pointee>::Metadata {
         //  Safety:
         //  -   NonNull and valid.
-        unsafe { *self.ptr.header() }
+        unsafe { *self.with_header().header() }
     }
 
     fn data(&self) -> *mut u8 {
-        self.ptr.value()
+        self.with_header().value()
+    }
+
+    fn with_header(&self) -> &WithHeader<<T as Pointee>::Metadata> {
+        // SAFETY: both types are transparent to `NonNull<u8>`
+        unsafe { &*((&self.ptr) as *const WithOpaqueHeader as *const WithHeader<_>) }
     }
 }
 
@@ -143,7 +150,21 @@ impl<T: ?Sized> ThinBox<T> {
 ///    metadata (`H`) are ZSTs.
 /// 2. A pointer to a valid `T` that has a header `H` directly before the
 ///    pointed-to location.
+#[repr(transparent)]
 struct WithHeader<H>(NonNull<u8>, PhantomData<H>);
+
+/// An opaque representation of `WithHeader<H>` to avoid the
+/// projection invariance of `<T as Pointee>::Metadata`.
+#[repr(transparent)]
+struct WithOpaqueHeader(NonNull<u8>);
+
+impl WithOpaqueHeader {
+    #[cfg(not(no_global_oom_handling))]
+    fn new<H, T>(header: H, value: T) -> Self {
+        let ptr = WithHeader::new(header, value);
+        Self(ptr.0)
+    }
+}
 
 impl<H> WithHeader<H> {
     #[cfg(not(no_global_oom_handling))]
