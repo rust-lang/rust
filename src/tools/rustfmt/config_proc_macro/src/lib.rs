@@ -29,6 +29,8 @@ pub fn config_type(_args: TokenStream, input: TokenStream) -> TokenStream {
 /// Used to conditionally output the TokenStream for tests that need to be run on nightly only.
 ///
 /// ```rust
+/// # use rustfmt_config_proc_macro::nightly_only_test;
+///
 /// #[nightly_only_test]
 /// #[test]
 /// fn test_needs_nightly_rustfmt() {
@@ -49,6 +51,8 @@ pub fn nightly_only_test(_args: TokenStream, input: TokenStream) -> TokenStream 
 /// Used to conditionally output the TokenStream for tests that need to be run on stable only.
 ///
 /// ```rust
+/// # use rustfmt_config_proc_macro::stable_only_test;
+///
 /// #[stable_only_test]
 /// #[test]
 /// fn test_needs_stable_rustfmt() {
