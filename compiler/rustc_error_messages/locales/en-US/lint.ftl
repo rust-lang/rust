@@ -4,3 +4,11 @@ lint-array-into-iter =
     .remove-into-iter-suggestion = or remove `.into_iter()` to iterate by value
     .use-explicit-into-iter-suggestion =
         or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
+
+lint-enum-intrinsics-mem-discriminant =
+    the return value of `mem::discriminant` is unspecified when called with a non-enum type
+    .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum.
+
+lint-enum-intrinsics-mem-variant =
+    the return value of `mem::variant_count` is unspecified when called with a non-enum type
+    .note = the type parameter of `variant_count` should be an enum, but it was instantiated with the type `{$ty_param}`, which is not an enum.
