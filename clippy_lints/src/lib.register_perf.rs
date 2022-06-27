@@ -13,6 +13,7 @@ store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
     LintId::of(loops::MANUAL_MEMCPY),
     LintId::of(loops::MISSING_SPIN_LOOP),
     LintId::of(loops::NEEDLESS_COLLECT),
+    LintId::of(manual_retain::MANUAL_RETAIN),
     LintId::of(methods::EXPECT_FUN_CALL),
     LintId::of(methods::EXTEND_WITH_DRAIN),
     LintId::of(methods::ITER_NTH),

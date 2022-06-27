@@ -136,6 +136,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(manual_bits::MANUAL_BITS),
     LintId::of(manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
     LintId::of(manual_rem_euclid::MANUAL_REM_EUCLID),
+    LintId::of(manual_retain::MANUAL_RETAIN),
     LintId::of(manual_strip::MANUAL_STRIP),
     LintId::of(map_clone::MAP_CLONE),
     LintId::of(map_unit_fn::OPTION_MAP_UNIT_FN),

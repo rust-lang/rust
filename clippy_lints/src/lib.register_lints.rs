@@ -257,6 +257,7 @@ store.register_lints(&[
     manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
     manual_ok_or::MANUAL_OK_OR,
     manual_rem_euclid::MANUAL_REM_EUCLID,
+    manual_retain::MANUAL_RETAIN,
     manual_strip::MANUAL_STRIP,
     map_clone::MAP_CLONE,
     map_err_ignore::MAP_ERR_IGNORE,
