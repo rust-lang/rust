@@ -395,7 +395,29 @@ impl TestProps {
                 );
                 config.set_name_directive(ln, STDERR_PER_BITWIDTH, &mut self.stderr_per_bitwidth);
                 config.set_name_directive(ln, INCREMENTAL, &mut self.incremental);
-                config.set_name_directive(ln, KNOWN_BUG, &mut self.known_bug);
+
+                // Unlike the other `name_value_directive`s this needs to be handled manually,
+                // because it sets a `bool` flag.
+                if let Some(known_bug) = config.parse_name_value_directive(ln, KNOWN_BUG) {
+                    let known_bug = known_bug.trim();
+                    if known_bug == "unknown"
+                        || known_bug.split(',').all(|issue_ref| {
+                            issue_ref
+                                .trim()
+                                .split_once('#')
+                                .filter(|(_, number)| {
+                                    number.chars().all(|digit| digit.is_numeric())
+                                })
+                                .is_some()
+                        })
+                    {
+                        self.known_bug = true;
+                    } else {
+                        panic!(
+                            "Invalid known-bug value: {known_bug}\nIt requires comma-separated issue references (`#000` or `chalk#000`) or `unknown`."
+                        );
+                    }
+                }
                 config.set_name_value_directive(ln, MIR_UNIT_TEST, &mut self.mir_unit_test, |s| {
                     s.trim().to_string()
                 });
