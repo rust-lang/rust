@@ -463,10 +463,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Querying system information
             "pthread_attr_getstack" => {
-                // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here.
+                // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here. Hence we can mostly ignore the input `attr_place`.
                 let [attr_place, addr_place, size_place] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.deref_operand(attr_place)?;
+                let _attr_place = this.deref_operand(attr_place)?;
                 let addr_place = this.deref_operand(addr_place)?;
                 let size_place = this.deref_operand(size_place)?;
 
