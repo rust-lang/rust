@@ -235,6 +235,9 @@ impl<'tcx> TypeSuperFoldable<'tcx> for ConstantKind<'tcx> {
         match self {
             ConstantKind::Ty(c) => Ok(ConstantKind::Ty(c.try_fold_with(folder)?)),
             ConstantKind::Val(v, t) => Ok(ConstantKind::Val(v, t.try_fold_with(folder)?)),
+            ConstantKind::Unevaluated(uv, t) => {
+                Ok(ConstantKind::Unevaluated(uv, t.try_fold_with(folder)?))
+            }
         }
     }
 }

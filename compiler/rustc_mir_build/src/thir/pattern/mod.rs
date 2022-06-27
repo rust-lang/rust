@@ -565,23 +565,19 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let value = value.eval(self.tcx, self.param_env);
 
         match value {
-            mir::ConstantKind::Ty(c) => {
-                match c.kind() {
-                    ConstKind::Param(_) => {
-                        self.errors.push(PatternError::ConstParamInPattern(span));
-                        return PatKind::Wild;
-                    }
-                    ConstKind::Unevaluated(_) => {
-                        // If we land here it means the const can't be evaluated because it's `TooGeneric`.
-                        self.tcx
-                            .sess
-                            .span_err(span, "constant pattern depends on a generic parameter");
-                        return PatKind::Wild;
-                    }
-                    _ => bug!("Expected either ConstKind::Param or ConstKind::Unevaluated"),
+            mir::ConstantKind::Ty(c) => match c.kind() {
+                ConstKind::Param(_) => {
+                    self.errors.push(PatternError::ConstParamInPattern(span));
+                    return PatKind::Wild;
                 }
-            }
+                _ => bug!("Expected ConstKind::Param"),
+            },
             mir::ConstantKind::Val(_, _) => self.const_to_pat(value, id, span, false).kind,
+            mir::ConstantKind::Unevaluated(..) => {
+                // If we land here it means the const can't be evaluated because it's `TooGeneric`.
+                self.tcx.sess.span_err(span, "constant pattern depends on a generic parameter");
+                return PatKind::Wild;
+            }
         }
     }
 

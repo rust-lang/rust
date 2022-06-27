@@ -767,7 +767,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 ty::ConstKind::Unevaluated(ct) => {
                     debug!(?ct);
                     let param_env = ty::ParamEnv::reveal_all();
-                    match self.tcx.const_eval_resolve(param_env, ct, None) {
+                    match self.tcx.const_eval_resolve(param_env, ct.expand(), None) {
                         // The `monomorphize` call should have evaluated that constant already.
                         Ok(val) => val,
                         Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => return,
@@ -780,6 +780,19 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 }
                 _ => return,
             },
+            mir::ConstantKind::Unevaluated(uv, _) => {
+                let param_env = ty::ParamEnv::reveal_all();
+                match self.tcx.const_eval_resolve(param_env, uv, None) {
+                    // The `monomorphize` call should have evaluated that constant already.
+                    Ok(val) => val,
+                    Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => return,
+                    Err(ErrorHandled::TooGeneric) => span_bug!(
+                        self.body.source_info(location).span,
+                        "collection encountered polymorphic constant: {:?}",
+                        literal
+                    ),
+                }
+            }
         };
         collect_const_value(self.tcx, val, self.output);
         self.visit_ty(literal.ty(), TyContext::Location(location));
@@ -798,7 +811,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 collect_const_value(self.tcx, const_val, self.output)
             }
             ty::ConstKind::Unevaluated(unevaluated) => {
-                match self.tcx.const_eval_resolve(param_env, unevaluated, None) {
+                match self.tcx.const_eval_resolve(param_env, unevaluated.expand(), None) {
                     // The `monomorphize` call should have evaluated that constant already.
                     Ok(val) => span_bug!(
                         self.body.source_info(location).span,

@@ -565,7 +565,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             ty::ConstKind::Unevaluated(uv) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
-                Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
+                Ok(self.eval_to_allocation(GlobalId { instance, promoted: None })?.into())
             }
             ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
                 span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", c)
@@ -578,6 +578,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// Tries to evaluate an unevaluated constant from the MIR (and not the type-system).
+    #[inline]
+    pub fn uneval_to_op(
+        &self,
+        uneval: &ty::Unevaluated<'tcx>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        let instance = self.resolve(uneval.def, uneval.substs)?;
+        Ok(self.eval_to_allocation(GlobalId { instance, promoted: None })?.into())
+    }
+
     pub fn mir_const_to_op(
         &self,
         val: &mir::ConstantKind<'tcx>,
@@ -586,6 +596,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match val {
             mir::ConstantKind::Ty(ct) => self.const_to_op(*ct, layout),
             mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, *ty, layout),
+            mir::ConstantKind::Unevaluated(uv, _) => self.uneval_to_op(uv),
         }
     }
 

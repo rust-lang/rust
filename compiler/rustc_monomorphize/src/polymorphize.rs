@@ -9,7 +9,7 @@ use rustc_hir::{def::DefKind, def_id::DefId, ConstContext};
 use rustc_index::bit_set::FiniteBitSet;
 use rustc_middle::mir::{
     visit::{TyContext, Visitor},
-    Local, LocalDecl, Location,
+    ConstantKind, Local, LocalDecl, Location,
 };
 use rustc_middle::ty::{
     self,
@@ -292,7 +292,29 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 self.unused_parameters.clear(param.index);
                 ControlFlow::CONTINUE
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted: Some(p)})
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
+                if matches!(
+                    self.tcx.def_kind(def.did),
+                    DefKind::AnonConst | DefKind::InlineConst
+                ) =>
+            {
+                assert_eq!(promoted, ());
+
+                self.visit_child_body(def.did, substs);
+                ControlFlow::CONTINUE
+            }
+            _ => c.super_visit_with(self),
+        }
+    }
+
+    fn visit_mir_const(&mut self, constant: ConstantKind<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if !constant.has_param_types_or_consts() {
+            return ControlFlow::CONTINUE;
+        }
+
+        match constant {
+            ConstantKind::Ty(_) => constant.super_visit_with(self),
+            ConstantKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted: Some(p) }, _)
                 // Avoid considering `T` unused when constants are of the form:
                 //   `<Self as Foo<T>>::foo::promoted[p]`
                 if self.def_id == def.did && !self.tcx.generics_of(def.did).has_self =>
@@ -303,13 +325,9 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 self.visit_body(&promoted[p]);
                 ControlFlow::CONTINUE
             }
-            ty::ConstKind::Unevaluated(uv)
-                if matches!(self.tcx.def_kind(uv.def.did), DefKind::AnonConst | DefKind::InlineConst) =>
-            {
-                self.visit_child_body(uv.def.did, uv.substs);
-                ControlFlow::CONTINUE
+            ConstantKind::Val(..) | ConstantKind::Unevaluated(..) => {
+                constant.super_visit_with(self)
             }
-            _ => c.super_visit_with(self),
         }
     }
 

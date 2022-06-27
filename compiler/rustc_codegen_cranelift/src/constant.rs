@@ -124,6 +124,22 @@ pub(crate) fn codegen_constant<'tcx>(
 ) -> CValue<'tcx> {
     let const_ = match fx.monomorphize(constant.literal) {
         ConstantKind::Ty(ct) => ct,
+        ConstantKind::Unevaluated(mir::Unevaluated { def, substs, promoted })
+            if fx.tcx.is_static(def.did) =>
+        {
+            assert!(substs.is_empty());
+            assert!(promoted.is_none());
+
+            return codegen_static_ref(fx, def.did, fx.layout_of(const_.ty())).to_cvalue(fx);
+        }
+        ConstantKind::Unevaluated(unevaluated) => {
+            match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
+                Ok(const_val) => const_val,
+                Err(_) => {
+                    span_bug!(constant.span, "erroneous constant not captured by required_consts");
+                }
+            }
+        }
         ConstantKind::Val(val, ty) => return codegen_const_value(fx, val, ty),
     };
     let const_val = match const_.kind() {
@@ -133,16 +149,7 @@ pub(crate) fn codegen_constant<'tcx>(
         {
             assert!(substs.is_empty());
             assert!(promoted.is_none());
-
             return codegen_static_ref(fx, def.did, fx.layout_of(const_.ty())).to_cvalue(fx);
-        }
-        ConstKind::Unevaluated(unevaluated) => {
-            match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
-                Ok(const_val) => const_val,
-                Err(_) => {
-                    span_bug!(constant.span, "erroneous constant not captured by required_consts");
-                }
-            }
         }
         ConstKind::Param(_)
         | ConstKind::Infer(_)

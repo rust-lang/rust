@@ -354,11 +354,13 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             let tcx = self.tcx();
             let maybe_uneval = match constant.literal {
                 ConstantKind::Ty(ct) => match ct.kind() {
-                    ty::ConstKind::Unevaluated(uv) => Some(uv),
+                    ty::ConstKind::Unevaluated(uv) => Some(uv.expand()),
                     _ => None,
                 },
+                ConstantKind::Unevaluated(uv, _) => Some(uv),
                 _ => None,
             };
+
             if let Some(uv) = maybe_uneval {
                 if let Some(promoted) = uv.promoted {
                     let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
@@ -1813,11 +1815,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Operand::Constant(constant) = op {
             let maybe_uneval = match constant.literal {
                 ConstantKind::Ty(ct) => match ct.kind() {
-                    ty::ConstKind::Unevaluated(uv) => Some(uv),
+                    ty::ConstKind::Unevaluated(uv) => Some(uv.expand()),
                     _ => None,
                 },
+                ConstantKind::Unevaluated(uv, _) => Some(uv),
                 _ => None,
             };
+
             if let Some(uv) = maybe_uneval {
                 if uv.promoted.is_none() {
                     let tcx = self.tcx();

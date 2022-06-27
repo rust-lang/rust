@@ -2372,10 +2372,10 @@ fn const_evaluatable_predicates_of<'tcx>(
             let def_id = self.tcx.hir().local_def_id(c.hir_id);
             let ct = ty::Const::from_anon_const(self.tcx, def_id);
             if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
-                assert_eq!(uv.promoted, None);
+                assert_eq!(uv.promoted, ());
                 let span = self.tcx.hir().span(c.hir_id);
                 self.preds.insert((
-                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv.shrink()))
+                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv))
                         .to_predicate(self.tcx),
                     span,
                 ));
