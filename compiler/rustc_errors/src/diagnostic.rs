@@ -39,6 +39,16 @@ pub trait IntoDiagnosticArg {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
 }
 
+impl IntoDiagnosticArg for bool {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        if self {
+            DiagnosticArgValue::Str(Cow::Borrowed("true"))
+        } else {
+            DiagnosticArgValue::Str(Cow::Borrowed("false"))
+        }
+    }
+}
+
 impl IntoDiagnosticArg for String {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(self))

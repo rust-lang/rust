@@ -72,3 +72,39 @@ lint-mixed-script-confusables =
     the usage of Script Group `{$set}` in this crate consists solely of mixed script confusables
     .includes-note = the usage includes {$includes}
     .note = please recheck to make sure their usages are indeed what you want
+
+lint-non-fmt-panic = panic message is not a string literal
+    .note = this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021
+    .more-info-note = for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+    .supports-fmt-note = the `{$name}!()` macro supports formatting, so there's no need for the `format!()` macro here
+    .supports-fmt-suggestion = remove the `format!(..)` macro call
+    .display-suggestion = add a "{"{"}{"}"}" format string to `Display` the message
+    .debug-suggestion =
+        add a "{"{"}:?{"}"}" format string to use the `Debug` implementation of `{$ty}`
+    .panic-suggestion = {$already_suggested ->
+        [true] or use
+        *[false] use
+    } std::panic::panic_any instead
+
+lint-non-fmt-panic-unused =
+    panic message contains {$count ->
+        [one] an unused
+        *[other] unused
+    } formatting {$count ->
+        [one] placeholder
+        *[other] placeholders
+    }
+    .note = this message is not used as a format string when given without arguments, but will be in Rust 2021
+    .add-args-suggestion = add the missing {$count ->
+        [one] argument
+        *[other] arguments
+    }
+    .add-fmt-suggestion = or add a "{"{"}{"}"}" format string to use the message literally
+
+lint-non-fmt-panic-braces =
+    panic message contains {$count ->
+        [one] a brace
+        *[other] braces
+    }
+    .note = this message is not used as a format string, but will be in Rust 2021
+    .suggestion = add a "{"{"}{"}"}" format string to use the message literally
