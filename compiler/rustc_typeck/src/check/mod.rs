@@ -493,7 +493,7 @@ fn typeck_with_fallback<'tcx>(
         if fn_sig.is_some() {
             fcx.regionck_fn(id, body, span, wf_tys);
         } else {
-            fcx.regionck_expr(body);
+            fcx.regionck_body(body);
         }
 
         fcx.resolve_type_vars_in_body(body)

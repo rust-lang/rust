@@ -76,9 +76,9 @@ use crate::check::dropck;
 use crate::check::FnCtxt;
 use crate::mem_categorization as mc;
 use crate::outlives::outlives_bounds::InferCtxtExt as _;
+use hir::def_id::LocalDefId;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::PatKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
@@ -149,19 +149,18 @@ impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironment<'tcx> {
 // PUBLIC ENTRY POINTS
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn regionck_expr(&self, body: &'tcx hir::Body<'tcx>) {
-        let subject = self.tcx.hir().body_owner_def_id(body.id());
-        let id = body.value.hir_id;
-        let mut rcx = RegionCtxt::new(self, id, Subject(subject), self.param_env);
+    pub fn regionck_body(&self, body: &'tcx hir::Body<'tcx>) {
+        let body_owner = self.tcx.hir().body_owner_def_id(body.id());
+        let mut rcx = RegionCtxt::new(self, body_owner, self.param_env);
 
         // There are no add'l implied bounds when checking a
-        // standalone expr (e.g., the `E` in a type like `[u32; E]`).
-        rcx.outlives_environment.save_implied_bounds(id);
+        // standalone body (e.g., the `E` in a type like `[u32; E]`).
+        rcx.outlives_environment.save_implied_bounds(rcx.body_id());
 
         if !self.errors_reported_since_creation() {
             // regionck assumes typeck succeeded
             rcx.visit_body(body);
-            rcx.visit_region_obligations(id);
+            rcx.visit_region_obligations(rcx.body_id());
         }
         // Checked by NLL
         rcx.fcx.skip_region_resolution();
@@ -171,10 +170,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// types from which we should derive implied bounds, if any.
     #[instrument(level = "debug", skip(self))]
     pub fn regionck_item(&self, item_id: hir::HirId, span: Span, wf_tys: FxHashSet<Ty<'tcx>>) {
-        let subject = self.tcx.hir().local_def_id(item_id);
-        let mut rcx = RegionCtxt::new(self, item_id, Subject(subject), self.param_env);
+        let body_owner = self.tcx.hir().local_def_id(item_id);
+        let mut rcx = RegionCtxt::new(self, body_owner, self.param_env);
         rcx.outlives_environment.add_implied_bounds(self, wf_tys, item_id, span);
-        rcx.outlives_environment.save_implied_bounds(item_id);
+        rcx.outlives_environment.save_implied_bounds(rcx.body_id());
         rcx.visit_region_obligations(item_id);
         rcx.resolve_regions_and_report_errors();
     }
@@ -195,9 +194,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wf_tys: FxHashSet<Ty<'tcx>>,
     ) {
         debug!("regionck_fn(id={})", fn_id);
-        let subject = self.tcx.hir().body_owner_def_id(body.id());
-        let hir_id = body.value.hir_id;
-        let mut rcx = RegionCtxt::new(self, hir_id, Subject(subject), self.param_env);
+        let body_owner = self.tcx.hir().body_owner_def_id(body.id());
+        let mut rcx = RegionCtxt::new(self, body_owner, self.param_env);
         // We need to add the implied bounds from the function signature
         rcx.outlives_environment.add_implied_bounds(self, wf_tys, fn_id, span);
         rcx.outlives_environment.save_implied_bounds(fn_id);
@@ -220,9 +218,6 @@ pub struct RegionCtxt<'a, 'tcx> {
 
     outlives_environment: OutlivesEnvironment<'tcx>,
 
-    // id of innermost fn body id
-    body_id: hir::HirId,
-    // TODO: is this always equal to `body_id`?
     body_owner: LocalDefId,
 }
 
@@ -233,17 +228,21 @@ impl<'a, 'tcx> Deref for RegionCtxt<'a, 'tcx> {
     }
 }
 
-pub struct Subject(LocalDefId);
-
 impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     pub fn new(
         fcx: &'a FnCtxt<'a, 'tcx>,
-        initial_body_id: hir::HirId,
-        Subject(subject): Subject,
+        body_owner: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
     ) -> RegionCtxt<'a, 'tcx> {
         let outlives_environment = OutlivesEnvironment::new(param_env);
-        RegionCtxt { fcx, body_id: initial_body_id, body_owner: subject, outlives_environment }
+        RegionCtxt { fcx, body_owner, outlives_environment }
+    }
+
+    /// FIXME: Ideally all the callers would deal with
+    /// `LocalDefId`s as well. Ah well, this code is going
+    /// to be removed soon anyways 🤷
+    pub fn body_id(&self) -> hir::HirId {
+        self.tcx.hir().local_def_id_to_hir_id(self.body_owner)
     }
 
     /// Try to resolve the type for the given node, returning `t_err` if an error results. Note that
@@ -299,9 +298,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     ) {
         // When we enter a function, we can derive
         debug!("visit_fn_body(id={:?})", id);
-
         let body_id = body.id();
-        self.body_id = body_id.hir_id;
         self.body_owner = self.tcx.hir().body_owner_def_id(body_id);
 
         let Some(fn_sig) = self.typeck_results.borrow().liberated_fn_sigs().get(id) else {
@@ -327,12 +324,10 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         debug!("visit_inline_const(id={:?})", id);
 
         // Save state of current function. We will restore afterwards.
-        let old_body_id = self.body_id;
         let old_body_owner = self.body_owner;
         let env_snapshot = self.outlives_environment.push_snapshot_pre_typeck_child();
 
         let body_id = body.id();
-        self.body_id = body_id.hir_id;
         self.body_owner = self.tcx.hir().body_owner_def_id(body_id);
 
         self.outlives_environment.save_implied_bounds(body_id.hir_id);
@@ -342,7 +337,6 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         // Restore state from previous function.
         self.outlives_environment.pop_snapshot_post_typeck_child(env_snapshot);
-        self.body_id = old_body_id;
         self.body_owner = old_body_owner;
     }
 
@@ -398,7 +392,6 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 
         // Save state of current function before invoking
         // `visit_fn_body`.  We will restore afterwards.
-        let old_body_id = self.body_id;
         let old_body_owner = self.body_owner;
         let env_snapshot = self.outlives_environment.push_snapshot_pre_typeck_child();
 
@@ -407,7 +400,6 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 
         // Restore state from previous function.
         self.outlives_environment.pop_snapshot_post_typeck_child(env_snapshot);
-        self.body_id = old_body_id;
         self.body_owner = old_body_owner;
     }
 
