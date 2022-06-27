@@ -96,7 +96,7 @@ pub struct MiriConfig {
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
     pub seed: Option<u64>,
     /// The stacked borrows pointer ids to report about
-    pub tracked_pointer_tags: HashSet<PtrId>,
+    pub tracked_pointer_tags: HashSet<SbTag>,
     /// The stacked borrows call IDs to report about
     pub tracked_call_ids: HashSet<CallId>,
     /// The allocation ids to report about.

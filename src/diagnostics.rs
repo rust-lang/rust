@@ -178,24 +178,6 @@ pub fn report_error<'tcx, 'mir>(
                                 helps.push((Some(*protection_span), "this protector is live for this call".to_string()));
                             }
                         }
-                        Some(TagHistory::Untagged{ recently_created, recently_invalidated, matching_created, protected }) => {
-                            if let Some((range, span)) = recently_created {
-                                let msg = format!("tag was most recently created at offsets {}", HexRange(*range));
-                                helps.push((Some(*span), msg));
-                            }
-                            if let Some((range, span)) = recently_invalidated {
-                                let msg = format!("tag was later invalidated at offsets {}", HexRange(*range));
-                                helps.push((Some(*span), msg));
-                            }
-                            if let Some((range, span)) = matching_created {
-                                let msg = format!("this tag was also created here at offsets {}", HexRange(*range));
-                                helps.push((Some(*span), msg));
-                            }
-                            if let Some((protecting_tag, protecting_tag_span, protection_span)) = protected {
-                                helps.push((Some(*protecting_tag_span), format!("{:?} was protected due to a tag which was created here", protecting_tag)));
-                                helps.push((Some(*protection_span), "this protector is live for this call".to_string()));
-                            }
-                        }
                         None => {}
                     }
                     helps

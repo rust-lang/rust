@@ -23,42 +23,29 @@ use crate::*;
 pub mod diagnostics;
 use diagnostics::{AllocHistory, TagHistory};
 
-pub type PtrId = NonZeroU64;
 pub type CallId = NonZeroU64;
+
 // Even reading memory can have effects on the stack, so we need a `RefCell` here.
 pub type AllocExtra = RefCell<Stacks>;
 
 /// Tracking pointer provenance
-#[derive(Copy, Clone, Hash, Eq)]
-pub enum SbTag {
-    Tagged(PtrId),
-    Untagged,
-}
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+pub struct SbTag(NonZeroU64);
 
 impl SbTag {
-    fn as_u64(self) -> u64 {
-        match self {
-            SbTag::Tagged(id) => id.get(),
-            SbTag::Untagged => 0,
-        }
+    pub fn new(i: u64) -> Option<Self> {
+        NonZeroU64::new(i).map(SbTag)
     }
-}
 
-impl PartialEq for SbTag {
-    fn eq(&self, other: &Self) -> bool {
-        // The codegen for the derived Partialeq is bad here and includes a branch.
-        // Since this code is extremely hot, this is optimized here.
-        // https://github.com/rust-lang/rust/issues/49892
-        self.as_u64() == other.as_u64()
+    // The default to be used when SB is disabled
+    pub fn default() -> Self {
+        Self::new(1).unwrap()
     }
 }
 
 impl fmt::Debug for SbTag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            SbTag::Tagged(id) => write!(f, "<{}>", id),
-            SbTag::Untagged => write!(f, "<untagged>"),
-        }
+        write!(f, "<{}>", self.0)
     }
 }
 
@@ -73,7 +60,7 @@ pub enum SbTagExtra {
 impl fmt::Debug for SbTagExtra {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SbTagExtra::Concrete(tag) => write!(f, "{tag:?}"),
+            SbTagExtra::Concrete(pid) => write!(f, "{pid:?}"),
             SbTagExtra::Wildcard => write!(f, "<wildcard>"),
         }
     }
@@ -82,7 +69,7 @@ impl fmt::Debug for SbTagExtra {
 impl SbTagExtra {
     fn and_then<T>(self, f: impl FnOnce(SbTag) -> Option<T>) -> Option<T> {
         match self {
-            SbTagExtra::Concrete(tag) => f(tag),
+            SbTagExtra::Concrete(pid) => f(pid),
             SbTagExtra::Wildcard => None,
         }
     }
@@ -130,15 +117,15 @@ pub struct Stack {
     /// Used *mostly* as a stack; never empty.
     /// Invariants:
     /// * Above a `SharedReadOnly` there can only be more `SharedReadOnly`.
-    /// * Except for `Untagged`, no tag occurs in the stack more than once.
+    /// * No tag occurs in the stack more than once.
     borrows: Vec<Item>,
     /// If this is `Some(id)`, then the actual current stack is unknown. This can happen when
     /// wildcard pointers are used to access this location. What we do know is that `borrows` are at
-    /// the top of the stack, and below it are arbitrarily many items whose `tag` is either
-    /// `Untagged` or strictly less than `id`.
+    /// the top of the stack, and below it are arbitrarily many items whose `tag` is strictly less
+    /// than `id`.
     /// When the bottom is unknown, `borrows` always has a `SharedReadOnly` or `Unique` at the bottom;
     /// we never have the unknown-to-known boundary in an SRW group.
-    unknown_bottom: Option<PtrId>,
+    unknown_bottom: Option<SbTag>,
 }
 
 /// Extra per-allocation state.
@@ -156,21 +143,19 @@ pub struct Stacks {
 #[derive(Debug)]
 pub struct GlobalStateInner {
     /// Next unused pointer ID (tag).
-    next_ptr_id: PtrId,
+    next_ptr_tag: SbTag,
     /// Table storing the "base" tag for each allocation.
     /// The base tag is the one used for the initial pointer.
     /// We need this in a separate table to handle cyclic statics.
-    base_ptr_ids: FxHashMap<AllocId, SbTag>,
+    base_ptr_tags: FxHashMap<AllocId, SbTag>,
     /// Next unused call ID (for protectors).
     next_call_id: CallId,
     /// Those call IDs corresponding to functions that are still running.
     active_calls: FxHashSet<CallId>,
     /// The pointer ids to trace
-    tracked_pointer_tags: HashSet<PtrId>,
+    tracked_pointer_tags: HashSet<SbTag>,
     /// The call ids to trace
     tracked_call_ids: HashSet<CallId>,
-    /// Whether to track raw pointers.
-    tag_raw: bool,
 }
 
 /// We need interior mutable access to the global state.
@@ -219,24 +204,23 @@ impl fmt::Display for RefKind {
 
 /// Utilities for initialization and ID generation
 impl GlobalStateInner {
-    pub fn new(tracked_pointer_tags: HashSet<PtrId>, tracked_call_ids: HashSet<CallId>) -> Self {
+    pub fn new(tracked_pointer_tags: HashSet<SbTag>, tracked_call_ids: HashSet<CallId>) -> Self {
         GlobalStateInner {
-            next_ptr_id: NonZeroU64::new(1).unwrap(),
-            base_ptr_ids: FxHashMap::default(),
+            next_ptr_tag: SbTag(NonZeroU64::new(1).unwrap()),
+            base_ptr_tags: FxHashMap::default(),
             next_call_id: NonZeroU64::new(1).unwrap(),
             active_calls: FxHashSet::default(),
             tracked_pointer_tags,
             tracked_call_ids,
-            tag_raw: true,
         }
     }
 
-    fn new_ptr(&mut self) -> PtrId {
-        let id = self.next_ptr_id;
+    fn new_ptr(&mut self) -> SbTag {
+        let id = self.next_ptr_tag;
         if self.tracked_pointer_tags.contains(&id) {
-            register_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(id));
+            register_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(id.0));
         }
-        self.next_ptr_id = NonZeroU64::new(id.get() + 1).unwrap();
+        self.next_ptr_tag = SbTag(NonZeroU64::new(id.0.get() + 1).unwrap());
         id
     }
 
@@ -259,21 +243,13 @@ impl GlobalStateInner {
         self.active_calls.contains(&id)
     }
 
-    pub fn base_tag(&mut self, id: AllocId) -> SbTag {
-        self.base_ptr_ids.get(&id).copied().unwrap_or_else(|| {
-            let tag = SbTag::Tagged(self.new_ptr());
+    pub fn base_ptr_tag(&mut self, id: AllocId) -> SbTag {
+        self.base_ptr_tags.get(&id).copied().unwrap_or_else(|| {
+            let tag = self.new_ptr();
             trace!("New allocation {:?} has base tag {:?}", id, tag);
-            self.base_ptr_ids.try_insert(id, tag).unwrap();
+            self.base_ptr_tags.try_insert(id, tag).unwrap();
             tag
         })
-    }
-
-    pub fn base_tag_untagged(&mut self, id: AllocId) -> SbTag {
-        trace!("New allocation {:?} has no base tag (untagged)", id);
-        let tag = SbTag::Untagged;
-        // This must only be done on new allocations.
-        self.base_ptr_ids.try_insert(id, tag).unwrap();
-        tag
     }
 }
 
@@ -364,10 +340,7 @@ impl<'tcx> Stack {
 
         // Couldn't find it in the stack; but if there is an unknown bottom it might be there.
         let found = self.unknown_bottom.is_some_and(|&unknown_limit| {
-            match tag {
-                SbTag::Tagged(tag_id) => tag_id < unknown_limit, // unknown_limit is an upper bound for what can be in the unknown bottom.
-                SbTag::Untagged => true,                         // yeah whatever
-            }
+            tag.0 < unknown_limit.0 // unknown_limit is an upper bound for what can be in the unknown bottom.
         });
         if found { Ok(None) } else { Err(()) }
     }
@@ -408,23 +381,22 @@ impl<'tcx> Stack {
     /// Within `provoking_access, the `AllocRange` refers the entire operation, and
     /// the `Size` refers to the specific location in the `AllocRange` that we are
     /// currently checking.
-    fn check_protector(
+    fn item_popped(
         item: &Item,
         provoking_access: Option<(SbTagExtra, AllocRange, Size, AccessKind)>, // just for debug printing and error messages
         global: &GlobalStateInner,
         alloc_history: &mut AllocHistory,
     ) -> InterpResult<'tcx> {
-        if let SbTag::Tagged(id) = item.tag {
-            if global.tracked_pointer_tags.contains(&id) {
-                register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(
-                    *item,
-                    provoking_access.map(|(tag, _alloc_range, _size, access)| (tag, access)),
-                ));
-            }
+        if global.tracked_pointer_tags.contains(&item.tag) {
+            register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(
+                *item,
+                provoking_access.map(|(tag, _alloc_range, _size, access)| (tag, access)),
+            ));
         }
+
         if let Some(call) = item.protector {
             if global.is_active(call) {
-                if let Some((tag, alloc_range, offset, _access)) = provoking_access {
+                if let Some((tag, _alloc_range, _offset, _access)) = provoking_access {
                     Err(err_sb_ub(
                         format!(
                             "not granting access to tag {:?} because incompatible item is protected: {:?}",
@@ -434,8 +406,6 @@ impl<'tcx> Stack {
                         tag.and_then(|tag| {
                             alloc_history.get_logs_relevant_to(
                                 tag,
-                                alloc_range,
-                                offset,
                                 Some(item.tag),
                             )
                         }),
@@ -491,7 +461,7 @@ impl<'tcx> Stack {
             };
             for item in self.borrows.drain(first_incompatible_idx..).rev() {
                 trace!("access: popping item {:?}", item);
-                Stack::check_protector(
+                Stack::item_popped(
                     &item,
                     Some((tag, alloc_range, offset, access)),
                     global,
@@ -520,7 +490,7 @@ impl<'tcx> Stack {
 
                 if item.perm == Permission::Unique {
                     trace!("access: disabling item {:?}", item);
-                    Stack::check_protector(
+                    Stack::item_popped(
                         item,
                         Some((tag, alloc_range, offset, access)),
                         global,
@@ -540,21 +510,19 @@ impl<'tcx> Stack {
             for item in &self.borrows {
                 // Skip disabled items, they cannot be matched anyway.
                 if !matches!(item.perm, Permission::Disabled) {
-                    if let SbTag::Tagged(tag) = item.tag {
-                        // We are looking for a strict upper bound, so add 1 to this tag.
-                        max = cmp::max(tag.checked_add(1).unwrap(), max);
-                    }
+                    // We are looking for a strict upper bound, so add 1 to this tag.
+                    max = cmp::max(item.tag.0.checked_add(1).unwrap(), max);
                 }
             }
             if let Some(unk) = self.unknown_bottom {
-                max = cmp::max(unk, max);
+                max = cmp::max(unk.0, max);
             }
             // Use `max` as new strict upper bound for everything.
             trace!(
                 "access: forgetting stack to upper bound {max} due to wildcard or unknown access"
             );
             self.borrows.clear();
-            self.unknown_bottom = Some(max);
+            self.unknown_bottom = Some(SbTag(max));
         }
 
         // Done.
@@ -566,7 +534,7 @@ impl<'tcx> Stack {
     fn dealloc(
         &mut self,
         tag: SbTagExtra,
-        (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
+        (alloc_id, _alloc_range, _offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &GlobalStateInner,
         alloc_history: &mut AllocHistory,
         exposed_tags: &FxHashSet<SbTag>,
@@ -578,13 +546,13 @@ impl<'tcx> Stack {
                 tag, alloc_id,
                 ),
                 None,
-                tag.and_then(|tag| alloc_history.get_logs_relevant_to(tag, alloc_range, offset, None)),
+                tag.and_then(|tag| alloc_history.get_logs_relevant_to(tag, None)),
             )
         })?;
 
         // Step 2: Remove all items.  Also checks for protectors.
         for item in self.borrows.drain(..).rev() {
-            Stack::check_protector(&item, None, global, alloc_history)?;
+            Stack::item_popped(&item, None, global, alloc_history)?;
         }
         Ok(())
     }
@@ -632,7 +600,7 @@ impl<'tcx> Stack {
                 // (for all we know, it might join an SRW group inside the unknown).
                 trace!("reborrow: forgetting stack entirely due to SharedReadWrite reborrow from wildcard or unknown");
                 self.borrows.clear();
-                self.unknown_bottom = Some(global.next_ptr_id);
+                self.unknown_bottom = Some(global.next_ptr_tag);
                 return Ok(());
             };
 
@@ -726,30 +694,9 @@ impl Stacks {
             // not through a pointer). That is, whenever we directly write to a local, this will pop
             // everything else off the stack, invalidating all previous pointers,
             // and in particular, *all* raw pointers.
-            MemoryKind::Stack => (extra.base_tag(id), Permission::Unique),
-            // `Global` memory can be referenced by global pointers from `tcx`.
-            // Thus we call `global_base_ptr` such that the global pointers get the same tag
-            // as what we use here.
-            // `ExternStatic` is used for extern statics, so the same reasoning applies.
-            // The others are various forms of machine-managed special global memory, and we can get
-            // away with precise tracking there.
-            // The base pointer is not unique, so the base permission is `SharedReadWrite`.
-            MemoryKind::CallerLocation
-            | MemoryKind::Machine(
-                MiriMemoryKind::Global
-                | MiriMemoryKind::ExternStatic
-                | MiriMemoryKind::Tls
-                | MiriMemoryKind::Runtime
-                | MiriMemoryKind::Machine,
-            ) => (extra.base_tag(id), Permission::SharedReadWrite),
-            // Heap allocations we only track precisely when raw pointers are tagged, for now.
-            MemoryKind::Machine(
-                MiriMemoryKind::Rust | MiriMemoryKind::C | MiriMemoryKind::WinHeap,
-            ) => {
-                let tag =
-                    if extra.tag_raw { extra.base_tag(id) } else { extra.base_tag_untagged(id) };
-                (tag, Permission::SharedReadWrite)
-            }
+            MemoryKind::Stack => (extra.base_ptr_tag(id), Permission::Unique),
+            // Everything else is shared by default.
+            _ => (extra.base_ptr_tag(id), Permission::SharedReadWrite),
         };
         let mut stacks = Stacks::new(size, perm, base_tag);
         stacks.history.log_creation(
@@ -1039,15 +986,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         // Compute new borrow.
-        let new_tag = {
-            let mem_extra = this.machine.stacked_borrows.as_mut().unwrap().get_mut();
-            match kind {
-                // Give up tracking for raw pointers.
-                RefKind::Raw { .. } if !mem_extra.tag_raw => SbTag::Untagged,
-                // All other pointers are properly tracked.
-                _ => SbTag::Tagged(mem_extra.new_ptr()),
-            }
-        };
+        let new_tag = this.machine.stacked_borrows.as_mut().unwrap().get_mut().new_ptr();
 
         // Reborrow.
         let alloc_id = this.reborrow(&place, size, kind, new_tag, protect)?;

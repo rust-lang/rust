@@ -140,8 +140,9 @@ pub enum Tag {
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Pointer<Tag>, 24);
+// FIXME: this would with in 24bytes but layout optimizations are not smart enough
 // #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-// static_assert_size!(Pointer<Option<Tag>>, 24);
+//static_assert_size!(Pointer<Option<Tag>>, 24);
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ScalarMaybeUninit<Tag>, 32);
 
@@ -680,9 +681,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         }
         let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr);
         let sb_tag = if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
-            stacked_borrows.borrow_mut().base_tag(ptr.provenance)
+            stacked_borrows.borrow_mut().base_ptr_tag(ptr.provenance)
         } else {
-            SbTag::Untagged
+            // Value does not matter, SB is disabled
+            SbTag::default()
         };
         Pointer::new(
             Tag::Concrete { alloc_id: ptr.provenance, sb: sb_tag },
