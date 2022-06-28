@@ -62,8 +62,6 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     let (is_struct, args_per_field) = match vdata {
         ast::VariantData::Unit(..) => {
             // Special fast path for unit variants.
-            //let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
-            //return cx.expr_call_global(span, fn_path_write_str, vec![fmt, name]);
             assert!(fields.is_empty());
             (false, 0)
         }
