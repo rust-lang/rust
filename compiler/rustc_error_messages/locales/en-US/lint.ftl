@@ -283,3 +283,6 @@ lint-unused-delim = unnecessary {$delim} around {$item}
     .suggestion = remove these {$delim}
 
 lint-unused-import-braces = braces around {$node} is unnecessary
+
+lint-unused-allocation = unnecessary allocation, use `&` instead
+lint-unused-allocation-mut = unnecessary allocation, use `&mut` instead

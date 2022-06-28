@@ -1169,15 +1169,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
         for adj in cx.typeck_results().expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
                 cx.struct_span_lint(UNUSED_ALLOCATION, e.span, |lint| {
-                    let msg = match m {
-                        adjustment::AutoBorrowMutability::Not => {
-                            "unnecessary allocation, use `&` instead"
-                        }
+                    lint.build(match m {
+                        adjustment::AutoBorrowMutability::Not => fluent::lint::unused_allocation,
                         adjustment::AutoBorrowMutability::Mut { .. } => {
-                            "unnecessary allocation, use `&mut` instead"
+                            fluent::lint::unused_allocation_mut
                         }
-                    };
-                    lint.build(msg).emit();
+                    })
+                    .emit();
                 });
             }
         }
