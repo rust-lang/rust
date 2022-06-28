@@ -1499,11 +1499,7 @@ impl TypeAliasBounds {
         impl Visitor<'_> for WalkAssocTypes<'_> {
             fn visit_qpath(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
-                    self.err.span_help(
-                        span,
-                        "use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to \
-                         associated types in type aliases",
-                    );
+                    self.err.span_help(span, fluent::lint::builtin_type_alias_bounds_help);
                 }
                 intravisit::walk_qpath(self, qpath, id, span)
             }
@@ -1547,11 +1543,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         let mut suggested_changing_assoc_types = false;
         if !where_spans.is_empty() {
             cx.lint(TYPE_ALIAS_BOUNDS, |lint| {
-                let mut err = lint.build("where clauses are not enforced in type aliases");
+                let mut err = lint.build(fluent::lint::builtin_type_alias_where_clause);
                 err.set_span(where_spans);
                 err.span_suggestion(
                     type_alias_generics.where_clause_span,
-                    "the clause will not be checked when the type alias is used, and should be removed",
+                    fluent::lint::suggestion,
                     "",
                     Applicability::MachineApplicable,
                 );
@@ -1565,11 +1561,10 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
 
         if !inline_spans.is_empty() {
             cx.lint(TYPE_ALIAS_BOUNDS, |lint| {
-                let mut err =
-                    lint.build("bounds on generic parameters are not enforced in type aliases");
+                let mut err = lint.build(fluent::lint::builtin_type_alias_generic_bounds);
                 err.set_span(inline_spans);
                 err.multipart_suggestion(
-                    "the bound will not be checked when the type alias is used, and should be removed",
+                    fluent::lint::suggestion,
                     inline_sugg,
                     Applicability::MachineApplicable,
                 );

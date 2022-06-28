@@ -358,3 +358,11 @@ lint-builtin-unstable-features = unstable feature
 lint-builtin-unreachable-pub = unreachable `pub` {$what}
     .suggestion = consider restricting its visibility
     .help = or consider exporting it for use by other crates
+
+lint-builtin-type-alias-bounds-help = use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to associated types in type aliases
+
+lint-builtin-type-alias-where-clause = where clauses are not enforced in type aliases
+    .suggestion = the clause will not be checked when the type alias is used, and should be removed
+
+lint-builtin-type-alias-generic-bounds = bounds on generic parameters are not enforced in type aliases
+    .suggestion = the bound will not be checked when the type alias is used, and should be removed
