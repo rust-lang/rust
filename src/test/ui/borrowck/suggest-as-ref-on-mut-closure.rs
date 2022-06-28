@@ -1,7 +1,7 @@
 // This is not exactly right, yet.
 
 // Ideally we should be suggesting `as_mut` for the first case,
-//and suggesting to change `as_ref` to `as_mut` in the second.
+// and suggesting to change `as_ref` to `as_mut` in the second.
 
 fn x(cb: &mut Option<&mut dyn FnMut()>) {
     cb.map(|cb| cb());

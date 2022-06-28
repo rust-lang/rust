@@ -162,7 +162,11 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 let opt_ty_info;
                 let self_arg;
                 if let Some(ref fn_decl) = tcx.hir().fn_decl_by_hir_id(owner_id) {
-                    opt_ty_info = fn_decl.inputs.get(index).map(|ty| ty.span);
+                    opt_ty_info = fn_decl
+                        .inputs
+                        .get(index)
+                        // Make sure that inferred closure args have no type span
+                        .and_then(|ty| if arg.pat.span != ty.span { Some(ty.span) } else { None });
                     self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
                         match fn_decl.implicit_self {
                             hir::ImplicitSelfKind::Imm => Some(ImplicitSelfKind::Imm),
