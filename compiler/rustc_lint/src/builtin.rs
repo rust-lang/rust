@@ -2595,6 +2595,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             if let Some((msg, span)) =
                 with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init))
             {
+                // FIXME(davidtwco): make translatable
                 cx.struct_span_lint(INVALID_VALUE, expr.span, |lint| {
                     let mut err = lint.build(&format!(
                         "the type `{}` does not permit {}",
