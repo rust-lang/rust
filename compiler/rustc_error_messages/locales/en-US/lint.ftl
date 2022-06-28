@@ -349,3 +349,6 @@ lint-builtin-no-mangle-generic = functions generic over types or consts must be 
 
 lint-builtin-const-no-mangle = const items should never be `#[no_mangle]`
     .suggestion = try a static value
+
+lint-builtin-mutable-transmutes =
+    transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
