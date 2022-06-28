@@ -362,9 +362,9 @@ fn find_good_method_for_match<'a>(
         .qpath_res(path_right, arms[1].pat.hir_id)
         .opt_def_id()?;
     let body_node_pair = if match_def_path(cx, left_id, expected_left) && match_def_path(cx, right_id, expected_right) {
-        (&(*arms[0].body).kind, &(*arms[1].body).kind)
+        (&arms[0].body.kind, &arms[1].body.kind)
     } else if match_def_path(cx, right_id, expected_left) && match_def_path(cx, right_id, expected_right) {
-        (&(*arms[1].body).kind, &(*arms[0].body).kind)
+        (&arms[1].body.kind, &arms[0].body.kind)
     } else {
         return None;
     };

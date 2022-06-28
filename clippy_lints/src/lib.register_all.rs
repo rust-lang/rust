@@ -39,6 +39,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(crate_in_macro_def::CRATE_IN_MACRO_DEF),
     LintId::of(default::FIELD_REASSIGN_WITH_DEFAULT),
     LintId::of(default_instead_of_iter_empty::DEFAULT_INSTEAD_OF_ITER_EMPTY),
+    LintId::of(dereference::EXPLICIT_AUTO_DEREF),
     LintId::of(dereference::NEEDLESS_BORROW),
     LintId::of(derivable_impls::DERIVABLE_IMPLS),
     LintId::of(derive::DERIVE_HASH_XOR_EQ),

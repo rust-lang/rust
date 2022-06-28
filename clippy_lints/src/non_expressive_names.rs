@@ -326,7 +326,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
         // add the pattern after the expression because the bindings aren't available
         // yet in the init
         // expression
-        SimilarNamesNameVisitor(self).visit_pat(&*local.pat);
+        SimilarNamesNameVisitor(self).visit_pat(&local.pat);
     }
     fn visit_block(&mut self, blk: &'tcx Block) {
         self.single_char_names.push(vec![]);

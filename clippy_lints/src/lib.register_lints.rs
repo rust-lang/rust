@@ -104,6 +104,7 @@ store.register_lints(&[
     default_instead_of_iter_empty::DEFAULT_INSTEAD_OF_ITER_EMPTY,
     default_numeric_fallback::DEFAULT_NUMERIC_FALLBACK,
     default_union_representation::DEFAULT_UNION_REPRESENTATION,
+    dereference::EXPLICIT_AUTO_DEREF,
     dereference::EXPLICIT_DEREF_METHODS,
     dereference::NEEDLESS_BORROW,
     dereference::REF_BINDING_TO_REFERENCE,

@@ -574,14 +574,13 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                 Some((Node::Expr(e), child_id)) => match e.kind {
                     ExprKind::Call(f, expr_args) => {
                         let i = expr_args.iter().position(|arg| arg.hir_id == child_id).unwrap_or(0);
-                        if expr_sig(self.cx, f)
-                            .map(|sig| sig.input(i).skip_binder().peel_refs())
-                            .map_or(true, |ty| match *ty.kind() {
+                        if expr_sig(self.cx, f).and_then(|sig| sig.input(i)).map_or(true, |ty| {
+                            match *ty.skip_binder().peel_refs().kind() {
                                 ty::Param(_) => true,
                                 ty::Adt(def, _) => def.did() == args.ty_did,
                                 _ => false,
-                            })
-                        {
+                            }
+                        }) {
                             // Passed to a function taking the non-dereferenced type.
                             set_skip_flag();
                         }

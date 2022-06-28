@@ -6,16 +6,16 @@ use core::ops::ControlFlow;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, LangItem, TyKind, Unsafety};
+use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, AdtDef, Binder, BoundRegion, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, Region, RegionKind, Ty,
-    TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor, UintTy, VariantDiscr,
+    self, AdtDef, Binder, BoundRegion, DefIdTree, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, ProjectionTy,
+    Region, RegionKind, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -502,16 +502,46 @@ pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(P
 #[derive(Clone, Copy)]
 pub enum ExprFnSig<'tcx> {
     Sig(Binder<'tcx, FnSig<'tcx>>),
-    Closure(Binder<'tcx, FnSig<'tcx>>),
+    Closure(Option<&'tcx FnDecl<'tcx>>, Binder<'tcx, FnSig<'tcx>>),
     Trait(Binder<'tcx, Ty<'tcx>>, Option<Binder<'tcx, Ty<'tcx>>>),
 }
 impl<'tcx> ExprFnSig<'tcx> {
-    /// Gets the argument type at the given offset.
-    pub fn input(self, i: usize) -> Binder<'tcx, Ty<'tcx>> {
+    /// Gets the argument type at the given offset. This will return `None` when the index is out of
+    /// bounds only for variadic functions, otherwise this will panic.
+    pub fn input(self, i: usize) -> Option<Binder<'tcx, Ty<'tcx>>> {
         match self {
-            Self::Sig(sig) => sig.input(i),
-            Self::Closure(sig) => sig.input(0).map_bound(|ty| ty.tuple_fields()[i]),
-            Self::Trait(inputs, _) => inputs.map_bound(|ty| ty.tuple_fields()[i]),
+            Self::Sig(sig) => {
+                if sig.c_variadic() {
+                    sig.inputs().map_bound(|inputs| inputs.get(i).copied()).transpose()
+                } else {
+                    Some(sig.input(i))
+                }
+            },
+            Self::Closure(_, sig) => Some(sig.input(0).map_bound(|ty| ty.tuple_fields()[i])),
+            Self::Trait(inputs, _) => Some(inputs.map_bound(|ty| ty.tuple_fields()[i])),
+        }
+    }
+
+    /// Gets the argument type at the given offset. For closures this will also get the type as
+    /// written. This will return `None` when the index is out of bounds only for variadic
+    /// functions, otherwise this will panic.
+    pub fn input_with_hir(self, i: usize) -> Option<(Option<&'tcx hir::Ty<'tcx>>, Binder<'tcx, Ty<'tcx>>)> {
+        match self {
+            Self::Sig(sig) => {
+                if sig.c_variadic() {
+                    sig.inputs()
+                        .map_bound(|inputs| inputs.get(i).copied())
+                        .transpose()
+                        .map(|arg| (None, arg))
+                } else {
+                    Some((None, sig.input(i)))
+                }
+            },
+            Self::Closure(decl, sig) => Some((
+                decl.and_then(|decl| decl.inputs.get(i)),
+                sig.input(0).map_bound(|ty| ty.tuple_fields()[i]),
+            )),
+            Self::Trait(inputs, _) => Some((None, inputs.map_bound(|ty| ty.tuple_fields()[i]))),
         }
     }
 
@@ -519,7 +549,7 @@ impl<'tcx> ExprFnSig<'tcx> {
     /// specified.
     pub fn output(self) -> Option<Binder<'tcx, Ty<'tcx>>> {
         match self {
-            Self::Sig(sig) | Self::Closure(sig) => Some(sig.output()),
+            Self::Sig(sig) | Self::Closure(_, sig) => Some(sig.output()),
             Self::Trait(_, output) => output,
         }
     }
@@ -530,74 +560,123 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
     if let Res::Def(DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn, id) = path_res(cx, expr) {
         Some(ExprFnSig::Sig(cx.tcx.fn_sig(id)))
     } else {
-        let ty = cx.typeck_results().expr_ty_adjusted(expr).peel_refs();
-        match *ty.kind() {
-            ty::Closure(_, subs) => Some(ExprFnSig::Closure(subs.as_closure().sig())),
-            ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs))),
-            ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig)),
-            ty::Dynamic(bounds, _) => {
-                let lang_items = cx.tcx.lang_items();
-                match bounds.principal() {
-                    Some(bound)
-                        if Some(bound.def_id()) == lang_items.fn_trait()
-                            || Some(bound.def_id()) == lang_items.fn_once_trait()
-                            || Some(bound.def_id()) == lang_items.fn_mut_trait() =>
-                    {
-                        let output = bounds
-                            .projection_bounds()
-                            .find(|p| lang_items.fn_once_output().map_or(false, |id| id == p.item_def_id()))
-                            .map(|p| p.map_bound(|p| p.term.ty().expect("return type was a const")));
-                        Some(ExprFnSig::Trait(bound.map_bound(|b| b.substs.type_at(0)), output))
-                    },
-                    _ => None,
-                }
-            },
-            ty::Param(_) | ty::Projection(..) => {
-                let mut inputs = None;
-                let mut output = None;
-                let lang_items = cx.tcx.lang_items();
+        ty_sig(cx, cx.typeck_results().expr_ty_adjusted(expr).peel_refs())
+    }
+}
 
-                for (pred, _) in all_predicates_of(cx.tcx, cx.typeck_results().hir_owner.to_def_id()) {
-                    let mut is_input = false;
-                    if let Some(ty) = pred
-                        .kind()
-                        .map_bound(|pred| match pred {
-                            PredicateKind::Trait(p)
-                                if (lang_items.fn_trait() == Some(p.def_id())
-                                    || lang_items.fn_mut_trait() == Some(p.def_id())
-                                    || lang_items.fn_once_trait() == Some(p.def_id()))
-                                    && p.self_ty() == ty =>
-                            {
-                                is_input = true;
-                                Some(p.trait_ref.substs.type_at(1))
-                            },
-                            PredicateKind::Projection(p)
-                                if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output()
-                                    && p.projection_ty.self_ty() == ty =>
-                            {
-                                is_input = false;
-                                p.term.ty()
-                            },
-                            _ => None,
-                        })
-                        .transpose()
-                    {
-                        if is_input && inputs.is_none() {
-                            inputs = Some(ty);
-                        } else if !is_input && output.is_none() {
-                            output = Some(ty);
-                        } else {
-                            // Multiple different fn trait impls. Is this even allowed?
-                            return None;
-                        }
-                    }
-                }
+fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
+    match *ty.kind() {
+        ty::Closure(id, subs) => {
+            let decl = id
+                .as_local()
+                .and_then(|id| cx.tcx.hir().fn_decl_by_hir_id(cx.tcx.hir().local_def_id_to_hir_id(id)));
+            Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
+        },
+        ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs))),
+        ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig)),
+        ty::Dynamic(bounds, _) => {
+            let lang_items = cx.tcx.lang_items();
+            match bounds.principal() {
+                Some(bound)
+                    if Some(bound.def_id()) == lang_items.fn_trait()
+                        || Some(bound.def_id()) == lang_items.fn_once_trait()
+                        || Some(bound.def_id()) == lang_items.fn_mut_trait() =>
+                {
+                    let output = bounds
+                        .projection_bounds()
+                        .find(|p| lang_items.fn_once_output().map_or(false, |id| id == p.item_def_id()))
+                        .map(|p| p.map_bound(|p| p.term.ty().unwrap()));
+                    Some(ExprFnSig::Trait(bound.map_bound(|b| b.substs.type_at(0)), output))
+                },
+                _ => None,
+            }
+        },
+        ty::Projection(proj) => match cx.tcx.try_normalize_erasing_regions(cx.param_env, ty) {
+            Ok(normalized_ty) if normalized_ty != ty => ty_sig(cx, normalized_ty),
+            _ => sig_for_projection(cx, proj).or_else(|| sig_from_bounds(cx, ty)),
+        },
+        ty::Param(_) => sig_from_bounds(cx, ty),
+        _ => None,
+    }
+}
 
-                inputs.map(|ty| ExprFnSig::Trait(ty, output))
+fn sig_from_bounds<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
+    let mut inputs = None;
+    let mut output = None;
+    let lang_items = cx.tcx.lang_items();
+
+    for (pred, _) in all_predicates_of(cx.tcx, cx.typeck_results().hir_owner.to_def_id()) {
+        match pred.kind().skip_binder() {
+            PredicateKind::Trait(p)
+                if (lang_items.fn_trait() == Some(p.def_id())
+                    || lang_items.fn_mut_trait() == Some(p.def_id())
+                    || lang_items.fn_once_trait() == Some(p.def_id()))
+                    && p.self_ty() == ty =>
+            {
+                if inputs.is_some() {
+                    // Multiple different fn trait impls. Is this even allowed?
+                    return None;
+                }
+                inputs = Some(pred.kind().rebind(p.trait_ref.substs.type_at(1)));
             },
-            _ => None,
+            PredicateKind::Projection(p)
+                if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output()
+                    && p.projection_ty.self_ty() == ty =>
+            {
+                if output.is_some() {
+                    // Multiple different fn trait impls. Is this even allowed?
+                    return None;
+                }
+                output = Some(pred.kind().rebind(p.term.ty().unwrap()));
+            },
+            _ => (),
         }
     }
+
+    inputs.map(|ty| ExprFnSig::Trait(ty, output))
+}
+
+fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> Option<ExprFnSig<'tcx>> {
+    let mut inputs = None;
+    let mut output = None;
+    let lang_items = cx.tcx.lang_items();
+
+    for pred in cx
+        .tcx
+        .bound_explicit_item_bounds(ty.item_def_id)
+        .transpose_iter()
+        .map(|x| x.map_bound(|(p, _)| p))
+    {
+        match pred.0.kind().skip_binder() {
+            PredicateKind::Trait(p)
+                if (lang_items.fn_trait() == Some(p.def_id())
+                    || lang_items.fn_mut_trait() == Some(p.def_id())
+                    || lang_items.fn_once_trait() == Some(p.def_id())) =>
+            {
+                if inputs.is_some() {
+                    // Multiple different fn trait impls. Is this even allowed?
+                    return None;
+                }
+                inputs = Some(
+                    pred.map_bound(|pred| pred.kind().rebind(p.trait_ref.substs.type_at(1)))
+                        .subst(cx.tcx, ty.substs),
+                );
+            },
+            PredicateKind::Projection(p) if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() => {
+                if output.is_some() {
+                    // Multiple different fn trait impls. Is this even allowed?
+                    return None;
+                }
+                output = Some(
+                    pred.map_bound(|pred| pred.kind().rebind(p.term.ty().unwrap()))
+                        .subst(cx.tcx, ty.substs),
+                );
+            },
+            _ => (),
+        }
+    }
+
+    inputs.map(|ty| ExprFnSig::Trait(ty, output))
 }
 
 #[derive(Clone, Copy)]
@@ -694,4 +773,19 @@ pub fn for_each_top_level_late_bound_region<B>(
         }
     }
     ty.visit_with(&mut V { index: 0, f })
+}
+
+/// Gets the struct or enum variant from the given `Res`
+pub fn variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<&'tcx VariantDef> {
+    match res {
+        Res::Def(DefKind::Struct, id) => Some(cx.tcx.adt_def(id).non_enum_variant()),
+        Res::Def(DefKind::Variant, id) => Some(cx.tcx.adt_def(cx.tcx.parent(id)).variant_with_id(id)),
+        Res::Def(DefKind::Ctor(CtorOf::Struct, _), id) => Some(cx.tcx.adt_def(cx.tcx.parent(id)).non_enum_variant()),
+        Res::Def(DefKind::Ctor(CtorOf::Variant, _), id) => {
+            let var_id = cx.tcx.parent(id);
+            Some(cx.tcx.adt_def(cx.tcx.parent(var_id)).variant_with_id(var_id))
+        },
+        Res::SelfCtor(id) => Some(cx.tcx.type_of(id).ty_adt_def().unwrap().non_enum_variant()),
+        _ => None,
+    }
 }
