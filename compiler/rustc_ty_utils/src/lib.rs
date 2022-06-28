@@ -18,7 +18,7 @@ use rustc_middle::ty::query::Providers;
 
 mod assoc;
 mod common_traits;
-pub mod consts;
+mod consts;
 pub mod instance;
 mod needs_drop;
 pub mod representability;
