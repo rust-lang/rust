@@ -1,5 +1,10 @@
 # `--extern` Options
 
+* Tracking issue for `--extern` crate modifiers: [#98405](https://github.com/rust-lang/rust/issues/98405)
+* Tracking issue for `noprelude`: [#98398](https://github.com/rust-lang/rust/issues/98398)
+* Tracking issue for `priv`: [#98399](https://github.com/rust-lang/rust/issues/98399)
+* Tracking issue for `nounused`: [#98400](https://github.com/rust-lang/rust/issues/98400)
+
 The behavior of the `--extern` flag can be modified with `noprelude`, `priv` or `nounused` options.
 
 This is unstable feature, so you have to provide `-Zunstable-options` to enable it.

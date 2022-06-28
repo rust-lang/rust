@@ -353,9 +353,9 @@ fn align_offset_zst() {
     // all, because no amount of elements will align the pointer.
     let mut p = 1;
     while p < 1024 {
-        assert_eq!((p as *const ()).align_offset(p), 0);
+        assert_eq!(ptr::invalid::<()>(p).align_offset(p), 0);
         if p != 1 {
-            assert_eq!(((p + 1) as *const ()).align_offset(p), !0);
+            assert_eq!(ptr::invalid::<()>(p + 1).align_offset(p), !0);
         }
         p = (p + 1).next_power_of_two();
     }
@@ -371,7 +371,7 @@ fn align_offset_stride1() {
             let expected = ptr % align;
             let offset = if expected == 0 { 0 } else { align - expected };
             assert_eq!(
-                (ptr as *const u8).align_offset(align),
+                ptr::invalid::<u8>(ptr).align_offset(align),
                 offset,
                 "ptr = {}, align = {}, size = 1",
                 ptr,
@@ -434,14 +434,14 @@ fn align_offset_weird_strides() {
     while align < limit {
         for ptr in 1usize..4 * align {
             unsafe {
-                x |= test_weird_stride::<A3>(ptr as *const A3, align);
-                x |= test_weird_stride::<A4>(ptr as *const A4, align);
-                x |= test_weird_stride::<A5>(ptr as *const A5, align);
-                x |= test_weird_stride::<A6>(ptr as *const A6, align);
-                x |= test_weird_stride::<A7>(ptr as *const A7, align);
-                x |= test_weird_stride::<A8>(ptr as *const A8, align);
-                x |= test_weird_stride::<A9>(ptr as *const A9, align);
-                x |= test_weird_stride::<A10>(ptr as *const A10, align);
+                x |= test_weird_stride::<A3>(ptr::invalid::<A3>(ptr), align);
+                x |= test_weird_stride::<A4>(ptr::invalid::<A4>(ptr), align);
+                x |= test_weird_stride::<A5>(ptr::invalid::<A5>(ptr), align);
+                x |= test_weird_stride::<A6>(ptr::invalid::<A6>(ptr), align);
+                x |= test_weird_stride::<A7>(ptr::invalid::<A7>(ptr), align);
+                x |= test_weird_stride::<A8>(ptr::invalid::<A8>(ptr), align);
+                x |= test_weird_stride::<A9>(ptr::invalid::<A9>(ptr), align);
+                x |= test_weird_stride::<A10>(ptr::invalid::<A10>(ptr), align);
             }
         }
         align = (align + 1).next_power_of_two();
@@ -479,8 +479,8 @@ fn ptr_metadata() {
     let () = metadata(&[4, 7]);
     let () = metadata(&(4, String::new()));
     let () = metadata(&Pair(4, String::new()));
-    let () = metadata(0 as *const Extern);
-    let () = metadata(0 as *const <&u32 as std::ops::Deref>::Target);
+    let () = metadata(ptr::null::<()>() as *const Extern);
+    let () = metadata(ptr::null::<()>() as *const <&u32 as std::ops::Deref>::Target);
 
     assert_eq!(metadata("foo"), 3_usize);
     assert_eq!(metadata(&[4, 7][..]), 2_usize);

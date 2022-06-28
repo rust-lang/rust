@@ -10,7 +10,7 @@ use crate::spec::{LinkerFlavor, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::android_base::opts();
-    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-march=armv7-a".into());
+    base.add_pre_link_args(LinkerFlavor::Gcc, &["-march=armv7-a"]);
     Target {
         llvm_target: "armv7-none-linux-android".into(),
         pointer_width: 32,

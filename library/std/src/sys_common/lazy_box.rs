@@ -21,8 +21,21 @@ pub(crate) trait LazyInit {
     ///
     /// It might be called more than once per LazyBox, as multiple threads
     /// might race to initialize it concurrently, each constructing and initializing
-    /// their own box. (All but one of them will be destroyed right after.)
+    /// their own box. All but one of them will be passed to `cancel_init` right after.
     fn init() -> Box<Self>;
+
+    /// Any surplus boxes from `init()` that lost the initialization race
+    /// are passed to this function for disposal.
+    ///
+    /// The default implementation calls destroy().
+    fn cancel_init(x: Box<Self>) {
+        Self::destroy(x);
+    }
+
+    /// This is called to destroy a used box.
+    ///
+    /// The default implementation just drops it.
+    fn destroy(_: Box<Self>) {}
 }
 
 impl<T: LazyInit> LazyBox<T> {
@@ -45,7 +58,7 @@ impl<T: LazyInit> LazyBox<T> {
             Err(ptr) => {
                 // Lost the race to another thread.
                 // Drop the box we created, and use the one from the other thread instead.
-                drop(unsafe { Box::from_raw(new_ptr) });
+                T::cancel_init(unsafe { Box::from_raw(new_ptr) });
                 ptr
             }
         }
@@ -71,7 +84,7 @@ impl<T: LazyInit> Drop for LazyBox<T> {
     fn drop(&mut self) {
         let ptr = *self.ptr.get_mut();
         if !ptr.is_null() {
-            drop(unsafe { Box::from_raw(ptr) });
+            T::destroy(unsafe { Box::from_raw(ptr) });
         }
     }
 }

@@ -33,6 +33,7 @@ pub use unic_langid::{langid, LanguageIdentifier};
 fluent_messages! {
     parser => "../locales/en-US/parser.ftl",
     typeck => "../locales/en-US/typeck.ftl",
+    builtin_macros => "../locales/en-US/builtin_macros.ftl",
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};
@@ -257,18 +258,6 @@ pub enum SubdiagnosticMessage {
     FluentAttr(FluentId),
 }
 
-impl SubdiagnosticMessage {
-    /// Create a `SubdiagnosticMessage` for the provided Fluent attribute.
-    pub fn attr(id: impl Into<FluentId>) -> Self {
-        SubdiagnosticMessage::FluentAttr(id.into())
-    }
-
-    /// Create a `SubdiagnosticMessage` for the provided Fluent identifier.
-    pub fn message(id: impl Into<FluentId>) -> Self {
-        SubdiagnosticMessage::FluentIdentifier(id.into())
-    }
-}
-
 /// `From` impl that enables existing diagnostic calls to functions which now take
 /// `impl Into<SubdiagnosticMessage>` to continue to work as before.
 impl<S: Into<String>> From<S> for SubdiagnosticMessage {
@@ -331,11 +320,6 @@ impl DiagnosticMessage {
             _ => panic!("expected non-translatable diagnostic message"),
         }
     }
-
-    /// Create a `DiagnosticMessage` for the provided Fluent identifier.
-    pub fn new(id: impl Into<FluentId>) -> Self {
-        DiagnosticMessage::FluentIdentifier(id.into(), None)
-    }
 }
 
 /// `From` impl that enables existing diagnostic calls to functions which now take
@@ -343,6 +327,27 @@ impl DiagnosticMessage {
 impl<S: Into<String>> From<S> for DiagnosticMessage {
     fn from(s: S) -> Self {
         DiagnosticMessage::Str(s.into())
+    }
+}
+
+/// Translating *into* a subdiagnostic message from a diagnostic message is a little strange - but
+/// the subdiagnostic functions (e.g. `span_label`) take a `SubdiagnosticMessage` and the
+/// subdiagnostic derive refers to typed identifiers that are `DiagnosticMessage`s, so need to be
+/// able to convert between these, as much as they'll be converted back into `DiagnosticMessage`
+/// using `with_subdiagnostic_message` eventually. Don't use this other than for the derive.
+impl Into<SubdiagnosticMessage> for DiagnosticMessage {
+    fn into(self) -> SubdiagnosticMessage {
+        match self {
+            DiagnosticMessage::Str(s) => SubdiagnosticMessage::Str(s),
+            DiagnosticMessage::FluentIdentifier(id, None) => {
+                SubdiagnosticMessage::FluentIdentifier(id)
+            }
+            // There isn't really a sensible behaviour for this because it loses information but
+            // this is the most sensible of the behaviours.
+            DiagnosticMessage::FluentIdentifier(_, Some(attr)) => {
+                SubdiagnosticMessage::FluentAttr(attr)
+            }
+        }
     }
 }
 

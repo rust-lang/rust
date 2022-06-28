@@ -776,7 +776,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         // First, build up the static array which will become our precompiled
         // format "string"
-        let pieces = self.ecx.expr_vec_slice(self.fmtsp, self.str_pieces);
+        let pieces = self.ecx.expr_array_ref(self.fmtsp, self.str_pieces);
 
         // We need to construct a &[ArgumentV1] to pass into the fmt::Arguments
         // constructor. In general the expressions in this slice might be
@@ -849,7 +849,7 @@ impl<'a, 'b> Context<'a, 'b> {
             fmt_args.push(Context::format_arg(self.ecx, self.macsp, span, arg_ty, arg));
         }
 
-        let args_array = self.ecx.expr_vec(self.macsp, fmt_args);
+        let args_array = self.ecx.expr_array(self.macsp, fmt_args);
         let args_slice = self.ecx.expr_addr_of(
             self.macsp,
             if no_need_for_match {
@@ -879,7 +879,7 @@ impl<'a, 'b> Context<'a, 'b> {
         } else {
             // Build up the static array which will store our precompiled
             // nonstandard placeholders, if there are any.
-            let fmt = self.ecx.expr_vec_slice(self.macsp, self.pieces);
+            let fmt = self.ecx.expr_array_ref(self.macsp, self.pieces);
 
             let path = self.ecx.std_path(&[sym::fmt, sym::UnsafeArg, sym::new]);
             let unsafe_arg = self.ecx.expr_call_global(self.macsp, path, Vec::new());

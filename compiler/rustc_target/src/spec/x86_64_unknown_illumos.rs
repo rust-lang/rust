@@ -2,7 +2,7 @@ use crate::spec::{LinkerFlavor, SanitizerSet, Target};
 
 pub fn target() -> Target {
     let mut base = super::illumos_base::opts();
-    base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m64".into(), "-std=c99".into()]);
+    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64", "-std=c99"]);
     base.cpu = "x86-64".into();
     base.max_atomic_width = Some(64);
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI;

@@ -150,6 +150,19 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
         for binary in ["llvm-config", "FileCheck"] {
             builder.fix_bin_or_dylib(&llvm_root.join("bin").join(binary));
         }
+
+        // Update the timestamp of llvm-config to force rustc_llvm to be
+        // rebuilt. This is a hacky workaround for a deficiency in Cargo where
+        // the rerun-if-changed directive doesn't handle changes very well.
+        // https://github.com/rust-lang/cargo/issues/10791
+        // Cargo only compares the timestamp of the file relative to the last
+        // time `rustc_llvm` build script ran. However, the timestamps of the
+        // files in the tarball are in the past, so it doesn't trigger a
+        // rebuild.
+        let now = filetime::FileTime::from_system_time(std::time::SystemTime::now());
+        let llvm_config = llvm_root.join("bin").join(exe("llvm-config", builder.config.build));
+        t!(filetime::set_file_times(&llvm_config, now, now));
+
         let llvm_lib = llvm_root.join("lib");
         for entry in t!(fs::read_dir(&llvm_lib)) {
             let lib = t!(entry).path();

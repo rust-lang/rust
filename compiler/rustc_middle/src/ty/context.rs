@@ -74,7 +74,7 @@ use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
 
-use super::RvalueScopes;
+use super::{ImplPolarity, RvalueScopes};
 
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
@@ -2227,6 +2227,20 @@ impl<'tcx> TyCtxt<'tcx> {
             self.associated_items(trait_did)
                 .find_by_name_and_kind(self, assoc_name, ty::AssocKind::Type, trait_did)
                 .is_some()
+        })
+    }
+
+    /// Given a `ty`, return whether it's an `impl Future<...>`.
+    pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
+        let ty::Opaque(def_id, _) = ty.kind() else { return false };
+        let future_trait = self.lang_items().future_trait().unwrap();
+
+        self.explicit_item_bounds(def_id).iter().any(|(predicate, _)| {
+            let ty::PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder() else {
+                return false;
+            };
+            trait_predicate.trait_ref.def_id == future_trait
+                && trait_predicate.polarity == ImplPolarity::Positive
         })
     }
 

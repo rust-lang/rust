@@ -216,32 +216,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bootstrap"
-version = "0.0.0"
-dependencies = [
- "cc",
- "cmake",
- "filetime",
- "getopts",
- "hex 0.4.2",
- "ignore",
- "libc",
- "num_cpus",
- "once_cell",
- "opener",
- "pretty_assertions 0.7.2",
- "serde",
- "serde_json",
- "sha2",
- "sysinfo",
- "tar",
- "toml",
- "walkdir",
- "winapi",
- "xz2",
-]
-
-[[package]]
 name = "bstr"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -736,15 +710,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cmake"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e56268c17a6248366d66d4a47a3381369d068cce8409bb1716ed77ea32163bb"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "colored"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1023,9 +988,9 @@ dependencies = [
 
 [[package]]
 name = "ctor"
-version = "0.1.15"
+version = "0.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39858aa5bac06462d4dd4b9164848eb81ffc4aa5c479746393598fd193afa227"
+checksum = "f877be4f7c9f246b183111634f75baa039715e3f46ce860677d3b19a69fb229c"
 dependencies = [
  "quote",
  "syn",
@@ -1428,9 +1393,9 @@ checksum = "d79238883cf0307100b90aba4a755d8051a3182305dfe7f649a1e9dc0517006f"
 
 [[package]]
 name = "futf"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c9c1ce3fa9336301af935ab852c437817d14cd33690446569392e65170aac3b"
+checksum = "df420e2e84819663797d1ec6544b13c5be84629e7bb00dc960d6917db2987843"
 dependencies = [
  "mac",
  "new_debug_unreachable",
@@ -1713,6 +1678,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c21d40587b92fa6a6c6e3c1bdbf87d75511db5672f9c93175574b3a00df1758"
 dependencies = [
+ "ahash",
  "compiler_builtins",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
@@ -2366,20 +2332,6 @@ dependencies = [
 
 [[package]]
 name = "measureme"
-version = "9.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78f7a41bc6f856a2cf0e95094ad5121f82500e2d9a0f3c0171d98f6566d8117d"
-dependencies = [
- "log",
- "memmap2",
- "parking_lot 0.11.2",
- "perf-event-open-sys",
- "rustc-hash",
- "smallvec",
-]
-
-[[package]]
-name = "measureme"
 version = "10.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd460fad6e55ca82fa0cd9dab0d315294188fd9ec6efbf4105e5635d4872ef9c"
@@ -2476,7 +2428,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
- "measureme 9.1.2",
+ "measureme",
  "rand 0.8.5",
  "regex",
  "rustc-workspace-hack",
@@ -2567,6 +2519,18 @@ dependencies = [
  "crc32fast",
  "flate2",
  "hashbrown 0.11.2",
+ "indexmap",
+ "memchr",
+]
+
+[[package]]
+name = "object"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
+dependencies = [
+ "crc32fast",
+ "hashbrown 0.12.0",
  "indexmap",
  "memchr",
 ]
@@ -2670,9 +2634,9 @@ checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
 
 [[package]]
 name = "output_vt100"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53cdc5b785b7a58c5aad8216b3dfa114df64b0b06ae6e1501cef91df2fbdf8f9"
+checksum = "628223faebab4e3e40667ee0b2336d34a5b960ff60ea743ddfdbcf7770bcfb66"
 dependencies = [
  "winapi",
 ]
@@ -2933,18 +2897,6 @@ checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
 name = "pretty_assertions"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cab0e7c02cf376875e9335e0ba1da535775beb5450d21e1dffca068818ed98b"
-dependencies = [
- "ansi_term",
- "ctor",
- "diff",
- "output_vt100",
-]
-
-[[package]]
-name = "pretty_assertions"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c89f989ac94207d048d92db058e4f6ec7342b0971fc58d1271ca148b799b3563"
@@ -3088,7 +3040,6 @@ name = "racer"
 version = "2.2.2"
 dependencies = [
  "bitflags",
- "clap 2.34.0",
  "derive_more",
  "env_logger 0.7.1",
  "humantime 2.0.1",
@@ -3312,7 +3263,7 @@ dependencies = [
  "difference",
  "env_logger 0.9.0",
  "futures 0.3.19",
- "heck 0.3.1",
+ "heck 0.4.0",
  "home",
  "itertools",
  "jsonrpc-core",
@@ -3669,6 +3620,7 @@ dependencies = [
  "rustc_feature",
  "rustc_lexer",
  "rustc_lint_defs",
+ "rustc_macros",
  "rustc_parse",
  "rustc_parse_format",
  "rustc_session",
@@ -3686,7 +3638,7 @@ dependencies = [
  "cstr",
  "libc",
  "libloading",
- "measureme 10.0.0",
+ "measureme",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3719,7 +3671,7 @@ dependencies = [
  "itertools",
  "jobserver",
  "libc",
- "object 0.28.4",
+ "object 0.29.0",
  "pathdiff",
  "regex",
  "rustc_apfloat",
@@ -3784,7 +3736,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc",
- "measureme 10.0.0",
+ "measureme",
  "memmap2",
  "parking_lot 0.11.2",
  "rustc-hash",
@@ -4340,7 +4292,7 @@ dependencies = [
 name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
- "measureme 10.0.0",
+ "measureme",
  "rustc-rayon-core",
  "rustc_ast",
  "rustc_data_structures",
@@ -4698,7 +4650,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "annotate-snippets 0.9.1",
  "anyhow",
@@ -5149,21 +5101,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sysinfo"
-version = "0.24.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6a8e71535da31837213ac114531d31def75d7aebd133264e420a3451fa7f703"
-dependencies = [
- "cfg-if 1.0.0",
- "core-foundation-sys",
- "libc",
- "ntapi",
- "once_cell",
- "rayon",
- "winapi",
-]
-
-[[package]]
 name = "tar"
 version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5190,9 +5127,9 @@ dependencies = [
 
 [[package]]
 name = "tendril"
-version = "0.4.1"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "707feda9f2582d5d680d733e38755547a3e8fb471e7ba11452ecfd9ce93a5d3b"
+checksum = "d24a120c5fc464a3458240ee02c299ebcb9d67b5249c8848b09d639dca8d7bb0"
 dependencies = [
  "futf",
  "mac",
@@ -5539,7 +5476,7 @@ dependencies = [
  "colored",
  "crossbeam",
  "lazy_static",
- "pretty_assertions 1.2.1",
+ "pretty_assertions",
  "regex",
  "rustc_version",
  "serde",

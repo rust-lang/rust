@@ -1,3 +1,12 @@
+error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<OpaqueType>`
+  --> $DIR/auto-trait.rs:21:1
+   |
+LL | impl<T: Send> AnotherTrait for T {}
+   | -------------------------------- first implementation here
+...
+LL | impl AnotherTrait for D<OpaqueType> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `D<OpaqueType>`
+
 error: cannot implement trait on type alias impl trait
   --> $DIR/auto-trait.rs:21:25
    |
@@ -9,15 +18,6 @@ note: type alias impl trait defined here
    |
 LL | type OpaqueType = impl OpaqueTrait;
    |                   ^^^^^^^^^^^^^^^^
-
-error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<OpaqueType>`
-  --> $DIR/auto-trait.rs:21:1
-   |
-LL | impl<T: Send> AnotherTrait for T {}
-   | -------------------------------- first implementation here
-...
-LL | impl AnotherTrait for D<OpaqueType> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `D<OpaqueType>`
 
 error: aborting due to 2 previous errors
 

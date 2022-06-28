@@ -5,7 +5,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 
 /* General structure and fonts */
 
-body, #settings-menu #settings, #settings-menu #settings::before {
+body, .popover, .popover::before {
 	background-color: #0f1419;
 	color: #c5c5c5;
 }
@@ -567,7 +567,7 @@ kbd {
 	box-shadow: inset 0 -1px 0 #5c6773;
 }
 
-#settings-menu > a, #help-button {
+#settings-menu > a, #help-button > button {
 	border-color: #5c6773;
 	background-color: #0f1419;
 	color: #fff;
@@ -577,7 +577,8 @@ kbd {
 	filter: invert(100);
 }
 
-#settings-menu #settings, #settings-menu #settings::before {
+.popover, .popover::before,
+#help-button span.top, #help-button span.bottom {
 	border-color: #5c6773;
 }
 
@@ -592,7 +593,7 @@ kbd {
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
-#help-button:hover, #help-button:focus {
+#help-button > button:hover, #help-button > button:focus {
 	border-color: #e0e0e0;
 }
 
@@ -629,11 +630,11 @@ kbd {
 	color: #fff;
 	border-bottom-color: #5c6773;
 }
-div.files > a:hover, div.name:hover {
+#source-sidebar div.files > a:hover, div.name:hover {
 	background-color: #14191f;
 	color: #ffb44c;
 }
-div.files > .selected {
+#source-sidebar div.files > .selected {
 	background-color: #14191f;
 	color: #ffb44c;
 }

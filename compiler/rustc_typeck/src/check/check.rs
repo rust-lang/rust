@@ -32,11 +32,6 @@ use rustc_ty_utils::representability::{self, Representability};
 use std::iter;
 use std::ops::ControlFlow;
 
-pub fn check_wf_new(tcx: TyCtxt<'_>) {
-    let visit = wfcheck::CheckTypeWellFormedVisitor::new(tcx);
-    tcx.hir().par_visit_all_item_likes(&visit);
-}
-
 pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
     match tcx.sess.target.is_abi_supported(abi) {
         Some(true) => (),
@@ -754,7 +749,7 @@ fn check_opaque_meets_bounds<'tcx>(
     });
 }
 
-pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
+fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     debug!(
         "check_item_type(it.def_id={:?}, it.name={})",
         id.def_id,
@@ -1542,12 +1537,6 @@ pub(super) fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
         check_item_type(tcx, id);
     }
 }
-
-pub(super) use wfcheck::check_item_well_formed;
-
-pub(super) use wfcheck::check_trait_item as check_trait_item_well_formed;
-
-pub(super) use wfcheck::check_impl_item as check_impl_item_well_formed;
 
 fn async_opaque_type_cycle_error(tcx: TyCtxt<'_>, span: Span) -> ErrorGuaranteed {
     struct_span_err!(tcx.sess, span, E0733, "recursion in an `async fn` requires boxing")

@@ -11,7 +11,7 @@ LL | enum CloneEnum {
    | -------------- doesn't satisfy `CloneEnum: Default`
 ...
 LL | struct Foo<X, Y> (X, Y);
-   | ------------------------ method `test` not found for this
+   |        --- method `test` not found for this struct
 ...
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Enum, CloneEnum>` due to unsatisfied trait bounds
@@ -49,7 +49,7 @@ LL | struct CloneStruct {
    | ------------------ doesn't satisfy `CloneStruct: Default`
 ...
 LL | struct Foo<X, Y> (X, Y);
-   | ------------------------ method `test` not found for this
+   |        --- method `test` not found for this struct
 ...
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Struct, CloneStruct>` due to unsatisfied trait bounds
@@ -71,7 +71,7 @@ error[E0599]: the method `test` exists for struct `Foo<Vec<Enum>, Instant>`, but
   --> $DIR/derive-trait-for-method-call.rs:40:15
    |
 LL | struct Foo<X, Y> (X, Y);
-   | ------------------------ method `test` not found for this
+   |        --- method `test` not found for this struct
 ...
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Vec<Enum>, Instant>` due to unsatisfied trait bounds

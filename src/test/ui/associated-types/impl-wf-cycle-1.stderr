@@ -2,11 +2,11 @@ error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
   --> $DIR/impl-wf-cycle-1.rs:15:1
    |
 LL | / impl<T: Grault> Grault for (T,)
+LL | |
 LL | | where
 LL | |     Self::A: Baz,
-LL | |     Self::B: Fiz,
 ...  |
-LL | |
+LL | |     type B = bool;
 LL | | }
    | |_^
    |
@@ -18,34 +18,6 @@ LL | impl<T: Grault> Grault for (T,)
    = note: 1 redundant requirement hidden
    = note: required because of the requirements on the impl of `Grault` for `(T,)`
 
-error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
-  --> $DIR/impl-wf-cycle-1.rs:20:5
-   |
-LL |     type A = ();
-   |     ^^^^^^^^^^^^
-   |
-note: required because of the requirements on the impl of `Grault` for `(T,)`
-  --> $DIR/impl-wf-cycle-1.rs:15:17
-   |
-LL | impl<T: Grault> Grault for (T,)
-   |                 ^^^^^^     ^^^^
-   = note: 1 redundant requirement hidden
-   = note: required because of the requirements on the impl of `Grault` for `(T,)`
-
-error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
-  --> $DIR/impl-wf-cycle-1.rs:22:5
-   |
-LL |     type B = bool;
-   |     ^^^^^^^^^^^^^^
-   |
-note: required because of the requirements on the impl of `Grault` for `(T,)`
-  --> $DIR/impl-wf-cycle-1.rs:15:17
-   |
-LL | impl<T: Grault> Grault for (T,)
-   |                 ^^^^^^     ^^^^
-   = note: 1 redundant requirement hidden
-   = note: required because of the requirements on the impl of `Grault` for `(T,)`
-
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0275`.

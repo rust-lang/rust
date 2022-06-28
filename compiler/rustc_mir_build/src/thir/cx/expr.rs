@@ -1,3 +1,4 @@
+use crate::thir::cx::region::Scope;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -156,6 +157,98 @@ impl<'tcx> Cx<'tcx> {
         };
 
         Expr { temp_lifetime, ty: adjustment.target, span, kind }
+    }
+
+    /// Lowers a cast expression.
+    ///
+    /// Dealing with user type annotations is left to the caller.
+    fn mirror_expr_cast(
+        &mut self,
+        source: &'tcx hir::Expr<'tcx>,
+        temp_lifetime: Option<Scope>,
+        span: Span,
+    ) -> ExprKind<'tcx> {
+        let tcx = self.tcx;
+
+        // Check to see if this cast is a "coercion cast", where the cast is actually done
+        // using a coercion (or is a no-op).
+        if self.typeck_results().is_coercion_cast(source.hir_id) {
+            // Convert the lexpr to a vexpr.
+            ExprKind::Use { source: self.mirror_expr(source) }
+        } else if self.typeck_results().expr_ty(source).is_region_ptr() {
+            // Special cased so that we can type check that the element
+            // type of the source matches the pointed to type of the
+            // destination.
+            ExprKind::Pointer {
+                source: self.mirror_expr(source),
+                cast: PointerCast::ArrayToPointer,
+            }
+        } else {
+            // check whether this is casting an enum variant discriminant
+            // to prevent cycles, we refer to the discriminant initializer
+            // which is always an integer and thus doesn't need to know the
+            // enum's layout (or its tag type) to compute it during const eval
+            // Example:
+            // enum Foo {
+            //     A,
+            //     B = A as isize + 4,
+            // }
+            // The correct solution would be to add symbolic computations to miri,
+            // so we wouldn't have to compute and store the actual value
+
+            let hir::ExprKind::Path(ref qpath) = source.kind else {
+                return ExprKind::Cast { source: self.mirror_expr(source)};
+            };
+
+            let res = self.typeck_results().qpath_res(qpath, source.hir_id);
+            let ty = self.typeck_results().node_type(source.hir_id);
+            let ty::Adt(adt_def, substs) = ty.kind() else {
+                return ExprKind::Cast { source: self.mirror_expr(source)};
+            };
+
+            let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), variant_ctor_id) = res else {
+                return ExprKind::Cast { source: self.mirror_expr(source)};
+            };
+
+            let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
+            let (discr_did, discr_offset) = adt_def.discriminant_def_for_variant(idx);
+
+            use rustc_middle::ty::util::IntTypeExt;
+            let ty = adt_def.repr().discr_type();
+            let discr_ty = ty.to_ty(tcx);
+
+            let param_env_ty = self.param_env.and(discr_ty);
+            let size = tcx
+                .layout_of(param_env_ty)
+                .unwrap_or_else(|e| {
+                    panic!("could not compute layout for {:?}: {:?}", param_env_ty, e)
+                })
+                .size;
+
+            let lit = ScalarInt::try_from_uint(discr_offset as u128, size).unwrap();
+            let kind = ExprKind::NonHirLiteral { lit, user_ty: None };
+            let offset = self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
+
+            let source = match discr_did {
+                // in case we are offsetting from a computed discriminant
+                // and not the beginning of discriminants (which is always `0`)
+                Some(did) => {
+                    let kind = ExprKind::NamedConst { def_id: did, substs, user_ty: None };
+                    let lhs =
+                        self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
+                    let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
+                    self.thir.exprs.push(Expr {
+                        temp_lifetime,
+                        ty: discr_ty,
+                        span: span,
+                        kind: bin,
+                    })
+                }
+                None => offset,
+            };
+
+            ExprKind::Cast { source }
+        }
     }
 
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
@@ -604,98 +697,7 @@ impl<'tcx> Cx<'tcx> {
                     expr, cast_ty.hir_id, user_ty,
                 );
 
-                // Check to see if this cast is a "coercion cast", where the cast is actually done
-                // using a coercion (or is a no-op).
-                let cast = if self.typeck_results().is_coercion_cast(source.hir_id) {
-                    // Convert the lexpr to a vexpr.
-                    ExprKind::Use { source: self.mirror_expr(source) }
-                } else if self.typeck_results().expr_ty(source).is_region_ptr() {
-                    // Special cased so that we can type check that the element
-                    // type of the source matches the pointed to type of the
-                    // destination.
-                    ExprKind::Pointer {
-                        source: self.mirror_expr(source),
-                        cast: PointerCast::ArrayToPointer,
-                    }
-                } else {
-                    // check whether this is casting an enum variant discriminant
-                    // to prevent cycles, we refer to the discriminant initializer
-                    // which is always an integer and thus doesn't need to know the
-                    // enum's layout (or its tag type) to compute it during const eval
-                    // Example:
-                    // enum Foo {
-                    //     A,
-                    //     B = A as isize + 4,
-                    // }
-                    // The correct solution would be to add symbolic computations to miri,
-                    // so we wouldn't have to compute and store the actual value
-                    let var = if let hir::ExprKind::Path(ref qpath) = source.kind {
-                        let res = self.typeck_results().qpath_res(qpath, source.hir_id);
-                        self.typeck_results().node_type(source.hir_id).ty_adt_def().and_then(
-                            |adt_def| match res {
-                                Res::Def(
-                                    DefKind::Ctor(CtorOf::Variant, CtorKind::Const),
-                                    variant_ctor_id,
-                                ) => {
-                                    let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
-                                    let (d, o) = adt_def.discriminant_def_for_variant(idx);
-                                    use rustc_middle::ty::util::IntTypeExt;
-                                    let ty = adt_def.repr().discr_type();
-                                    let ty = ty.to_ty(tcx);
-                                    Some((d, o, ty))
-                                }
-                                _ => None,
-                            },
-                        )
-                    } else {
-                        None
-                    };
-
-                    let source = if let Some((did, offset, var_ty)) = var {
-                        let param_env_ty = self.param_env.and(var_ty);
-                        let size = tcx
-                            .layout_of(param_env_ty)
-                            .unwrap_or_else(|e| {
-                                panic!("could not compute layout for {:?}: {:?}", param_env_ty, e)
-                            })
-                            .size;
-                        let lit = ScalarInt::try_from_uint(offset as u128, size).unwrap();
-                        let kind = ExprKind::NonHirLiteral { lit, user_ty: None };
-                        let offset = self.thir.exprs.push(Expr {
-                            temp_lifetime,
-                            ty: var_ty,
-                            span: expr.span,
-                            kind,
-                        });
-                        match did {
-                            Some(did) => {
-                                // in case we are offsetting from a computed discriminant
-                                // and not the beginning of discriminants (which is always `0`)
-                                let substs = InternalSubsts::identity_for_item(tcx, did);
-                                let kind =
-                                    ExprKind::NamedConst { def_id: did, substs, user_ty: None };
-                                let lhs = self.thir.exprs.push(Expr {
-                                    temp_lifetime,
-                                    ty: var_ty,
-                                    span: expr.span,
-                                    kind,
-                                });
-                                let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
-                                self.thir.exprs.push(Expr {
-                                    temp_lifetime,
-                                    ty: var_ty,
-                                    span: expr.span,
-                                    kind: bin,
-                                })
-                            }
-                            None => offset,
-                        }
-                    } else {
-                        self.mirror_expr(source)
-                    };
-
-                    ExprKind::Cast { source: source }
-                };
+                let cast = self.mirror_expr_cast(*source, temp_lifetime, expr.span);
 
                 if let Some(user_ty) = user_ty {
                     // NOTE: Creating a new Expr and wrapping a Cast inside of it may be

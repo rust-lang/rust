@@ -1273,12 +1273,6 @@ pub struct TargetOptions {
     ///   - uses SEH-based unwinding,
     ///   - supports control flow guard mechanism.
     pub is_like_msvc: bool,
-    /// Whether the target toolchain is like Emscripten's. Only useful for compiling with
-    /// Emscripten toolchain.
-    /// Defaults to false.
-    pub is_like_emscripten: bool,
-    /// Whether the target toolchain is like Fuchsia's.
-    pub is_like_fuchsia: bool,
     /// Whether a target toolchain is like WASM.
     pub is_like_wasm: bool,
     /// Version of DWARF to use if not using the default.
@@ -1465,6 +1459,44 @@ pub struct TargetOptions {
     pub supports_stack_protector: bool,
 }
 
+/// Add arguments for the given flavor and also for its "twin" flavors
+/// that have a compatible command line interface.
+fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'static str]) {
+    let mut insert = |flavor| {
+        link_args.entry(flavor).or_default().extend(args.iter().copied().map(Cow::Borrowed))
+    };
+    insert(flavor);
+    match flavor {
+        LinkerFlavor::Ld => insert(LinkerFlavor::Lld(LldFlavor::Ld)),
+        LinkerFlavor::Msvc => insert(LinkerFlavor::Lld(LldFlavor::Link)),
+        LinkerFlavor::Lld(LldFlavor::Wasm) => {}
+        LinkerFlavor::Lld(lld_flavor) => {
+            panic!("add_link_args: use non-LLD flavor for {:?}", lld_flavor)
+        }
+        LinkerFlavor::Gcc
+        | LinkerFlavor::Em
+        | LinkerFlavor::L4Bender
+        | LinkerFlavor::BpfLinker
+        | LinkerFlavor::PtxLinker => {}
+    }
+}
+
+impl TargetOptions {
+    fn link_args(flavor: LinkerFlavor, args: &[&'static str]) -> LinkArgs {
+        let mut link_args = LinkArgs::new();
+        add_link_args(&mut link_args, flavor, args);
+        link_args
+    }
+
+    fn add_pre_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
+        add_link_args(&mut self.pre_link_args, flavor, args);
+    }
+
+    fn add_post_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
+        add_link_args(&mut self.post_link_args, flavor, args);
+    }
+}
+
 impl Default for TargetOptions {
     /// Creates a set of "sane defaults" for any target. This is still
     /// incomplete, and if used for compilation, will certainly not work.
@@ -1505,9 +1537,7 @@ impl Default for TargetOptions {
             is_like_osx: false,
             is_like_solaris: false,
             is_like_windows: false,
-            is_like_emscripten: false,
             is_like_msvc: false,
-            is_like_fuchsia: false,
             is_like_wasm: false,
             dwarf_version: None,
             linker_is_gnu: true,
@@ -2112,8 +2142,6 @@ impl Target {
         key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
-        key!(is_like_emscripten, bool);
-        key!(is_like_fuchsia, bool);
         key!(is_like_wasm, bool);
         key!(dwarf_version, Option<u32>);
         key!(linker_is_gnu, bool);
@@ -2358,8 +2386,6 @@ impl ToJson for Target {
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
         target_option_val!(is_like_msvc);
-        target_option_val!(is_like_emscripten);
-        target_option_val!(is_like_fuchsia);
         target_option_val!(is_like_wasm);
         target_option_val!(dwarf_version);
         target_option_val!(linker_is_gnu);

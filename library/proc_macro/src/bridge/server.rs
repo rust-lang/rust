@@ -38,13 +38,20 @@ macro_rules! declare_server_traits {
             $(associated_fn!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
         })*
 
-        pub trait Server: Types $(+ $name)* {}
-        impl<S: Types $(+ $name)*> Server for S {}
+        pub trait Server: Types $(+ $name)* {
+            fn globals(&mut self) -> ExpnGlobals<Self::Span>;
+        }
     }
 }
 with_api!(Self, self_, declare_server_traits);
 
 pub(super) struct MarkedTypes<S: Types>(S);
+
+impl<S: Server> Server for MarkedTypes<S> {
+    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
+        <_>::mark(Server::globals(&mut self.0))
+    }
+}
 
 macro_rules! define_mark_types_impls {
     ($($name:ident {
@@ -120,7 +127,7 @@ pub trait ExecutionStrategy {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
+        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer;
 }
@@ -132,13 +139,13 @@ impl ExecutionStrategy for SameThread {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
+        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         let mut dispatch = |buf| dispatcher.dispatch(buf);
 
-        run_client(Bridge {
-            cached_buffer: input,
+        run_client(BridgeConfig {
+            input,
             dispatch: (&mut dispatch).into(),
             force_show_panics,
             _marker: marker::PhantomData,
@@ -156,7 +163,7 @@ impl ExecutionStrategy for CrossThread1 {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
+        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         use std::sync::mpsc::channel;
@@ -170,8 +177,8 @@ impl ExecutionStrategy for CrossThread1 {
                 res_rx.recv().unwrap()
             };
 
-            run_client(Bridge {
-                cached_buffer: input,
+            run_client(BridgeConfig {
+                input,
                 dispatch: (&mut dispatch).into(),
                 force_show_panics,
                 _marker: marker::PhantomData,
@@ -193,7 +200,7 @@ impl ExecutionStrategy for CrossThread2 {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
+        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         use std::sync::{Arc, Mutex};
@@ -219,8 +226,8 @@ impl ExecutionStrategy for CrossThread2 {
                 }
             };
 
-            let r = run_client(Bridge {
-                cached_buffer: input,
+            let r = run_client(BridgeConfig {
+                input,
                 dispatch: (&mut dispatch).into(),
                 force_show_panics,
                 _marker: marker::PhantomData,
@@ -258,14 +265,16 @@ fn run_server<
     handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
-    run_client: extern "C" fn(Bridge<'_>) -> Buffer,
+    run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {
     let mut dispatcher =
         Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
 
+    let globals = dispatcher.server.globals();
+
     let mut buf = Buffer::new();
-    input.encode(&mut buf, &mut dispatcher.handle_store);
+    (globals, input).encode(&mut buf, &mut dispatcher.handle_store);
 
     buf = strategy.run_bridge_and_client(&mut dispatcher, buf, run_client, force_show_panics);
 

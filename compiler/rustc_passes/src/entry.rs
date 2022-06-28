@@ -56,7 +56,7 @@ fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> Entry
     if ctxt.tcx.sess.contains_name(attrs, sym::start) {
         EntryPointType::Start
     } else if ctxt.tcx.sess.contains_name(attrs, sym::rustc_main) {
-        EntryPointType::MainAttr
+        EntryPointType::RustcMainAttr
     } else {
         if let Some(name) = ctxt.tcx.opt_item_name(id.def_id.to_def_id())
             && name == sym::main {
@@ -95,7 +95,7 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
         EntryPointType::OtherMain => {
             ctxt.non_main_fns.push(ctxt.tcx.def_span(id.def_id));
         }
-        EntryPointType::MainAttr => {
+        EntryPointType::RustcMainAttr => {
             if ctxt.attr_main_fn.is_none() {
                 ctxt.attr_main_fn = Some((id.def_id, ctxt.tcx.def_span(id.def_id.to_def_id())));
             } else {
@@ -103,13 +103,13 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
                     ctxt.tcx.sess,
                     ctxt.tcx.def_span(id.def_id.to_def_id()),
                     E0137,
-                    "multiple functions with a `#[main]` attribute"
+                    "multiple functions with a `#[rustc_main]` attribute"
                 )
                 .span_label(
                     ctxt.tcx.def_span(id.def_id.to_def_id()),
-                    "additional `#[main]` function",
+                    "additional `#[rustc_main]` function",
                 )
-                .span_label(ctxt.attr_main_fn.unwrap().1, "first `#[main]` function")
+                .span_label(ctxt.attr_main_fn.unwrap().1, "first `#[rustc_main]` function")
                 .emit();
             }
         }

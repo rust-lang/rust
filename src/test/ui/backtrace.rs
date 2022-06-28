@@ -5,6 +5,7 @@
 // ignore-sgx no processes
 // ignore-msvc see #62897 and `backtrace-debuginfo.rs` test
 // compile-flags:-g
+// compile-flags:-Cstrip=none
 
 use std::env;
 use std::process::{Command, Stdio};
@@ -43,6 +44,7 @@ fn expected(fn_name: &str) -> String {
     format!(" backtrace::{}", fn_name)
 }
 
+#[cfg(not(panic = "abort"))]
 fn contains_verbose_expected(s: &str, fn_name: &str) -> bool {
     // HACK(eddyb) work around the fact that verbosely demangled stack traces
     // (from `RUST_BACKTRACE=full`, or, as is the case here, panic-in-panic)

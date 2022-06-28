@@ -22,7 +22,7 @@ use super::format::{self, Buffer};
 use super::render::LinkFromSrc;
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
-pub(crate) struct ContextInfo<'a, 'b, 'c> {
+pub(crate) struct HrefContext<'a, 'b, 'c> {
     pub(crate) context: &'a Context<'b>,
     /// This span contains the current file we're going through.
     pub(crate) file_span: Span,
@@ -44,7 +44,7 @@ pub(crate) fn render_with_highlighting(
     tooltip: Option<(Option<Edition>, &str)>,
     edition: Edition,
     extra_content: Option<Buffer>,
-    context_info: Option<ContextInfo<'_, '_, '_>>,
+    href_context: Option<HrefContext<'_, '_, '_>>,
     decoration_info: Option<DecorationInfo>,
 ) {
     debug!("highlighting: ================\n{}\n==============", src);
@@ -62,7 +62,7 @@ pub(crate) fn render_with_highlighting(
     }
 
     write_header(out, class, extra_content);
-    write_code(out, src, edition, context_info, decoration_info);
+    write_code(out, src, edition, href_context, decoration_info);
     write_footer(out, playground_button);
 }
 
@@ -85,8 +85,8 @@ fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buf
 ///
 /// Some explanations on the last arguments:
 ///
-/// In case we are rendering a code block and not a source code file, `context_info` will be `None`.
-/// To put it more simply: if `context_info` is `None`, the code won't try to generate links to an
+/// In case we are rendering a code block and not a source code file, `href_context` will be `None`.
+/// To put it more simply: if `href_context` is `None`, the code won't try to generate links to an
 /// item definition.
 ///
 /// More explanations about spans and how we use them here are provided in the
@@ -94,22 +94,27 @@ fn write_code(
     out: &mut Buffer,
     src: &str,
     edition: Edition,
-    context_info: Option<ContextInfo<'_, '_, '_>>,
+    href_context: Option<HrefContext<'_, '_, '_>>,
     decoration_info: Option<DecorationInfo>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
+    let mut closing_tags: Vec<&'static str> = Vec::new();
     Classifier::new(
         &src,
         edition,
-        context_info.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
+        href_context.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
         decoration_info,
     )
     .highlight(&mut |highlight| {
         match highlight {
-            Highlight::Token { text, class } => string(out, Escape(text), class, &context_info),
-            Highlight::EnterSpan { class } => enter_span(out, class),
-            Highlight::ExitSpan => exit_span(out),
+            Highlight::Token { text, class } => string(out, Escape(text), class, &href_context),
+            Highlight::EnterSpan { class } => {
+                closing_tags.push(enter_span(out, class, &href_context))
+            }
+            Highlight::ExitSpan => {
+                exit_span(out, closing_tags.pop().expect("ExitSpan without EnterSpan"))
+            }
         };
     });
 }
@@ -129,7 +134,7 @@ enum Class {
     RefKeyWord,
     Self_(Span),
     Op,
-    Macro,
+    Macro(Span),
     MacroNonTerminal,
     String,
     Number,
@@ -153,7 +158,7 @@ impl Class {
             Class::RefKeyWord => "kw-2",
             Class::Self_(_) => "self",
             Class::Op => "op",
-            Class::Macro => "macro",
+            Class::Macro(_) => "macro",
             Class::MacroNonTerminal => "macro-nonterminal",
             Class::String => "string",
             Class::Number => "number",
@@ -171,8 +176,22 @@ impl Class {
     /// a "span" (a tuple representing `(lo, hi)` equivalent of `Span`).
     fn get_span(self) -> Option<Span> {
         match self {
-            Self::Ident(sp) | Self::Self_(sp) => Some(sp),
-            _ => None,
+            Self::Ident(sp) | Self::Self_(sp) | Self::Macro(sp) => Some(sp),
+            Self::Comment
+            | Self::DocComment
+            | Self::Attribute
+            | Self::KeyWord
+            | Self::RefKeyWord
+            | Self::Op
+            | Self::MacroNonTerminal
+            | Self::String
+            | Self::Number
+            | Self::Bool
+            | Self::Lifetime
+            | Self::PreludeTy
+            | Self::PreludeVal
+            | Self::QuestionMark
+            | Self::Decoration(_) => None,
         }
     }
 }
@@ -611,7 +630,7 @@ impl<'a> Classifier<'a> {
             },
             TokenKind::Ident | TokenKind::RawIdent if lookahead == Some(TokenKind::Bang) => {
                 self.in_macro = true;
-                sink(Highlight::EnterSpan { class: Class::Macro });
+                sink(Highlight::EnterSpan { class: Class::Macro(self.new_span(before, text)) });
                 sink(Highlight::Token { text, class: None });
                 return;
             }
@@ -658,13 +677,20 @@ impl<'a> Classifier<'a> {
 
 /// Called when we start processing a span of text that should be highlighted.
 /// The `Class` argument specifies how it should be highlighted.
-fn enter_span(out: &mut Buffer, klass: Class) {
-    write!(out, "<span class=\"{}\">", klass.as_html());
+fn enter_span(
+    out: &mut Buffer,
+    klass: Class,
+    href_context: &Option<HrefContext<'_, '_, '_>>,
+) -> &'static str {
+    string_without_closing_tag(out, "", Some(klass), href_context).expect(
+        "internal error: enter_span was called with Some(klass) but did not return a \
+            closing HTML tag",
+    )
 }
 
 /// Called at the end of a span of highlighted text.
-fn exit_span(out: &mut Buffer) {
-    out.write_str("</span>");
+fn exit_span(out: &mut Buffer, closing_tag: &str) {
+    out.write_str(closing_tag);
 }
 
 /// Called for a span of text. If the text should be highlighted differently
@@ -687,15 +713,39 @@ fn string<T: Display>(
     out: &mut Buffer,
     text: T,
     klass: Option<Class>,
-    context_info: &Option<ContextInfo<'_, '_, '_>>,
+    href_context: &Option<HrefContext<'_, '_, '_>>,
 ) {
+    if let Some(closing_tag) = string_without_closing_tag(out, text, klass, href_context) {
+        out.write_str(closing_tag);
+    }
+}
+
+/// This function writes `text` into `out` with some modifications depending on `klass`:
+///
+/// * If `klass` is `None`, `text` is written into `out` with no modification.
+/// * If `klass` is `Some` but `klass.get_span()` is `None`, it writes the text wrapped in a
+///   `<span>` with the provided `klass`.
+/// * If `klass` is `Some` and has a [`rustc_span::Span`], it then tries to generate a link (`<a>`
+///   element) by retrieving the link information from the `span_correspondance_map` that was filled
+///   in `span_map.rs::collect_spans_and_sources`. If it cannot retrieve the information, then it's
+///   the same as the second point (`klass` is `Some` but doesn't have a [`rustc_span::Span`]).
+fn string_without_closing_tag<T: Display>(
+    out: &mut Buffer,
+    text: T,
+    klass: Option<Class>,
+    href_context: &Option<HrefContext<'_, '_, '_>>,
+) -> Option<&'static str> {
     let Some(klass) = klass
-    else { return write!(out, "{}", text) };
+    else {
+        write!(out, "{}", text);
+        return None;
+    };
     let Some(def_span) = klass.get_span()
     else {
-        write!(out, "<span class=\"{}\">{}</span>", klass.as_html(), text);
-        return;
+        write!(out, "<span class=\"{}\">{}", klass.as_html(), text);
+        return Some("</span>");
     };
+
     let mut text_s = text.to_string();
     if text_s.contains("::") {
         text_s = text_s.split("::").intersperse("::").fold(String::new(), |mut path, t| {
@@ -715,10 +765,10 @@ fn string<T: Display>(
             path
         });
     }
-    if let Some(context_info) = context_info {
+    if let Some(href_context) = href_context {
         if let Some(href) =
-            context_info.context.shared.span_correspondance_map.get(&def_span).and_then(|href| {
-                let context = context_info.context;
+            href_context.context.shared.span_correspondance_map.get(&def_span).and_then(|href| {
+                let context = href_context.context;
                 // FIXME: later on, it'd be nice to provide two links (if possible) for all items:
                 // one to the documentation page and one to the source definition.
                 // FIXME: currently, external items only generate a link to their documentation,
@@ -727,27 +777,28 @@ fn string<T: Display>(
                 match href {
                     LinkFromSrc::Local(span) => context
                         .href_from_span(*span, true)
-                        .map(|s| format!("{}{}", context_info.root_path, s)),
+                        .map(|s| format!("{}{}", href_context.root_path, s)),
                     LinkFromSrc::External(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(context_info.root_path))
+                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
                             .ok()
                             .map(|(url, _, _)| url)
                     }
                     LinkFromSrc::Primitive(prim) => format::href_with_root_path(
                         PrimitiveType::primitive_locations(context.tcx())[prim],
                         context,
-                        Some(context_info.root_path),
+                        Some(href_context.root_path),
                     )
                     .ok()
                     .map(|(url, _, _)| url),
                 }
             })
         {
-            write!(out, "<a class=\"{}\" href=\"{}\">{}</a>", klass.as_html(), href, text_s);
-            return;
+            write!(out, "<a class=\"{}\" href=\"{}\">{}", klass.as_html(), href, text_s);
+            return Some("</a>");
         }
     }
-    write!(out, "<span class=\"{}\">{}</span>", klass.as_html(), text_s);
+    write!(out, "<span class=\"{}\">{}", klass.as_html(), text_s);
+    Some("</span>")
 }
 
 #[cfg(test)]

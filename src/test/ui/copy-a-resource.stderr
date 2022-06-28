@@ -2,7 +2,7 @@ error[E0599]: no method named `clone` found for struct `Foo` in the current scop
   --> $DIR/copy-a-resource.rs:18:16
    |
 LL | struct Foo {
-   | ---------- method `clone` not found for this
+   |        --- method `clone` not found for this struct
 ...
 LL |     let _y = x.clone();
    |                ^^^^^ method not found in `Foo`

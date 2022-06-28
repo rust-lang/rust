@@ -406,7 +406,7 @@ pub enum ObligationCauseCode<'tcx> {
     QuestionMark,
 
     /// Well-formed checking. If a `WellFormedLoc` is provided,
-    /// then it will be used to eprform HIR-based wf checking
+    /// then it will be used to perform HIR-based wf checking
     /// after an error occurs, in order to generate a more precise error span.
     /// This is purely for diagnostic purposes - it is always
     /// correct to use `MiscObligation` instead, or to specify
@@ -863,7 +863,7 @@ pub enum ObjectSafetyViolation {
 
 impl ObjectSafetyViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
-        match *self {
+        match self {
             ObjectSafetyViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
             ObjectSafetyViolation::SupertraitSelf(ref spans) => {
                 if spans.iter().any(|sp| *sp != DUMMY_SP) {
@@ -873,7 +873,7 @@ impl ObjectSafetyViolation {
                         .into()
                 }
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(_, _, _), _) => {
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
                 format!("associated function `{}` has no `self` parameter", name).into()
             }
             ObjectSafetyViolation::Method(
@@ -897,9 +897,11 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, _) => {
                 format!("method `{}` has generic type parameters", name).into()
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver, _) => {
-                format!("method `{}`'s `self` parameter cannot be dispatched on", name).into()
-            }
+            ObjectSafetyViolation::Method(
+                name,
+                MethodViolationCode::UndispatchableReceiver(_),
+                _,
+            ) => format!("method `{}`'s `self` parameter cannot be dispatched on", name).into(),
             ObjectSafetyViolation::AssocConst(name, DUMMY_SP) => {
                 format!("it contains associated `const` `{}`", name).into()
             }
@@ -911,51 +913,40 @@ impl ObjectSafetyViolation {
     }
 
     pub fn solution(&self, err: &mut Diagnostic) {
-        match *self {
+        match self {
             ObjectSafetyViolation::SizedSelf(_) | ObjectSafetyViolation::SupertraitSelf(_) => {}
             ObjectSafetyViolation::Method(
                 name,
-                MethodViolationCode::StaticMethod(sugg, self_span, has_args),
+                MethodViolationCode::StaticMethod(Some((add_self_sugg, make_sized_sugg))),
                 _,
             ) => {
                 err.span_suggestion(
-                    self_span,
-                    &format!(
+                    add_self_sugg.1,
+                    format!(
                         "consider turning `{}` into a method by giving it a `&self` argument",
                         name
                     ),
-                    format!("&self{}", if has_args { ", " } else { "" }),
+                    add_self_sugg.0.to_string(),
                     Applicability::MaybeIncorrect,
                 );
-                match sugg {
-                    Some((sugg, span)) => {
-                        err.span_suggestion(
-                            span,
-                            &format!(
-                                "alternatively, consider constraining `{}` so it does not apply to \
-                                 trait objects",
-                                name
-                            ),
-                            sugg,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                    None => {
-                        err.help(&format!(
-                            "consider turning `{}` into a method by giving it a `&self` \
-                             argument or constraining it so it does not apply to trait objects",
-                            name
-                        ));
-                    }
-                }
+                err.span_suggestion(
+                    make_sized_sugg.1,
+                    format!(
+                        "alternatively, consider constraining `{}` so it does not apply to \
+                             trait objects",
+                        name
+                    ),
+                    make_sized_sugg.0.to_string(),
+                    Applicability::MaybeIncorrect,
+                );
             }
             ObjectSafetyViolation::Method(
                 name,
-                MethodViolationCode::UndispatchableReceiver,
-                span,
+                MethodViolationCode::UndispatchableReceiver(Some(span)),
+                _,
             ) => {
                 err.span_suggestion(
-                    span,
+                    *span,
                     &format!(
                         "consider changing method `{}`'s `self` parameter to be `&self`",
                         name
@@ -991,13 +982,13 @@ impl ObjectSafetyViolation {
 }
 
 /// Reasons a method might not be object-safe.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
 pub enum MethodViolationCode {
     /// e.g., `fn foo()`
-    StaticMethod(Option<(&'static str, Span)>, Span, bool /* has args */),
+    StaticMethod(Option<(/* add &self */ (String, Span), /* add Self: Sized */ (String, Span))>),
 
     /// e.g., `fn foo(&self, x: Self)`
-    ReferencesSelfInput(usize),
+    ReferencesSelfInput(Option<Span>),
 
     /// e.g., `fn foo(&self) -> Self`
     ReferencesSelfOutput,
@@ -1009,7 +1000,7 @@ pub enum MethodViolationCode {
     Generic,
 
     /// the method's receiver (`self` argument) can't be dispatched on
-    UndispatchableReceiver,
+    UndispatchableReceiver(Option<Span>),
 }
 
 /// These are the error cases for `codegen_fulfill_obligation`.

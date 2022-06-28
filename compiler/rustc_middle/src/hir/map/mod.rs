@@ -612,23 +612,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// A parallel version of `visit_all_item_likes`.
-    pub fn par_visit_all_item_likes<V>(self, visitor: &V)
-    where
-        V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
-    {
-        let krate = self.krate();
-        par_for_each_in(&krate.owners.raw, |owner| match owner.map(OwnerInfo::node) {
-            MaybeOwner::Owner(OwnerNode::Item(item)) => visitor.visit_item(item),
-            MaybeOwner::Owner(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
-            MaybeOwner::Owner(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
-            MaybeOwner::Owner(OwnerNode::TraitItem(item)) => visitor.visit_trait_item(item),
-            MaybeOwner::Owner(OwnerNode::Crate(_))
-            | MaybeOwner::NonOwner(_)
-            | MaybeOwner::Phantom => {}
-        })
-    }
-
     /// If you don't care about nesting, you should use the
     /// `tcx.hir_module_items()` query or `module_items()` instead.
     /// Please see notes in `deep_visit_all_item_likes`.
@@ -865,6 +848,10 @@ impl<'hir> Map<'hir> {
             "expected foreign mod or inlined parent, found {}",
             self.node_to_string(HirId::make_owner(parent))
         )
+    }
+
+    pub fn expect_owner(self, id: LocalDefId) -> OwnerNode<'hir> {
+        self.tcx.hir_owner(id).unwrap_or_else(|| bug!("expected owner for {:?}", id)).node
     }
 
     pub fn expect_item(self, id: LocalDefId) -> &'hir Item<'hir> {

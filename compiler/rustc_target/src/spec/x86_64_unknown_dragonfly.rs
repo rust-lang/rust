@@ -4,7 +4,7 @@ pub fn target() -> Target {
     let mut base = super::dragonfly_base::opts();
     base.cpu = "x86-64".into();
     base.max_atomic_width = Some(64);
-    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".into());
+    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64"]);
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;
 

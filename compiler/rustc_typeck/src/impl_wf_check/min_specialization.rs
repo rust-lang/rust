@@ -79,19 +79,19 @@ use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::{self, translate_substs, wf};
 
-pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: DefId, span: Span) {
+pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
     if let Some(node) = parent_specialization_node(tcx, impl_def_id) {
         tcx.infer_ctxt().enter(|infcx| {
-            check_always_applicable(&infcx, impl_def_id, node, span);
+            check_always_applicable(&infcx, impl_def_id, node);
         });
     }
 }
 
-fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: DefId) -> Option<Node> {
+fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId) -> Option<Node> {
     let trait_ref = tcx.impl_trait_ref(impl1_def_id)?;
     let trait_def = tcx.trait_def(trait_ref.def_id);
 
-    let impl2_node = trait_def.ancestors(tcx, impl1_def_id).ok()?.nth(1)?;
+    let impl2_node = trait_def.ancestors(tcx, impl1_def_id.to_def_id()).ok()?.nth(1)?;
 
     let always_applicable_trait =
         matches!(trait_def.specialization_kind, TraitSpecializationKind::AlwaysApplicable);
@@ -103,15 +103,8 @@ fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: DefId) -> Option<No
 }
 
 /// Check that `impl1` is a sound specialization
-fn check_always_applicable(
-    infcx: &InferCtxt<'_, '_>,
-    impl1_def_id: DefId,
-    impl2_node: Node,
-    span: Span,
-) {
-    if let Some((impl1_substs, impl2_substs)) =
-        get_impl_substs(infcx, impl1_def_id, impl2_node, span)
-    {
+fn check_always_applicable(infcx: &InferCtxt<'_, '_>, impl1_def_id: LocalDefId, impl2_node: Node) {
+    if let Some((impl1_substs, impl2_substs)) = get_impl_substs(infcx, impl1_def_id, impl2_node) {
         let impl2_def_id = impl2_node.def_id();
         debug!(
             "check_always_applicable(\nimpl1_def_id={:?},\nimpl2_def_id={:?},\nimpl2_substs={:?}\n)",
@@ -126,17 +119,10 @@ fn check_always_applicable(
             unconstrained_parent_impl_substs(tcx, impl2_def_id, impl2_substs)
         };
 
+        let span = tcx.def_span(impl1_def_id);
         check_static_lifetimes(tcx, &parent_substs, span);
         check_duplicate_params(tcx, impl1_substs, &parent_substs, span);
-
-        check_predicates(
-            infcx,
-            impl1_def_id.expect_local(),
-            impl1_substs,
-            impl2_node,
-            impl2_substs,
-            span,
-        );
+        check_predicates(infcx, impl1_def_id, impl1_substs, impl2_node, impl2_substs, span);
     }
 }
 
@@ -152,20 +138,21 @@ fn check_always_applicable(
 /// Would return `S1 = [C]` and `S2 = [Vec<C>, C]`.
 fn get_impl_substs<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
-    impl1_def_id: DefId,
+    impl1_def_id: LocalDefId,
     impl2_node: Node,
-    span: Span,
 ) -> Option<(SubstsRef<'tcx>, SubstsRef<'tcx>)> {
     let tcx = infcx.tcx;
     let param_env = tcx.param_env(impl1_def_id);
 
-    let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id);
-    let impl2_substs = translate_substs(infcx, param_env, impl1_def_id, impl1_substs, impl2_node);
+    let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
+    let impl2_substs =
+        translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
 
     // Conservatively use an empty `ParamEnv`.
     let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
-    infcx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env);
+    infcx.resolve_regions_and_report_errors(impl1_def_id.to_def_id(), &outlives_env);
     let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
+        let span = tcx.def_span(impl1_def_id);
         tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
         return None;
     };

@@ -8,6 +8,7 @@
 
 // compile-flags:-g -Copt-level=0 -Cllvm-args=-enable-tail-merge=0
 // compile-flags:-Cforce-frame-pointers=yes
+// compile-flags:-Cstrip=none
 // ignore-pretty issue #37195
 // ignore-emscripten spawning processes is not supported
 // ignore-sgx no processes

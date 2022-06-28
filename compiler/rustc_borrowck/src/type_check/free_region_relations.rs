@@ -61,7 +61,7 @@ pub(crate) struct CreateResult<'tcx> {
 pub(crate) fn create<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    implicit_region_bound: Option<ty::Region<'tcx>>,
+    implicit_region_bound: ty::Region<'tcx>,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
 ) -> CreateResult<'tcx> {
@@ -223,7 +223,7 @@ struct UniversalRegionRelationsBuilder<'this, 'tcx> {
     infcx: &'this InferCtxt<'this, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     universal_regions: Rc<UniversalRegions<'tcx>>,
-    implicit_region_bound: Option<ty::Region<'tcx>>,
+    implicit_region_bound: ty::Region<'tcx>,
     constraints: &'this mut MirTypeckRegionConstraints<'tcx>,
 
     // outputs:

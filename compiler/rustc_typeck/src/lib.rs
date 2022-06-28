@@ -509,11 +509,21 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     }
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("impl_wf_inference", || impl_wf_check::impl_wf_check(tcx));
+        tcx.sess.time("impl_wf_inference", || {
+            tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module))
+        });
     })?;
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("coherence_checking", || coherence::check_coherence(tcx));
+        tcx.sess.time("coherence_checking", || {
+            for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
+                tcx.ensure().coherent_trait(trait_def_id);
+            }
+
+            // these queries are executed for side-effects (error reporting):
+            tcx.ensure().crate_inherent_impls(());
+            tcx.ensure().crate_inherent_impls_overlap_check(());
+        });
     })?;
 
     if tcx.features().rustc_attrs {
@@ -523,7 +533,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     }
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("wf_checking", || check::check_wf_new(tcx));
+        tcx.sess.time("wf_checking", || {
+            tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
+        });
     })?;
 
     // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.

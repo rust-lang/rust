@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::windows_msvc_base::opts();
@@ -9,12 +9,7 @@ pub fn target() -> Target {
     // should be smart enough to insert branch islands only
     // where necessary, but this is not the observed behavior.
     // Disabling the LBR optimization works around the issue.
-    let pre_link_args_msvc = "/OPT:NOLBR";
-    base.pre_link_args.entry(LinkerFlavor::Msvc).or_default().push(pre_link_args_msvc.into());
-    base.pre_link_args
-        .entry(LinkerFlavor::Lld(LldFlavor::Link))
-        .or_default()
-        .push(pre_link_args_msvc.into());
+    base.add_pre_link_args(LinkerFlavor::Msvc, &["/OPT:NOLBR"]);
 
     Target {
         llvm_target: "thumbv7a-pc-windows-msvc".into(),

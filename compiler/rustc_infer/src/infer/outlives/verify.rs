@@ -1,4 +1,5 @@
 use crate::infer::outlives::env::RegionBoundPairs;
+use crate::infer::region_constraints::VerifyIfEq;
 use crate::infer::{GenericKind, VerifyBound};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::sso::SsoHashSet;
@@ -15,6 +16,11 @@ use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
 pub struct VerifyBoundCx<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
+    /// During borrowck, if there are no outlives bounds on a generic
+    /// parameter `T`, we assume that `T: 'in_fn_body` holds.
+    ///
+    /// Outside of borrowck the only way to prove `T: '?0` is by
+    /// setting  `'?0` to `'empty`.
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
 }
@@ -82,27 +88,39 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         debug!("param_bound(param_ty={:?})", param_ty);
 
         // Start with anything like `T: 'a` we can scrape from the
-        // environment
-        let param_bounds = self
-            .declared_generic_bounds_from_env(GenericKind::Param(param_ty))
-            .into_iter()
-            .map(|outlives| outlives.1);
+        // environment. If the environment contains something like
+        // `for<'a> T: 'a`, then we know that `T` outlives everything.
+        let declared_bounds_from_env = self.declared_generic_bounds_from_env(param_ty);
+        let mut param_bounds = vec![];
+        for declared_bound in declared_bounds_from_env {
+            let bound_region = declared_bound.map_bound(|outlives| outlives.1);
+            if let Some(region) = bound_region.no_bound_vars() {
+                // This is `T: 'a` for some free region `'a`.
+                param_bounds.push(VerifyBound::OutlivedBy(region));
+            } else {
+                // This is `for<'a> T: 'a`. This means that `T` outlives everything! All done here.
+                return VerifyBound::AllBounds(vec![]);
+            }
+        }
 
         // Add in the default bound of fn body that applies to all in
         // scope type parameters:
-        let param_bounds = param_bounds.chain(self.implicit_region_bound);
+        if let Some(r) = self.implicit_region_bound {
+            param_bounds.push(VerifyBound::OutlivedBy(r));
+        }
 
-        let any_bounds: Vec<_> = param_bounds.map(|r| VerifyBound::OutlivedBy(r)).collect();
-
-        if any_bounds.is_empty() {
+        if param_bounds.is_empty() {
             // We know that all types `T` outlive `'empty`, so if we
             // can find no other bound, then check that the region
             // being tested is `'empty`.
             VerifyBound::IsEmpty
+        } else if param_bounds.len() == 1 {
+            // Micro-opt: no need to store the vector if it's just len 1
+            param_bounds.pop().unwrap()
         } else {
             // If we can find any other bound `R` such that `T: R`, then
             // we don't need to check for `'empty`, because `R: 'empty`.
-            VerifyBound::AnyBound(any_bounds)
+            VerifyBound::AnyBound(param_bounds)
         }
     }
 
@@ -122,17 +140,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     pub fn projection_approx_declared_bounds_from_env(
         &self,
         projection_ty: ty::ProjectionTy<'tcx>,
-    ) -> Vec<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
+    ) -> Vec<ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>> {
         let projection_ty = GenericKind::Projection(projection_ty).to_ty(self.tcx);
         let erased_projection_ty = self.tcx.erase_regions(projection_ty);
-        self.declared_generic_bounds_from_env_with_compare_fn(|ty| {
-            if let ty::Projection(..) = ty.kind() {
-                let erased_ty = self.tcx.erase_regions(ty);
-                erased_ty == erased_projection_ty
-            } else {
-                false
-            }
-        })
+        self.declared_generic_bounds_from_env_for_erased_ty(erased_projection_ty)
     }
 
     /// Searches the where-clauses in scope for regions that
@@ -159,15 +170,15 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let env_bounds = self
             .projection_approx_declared_bounds_from_env(projection_ty)
             .into_iter()
-            .map(|ty::OutlivesPredicate(ty, r)| {
-                let vb = VerifyBound::OutlivedBy(r);
-                if ty == projection_ty_as_ty {
+            .map(|binder| {
+                if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars() && ty == projection_ty_as_ty {
                     // Micro-optimize if this is an exact match (this
                     // occurs often when there are no region variables
                     // involved).
-                    vb
+                    VerifyBound::OutlivedBy(r)
                 } else {
-                    VerifyBound::IfEq(ty, Box::new(vb))
+                    let verify_if_eq_b = binder.map_bound(|ty::OutlivesPredicate(ty, bound)| VerifyIfEq { ty, bound });
+                    VerifyBound::IfEq(verify_if_eq_b)
                 }
             });
 
@@ -219,26 +230,34 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// bounds, but all the bounds it returns can be relied upon.
     fn declared_generic_bounds_from_env(
         &self,
-        generic: GenericKind<'tcx>,
-    ) -> Vec<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
-        let generic_ty = generic.to_ty(self.tcx);
-        self.declared_generic_bounds_from_env_with_compare_fn(|ty| ty == generic_ty)
+        param_ty: ty::ParamTy,
+    ) -> Vec<ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>> {
+        let generic_ty = param_ty.to_ty(self.tcx);
+        self.declared_generic_bounds_from_env_for_erased_ty(generic_ty)
     }
 
-    fn declared_generic_bounds_from_env_with_compare_fn(
+    /// Searches the environment to find all bounds that apply to `erased_ty`.
+    /// Obviously these must be approximate -- they are in fact both *over* and
+    /// and *under* approximated:
+    ///
+    /// * Over-approximated because we erase regions, so
+    /// * Under-approximated because we look for syntactic equality and so for complex types
+    ///   like `<T as Foo<fn(&u32, &u32)>>::Item` or whatever we may fail to figure out
+    ///   all the subtleties.
+    ///
+    /// In some cases, such as when `erased_ty` represents a `ty::Param`, however,
+    /// the result is precise.
+    fn declared_generic_bounds_from_env_for_erased_ty(
         &self,
-        compare_ty: impl Fn(Ty<'tcx>) -> bool,
-    ) -> Vec<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
+        erased_ty: Ty<'tcx>,
+    ) -> Vec<ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>> {
         let tcx = self.tcx;
 
         // To start, collect bounds from user environment. Note that
         // parameter environments are already elaborated, so we don't
-        // have to worry about that. Comparing using `==` is a bit
-        // dubious for projections, but it will work for simple cases
-        // like `T` and `T::Item`. It may not work as well for things
-        // like `<T as Foo<'a>>::Item`.
+        // have to worry about that.
         let c_b = self.param_env.caller_bounds();
-        let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b.into_iter());
+        let param_bounds = self.collect_outlives_from_predicate_list(erased_ty, c_b.into_iter());
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -249,22 +268,24 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         //     fn foo<'a, A>(x: &'a A) { x.bar() }
         //
         // The problem is that the type of `x` is `&'a A`. To be
-        // well-formed, then, A must be lower-generic by `'a`, but we
-        // don't know that this holds from first principles.
+        // well-formed, then, A must outlive `'a`, but we don't know that
+        // this holds from first principles.
         let from_region_bound_pairs = self.region_bound_pairs.iter().filter_map(|&(r, p)| {
             debug!(
-                "declared_generic_bounds_from_env_with_compare_fn: region_bound_pair = {:?}",
+                "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
                 (r, p)
             );
             let p_ty = p.to_ty(tcx);
-            compare_ty(p_ty).then_some(ty::OutlivesPredicate(p_ty, r))
+            let erased_p_ty = self.tcx.erase_regions(p_ty);
+            (erased_p_ty == erased_ty)
+                .then_some(ty::Binder::dummy(ty::OutlivesPredicate(p.to_ty(tcx), r)))
         });
 
         param_bounds
             .chain(from_region_bound_pairs)
             .inspect(|bound| {
                 debug!(
-                    "declared_generic_bounds_from_env_with_compare_fn: result predicate = {:?}",
+                    "declared_generic_bounds_from_env_for_erased_ty: result predicate = {:?}",
                     bound
                 )
             })
@@ -344,12 +365,19 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// otherwise want a precise match.
     fn collect_outlives_from_predicate_list(
         &self,
-        compare_ty: impl Fn(Ty<'tcx>) -> bool,
+        erased_ty: Ty<'tcx>,
         predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
-    ) -> impl Iterator<Item = ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
-        predicates
-            .filter_map(|p| p.to_opt_type_outlives())
-            .filter_map(|p| p.no_bound_vars())
-            .filter(move |p| compare_ty(p.0))
+    ) -> impl Iterator<Item = ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>>
+    {
+        let tcx = self.tcx;
+        let param_env = self.param_env;
+        predicates.filter_map(|p| p.to_opt_type_outlives()).filter(move |outlives_predicate| {
+            super::test_type_match::can_match_erased_ty(
+                tcx,
+                param_env,
+                *outlives_predicate,
+                erased_ty,
+            )
+        })
     }
 }

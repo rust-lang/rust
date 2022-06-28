@@ -10,7 +10,7 @@ pub fn target() -> Target {
     base.features =
         "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float".into();
     base.code_model = Some(CodeModel::Kernel);
-    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".into());
+    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64"]);
 
     Target {
         // FIXME: Some dispute, the linux-on-clang folks think this should use

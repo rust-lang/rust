@@ -6,7 +6,7 @@ LL | trait B { fn foo(self: Box<Self>); }
    |              |
    |              the method is available for `Box<A>` here
 LL | struct A;
-   | --------- method `foo` not found for this
+   |        - method `foo` not found for this struct
 ...
 LL |     A.foo()
    |       ^^^ method not found in `A`

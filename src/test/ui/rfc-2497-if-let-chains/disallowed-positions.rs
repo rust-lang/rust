@@ -81,9 +81,11 @@ fn _macros() {
     use_expr!((let 0 = 1 && 0 == 0));
     //~^ ERROR `let` expressions are not supported here
     //~| ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
     use_expr!((let 0 = 1));
     //~^ ERROR `let` expressions are not supported here
     //~| ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
 }
 
 fn nested_within_if_expr() {
@@ -147,7 +149,8 @@ fn nested_within_if_expr() {
     //~| ERROR mismatched types
     //~| ERROR mismatched types
 
-    if let true = let true = true {} //~ ERROR `let` expressions are not supported here
+    if let true = let true = true {}
+    //~^ ERROR `let` expressions are not supported here
 }
 
 fn nested_within_while_expr() {
@@ -211,7 +214,8 @@ fn nested_within_while_expr() {
     //~| ERROR mismatched types
     //~| ERROR mismatched types
 
-    while let true = let true = true {} //~ ERROR `let` expressions are not supported here
+    while let true = let true = true {}
+    //~^ ERROR `let` expressions are not supported here
 }
 
 fn not_error_because_clarified_intent() {
@@ -225,45 +229,85 @@ fn not_error_because_clarified_intent() {
 }
 
 fn outside_if_and_while_expr() {
-    &let 0 = 0; //~ ERROR `let` expressions are not supported here
+    &let 0 = 0;
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
 
-    !let 0 = 0; //~ ERROR `let` expressions are not supported here
-    *let 0 = 0; //~ ERROR `let` expressions are not supported here
-    //~^ ERROR type `bool` cannot be dereferenced
-    -let 0 = 0; //~ ERROR `let` expressions are not supported here
-    //~^ ERROR cannot apply unary operator `-` to type `bool`
+    !let 0 = 0;
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
+    *let 0 = 0;
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR type `bool` cannot be dereferenced
+    //~| ERROR expected expression, found `let` statement
+    -let 0 = 0;
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR cannot apply unary operator `-` to type `bool`
+    //~| ERROR expected expression, found `let` statement
 
     fn _check_try_binds_tighter() -> Result<(), ()> {
         let 0 = 0?;
         //~^ ERROR the `?` operator can only be applied to values that implement `Try`
         Ok(())
     }
-    (let 0 = 0)?; //~ ERROR `let` expressions are not supported here
-    //~^ ERROR the `?` operator can only be used in a function that returns `Result`
+    (let 0 = 0)?;
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR the `?` operator can only be used in a function that returns `Result`
     //~| ERROR the `?` operator can only be applied to values that implement `Try`
+    //~| ERROR expected expression, found `let` statement
 
-    true || let 0 = 0; //~ ERROR `let` expressions are not supported here
-    (true || let 0 = 0); //~ ERROR `let` expressions are not supported here
-    true && (true || let 0 = 0); //~ ERROR `let` expressions are not supported here
+    true || let 0 = 0;
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
+    (true || let 0 = 0);
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
+    true && (true || let 0 = 0);
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
 
     let mut x = true;
-    x = let 0 = 0; //~ ERROR `let` expressions are not supported here
+    x = let 0 = 0;
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
 
-    true..(let 0 = 0); //~ ERROR `let` expressions are not supported here
-    ..(let 0 = 0); //~ ERROR `let` expressions are not supported here
-    (let 0 = 0)..; //~ ERROR `let` expressions are not supported here
+    true..(let 0 = 0);
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
+    ..(let 0 = 0);
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
+    (let 0 = 0)..;
+    //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
 
     (let Range { start: _, end: _ } = true..true || false);
     //~^ ERROR `let` expressions are not supported here
     //~| ERROR mismatched types
+    //~| ERROR expected expression, found `let` statement
 
     (let true = let true = true);
     //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
+    //~| ERROR expected expression, found `let` statement
+
+    {
+        #[cfg(FALSE)]
+        let x = true && let y = 1;
+        //~^ ERROR expected expression, found `let` statement
+    }
+
+    #[cfg(FALSE)]
+    {
+        [1, 2, 3][let _ = ()]
+        //~^ ERROR expected expression, found `let` statement
+    }
 
     // Check function tail position.
     &let 0 = 0
     //~^ ERROR `let` expressions are not supported here
     //~| ERROR mismatched types
+    //~| ERROR expected expression, found `let` statement
 }
 
 // Let's make sure that `let` inside const generic arguments are considered.
@@ -334,5 +378,15 @@ fn with_parenthesis() {
 
     let fun = || true;
     if let true = (true && fun()) && (true) {
+    }
+
+    #[cfg(FALSE)]
+    let x = (true && let y = 1);
+    //~^ ERROR expected expression, found `let` statement
+
+    #[cfg(FALSE)]
+    {
+        ([1, 2, 3][let _ = ()])
+        //~^ ERROR expected expression, found `let` statement
     }
 }

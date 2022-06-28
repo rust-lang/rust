@@ -1,23 +1,20 @@
-use crate::spec::{
-    crt_objects, cvs, LinkArgs, LinkOutputKind, LinkerFlavor, LldFlavor, TargetOptions,
-};
+use crate::spec::{crt_objects, cvs, LinkOutputKind, LinkerFlavor, LldFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let mut pre_link_args = LinkArgs::new();
-    pre_link_args.insert(
-        LinkerFlavor::Lld(LldFlavor::Ld),
-        vec![
-            "--build-id".into(),
-            "--hash-style=gnu".into(),
-            "-z".into(),
-            "max-page-size=4096".into(),
-            "-z".into(),
-            "now".into(),
-            "-z".into(),
-            "rodynamic".into(),
-            "-z".into(),
-            "separate-loadable-segments".into(),
-            "--pack-dyn-relocs=relr".into(),
+    let pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Ld,
+        &[
+            "--build-id",
+            "--hash-style=gnu",
+            "-z",
+            "max-page-size=4096",
+            "-z",
+            "now",
+            "-z",
+            "rodynamic",
+            "-z",
+            "separate-loadable-segments",
+            "--pack-dyn-relocs=relr",
         ],
     );
 
@@ -28,7 +25,6 @@ pub fn opts() -> TargetOptions {
         dynamic_linking: true,
         executables: true,
         families: cvs!["unix"],
-        is_like_fuchsia: true,
         pre_link_args,
         pre_link_objects: crt_objects::new(&[
             (LinkOutputKind::DynamicNoPicExe, &["Scrt1.o"]),

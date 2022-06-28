@@ -1,28 +1,17 @@
-use crate::spec::{cvs, LinkArgs, LinkerFlavor, TargetOptions};
+use crate::spec::{cvs, LinkerFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let pre_link_args = LinkArgs::from([(
+    // We cannot use `-nodefaultlibs` because compiler-rt has to be passed
+    // as a path since it's not added to linker search path by the default.
+    // There were attemts to make it behave like libgcc (so one can just use -l<name>)
+    // but LLVM maintainers rejected it: https://reviews.llvm.org/D51440
+    let pre_link_args =
+        TargetOptions::link_args(LinkerFlavor::Gcc, &["-nolibc", "--unwindlib=none"]);
+    // Order of `late_link_args*` does not matter with LLD.
+    let late_link_args = TargetOptions::link_args(
         LinkerFlavor::Gcc,
-        vec![
-            // We cannot use `-nodefaultlibs` because compiler-rt has to be passed
-            // as a path since it's not added to linker search path by the default.
-            // There were attemts to make it behave like libgcc (so one can just use -l<name>)
-            // but LLVM maintainers rejected it: https://reviews.llvm.org/D51440
-            "-nolibc".into(),
-            "--unwindlib=none".into(),
-        ],
-    )]);
-    let late_link_args = LinkArgs::from([(
-        LinkerFlavor::Gcc,
-        // Order of `late_link_args*` does not matter with LLD.
-        vec![
-            "-lmingw32".into(),
-            "-lmingwex".into(),
-            "-lmsvcrt".into(),
-            "-lkernel32".into(),
-            "-luser32".into(),
-        ],
-    )]);
+        &["-lmingw32", "-lmingwex", "-lmsvcrt", "-lkernel32", "-luser32"],
+    );
 
     TargetOptions {
         os: "windows".into(),

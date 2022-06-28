@@ -1,14 +1,21 @@
 [relabel]
 allow-unauthenticated = [
-    "C-*", "A-*", "E-*", "NLL-*", "O-*", "S-*", "T-*", "WG-*", "F-*",
+    "A-*",
+    "C-*",
     "D-*",
+    "E-*",
+    "F-*",
+    "I-*",
+    "NLL-*",
+    "O-*",
+    "S-*",
+    "T-*",
+    "WG-*",
     "needs-fcp",
     "relnotes",
     "requires-nightly",
     "regression-*",
     "perf-*",
-    # I-* without I-*nominated
-    "I-*", "!I-*nominated",
     "AsyncAwait-OnDeck",
 ]
 
@@ -208,3 +215,108 @@ changelog-path = "RELEASES.md"
 changelog-branch = "master"
 
 [shortcut]
+
+
+[mentions."compiler/rustc_apfloat"]
+message = """
+Changes rustc_apfloat. rustc_apfloat is currently in limbo and you almost
+certainly don't want to change it (see #55993).
+"""
+cc = ["@eddyb"]
+
+[mentions."compiler/rustc_codegen_cranelift"]
+cc = ["@bjorn3"]
+
+[mentions."compiler/rustc_codegen_gcc"]
+cc = ["@antoyo"]
+
+[mentions."compiler/rustc_const_eval/src/interpret"]
+message = "Some changes occurred to the CTFE / Miri engine"
+cc = ["@rust-lang/miri"]
+
+[mentions."compiler/rustc_infer/src/infer/error_reporting/need_type_info.rs"]
+message = "Some changes occurred in need_type_info.rs"
+cc = ["@lcnr"]
+
+[mentions."compiler/rustc_middle/src/mir/interpret"]
+message = "Some changes occurred to the CTFE / Miri engine"
+cc = ["@rust-lang/miri"]
+
+[mentions."compiler/rustc_mir_transform/src/"]
+message = "Some changes occurred to MIR optimizations"
+cc = ["@rust-lang/mir-opt"]
+
+[mentions."compiler/rustc_trait_selection/src/traits/const_evaluatable.rs"]
+message = "Some changes occurred in const_evaluatable.rs"
+cc = ["@lcnr"]
+
+[mentions."compiler/rustc_error_codes/src/error_codes.rs"]
+message = "Some changes occurred in diagnostic error codes"
+cc = ["@GuillaumeGomez"]
+
+[mentions."library"]
+message = """
+Hey! It looks like you've submitted a new PR for the library teams!
+
+If this PR contains changes to any `rust-lang/rust` public library APIs then
+please comment with `@rustbot label +T-libs-api -T-libs` to tag it
+appropriately. If this PR contains changes to any unstable APIs please edit
+the PR description to add a link to the relevant [API Change
+Proposal](https://std-dev-guide.rust-lang.org/feature-lifecycle/api-change-proposals.html)
+or [create one](https://github.com/rust-lang/libs-team/issues/new?assignees=&labels=api-change-proposal%2C+T-libs-api&template=api-change-proposal.md&title=%28My+API+Change+Proposal%29)
+if you haven't already. If you're unsure where your change falls no worries,
+just leave it as is and the reviewer will take a look and make a decision to
+forward on if necessary.
+
+Examples of `T-libs-api` changes:
+
+* Stabilizing library features
+* Introducing insta-stable changes such as new implementations of existing
+  stable traits on existing stable types
+* Introducing new or changing existing unstable library APIs (excluding
+  permanently unstable features / features without a tracking issue)
+* Changing public documentation in ways that create new stability guarantees
+* Changing observable runtime behavior of library APIs
+"""
+
+[mentions."src/librustdoc/clean/types.rs"]
+cc = ["@camelid"]
+
+[mentions."src/librustdoc/html/static"]
+message = "Some changes occurred in HTML/CSS/JS."
+cc = [
+    "@GuillaumeGomez",
+    "@Folyd",
+    "@jsha",
+]
+
+[mentions."src/librustdoc/html/static/css/themes"]
+message = "Some changes occurred in HTML/CSS themes."
+cc = ["@GuillaumeGomez"]
+
+[mentions."src/librustdoc/html/static/css/themes/ayu.css"]
+message = "A change occurred in the Ayu theme."
+cc = ["@Cldfire"]
+
+[mentions."src/rustdoc-json-types"]
+message = """
+rustdoc-json-types is a **public** (although nightly-only) API.
+If possible, consider changing `src/librustdoc/json/conversions.rs`;
+otherwise, make sure you bump the `FORMAT_VERSION` constant.
+"""
+cc = [
+    "@CraftSpider",
+    "@aDotInTheVoid",
+]
+
+[mentions."src/tools/cargo"]
+cc = ["@ehuss"]
+
+[mentions."src/tools/clippy"]
+cc = ["@rust-lang/clippy"]
+
+[mentions."src/tools/miri"]
+cc = ["@rust-lang/miri"]
+
+[mentions."src/tools/rustfmt"]
+cc = ["@rust-lang/rustfmt"]

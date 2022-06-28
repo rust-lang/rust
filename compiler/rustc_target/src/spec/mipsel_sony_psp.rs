@@ -1,13 +1,11 @@
 use crate::spec::{cvs, Target, TargetOptions};
-use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, RelocModel};
+use crate::spec::{LinkerFlavor, LldFlavor, RelocModel};
 
 // The PSP has custom linker requirements.
 const LINKER_SCRIPT: &str = include_str!("./mipsel_sony_psp_linker_script.ld");
 
 pub fn target() -> Target {
-    let mut pre_link_args = LinkArgs::new();
-    pre_link_args
-        .insert(LinkerFlavor::Lld(LldFlavor::Ld), vec!["--emit-relocs".into(), "--nmagic".into()]);
+    let pre_link_args = TargetOptions::link_args(LinkerFlavor::Ld, &["--emit-relocs", "--nmagic"]);
 
     Target {
         llvm_target: "mipsel-sony-psp".into(),

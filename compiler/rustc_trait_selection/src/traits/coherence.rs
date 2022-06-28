@@ -407,11 +407,7 @@ fn resolve_negative_obligation<'cx, 'tcx>(
     // function bodies with closures).
     outlives_env.save_implied_bounds(CRATE_HIR_ID);
 
-    infcx.process_registered_region_obligations(
-        outlives_env.region_bound_pairs_map(),
-        Some(tcx.lifetimes.re_root_empty),
-        param_env,
-    );
+    infcx.process_registered_region_obligations(outlives_env.region_bound_pairs_map(), param_env);
 
     let errors = infcx.resolve_regions(region_context, &outlives_env);
 

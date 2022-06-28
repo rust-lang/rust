@@ -743,7 +743,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
 
-    def build_bootstrap(self):
+    def build_bootstrap(self, color):
         """Build bootstrap"""
         print("Building rustbuild")
         build_dir = os.path.join(self.build_dir, "bootstrap")
@@ -800,6 +800,11 @@ class RustBuild(object):
         if self.get_toml("metrics", "build"):
             args.append("--features")
             args.append("build-metrics")
+        if color == "always":
+            args.append("--color=always")
+        elif color == "never":
+            args.append("--color=never")
+
         run(args, env=env, verbose=self.verbose)
 
     def build_triple(self):
@@ -813,110 +818,6 @@ class RustBuild(object):
             return config
         return default_build_triple(self.verbose)
 
-    def check_submodule(self, module):
-        checked_out = subprocess.Popen(["git", "rev-parse", "HEAD"],
-                                        cwd=os.path.join(self.rust_root, module),
-                                        stdout=subprocess.PIPE)
-        return checked_out
-
-    def update_submodule(self, module, checked_out, recorded_submodules):
-        module_path = os.path.join(self.rust_root, module)
-
-        default_encoding = sys.getdefaultencoding()
-        checked_out = checked_out.communicate()[0].decode(default_encoding).strip()
-        if recorded_submodules[module] == checked_out:
-            return
-
-        print("Updating submodule", module)
-
-        run(["git", "submodule", "-q", "sync", module],
-            cwd=self.rust_root, verbose=self.verbose)
-
-        update_args = ["git", "submodule", "update", "--init", "--recursive", "--depth=1"]
-        if self.git_version >= distutils.version.LooseVersion("2.11.0"):
-            update_args.append("--progress")
-        update_args.append(module)
-        try:
-            run(update_args, cwd=self.rust_root, verbose=self.verbose, exception=True)
-        except RuntimeError:
-            print("Failed updating submodule. This is probably due to uncommitted local changes.")
-            print('Either stash the changes by running "git stash" within the submodule\'s')
-            print('directory, reset them by running "git reset --hard", or commit them.')
-            print("To reset all submodules' changes run", end=" ")
-            print('"git submodule foreach --recursive git reset --hard".')
-            raise SystemExit(1)
-
-        run(["git", "reset", "-q", "--hard"],
-            cwd=module_path, verbose=self.verbose)
-        run(["git", "clean", "-qdfx"],
-            cwd=module_path, verbose=self.verbose)
-
-    def update_submodules(self):
-        """Update submodules"""
-        has_git = os.path.exists(os.path.join(self.rust_root, ".git"))
-        # This just arbitrarily checks for cargo, but any workspace member in
-        # a submodule would work.
-        has_submodules = os.path.exists(os.path.join(self.rust_root, "src/tools/cargo/Cargo.toml"))
-        if not has_git and not has_submodules:
-            print("This is not a git repository, and the requisite git submodules were not found.")
-            print("If you downloaded the source from https://github.com/rust-lang/rust/releases,")
-            print("those sources will not work. Instead, consider downloading from the source")
-            print("releases linked at")
-            print("https://forge.rust-lang.org/infra/other-installation-methods.html#source-code")
-            print("or clone the repository at https://github.com/rust-lang/rust/.")
-            raise SystemExit(1)
-        if not has_git or self.get_toml('submodules') == "false":
-            return
-
-        default_encoding = sys.getdefaultencoding()
-
-        # check the existence and version of 'git' command
-        git_version_str = require(['git', '--version']).split()[2].decode(default_encoding)
-        self.git_version = distutils.version.LooseVersion(git_version_str)
-
-        start_time = time()
-        print('Updating only changed submodules')
-        default_encoding = sys.getdefaultencoding()
-        # Only update submodules that are needed to build bootstrap.  These are needed because Cargo
-        # currently requires everything in a workspace to be "locally present" when starting a
-        # build, and will give a hard error if any Cargo.toml files are missing.
-        # FIXME: Is there a way to avoid cloning these eagerly? Bootstrap itself doesn't need to
-        #   share a workspace with any tools - maybe it could be excluded from the workspace?
-        #   That will still require cloning the submodules the second you check the standard
-        #   library, though...
-        # FIXME: Is there a way to avoid hard-coding the submodules required?
-        # WARNING: keep this in sync with the submodules hard-coded in bootstrap/lib.rs
-        submodules = [
-            "src/tools/rust-installer",
-            "src/tools/cargo",
-            "src/tools/rls",
-            "src/tools/miri",
-            "library/backtrace",
-            "library/stdarch"
-        ]
-        # If build.vendor is set in config.toml, we must update rust-analyzer also.
-        # Otherwise, the bootstrap will fail (#96456).
-        if self.use_vendored_sources:
-            submodules.append("src/tools/rust-analyzer")
-        filtered_submodules = []
-        submodules_names = []
-        for module in submodules:
-            check = self.check_submodule(module)
-            filtered_submodules.append((module, check))
-            submodules_names.append(module)
-        recorded = subprocess.Popen(["git", "ls-tree", "HEAD"] + submodules_names,
-                                    cwd=self.rust_root, stdout=subprocess.PIPE)
-        recorded = recorded.communicate()[0].decode(default_encoding).strip().splitlines()
-        # { filename: hash }
-        recorded_submodules = {}
-        for data in recorded:
-            # [mode, kind, hash, filename]
-            data = data.split()
-            recorded_submodules[data[3]] = data[2]
-        for module in filtered_submodules:
-            self.update_submodule(module[0], module[1], recorded_submodules)
-        print("  Submodules updated in %.2f seconds" % (time() - start_time))
-
     def set_dist_environment(self, url):
         """Set download URL for normal environment"""
         if 'RUSTUP_DIST_SERVER' in os.environ:
@@ -926,54 +827,32 @@ class RustBuild(object):
 
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
-        vendor_dir = os.path.join(self.rust_root, 'vendor')
         if 'SUDO_USER' in os.environ and not self.use_vendored_sources:
             if os.getuid() == 0:
                 self.use_vendored_sources = True
                 print('info: looks like you\'re trying to run this command as root')
                 print('      and so in order to preserve your $HOME this will now')
                 print('      use vendored sources by default.')
-                if not os.path.exists(vendor_dir):
-                    print('error: vendoring required, but vendor directory does not exist.')
-                    print('       Run `cargo vendor` without sudo to initialize the '
-                          'vendor directory.')
-                    raise Exception("{} not found".format(vendor_dir))
 
+        cargo_dir = os.path.join(self.rust_root, '.cargo')
         if self.use_vendored_sources:
-            config = ("[source.crates-io]\n"
-                      "replace-with = 'vendored-sources'\n"
-                      "registry = 'https://example.com'\n"
-                      "\n"
-                      "[source.vendored-sources]\n"
-                      "directory = '{}/vendor'\n"
-                      .format(self.rust_root))
-            if not os.path.exists('.cargo'):
-                os.makedirs('.cargo')
-                with output('.cargo/config') as cargo_config:
-                    cargo_config.write(config)
-            else:
-                print('info: using vendored source, but .cargo/config is already present.')
-                print('      Reusing the current configuration file. But you may want to '
-                      'configure vendoring like this:')
-                print(config)
+            vendor_dir = os.path.join(self.rust_root, 'vendor')
+            if not os.path.exists(vendor_dir):
+                sync_dirs = "--sync ./src/tools/rust-analyzer/Cargo.toml " \
+                            "--sync ./compiler/rustc_codegen_cranelift/Cargo.toml " \
+                            "--sync ./src/bootstrap/Cargo.toml "
+                print('error: vendoring required, but vendor directory does not exist.')
+                print('       Run `cargo vendor {}` to initialize the '
+                      'vendor directory.'.format(sync_dirs))
+                print('Alternatively, use the pre-vendored `rustc-src` dist component.')
+                raise Exception("{} not found".format(vendor_dir))
+
+            if not os.path.exists(cargo_dir):
+                print('error: vendoring required, but .cargo/config does not exist.')
+                raise Exception("{} not found".format(cargo_dir))
         else:
-            if os.path.exists('.cargo'):
-                shutil.rmtree('.cargo')
-
-    def ensure_vendored(self):
-        """Ensure that the vendored sources are available if needed"""
-        vendor_dir = os.path.join(self.rust_root, 'vendor')
-        # Note that this does not handle updating the vendored dependencies if
-        # the rust git repository is updated. Normal development usually does
-        # not use vendoring, so hopefully this isn't too much of a problem.
-        if self.use_vendored_sources and not os.path.exists(vendor_dir):
-            run([
-                self.cargo(),
-                "vendor",
-                "--sync=./src/tools/rust-analyzer/Cargo.toml",
-                "--sync=./compiler/rustc_codegen_cranelift/Cargo.toml",
-            ], verbose=self.verbose, cwd=self.rust_root)
-
+            if os.path.exists(cargo_dir):
+                shutil.rmtree(cargo_dir)
 
 def bootstrap(help_triggered):
     """Configure, fetch, build and run the initial bootstrap"""
@@ -988,6 +867,7 @@ def bootstrap(help_triggered):
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--build')
+    parser.add_argument('--color', choices=['always', 'never', 'auto'])
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
@@ -1052,13 +932,11 @@ def bootstrap(help_triggered):
     if not os.path.exists(build.build_dir):
         os.makedirs(build.build_dir)
     lock = acquire_lock(build.build_dir)
-    build.update_submodules()
 
     # Fetch/build the bootstrap
     build.download_toolchain()
     sys.stdout.flush()
-    build.ensure_vendored()
-    build.build_bootstrap()
+    build.build_bootstrap(args.color)
     sys.stdout.flush()
 
     # Run the bootstrap

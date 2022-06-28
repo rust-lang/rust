@@ -37,7 +37,7 @@ LL | pub struct NoDerives;
    | --------------------- doesn't satisfy `NoDerives: Clone`
 ...
 LL | struct Object<T, A>(T, A);
-   | -------------------------- method `use_clone` not found for this
+   |        ------ method `use_clone` not found for this struct
 ...
 LL |     foo.use_clone();
    |         ^^^^^^^^^ method cannot be called on `Object<NoDerives, SomeDerives>` due to unsatisfied trait bounds

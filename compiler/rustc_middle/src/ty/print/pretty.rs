@@ -5,7 +5,7 @@ use crate::ty::{
     TypeSuperFoldable,
 };
 use rustc_apfloat::ieee::{Double, Single};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
@@ -226,7 +226,7 @@ pub trait PrettyPrinter<'tcx>:
         value.as_ref().skip_binder().print(self)
     }
 
-    fn wrap_binder<T, F: Fn(&T, Self) -> Result<Self, fmt::Error>>(
+    fn wrap_binder<T, F: FnOnce(&T, Self) -> Result<Self, fmt::Error>>(
         self,
         value: &ty::Binder<'tcx, T>,
         f: F,
@@ -773,18 +773,18 @@ pub trait PrettyPrinter<'tcx>:
         def_id: DefId,
         substs: &'tcx ty::List<ty::GenericArg<'tcx>>,
     ) -> Result<Self::Type, Self::Error> {
-        define_scoped_cx!(self);
+        let tcx = self.tcx();
 
         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
         // by looking up the projections associated with the def_id.
-        let bounds = self.tcx().bound_explicit_item_bounds(def_id);
+        let bounds = tcx.bound_explicit_item_bounds(def_id);
 
-        let mut traits = BTreeMap::new();
-        let mut fn_traits = BTreeMap::new();
+        let mut traits = FxIndexMap::default();
+        let mut fn_traits = FxIndexMap::default();
         let mut is_sized = false;
 
         for predicate in bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
-            let predicate = predicate.subst(self.tcx(), substs);
+            let predicate = predicate.subst(tcx, substs);
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {
@@ -792,7 +792,7 @@ pub trait PrettyPrinter<'tcx>:
                     let trait_ref = bound_predicate.rebind(pred.trait_ref);
 
                     // Don't print + Sized, but rather + ?Sized if absent.
-                    if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait() {
+                    if Some(trait_ref.def_id()) == tcx.lang_items().sized_trait() {
                         is_sized = true;
                         continue;
                     }
@@ -801,7 +801,7 @@ pub trait PrettyPrinter<'tcx>:
                 }
                 ty::PredicateKind::Projection(pred) => {
                     let proj_ref = bound_predicate.rebind(pred);
-                    let trait_ref = proj_ref.required_poly_trait_ref(self.tcx());
+                    let trait_ref = proj_ref.required_poly_trait_ref(tcx);
 
                     // Projection type entry -- the def-id for naming, and the ty.
                     let proj_ty = (proj_ref.projection_def_id(), proj_ref.term());
@@ -817,148 +817,155 @@ pub trait PrettyPrinter<'tcx>:
             }
         }
 
+        write!(self, "impl ")?;
+
         let mut first = true;
         // Insert parenthesis around (Fn(A, B) -> C) if the opaque ty has more than one other trait
         let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !is_sized;
 
-        p!("impl");
-
         for (fn_once_trait_ref, entry) in fn_traits {
-            // Get the (single) generic ty (the args) of this FnOnce trait ref.
-            let generics = self.tcx().generics_of(fn_once_trait_ref.def_id());
-            let args =
-                generics.own_substs_no_defaults(self.tcx(), fn_once_trait_ref.skip_binder().substs);
+            write!(self, "{}", if first { "" } else { " + " })?;
+            write!(self, "{}", if paren_needed { "(" } else { "" })?;
 
-            match (entry.return_ty, args[0].expect_ty()) {
-                // We can only print `impl Fn() -> ()` if we have a tuple of args and we recorded
-                // a return type.
-                (Some(return_ty), arg_tys) if matches!(arg_tys.kind(), ty::Tuple(_)) => {
-                    let name = if entry.fn_trait_ref.is_some() {
-                        "Fn"
-                    } else if entry.fn_mut_trait_ref.is_some() {
-                        "FnMut"
-                    } else {
-                        "FnOnce"
-                    };
+            self = self.wrap_binder(&fn_once_trait_ref, |trait_ref, mut cx| {
+                define_scoped_cx!(cx);
+                // Get the (single) generic ty (the args) of this FnOnce trait ref.
+                let generics = tcx.generics_of(trait_ref.def_id);
+                let args = generics.own_substs_no_defaults(tcx, trait_ref.substs);
 
-                    p!(
-                        write("{}", if first { " " } else { " + " }),
-                        write("{}{}(", if paren_needed { "(" } else { "" }, name)
-                    );
+                match (entry.return_ty, args[0].expect_ty()) {
+                    // We can only print `impl Fn() -> ()` if we have a tuple of args and we recorded
+                    // a return type.
+                    (Some(return_ty), arg_tys) if matches!(arg_tys.kind(), ty::Tuple(_)) => {
+                        let name = if entry.fn_trait_ref.is_some() {
+                            "Fn"
+                        } else if entry.fn_mut_trait_ref.is_some() {
+                            "FnMut"
+                        } else {
+                            "FnOnce"
+                        };
 
-                    for (idx, ty) in arg_tys.tuple_fields().iter().enumerate() {
-                        if idx > 0 {
+                        p!(write("{}(", name));
+
+                        for (idx, ty) in arg_tys.tuple_fields().iter().enumerate() {
+                            if idx > 0 {
+                                p!(", ");
+                            }
+                            p!(print(ty));
+                        }
+
+                        p!(")");
+                        if let Term::Ty(ty) = return_ty.skip_binder() {
+                            if !ty.is_unit() {
+                                p!(" -> ", print(return_ty));
+                            }
+                        }
+                        p!(write("{}", if paren_needed { ")" } else { "" }));
+
+                        first = false;
+                    }
+                    // If we got here, we can't print as a `impl Fn(A, B) -> C`. Just record the
+                    // trait_refs we collected in the OpaqueFnEntry as normal trait refs.
+                    _ => {
+                        if entry.has_fn_once {
+                            traits.entry(fn_once_trait_ref).or_default().extend(
+                                // Group the return ty with its def id, if we had one.
+                                entry
+                                    .return_ty
+                                    .map(|ty| (tcx.lang_items().fn_once_output().unwrap(), ty)),
+                            );
+                        }
+                        if let Some(trait_ref) = entry.fn_mut_trait_ref {
+                            traits.entry(trait_ref).or_default();
+                        }
+                        if let Some(trait_ref) = entry.fn_trait_ref {
+                            traits.entry(trait_ref).or_default();
+                        }
+                    }
+                }
+
+                Ok(cx)
+            })?;
+        }
+
+        // Print the rest of the trait types (that aren't Fn* family of traits)
+        for (trait_ref, assoc_items) in traits {
+            write!(self, "{}", if first { "" } else { " + " })?;
+
+            self = self.wrap_binder(&trait_ref, |trait_ref, mut cx| {
+                define_scoped_cx!(cx);
+                p!(print(trait_ref.print_only_trait_name()));
+
+                let generics = tcx.generics_of(trait_ref.def_id);
+                let args = generics.own_substs_no_defaults(tcx, trait_ref.substs);
+
+                if !args.is_empty() || !assoc_items.is_empty() {
+                    let mut first = true;
+
+                    for ty in args {
+                        if first {
+                            p!("<");
+                            first = false;
+                        } else {
                             p!(", ");
                         }
                         p!(print(ty));
                     }
 
-                    p!(")");
-                    if let Term::Ty(ty) = return_ty.skip_binder() {
-                        if !ty.is_unit() {
-                            p!("-> ", print(return_ty));
-                        }
-                    }
-                    p!(write("{}", if paren_needed { ")" } else { "" }));
-
-                    first = false;
-                }
-                // If we got here, we can't print as a `impl Fn(A, B) -> C`. Just record the
-                // trait_refs we collected in the OpaqueFnEntry as normal trait refs.
-                _ => {
-                    if entry.has_fn_once {
-                        traits.entry(fn_once_trait_ref).or_default().extend(
-                            // Group the return ty with its def id, if we had one.
-                            entry
-                                .return_ty
-                                .map(|ty| (self.tcx().lang_items().fn_once_output().unwrap(), ty)),
-                        );
-                    }
-                    if let Some(trait_ref) = entry.fn_mut_trait_ref {
-                        traits.entry(trait_ref).or_default();
-                    }
-                    if let Some(trait_ref) = entry.fn_trait_ref {
-                        traits.entry(trait_ref).or_default();
-                    }
-                }
-            }
-        }
-
-        // Print the rest of the trait types (that aren't Fn* family of traits)
-        for (trait_ref, assoc_items) in traits {
-            p!(
-                write("{}", if first { " " } else { " + " }),
-                print(trait_ref.skip_binder().print_only_trait_name())
-            );
-
-            let generics = self.tcx().generics_of(trait_ref.def_id());
-            let args = generics.own_substs_no_defaults(self.tcx(), trait_ref.skip_binder().substs);
-
-            if !args.is_empty() || !assoc_items.is_empty() {
-                let mut first = true;
-
-                for ty in args {
-                    if first {
-                        p!("<");
-                        first = false;
-                    } else {
-                        p!(", ");
-                    }
-                    p!(print(trait_ref.rebind(*ty)));
-                }
-
-                for (assoc_item_def_id, term) in assoc_items {
-                    // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks,
-                    // unless we can find out what generator return type it comes from.
-                    let term = if let Some(ty) = term.skip_binder().ty()
-                        && let ty::Projection(ty::ProjectionTy { item_def_id, substs }) = ty.kind()
-                        && Some(*item_def_id) == self.tcx().lang_items().generator_return()
-                    {
-                        if let ty::Generator(_, substs, _) = substs.type_at(0).kind() {
-                            let return_ty = substs.as_generator().return_ty();
-                            if !return_ty.is_ty_infer() {
-                                return_ty.into()
+                    for (assoc_item_def_id, term) in assoc_items {
+                        // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks,
+                        // unless we can find out what generator return type it comes from.
+                        let term = if let Some(ty) = term.skip_binder().ty()
+                            && let ty::Projection(ty::ProjectionTy { item_def_id, substs }) = ty.kind()
+                            && Some(*item_def_id) == tcx.lang_items().generator_return()
+                        {
+                            if let ty::Generator(_, substs, _) = substs.type_at(0).kind() {
+                                let return_ty = substs.as_generator().return_ty();
+                                if !return_ty.is_ty_infer() {
+                                    return_ty.into()
+                                } else {
+                                    continue;
+                                }
                             } else {
                                 continue;
                             }
                         } else {
-                            continue;
-                        }
-                    } else {
-                        term.skip_binder()
-                    };
+                            term.skip_binder()
+                        };
 
-                    if first {
-                        p!("<");
-                        first = false;
-                    } else {
-                        p!(", ");
+                        if first {
+                            p!("<");
+                            first = false;
+                        } else {
+                            p!(", ");
+                        }
+
+                        p!(write("{} = ", tcx.associated_item(assoc_item_def_id).name));
+
+                        match term {
+                            Term::Ty(ty) => {
+                                p!(print(ty))
+                            }
+                            Term::Const(c) => {
+                                p!(print(c));
+                            }
+                        };
                     }
 
-                    p!(write("{} = ", self.tcx().associated_item(assoc_item_def_id).name));
-
-                    match term {
-                        Term::Ty(ty) => {
-                            p!(print(ty))
-                        }
-                        Term::Const(c) => {
-                            p!(print(c));
-                        }
-                    };
+                    if !first {
+                        p!(">");
+                    }
                 }
 
-                if !first {
-                    p!(">");
-                }
-            }
-
-            first = false;
+                first = false;
+                Ok(cx)
+            })?;
         }
 
         if !is_sized {
-            p!(write("{}?Sized", if first { " " } else { " + " }));
+            write!(self, "{}?Sized", if first { "" } else { " + " })?;
         } else if first {
-            p!(" Sized");
+            write!(self, "Sized")?;
         }
 
         Ok(self)
@@ -970,11 +977,11 @@ pub trait PrettyPrinter<'tcx>:
         &mut self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         proj_ty: Option<(DefId, ty::Binder<'tcx, Term<'tcx>>)>,
-        traits: &mut BTreeMap<
+        traits: &mut FxIndexMap<
             ty::PolyTraitRef<'tcx>,
-            BTreeMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
+            FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
         >,
-        fn_traits: &mut BTreeMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
+        fn_traits: &mut FxIndexMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
     ) {
         let trait_def_id = trait_ref.def_id();
 
@@ -1110,19 +1117,18 @@ pub trait PrettyPrinter<'tcx>:
         // Builtin bounds.
         // FIXME(eddyb) avoid printing twice (needed to ensure
         // that the auto traits are sorted *and* printed via cx).
-        let mut auto_traits: Vec<_> =
-            predicates.auto_traits().map(|did| (self.tcx().def_path_str(did), did)).collect();
+        let mut auto_traits: Vec<_> = predicates.auto_traits().collect();
 
         // The auto traits come ordered by `DefPathHash`. While
         // `DefPathHash` is *stable* in the sense that it depends on
         // neither the host nor the phase of the moon, it depends
         // "pseudorandomly" on the compiler version and the target.
         //
-        // To avoid that causing instabilities in compiletest
+        // To avoid causing instabilities in compiletest
         // output, sort the auto-traits alphabetically.
-        auto_traits.sort();
+        auto_traits.sort_by_cached_key(|did| self.tcx().def_path_str(*did));
 
-        for (_, def_id) in auto_traits {
+        for def_id in auto_traits {
             if !first {
                 p!(" + ");
             }
@@ -1870,7 +1876,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         self.pretty_in_binder(value)
     }
 
-    fn wrap_binder<T, C: Fn(&T, Self) -> Result<Self, Self::Error>>(
+    fn wrap_binder<T, C: FnOnce(&T, Self) -> Result<Self, Self::Error>>(
         self,
         value: &ty::Binder<'tcx, T>,
         f: C,
@@ -2257,7 +2263,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         Ok(inner)
     }
 
-    pub fn pretty_wrap_binder<T, C: Fn(&T, Self) -> Result<Self, fmt::Error>>(
+    pub fn pretty_wrap_binder<T, C: FnOnce(&T, Self) -> Result<Self, fmt::Error>>(
         self,
         value: &ty::Binder<'tcx, T>,
         f: C,

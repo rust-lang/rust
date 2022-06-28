@@ -225,7 +225,7 @@ pub fn resolve_interior<'a, 'tcx>(
                 // Note that each region slot in the types gets a new fresh late bound region,
                 // which means that none of the regions inside relate to any other, even if
                 // typeck had previously found constraints that would cause them to be related.
-                let folded = fcx.tcx.fold_regions(erased, &mut false, |_, current_depth| {
+                let folded = fcx.tcx.fold_regions(erased, |_, current_depth| {
                     let br = ty::BoundRegion {
                         var: ty::BoundVar::from_u32(counter),
                         kind: ty::BrAnon(counter),

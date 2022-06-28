@@ -346,19 +346,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
 
-                if let Some(def) = actual.ty_adt_def() {
-                    if let Some(full_sp) = tcx.hir().span_if_local(def.did()) {
-                        let def_sp = tcx.sess.source_map().guess_head_span(full_sp);
-                        err.span_label(
-                            def_sp,
-                            format!(
-                                "{} `{}` not found {}",
-                                item_kind,
-                                item_name,
-                                if def.is_enum() && !is_method { "here" } else { "for this" }
-                            ),
-                        );
+                let ty_span = match actual.kind() {
+                    ty::Param(param_type) => {
+                        let generics = self.tcx.generics_of(self.body_id.owner.to_def_id());
+                        let type_param = generics.type_param(param_type, self.tcx);
+                        Some(self.tcx.def_span(type_param.def_id))
                     }
+                    ty::Adt(def, _) if def.did().is_local() => {
+                        tcx.def_ident_span(def.did()).map(|span| span)
+                    }
+                    _ => None,
+                };
+
+                if let Some(span) = ty_span {
+                    err.span_label(
+                        span,
+                        format!(
+                            "{item_kind} `{item_name}` not found for this {}",
+                            actual.prefix_string(self.tcx)
+                        ),
+                    );
                 }
 
                 if self.is_fn_ty(rcvr_ty, span) {
@@ -987,6 +994,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         rcvr_ty,
                         item_name,
+                        args.map(|args| args.len()),
                         source,
                         out_of_scope_traits,
                         &unsatisfied_predicates,
@@ -1725,6 +1733,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
+        inputs_len: Option<usize>,
         source: SelfSource<'tcx>,
         valid_out_of_scope_traits: Vec<DefId>,
         unsatisfied_predicates: &[(
@@ -1801,7 +1810,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Explicitly ignore the `Pin::as_ref()` method as `Pin` does not
                         // implement the `AsRef` trait.
                         let skip = skippable.contains(&did)
-                            || (("Pin::new" == *pre) && (sym::as_ref == item_name.name));
+                            || (("Pin::new" == *pre) && (sym::as_ref == item_name.name))
+                            || inputs_len.map_or(false, |inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().inputs().len() != inputs_len);
                         // Make sure the method is defined for the *actual* receiver: we don't
                         // want to treat `Box<Self>` as a receiver if it only works because of
                         // an autoderef to `&self`
@@ -1951,9 +1961,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             };
             // Obtain the span for `param` and use it for a structured suggestion.
-            if let (Some(param), Some(table)) = (param_type, self.in_progress_typeck_results) {
-                let table_owner = table.borrow().hir_owner;
-                let generics = self.tcx.generics_of(table_owner.to_def_id());
+            if let Some(param) = param_type {
+                let generics = self.tcx.generics_of(self.body_id.owner.to_def_id());
                 let type_param = generics.type_param(param, self.tcx);
                 let hir = self.tcx.hir();
                 if let Some(def_id) = type_param.def_id.as_local() {
