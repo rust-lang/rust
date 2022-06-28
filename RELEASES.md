@@ -29,7 +29,6 @@ Compiler
 Libraries
 ---------
 
-- [Move `CStr` to libcore, and `CString` to liballoc][94079]
 - [Windows: Use a pipe relay for chaining pipes][95841]
 - [Replace Linux Mutex and Condvar with futex based ones.][95035]
 - [Replace RwLock by a futex based one on Linux][95801]
@@ -90,7 +89,6 @@ and related tools.
 
 [93313]: https://github.com/rust-lang/rust/pull/93313/
 [93969]: https://github.com/rust-lang/rust/pull/93969/
-[94079]: https://github.com/rust-lang/rust/pull/94079/
 [94206]: https://github.com/rust-lang/rust/pull/94206/
 [94457]: https://github.com/rust-lang/rust/pull/94457/
 [94775]: https://github.com/rust-lang/rust/pull/94775/
