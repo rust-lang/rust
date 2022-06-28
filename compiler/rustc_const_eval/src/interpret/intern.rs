@@ -168,10 +168,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
         mplace: &MPlaceTy<'tcx>,
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
-        // We want to walk the aggregate to look for reference types to intern. While doing that we
+        // We want to walk the aggregate to look for references to intern. While doing that we
         // also need to take special care of interior mutability.
         //
-        // As an optimization, however, if the allocation does not contain any pointers: we don't
+        // As an optimization, however, if the allocation does not contain any references: we don't
         // need to do the walk. It can be costly for big arrays for example (e.g. issue #93215).
         let is_walk_needed = |mplace: &MPlaceTy<'tcx>| -> InterpResult<'tcx, bool> {
             // ZSTs cannot contain pointers, we can avoid the interning walk.
@@ -179,7 +179,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                 return Ok(false);
             }
 
-            // Now, check whether this allocation contains reference types (as relocations).
+            // Now, check whether this allocation could contain references.
             //
             // Note, this check may sometimes not be cheap, so we only do it when the walk we'd like
             // to avoid could be expensive: on the potentially larger types, arrays and slices,
@@ -191,8 +191,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                     return Ok(true);
                 };
 
-                // If there are no refs or relocations in this allocation, we can avoid the
-                // interning walk.
+                // If there are no relocations in this allocation, it does not contain references
+                // that point to another allocation, and we can avoid the interning walk.
                 if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, align)? {
                     if !alloc.has_relocations() {
                         return Ok(false);
