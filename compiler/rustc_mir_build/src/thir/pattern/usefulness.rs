@@ -967,11 +967,7 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
         })
         .collect();
 
-    // In case we're matching on an opaque type in its defining scope, the patterns define the hidden type.
-    // The wildcard pattern needs to have the same type, otherwise it will always be deemed useful, even if the
-    // match is exhaustive for the pattern type.
-    let wild_ty = arms.first().map_or(scrut_ty, |arm| arm.pat.ty());
-    let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(wild_ty));
+    let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty));
     let v = PatStack::from_pattern(wild_pattern);
     let usefulness = is_useful(cx, &matrix, &v, FakeExtraWildcard, scrut_hir_id, false, true);
     let non_exhaustiveness_witnesses = match usefulness {
