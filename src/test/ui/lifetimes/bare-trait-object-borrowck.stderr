@@ -1,0 +1,43 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/bare-trait-object-borrowck.rs:23:48
+   |
+LL |     let _ = new_format(0..32, " | ", |i, f| f(&format_args!("0x{:x}", i)));
+   |                                          -  ---^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                          |  |  |                        |
+   |                                          |  |  |                        temporary value is freed at the end of this statement
+   |                                          |  |  creates a temporary which is freed while still in use
+   |                                          |  argument requires that borrow lasts for `'1`
+   |                                          has type `&mut dyn FnMut(&'1 (dyn std::fmt::Display + '1)) -> Result<(), std::fmt::Error>`
+   |
+   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/bare-trait-object-borrowck.rs:23:48
+   |
+LL |     let _ = new_format(0..32, " | ", |i, f| f(&format_args!("0x{:x}", i)));
+   |                                          -  ---^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                          |  |  |                        |
+   |                                          |  |  |                        temporary value is freed at the end of this statement
+   |                                          |  |  creates a temporary which is freed while still in use
+   |                                          |  argument requires that borrow lasts for `'1`
+   |                                          has type `&mut dyn FnMut(&'1 (dyn std::fmt::Display + '1)) -> Result<(), std::fmt::Error>`
+   |
+   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0597]: `i` does not live long enough
+  --> $DIR/bare-trait-object-borrowck.rs:23:71
+   |
+LL |     let _ = new_format(0..32, " | ", |i, f| f(&format_args!("0x{:x}", i)));
+   |                                          -  --------------------------^--
+   |                                          |  |                         | |
+   |                                          |  |                         | `i` dropped here while still borrowed
+   |                                          |  |                         borrowed value does not live long enough
+   |                                          |  argument requires that `i` is borrowed for `'1`
+   |                                          has type `&mut dyn FnMut(&'1 (dyn std::fmt::Display + '1)) -> Result<(), std::fmt::Error>`
+   |
+   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0597, E0716.
+For more information about an error, try `rustc --explain E0597`.
