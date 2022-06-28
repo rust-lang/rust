@@ -69,7 +69,9 @@ pub enum NonHaltingDiagnostic {
     FreedAlloc(AllocId),
     RejectedIsolatedOp(String),
     ProgressReport,
-    Int2Ptr,
+    Int2Ptr {
+        details: bool,
+    },
 }
 
 /// Level of Miri specific diagnostics
@@ -451,13 +453,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         format!("{op} was made to return an error due to isolation"),
                     ProgressReport =>
                         format!("progress report: current operation being executed is here"),
-                    Int2Ptr => format!("integer-to-pointer cast"),
+                    Int2Ptr { .. } => format!("integer-to-pointer cast"),
                 };
 
                 let (title, diag_level) = match e {
                     RejectedIsolatedOp(_) =>
                         ("operation rejected by isolation", DiagLevel::Warning),
-                    Int2Ptr => ("integer-to-pointer cast", DiagLevel::Warning),
+                    Int2Ptr { .. } => ("integer-to-pointer cast", DiagLevel::Warning),
                     CreatedPointerTag(..)
                     | PoppedPointerTag(..)
                     | CreatedCallId(..)
@@ -467,7 +469,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
 
                 let helps = match e {
-                    Int2Ptr =>
+                    Int2Ptr { details: true } =>
                         vec![
                             (None, format!("this program is using integer-to-pointer casts or (equivalently) `from_exposed_addr`,")),
                             (None, format!("which means that Miri might miss pointer bugs in this program")),

@@ -5,6 +5,7 @@ use log::trace;
 use rand::Rng;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::*;
@@ -140,12 +141,18 @@ impl<'mir, 'tcx> GlobalStateInner {
 
         match global_state.provenance_mode {
             ProvenanceMode::Default => {
-                // The first time this happens, print a warning.
-                use std::sync::atomic::{AtomicBool, Ordering};
-                static FIRST_WARNING: AtomicBool = AtomicBool::new(true);
-                if FIRST_WARNING.swap(false, Ordering::Relaxed) {
-                    register_diagnostic(NonHaltingDiagnostic::Int2Ptr);
+                // The first time this happens at a particular location, print a warning.
+                thread_local! {
+                    // `Span` is non-`Send`, so we use a thread-local instead.
+                    static PAST_WARNINGS: RefCell<FxHashSet<Span>> = RefCell::default();
                 }
+                PAST_WARNINGS.with_borrow_mut(|past_warnings| {
+                    let first = past_warnings.is_empty();
+                    if past_warnings.insert(ecx.cur_span()) {
+                        // Newly inserted, so first time we see this span.
+                        register_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
+                    }
+                });
             }
             ProvenanceMode::Strict => {
                 throw_unsup_format!(

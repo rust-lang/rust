@@ -8,6 +8,7 @@
 #![feature(yeet_expr)]
 #![feature(is_some_with)]
 #![feature(nonzero_ops)]
+#![feature(local_key_cell_methods)]
 #![warn(rust_2018_idioms)]
 #![allow(
     clippy::collapsible_else_if,
