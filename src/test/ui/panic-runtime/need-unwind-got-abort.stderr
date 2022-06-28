@@ -1,0 +1,6 @@
+error: the linked panic runtime `panic_unwind` is not compiled with this crate's panic strategy `abort`
+
+error: the crate `needs_unwind` requires panic strategy `unwind` which is incompatible with this crate's strategy of `abort`
+
+error: aborting due to 2 previous errors
+

@@ -748,7 +748,7 @@ impl<'a> CrateLoader<'a> {
         if !data.is_panic_runtime() {
             self.sess.err(&format!("the crate `{}` is not a panic runtime", name));
         }
-        if data.panic_strategy() != desired_strategy {
+        if data.required_panic_strategy() != Some(desired_strategy) {
             self.sess.err(&format!(
                 "the crate `{}` does not have the panic \
                                     strategy `{}`",

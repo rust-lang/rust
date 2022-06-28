@@ -60,7 +60,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::CrateDepKind;
 use rustc_session::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
-use rustc_target::spec::PanicStrategy;
 
 pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
     tcx.sess
@@ -367,14 +366,19 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
                     prev_name, cur_name
                 ));
             }
-            panic_runtime = Some((cnum, tcx.panic_strategy(cnum)));
+            panic_runtime = Some((
+                cnum,
+                tcx.required_panic_strategy(cnum).unwrap_or_else(|| {
+                    bug!("cannot determine panic strategy of a panic runtime");
+                }),
+            ));
         }
     }
 
     // If we found a panic runtime, then we know by this point that it's the
     // only one, but we perform validation here that all the panic strategy
     // compilation modes for the whole DAG are valid.
-    if let Some((cnum, found_strategy)) = panic_runtime {
+    if let Some((runtime_cnum, found_strategy)) = panic_runtime {
         let desired_strategy = sess.panic_strategy();
 
         // First up, validate that our selected panic runtime is indeed exactly
@@ -384,7 +388,7 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
                 "the linked panic runtime `{}` is \
                                not compiled with this crate's \
                                panic strategy `{}`",
-                tcx.crate_name(cnum),
+                tcx.crate_name(runtime_cnum),
                 desired_strategy.desc()
             ));
         }
@@ -397,18 +401,14 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
             if let Linkage::NotLinked = *linkage {
                 continue;
             }
-            if desired_strategy == PanicStrategy::Abort {
-                continue;
-            }
             let cnum = CrateNum::new(i + 1);
-            if tcx.is_compiler_builtins(cnum) {
+            if cnum == runtime_cnum || tcx.is_compiler_builtins(cnum) {
                 continue;
             }
 
-            let found_strategy = tcx.panic_strategy(cnum);
-            if desired_strategy != found_strategy {
+            if let Some(found_strategy) = tcx.required_panic_strategy(cnum) && desired_strategy != found_strategy {
                 sess.err(&format!(
-                    "the crate `{}` is compiled with the \
+                    "the crate `{}` requires \
                                panic strategy `{}` which is \
                                incompatible with this crate's \
                                strategy of `{}`",
