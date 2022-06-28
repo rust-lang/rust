@@ -79,8 +79,7 @@ pub(super) fn can_match_erased_ty<'tcx>(
     erased_ty: Ty<'tcx>,
 ) -> bool {
     assert!(!outlives_predicate.has_escaping_bound_vars());
-    let erased_outlives_predicate = tcx.erase_regions(outlives_predicate);
-    let outlives_ty = erased_outlives_predicate.skip_binder().0;
+    let outlives_ty = tcx.erase_regions(outlives_predicate.skip_binder().0);
     if outlives_ty == erased_ty {
         // pointless micro-optimization
         true
