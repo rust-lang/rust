@@ -8,8 +8,6 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{self, Predicate, Ty, TyCtxt};
 use rustc_span::Span;
-use rustc_trait_selection::traits::query::dropck_outlives::AtExt;
-use rustc_trait_selection::traits::ObligationCause;
 
 /// This function confirms that the `Drop` implementation identified by
 /// `drop_impl_did` is not any more specialized than the type it is
@@ -234,18 +232,14 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 /// This function is not only checking that the dropck obligations are met for
 /// the given type, but it's also currently preventing non-regular recursion in
 /// types from causing stack overflows (dropck_no_diverge_on_nonregular_*.rs).
+///
+/// FIXME: Completely rip out dropck and regionck.
 pub(crate) fn check_drop_obligations<'a, 'tcx>(
-    rcx: &mut RegionCtxt<'a, 'tcx>,
-    ty: Ty<'tcx>,
-    span: Span,
-    body_id: hir::HirId,
+    _rcx: &mut RegionCtxt<'a, 'tcx>,
+    _ty: Ty<'tcx>,
+    _span: Span,
+    _body_id: hir::HirId,
 ) {
-    debug!("check_drop_obligations typ: {:?}", ty);
-
-    let cause = &ObligationCause::misc(span, body_id);
-    let infer_ok = rcx.infcx.at(cause, rcx.fcx.param_env).dropck_outlives(ty);
-    debug!("dropck_outlives = {:#?}", infer_ok);
-    rcx.fcx.register_infer_ok_obligations(infer_ok);
 }
 
 // This is an implementation of the TypeRelation trait with the

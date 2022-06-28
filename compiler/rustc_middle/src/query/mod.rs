@@ -1825,7 +1825,8 @@ rustc_queries! {
         remap_env_constness
     }
 
-    /// Do not call this query directly: invoke `infcx.at().dropck_outlives()` instead.
+    /// Do not call this query directly:
+    /// invoke `DropckOutlives::new(dropped_ty)).fully_perform(typeck.infcx)` instead.
     query dropck_outlives(
         goal: CanonicalTyGoal<'tcx>
     ) -> Result<
