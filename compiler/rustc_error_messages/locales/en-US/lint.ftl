@@ -343,3 +343,9 @@ lint-builtin-unused-doc-comment = unused doc comment
     .label = rustdoc does not generate documentation for {$kind}
     .plain-help = use `//` for a plain comment
     .block-help = use `/* */` for a plain comment
+
+lint-builtin-no-mangle-generic = functions generic over types or consts must be mangled
+    .suggestion = remove this attribute
+
+lint-builtin-const-no-mangle = const items should never be `#[no_mangle]`
+    .suggestion = try a static value

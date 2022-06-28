@@ -1166,10 +1166,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     GenericParamKind::Lifetime { .. } => {}
                     GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
                         cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS, span, |lint| {
-                            lint.build("functions generic over types or consts must be mangled")
+                            lint.build(fluent::lint::builtin_no_mangle_generic)
                                 .span_suggestion_short(
                                     no_mangle_attr.span,
-                                    "remove this attribute",
+                                    fluent::lint::suggestion,
                                     "",
                                     // Use of `#[no_mangle]` suggests FFI intent; correct
                                     // fix may be to monomorphize source by hand
@@ -1193,8 +1193,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
                     cx.struct_span_lint(NO_MANGLE_CONST_ITEMS, it.span, |lint| {
-                        let msg = "const items should never be `#[no_mangle]`";
-                        let mut err = lint.build(msg);
+                        let mut err = lint.build(fluent::lint::builtin_const_no_mangle);
 
                         // account for "pub const" (#45562)
                         let start = cx
@@ -1208,7 +1207,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                         let const_span = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
                         err.span_suggestion(
                             const_span,
-                            "try a static value",
+                            fluent::lint::suggestion,
                             "pub static",
                             Applicability::MachineApplicable,
                         );
