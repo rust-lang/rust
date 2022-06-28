@@ -1,9 +1,10 @@
 use crate::cell::UnsafeCell;
-use crate::sys::locks::{Condvar, Mutex};
+use crate::sys::locks::{MovableCondvar, Mutex};
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
 pub struct RwLock {
     lock: Mutex,
-    cond: Condvar,
+    cond: MovableCondvar,
     state: UnsafeCell<State>,
 }
 
@@ -28,7 +29,11 @@ unsafe impl Sync for RwLock {}
 
 impl RwLock {
     pub const fn new() -> RwLock {
-        RwLock { lock: Mutex::new(), cond: Condvar::new(), state: UnsafeCell::new(State::Unlocked) }
+        RwLock {
+            lock: Mutex::new(),
+            cond: MovableCondvar::new(),
+            state: UnsafeCell::new(State::Unlocked),
+        }
     }
 
     #[inline]

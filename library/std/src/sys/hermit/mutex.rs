@@ -175,9 +175,7 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn init(&mut self) {
-        self.inner = Spinlock::new(MutexInner::new());
-    }
+    pub unsafe fn init(&mut self) {}
 
     #[inline]
     pub unsafe fn lock(&self) {
