@@ -2161,8 +2161,12 @@ impl Path {
         self.res.def_id()
     }
 
+    pub(crate) fn last_opt(&self) -> Option<Symbol> {
+        self.segments.last().map(|s| s.name)
+    }
+
     pub(crate) fn last(&self) -> Symbol {
-        self.segments.last().expect("segments were empty").name
+        self.last_opt().expect("segments were empty")
     }
 
     pub(crate) fn whole_name(&self) -> String {

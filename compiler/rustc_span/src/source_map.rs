@@ -956,7 +956,7 @@ impl SourceMap {
     }
 
     pub fn generate_fn_name_span(&self, span: Span) -> Option<Span> {
-        let prev_span = self.span_extend_to_prev_str(span, "fn", true, true).unwrap_or(span);
+        let prev_span = self.span_extend_to_prev_str(span, "fn", true, true)?;
         if let Ok(snippet) = self.span_to_snippet(prev_span) {
             debug!(
                 "generate_fn_name_span: span={:?}, prev_span={:?}, snippet={:?}",

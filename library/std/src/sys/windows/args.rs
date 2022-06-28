@@ -21,6 +21,17 @@ use crate::vec;
 
 use core::iter;
 
+/// This is the const equivalent to `NonZeroU16::new(n).unwrap()`
+///
+/// FIXME: This can be removed once `Option::unwrap` is stably const.
+/// See the `const_option` feature (#67441).
+const fn non_zero_u16(n: u16) -> NonZeroU16 {
+    match NonZeroU16::new(n) {
+        Some(n) => n,
+        None => panic!("called `unwrap` on a `None` value"),
+    }
+}
+
 pub fn args() -> Args {
     // SAFETY: `GetCommandLineW` returns a pointer to a null terminated UTF-16
     // string so it's safe for `WStrUnits` to use.
@@ -58,10 +69,10 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
     lp_cmd_line: Option<WStrUnits<'a>>,
     exe_name: F,
 ) -> Vec<OsString> {
-    const BACKSLASH: NonZeroU16 = NonZeroU16::new(b'\\' as u16).unwrap();
-    const QUOTE: NonZeroU16 = NonZeroU16::new(b'"' as u16).unwrap();
-    const TAB: NonZeroU16 = NonZeroU16::new(b'\t' as u16).unwrap();
-    const SPACE: NonZeroU16 = NonZeroU16::new(b' ' as u16).unwrap();
+    const BACKSLASH: NonZeroU16 = non_zero_u16(b'\\' as u16);
+    const QUOTE: NonZeroU16 = non_zero_u16(b'"' as u16);
+    const TAB: NonZeroU16 = non_zero_u16(b'\t' as u16);
+    const SPACE: NonZeroU16 = non_zero_u16(b' ' as u16);
 
     let mut ret_val = Vec::new();
     // If the cmd line pointer is null or it points to an empty string then
