@@ -247,12 +247,7 @@ pub struct MethodDef<'a> {
 pub struct Substructure<'a> {
     /// ident of self
     pub type_ident: Ident,
-    /// dereferenced access to any [`Self_`] or [`Ptr(Self_, _)`][ptr] arguments
-    ///
-    /// [`Self_`]: ty::Ty::Self_
-    /// [ptr]: ty::Ty::Ptr
-    pub self_args: &'a [P<Expr>],
-    /// verbatim access to any other arguments
+    /// verbatim access to any non-self arguments
     pub nonself_args: &'a [P<Expr>],
     pub fields: &'a SubstructureFields<'a>,
 }
@@ -753,7 +748,6 @@ impl<'a> TraitDef<'a> {
                         self,
                         struct_def,
                         type_ident,
-                        &self_args,
                         &nonself_args,
                     )
                 } else {
@@ -802,7 +796,6 @@ impl<'a> TraitDef<'a> {
                         self,
                         enum_def,
                         type_ident,
-                        &self_args,
                         &nonself_args,
                     )
                 } else {
@@ -830,12 +823,11 @@ impl<'a> MethodDef<'a> {
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
-        self_args: &[P<Expr>],
         nonself_args: &[P<Expr>],
         fields: &SubstructureFields<'_>,
     ) -> P<Expr> {
         let span = trait_.span;
-        let substructure = Substructure { type_ident, self_args, nonself_args, fields };
+        let substructure = Substructure { type_ident, nonself_args, fields };
         let mut f = self.combine_substructure.borrow_mut();
         let f: &mut CombineSubstructureFunc<'_> = &mut *f;
         f(cx, span, &substructure)
@@ -1053,7 +1045,6 @@ impl<'a> MethodDef<'a> {
             cx,
             trait_,
             type_ident,
-            self_args,
             nonself_args,
             &Struct(struct_def, fields),
         );
@@ -1074,7 +1065,6 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         struct_def: &VariantData,
         type_ident: Ident,
-        self_args: &[P<Expr>],
         nonself_args: &[P<Expr>],
     ) -> P<Expr> {
         let summary = trait_.summarise_struct(cx, struct_def);
@@ -1083,7 +1073,6 @@ impl<'a> MethodDef<'a> {
             cx,
             trait_,
             type_ident,
-            self_args,
             nonself_args,
             &StaticStruct(struct_def, summary),
         )
@@ -1267,7 +1256,6 @@ impl<'a> MethodDef<'a> {
                     cx,
                     trait_,
                     type_ident,
-                    &self_args[..],
                     nonself_args,
                     &substructure,
                 );
@@ -1286,7 +1274,6 @@ impl<'a> MethodDef<'a> {
                     cx,
                     trait_,
                     type_ident,
-                    &self_args[..],
                     nonself_args,
                     &substructure,
                 ))
@@ -1357,7 +1344,6 @@ impl<'a> MethodDef<'a> {
                 cx,
                 trait_,
                 type_ident,
-                &self_args[..],
                 nonself_args,
                 &catch_all_substructure,
             );
@@ -1455,7 +1441,6 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         enum_def: &EnumDef,
         type_ident: Ident,
-        self_args: &[P<Expr>],
         nonself_args: &[P<Expr>],
     ) -> P<Expr> {
         let summary = enum_def
@@ -1471,7 +1456,6 @@ impl<'a> MethodDef<'a> {
             cx,
             trait_,
             type_ident,
-            self_args,
             nonself_args,
             &StaticEnum(enum_def, summary),
         )
