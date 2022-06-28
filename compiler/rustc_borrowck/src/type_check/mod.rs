@@ -793,6 +793,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             ProjectionElem::OpaqueCast(ty) => {
                 let ty = self.sanitize_type(place, ty);
                 let ty = self.cx.normalize(ty, location);
+                self.cx
+                    .eq_types(
+                        base.ty,
+                        ty,
+                        location.to_locations(),
+                        ConstraintCategory::TypeAnnotation,
+                    )
+                    .unwrap();
                 PlaceTy::from_ty(ty)
             }
         }
