@@ -376,32 +376,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             // This requires that atomic intrinsics follow a specific naming pattern:
-            // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
-            name if name_str.starts_with("atomic_") => {
+            // "atomic_<operation>[_<ordering>]"
+            name if let Some(atomic) = name_str.strip_prefix("atomic_") => {
                 use crate::common::AtomicOrdering::*;
                 use crate::common::{AtomicRmwBinOp, SynchronizationScope};
 
-                let split: Vec<_> = name_str.split('_').collect();
+                let Some((instruction, ordering)) = atomic.split_once('_') else {
+                    bx.sess().fatal("Atomic intrinsic missing memory ordering");
+                };
 
-                let is_cxchg = split[1] == "cxchg" || split[1] == "cxchgweak";
-                let (order, failorder) = match split.len() {
-                    2 => (SequentiallyConsistent, SequentiallyConsistent),
-                    3 => match split[2] {
-                        "unordered" => (Unordered, Unordered),
-                        "relaxed" => (Relaxed, Relaxed),
-                        "acq" => (Acquire, Acquire),
-                        "rel" => (Release, Relaxed),
-                        "acqrel" => (AcquireRelease, Acquire),
-                        "failrelaxed" if is_cxchg => (SequentiallyConsistent, Relaxed),
-                        "failacq" if is_cxchg => (SequentiallyConsistent, Acquire),
-                        _ => bx.sess().fatal("unknown ordering in atomic intrinsic"),
-                    },
-                    4 => match (split[2], split[3]) {
-                        ("acq", "failrelaxed") if is_cxchg => (Acquire, Relaxed),
-                        ("acqrel", "failrelaxed") if is_cxchg => (AcquireRelease, Relaxed),
-                        _ => bx.sess().fatal("unknown ordering in atomic intrinsic"),
-                    },
-                    _ => bx.sess().fatal("Atomic intrinsic not in correct format"),
+                let parse_ordering = |bx: &Bx, s| match s {
+                    "unordered" => Unordered,
+                    "relaxed" => Relaxed,
+                    "acquire" => Acquire,
+                    "release" => Release,
+                    "acqrel" => AcquireRelease,
+                    "seqcst" => SequentiallyConsistent,
+                    _ => bx.sess().fatal("unknown ordering in atomic intrinsic"),
                 };
 
                 let invalid_monomorphization = |ty| {
@@ -416,11 +407,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     );
                 };
 
-                match split[1] {
+                match instruction {
                     "cxchg" | "cxchgweak" => {
+                        let Some((success, failure)) = ordering.split_once('_') else {
+                            bx.sess().fatal("Atomic compare-exchange intrinsic missing failure memory ordering");
+                        };
                         let ty = substs.type_at(0);
                         if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
-                            let weak = split[1] == "cxchgweak";
+                            let weak = instruction == "cxchgweak";
                             let mut dst = args[0].immediate();
                             let mut cmp = args[1].immediate();
                             let mut src = args[2].immediate();
@@ -432,7 +426,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 cmp = bx.ptrtoint(cmp, bx.type_isize());
                                 src = bx.ptrtoint(src, bx.type_isize());
                             }
-                            let pair = bx.atomic_cmpxchg(dst, cmp, src, order, failorder, weak);
+                            let pair = bx.atomic_cmpxchg(dst, cmp, src, parse_ordering(bx, success), parse_ordering(bx, failure), weak);
                             let val = bx.extract_value(pair, 0);
                             let success = bx.extract_value(pair, 1);
                             let val = bx.from_immediate(val);
@@ -460,11 +454,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 let llty = bx.type_isize();
                                 let ptr_llty = bx.type_ptr_to(llty);
                                 source = bx.pointercast(source, ptr_llty);
-                                let result = bx.atomic_load(llty, source, order, size);
+                                let result = bx.atomic_load(llty, source, parse_ordering(bx, ordering), size);
                                 // ... and then cast the result back to a pointer
                                 bx.inttoptr(result, bx.backend_type(layout))
                             } else {
-                                bx.atomic_load(bx.backend_type(layout), source, order, size)
+                                bx.atomic_load(bx.backend_type(layout), source, parse_ordering(bx, ordering), size)
                             }
                         } else {
                             return invalid_monomorphization(ty);
@@ -484,7 +478,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 ptr = bx.pointercast(ptr, ptr_llty);
                                 val = bx.ptrtoint(val, bx.type_isize());
                             }
-                            bx.atomic_store(val, ptr, order, size);
+                            bx.atomic_store(val, ptr, parse_ordering(bx, ordering), size);
                             return;
                         } else {
                             return invalid_monomorphization(ty);
@@ -492,12 +486,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
 
                     "fence" => {
-                        bx.atomic_fence(order, SynchronizationScope::CrossThread);
+                        bx.atomic_fence(parse_ordering(bx, ordering), SynchronizationScope::CrossThread);
                         return;
                     }
 
                     "singlethreadfence" => {
-                        bx.atomic_fence(order, SynchronizationScope::SingleThread);
+                        bx.atomic_fence(parse_ordering(bx, ordering), SynchronizationScope::SingleThread);
                         return;
                     }
 
@@ -531,7 +525,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 ptr = bx.pointercast(ptr, ptr_llty);
                                 val = bx.ptrtoint(val, bx.type_isize());
                             }
-                            bx.atomic_rmw(atom_op, ptr, val, order)
+                            bx.atomic_rmw(atom_op, ptr, val, parse_ordering(bx, ordering))
                         } else {
                             return invalid_monomorphization(ty);
                         }
