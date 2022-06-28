@@ -540,17 +540,18 @@ pub(crate) fn load_proc_macro(
     path: &AbsPath,
     dummy_replace: &[Box<str>],
 ) -> ProcMacroLoadResult {
-    let res: Result<_, String> = (|| {
+    let res: Result<Vec<_>, String> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf())
             .map_err(|io| format!("Proc-macro dylib loading failed: {io}"))?;
-        Ok(if let Some(it) = server {
-            let vec = it.load_dylib(dylib).map_err(|e| format!("{e}"))?;
-            vec.into_iter()
-                .map(|expander| expander_to_proc_macro(expander, dummy_replace))
-                .collect()
-        } else {
-            Vec::new()
-        })
+        let server = server.ok_or_else(|| format!("Proc-macro server not started"))?;
+        let vec = server.load_dylib(dylib).map_err(|e| format!("{e}"))?;
+        if vec.is_empty() {
+            return Err("proc macro library returned no proc macros".to_string());
+        }
+        Ok(vec
+            .into_iter()
+            .map(|expander| expander_to_proc_macro(expander, dummy_replace))
+            .collect())
     })();
     return match res {
         Ok(proc_macros) => {

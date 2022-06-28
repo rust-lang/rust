@@ -572,9 +572,10 @@ impl ExprCollector<'_> {
 
         if record_diagnostics {
             match &res.err {
-                Some(ExpandError::UnresolvedProcMacro) => {
+                Some(ExpandError::UnresolvedProcMacro(krate)) => {
                     self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedProcMacro {
                         node: InFile::new(outer_file, syntax_ptr),
+                        krate: *krate,
                     });
                 }
                 Some(err) => {

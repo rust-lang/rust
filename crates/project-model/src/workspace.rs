@@ -873,7 +873,7 @@ fn add_target_crate_root(
     let proc_macro = match build_data.as_ref().map(|it| it.proc_macro_dylib_path.as_ref()) {
         Some(Some(it)) => load_proc_macro(it),
         Some(None) => Err("no proc macro dylib present".into()),
-        None => Err("no build data".into()),
+        None => Err("crate has not (yet) been built".into()),
     };
 
     let display_name = CrateDisplayName::from_canonical_name(cargo_name.to_string());
@@ -929,7 +929,7 @@ fn sysroot_to_crate_graph(
                 cfg_options.clone(),
                 cfg_options.clone(),
                 env,
-                Ok(Vec::new()),
+                Err("no proc macro loaded for sysroot crate".into()),
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::from(&*sysroot[krate].name)),
             );

@@ -1159,13 +1159,13 @@ impl DefWithBody {
                     }
                     .into(),
                 ),
-                BodyDiagnostic::UnresolvedProcMacro { node } => acc.push(
+                BodyDiagnostic::UnresolvedProcMacro { node, krate } => acc.push(
                     UnresolvedProcMacro {
                         node: node.clone().map(|it| it.into()),
                         precise_location: None,
                         macro_name: None,
                         kind: MacroKind::ProcMacro,
-                        krate: None,
+                        krate: *krate,
                     }
                     .into(),
                 ),

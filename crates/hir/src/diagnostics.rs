@@ -90,7 +90,7 @@ pub struct UnresolvedProcMacro {
     pub macro_name: Option<String>,
     pub kind: MacroKind,
     /// The crate id of the proc-macro this macro belongs to, or `None` if the proc-macro can't be found.
-    pub krate: Option<CrateId>,
+    pub krate: CrateId,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
