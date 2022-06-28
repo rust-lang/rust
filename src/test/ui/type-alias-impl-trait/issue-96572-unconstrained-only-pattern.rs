@@ -9,4 +9,16 @@ fn foo(foo: T) {
     y = "foo";
 }
 
+type U = impl Copy;
+
+fn bar(bar: Option<U>) {
+    match bar {
+        Some((mut x, mut y)) => {
+            x = 42;
+            y = "foo";
+        }
+        None => {}
+    }
+}
+
 fn main() {}
