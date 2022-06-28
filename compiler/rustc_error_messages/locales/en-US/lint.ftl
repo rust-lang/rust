@@ -373,3 +373,6 @@ lint-builtin-ellipsis-inclusive-range-patterns = `...` range patterns are deprec
     .suggestion = use `..=` for an inclusive range
 
 lint-builtin-unnameable-test-items = cannot test inner items
+
+lint-builtin-keyword-idents = `{$kw}` is a keyword in the {$next} edition
+    .suggestion = you can use a raw identifier to stay compatible

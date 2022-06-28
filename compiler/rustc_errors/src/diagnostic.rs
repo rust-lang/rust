@@ -8,7 +8,7 @@ use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -112,6 +112,12 @@ impl IntoDiagnosticArg for u128 {
 impl IntoDiagnosticArg for String {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(self))
+    }
+}
+
+impl IntoDiagnosticArg for Edition {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
     }
 }
 

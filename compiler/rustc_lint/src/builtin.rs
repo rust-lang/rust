@@ -2033,10 +2033,12 @@ impl KeywordIdents {
         }
 
         cx.struct_span_lint(KEYWORD_IDENTS, ident.span, |lint| {
-            lint.build(&format!("`{}` is a keyword in the {} edition", ident, next_edition))
+            lint.build(fluent::lint::builtin_keyword_idents)
+                .set_arg("kw", ident.clone())
+                .set_arg("next", next_edition)
                 .span_suggestion(
                     ident.span,
-                    "you can use a raw identifier to stay compatible",
+                    fluent::lint::suggestion,
                     format!("r#{}", ident),
                     Applicability::MachineApplicable,
                 )
