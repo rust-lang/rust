@@ -8,6 +8,7 @@
 #![feature(yeet_expr)]
 #![feature(is_some_with)]
 #![feature(nonzero_ops)]
+#![feature(local_key_cell_methods)]
 #![warn(rust_2018_idioms)]
 #![allow(
     clippy::collapsible_else_if,
@@ -89,8 +90,8 @@ pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
-    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, PtrId, SbTag, SbTagExtra,
-    Stack, Stacks,
+    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, SbTag, SbTagExtra, Stack,
+    Stacks,
 };
 pub use crate::sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId};
 pub use crate::thread::{

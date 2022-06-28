@@ -1,8 +1,8 @@
-error: Undefined Behavior: pointer to ALLOC was dereferenced after this allocation got freed
+error: Undefined Behavior: dereferencing pointer failed: $HEX is not a valid pointer
   --> $DIR/storage_dead_dangling.rs:LL:CC
    |
 LL |     unsafe { &mut *(LEAK as *mut i32) };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^ pointer to ALLOC was dereferenced after this allocation got freed
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: $HEX is not a valid pointer
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

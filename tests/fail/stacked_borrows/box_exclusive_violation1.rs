@@ -8,7 +8,7 @@ fn demo_mut_advanced_unique(mut our: Box<i32>) -> i32 {
     unknown_code_2();
 
     // We know this will return 5
-    *our //~ ERROR borrow stack
+    *our
 }
 
 // Now comes the evil context
@@ -24,7 +24,7 @@ fn unknown_code_1(x: &i32) {
 
 fn unknown_code_2() {
     unsafe {
-        *LEAK = 7;
+        *LEAK = 7; //~ ERROR borrow stack
     }
 }
 

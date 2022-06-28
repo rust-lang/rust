@@ -1,3 +1,5 @@
+// compile-flags: -Zmiri-permissive-provenance
+
 // This strips provenance
 fn transmute_ptr_to_int<T>(x: *const T) -> usize {
     unsafe { std::mem::transmute(x) }
@@ -88,6 +90,16 @@ fn ptr_eq_integer() {
     assert!(x != 64 as *const i32);
 }
 
+fn zst_deref_of_dangling() {
+    let b = Box::new(0);
+    let addr = &*b as *const _ as usize;
+    drop(b);
+    // Now if we cast `addr` to a ptr it might pick up the dangling provenance.
+    // But if we only do a ZST deref there is no UB here!
+    let zst = addr as *const ();
+    let _val = unsafe { *zst };
+}
+
 fn main() {
     cast();
     cast_dangling();
@@ -99,4 +111,5 @@ fn main() {
     ptr_eq_out_of_bounds();
     ptr_eq_out_of_bounds_null();
     ptr_eq_integer();
+    zst_deref_of_dangling();
 }

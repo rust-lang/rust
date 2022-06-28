@@ -340,6 +340,7 @@ fn main() {
                 Please let us know at <https://github.com/rust-lang/miri/issues/2188> if you rely on this flag."
             );
             miri_config.allow_ptr_int_transmute = true;
+            miri_config.provenance_mode = ProvenanceMode::Permissive;
         } else if arg == "-Zmiri-disable-abi-check" {
             miri_config.check_abi = false;
         } else if arg == "-Zmiri-disable-isolation" {
@@ -374,20 +375,18 @@ fn main() {
         } else if arg == "-Zmiri-panic-on-unsupported" {
             miri_config.panic_on_unsupported = true;
         } else if arg == "-Zmiri-tag-raw-pointers" {
-            miri_config.tag_raw = true;
+            eprintln!("WARNING: `-Zmiri-tag-raw-pointers` has no effect; it is enabled by default");
         } else if arg == "-Zmiri-strict-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Strict;
-            miri_config.tag_raw = true;
+            miri_config.allow_ptr_int_transmute = false;
         } else if arg == "-Zmiri-permissive-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Permissive;
-            miri_config.tag_raw = true;
         } else if arg == "-Zmiri-mute-stdout-stderr" {
             miri_config.mute_stdout_stderr = true;
         } else if arg == "-Zmiri-track-raw-pointers" {
             eprintln!(
-                "WARNING: -Zmiri-track-raw-pointers has been renamed to -Zmiri-tag-raw-pointers, the old name is deprecated."
+                "WARNING: `-Zmiri-track-raw-pointers` has no effect; it is enabled by default"
             );
-            miri_config.tag_raw = true;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-seed=") {
             if miri_config.seed.is_some() {
                 panic!("Cannot specify -Zmiri-seed multiple times!");
@@ -410,7 +409,7 @@ fn main() {
                         err
                     ),
             };
-            for id in ids.into_iter().map(miri::PtrId::new) {
+            for id in ids.into_iter().map(miri::SbTag::new) {
                 if let Some(id) = id {
                     miri_config.tracked_pointer_tags.insert(id);
                 } else {

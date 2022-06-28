@@ -1,20 +1,20 @@
-error: Undefined Behavior: trying to reborrow <untagged> for SharedReadOnly permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+error: Undefined Behavior: trying to reborrow <TAG> for SharedReadOnly permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
   --> $DIR/aliasing_mut3.rs:LL:CC
    |
 LL | pub fn safe(_x: &mut i32, _y: &i32) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    | |
-   | trying to reborrow <untagged> for SharedReadOnly permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+   | trying to reborrow <TAG> for SharedReadOnly permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
    | this error occurs as part of a reborrow at ALLOC[0x0..0x4]
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: tag was most recently created at offsets [0x0..0x4]
+help: <TAG> was created by a retag at offsets [0x0..0x4]
   --> $DIR/aliasing_mut3.rs:LL:CC
    |
 LL |     safe_raw(xraw, xshr);
    |                    ^^^^
-help: tag was later invalidated at offsets [0x0..0x4]
+help: <TAG> was later invalidated at offsets [0x0..0x4]
   --> $DIR/aliasing_mut3.rs:LL:CC
    |
 LL | pub fn safe(_x: &mut i32, _y: &i32) {}

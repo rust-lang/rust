@@ -1,8 +1,8 @@
 error: Undefined Behavior: null pointer is not a valid pointer for this operation
   --> $DIR/bad-backtrace-ptr.rs:LL:CC
    |
-LL |         miri_resolve_frame(0 as *mut _, 0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ null pointer is not a valid pointer for this operation
+LL |         miri_resolve_frame(std::ptr::null_mut(), 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ null pointer is not a valid pointer for this operation
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

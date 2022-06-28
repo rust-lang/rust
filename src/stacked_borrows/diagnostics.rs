@@ -32,7 +32,6 @@ struct Protection {
 
 #[derive(Clone, Debug)]
 struct Event {
-    time: usize,
     parent: Option<SbTag>,
     tag: SbTag,
     range: AllocRange,
@@ -44,12 +43,6 @@ pub enum TagHistory {
         tag: SbTag,
         created: (AllocRange, SpanData),
         invalidated: Option<(AllocRange, SpanData)>,
-        protected: Option<(SbTag, SpanData, SpanData)>,
-    },
-    Untagged {
-        recently_created: Option<(AllocRange, SpanData)>,
-        recently_invalidated: Option<(AllocRange, SpanData)>,
-        matching_created: Option<(AllocRange, SpanData)>,
         protected: Option<(SbTag, SpanData, SpanData)>,
     },
 }
@@ -72,7 +65,7 @@ impl AllocHistory {
         current_span: &mut CurrentSpan<'_, '_, '_>,
     ) {
         let span = current_span.get();
-        self.creations.push(Event { parent, tag, range, span, time: self.current_time });
+        self.creations.push(Event { parent, tag, range, span });
         self.current_time += 1;
     }
 
@@ -83,7 +76,7 @@ impl AllocHistory {
         current_span: &mut CurrentSpan<'_, '_, '_>,
     ) {
         let span = current_span.get();
-        self.invalidations.push(Event { parent: None, tag, range, span, time: self.current_time });
+        self.invalidations.push(Event { parent: None, tag, range, span });
         self.current_time += 1;
     }
 
@@ -101,8 +94,6 @@ impl AllocHistory {
     pub fn get_logs_relevant_to(
         &self,
         tag: SbTag,
-        alloc_range: AllocRange,
-        offset: Size,
         protector_tag: Option<SbTag>,
     ) -> Option<TagHistory> {
         let protected = protector_tag
@@ -125,74 +116,17 @@ impl AllocHistory {
                 })
             });
 
-        if let SbTag::Tagged(_) = tag {
-            let get_matching = |events: &[Event]| {
-                events.iter().rev().find_map(|event| {
-                    if event.tag == tag { Some((event.range, event.span.data())) } else { None }
-                })
-            };
-            Some(TagHistory::Tagged {
-                tag,
-                created: get_matching(&self.creations)?,
-                invalidated: get_matching(&self.invalidations),
-                protected,
+        let get_matching = |events: &[Event]| {
+            events.iter().rev().find_map(|event| {
+                if event.tag == tag { Some((event.range, event.span.data())) } else { None }
             })
-        } else {
-            let mut created_time = 0;
-            // Find the most recently created tag that satsfies this offset
-            let recently_created = self.creations.iter().rev().find_map(|event| {
-                if event.tag == tag && offset >= event.range.start && offset < event.range.end() {
-                    created_time = event.time;
-                    Some((event.range, event.span.data()))
-                } else {
-                    None
-                }
-            });
-
-            // Find a different recently created tag that satisfies this whole operation, predates
-            // the recently created tag, and has a different span.
-            // We're trying to make a guess at which span the user wanted to provide the tag that
-            // they're using.
-            let matching_created = recently_created.and_then(|(_created_range, created_span)| {
-                self.creations.iter().rev().find_map(|event| {
-                    if event.tag == tag
-                        && alloc_range.start >= event.range.start
-                        && alloc_range.end() <= event.range.end()
-                        && event.span.data() != created_span
-                        && event.time != created_time
-                    {
-                        Some((event.range, event.span.data()))
-                    } else {
-                        None
-                    }
-                })
-            });
-
-            // Find the most recent invalidation of this tag which post-dates the creation
-            let recently_invalidated = recently_created.and_then(|_| {
-                self.invalidations
-                    .iter()
-                    .rev()
-                    .take_while(|event| event.time > created_time)
-                    .find_map(|event| {
-                        if event.tag == tag
-                            && offset >= event.range.start
-                            && offset < event.range.end()
-                        {
-                            Some((event.range, event.span.data()))
-                        } else {
-                            None
-                        }
-                    })
-            });
-
-            Some(TagHistory::Untagged {
-                recently_created,
-                matching_created,
-                recently_invalidated,
-                protected,
-            })
-        }
+        };
+        Some(TagHistory::Tagged {
+            tag,
+            created: get_matching(&self.creations)?,
+            invalidated: get_matching(&self.invalidations),
+            protected,
+        })
     }
 
     /// Report a descriptive error when `new` could not be granted from `derived_from`.
@@ -214,9 +148,7 @@ impl AllocHistory {
         err_sb_ub(
             format!("{}{}", action, error_cause(stack, derived_from)),
             Some(operation_summary("a reborrow", alloc_id, alloc_range)),
-            derived_from.and_then(|derived_from| {
-                self.get_logs_relevant_to(derived_from, alloc_range, error_offset, None)
-            }),
+            derived_from.and_then(|derived_from| self.get_logs_relevant_to(derived_from, None)),
         )
     }
 
@@ -238,7 +170,7 @@ impl AllocHistory {
         err_sb_ub(
             format!("{}{}", action, error_cause(stack, tag)),
             Some(operation_summary("an access", alloc_id, alloc_range)),
-            tag.and_then(|tag| self.get_logs_relevant_to(tag, alloc_range, error_offset, None)),
+            tag.and_then(|tag| self.get_logs_relevant_to(tag, None)),
         )
     }
 }

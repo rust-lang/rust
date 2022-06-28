@@ -5,22 +5,20 @@ use log::trace;
 use rand::Rng;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ProvenanceMode {
-    /// Int2ptr casts return pointers with "wildcard" provenance
-    /// that basically matches that of all exposed pointers
-    /// (and SB tags, if enabled).
+    /// We support `expose_addr`/`from_exposed_addr` via "wildcard" provenance.
+    /// However, we want on `from_exposed_addr` to alert the user of the precision loss.
+    Default,
+    /// Like `Default`, but without the warning.
     Permissive,
-    /// Int2ptr casts return pointers with an invalid provenance,
-    /// i.e., not valid for any memory access.
+    /// We error on `from_exposed_addr`, ensuring no precision loss.
     Strict,
-    /// Int2ptr casts determine the allocation they point to at cast time.
-    /// All allocations are considered exposed.
-    Legacy,
 }
 
 pub type GlobalState = RefCell<GlobalStateInner>;
@@ -66,6 +64,8 @@ impl<'mir, 'tcx> GlobalStateInner {
 
         let pos = global_state.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr);
 
+        // Determine the in-bounds provenance for this pointer.
+        // (This is only called on an actual access, so in-bounds is the only possible kind of provenance.)
         let alloc_id = match pos {
             Ok(pos) => Some(global_state.int_to_ptr_map[pos].1),
             Err(0) => None,
@@ -91,21 +91,22 @@ impl<'mir, 'tcx> GlobalStateInner {
             }
         }?;
 
-        // In legacy mode, we consider all allocations exposed.
-        if global_state.provenance_mode == ProvenanceMode::Legacy
-            || global_state.exposed.contains(&alloc_id)
-        {
-            Some(alloc_id)
-        } else {
-            None
+        // We only use this provenance if it has been exposed, *and* is still live.
+        if global_state.exposed.contains(&alloc_id) {
+            // FIXME: this catches `InterpError`, which we should not usually do.
+            // We might need a proper fallible API from `memory.rs` to avoid this though.
+            if ecx.get_alloc_size_and_align(alloc_id, AllocCheck::Live).is_ok() {
+                return Some(alloc_id);
+            }
         }
+
+        None
     }
 
     pub fn expose_ptr(ecx: &mut MiriEvalContext<'mir, 'tcx>, alloc_id: AllocId, sb: SbTag) {
         let global_state = ecx.machine.intptrcast.get_mut();
-        // In legacy and strict mode, we don't need this, so we can save some cycles
-        // by not tracking it.
-        if global_state.provenance_mode == ProvenanceMode::Permissive {
+        // In strict mode, we don't need this, so we can save some cycles by not tracking it.
+        if global_state.provenance_mode != ProvenanceMode::Strict {
             trace!("Exposing allocation id {alloc_id:?}");
             global_state.exposed.insert(alloc_id);
             if ecx.machine.stacked_borrows.is_some() {
@@ -120,42 +121,49 @@ impl<'mir, 'tcx> GlobalStateInner {
     ) -> Pointer<Option<Tag>> {
         trace!("Transmuting 0x{:x} to a pointer", addr);
 
-        if ecx.machine.allow_ptr_int_transmute {
-            // When we allow transmutes, treat them like casts.
-            Self::ptr_from_addr_cast(ecx, addr)
+        let provenance = if ecx.machine.allow_ptr_int_transmute {
+            // When we allow transmutes, treat them like casts: generating a wildcard pointer.
+            Some(Tag::Wildcard)
         } else {
-            // We consider transmuted pointers to be "invalid" (`None` provenance).
-            Pointer::new(None, Size::from_bytes(addr))
-        }
+            // Usually, we consider transmuted pointers to be "invalid" (`None` provenance).
+            None
+        };
+        Pointer::new(provenance, Size::from_bytes(addr))
     }
 
     pub fn ptr_from_addr_cast(
         ecx: &MiriEvalContext<'mir, 'tcx>,
         addr: u64,
-    ) -> Pointer<Option<Tag>> {
+    ) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
         trace!("Casting 0x{:x} to a pointer", addr);
 
         let global_state = ecx.machine.intptrcast.borrow();
 
         match global_state.provenance_mode {
-            ProvenanceMode::Legacy => {
-                // Determine the allocation this points to at cast time.
-                let alloc_id = Self::alloc_id_from_addr(ecx, addr);
-                Pointer::new(
-                    alloc_id.map(|alloc_id| Tag::Concrete { alloc_id, sb: SbTag::Untagged }),
-                    Size::from_bytes(addr),
-                )
+            ProvenanceMode::Default => {
+                // The first time this happens at a particular location, print a warning.
+                thread_local! {
+                    // `Span` is non-`Send`, so we use a thread-local instead.
+                    static PAST_WARNINGS: RefCell<FxHashSet<Span>> = RefCell::default();
+                }
+                PAST_WARNINGS.with_borrow_mut(|past_warnings| {
+                    let first = past_warnings.is_empty();
+                    if past_warnings.insert(ecx.cur_span()) {
+                        // Newly inserted, so first time we see this span.
+                        register_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
+                    }
+                });
             }
             ProvenanceMode::Strict => {
-                // We don't support int2ptr casts in this mode (i.e., we treat them like
-                // transmutes).
-                Pointer::new(None, Size::from_bytes(addr))
+                throw_unsup_format!(
+                    "integer-to-pointer casts and `from_exposed_addr` are not supported with `-Zmiri-strict-provenance`; use `with_addr` instead"
+                )
             }
-            ProvenanceMode::Permissive => {
-                // This is how wildcard pointers are born.
-                Pointer::new(Some(Tag::Wildcard), Size::from_bytes(addr))
-            }
+            ProvenanceMode::Permissive => {}
         }
+
+        // This is how wildcard pointers are born.
+        Ok(Pointer::new(Some(Tag::Wildcard), Size::from_bytes(addr)))
     }
 
     fn alloc_base_addr(ecx: &MiriEvalContext<'mir, 'tcx>, alloc_id: AllocId) -> u64 {
@@ -214,6 +222,8 @@ impl<'mir, 'tcx> GlobalStateInner {
         dl.overflowing_offset(base_addr, offset.bytes()).0
     }
 
+    /// When a pointer is used for a memory access, this computes where in which allocation the
+    /// access is going.
     pub fn abs_ptr_to_rel(
         ecx: &MiriEvalContext<'mir, 'tcx>,
         ptr: Pointer<Tag>,
@@ -224,7 +234,6 @@ impl<'mir, 'tcx> GlobalStateInner {
             alloc_id
         } else {
             // A wildcard pointer.
-            assert_eq!(ecx.machine.intptrcast.borrow().provenance_mode, ProvenanceMode::Permissive);
             GlobalStateInner::alloc_id_from_addr(ecx, addr.bytes())?
         };
 

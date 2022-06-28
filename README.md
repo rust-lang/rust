@@ -289,6 +289,11 @@ environment variable. We first document the most relevant and most commonly used
   `-Zmiri-disable-isolation` is set.
 * `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
   remaining threads to exist when the main thread exits.
+* `-Zmiri-permissive-provenance` disables the warning for integer-to-pointer casts and
+  [`ptr::from_exposed_addr`](https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html).
+  This will necessarily miss some bugs as those operations are not efficiently and accurately
+  implementable in a sanitizer, but it will only miss bugs that concern memory/pointers which is
+  subject to these operations.
 * `-Zmiri-preemption-rate` configures the probability that at the end of a basic block, the active
   thread will be preempted. The default is `0.01` (i.e., 1%). Setting this to `0` disables
   preemption.
@@ -306,7 +311,17 @@ environment variable. We first document the most relevant and most commonly used
 * `-Zmiri-strict-provenance` enables [strict
   provenance](https://github.com/rust-lang/rust/issues/95228) checking in Miri. This means that
   casting an integer to a pointer yields a result with 'invalid' provenance, i.e., with provenance
-  that cannot be used for any memory access. Also implies `-Zmiri-tag-raw-pointers`.
+  that cannot be used for any memory access.
+* `-Zmiri-symbolic-alignment-check` makes the alignment check more strict.  By default, alignment is
+  checked by casting the pointer to an integer, and making sure that is a multiple of the alignment.
+  This can lead to cases where a program passes the alignment check by pure chance, because things
+  "happened to be" sufficiently aligned -- there is no UB in this execution but there would be UB in
+  others.  To avoid such cases, the symbolic alignment check only takes into account the requested
+  alignment of the relevant allocation, and the offset into that allocation.  This avoids missing
+  such bugs, but it also incurs some false positives when the code does manual integer arithmetic to
+  ensure alignment.  (The standard library `align_to` method works fine in both modes; under
+  symbolic alignment it only fills the middle slice when the allocation guarantees sufficient
+  alignment.)
 
 The remaining flags are for advanced use only, and more likely to change or be removed.
 Some of these are **unsound**, which means they can lead
@@ -321,7 +336,7 @@ to Miri failing to detect cases of undefined behavior in a program.
   integers via `mem::transmute` or union/pointer type punning. This has two effects: it disables the
   check against integers storing a pointer (i.e., data with provenance), thus allowing
   pointer-to-integer transmutation, and it treats integer-to-pointer transmutation as equivalent to
-  a cast. Using this flag is **unsound** and
+  a cast. Implies `-Zmiri-permissive-provenance`. Using this flag is **unsound** and
   [deprecated](https://github.com/rust-lang/miri/issues/2188).
 * `-Zmiri-disable-abi-check` disables checking [function ABI]. Using this flag
   is **unsound**.
@@ -354,27 +369,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   application instead of raising an error within the context of Miri (and halting
   execution). Note that code might not expect these operations to ever panic, so
   this flag can lead to strange (mis)behavior.
-* `-Zmiri-permissive-provenance` is **experimental**. This will make Miri do a
-  best-effort attempt to implement the semantics of
-  [`expose_addr`](https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.expose_addr)
-  and
-  [`ptr::from_exposed_addr`](https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html)
-  for pointer-to-int and int-to-pointer casts, respectively. This will
-  necessarily miss some bugs as those semantics are not efficiently
-  implementable in a sanitizer, but it will only miss bugs that concerns
-  memory/pointers which is subject to these operations.
-* `-Zmiri-symbolic-alignment-check` makes the alignment check more strict.  By
-  default, alignment is checked by casting the pointer to an integer, and making
-  sure that is a multiple of the alignment.  This can lead to cases where a
-  program passes the alignment check by pure chance, because things "happened to
-  be" sufficiently aligned -- there is no UB in this execution but there would
-  be UB in others.  To avoid such cases, the symbolic alignment check only takes
-  into account the requested alignment of the relevant allocation, and the
-  offset into that allocation.  This avoids missing such bugs, but it also
-  incurs some false positives when the code does manual integer arithmetic to
-  ensure alignment.  (The standard library `align_to` method works fine in both
-  modes; under symbolic alignment it only fills the middle slice when the
-  allocation guarantees sufficient alignment.)
 * `-Zmiri-track-alloc-id=<id1>,<id2>,...` shows a backtrace when the given allocations are
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs. Specifying this argument multiple times does not overwrite the previous
@@ -389,13 +383,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   happening and where in your code would be a good place to look for it.
   Specifying this argument multiple times does not overwrite the previous
   values, instead it appends its values to the list. Listing a tag multiple times has no effect.
-* `-Zmiri-tag-raw-pointers` makes Stacked Borrows assign proper tags even for raw pointers. This can
-  make valid code using int-to-ptr casts fail to pass the checks, but also can help identify latent
-  aliasing issues in code that Miri accepts by default. You can recognize false positives by
-  `<untagged>` occurring in the message -- this indicates a pointer that was cast from an integer,
-  so Miri was unable to track this pointer. Note that it is not currently guaranteed that code that
-  works with `-Zmiri-tag-raw-pointers` also works without `-Zmiri-tag-raw-pointers`, but for the
-  vast majority of code, this will be the case.
 
 [function ABI]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
 
