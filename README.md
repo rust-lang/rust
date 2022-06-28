@@ -277,7 +277,7 @@ environment variable. We first document the most relevant and most commonly used
   and `warn-nobacktrace` are the supported actions. The default is to `abort`,
   which halts the machine. Some (but not all) operations also support continuing
   execution with a "permission denied" error being returned to the program.
-  `warn` prints a full backtrace when that happen; `warn-nobacktrace` is less
+  `warn` prints a full backtrace when that happens; `warn-nobacktrace` is less
   verbose. `hide` hides the warning entirely.
 * `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from the host so that it
   cannot be accessed by the program. Can be used multiple times to exclude several variables. The
