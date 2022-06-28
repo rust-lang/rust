@@ -57,6 +57,8 @@ create_config! {
     // Comments. macros, and strings
     wrap_comments: bool, false, false, "Break comments to fit on the line";
     format_code_in_doc_comments: bool, false, false, "Format the code snippet in doc comments.";
+    doc_comment_code_block_width: usize, 100, false, "Maximum width for code snippets in doc \
+        comments. No effect unless format_code_in_doc_comments = true";
     comment_width: usize, 80, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, false, "Convert /* */ comments to // comments where possible";
@@ -532,6 +534,7 @@ chain_width = 60
 single_line_if_else_max_width = 50
 wrap_comments = false
 format_code_in_doc_comments = false
+doc_comment_code_block_width = 100
 comment_width = 80
 normalize_comments = false
 normalize_doc_attributes = false
