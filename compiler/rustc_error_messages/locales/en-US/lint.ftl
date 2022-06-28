@@ -294,3 +294,33 @@ lint-builtin-box-pointers = type uses owned (Box type) pointers: {$ty}
 
 lint-builtin-non-shorthand-field-patterns = the `{$ident}:` in this pattern is redundant
     .suggestion = use shorthand field pattern
+
+lint-builtin-overridden-symbol-name =
+    the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
+
+lint-builtin-overridden-symbol-section =
+    the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them
+
+lint-builtin-allow-internal-unsafe =
+    `allow_internal_unsafe` allows defining macros using unsafe without triggering the `unsafe_code` lint at their call site
+
+lint-builtin-unsafe-block = usage of an `unsafe` block
+
+lint-builtin-unsafe-trait = declaration of an `unsafe` trait
+
+lint-builtin-unsafe-impl = implementation of an `unsafe` trait
+
+lint-builtin-no-mangle-fn = declaration of a `no_mangle` function
+lint-builtin-export-name-fn = declaration of a function with `export_name`
+lint-builtin-link-section-fn = declaration of a function with `link_section`
+
+lint-builtin-no-mangle-static = declaration of a `no_mangle` static
+lint-builtin-export-name-static = declaration of a static with `export_name`
+lint-builtin-link-section-static = declaration of a static with `link_section`
+
+lint-builtin-no-mangle-method = declaration of a `no_mangle` method
+lint-builtin-export-name-method = declaration of a method with `export_name`
+
+lint-builtin-decl-unsafe-fn = declaration of an `unsafe` function
+lint-builtin-decl-unsafe-method = declaration of an `unsafe` method
+lint-builtin-impl-unsafe-method = implementation of an `unsafe` method

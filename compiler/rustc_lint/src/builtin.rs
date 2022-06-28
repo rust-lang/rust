@@ -31,7 +31,9 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{fluent, Applicability, Diagnostic, DiagnosticStyledString, MultiSpan};
+use rustc_errors::{
+    fluent, Applicability, Diagnostic, DiagnosticMessage, DiagnosticStyledString, MultiSpan,
+};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -326,26 +328,25 @@ impl UnsafeCode {
         cx.struct_span_lint(UNSAFE_CODE, span, decorate);
     }
 
-    fn report_overridden_symbol_name(&self, cx: &EarlyContext<'_>, span: Span, msg: &str) {
+    fn report_overridden_symbol_name(
+        &self,
+        cx: &EarlyContext<'_>,
+        span: Span,
+        msg: DiagnosticMessage,
+    ) {
         self.report_unsafe(cx, span, |lint| {
-            lint.build(msg)
-                .note(
-                    "the linker's behavior with multiple libraries exporting duplicate symbol \
-                    names is undefined and Rust cannot provide guarantees when you manually \
-                    override them",
-                )
-                .emit();
+            lint.build(msg).note(fluent::lint::builtin_overridden_symbol_name).emit();
         })
     }
 
-    fn report_overridden_symbol_section(&self, cx: &EarlyContext<'_>, span: Span, msg: &str) {
+    fn report_overridden_symbol_section(
+        &self,
+        cx: &EarlyContext<'_>,
+        span: Span,
+        msg: DiagnosticMessage,
+    ) {
         self.report_unsafe(cx, span, |lint| {
-            lint.build(msg)
-                .note(
-                    "the program's behavior with overridden link sections on items is unpredictable \
-                    and Rust cannot provide guarantees when you manually override them",
-                )
-                .emit();
+            lint.build(msg).note(fluent::lint::builtin_overridden_symbol_section).emit();
         })
     }
 }
@@ -354,12 +355,7 @@ impl EarlyLintPass for UnsafeCode {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         if attr.has_name(sym::allow_internal_unsafe) {
             self.report_unsafe(cx, attr.span, |lint| {
-                lint.build(
-                    "`allow_internal_unsafe` allows defining \
-                                               macros using unsafe without triggering \
-                                               the `unsafe_code` lint at their call site",
-                )
-                .emit();
+                lint.build(fluent::lint::builtin_allow_internal_unsafe).emit();
             });
         }
     }
@@ -369,7 +365,7 @@ impl EarlyLintPass for UnsafeCode {
             // Don't warn about generated blocks; that'll just pollute the output.
             if blk.rules == ast::BlockCheckMode::Unsafe(ast::UserProvided) {
                 self.report_unsafe(cx, blk.span, |lint| {
-                    lint.build("usage of an `unsafe` block").emit();
+                    lint.build(fluent::lint::builtin_unsafe_block).emit();
                 });
             }
         }
@@ -379,12 +375,12 @@ impl EarlyLintPass for UnsafeCode {
         match it.kind {
             ast::ItemKind::Trait(box ast::Trait { unsafety: ast::Unsafe::Yes(_), .. }) => self
                 .report_unsafe(cx, it.span, |lint| {
-                    lint.build("declaration of an `unsafe` trait").emit();
+                    lint.build(fluent::lint::builtin_unsafe_trait).emit();
                 }),
 
             ast::ItemKind::Impl(box ast::Impl { unsafety: ast::Unsafe::Yes(_), .. }) => self
                 .report_unsafe(cx, it.span, |lint| {
-                    lint.build("implementation of an `unsafe` trait").emit();
+                    lint.build(fluent::lint::builtin_unsafe_impl).emit();
                 }),
 
             ast::ItemKind::Fn(..) => {
@@ -392,7 +388,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
-                        "declaration of a `no_mangle` function",
+                        fluent::lint::builtin_no_mangle_fn,
                     );
                 }
 
@@ -400,7 +396,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
-                        "declaration of a function with `export_name`",
+                        fluent::lint::builtin_export_name_fn,
                     );
                 }
 
@@ -408,7 +404,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_section(
                         cx,
                         attr.span,
-                        "declaration of a function with `link_section`",
+                        fluent::lint::builtin_link_section_fn,
                     );
                 }
             }
@@ -418,7 +414,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
-                        "declaration of a `no_mangle` static",
+                        fluent::lint::builtin_no_mangle_static,
                     );
                 }
 
@@ -426,7 +422,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
-                        "declaration of a static with `export_name`",
+                        fluent::lint::builtin_export_name_static,
                     );
                 }
 
@@ -434,7 +430,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_section(
                         cx,
                         attr.span,
-                        "declaration of a static with `link_section`",
+                        fluent::lint::builtin_link_section_static,
                     );
                 }
             }
@@ -449,14 +445,14 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_overridden_symbol_name(
                     cx,
                     attr.span,
-                    "declaration of a `no_mangle` method",
+                    fluent::lint::builtin_no_mangle_method,
                 );
             }
             if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
                 self.report_overridden_symbol_name(
                     cx,
                     attr.span,
-                    "declaration of a method with `export_name`",
+                    fluent::lint::builtin_export_name_method,
                 );
             }
         }
@@ -474,9 +470,9 @@ impl EarlyLintPass for UnsafeCode {
         {
             let msg = match ctxt {
                 FnCtxt::Foreign => return,
-                FnCtxt::Free => "declaration of an `unsafe` function",
-                FnCtxt::Assoc(_) if body.is_none() => "declaration of an `unsafe` method",
-                FnCtxt::Assoc(_) => "implementation of an `unsafe` method",
+                FnCtxt::Free => fluent::lint::builtin_decl_unsafe_fn,
+                FnCtxt::Assoc(_) if body.is_none() => fluent::lint::builtin_decl_unsafe_method,
+                FnCtxt::Assoc(_) => fluent::lint::builtin_impl_unsafe_method,
             };
             self.report_unsafe(cx, span, |lint| {
                 lint.build(msg).emit();
