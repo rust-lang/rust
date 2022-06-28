@@ -1323,7 +1323,7 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
             if let Some(items) = attr.meta_item_list() {
                 for item in items {
                     cx.struct_span_lint(UNSTABLE_FEATURES, item.span(), |lint| {
-                        lint.build("unstable feature").emit();
+                        lint.build(fluent::lint::builtin_unstable_features).emit();
                     });
                 }
             }

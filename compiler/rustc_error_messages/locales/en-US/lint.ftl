@@ -352,3 +352,5 @@ lint-builtin-const-no-mangle = const items should never be `#[no_mangle]`
 
 lint-builtin-mutable-transmutes =
     transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
+
+lint-builtin-unstable-features = unstable feature
