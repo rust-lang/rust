@@ -278,3 +278,6 @@ lint-path-statement-drop = path statement drops value
     .suggestion = use `drop` to clarify the intent
 
 lint-path-statement-no-effect = path statement with no effect
+
+lint-unused-delim = unnecessary {$delim} around {$item}
+    .suggestion = remove these {$delim}

@@ -544,15 +544,19 @@ trait UnusedDelimLint {
         }
 
         cx.struct_span_lint(self.lint(), MultiSpan::from(vec![spans.0, spans.1]), |lint| {
-            let span_msg = format!("unnecessary {} around {}", Self::DELIM_STR, msg);
-            let mut err = lint.build(&span_msg);
             let replacement = vec![
                 (spans.0, if keep_space.0 { " ".into() } else { "".into() }),
                 (spans.1, if keep_space.1 { " ".into() } else { "".into() }),
             ];
-            let suggestion = format!("remove these {}", Self::DELIM_STR);
-            err.multipart_suggestion(&suggestion, replacement, Applicability::MachineApplicable);
-            err.emit();
+            lint.build(fluent::lint::unused_delim)
+                .set_arg("delim", Self::DELIM_STR)
+                .set_arg("item", msg)
+                .multipart_suggestion(
+                    fluent::lint::suggestion,
+                    replacement,
+                    Applicability::MachineApplicable,
+                )
+                .emit();
         });
     }
 
