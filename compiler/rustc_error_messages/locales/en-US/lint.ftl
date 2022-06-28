@@ -376,3 +376,9 @@ lint-builtin-unnameable-test-items = cannot test inner items
 
 lint-builtin-keyword-idents = `{$kw}` is a keyword in the {$next} edition
     .suggestion = you can use a raw identifier to stay compatible
+
+lint-builtin-explicit-outlives = outlives requirements can be inferred
+    .suggestion = remove {$count ->
+        [one] this bound
+        *[other] these bounds
+    }

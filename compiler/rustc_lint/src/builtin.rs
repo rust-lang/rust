@@ -2288,13 +2288,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 
             if !lint_spans.is_empty() {
                 cx.struct_span_lint(EXPLICIT_OUTLIVES_REQUIREMENTS, lint_spans.clone(), |lint| {
-                    lint.build("outlives requirements can be inferred")
+                    lint.build(fluent::lint::builtin_explicit_outlives)
+                        .set_arg("count", bound_count)
                         .multipart_suggestion(
-                            if bound_count == 1 {
-                                "remove this bound"
-                            } else {
-                                "remove these bounds"
-                            },
+                            fluent::lint::suggestion,
                             lint_spans
                                 .into_iter()
                                 .map(|span| (span, String::new()))
