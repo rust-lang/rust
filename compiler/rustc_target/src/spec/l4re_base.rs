@@ -1,4 +1,4 @@
-use crate::spec::{cvs, LinkerFlavor, PanicStrategy, TargetOptions};
+use crate::spec::{cvs, LinkerFlavor, PanicStrategy, RelocModel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
@@ -9,6 +9,7 @@ pub fn opts() -> TargetOptions {
         linker: Some("l4-bender".into()),
         linker_is_gnu: false,
         families: cvs!["unix"],
+        relocation_model: RelocModel::Static,
         ..Default::default()
     }
 }

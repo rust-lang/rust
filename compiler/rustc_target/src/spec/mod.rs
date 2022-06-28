@@ -837,15 +837,15 @@ impl fmt::Display for StackProtector {
 }
 
 macro_rules! supported_targets {
-    ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
+    ( $(($triple:literal, $module:ident ),)+ ) => {
         $(mod $module;)+
 
         /// List of supported targets
-        pub const TARGETS: &[&str] = &[$($($triple),+),+];
+        pub const TARGETS: &[&str] = &[$($triple),+];
 
         fn load_builtin(target: &str) -> Option<Target> {
             let mut t = match target {
-                $( $($triple)|+ => $module::target(), )+
+                $( $triple => $module::target(), )+
                 _ => return None,
             };
             t.is_builtin = true;
@@ -861,7 +861,7 @@ macro_rules! supported_targets {
             $(
                 #[test] // `#[test]`
                 fn $module() {
-                    tests_impl::test_target(super::$module::target());
+                    tests_impl::test_target(super::$module::target(), $triple);
                 }
             )+
         }
