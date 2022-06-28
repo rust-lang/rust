@@ -251,3 +251,25 @@ lint-atomic-ordering-invalid-fail-success = `{$method}`'s success ordering must 
     .fail-label = `{$fail_ordering}` failure ordering
     .success-label = `{$success_ordering}` success ordering
     .suggestion = consider using `{$success_suggestion}` success ordering instead
+
+lint-unused-op = unused {$op} that must be used
+    .label = the {$op} produces a value
+    .suggestion = use `let _ = ...` to ignore the resulting value
+
+lint-unused-result = unused result of type `{$ty}`
+
+lint-unused-closure =
+    unused {$pre}{$count ->
+        [one] closure
+        *[other] closures
+    }{$post} that must be used
+    .note = closures are lazy and do nothing unless called
+
+lint-unused-generator =
+    unused {$pre}{$count ->
+        [one] generator
+        *[other] generator
+    }{$post} that must be used
+    .note = generators are lazy and do nothing unless resumed
+
+lint-unused-def = unused {$pre}`{$def}`{$post} that must be used
