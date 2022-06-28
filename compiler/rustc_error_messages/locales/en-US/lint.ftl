@@ -291,3 +291,6 @@ lint-builtin-while-true = denote infinite loops with `loop {"{"} ... {"}"}`
     .suggestion = use `loop`
 
 lint-builtin-box-pointers = type uses owned (Box type) pointers: {$ty}
+
+lint-builtin-non-shorthand-field-patterns = the `{$ident}:` in this pattern is redundant
+    .suggestion = use shorthand field pattern

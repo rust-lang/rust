@@ -256,26 +256,26 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                         == Some(cx.tcx.field_index(fieldpat.hir_id, cx.typeck_results()))
                     {
                         cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span, |lint| {
-                            let mut err = lint
-                                .build(&format!("the `{}:` in this pattern is redundant", ident));
                             let binding = match binding_annot {
                                 hir::BindingAnnotation::Unannotated => None,
                                 hir::BindingAnnotation::Mutable => Some("mut"),
                                 hir::BindingAnnotation::Ref => Some("ref"),
                                 hir::BindingAnnotation::RefMut => Some("ref mut"),
                             };
-                            let ident = if let Some(binding) = binding {
+                            let suggested_ident = if let Some(binding) = binding {
                                 format!("{} {}", binding, ident)
                             } else {
                                 ident.to_string()
                             };
-                            err.span_suggestion(
-                                fieldpat.span,
-                                "use shorthand field pattern",
-                                ident,
-                                Applicability::MachineApplicable,
-                            );
-                            err.emit();
+                            lint.build(fluent::lint::builtin_non_shorthand_field_patterns)
+                                .set_arg("ident", ident.clone())
+                                .span_suggestion(
+                                    fieldpat.span,
+                                    fluent::lint::suggestion,
+                                    suggested_ident,
+                                    Applicability::MachineApplicable,
+                                )
+                                .emit();
                         });
                     }
                 }
