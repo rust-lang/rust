@@ -121,6 +121,17 @@ local-storage: {"rustdoc-disable-shortcuts": "false"}
 click: ".setting-line:last-child .toggle .label"
 assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
 
+// Make sure that "Disable keyboard shortcuts" actually took effect.
+press-key: "?"
+wait-for-css: ("#settings-menu .popover", {"display": "block"})
+
+// Now turn keyboard shortcuts back on, and see if they work.
+click: ".setting-line:last-child .toggle .label"
+assert-local-storage: {"rustdoc-disable-shortcuts": "false"}
+press-key: "?"
+wait-for-css: ("#help-button .popover", {"display": "block"})
+assert-css: ("#settings-menu .popover", {"display": "none"})
+
 // Now we go to the settings page to check that the CSS is loaded as expected.
 goto: file://|DOC_PATH|/settings.html
 wait-for: "#settings"

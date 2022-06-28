@@ -412,9 +412,9 @@ function loadCss(cssFileName) {
         window.hidePopoverMenus();
     }
 
-    const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
+        const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
         if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts) {
             return;
         }
