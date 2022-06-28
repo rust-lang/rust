@@ -25,7 +25,6 @@ pub fn expand_deriving_debug(
         path: path_std!(fmt::Debug),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::fmt,
@@ -34,7 +33,6 @@ pub fn expand_deriving_debug(
             args: vec![(fmtr, sym::f)],
             ret_ty: Literal(path_std!(fmt::Result)),
             attributes: Vec::new(),
-            is_unsafe: false,
             unify_fieldless_variants: false,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 show_substructure(a, b, c)

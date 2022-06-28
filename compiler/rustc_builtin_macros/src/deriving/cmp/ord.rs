@@ -23,7 +23,6 @@ pub fn expand_deriving_ord(
         path: path_std!(cmp::Ord),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::cmp,
@@ -32,7 +31,6 @@ pub fn expand_deriving_ord(
             args: vec![(borrowed_self(), sym::other)],
             ret_ty: Literal(path_std!(cmp::Ordering)),
             attributes: attrs,
-            is_unsafe: false,
             unify_fieldless_variants: true,
             combine_substructure: combine_substructure(Box::new(|a, b, c| cs_cmp(a, b, c))),
         }],

@@ -81,7 +81,6 @@ pub fn expand_deriving_clone(
         path: path_std!(clone::Clone),
         additional_bounds: bounds,
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::clone,
@@ -90,7 +89,6 @@ pub fn expand_deriving_clone(
             args: Vec::new(),
             ret_ty: Self_,
             attributes: attrs,
-            is_unsafe: false,
             unify_fieldless_variants: false,
             combine_substructure: substructure,
         }],

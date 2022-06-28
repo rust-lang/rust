@@ -30,7 +30,6 @@ pub fn expand_deriving_default(
         path: Path::new(vec![kw::Default, sym::Default]),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: kw::Default,
@@ -39,7 +38,6 @@ pub fn expand_deriving_default(
             args: Vec::new(),
             ret_ty: Self_,
             attributes: attrs,
-            is_unsafe: false,
             unify_fieldless_variants: false,
             combine_substructure: combine_substructure(Box::new(|cx, trait_span, substr| {
                 match substr.fields {

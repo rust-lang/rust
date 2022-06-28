@@ -111,7 +111,6 @@ pub fn expand_deriving_rustc_encodable(
         path: Path::new_(vec![krate, sym::Encodable], None, vec![], PathKind::Global),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::encode,
@@ -141,7 +140,6 @@ pub fn expand_deriving_rustc_encodable(
                 PathKind::Std,
             )),
             attributes: Vec::new(),
-            is_unsafe: false,
             unify_fieldless_variants: false,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 encodable_substructure(a, b, c, krate)

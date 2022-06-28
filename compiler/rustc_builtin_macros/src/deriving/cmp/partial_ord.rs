@@ -33,7 +33,6 @@ pub fn expand_deriving_partial_ord(
         args: vec![(borrowed_self(), sym::other)],
         ret_ty,
         attributes: attrs,
-        is_unsafe: false,
         unify_fieldless_variants: true,
         combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
             cs_partial_cmp(cx, span, substr)
@@ -46,7 +45,6 @@ pub fn expand_deriving_partial_ord(
         path: path_std!(cmp::PartialOrd),
         additional_bounds: vec![],
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![partial_cmp_def],
         associated_types: Vec::new(),

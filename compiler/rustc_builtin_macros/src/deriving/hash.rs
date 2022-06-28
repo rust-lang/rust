@@ -26,7 +26,6 @@ pub fn expand_deriving_hash(
         path,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::hash,
@@ -35,7 +34,6 @@ pub fn expand_deriving_hash(
             args: vec![(Ptr(Box::new(Literal(arg)), Borrowed(None, Mutability::Mut)), sym::state)],
             ret_ty: nil_ty(),
             attributes: vec![],
-            is_unsafe: false,
             unify_fieldless_variants: true,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 hash_substructure(a, b, c)

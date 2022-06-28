@@ -210,9 +210,6 @@ pub struct TraitDef<'a> {
     /// Any extra lifetimes and/or bounds, e.g., `D: serialize::Decoder`
     pub generics: Bounds,
 
-    /// Is it an `unsafe` trait?
-    pub is_unsafe: bool,
-
     /// Can this trait be derived for unions?
     pub supports_unions: bool,
 
@@ -239,9 +236,6 @@ pub struct MethodDef<'a> {
     pub ret_ty: Ty,
 
     pub attributes: Vec<ast::Attribute>,
-
-    // Is it an `unsafe fn`?
-    pub is_unsafe: bool,
 
     /// Can we combine fieldless variants for enums into a single match arm?
     pub unify_fieldless_variants: bool,
@@ -717,14 +711,12 @@ impl<'a> TraitDef<'a> {
         let mut a = vec![attr, unused_qual];
         a.extend(self.attributes.iter().cloned());
 
-        let unsafety = if self.is_unsafe { ast::Unsafe::Yes(self.span) } else { ast::Unsafe::No };
-
         cx.item(
             self.span,
             Ident::empty(),
             a,
             ast::ItemKind::Impl(Box::new(ast::Impl {
-                unsafety,
+                unsafety: ast::Unsafe::No,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
                 constness: ast::Const::No,
@@ -939,15 +931,9 @@ impl<'a> MethodDef<'a> {
         let fn_decl = cx.fn_decl(args, ast::FnRetTy::Ty(ret_type));
         let body_block = cx.block_expr(body);
 
-        let unsafety = if self.is_unsafe { ast::Unsafe::Yes(span) } else { ast::Unsafe::No };
-
         let trait_lo_sp = span.shrink_to_lo();
 
-        let sig = ast::FnSig {
-            header: ast::FnHeader { unsafety, ext: ast::Extern::None, ..ast::FnHeader::default() },
-            decl: fn_decl,
-            span,
-        };
+        let sig = ast::FnSig { header: ast::FnHeader::default(), decl: fn_decl, span };
         let defaultness = ast::Defaultness::Final;
 
         // Create the method.

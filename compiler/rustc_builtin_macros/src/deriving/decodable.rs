@@ -26,7 +26,6 @@ pub fn expand_deriving_rustc_decodable(
         path: Path::new_(vec![krate, sym::Decodable], None, vec![], PathKind::Global),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::decode,
@@ -56,7 +55,6 @@ pub fn expand_deriving_rustc_decodable(
                 PathKind::Std,
             )),
             attributes: Vec::new(),
-            is_unsafe: false,
             unify_fieldless_variants: false,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 decodable_substructure(a, b, c, krate)
