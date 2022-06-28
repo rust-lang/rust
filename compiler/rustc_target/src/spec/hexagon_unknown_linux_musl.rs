@@ -11,7 +11,6 @@ pub fn target() -> Target {
     base.has_rpath = true;
     base.linker_is_gnu = false;
     base.dynamic_linking = true;
-    base.executables = true;
 
     base.c_enum_min_bits = 8;
 

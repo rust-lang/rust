@@ -23,7 +23,6 @@ pub fn target() -> Target {
             abi: "eabihf".into(),
             linker_flavor: LinkerFlavor::Gcc,
             cpu: "mpcore".into(),
-            executables: true,
             families: cvs!["unix"],
             linker: Some("arm-none-eabi-gcc".into()),
             relocation_model: RelocModel::Static,
