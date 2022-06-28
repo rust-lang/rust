@@ -110,6 +110,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     let offset_align = Align::from_bytes(4).unwrap();
 
     let gr_type = target_ty.is_any_ptr() || target_ty.is_integral();
+    // FIXME(eddyb) this should use the higher-level `PlaceRef` APIs.
     let (reg_off, reg_top_index, slot_size) = if gr_type {
         let gr_offs =
             bx.struct_gep(va_list_ty, va_list_addr, va_list_layout.llvm_field_index(bx.cx, 3));

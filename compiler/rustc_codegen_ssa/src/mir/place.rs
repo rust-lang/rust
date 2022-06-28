@@ -10,7 +10,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{Abi, Align, FieldsShape, Int, TagEncoding};
+use rustc_target::abi::{Align, FieldsShape, Int, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 #[derive(Copy, Clone, Debug)]
@@ -93,37 +93,15 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let effective_field_align = self.align.restrict_for_offset(offset);
 
         let mut simple = || {
-            let llval = match self.layout.abi {
-                _ if offset.bytes() == 0 => {
-                    // Unions and newtypes only use an offset of 0.
-                    // Also handles the first field of Scalar, ScalarPair, and Vector layouts.
-                    self.llval
-                }
-                Abi::ScalarPair(a, b)
-                    if offset == a.size(bx.cx()).align_to(b.align(bx.cx()).abi) =>
-                {
-                    // Offset matches second field.
-                    let ty = bx.backend_type(self.layout);
-                    bx.struct_gep(ty, self.llval, 1)
-                }
-                Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } if field.is_zst() => {
-                    // ZST fields are not included in Scalar, ScalarPair, and Vector layouts, so manually offset the pointer.
-                    let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
-                    bx.gep(bx.cx().type_i8(), byte_ptr, &[bx.const_usize(offset.bytes())])
-                }
-                Abi::Scalar(_) | Abi::ScalarPair(..) => {
-                    // All fields of Scalar and ScalarPair layouts must have been handled by this point.
-                    // Vector layouts have additional fields for each element of the vector, so don't panic in that case.
-                    bug!(
-                        "offset of non-ZST field `{:?}` does not match layout `{:#?}`",
-                        field,
-                        self.layout
-                    );
-                }
-                _ => {
-                    let ty = bx.backend_type(self.layout);
-                    bx.struct_gep(ty, self.llval, bx.cx().backend_field_index(self.layout, ix))
-                }
+            let llval = if offset.bytes() == 0 {
+                self.llval
+            } else {
+                let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
+                // FIXME(eddyb) when can this not be `inbounds`? ZSTs?
+                // (but since `offset` is larger than `0`, that would mean the
+                // allocation the place points into has at least one byte, so
+                // any possible offset in the layout *should* be in-bounds)
+                bx.inbounds_gep(bx.cx().type_i8(), byte_ptr, &[bx.const_usize(offset.bytes())])
             };
             PlaceRef {
                 // HACK(eddyb): have to bitcast pointers until LLVM removes pointee types.
@@ -189,6 +167,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 
         // Cast and adjust pointer.
         let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
+        // FIXME(eddyb) this should be `inbounds` (why not? ZSTs?)
         let byte_ptr = bx.gep(bx.cx().type_i8(), byte_ptr, &[offset]);
 
         // Finally, cast back to the type expected.

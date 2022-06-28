@@ -194,6 +194,7 @@ pub trait LayoutLlvmExt<'tcx> {
         index: usize,
         immediate: bool,
     ) -> &'a Type;
+    // FIXME(eddyb) remove (used only by `va_arg::emit_aapcs_va_arg`).
     fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64;
     fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size) -> Option<PointeeInfo>;
 }
@@ -366,6 +367,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         self.scalar_llvm_type_at(cx, scalar, offset)
     }
 
+    // FIXME(eddyb) remove (used only by `va_arg::emit_aapcs_va_arg`).
     fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64 {
         match self.abi {
             Abi::Scalar(_) | Abi::ScalarPair(..) => {
