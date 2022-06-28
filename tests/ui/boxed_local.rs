@@ -1,4 +1,5 @@
 #![feature(box_syntax)]
+#![feature(lint_reasons)]
 #![allow(
     clippy::borrowed_box,
     clippy::needless_pass_by_value,
@@ -201,4 +202,8 @@ mod issue4804 {
         // warn on `x: Box<u32>`
         fn foo(x: Box<u32>) {}
     }
+}
+
+fn check_expect(#[expect(clippy::boxed_local)] x: Box<A>) {
+    x.foo();
 }

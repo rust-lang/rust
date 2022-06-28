@@ -1,7 +1,6 @@
 // aux-build:macro_rules.rs
 // aux-build:macro_use_helper.rs
 // aux-build:proc_macro_derive.rs
-// run-rustfix
 // ignore-32bit
 
 #![feature(lint_reasons)]
@@ -16,12 +15,16 @@ extern crate macro_use_helper as mac;
 extern crate proc_macro_derive as mini_mac;
 
 mod a {
+    #[expect(clippy::macro_use_imports)]
     #[macro_use]
     use mac;
+    #[expect(clippy::macro_use_imports)]
     #[macro_use]
     use mini_mac;
+    #[expect(clippy::macro_use_imports)]
     #[macro_use]
     use mac::inner;
+    #[expect(clippy::macro_use_imports)]
     #[macro_use]
     use mac::inner::nested;
 

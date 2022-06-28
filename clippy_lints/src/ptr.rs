@@ -1,6 +1,6 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::expr_sig;
 use clippy_utils::visitors::contains_unsafe_block;
@@ -166,15 +166,14 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             )
             .filter(|arg| arg.mutability() == Mutability::Not)
             {
-                span_lint_and_sugg(
-                    cx,
-                    PTR_ARG,
-                    arg.span,
-                    &arg.build_msg(),
-                    "change this to",
-                    format!("{}{}", arg.ref_prefix, arg.deref_ty.display(cx)),
-                    Applicability::Unspecified,
-                );
+                span_lint_hir_and_then(cx, PTR_ARG, arg.emission_id, arg.span, &arg.build_msg(), |diag| {
+                    diag.span_suggestion(
+                        arg.span,
+                        "change this to",
+                        format!("{}{}", arg.ref_prefix, arg.deref_ty.display(cx)),
+                        Applicability::Unspecified,
+                    );
+                });
             }
         }
     }
@@ -221,7 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         let results = check_ptr_arg_usage(cx, body, &lint_args);
 
         for (result, args) in results.iter().zip(lint_args.iter()).filter(|(r, _)| !r.skip) {
-            span_lint_and_then(cx, PTR_ARG, args.span, &args.build_msg(), |diag| {
+            span_lint_hir_and_then(cx, PTR_ARG, args.emission_id, args.span, &args.build_msg(), |diag| {
                 diag.multipart_suggestion(
                     "change this to",
                     iter::once((args.span, format!("{}{}", args.ref_prefix, args.deref_ty.display(cx))))
@@ -315,6 +314,7 @@ struct PtrArgReplacement {
 
 struct PtrArg<'tcx> {
     idx: usize,
+    emission_id: hir::HirId,
     span: Span,
     ty_did: DefId,
     ty_name: Symbol,
@@ -419,10 +419,8 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                 if let [.., name] = path.segments;
                 if cx.tcx.item_name(adt.did()) == name.ident.name;
 
-                if !is_lint_allowed(cx, PTR_ARG, hir_ty.hir_id);
-                if params.get(i).map_or(true, |p| !is_lint_allowed(cx, PTR_ARG, p.hir_id));
-
                 then {
+                    let emission_id = params.get(i).map_or(hir_ty.hir_id, |param| param.hir_id);
                     let (method_renames, deref_ty) = match cx.tcx.get_diagnostic_name(adt.did()) {
                         Some(sym::Vec) => (
                             [("clone", ".to_owned()")].as_slice(),
@@ -455,14 +453,20 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                 })
                                 .and_then(|arg| snippet_opt(cx, arg.span))
                                 .unwrap_or_else(|| substs.type_at(1).to_string());
-                            span_lint_and_sugg(
+                            span_lint_hir_and_then(
                                 cx,
                                 PTR_ARG,
+                                emission_id,
                                 hir_ty.span,
                                 "using a reference to `Cow` is not recommended",
-                                "change this to",
-                                format!("&{}{}", mutability.prefix_str(), ty_name),
-                                Applicability::Unspecified,
+                                |diag| {
+                                    diag.span_suggestion(
+                                        hir_ty.span,
+                                        "change this to",
+                                        format!("&{}{}", mutability.prefix_str(), ty_name),
+                                        Applicability::Unspecified,
+                                    );
+                                }
                             );
                             return None;
                         },
@@ -470,6 +474,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                     };
                     return Some(PtrArg {
                         idx: i,
+                        emission_id,
                         span: hir_ty.span,
                         ty_did: adt.did(),
                         ty_name: name.ident.name,
