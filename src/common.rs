@@ -12,7 +12,6 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::ScalarInt;
 use rustc_middle::ty::layout::{TyAndLayout, LayoutOf};
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
-use rustc_span::Symbol;
 use rustc_target::abi::{self, HasDataLayout, Pointer, Size};
 
 use crate::consts::const_alloc_to_gcc;
@@ -125,12 +124,15 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.context.new_rvalue_from_double(typ, val)
     }
 
-    fn const_str(&self, s: Symbol) -> (RValue<'gcc>, RValue<'gcc>) {
-        let s_str = s.as_str();
-        let str_global = *self.const_str_cache.borrow_mut().entry(s).or_insert_with(|| {
-            self.global_string(s_str)
-        });
-        let len = s_str.len();
+    fn const_str(&self, s: &str) -> (RValue<'gcc>, RValue<'gcc>) {
+        let str_global = *self
+            .const_str_cache
+            .borrow_mut()
+            .raw_entry_mut()
+            .from_key(s)
+            .or_insert_with(|| (s.to_owned(), self.global_string(s)))
+            .1;
+        let len = s.len();
         let cs = self.const_ptrcast(str_global.get_address(None),
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self, true)),
         );
