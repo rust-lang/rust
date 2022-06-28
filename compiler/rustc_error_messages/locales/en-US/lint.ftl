@@ -289,3 +289,5 @@ lint-unused-allocation-mut = unnecessary allocation, use `&mut` instead
 
 lint-builtin-while-true = denote infinite loops with `loop {"{"} ... {"}"}`
     .suggestion = use `loop`
+
+lint-builtin-box-pointers = type uses owned (Box type) pointers: {$ty}

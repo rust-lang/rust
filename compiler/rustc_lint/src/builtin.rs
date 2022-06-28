@@ -155,7 +155,7 @@ impl BoxPointers {
             if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
                 if leaf_ty.is_box() {
                     cx.struct_span_lint(BOX_POINTERS, span, |lint| {
-                        lint.build(&format!("type uses owned (Box type) pointers: {}", ty)).emit();
+                        lint.build(fluent::lint::builtin_box_pointers).set_arg("ty", ty).emit();
                     });
                 }
             }
