@@ -9,7 +9,7 @@ note: function defined here
    |
 LL | fn test(t: (i32, i32)) {}
    |    ^^^^ -------------
-help: use parentheses to construct a tuple
+help: wrap these arguments in parentheses to construct a tuple
    |
 LL |     test((x.qux(), x.qux()));
    |          +                +

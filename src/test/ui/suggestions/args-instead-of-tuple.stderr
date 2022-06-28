@@ -9,7 +9,7 @@ note: tuple variant defined here
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     ^^
-help: use parentheses to construct a tuple
+help: wrap these arguments in parentheses to construct a tuple
    |
 LL |     let _: Result<(i32, i8), ()> = Ok((1, 2));
    |                                       +    +
@@ -25,7 +25,7 @@ note: tuple variant defined here
    |
 LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     ^^^^
-help: use parentheses to construct a tuple
+help: wrap these arguments in parentheses to construct a tuple
    |
 LL |     let _: Option<(i32, i8, &'static str)> = Some((1, 2, "hi"));
    |                                                   +          +
@@ -97,7 +97,7 @@ note: function defined here
    |
 LL | fn two_ints(_: (i32, i32)) {
    |    ^^^^^^^^ -------------
-help: use parentheses to construct a tuple
+help: wrap these arguments in parentheses to construct a tuple
    |
 LL |     two_ints((1, 2));
    |              +    +
@@ -113,7 +113,7 @@ note: function defined here
    |
 LL | fn with_generic<T: Copy + Send>((a, b): (i32, T)) {
    |    ^^^^^^^^^^^^                 ----------------
-help: use parentheses to construct a tuple
+help: wrap these arguments in parentheses to construct a tuple
    |
 LL |     with_generic((3, 4));
    |                  +    +
@@ -129,7 +129,7 @@ note: function defined here
    |
 LL | fn with_generic<T: Copy + Send>((a, b): (i32, T)) {
    |    ^^^^^^^^^^^^                 ----------------
-help: use parentheses to construct a tuple
+help: wrap these arguments in parentheses to construct a tuple
    |
 LL |         with_generic((a, b));
    |                      +    +

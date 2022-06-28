@@ -24,7 +24,6 @@ use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_session::Session;
@@ -35,12 +34,6 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpres
 use std::iter;
 use std::slice;
 
-enum TupleMatchFound {
-    None,
-    Single,
-    /// Beginning and end Span
-    Multiple(Span, Span),
-}
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&self) {
         let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
@@ -216,14 +209,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let minimum_input_count = expected_input_tys.len();
         let provided_arg_count = provided_args.len();
 
-        // We'll also want to keep track of the fully coerced argument types, for an awkward hack near the end
-        // FIXME(compiler-errors): Get rid of this, actually.
-        let mut final_arg_types: Vec<Option<(Ty<'_>, Ty<'_>)>> = vec![None; provided_arg_count];
-
         // We introduce a helper function to demand that a given argument satisfy a given input
         // This is more complicated than just checking type equality, as arguments could be coerced
         // This version writes those types back so further type checking uses the narrowed types
-        let demand_compatible = |idx, final_arg_types: &mut Vec<Option<(Ty<'tcx>, Ty<'tcx>)>>| {
+        let demand_compatible = |idx| {
             let formal_input_ty: Ty<'tcx> = formal_input_tys[idx];
             let expected_input_ty: Ty<'tcx> = expected_input_tys[idx];
             let provided_arg = &provided_args[idx];
@@ -242,9 +231,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
             let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
 
-            // Keep track of these for below
-            final_arg_types[idx] = Some((checked_ty, coerced_ty));
-
             // Cause selection errors caused by resolving a single argument to point at the
             // argument and not the call. This lets us customize the span pointed to in the
             // fulfillment error to be more accurate.
@@ -253,15 +239,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.point_at_type_arg_instead_of_call_if_possible(errors, call_expr);
                     self.point_at_arg_instead_of_call_if_possible(
                         errors,
-                        &final_arg_types,
                         call_expr,
                         call_span,
                         provided_args,
+                        &expected_input_tys,
                     );
                 });
-
-            // Make sure we store the resolved type
-            final_arg_types[idx] = Some((checked_ty, coerced_ty));
 
             let coerce_error = self
                 .try_coerce(provided_arg, checked_ty, coerced_ty, AllowTwoPhase::Yes, None)
@@ -320,10 +303,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.point_at_type_arg_instead_of_call_if_possible(errors, call_expr);
                     self.point_at_arg_instead_of_call_if_possible(
                         errors,
-                        &final_arg_types,
                         call_expr,
                         call_span,
                         &provided_args,
+                        &expected_input_tys,
                     );
                 })
             }
@@ -352,7 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
 
-                let compatible = demand_compatible(idx, &mut final_arg_types);
+                let compatible = demand_compatible(idx);
                 let is_compatible = matches!(compatible, Compatibility::Compatible);
                 compatibility_diagonal[idx] = compatible;
 
@@ -445,72 +428,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None => "function",
             };
 
-            let try_tuple_wrap_args = || {
-                // The case where we expect a single tuple and wrapping all the args
-                // in parentheses (or adding a comma to already existing parentheses)
-                // will result in a tuple that satisfies the call.
-                // This isn't super ideal code, because we copy code from elsewhere
-                // and somewhat duplicate this. We also delegate to the general type
-                // mismatch suggestions for the single arg case.
-                match self.suggested_tuple_wrap(&expected_input_tys, provided_args) {
-                    TupleMatchFound::Single => {
-                        let expected_ty = expected_input_tys[0];
-                        let provided_ty = final_arg_types[0].map(|ty| ty.0).unwrap();
-                        let expected_ty = self.resolve_vars_if_possible(expected_ty);
-                        let provided_ty = self.resolve_vars_if_possible(provided_ty);
-                        let cause = &self.misc(provided_args[0].span);
-                        let compatibility = demand_compatible(0, &mut final_arg_types);
-                        let type_error = match compatibility {
-                            Compatibility::Incompatible(Some(error)) => error,
-                            _ => TypeError::Mismatch,
-                        };
-                        let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
-                        let mut err = self.report_and_explain_type_error(trace, &type_error);
-                        self.emit_coerce_suggestions(
-                            &mut err,
-                            &provided_args[0],
-                            final_arg_types[0].map(|ty| ty.0).unwrap(),
-                            final_arg_types[0].map(|ty| ty.1).unwrap(),
-                            None,
-                            None,
-                        );
-                        err.span_label(
-                            full_call_span,
-                            format!("arguments to this {} are incorrect", call_name),
-                        );
-                        // Call out where the function is defined
-                        label_fn_like(tcx, &mut err, fn_def_id);
-                        err.emit();
-                        return true;
-                    }
-                    TupleMatchFound::Multiple(start, end) => {
-                        let mut err = tcx.sess.struct_span_err_with_code(
-                            full_call_span,
-                            &format!(
-                                "this {} takes {}{} but {} {} supplied",
-                                call_name,
-                                if c_variadic { "at least " } else { "" },
-                                potentially_plural_count(minimum_input_count, "argument"),
-                                potentially_plural_count(provided_arg_count, "argument"),
-                                if provided_arg_count == 1 { "was" } else { "were" }
-                            ),
-                            DiagnosticId::Error(err_code.to_owned()),
-                        );
-                        // Call out where the function is defined
-                        label_fn_like(tcx, &mut err, fn_def_id);
-                        err.multipart_suggestion(
-                            "use parentheses to construct a tuple",
-                            vec![(start, '('.to_string()), (end, ')'.to_string())],
-                            Applicability::MachineApplicable,
-                        );
-                        err.emit();
-                        return true;
-                    }
-                    TupleMatchFound::None => {}
-                }
-                false
-            };
-
             let compatibility_diagonal = IndexVec::from_raw(compatibility_diagonal);
             let provided_args = IndexVec::from_iter(provided_args.iter().take(if c_variadic {
                 minimum_input_count
@@ -541,7 +458,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 c_variadic,
                 err_code,
                 fn_def_id,
-                try_tuple_wrap_args,
             );
         }
     }
@@ -558,7 +474,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         c_variadic: bool,
         err_code: &str,
         fn_def_id: Option<DefId>,
-        try_tuple_wrap_args: impl FnOnce() -> bool,
     ) {
         // Don't print if it has error types or is just plain `_`
         fn has_error_or_infer<'tcx>(tys: impl IntoIterator<Item = Ty<'tcx>>) -> bool {
@@ -578,7 +493,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let (formal_input_ty, expected_input_ty) = formal_and_expected_inputs[expected_idx];
             // If either is an error type, we defy the usual convention and consider them to *not* be
-            // coercible.  This prevents our error message heuristic from trying to pass errors into
+            // coercible. This prevents our error message heuristic from trying to pass errors into
             // every argument.
             if (formal_input_ty, expected_input_ty).references_error() {
                 return Compatibility::Incompatible(None);
@@ -599,16 +514,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Compatibility::Incompatible(None);
             }
 
-            let subtyping_result = self
-                .at(&self.misc(provided_arg.span), self.param_env)
-                .sup(formal_input_ty, coerced_ty);
+            // Using probe here, since we don't want this subtyping to affect inference.
+            let subtyping_error = self.probe(|_| {
+                self.at(&self.misc(provided_arg.span), self.param_env)
+                    .sup(formal_input_ty, coerced_ty)
+                    .err()
+            });
 
             // Same as above: if either the coerce type or the checked type is an error type,
             // consider them *not* compatible.
             let references_error = (coerced_ty, checked_ty).references_error();
-            match (references_error, &subtyping_result) {
-                (false, Ok(_)) => Compatibility::Compatible,
-                _ => Compatibility::Incompatible(subtyping_result.err()),
+            match (references_error, subtyping_error) {
+                (false, None) => Compatibility::Compatible,
+                (_, subtyping_error) => Compatibility::Incompatible(subtyping_error),
             }
         };
 
@@ -629,15 +547,104 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .iter()
             .map(|expr| {
                 let ty = self
-                    .in_progress_typeck_results
-                    .as_ref()
-                    .unwrap()
+                    .typeck_results
                     .borrow()
                     .expr_ty_adjusted_opt(*expr)
                     .unwrap_or_else(|| tcx.ty_error());
                 (self.resolve_vars_if_possible(ty), expr.span)
             })
             .collect();
+
+        // First, check if we just need to wrap some arguments in a tuple.
+        if let Some((mismatch_idx, terr)) =
+            compatibility_diagonal.iter().enumerate().find_map(|(i, c)| {
+                if let Compatibility::Incompatible(Some(terr)) = c { Some((i, terr)) } else { None }
+            })
+        {
+            // Is the first bad expected argument a tuple?
+            // Do we have as many extra provided arguments as the tuple's length?
+            // If so, we might have just forgotten to wrap some args in a tuple.
+            if let Some(ty::Tuple(tys)) =
+                formal_and_expected_inputs.get(mismatch_idx.into()).map(|tys| tys.1.kind())
+                && provided_arg_tys.len() == formal_and_expected_inputs.len() - 1 + tys.len()
+            {
+                // Wrap up the N provided arguments starting at this position in a tuple.
+                let provided_as_tuple = tcx.mk_tup(
+                    provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx).take(tys.len()),
+                );
+
+                let mut satisfied = true;
+                // Check if the newly wrapped tuple + rest of the arguments are compatible.
+                for ((_, expected_ty), provided_ty) in std::iter::zip(
+                    formal_and_expected_inputs.iter().skip(mismatch_idx),
+                    [provided_as_tuple].into_iter().chain(
+                        provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx + tys.len()),
+                    ),
+                ) {
+                    if !self.can_coerce(provided_ty, *expected_ty) {
+                        satisfied = false;
+                        break;
+                    }
+                }
+
+                // If they're compatible, suggest wrapping in an arg, and we're done!
+                // Take some care with spans, so we don't suggest wrapping a macro's
+                // innards in parenthesis, for example.
+                if satisfied
+                    && let Some(lo) =
+                        provided_args[mismatch_idx.into()].span.find_ancestor_inside(error_span)
+                    && let Some(hi) = provided_args[(mismatch_idx + tys.len() - 1).into()]
+                        .span
+                        .find_ancestor_inside(error_span)
+                {
+                    let mut err;
+                    if tys.len() == 1 {
+                        // A tuple wrap suggestion actually occurs within,
+                        // so don't do anything special here.
+                        err = self.report_and_explain_type_error(
+                            TypeTrace::types(
+                                &self.misc(lo),
+                                true,
+                                formal_and_expected_inputs[mismatch_idx.into()].1,
+                                provided_arg_tys[mismatch_idx.into()].0,
+                            ),
+                            terr,
+                        );
+                        err.span_label(
+                            full_call_span,
+                            format!("arguments to this {} are incorrect", call_name),
+                        );
+                    } else {
+                        err = tcx.sess.struct_span_err_with_code(
+                            full_call_span,
+                            &format!(
+                                "this {} takes {}{} but {} {} supplied",
+                                call_name,
+                                if c_variadic { "at least " } else { "" },
+                                potentially_plural_count(
+                                    formal_and_expected_inputs.len(),
+                                    "argument"
+                                ),
+                                potentially_plural_count(provided_args.len(), "argument"),
+                                if provided_args.len() == 1 { "was" } else { "were" }
+                            ),
+                            DiagnosticId::Error(err_code.to_owned()),
+                        );
+                        err.multipart_suggestion_verbose(
+                            "wrap these arguments in parentheses to construct a tuple",
+                            vec![
+                                (lo.shrink_to_lo(), "(".to_string()),
+                                (hi.shrink_to_hi(), ")".to_string()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    };
+                    label_fn_like(tcx, &mut err, fn_def_id);
+                    err.emit();
+                    return;
+                }
+            }
+        }
 
         // Okay, so here's where it gets complicated in regards to what errors
         // we emit and how.
@@ -666,7 +673,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                     .note(
                         "we would appreciate a bug report: \
-                        https://github.com/rust-lang/rust-clippy/issues/new",
+                        https://github.com/rust-lang/rust/issues/new",
                     )
                     .emit();
             }
@@ -724,13 +731,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Call out where the function is defined
             label_fn_like(tcx, &mut err, fn_def_id);
             err.emit();
-            return;
-        }
-
-        // Second, let's try tuple wrapping the args.
-        // FIXME(compiler-errors): This is currently in its own closure because
-        // I didn't want to factor it out.
-        if try_tuple_wrap_args() {
             return;
         }
 
@@ -989,13 +989,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             String::new()
                         };
-                        // FIXME(compiler-errors): Why do we get permutations with the same type?
-                        if expected_ty != provided_ty {
-                            labels.push((
-                                provided_span,
-                                format!("expected `{}`{}", expected_ty, provided_ty_name),
-                            ));
-                        }
+                        labels.push((
+                            provided_span,
+                            format!("expected `{}`{}", expected_ty, provided_ty_name),
+                        ));
                     }
 
                     suggestion_text = match suggestion_text {
@@ -1043,10 +1040,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     needs_comma = true;
                 }
-                let suggestion_text =
-                    if let Some(provided_idx) = provided_idx
+                let suggestion_text = if let Some(provided_idx) = provided_idx
                     && let (_, provided_span) = provided_arg_tys[*provided_idx]
-                    && let Ok(arg_text) = source_map.span_to_snippet(provided_span.source_callsite()) {
+                    && let Ok(arg_text) =
+                        source_map.span_to_snippet(provided_span.source_callsite())
+                {
                     arg_text
                 } else {
                     // Propose a placeholder of the correct type
@@ -1071,38 +1069,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         err.emit();
-    }
-
-    fn suggested_tuple_wrap(
-        &self,
-        expected_input_tys: &[Ty<'tcx>],
-        provided_args: &'tcx [hir::Expr<'tcx>],
-    ) -> TupleMatchFound {
-        // Only handle the case where we expect only one tuple arg
-        let [expected_arg_type] = expected_input_tys[..] else { return TupleMatchFound::None };
-        let &ty::Tuple(expected_types) = self.resolve_vars_if_possible(expected_arg_type).kind()
-            else { return TupleMatchFound::None };
-
-        // First check that there are the same number of types.
-        if expected_types.len() != provided_args.len() {
-            return TupleMatchFound::None;
-        }
-
-        let supplied_types: Vec<_> = provided_args.iter().map(|arg| self.check_expr(arg)).collect();
-
-        let all_match = iter::zip(expected_types, supplied_types)
-            .all(|(expected, supplied)| self.can_eq(self.param_env, expected, supplied).is_ok());
-
-        if !all_match {
-            return TupleMatchFound::None;
-        }
-        match provided_args {
-            [] => TupleMatchFound::None,
-            [_] => TupleMatchFound::Single,
-            [first, .., last] => {
-                TupleMatchFound::Multiple(first.span.shrink_to_lo(), last.span.shrink_to_hi())
-            }
-        }
     }
 
     // AST fragment checking
@@ -1652,10 +1618,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn point_at_arg_instead_of_call_if_possible(
         &self,
         errors: &mut Vec<traits::FulfillmentError<'tcx>>,
-        final_arg_types: &[Option<(Ty<'tcx>, Ty<'tcx>)>],
         expr: &'tcx hir::Expr<'tcx>,
         call_sp: Span,
         args: &'tcx [hir::Expr<'tcx>],
+        expected_tys: &[Ty<'tcx>],
     ) {
         // We *do not* do this for desugared call spans to keep good diagnostics when involving
         // the `?` operator.
@@ -1688,39 +1654,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (result_code, code) = (code, parent);
                 }
             }
-            let self_: ty::subst::GenericArg<'_> = match unpeel_to_top(error.obligation.cause.code()) {
-                ObligationCauseCode::BuiltinDerivedObligation(code) |
-                ObligationCauseCode::DerivedObligation(code) => {
-                    code.parent_trait_pred.self_ty().skip_binder().into()
-                }
-                ObligationCauseCode::ImplDerivedObligation(code) => {
-                    code.derived.parent_trait_pred.self_ty().skip_binder().into()
-                }
-                _ if let ty::PredicateKind::Trait(predicate) =
-                    error.obligation.predicate.kind().skip_binder() => {
+            let self_: ty::subst::GenericArg<'_> =
+                match unpeel_to_top(error.obligation.cause.code()) {
+                    ObligationCauseCode::BuiltinDerivedObligation(code)
+                    | ObligationCauseCode::DerivedObligation(code) => {
+                        code.parent_trait_pred.self_ty().skip_binder().into()
+                    }
+                    ObligationCauseCode::ImplDerivedObligation(code) => {
+                        code.derived.parent_trait_pred.self_ty().skip_binder().into()
+                    }
+                    _ if let ty::PredicateKind::Trait(predicate) =
+                        error.obligation.predicate.kind().skip_binder() =>
+                    {
                         predicate.self_ty().into()
                     }
-                _ =>  continue,
-            };
+                    _ => continue,
+                };
             let self_ = self.resolve_vars_if_possible(self_);
 
             // Collect the argument position for all arguments that could have caused this
             // `FulfillmentError`.
-            let mut referenced_in = final_arg_types
-                .iter()
+            let typeck_results = self.typeck_results.borrow();
+            let mut referenced_in: Vec<_> = std::iter::zip(expected_tys, args)
                 .enumerate()
-                .filter_map(|(i, arg)| match arg {
-                    Some((checked_ty, coerce_ty)) => Some([(i, *checked_ty), (i, *coerce_ty)]),
-                    _ => None,
+                .flat_map(|(idx, (expected_ty, arg))| {
+                    if let Some(arg_ty) = typeck_results.expr_ty_opt(arg) {
+                        vec![(idx, arg_ty), (idx, *expected_ty)]
+                    } else {
+                        vec![]
+                    }
                 })
-                .flatten()
-                .flat_map(|(i, ty)| {
+                .filter_map(|(i, ty)| {
                     let ty = self.resolve_vars_if_possible(ty);
                     // We walk the argument type because the argument's type could have
                     // been `Option<T>`, but the `FulfillmentError` references `T`.
                     if ty.walk().any(|arg| arg == self_) { Some(i) } else { None }
                 })
-                .collect::<Vec<usize>>();
+                .collect();
 
             // Both checked and coerced types could have matched, thus we need to remove
             // duplicates.
