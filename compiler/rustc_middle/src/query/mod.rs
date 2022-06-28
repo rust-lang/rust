@@ -826,6 +826,10 @@ rustc_queries! {
         desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
     }
 
+    query check_mod_type_wf(key: LocalDefId) -> () {
+        desc { |tcx| "checking that types are well-formed in {}", describe_as_module(key, tcx) }
+    }
+
     query collect_mod_item_types(key: LocalDefId) -> () {
         desc { |tcx| "collecting item types in {}", describe_as_module(key, tcx) }
     }
@@ -1399,13 +1403,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query check_item_well_formed(key: LocalDefId) -> () {
-        desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
-    }
-    query check_trait_item_well_formed(key: LocalDefId) -> () {
-        desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
-    }
-    query check_impl_item_well_formed(key: LocalDefId) -> () {
+    query check_well_formed(key: LocalDefId) -> () {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
     }
 

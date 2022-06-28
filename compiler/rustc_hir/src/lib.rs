@@ -27,7 +27,6 @@ pub use rustc_span::def_id;
 mod hir;
 pub mod hir_id;
 pub mod intravisit;
-pub mod itemlikevisit;
 pub mod lang_items;
 pub mod pat_util;
 mod stable_hash_impls;
