@@ -31,7 +31,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticStyledString, MultiSpan};
+use rustc_errors::{fluent, Applicability, Diagnostic, DiagnosticStyledString, MultiSpan};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -99,13 +99,12 @@ impl EarlyLintPass for WhileTrue {
             if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind {
                 if let ast::LitKind::Bool(true) = lit.kind {
                     if !lit.span.from_expansion() {
-                        let msg = "denote infinite loops with `loop { ... }`";
                         let condition_span = e.span.with_hi(cond.span.hi());
                         cx.struct_span_lint(WHILE_TRUE, condition_span, |lint| {
-                            lint.build(msg)
+                            lint.build(fluent::lint::builtin_while_true)
                                 .span_suggestion_short(
                                     condition_span,
-                                    "use `loop`",
+                                    fluent::lint::suggestion,
                                     format!(
                                         "{}loop",
                                         label.map_or_else(String::new, |label| format!(

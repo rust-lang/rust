@@ -286,3 +286,6 @@ lint-unused-import-braces = braces around {$node} is unnecessary
 
 lint-unused-allocation = unnecessary allocation, use `&` instead
 lint-unused-allocation-mut = unnecessary allocation, use `&mut` instead
+
+lint-builtin-while-true = denote infinite loops with `loop {"{"} ... {"}"}`
+    .suggestion = use `loop`
