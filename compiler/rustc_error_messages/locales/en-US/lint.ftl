@@ -382,3 +382,7 @@ lint-builtin-explicit-outlives = outlives requirements can be inferred
         [one] this bound
         *[other] these bounds
     }
+
+lint-builtin-incomplete-features = the feature `{$name}` is incomplete and may not be safe to use and/or cause compiler crashes
+    .note = see issue #{$n} <https://github.com/rust-lang/rust/issues/{$n}> for more information
+    .help = consider using `min_{$name}` instead, which is more stable and complete

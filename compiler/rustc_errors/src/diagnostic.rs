@@ -115,6 +115,12 @@ impl IntoDiagnosticArg for String {
     }
 }
 
+impl IntoDiagnosticArg for std::num::NonZeroU32 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
 impl IntoDiagnosticArg for Edition {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(self.to_string()))

@@ -2347,23 +2347,14 @@ impl EarlyLintPass for IncompleteFeatures {
             .filter(|(&name, _)| features.incomplete(name))
             .for_each(|(&name, &span)| {
                 cx.struct_span_lint(INCOMPLETE_FEATURES, span, |lint| {
-                    let mut builder = lint.build(&format!(
-                        "the feature `{}` is incomplete and may not be safe to use \
-                         and/or cause compiler crashes",
-                        name,
-                    ));
+                    let mut builder = lint.build(fluent::lint::builtin_incomplete_features);
+                    builder.set_arg("name", name);
                     if let Some(n) = rustc_feature::find_feature_issue(name, GateIssue::Language) {
-                        builder.note(&format!(
-                            "see issue #{} <https://github.com/rust-lang/rust/issues/{}> \
-                             for more information",
-                            n, n,
-                        ));
+                        builder.set_arg("n", n);
+                        builder.note(fluent::lint::note);
                     }
                     if HAS_MIN_FEATURES.contains(&name) {
-                        builder.help(&format!(
-                            "consider using `min_{}` instead, which is more stable and complete",
-                            name,
-                        ));
+                        builder.help(fluent::lint::help);
                     }
                     builder.emit();
                 })
