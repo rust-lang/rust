@@ -806,11 +806,6 @@ fn is_useful<'p, 'tcx>(
 
     debug_assert!(rows.iter().all(|r| r.len() == v.len()));
 
-    let ty = v.head().ty();
-    let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
-    debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
-    let pcx = PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
-
     // If the first pattern is an or-pattern, expand it.
     let mut ret = Usefulness::new_not_useful(witness_preference);
     if v.head().is_or_pat() {
@@ -832,6 +827,11 @@ fn is_useful<'p, 'tcx>(
             }
         }
     } else {
+        let ty = v.head().ty();
+        let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
+        debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
+        let pcx = PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
+
         let v_ctor = v.head().ctor();
         debug!(?v_ctor);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
