@@ -386,3 +386,10 @@ lint-builtin-explicit-outlives = outlives requirements can be inferred
 lint-builtin-incomplete-features = the feature `{$name}` is incomplete and may not be safe to use and/or cause compiler crashes
     .note = see issue #{$n} <https://github.com/rust-lang/rust/issues/{$n}> for more information
     .help = consider using `min_{$name}` instead, which is more stable and complete
+
+lint-builtin-clashing-extern-same-name = `{$this_fi}` redeclared with a different signature
+    .previous-decl-label = `{$orig}` previously declared here
+    .mismatch-label = this signature doesn't match the previous declaration
+lint-builtin-clashing-extern-diff-name = `{$this_fi}` redeclares `{$orig}` with a different signature
+    .previous-decl-label = `{$orig}` previously declared here
+    .mismatch-label = this signature doesn't match the previous declaration

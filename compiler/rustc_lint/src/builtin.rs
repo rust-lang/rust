@@ -2972,23 +2972,19 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
                             let mut found_str = DiagnosticStyledString::new();
                             found_str.push(this_decl_ty.fn_sig(tcx).to_string(), true);
 
-                            lint.build(&format!(
-                                "`{}` redeclare{} with a different signature",
-                                this_fi.ident.name,
-                                if orig.get_name() == this_fi.ident.name {
-                                    "d".to_string()
-                                } else {
-                                    format!("s `{}`", orig.get_name())
-                                }
-                            ))
+                            lint.build(if orig.get_name() == this_fi.ident.name {
+                                fluent::lint::builtin_clashing_extern_same_name
+                            } else {
+                                fluent::lint::builtin_clashing_extern_diff_name
+                            })
+                            .set_arg("this_fi", this_fi.ident.name)
+                            .set_arg("orig", orig.get_name())
                             .span_label(
                                 get_relevant_span(orig_fi),
-                                &format!("`{}` previously declared here", orig.get_name()),
+                                fluent::lint::previous_decl_label,
                             )
-                            .span_label(
-                                get_relevant_span(this_fi),
-                                "this signature doesn't match the previous declaration",
-                            )
+                            .span_label(get_relevant_span(this_fi), fluent::lint::mismatch_label)
+                            // FIXME(davidtwco): translatable expected/found
                             .note_expected_found(&"", expected_str, &"", found_str)
                             .emit();
                         },
