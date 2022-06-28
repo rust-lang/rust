@@ -481,8 +481,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (LangItem::PanicBoundsCheck, vec![index, len, location])
             }
             _ => {
-                let msg_str = Symbol::intern(msg.description());
-                let msg = bx.const_str(msg_str);
+                let msg = bx.const_str(msg.description());
                 // It's `pub fn panic(expr: &str)`, with the wide reference being passed
                 // as two arguments, and `#[track_caller]` adds an implicit third argument.
                 (LangItem::Panic, vec![msg.0, msg.1, location])
@@ -563,7 +562,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     })
                 });
-                let msg = bx.const_str(Symbol::intern(&msg_str));
+                let msg = bx.const_str(&msg_str);
                 let location = self.get_caller_location(bx, source_info).immediate();
 
                 // Obtain the panic entry point.

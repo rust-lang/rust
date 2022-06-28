@@ -26,7 +26,6 @@ use rustc_session::config::{BranchProtection, CFGuard, CFProtection};
 use rustc_session::config::{CrateType, DebugInfo, PAuthKey, PacRet};
 use rustc_session::Session;
 use rustc_span::source_map::Span;
-use rustc_span::symbol::Symbol;
 use rustc_target::abi::{
     call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
 };
@@ -56,7 +55,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub vtables:
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
-    pub const_str_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
+    pub const_str_cache: RefCell<FxHashMap<String, &'ll Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     ///
