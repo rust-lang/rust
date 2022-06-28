@@ -229,8 +229,11 @@ public:
 
     SmallVector<Value *, 4> args;
     SmallVector<BATCH_TYPE, 4> arg_types;
-
+#if LLVM_VERSION_MAJOR >= 14
+    for (unsigned j = 0; j < call.arg_size(); ++j) {
+#else
     for (unsigned j = 0; j < call.getNumArgOperands(); ++j) {
+#endif
       Value *op = call.getArgOperand(j);
 
       if (toVectorize.count(op) != 0) {
