@@ -351,11 +351,6 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 }
 
 pub fn run_tests(config: Config) {
-    // FIXME(#33435) Avoid spurious failures in codegen-units/partitioning tests.
-    if let Mode::CodegenUnits = config.mode {
-        let _ = fs::remove_dir_all("tmp/partitioning-tests");
-    }
-
     // If we want to collect rustfix coverage information,
     // we first make sure that the coverage file does not exist.
     // It will be created later on.
