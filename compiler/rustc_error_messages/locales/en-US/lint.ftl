@@ -172,3 +172,61 @@ lint-overflowing-literal = literal out of range for `{$ty}`
     .note = the literal `{$lit}` does not fit into the type `{$ty}` and will be converted to `{$ty}::INFINITY`
 
 lint-unused-comparisons = comparison is useless due to type limits
+
+lint-improper-ctypes = `extern` {$desc} uses type `{$ty}`, which is not FFI-safe
+    .label = not FFI-safe
+    .note = the type is defined here
+
+lint-improper-ctypes-opaque = opaque types have no C equivalent
+
+lint-improper-ctypes-fnptr-reason = this function pointer has Rust-specific calling convention
+lint-improper-ctypes-fnptr-help = consider using an `extern fn(...) -> ...` function pointer instead
+
+lint-improper-ctypes-tuple-reason = tuples have unspecified layout
+lint-improper-ctypes-tuple-help = consider using a struct instead
+
+lint-improper-ctypes-str-reason = string slices have no C equivalent
+lint-improper-ctypes-str-help = consider using `*const u8` and a length instead
+
+lint-improper-ctypes-dyn = trait objects have no C equivalent
+
+lint-improper-ctypes-slice-reason = slices have no C equivalent
+lint-improper-ctypes-slice-help = consider using a raw pointer instead
+
+lint-improper-ctypes-128bit = 128-bit integers don't currently have a known stable ABI
+
+lint-improper-ctypes-char-reason = the `char` type has no C equivalent
+lint-improper-ctypes-char-help = consider using `u32` or `libc::wchar_t` instead
+
+lint-improper-ctypes-non-exhaustive = this enum is non-exhaustive
+lint-improper-ctypes-non-exhaustive-variant = this enum has non-exhaustive variants
+
+lint-improper-ctypes-enum-repr-reason = enum has no representation hint
+lint-improper-ctypes-enum-repr-help =
+    consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+
+lint-improper-ctypes-struct-fieldless-reason = this struct has no fields
+lint-improper-ctypes-struct-fieldless-help = consider adding a member to this struct
+
+lint-improper-ctypes-union-fieldless-reason = this union has no fields
+lint-improper-ctypes-union-fieldless-help = consider adding a member to this union
+
+lint-improper-ctypes-struct-non-exhaustive = this struct is non-exhaustive
+lint-improper-ctypes-union-non-exhaustive = this union is non-exhaustive
+
+lint-improper-ctypes-struct-layout-reason = this struct has unspecified layout
+lint-improper-ctypes-struct-layout-help = consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+
+lint-improper-ctypes-union-layout-reason = this union has unspecified layout
+lint-improper-ctypes-union-layout-help = consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union
+
+lint-improper-ctypes-box = box cannot be represented as a single pointer
+
+lint-improper-ctypes-enum-phantomdata = this enum contains a PhantomData field
+
+lint-improper-ctypes-struct-zst = this struct contains only zero-sized fields
+
+lint-improper-ctypes-array-reason = passing raw arrays by value is not FFI-safe
+lint-improper-ctypes-array-help = consider passing a pointer to the array
+
+lint-improper-ctypes-only-phantomdata = composed only of `PhantomData`

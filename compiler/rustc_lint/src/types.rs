@@ -2,7 +2,7 @@ use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{fluent, Applicability};
+use rustc_errors::{fluent, Applicability, DiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
@@ -664,7 +664,7 @@ struct ImproperCTypesVisitor<'a, 'tcx> {
 enum FfiResult<'tcx> {
     FfiSafe,
     FfiPhantom(Ty<'tcx>),
-    FfiUnsafe { ty: Ty<'tcx>, reason: String, help: Option<String> },
+    FfiUnsafe { ty: Ty<'tcx>, reason: DiagnosticMessage, help: Option<DiagnosticMessage> },
 }
 
 pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
@@ -824,8 +824,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             self.emit_ffi_unsafe_type_lint(
                 ty,
                 sp,
-                "passing raw arrays by value is not FFI-safe",
-                Some("consider passing a pointer to the array"),
+                fluent::lint::improper_ctypes_array_reason,
+                Some(fluent::lint::improper_ctypes_array_help),
             );
             true
         } else {
@@ -868,11 +868,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             } else {
                 // All fields are ZSTs; this means that the type should behave
                 // like (), which is FFI-unsafe
-                FfiUnsafe {
-                    ty,
-                    reason: "this struct contains only zero-sized fields".into(),
-                    help: None,
-                }
+                FfiUnsafe { ty, reason: fluent::lint::improper_ctypes_struct_zst, help: None }
             }
         } else {
             // We can't completely trust repr(C) markings; make sure the fields are
@@ -886,7 +882,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     FfiPhantom(..) if def.is_enum() => {
                         return FfiUnsafe {
                             ty,
-                            reason: "this enum contains a PhantomData field".into(),
+                            reason: fluent::lint::improper_ctypes_enum_phantomdata,
                             help: None,
                         };
                     }
@@ -922,7 +918,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     } else {
                         return FfiUnsafe {
                             ty,
-                            reason: "box cannot be represented as a single pointer".to_string(),
+                            reason: fluent::lint::improper_ctypes_box,
                             help: None,
                         };
                     }
@@ -932,17 +928,19 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
-                        let kind = if def.is_struct() { "struct" } else { "union" };
-
                         if !def.repr().c() && !def.repr().transparent() {
                             return FfiUnsafe {
                                 ty,
-                                reason: format!("this {} has unspecified layout", kind),
-                                help: Some(format!(
-                                    "consider adding a `#[repr(C)]` or \
-                                             `#[repr(transparent)]` attribute to this {}",
-                                    kind
-                                )),
+                                reason: if def.is_struct() {
+                                    fluent::lint::improper_ctypes_struct_layout_reason
+                                } else {
+                                    fluent::lint::improper_ctypes_union_layout_reason
+                                },
+                                help: if def.is_struct() {
+                                    Some(fluent::lint::improper_ctypes_struct_layout_help)
+                                } else {
+                                    Some(fluent::lint::improper_ctypes_union_layout_help)
+                                },
                             };
                         }
 
@@ -951,7 +949,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         if is_non_exhaustive && !def.did().is_local() {
                             return FfiUnsafe {
                                 ty,
-                                reason: format!("this {} is non-exhaustive", kind),
+                                reason: if def.is_struct() {
+                                    fluent::lint::improper_ctypes_struct_non_exhaustive
+                                } else {
+                                    fluent::lint::improper_ctypes_union_non_exhaustive
+                                },
                                 help: None,
                             };
                         }
@@ -959,8 +961,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         if def.non_enum_variant().fields.is_empty() {
                             return FfiUnsafe {
                                 ty,
-                                reason: format!("this {} has no fields", kind),
-                                help: Some(format!("consider adding a member to this {}", kind)),
+                                reason: if def.is_struct() {
+                                    fluent::lint::improper_ctypes_struct_fieldless_reason
+                                } else {
+                                    fluent::lint::improper_ctypes_union_fieldless_reason
+                                },
+                                help: if def.is_struct() {
+                                    Some(fluent::lint::improper_ctypes_struct_fieldless_help)
+                                } else {
+                                    Some(fluent::lint::improper_ctypes_union_fieldless_help)
+                                },
                             };
                         }
 
@@ -980,13 +990,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             if repr_nullable_ptr(self.cx, ty, self.mode).is_none() {
                                 return FfiUnsafe {
                                     ty,
-                                    reason: "enum has no representation hint".into(),
-                                    help: Some(
-                                        "consider adding a `#[repr(C)]`, \
-                                                `#[repr(transparent)]`, or integer `#[repr(...)]` \
-                                                attribute to this enum"
-                                            .into(),
-                                    ),
+                                    reason: fluent::lint::improper_ctypes_enum_repr_reason,
+                                    help: Some(fluent::lint::improper_ctypes_enum_repr_help),
                                 };
                             }
                         }
@@ -994,7 +999,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         if def.is_variant_list_non_exhaustive() && !def.did().is_local() {
                             return FfiUnsafe {
                                 ty,
-                                reason: "this enum is non-exhaustive".into(),
+                                reason: fluent::lint::improper_ctypes_non_exhaustive,
                                 help: None,
                             };
                         }
@@ -1005,7 +1010,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             if is_non_exhaustive && !variant.def_id.is_local() {
                                 return FfiUnsafe {
                                     ty,
-                                    reason: "this enum has non-exhaustive variants".into(),
+                                    reason: fluent::lint::improper_ctypes_non_exhaustive_variant,
                                     help: None,
                                 };
                             }
@@ -1023,39 +1028,37 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Char => FfiUnsafe {
                 ty,
-                reason: "the `char` type has no C equivalent".into(),
-                help: Some("consider using `u32` or `libc::wchar_t` instead".into()),
+                reason: fluent::lint::improper_ctypes_char_reason,
+                help: Some(fluent::lint::improper_ctypes_char_help),
             },
 
-            ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => FfiUnsafe {
-                ty,
-                reason: "128-bit integers don't currently have a known stable ABI".into(),
-                help: None,
-            },
+            ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
+                FfiUnsafe { ty, reason: fluent::lint::improper_ctypes_128bit, help: None }
+            }
 
             // Primitive types with a stable representation.
             ty::Bool | ty::Int(..) | ty::Uint(..) | ty::Float(..) | ty::Never => FfiSafe,
 
             ty::Slice(_) => FfiUnsafe {
                 ty,
-                reason: "slices have no C equivalent".into(),
-                help: Some("consider using a raw pointer instead".into()),
+                reason: fluent::lint::improper_ctypes_slice_reason,
+                help: Some(fluent::lint::improper_ctypes_slice_help),
             },
 
             ty::Dynamic(..) => {
-                FfiUnsafe { ty, reason: "trait objects have no C equivalent".into(), help: None }
+                FfiUnsafe { ty, reason: fluent::lint::improper_ctypes_dyn, help: None }
             }
 
             ty::Str => FfiUnsafe {
                 ty,
-                reason: "string slices have no C equivalent".into(),
-                help: Some("consider using `*const u8` and a length instead".into()),
+                reason: fluent::lint::improper_ctypes_str_reason,
+                help: Some(fluent::lint::improper_ctypes_str_help),
             },
 
             ty::Tuple(..) => FfiUnsafe {
                 ty,
-                reason: "tuples have unspecified layout".into(),
-                help: Some("consider using a struct instead".into()),
+                reason: fluent::lint::improper_ctypes_tuple_reason,
+                help: Some(fluent::lint::improper_ctypes_tuple_help),
             },
 
             ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _)
@@ -1086,12 +1089,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if self.is_internal_abi(sig.abi()) {
                     return FfiUnsafe {
                         ty,
-                        reason: "this function pointer has Rust-specific calling convention".into(),
-                        help: Some(
-                            "consider using an `extern fn(...) -> ...` \
-                                    function pointer instead"
-                                .into(),
-                        ),
+                        reason: fluent::lint::improper_ctypes_fnptr_reason,
+                        help: Some(fluent::lint::improper_ctypes_fnptr_help),
                     };
                 }
 
@@ -1122,7 +1121,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // While opaque types are checked for earlier, if a projection in a struct field
             // normalizes to an opaque type, then it will reach this branch.
             ty::Opaque(..) => {
-                FfiUnsafe { ty, reason: "opaque types have no C equivalent".into(), help: None }
+                FfiUnsafe { ty, reason: fluent::lint::improper_ctypes_opaque, help: None }
             }
 
             // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
@@ -1148,8 +1147,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         &mut self,
         ty: Ty<'tcx>,
         sp: Span,
-        note: &str,
-        help: Option<&str>,
+        note: DiagnosticMessage,
+        help: Option<DiagnosticMessage>,
     ) {
         let lint = match self.mode {
             CItemKind::Declaration => IMPROPER_CTYPES,
@@ -1161,18 +1160,17 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 CItemKind::Declaration => "block",
                 CItemKind::Definition => "fn",
             };
-            let mut diag = lint.build(&format!(
-                "`extern` {} uses type `{}`, which is not FFI-safe",
-                item_description, ty
-            ));
-            diag.span_label(sp, "not FFI-safe");
+            let mut diag = lint.build(fluent::lint::improper_ctypes);
+            diag.set_arg("ty", ty);
+            diag.set_arg("desc", item_description);
+            diag.span_label(sp, fluent::lint::label);
             if let Some(help) = help {
                 diag.help(help);
             }
             diag.note(note);
             if let ty::Adt(def, _) = ty.kind() {
                 if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did()) {
-                    diag.span_note(sp, "the type is defined here");
+                    diag.span_note(sp, fluent::lint::note);
                 }
             }
             diag.emit();
@@ -1209,7 +1207,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         if let Some(ty) = ty.visit_with(&mut ProhibitOpaqueTypes { cx: self.cx }).break_value() {
-            self.emit_ffi_unsafe_type_lint(ty, sp, "opaque types have no C equivalent", None);
+            self.emit_ffi_unsafe_type_lint(ty, sp, fluent::lint::improper_ctypes_opaque, None);
             true
         } else {
             false
@@ -1251,13 +1249,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match self.check_type_for_ffi(&mut FxHashSet::default(), ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiPhantom(ty) => {
-                self.emit_ffi_unsafe_type_lint(ty, sp, "composed only of `PhantomData`", None);
+                self.emit_ffi_unsafe_type_lint(
+                    ty,
+                    sp,
+                    fluent::lint::improper_ctypes_only_phantomdata,
+                    None,
+                );
             }
             // If `ty` is a `repr(transparent)` newtype, and the non-zero-sized type is a generic
             // argument, which after substitution, is `()`, then this branch can be hit.
             FfiResult::FfiUnsafe { ty, .. } if is_return_type && ty.is_unit() => {}
             FfiResult::FfiUnsafe { ty, reason, help } => {
-                self.emit_ffi_unsafe_type_lint(ty, sp, &reason, help.as_deref());
+                self.emit_ffi_unsafe_type_lint(ty, sp, reason, help);
             }
         }
     }
