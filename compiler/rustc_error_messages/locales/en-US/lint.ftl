@@ -334,3 +334,7 @@ lint-builtin-missing-debug-impl =
 
 lint-builtin-anonymous-params = anonymous parameters are deprecated and will be removed in the next edition
     .suggestion = try naming the parameter or explicitly ignoring it
+
+lint-builtin-deprecated-attr-link = use of deprecated attribute `{$name}`: {$reason}. See {$link}
+lint-builtin-deprecated-attr-used = use of deprecated attribute `{$name}`: no longer used.
+lint-builtin-deprecated-attr-default-suggestion = remove this attribute

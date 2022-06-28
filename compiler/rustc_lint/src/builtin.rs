@@ -969,24 +969,6 @@ impl DeprecatedAttr {
     }
 }
 
-fn lint_deprecated_attr(
-    cx: &EarlyContext<'_>,
-    attr: &ast::Attribute,
-    msg: &str,
-    suggestion: Option<&str>,
-) {
-    cx.struct_span_lint(DEPRECATED, attr.span, |lint| {
-        lint.build(msg)
-            .span_suggestion_short(
-                attr.span,
-                suggestion.unwrap_or("remove this attribute"),
-                "",
-                Applicability::MachineApplicable,
-            )
-            .emit();
-    })
-}
-
 impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         for BuiltinAttribute { name, gate, .. } in &self.depr_attrs {
@@ -998,17 +980,38 @@ impl EarlyLintPass for DeprecatedAttr {
                     _,
                 ) = gate
                 {
-                    let msg =
-                        format!("use of deprecated attribute `{}`: {}. See {}", name, reason, link);
-                    lint_deprecated_attr(cx, attr, &msg, suggestion);
+                    cx.struct_span_lint(DEPRECATED, attr.span, |lint| {
+                        // FIXME(davidtwco) translatable deprecated attr
+                        lint.build(fluent::lint::builtin_deprecated_attr_link)
+                            .set_arg("name", name)
+                            .set_arg("reason", reason)
+                            .set_arg("link", link)
+                            .span_suggestion_short(
+                                attr.span,
+                                suggestion.map(|s| s.into()).unwrap_or(
+                                    fluent::lint::builtin_deprecated_attr_default_suggestion,
+                                ),
+                                "",
+                                Applicability::MachineApplicable,
+                            )
+                            .emit();
+                    });
                 }
                 return;
             }
         }
         if attr.has_name(sym::no_start) || attr.has_name(sym::crate_id) {
-            let path_str = pprust::path_to_string(&attr.get_normal_item().path);
-            let msg = format!("use of deprecated attribute `{}`: no longer used.", path_str);
-            lint_deprecated_attr(cx, attr, &msg, None);
+            cx.struct_span_lint(DEPRECATED, attr.span, |lint| {
+                lint.build(fluent::lint::builtin_deprecated_attr_used)
+                    .set_arg("name", pprust::path_to_string(&attr.get_normal_item().path))
+                    .span_suggestion_short(
+                        attr.span,
+                        fluent::lint::builtin_deprecated_attr_default_suggestion,
+                        "",
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+            });
         }
     }
 }
