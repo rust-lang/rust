@@ -22,6 +22,7 @@ use itertools::Itertools;
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::always;
 use syntax::{ast, SmolStr};
 
 use crate::{
@@ -1234,7 +1235,7 @@ impl DefCollector<'_> {
                         self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
                             directive.module_id,
                             loc.kind,
-                            Some(loc.def.krate),
+                            loc.def.krate,
                         ));
                         return recollect_without(self);
                     }
@@ -1258,7 +1259,7 @@ impl DefCollector<'_> {
                             self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
                                 directive.module_id,
                                 loc.kind,
-                                Some(loc.def.krate),
+                                loc.def.krate,
                             ));
 
                             return recollect_without(self);
@@ -1308,13 +1309,10 @@ impl DefCollector<'_> {
         let err = self.db.macro_expand_error(macro_call_id);
         if let Some(err) = err {
             let diag = match err {
-                hir_expand::ExpandError::UnresolvedProcMacro => {
+                hir_expand::ExpandError::UnresolvedProcMacro(krate) => {
+                    always!(krate == loc.def.krate);
                     // Missing proc macros are non-fatal, so they are handled specially.
-                    DefDiagnostic::unresolved_proc_macro(
-                        module_id,
-                        loc.kind.clone(),
-                        Some(loc.def.krate),
-                    )
+                    DefDiagnostic::unresolved_proc_macro(module_id, loc.kind.clone(), loc.def.krate)
                 }
                 _ => DefDiagnostic::macro_error(module_id, loc.kind.clone(), err.to_string()),
             };

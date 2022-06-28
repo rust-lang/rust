@@ -312,7 +312,7 @@ pub struct SyntheticSyntax;
 pub enum BodyDiagnostic {
     InactiveCode { node: InFile<SyntaxNodePtr>, cfg: CfgExpr, opts: CfgOptions },
     MacroError { node: InFile<AstPtr<ast::MacroCall>>, message: String },
-    UnresolvedProcMacro { node: InFile<AstPtr<ast::MacroCall>> },
+    UnresolvedProcMacro { node: InFile<AstPtr<ast::MacroCall>>, krate: CrateId },
     UnresolvedMacroCall { node: InFile<AstPtr<ast::MacroCall>>, path: ModPath },
 }
 

@@ -24,7 +24,7 @@ pub enum DefDiagnosticKind {
 
     UnconfiguredCode { ast: AstId<ast::Item>, cfg: CfgExpr, opts: CfgOptions },
 
-    UnresolvedProcMacro { ast: MacroCallKind, krate: Option<CrateId> },
+    UnresolvedProcMacro { ast: MacroCallKind, krate: CrateId },
 
     UnresolvedMacroCall { ast: MacroCallKind, path: ModPath },
 
@@ -85,7 +85,7 @@ impl DefDiagnostic {
     pub(super) fn unresolved_proc_macro(
         container: LocalModuleId,
         ast: MacroCallKind,
-        krate: Option<CrateId>,
+        krate: CrateId,
     ) -> Self {
         Self { in_module: container, kind: DefDiagnosticKind::UnresolvedProcMacro { ast, krate } }
     }

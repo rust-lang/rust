@@ -75,7 +75,7 @@ impl ProcMacroExpander {
                     },
                 }
             }
-            None => ExpandResult::only_err(ExpandError::UnresolvedProcMacro),
+            None => ExpandResult::only_err(ExpandError::UnresolvedProcMacro(self.krate)),
         }
     }
 }

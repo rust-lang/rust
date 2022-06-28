@@ -32,13 +32,13 @@ pub(crate) fn unresolved_proc_macro(
         None => "proc macro not expanded".to_string(),
     };
     let severity = if config_enabled { Severity::Error } else { Severity::WeakWarning };
-    let def_map = d.krate.map(|krate| ctx.sema.db.crate_def_map(krate));
+    let def_map = ctx.sema.db.crate_def_map(d.krate);
     let message = format!(
         "{message}: {}",
         if config_enabled {
-            match def_map.as_ref().and_then(|def_map| def_map.proc_macro_loading_error()) {
+            match def_map.proc_macro_loading_error() {
                 Some(e) => e,
-                None => "proc macro not found",
+                None => "proc macro not found in the built dylib",
             }
         } else {
             match d.kind {

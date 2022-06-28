@@ -43,7 +43,7 @@ pub type ExpandResult<T> = ValueResult<T, ExpandError>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ExpandError {
-    UnresolvedProcMacro,
+    UnresolvedProcMacro(CrateId),
     Mbe(mbe::ExpandError),
     Other(Box<str>),
 }
@@ -57,7 +57,7 @@ impl From<mbe::ExpandError> for ExpandError {
 impl fmt::Display for ExpandError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ExpandError::UnresolvedProcMacro => f.write_str("unresolved proc-macro"),
+            ExpandError::UnresolvedProcMacro(_) => f.write_str("unresolved proc-macro"),
             ExpandError::Mbe(it) => it.fmt(f),
             ExpandError::Other(it) => f.write_str(it),
         }
