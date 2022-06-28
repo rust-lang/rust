@@ -396,3 +396,5 @@ lint-builtin-clashing-extern-diff-name = `{$this_fi}` redeclares `{$orig}` with 
 
 lint-builtin-deref-nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
+
+lint-builtin-asm-labels = avoid using named labels in inline assembly

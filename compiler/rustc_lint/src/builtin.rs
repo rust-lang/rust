@@ -3182,9 +3182,7 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                             NAMED_ASM_LABELS,
                             Some(target_spans),
                             |diag| {
-                                let mut err =
-                                    diag.build("avoid using named labels in inline assembly");
-                                err.emit();
+                                diag.build(fluent::lint::builtin_asm_labels).emit();
                             },
                             BuiltinLintDiagnostics::NamedAsmLabel(
                                 "only local labels of the form `<number>:` should be used in inline asm"
