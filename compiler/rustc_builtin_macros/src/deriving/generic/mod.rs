@@ -1576,7 +1576,7 @@ impl<'a> TraitDef<'a> {
 
 // helpful premade recipes
 
-pub fn cs_fold_fields<'a, F>(
+fn cs_fold_fields<'a, F>(
     use_foldl: bool,
     mut f: F,
     base: P<Expr>,
@@ -1598,7 +1598,7 @@ where
     }
 }
 
-pub fn cs_fold_enumnonmatch(
+fn cs_fold_enumnonmatch(
     mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
@@ -1610,7 +1610,7 @@ pub fn cs_fold_enumnonmatch(
     }
 }
 
-pub fn cs_fold_static(cx: &mut ExtCtxt<'_>, trait_span: Span) -> P<Expr> {
+fn cs_fold_static(cx: &mut ExtCtxt<'_>, trait_span: Span) -> P<Expr> {
     cx.span_bug(trait_span, "static function in `derive`")
 }
 
