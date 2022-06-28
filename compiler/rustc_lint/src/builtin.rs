@@ -1385,16 +1385,17 @@ impl UnreachablePub {
             }
             let def_span = cx.tcx.sess.source_map().guess_head_span(span);
             cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
-                let mut err = lint.build(&format!("unreachable `pub` {}", what));
+                let mut err = lint.build(fluent::lint::builtin_unreachable_pub);
+                err.set_arg("what", what);
 
                 err.span_suggestion(
                     vis_span,
-                    "consider restricting its visibility",
+                    fluent::lint::suggestion,
                     "pub(crate)",
                     applicability,
                 );
                 if exportable {
-                    err.help("or consider exporting it for use by other crates");
+                    err.help(fluent::lint::help);
                 }
                 err.emit();
             });

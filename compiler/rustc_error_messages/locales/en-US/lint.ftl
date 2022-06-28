@@ -354,3 +354,7 @@ lint-builtin-mutable-transmutes =
     transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
 
 lint-builtin-unstable-features = unstable feature
+
+lint-builtin-unreachable-pub = unreachable `pub` {$what}
+    .suggestion = consider restricting its visibility
+    .help = or consider exporting it for use by other crates
