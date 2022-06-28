@@ -969,13 +969,17 @@ impl Punct {
         if !LEGAL_CHARS.contains(&ch) {
             panic!("unsupported character `{:?}`", ch);
         }
-        Punct(bridge::Punct { ch, joint: spacing == Spacing::Joint, span: Span::call_site().0 })
+        Punct(bridge::Punct {
+            ch: ch as u8,
+            joint: spacing == Spacing::Joint,
+            span: Span::call_site().0,
+        })
     }
 
     /// Returns the value of this punctuation character as `char`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn as_char(&self) -> char {
-        self.0.ch
+        self.0.ch as char
     }
 
     /// Returns the spacing of this punctuation character, indicating whether it's immediately

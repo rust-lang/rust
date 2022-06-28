@@ -325,6 +325,7 @@ mark_noop! {
     &'_ [u8],
     &'_ str,
     String,
+    u8,
     usize,
     Delimiter,
     Level,
@@ -431,48 +432,48 @@ compound_traits!(
 );
 
 #[derive(Copy, Clone)]
-pub struct DelimSpan<S> {
-    pub open: S,
-    pub close: S,
-    pub entire: S,
+pub struct DelimSpan<Span> {
+    pub open: Span,
+    pub close: Span,
+    pub entire: Span,
 }
 
-impl<S: Copy> DelimSpan<S> {
-    pub fn from_single(span: S) -> Self {
+impl<Span: Copy> DelimSpan<Span> {
+    pub fn from_single(span: Span) -> Self {
         DelimSpan { open: span, close: span, entire: span }
     }
 }
 
-compound_traits!(struct DelimSpan<Sp> { open, close, entire });
+compound_traits!(struct DelimSpan<Span> { open, close, entire });
 
 #[derive(Clone)]
-pub struct Group<T, S> {
+pub struct Group<TokenStream, Span> {
     pub delimiter: Delimiter,
-    pub stream: Option<T>,
-    pub span: DelimSpan<S>,
+    pub stream: Option<TokenStream>,
+    pub span: DelimSpan<Span>,
 }
 
-compound_traits!(struct Group<T, Sp> { delimiter, stream, span });
+compound_traits!(struct Group<TokenStream, Span> { delimiter, stream, span });
 
 #[derive(Clone)]
-pub struct Punct<S> {
-    pub ch: char,
+pub struct Punct<Span> {
+    pub ch: u8,
     pub joint: bool,
-    pub span: S,
+    pub span: Span,
 }
 
-compound_traits!(struct Punct<Sp> { ch, joint, span });
+compound_traits!(struct Punct<Span> { ch, joint, span });
 
 #[derive(Clone)]
-pub enum TokenTree<T, S, I, L> {
-    Group(Group<T, S>),
-    Punct(Punct<S>),
-    Ident(I),
-    Literal(L),
+pub enum TokenTree<TokenStream, Span, Ident, Literal> {
+    Group(Group<TokenStream, Span>),
+    Punct(Punct<Span>),
+    Ident(Ident),
+    Literal(Literal),
 }
 
 compound_traits!(
-    enum TokenTree<T, Sp, I, L> {
+    enum TokenTree<TokenStream, Span, Ident, Literal> {
         Group(tt),
         Punct(tt),
         Ident(tt),
@@ -483,12 +484,12 @@ compound_traits!(
 /// Globals provided alongside the initial inputs for a macro expansion.
 /// Provides values such as spans which are used frequently to avoid RPC.
 #[derive(Clone)]
-pub struct ExpnGlobals<S> {
-    pub def_site: S,
-    pub call_site: S,
-    pub mixed_site: S,
+pub struct ExpnGlobals<Span> {
+    pub def_site: Span,
+    pub call_site: Span,
+    pub mixed_site: Span,
 }
 
 compound_traits!(
-    struct ExpnGlobals<Sp> { def_site, call_site, mixed_site }
+    struct ExpnGlobals<Span> { def_site, call_site, mixed_site }
 );

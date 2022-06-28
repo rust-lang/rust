@@ -55,8 +55,10 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)>
     fn from_internal((stream, rustc): (TokenStream, &mut Rustc<'_, '_>)) -> Self {
         use rustc_ast::token::*;
 
+        // Estimate the capacity as `stream.len()` rounded up to the next power
+        // of two to limit the number of required reallocations.
+        let mut trees = Vec::with_capacity(stream.len().next_power_of_two());
         let mut cursor = stream.into_trees();
-        let mut trees = Vec::new();
 
         while let Some((tree, spacing)) = cursor.next_with_spacing() {
             let joint = spacing == Joint;
@@ -77,95 +79,78 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)>
                 tokenstream::TokenTree::Token(token) => token,
             };
 
-            macro_rules! tt {
-                ($ty:ident { $($field:ident $(: $value:expr)*),+ $(,)? }) => (
-                    trees.push(TokenTree::$ty(self::$ty {
-                        $($field $(: $value)*,)+
-                        span,
-                    }))
-                );
-                ($ty:ident::$method:ident($($value:expr),*)) => (
-                    trees.push(TokenTree::$ty(self::$ty::$method($($value,)* span)))
-                );
-            }
-            macro_rules! op {
-                ($a:expr) => {{
-                    tt!(Punct { ch: $a, joint });
-                }};
-                ($a:expr, $b:expr) => {{
-                    tt!(Punct { ch: $a, joint: true });
-                    tt!(Punct { ch: $b, joint });
-                }};
-                ($a:expr, $b:expr, $c:expr) => {{
-                    tt!(Punct { ch: $a, joint: true });
-                    tt!(Punct { ch: $b, joint: true });
-                    tt!(Punct { ch: $c, joint });
-                }};
-            }
+            let mut op = |s: &str| {
+                assert!(s.is_ascii());
+                trees.extend(s.as_bytes().iter().enumerate().map(|(idx, &ch)| {
+                    TokenTree::Punct(Punct { ch, joint: joint || idx != s.len() - 1, span })
+                }));
+            };
 
             match kind {
-                Eq => op!('='),
-                Lt => op!('<'),
-                Le => op!('<', '='),
-                EqEq => op!('=', '='),
-                Ne => op!('!', '='),
-                Ge => op!('>', '='),
-                Gt => op!('>'),
-                AndAnd => op!('&', '&'),
-                OrOr => op!('|', '|'),
-                Not => op!('!'),
-                Tilde => op!('~'),
-                BinOp(Plus) => op!('+'),
-                BinOp(Minus) => op!('-'),
-                BinOp(Star) => op!('*'),
-                BinOp(Slash) => op!('/'),
-                BinOp(Percent) => op!('%'),
-                BinOp(Caret) => op!('^'),
-                BinOp(And) => op!('&'),
-                BinOp(Or) => op!('|'),
-                BinOp(Shl) => op!('<', '<'),
-                BinOp(Shr) => op!('>', '>'),
-                BinOpEq(Plus) => op!('+', '='),
-                BinOpEq(Minus) => op!('-', '='),
-                BinOpEq(Star) => op!('*', '='),
-                BinOpEq(Slash) => op!('/', '='),
-                BinOpEq(Percent) => op!('%', '='),
-                BinOpEq(Caret) => op!('^', '='),
-                BinOpEq(And) => op!('&', '='),
-                BinOpEq(Or) => op!('|', '='),
-                BinOpEq(Shl) => op!('<', '<', '='),
-                BinOpEq(Shr) => op!('>', '>', '='),
-                At => op!('@'),
-                Dot => op!('.'),
-                DotDot => op!('.', '.'),
-                DotDotDot => op!('.', '.', '.'),
-                DotDotEq => op!('.', '.', '='),
-                Comma => op!(','),
-                Semi => op!(';'),
-                Colon => op!(':'),
-                ModSep => op!(':', ':'),
-                RArrow => op!('-', '>'),
-                LArrow => op!('<', '-'),
-                FatArrow => op!('=', '>'),
-                Pound => op!('#'),
-                Dollar => op!('$'),
-                Question => op!('?'),
-                SingleQuote => op!('\''),
+                Eq => op("="),
+                Lt => op("<"),
+                Le => op("<="),
+                EqEq => op("=="),
+                Ne => op("!="),
+                Ge => op(">="),
+                Gt => op(">"),
+                AndAnd => op("&&"),
+                OrOr => op("||"),
+                Not => op("!"),
+                Tilde => op("~"),
+                BinOp(Plus) => op("+"),
+                BinOp(Minus) => op("-"),
+                BinOp(Star) => op("*"),
+                BinOp(Slash) => op("/"),
+                BinOp(Percent) => op("%"),
+                BinOp(Caret) => op("^"),
+                BinOp(And) => op("&"),
+                BinOp(Or) => op("|"),
+                BinOp(Shl) => op("<<"),
+                BinOp(Shr) => op(">>"),
+                BinOpEq(Plus) => op("+="),
+                BinOpEq(Minus) => op("-="),
+                BinOpEq(Star) => op("*="),
+                BinOpEq(Slash) => op("/="),
+                BinOpEq(Percent) => op("%="),
+                BinOpEq(Caret) => op("^="),
+                BinOpEq(And) => op("&="),
+                BinOpEq(Or) => op("|="),
+                BinOpEq(Shl) => op("<<="),
+                BinOpEq(Shr) => op(">>="),
+                At => op("@"),
+                Dot => op("."),
+                DotDot => op(".."),
+                DotDotDot => op("..."),
+                DotDotEq => op("..="),
+                Comma => op(","),
+                Semi => op(";"),
+                Colon => op(":"),
+                ModSep => op("::"),
+                RArrow => op("->"),
+                LArrow => op("<-"),
+                FatArrow => op("=>"),
+                Pound => op("#"),
+                Dollar => op("$"),
+                Question => op("?"),
+                SingleQuote => op("'"),
 
-                Ident(name, false) if name == kw::DollarCrate => tt!(Ident::dollar_crate()),
-                Ident(name, is_raw) => tt!(Ident::new(rustc.sess(), name, is_raw)),
+                Ident(name, false) if name == kw::DollarCrate => trees.push(TokenTree::Ident(Ident::dollar_crate(span))),
+                Ident(name, is_raw) => trees.push(TokenTree::Ident(Ident::new(rustc.sess(), name, is_raw, span))),
                 Lifetime(name) => {
                     let ident = symbol::Ident::new(name, span).without_first_quote();
-                    tt!(Punct { ch: '\'', joint: true });
-                    tt!(Ident::new(rustc.sess(), ident.name, false));
+                    trees.extend([
+                        TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
+                        TokenTree::Ident(Ident::new(rustc.sess(), ident.name, false, span)),
+                    ]);
                 }
-                Literal(lit) => tt!(Literal { lit }),
+                Literal(lit) => trees.push(TokenTree::Literal(self::Literal { lit, span })),
                 DocComment(_, attr_style, data) => {
                     let mut escaped = String::new();
                     for ch in data.as_str().chars() {
                         escaped.extend(ch.escape_debug());
                     }
-                    let stream = vec![
+                    let stream = [
                         Ident(sym::doc, false),
                         Eq,
                         TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
@@ -173,9 +158,9 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)>
                     .into_iter()
                     .map(|kind| tokenstream::TokenTree::token(kind, span))
                     .collect();
-                    tt!(Punct { ch: '#', joint: false });
+                    trees.push(TokenTree::Punct(Punct { ch: b'#', joint: false, span }));
                     if attr_style == ast::AttrStyle::Inner {
-                        tt!(Punct { ch: '!', joint: false });
+                        trees.push(TokenTree::Punct(Punct { ch: b'!', joint: false, span }));
                     }
                     trees.push(TokenTree::Group(Group {
                         delimiter: pm::Delimiter::Bracket,
@@ -190,6 +175,12 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)>
 
                 Interpolated(nt) => {
                     let stream = TokenStream::from_nonterminal_ast(&nt);
+                    // A hack used to pass AST fragments to attribute and derive
+                    // macros as a single nonterminal token instead of a token
+                    // stream.  Such token needs to be "unwrapped" and not
+                    // represented as a delimited group.
+                    // FIXME: It needs to be removed, but there are some
+                    // compatibility issues (see #73345).
                     if crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.sess()) {
                         trees.extend(Self::from_internal((stream, rustc)));
                     } else {
@@ -254,28 +245,28 @@ impl ToInternal<TokenStream> for TokenTree<TokenStream, Span, Ident, Literal> {
         };
 
         let kind = match ch {
-            '=' => Eq,
-            '<' => Lt,
-            '>' => Gt,
-            '!' => Not,
-            '~' => Tilde,
-            '+' => BinOp(Plus),
-            '-' => BinOp(Minus),
-            '*' => BinOp(Star),
-            '/' => BinOp(Slash),
-            '%' => BinOp(Percent),
-            '^' => BinOp(Caret),
-            '&' => BinOp(And),
-            '|' => BinOp(Or),
-            '@' => At,
-            '.' => Dot,
-            ',' => Comma,
-            ';' => Semi,
-            ':' => Colon,
-            '#' => Pound,
-            '$' => Dollar,
-            '?' => Question,
-            '\'' => SingleQuote,
+            b'=' => Eq,
+            b'<' => Lt,
+            b'>' => Gt,
+            b'!' => Not,
+            b'~' => Tilde,
+            b'+' => BinOp(Plus),
+            b'-' => BinOp(Minus),
+            b'*' => BinOp(Star),
+            b'/' => BinOp(Slash),
+            b'%' => BinOp(Percent),
+            b'^' => BinOp(Caret),
+            b'&' => BinOp(And),
+            b'|' => BinOp(Or),
+            b'@' => At,
+            b'.' => Dot,
+            b',' => Comma,
+            b';' => Semi,
+            b':' => Colon,
+            b'#' => Pound,
+            b'$' => Dollar,
+            b'?' => Question,
+            b'\'' => SingleQuote,
             _ => unreachable!(),
         };
 
