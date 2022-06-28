@@ -146,9 +146,7 @@ impl<'mir, 'tcx> GlobalStateInner {
                 });
             }
             ProvenanceMode::Strict => {
-                throw_unsup_format!(
-                    "integer-to-pointer casts and `from_exposed_addr` are not supported with `-Zmiri-strict-provenance`; use `with_addr` instead"
-                )
+                throw_machine_stop!(TerminationInfo::Int2PtrWithStrictProvenance);
             }
             ProvenanceMode::Permissive => {}
         }
