@@ -17,7 +17,7 @@ shown below:
 
 ```rust,ignore
 #[derive(SessionDiagnostic)]
-#[error(code = "E0124", slug = "typeck-field-already-declared")]
+#[error(typeck::field_already_declared, code = "E0124")]
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
     #[primary_span]
@@ -37,12 +37,13 @@ the `code` sub-attribute. Specifying a `code` isn't mandatory, but if you are
 porting a diagnostic that uses `DiagnosticBuilder` to use `SessionDiagnostic`
 then you should keep the code if there was one.
 
-Both `#[error(..)]` and `#[warning(..)]` must set a value for the `slug`
-sub-attribute. `slug` uniquely identifies the diagnostic and is also how the
-compiler knows what error message to emit (in the default locale of the
-compiler, or in the locale requested by the user). See [translation
-documentation](./translation.md) to learn more about how translatable error
-messages are written.
+Both `#[error(..)]` and `#[warning(..)]` must provide a slug as the first
+positional argument (a path to an item in `rustc_errors::fluent::*`). A slug
+uniquely identifies the diagnostic and is also how the compiler knows what
+error message to emit (in the default locale of the compiler, or in the locale
+requested by the user). See [translation documentation](./translation.md) to
+learn more about how translatable error messages are written and how slug
+items are generated.
 
 In our example, the Fluent message for the "field already declared" diagnostic
 looks like this:
@@ -54,7 +55,7 @@ typeck-field-already-declared =
     .previous-decl-label = `{$field_name}` first declared here
 ```
 
-`typeck-field-already-declared` is the `slug` from our example and is followed
+`typeck-field-already-declared` is the slug from our example and is followed
 by the diagnostic message.
 
 Every field of the `SessionDiagnostic` which does not have an annotation is
@@ -147,15 +148,22 @@ tcx.sess.emit_err(FieldAlreadyDeclared {
 ### Reference
 `#[derive(SessionDiagnostic)]` supports the following attributes:
 
-- `#[error(code = "...", slug = "...")]` or `#[warning(code = "...", slug = "...")]`
+- `#[error(slug, code = "...")]` or `#[warning(slug, code = "...")]`
   - _Applied to struct._
   - _Mandatory_
   - Defines the struct to be representing an error or a warning.
-  - `code = "..."` (_Optional_)
-    - Specifies the error code.
-  - `slug = "..."` (_Mandatory_)
+  - Slug (_Mandatory_)
     - Uniquely identifies the diagnostic and corresponds to its Fluent message,
       mandatory.
+    - A path to an item in `rustc_errors::fluent`. Always in a module starting
+      with a Fluent resource name (which is typically the name of the crate
+      that the diagnostic is from), e.g.
+      `rustc_errors::fluent::typeck::field_already_declared`
+      (`rustc_errors::fluent` is implicit in the attribute, so just
+      `typeck::field_already_declared`).
+    - See [translation documentation](./translation.md).
+  - `code = "..."` (_Optional_)
+    - Specifies the error code.
 - `#[note]` or `#[note = "..."]` (_Optional_)
   - _Applied to struct or `Span`/`()` fields._
   - Adds a note subdiagnostic.
@@ -215,12 +223,12 @@ shown below:
 ```rust
 #[derive(SessionSubdiagnostic)]
 pub enum ExpectedReturnTypeLabel<'tcx> {
-    #[label(slug = "typeck-expected-default-return-type")]
+    #[label(typeck::expected_default_return_type)]
     Unit {
         #[primary_span]
         span: Span,
     },
-    #[label(slug = "typeck-expected-return-type")]
+    #[label(typeck::expected_return_type)]
     Other {
         #[primary_span]
         span: Span,
@@ -239,11 +247,12 @@ attribute applied to the struct or each variant, one of:
 - `#[help(..)]` for defining a help
 - `#[suggestion{,_hidden,_short,_verbose}(..)]` for defining a suggestion
 
-All of the above must have a value set for the `slug` sub-attribute. `slug`
-uniquely identifies the diagnostic and is also how the compiler knows what
-error message to emit (in the default locale of the compiler, or in the locale
-requested by the user). See [translation documentation](./translation.md) to
-learn more about how translatable error messages are written.
+All of the above must provide a slug as the first positional argument (a path
+to an item in `rustc_errors::fluent::*`). A slug uniquely identifies the
+diagnostic and is also how the compiler knows what error message to emit (in
+the default locale of the compiler, or in the locale requested by the user).
+See [translation documentation](./translation.md) to learn more about how
+translatable error messages are written and how slug items are generated.
 
 In our example, the Fluent message for the "expected return type" label
 looks like this:
@@ -315,13 +324,20 @@ diagnostic struct.
 ### Reference
 `#[derive(SessionSubdiagnostic)]` supports the following attributes:
 
-- `#[label(slug = "...")]`, `#[help(slug = "...")]` or `#[note(slug = "...")]`
+- `#[label(slug)]`, `#[help(slug)]` or `#[note(slug)]`
   - _Applied to struct or enum variant. Mutually exclusive with struct/enum variant attributes._
   - _Mandatory_
   - Defines the type to be representing a label, help or note.
-  - `slug = "..."` (_Mandatory_)
+  - Slug (_Mandatory_)
     - Uniquely identifies the diagnostic and corresponds to its Fluent message,
       mandatory.
+    - A path to an item in `rustc_errors::fluent`. Always in a module starting
+      with a Fluent resource name (which is typically the name of the crate
+      that the diagnostic is from), e.g.
+      `rustc_errors::fluent::typeck::field_already_declared`
+      (`rustc_errors::fluent` is implicit in the attribute, so just
+      `typeck::field_already_declared`).
+    - See [translation documentation](./translation.md).
 - `#[suggestion{,_hidden,_short,_verbose}(message = "...", code = "...", applicability = "...")]`
   - _Applied to struct or enum variant. Mutually exclusive with struct/enum variant attributes._
   - _Mandatory_
