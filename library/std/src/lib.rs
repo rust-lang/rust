@@ -335,7 +335,6 @@
 #![feature(const_ip)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
-#![feature(const_option)]
 #![feature(const_socketaddr)]
 #![feature(thread_local_internals)]
 //
