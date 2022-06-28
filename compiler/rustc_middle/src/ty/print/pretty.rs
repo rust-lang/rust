@@ -1447,7 +1447,11 @@ pub trait PrettyPrinter<'tcx>:
                     p!(write("{:?}", String::from_utf8_lossy(bytes)));
                     return Ok(self);
                 }
-                _ => {}
+                _ => {
+                    p!("&");
+                    p!(pretty_print_const_valtree(valtree, *inner_ty, print_ty));
+                    return Ok(self);
+                }
             },
             (ty::ValTree::Branch(_), ty::Array(t, _)) if *t == u8_type => {
                 let bytes = valtree.try_to_raw_bytes(self.tcx(), *t).unwrap_or_else(|| {
@@ -1459,16 +1463,8 @@ pub trait PrettyPrinter<'tcx>:
             }
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
             (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
-                let Some(contents) = self.tcx().try_destructure_const(
-                    ty::Const::from_value(self.tcx(), valtree, ty)
-                ) else {
-                    // Fall back to debug pretty printing for invalid constants.
-                    p!(write("{:?}", valtree));
-                    if print_ty {
-                        p!(": ", print(ty));
-                    }
-                    return Ok(self);
-                };
+                let contents =
+                    self.tcx().destructure_const(ty::Const::from_value(self.tcx(), valtree, ty));
                 let fields = contents.fields.iter().copied();
                 match *ty.kind() {
                     ty::Array(..) => {
