@@ -1671,12 +1671,10 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                 };
                 if predicate.is_global() {
                     cx.struct_span_lint(TRIVIAL_BOUNDS, span, |lint| {
-                        lint.build(&format!(
-                            "{} bound {} does not depend on any type \
-                                or lifetime parameters",
-                            predicate_kind_name, predicate
-                        ))
-                        .emit();
+                        lint.build(fluent::lint::builtin_trivial_bounds)
+                            .set_arg("predicate_kind_name", predicate_kind_name)
+                            .set_arg("predicate", predicate)
+                            .emit();
                     });
                 }
             }

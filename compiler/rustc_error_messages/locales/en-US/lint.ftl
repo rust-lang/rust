@@ -366,3 +366,5 @@ lint-builtin-type-alias-where-clause = where clauses are not enforced in type al
 
 lint-builtin-type-alias-generic-bounds = bounds on generic parameters are not enforced in type aliases
     .suggestion = the bound will not be checked when the type alias is used, and should be removed
+
+lint-builtin-trivial-bounds = {$predicate_kind_name} bound {$predicate} does not depend on any type or lifetime parameters
