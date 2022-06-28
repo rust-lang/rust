@@ -361,6 +361,38 @@ fn main() {
     }
 
     #[test]
+    fn macro_expand_inner_macro_rules() {
+        check(
+            r#"
+macro_rules! foo {
+    ($t:tt) => {{
+        macro_rules! bar {
+            () => {
+                $t
+            }
+        }
+        bar!()
+    }};
+}
+
+fn main() {
+    foo$0!(42);
+}
+            "#,
+            expect![[r#"
+                foo
+                {
+                  macro_rules! bar {
+                    () => {
+                      42
+                    }
+                  }
+                  42
+                }"#]],
+        );
+    }
+
+    #[test]
     fn macro_expand_inner_macro_fail_to_expand() {
         check(
             r#"

@@ -33,7 +33,10 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
         let token = match event {
             WalkEvent::Enter(NodeOrToken::Token(token)) => token,
             WalkEvent::Leave(NodeOrToken::Node(node))
-                if matches!(node.kind(), ATTR | MATCH_ARM | STRUCT | ENUM | UNION | FN | IMPL) =>
+                if matches!(
+                    node.kind(),
+                    ATTR | MATCH_ARM | STRUCT | ENUM | UNION | FN | IMPL | MACRO_RULES
+                ) =>
             {
                 if indent > 0 {
                     mods.push((
@@ -66,9 +69,7 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
                     mods.push(do_ws(before, tok));
                 }
 
-                if indent > 0 {
-                    mods.push(do_indent(after, tok, indent));
-                }
+                mods.push(do_indent(after, tok, indent));
                 mods.push(do_nl(after, tok));
             }
             R_CURLY if is_last(|it| it != L_CURLY, true) => {
@@ -100,8 +101,17 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
                 }
                 mods.push(do_nl(after, tok));
             }
+            T![=] if is_next(|it| it == T![>], false) => {
+                // FIXME: this branch is for `=>` in macro_rules!, which is currently parsed as
+                // two separate symbols.
+                mods.push(do_ws(before, tok));
+                mods.push(do_ws(after, &tok.next_token().unwrap()));
+            }
             T![->] | T![=] | T![=>] => {
                 mods.push(do_ws(before, tok));
+                mods.push(do_ws(after, tok));
+            }
+            T![!] if is_last(|it| it == MACRO_RULES_KW, false) && is_next(is_text, false) => {
                 mods.push(do_ws(after, tok));
             }
             _ => (),
