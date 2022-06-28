@@ -33,8 +33,9 @@ fn is_stable(place: PlaceRef<'_>) -> bool {
     })
 }
 
-/// Determine whether this type may be a reference (or box), and thus needs retagging.
-fn may_be_reference(ty: Ty<'_>) -> bool {
+/// Determine whether this type may contain a reference (or box), and thus needs retagging.
+/// We will only recurse `depth` times into Tuples/ADTs to bound the cost of this.
+fn may_contain_reference<'tcx>(ty: Ty<'tcx>, depth: u32, tcx: TyCtxt<'tcx>) -> bool {
     match ty.kind() {
         // Primitive types that are not references
         ty::Bool
@@ -50,8 +51,20 @@ fn may_be_reference(ty: Ty<'_>) -> bool {
         // References
         ty::Ref(..) => true,
         ty::Adt(..) if ty.is_box() => true,
-        // Compound types are not references
-        ty::Array(..) | ty::Slice(..) | ty::Tuple(..) | ty::Adt(..) => false,
+        // Compound types: recurse
+        ty::Array(ty, _) | ty::Slice(ty) => {
+            // This does not branch so we keep the depth the same.
+            may_contain_reference(*ty, depth, tcx)
+        }
+        ty::Tuple(tys) => {
+            depth == 0 || tys.iter().any(|ty| may_contain_reference(ty, depth - 1, tcx))
+        }
+        ty::Adt(adt, subst) => {
+            depth == 0
+                || adt.variants().iter().any(|v| {
+                    v.fields.iter().any(|f| may_contain_reference(f.ty(tcx, subst), depth - 1, tcx))
+                })
+        }
         // Conservative fallback
         _ => true,
     }
@@ -83,7 +96,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.
             is_stable(place.as_ref())
-                && may_be_reference(place.ty(&*local_decls, tcx).ty)
+                && may_contain_reference(place.ty(&*local_decls, tcx).ty, /*depth*/ 3, tcx)
                 && is_not_temp(&local_decls[place.local])
         };
         let place_base_raw = |place: &Place<'tcx>| {
