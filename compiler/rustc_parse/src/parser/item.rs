@@ -271,8 +271,7 @@ impl<'a> Parser<'a> {
             // MACRO_RULES ITEM
             self.parse_item_macro_rules(vis, has_bang)?
         } else if self.isnt_macro_invocation()
-            && (self.token.is_ident_named(Symbol::intern("import"))
-                || self.token.is_ident_named(Symbol::intern("using")))
+            && (self.token.is_ident_named(sym::import) || self.token.is_ident_named(sym::using))
         {
             return self.recover_import_as_use();
         } else if self.isnt_macro_invocation() && vis.kind.is_pub() {
