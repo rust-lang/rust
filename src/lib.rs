@@ -247,6 +247,7 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
     flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
     let enable_verifier = if backend_config.enable_verifier { "true" } else { "false" };
     flags_builder.set("enable_verifier", enable_verifier).unwrap();
+    flags_builder.set("regalloc_checker", enable_verifier).unwrap();
 
     let tls_model = match target_triple.binary_format {
         BinaryFormat::Elf => "elf_gd",
