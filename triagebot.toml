@@ -244,7 +244,7 @@ cc = ["@rust-lang/miri"]
 
 [mentions."compiler/rustc_mir_transform/src/"]
 message = "Some changes occurred to MIR optimizations"
-cc = ["@rust-lang/mir-opt"]
+cc = ["@rust-lang/wg-mir-opt"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/const_evaluatable.rs"]
 message = "Some changes occurred in const_evaluatable.rs"
