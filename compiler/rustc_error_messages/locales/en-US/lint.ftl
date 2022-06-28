@@ -326,3 +326,5 @@ lint-builtin-decl-unsafe-method = declaration of an `unsafe` method
 lint-builtin-impl-unsafe-method = implementation of an `unsafe` method
 
 lint-builtin-missing-doc = missing documentation for {$article} {$desc}
+
+lint-builtin-missing-copy-impl = type could implement `Copy`; consider adding `impl Copy`

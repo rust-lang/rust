@@ -781,11 +781,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         .is_ok()
         {
             cx.struct_span_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, |lint| {
-                lint.build(
-                    "type could implement `Copy`; consider adding `impl \
-                          Copy`",
-                )
-                .emit();
+                lint.build(fluent::lint::builtin_missing_copy_impl).emit();
             })
         }
     }
