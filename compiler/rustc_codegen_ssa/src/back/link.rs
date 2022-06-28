@@ -354,7 +354,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
         }
         if let Some(name) = lib.name {
             let location =
-                find_library(name, lib.verbatim.unwrap_or(false), &lib_search_paths, sess);
+                find_library(name.as_str(), lib.verbatim.unwrap_or(false), &lib_search_paths, sess);
             ab.add_archive(&location, |_| false).unwrap_or_else(|e| {
                 sess.fatal(&format!(
                     "failed to add native library {}: {}",
@@ -1117,7 +1117,7 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         let path = find_sanitizer_runtime(&sess, &filename);
         let rpath = path.to_str().expect("non-utf8 component in path");
         linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
-        linker.link_dylib(Symbol::intern(&filename), false, true);
+        linker.link_dylib(&filename, false, true);
     } else {
         let filename = format!("librustc{}_rt.{}.a", channel, name);
         let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
@@ -2199,6 +2199,7 @@ fn add_local_native_libraries(
         let Some(name) = lib.name else {
             continue;
         };
+        let name = name.as_str();
 
         // Skip if this library is the same as the last.
         last = if (lib.name, lib.kind, lib.verbatim) == last {
@@ -2362,6 +2363,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                         let Some(name) = lib.name else {
                             continue;
                         };
+                        let name = name.as_str();
                         if !relevant_lib(sess, lib) {
                             continue;
                         }
@@ -2519,7 +2521,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         }
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
         cmd.link_rust_dylib(
-            Symbol::intern(&unlib(&sess.target, filestem)),
+            &unlib(&sess.target, filestem),
             parent.unwrap_or_else(|| Path::new("")),
         );
     }
@@ -2551,6 +2553,7 @@ fn add_upstream_native_libraries(
             let Some(name) = lib.name else {
                 continue;
             };
+            let name = name.as_str();
             if !relevant_lib(sess, &lib) {
                 continue;
             }
