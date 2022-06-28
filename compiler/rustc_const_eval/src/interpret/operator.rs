@@ -5,6 +5,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty};
+use rustc_target::abi::Abi;
 
 use super::{ImmTy, Immediate, InterpCx, Machine, PlaceTy};
 
@@ -25,8 +26,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             "type mismatch for result of {:?}",
             op,
         );
-        let val = Immediate::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
-        self.write_immediate(val, dest)
+        if let Abi::ScalarPair(..) = dest.layout.abi {
+            // We can use the optimized path and avoid `place_field` (which might do
+            // `force_allocation`).
+            let pair = Immediate::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
+            self.write_immediate(pair, dest)?;
+        } else {
+            // With randomized layout, `(int, bool)` might cease to be a `ScalarPair`, so we have to
+            // do a component-wise write here. This code path is slower than the above because
+            // `place_field` will have to `force_allocate` locals here.
+            let val_field = self.place_field(&dest, 0)?;
+            self.write_scalar(val, &val_field)?;
+            let overflowed_field = self.place_field(&dest, 1)?;
+            self.write_scalar(Scalar::from_bool(overflowed), &overflowed_field)?;
+        }
+        Ok(())
     }
 
     /// Applies the binary operation `op` to the arguments and writes the result to the
