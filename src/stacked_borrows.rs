@@ -849,8 +849,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         log_creation(this, current_span, alloc_id, base_offset, orig_tag)?;
 
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        let (alloc_size, _) =
-            this.get_alloc_size_and_align(alloc_id, AllocCheck::Dereferenceable)?;
+        let (alloc_size, _) = this.get_live_alloc_size_and_align(alloc_id)?;
         if base_offset + size > alloc_size {
             throw_ub!(PointerOutOfBounds {
                 alloc_id,
@@ -1088,18 +1087,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Function pointers and dead objects don't have an alloc_extra so we ignore them.
         // This is okay because accessing them is UB anyway, no need for any Stacked Borrows checks.
         // NOT using `get_alloc_extra_mut` since this might be a read-only allocation!
-        // FIXME: this catches `InterpError`, which we should not usually do.
-        // We might need a proper fallible API from `memory.rs` to avoid this though.
-        match this.get_alloc_extra(alloc_id) {
-            Ok(alloc_extra) => {
+        let (_size, _align, kind) = this.get_alloc_info(alloc_id);
+        match kind {
+            AllocKind::LiveData => {
+                // This should have alloc_extra data.
+                let alloc_extra = this.get_alloc_extra(alloc_id).unwrap();
                 trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id}");
                 alloc_extra.stacked_borrows.as_ref().unwrap().borrow_mut().exposed_tags.insert(tag);
             }
-            Err(err) => {
-                trace!(
-                    "Not exposing Stacked Borrows tag {tag:?} due to error \
-                    when accessing {alloc_id}: {err}"
-                );
+            AllocKind::Function | AllocKind::Dead => {
+                // No stacked borrows on these allocations.
             }
         }
     }
