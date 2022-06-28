@@ -599,8 +599,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let ptr = self.ecx.operand_field(&nonnull, 0)?;
                 self.check_safe_pointer(&ptr, "box")?;
 
-                let allocator = self.ecx.operand_field(value, 1)?;
-                self.visit_field(value, 1, &allocator)?;
+                // Check other fields of Box
+                self.walk_value(op)?;
                 Ok(true)
             }
             ty::FnPtr(_sig) => {
