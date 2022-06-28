@@ -1,7 +1,7 @@
 use crate::FxHashSet;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{get_attr, is_lint_allowed};
 use clippy_utils::source::{indent_of, snippet};
+use clippy_utils::{get_attr, is_lint_allowed};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
