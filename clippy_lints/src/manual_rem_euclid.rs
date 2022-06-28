@@ -71,8 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             && let Some(const3) = check_for_unsigned_int_constant(cx, right)
             // Also ensures the const is nonzero since zero can't be a divisor
             && const1 == const2 && const2 == const3
-            && let Some(hir_id) = path_to_local(expr3)
-            && let Some(Node::Binding(_)) = cx.tcx.hir().find(hir_id) {
+            && let Some(hir_id) = path_to_local(expr3) {
                 // Apply only to params or locals with annotated types
                 match cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
                     Some(Node::Param(..)) => (),
