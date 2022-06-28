@@ -666,7 +666,12 @@ impl FromWithTcx<clean::Import> for Import {
             },
             Glob => Import {
                 source: import.source.path.whole_name(),
-                name: import.source.path.last().to_string(),
+                name: import
+                    .source
+                    .path
+                    .last_opt()
+                    .unwrap_or_else(|| Symbol::intern("*"))
+                    .to_string(),
                 id: import.source.did.map(ItemId::from).map(|i| from_item_id(i, tcx)),
                 glob: true,
             },
