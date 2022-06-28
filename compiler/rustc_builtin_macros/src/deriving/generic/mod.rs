@@ -1717,22 +1717,21 @@ where
 {
     match *substructure.fields {
         EnumMatching(.., ref all_fields) | Struct(_, ref all_fields) => {
-            let (base, all_fields) = match (all_fields.is_empty(), use_foldl) {
+            let (base, rest) = match (all_fields.is_empty(), use_foldl) {
                 (false, true) => {
-                    let field = &all_fields[0];
-                    let args = (field.span, field.self_.clone(), &field.other[..]);
-                    (b(cx, Some(args)), &all_fields[1..])
+                    let (first, rest) = all_fields.split_first().unwrap();
+                    let args = (first.span, first.self_.clone(), &first.other[..]);
+                    (b(cx, Some(args)), rest)
                 }
                 (false, false) => {
-                    let idx = all_fields.len() - 1;
-                    let field = &all_fields[idx];
-                    let args = (field.span, field.self_.clone(), &field.other[..]);
-                    (b(cx, Some(args)), &all_fields[..idx])
+                    let (last, rest) = all_fields.split_last().unwrap();
+                    let args = (last.span, last.self_.clone(), &last.other[..]);
+                    (b(cx, Some(args)), rest)
                 }
                 (true, _) => (b(cx, None), &all_fields[..]),
             };
 
-            cs_fold_fields(use_foldl, f, base, cx, all_fields)
+            cs_fold_fields(use_foldl, f, base, cx, rest)
         }
         EnumNonMatchingCollapsed(..) => {
             cs_fold_enumnonmatch(enum_nonmatch_f, cx, trait_span, substructure)
