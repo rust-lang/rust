@@ -1,14 +1,11 @@
 error[E0201]: duplicate definitions with name `bar`:
   --> $DIR/issue-4265.rs:10:5
    |
-LL | /     fn bar() {
-LL | |         Foo { baz: 0 }.bar();
-LL | |     }
-   | |_____- previous definition of `bar` here
-LL |
-LL | /     fn bar() {
-LL | |     }
-   | |_____^ duplicate definition
+LL |     fn bar() {
+   |     -------- previous definition of `bar` here
+...
+LL |     fn bar() {
+   |     ^^^^^^^^ duplicate definition
 
 error: aborting due to previous error
 
