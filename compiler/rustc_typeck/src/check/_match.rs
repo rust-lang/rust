@@ -12,7 +12,7 @@ use rustc_trait_selection::traits::{
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     pub fn check_match(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -212,9 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We won't diverge unless the scrutinee or all arms diverge.
         self.diverges.set(scrut_diverges | all_arms_diverge);
 
-        let match_ty = coercion.complete(self);
-        debug!(?match_ty);
-        match_ty
+        coercion.complete(self)
     }
 
     /// When the previously checked expression (the scrutinee) diverges,

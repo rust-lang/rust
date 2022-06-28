@@ -60,7 +60,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Calling `universal_upper_bound` for such a region gives `fr_fn_body`,
     /// which has no `external_name` in which case we use `'empty` as the
     /// region to pass to `infer_opaque_definition_from_instantiation`.
-    #[instrument(level = "debug", skip(self, infcx))]
+    #[instrument(level = "debug", skip(self, infcx), ret)]
     pub(crate) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,

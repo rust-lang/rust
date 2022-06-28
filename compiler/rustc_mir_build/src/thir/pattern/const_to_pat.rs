@@ -19,7 +19,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn const_to_pat(
         &self,
         cv: mir::ConstantKind<'tcx>,
@@ -27,13 +27,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         span: Span,
         mir_structural_match_violation: bool,
     ) -> Pat<'tcx> {
-        let pat = self.tcx.infer_ctxt().enter(|infcx| {
+        self.tcx.infer_ctxt().enter(|infcx| {
             let mut convert = ConstToPat::new(self, id, span, infcx);
             convert.to_pat(cv, mir_structural_match_violation)
-        });
-
-        debug!(?pat);
-        pat
+        })
     }
 }
 

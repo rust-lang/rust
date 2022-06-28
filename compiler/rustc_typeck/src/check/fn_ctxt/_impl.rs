@@ -83,7 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.resolve_vars_with_obligations_and_mutate_fulfillment(ty, |_| {})
     }
 
-    #[instrument(skip(self, mutate_fulfillment_errors), level = "debug")]
+    #[instrument(skip(self, mutate_fulfillment_errors), level = "debug", ret)]
     pub(in super::super) fn resolve_vars_with_obligations_and_mutate_fulfillment(
         &self,
         mut ty: Ty<'tcx>,
@@ -107,10 +107,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // indirect dependencies that don't seem worth tracking
         // precisely.
         self.select_obligations_where_possible(false, mutate_fulfillment_errors);
-        ty = self.resolve_vars_if_possible(ty);
-
-        debug!(?ty);
-        ty
+        self.resolve_vars_if_possible(ty)
     }
 
     pub(in super::super) fn record_deferred_call_resolution(

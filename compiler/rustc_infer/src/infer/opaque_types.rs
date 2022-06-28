@@ -390,7 +390,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         });
     }
 
-    #[instrument(skip(self), level = "trace")]
+    #[instrument(skip(self), level = "trace", ret)]
     pub fn opaque_type_origin(&self, def_id: LocalDefId, span: Span) -> Option<OpaqueTyOrigin> {
         let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let parent_def_id = match self.defining_use_anchor {
@@ -421,16 +421,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         in_definition_scope.then_some(*origin)
     }
 
-    #[instrument(skip(self), level = "trace")]
+    #[instrument(skip(self), level = "trace", ret)]
     fn opaque_ty_origin_unchecked(&self, def_id: LocalDefId, span: Span) -> OpaqueTyOrigin {
-        let origin = match self.tcx.hir().expect_item(def_id).kind {
+        match self.tcx.hir().expect_item(def_id).kind {
             hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => origin,
             ref itemkind => {
                 span_bug!(span, "weird opaque type: {:?}, {:#?}", def_id, itemkind)
             }
-        };
-        trace!(?origin);
-        origin
+        }
     }
 }
 

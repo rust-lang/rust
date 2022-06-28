@@ -1139,7 +1139,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///   include the CFG anyhow.
     /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
     ///   a result `'y`.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     pub(crate) fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
         debug!(r = %self.region_value_str(r));
 
@@ -1150,8 +1150,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
             lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
         }
-
-        debug!(?lub);
 
         lub
     }
@@ -1333,15 +1331,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     // Evaluate whether `sup_region: sub_region`.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     fn eval_outlives(&self, sup_region: RegionVid, sub_region: RegionVid) -> bool {
         debug!(
-            "eval_outlives: sup_region's value = {:?} universal={:?}",
+            "sup_region's value = {:?} universal={:?}",
             self.region_value_str(sup_region),
             self.universal_regions.is_universal_region(sup_region),
         );
         debug!(
-            "eval_outlives: sub_region's value = {:?} universal={:?}",
+            "sub_region's value = {:?} universal={:?}",
             self.region_value_str(sub_region),
             self.universal_regions.is_universal_region(sub_region),
         );
@@ -1354,7 +1352,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // true if `'sup` outlives static.
         if !self.universe_compatible(sub_region_scc, sup_region_scc) {
             debug!(
-                "eval_outlives: sub universe `{sub_region_scc:?}` is not nameable \
+                "sub universe `{sub_region_scc:?}` is not nameable \
                 by super `{sup_region_scc:?}`, promoting to static",
             );
 
@@ -1375,9 +1373,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             });
 
         if !universal_outlives {
-            debug!(
-                "eval_outlives: returning false because sub region contains a universal region not present in super"
-            );
+            debug!("sub region contains a universal region not present in super");
             return false;
         }
 
@@ -1386,15 +1382,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if self.universal_regions.is_universal_region(sup_region) {
             // Micro-opt: universal regions contain all points.
-            debug!(
-                "eval_outlives: returning true because super is universal and hence contains all points"
-            );
+            debug!("super is universal and hence contains all points");
             return true;
         }
 
-        let result = self.scc_values.contains_points(sup_region_scc, sub_region_scc);
-        debug!("returning {} because of comparison between points in sup/sub", result);
-        result
+        debug!("comparison between points in sup/sub");
+
+        self.scc_values.contains_points(sup_region_scc, sub_region_scc)
     }
 
     /// Once regions have been propagated, this method is used to see
@@ -1971,7 +1965,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Finds some region R such that `fr1: R` and `R` is live at `elem`.
-    #[instrument(skip(self), level = "trace")]
+    #[instrument(skip(self), level = "trace", ret)]
     pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
         trace!(universe = ?self.scc_universes[self.constraint_sccs.scc(fr1)]);

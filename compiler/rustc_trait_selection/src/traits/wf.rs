@@ -841,7 +841,7 @@ pub fn object_region_bounds<'tcx>(
 ///
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
-#[instrument(skip(tcx, predicates), level = "debug")]
+#[instrument(skip(tcx, predicates), level = "debug", ret)]
 pub(crate) fn required_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     erased_self_ty: Ty<'tcx>,

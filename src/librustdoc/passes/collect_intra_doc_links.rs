@@ -750,7 +750,7 @@ fn resolve_associated_trait_item<'a>(
 ///
 /// This is just a wrapper around [`TyCtxt::impl_item_implementor_ids()`] and
 /// [`TyCtxt::associated_item()`] (with some helpful logging added).
-#[instrument(level = "debug", skip(tcx))]
+#[instrument(level = "debug", skip(tcx), ret)]
 fn trait_assoc_to_impl_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_id: DefId,
@@ -760,9 +760,7 @@ fn trait_assoc_to_impl_assoc_item<'tcx>(
     debug!(?trait_to_impl_assoc_map);
     let impl_assoc_id = *trait_to_impl_assoc_map.get(&trait_assoc_id)?;
     debug!(?impl_assoc_id);
-    let impl_assoc = tcx.associated_item(impl_assoc_id);
-    debug!(?impl_assoc);
-    Some(impl_assoc)
+    Some(tcx.associated_item(impl_assoc_id))
 }
 
 /// Given a type, return all trait impls in scope in `module` for that type.

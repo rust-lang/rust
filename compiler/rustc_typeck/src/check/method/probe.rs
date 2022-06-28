@@ -253,7 +253,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// would result in an error (basically, the same criteria we
     /// would use to decide if a method is a plausible fit for
     /// ambiguity purposes).
-    #[instrument(level = "debug", skip(self, scope_expr_id))]
+    #[instrument(level = "debug", skip(self))]
     pub fn probe_for_return_type(
         &self,
         span: Span,
@@ -262,10 +262,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         scope_expr_id: hir::HirId,
     ) -> Vec<ty::AssocItem> {
-        debug!(
-            "probe(self_ty={:?}, return_type={}, scope_expr_id={})",
-            self_ty, return_type, scope_expr_id
-        );
         let method_names = self
             .probe_op(
                 span,
@@ -299,7 +295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect()
     }
 
-    #[instrument(level = "debug", skip(self, scope_expr_id))]
+    #[instrument(level = "debug", skip(self))]
     pub fn probe_for_name(
         &self,
         span: Span,
@@ -310,10 +306,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         scope_expr_id: hir::HirId,
         scope: ProbeScope,
     ) -> PickResult<'tcx> {
-        debug!(
-            "probe(self_ty={:?}, item_name={}, scope_expr_id={})",
-            self_ty, item_name, scope_expr_id
-        );
         self.probe_op(
             span,
             mode,

@@ -2267,7 +2267,7 @@ impl<'tcx> ConstantKind<'tcx> {
         Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id), param_env)
     }
 
-    #[instrument(skip(tcx), level = "debug")]
+    #[instrument(skip(tcx), level = "debug", ret)]
     pub fn from_inline_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = match tcx.hir().get(hir_id) {
@@ -2305,21 +2305,18 @@ impl<'tcx> ConstantKind<'tcx> {
         let substs =
             ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
                 .substs;
-        let uneval_const = tcx.mk_const(ty::ConstS {
+        debug_assert!(!substs.has_free_regions());
+        Self::Ty(tcx.mk_const(ty::ConstS {
             kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                 def: ty::WithOptConstParam::unknown(def_id).to_global(),
                 substs,
                 promoted: None,
             }),
             ty,
-        });
-        debug!(?uneval_const);
-        debug_assert!(!uneval_const.has_free_regions());
-
-        Self::Ty(uneval_const)
+        }))
     }
 
-    #[instrument(skip(tcx), level = "debug")]
+    #[instrument(skip(tcx), level = "debug", ret)]
     fn from_opt_const_arg_anon_const(
         tcx: TyCtxt<'tcx>,
         def: ty::WithOptConstParam<LocalDefId>,
@@ -2402,24 +2399,21 @@ impl<'tcx> ConstantKind<'tcx> {
 
         match tcx.const_eval_resolve(param_env, uneval, Some(span)) {
             Ok(val) => {
-                debug!("evaluated const value: {:?}", val);
+                debug!("evaluated const value");
                 Self::Val(val, ty)
             }
             Err(_) => {
                 debug!("error encountered during evaluation");
                 // Error was handled in `const_eval_resolve`. Here we just create a
                 // new unevaluated const and error hard later in codegen
-                let ty_const = tcx.mk_const(ty::ConstS {
+                Self::Ty(tcx.mk_const(ty::ConstS {
                     kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                         def: def.to_global(),
                         substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
                         promoted: None,
                     }),
                     ty,
-                });
-                debug!(?ty_const);
-
-                Self::Ty(ty_const)
+                }))
             }
         }
     }

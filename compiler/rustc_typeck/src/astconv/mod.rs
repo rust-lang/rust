@@ -144,7 +144,7 @@ enum ConvertedBindingKind<'a, 'tcx> {
 /// instantiated with some generic arguments providing `'a` explicitly,
 /// we taint those arguments with `ExplicitLateBound::Yes` so that we
 /// can provide an appropriate diagnostic later.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ExplicitLateBound {
     Yes,
     No,
@@ -167,7 +167,7 @@ pub(crate) enum GenericArgPosition {
 
 /// A marker denoting that the generic arguments that were
 /// provided did not match the respective generic parameters.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct GenericArgCountMismatch {
     /// Indicates whether a fatal error was reported (`Some`), or just a lint (`None`).
     pub reported: Option<ErrorGuaranteed>,
@@ -177,7 +177,7 @@ pub struct GenericArgCountMismatch {
 
 /// Decorates the result of a generic argument count mismatch
 /// check with whether explicit late bounds were provided.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GenericArgCountResult {
     pub explicit_late_bound: ExplicitLateBound,
     pub correct: Result<(), GenericArgCountMismatch>,
@@ -201,7 +201,7 @@ pub trait CreateSubstsForGenericArgsCtxt<'a, 'tcx> {
 }
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn ast_region_to_region(
         &self,
         lifetime: &hir::Lifetime,
@@ -210,7 +210,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
         let lifetime_name = |def_id| tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id));
 
-        let r = match tcx.named_region(lifetime.hir_id) {
+        match tcx.named_region(lifetime.hir_id) {
             Some(rl::Region::Static) => tcx.lifetimes.re_static,
 
             Some(rl::Region::LateBound(debruijn, index, def_id)) => {
@@ -255,9 +255,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     tcx.lifetimes.re_static
                 })
             }
-        };
-        debug!("ast_region_to_region(lifetime={:?}) yields {:?}", lifetime, r);
-        r
+        }
     }
 
     /// Given a path `path` that refers to an item `I` with the declared generics `decl_generics`,
@@ -317,7 +315,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// `[Vec<u8>, u8]` and `generic_args` are the arguments for the associated
     /// type itself: `['a]`. The returned `SubstsRef` concatenates these two
     /// lists: `[Vec<u8>, u8, 'a]`.
-    #[instrument(level = "debug", skip(self, span))]
+    #[instrument(level = "debug", skip(self, span), ret)]
     fn create_substs_for_ast_path<'a>(
         &self,
         span: Span,
@@ -535,11 +533,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self_ty,
             &arg_count,
             &mut substs_ctx,
-        );
-
-        debug!(
-            "create_substs_for_ast_path(generic_params={:?}, self_ty={:?}) -> {:?}",
-            generics, self_ty, substs
         );
 
         (substs, arg_count)
@@ -2596,7 +2589,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Turns a `hir::Ty` into a `Ty`. For diagnostics' purposes we keep track of whether trait
     /// objects are borrowed like `&dyn Trait` to avoid emitting redundant errors.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     fn ast_ty_to_ty_inner(&self, ast_ty: &hir::Ty<'_>, borrowed: bool, in_path: bool) -> Ty<'tcx> {
         let tcx = self.tcx();
 
@@ -2699,8 +2692,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::Err => tcx.ty_error(),
         };
-
-        debug!(?result_ty);
 
         self.record_ty(ast_ty.hir_id, result_ty, ast_ty.span);
         result_ty

@@ -197,7 +197,7 @@ pub(super) fn op_to_const<'tcx>(
     }
 }
 
-#[instrument(skip(tcx), level = "debug")]
+#[instrument(skip(tcx), level = "debug", ret)]
 pub(crate) fn turn_into_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: ConstAlloc<'tcx>,
@@ -224,10 +224,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
     );
 
     // Turn this into a proper constant.
-    let const_val = op_to_const(&ecx, &mplace.into());
-    debug!(?const_val);
-
-    const_val
+    op_to_const(&ecx, &mplace.into())
 }
 
 #[instrument(skip(tcx), level = "debug")]

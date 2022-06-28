@@ -28,7 +28,7 @@ use super::SelectionCandidate::{self, *};
 use super::{EvaluatedCandidate, SelectionCandidateSet, SelectionContext, TraitObligationStack};
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn candidate_from_obligation<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
@@ -48,7 +48,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if let Some(c) =
             self.check_candidate_cache(stack.obligation.param_env, cache_fresh_trait_pred)
         {
-            debug!(candidate = ?c, "CACHE HIT");
+            debug!("CACHE HIT");
             return c;
         }
 
@@ -61,7 +61,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let (candidate, dep_node) =
             self.in_task(|this| this.candidate_from_obligation_no_cache(stack));
 
-        debug!(?candidate, "CACHE MISS");
+        debug!("CACHE MISS");
         self.insert_candidate_cache(
             stack.obligation.param_env,
             cache_fresh_trait_pred,

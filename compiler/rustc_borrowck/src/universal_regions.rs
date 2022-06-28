@@ -768,10 +768,9 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         mir_def_id: LocalDefId,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) {
-        debug!("replace_late_bound_regions_with_nll_infer_vars(mir_def_id={:?})", mir_def_id);
         let typeck_root_def_id = self.tcx.typeck_root_def_id(mir_def_id.to_def_id());
         for_each_late_bound_region_defined_on(self.tcx, typeck_root_def_id, |r| {
-            debug!("replace_late_bound_regions_with_nll_infer_vars: r={:?}", r);
+            debug!(?r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = self.next_nll_region_var(FR);
                 debug!(?region_vid);
