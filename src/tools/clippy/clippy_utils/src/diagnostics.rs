@@ -8,7 +8,7 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{emitter::MAX_SUGGESTION_HIGHLIGHT_LINES, Applicability, Diagnostic, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
 use rustc_span::source_map::Span;
@@ -216,95 +216,6 @@ pub fn span_lint_and_sugg<'a, T: LintContext>(
 ) {
     span_lint_and_then(cx, lint, sp, msg, |diag| {
         diag.span_suggestion(sp, help, sugg, applicability);
-    });
-}
-
-/// Like [`span_lint_and_sugg`] with a focus on the edges. The output will either
-/// emit single span or multispan suggestion depending on the number of its lines.
-///
-/// If the given suggestion string has more lines than the maximum display length defined by
-/// [`MAX_SUGGESTION_HIGHLIGHT_LINES`][`rustc_errors::emitter::MAX_SUGGESTION_HIGHLIGHT_LINES`],
-/// this function will split the suggestion and span to showcase the change for the top and
-/// bottom edge of the code. For normal suggestions, in one display window, the help message
-/// will be combined with a colon.
-///
-/// Multipart suggestions like the one being created here currently cannot be
-/// applied by rustfix (See [rustfix#141](https://github.com/rust-lang/rustfix/issues/141)).
-/// Testing rustfix with this lint emission function might require a file with
-/// suggestions that can be fixed and those that can't. See
-/// [clippy#8520](https://github.com/rust-lang/rust-clippy/pull/8520/files) for
-/// an example and of this.
-///
-/// # Example for a long suggestion
-///
-/// ```text
-/// error: called `map(..).flatten()` on `Option`
-///   --> $DIR/map_flatten.rs:8:10
-///    |
-/// LL |           .map(|x| {
-///    |  __________^
-/// LL | |             if x <= 5 {
-/// LL | |                 Some(x)
-/// LL | |             } else {
-/// ...  |
-/// LL | |         })
-/// LL | |         .flatten();
-///    | |__________________^
-///    |
-///   = note: `-D clippy::map-flatten` implied by `-D warnings`
-/// help: try replacing `map` with `and_then`
-///    |
-/// LL ~         .and_then(|x| {
-/// LL +             if x <= 5 {
-/// LL +                 Some(x)
-///    |
-/// help: and remove the `.flatten()`
-///    |
-/// LL +                 None
-/// LL +             }
-/// LL ~         });
-///    |
-/// ```
-pub fn span_lint_and_sugg_for_edges(
-    cx: &LateContext<'_>,
-    lint: &'static Lint,
-    sp: Span,
-    msg: &str,
-    helps: &[&str; 2],
-    sugg: String,
-    applicability: Applicability,
-) {
-    span_lint_and_then(cx, lint, sp, msg, |diag| {
-        let sugg_lines_count = sugg.lines().count();
-        if sugg_lines_count > MAX_SUGGESTION_HIGHLIGHT_LINES {
-            let sm = cx.sess().source_map();
-            if let (Ok(line_upper), Ok(line_bottom)) =
-                (sm.lookup_line(sp.lo()), sm.lookup_line(sp.hi()))
-            {
-                let split_idx = MAX_SUGGESTION_HIGHLIGHT_LINES / 2;
-                let span_upper = sm.span_until_char(
-                    sp.with_hi(line_upper.sf.lines(|lines| lines[line_upper.line + split_idx])),
-                    '\n',
-                );
-                let span_bottom = sp.with_lo(line_bottom.sf.lines(|lines| lines[line_bottom.line - split_idx]));
-
-                let sugg_lines_vec = sugg.lines().collect::<Vec<&str>>();
-                let sugg_upper = sugg_lines_vec[..split_idx].join("\n");
-                let sugg_bottom = sugg_lines_vec[sugg_lines_count - split_idx..].join("\n");
-
-                diag.span_suggestion(span_upper, helps[0], sugg_upper, applicability);
-                diag.span_suggestion(span_bottom, helps[1], sugg_bottom, applicability);
-
-                return;
-            }
-        }
-        diag.span_suggestion_with_style(
-            sp,
-            &helps.join(", "),
-            sugg,
-            applicability,
-            rustc_errors::SuggestionStyle::ShowAlways,
-        );
     });
 }
 
