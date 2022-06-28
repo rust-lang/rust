@@ -64,6 +64,19 @@ fn should_trigger_lint_with_mutex_guard_in_match_scrutinee() {
     };
 }
 
+fn should_not_trigger_lint_with_mutex_guard_in_match_scrutinee_when_lint_allowed() {
+    let mutex = Mutex::new(State {});
+
+    // Lint should not be triggered because it is "allowed" below.
+    #[allow(clippy::significant_drop_in_scrutinee)]
+    match mutex.lock().unwrap().foo() {
+        true => {
+            mutex.lock().unwrap().bar();
+        },
+        false => {},
+    };
+}
+
 fn should_not_trigger_lint_for_insignificant_drop() {
     // Should not trigger lint because there are no temporaries whose drops have a significant
     // side effect.

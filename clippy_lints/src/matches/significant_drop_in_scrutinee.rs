@@ -1,6 +1,6 @@
 use crate::FxHashSet;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::get_attr;
+use clippy_utils::{get_attr, is_lint_allowed};
 use clippy_utils::source::{indent_of, snippet};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::{walk_expr, Visitor};
@@ -19,16 +19,18 @@ pub(super) fn check<'tcx>(
     arms: &'tcx [Arm<'_>],
     source: MatchSource,
 ) {
+    if is_lint_allowed(cx, SIGNIFICANT_DROP_IN_SCRUTINEE, expr.hir_id) {
+        return;
+    }
+
     if let Some((suggestions, message)) = has_significant_drop_in_scrutinee(cx, scrutinee, source) {
         for found in suggestions {
             span_lint_and_then(cx, SIGNIFICANT_DROP_IN_SCRUTINEE, found.found_span, message, |diag| {
                 set_diagnostic(diag, cx, expr, found);
                 let s = Span::new(expr.span.hi(), expr.span.hi(), expr.span.ctxt(), None);
-                diag.span_label(s, "original temporary lives until here");
-                if let Some(spans) = has_significant_drop_in_arms(cx, arms) {
-                    for span in spans {
-                        diag.span_label(span, "another temporary with significant `Drop` created here");
-                    }
+                diag.span_label(s, "temporary lives until here");
+                for span in has_significant_drop_in_arms(cx, arms) {
+                    diag.span_label(span, "another value with significant `Drop` created here");
                 }
                 diag.note("this might lead to deadlocks or other unexpected behavior");
             });
@@ -360,19 +362,19 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
 
 struct ArmSigDropHelper<'a, 'tcx> {
     sig_drop_checker: SigDropChecker<'a, 'tcx>,
-    found_sig_drop_spans: Option<FxHashSet<Span>>,
+    found_sig_drop_spans: FxHashSet<Span>,
 }
 
 impl<'a, 'tcx> ArmSigDropHelper<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>) -> ArmSigDropHelper<'a, 'tcx> {
         ArmSigDropHelper {
             sig_drop_checker: SigDropChecker::new(cx),
-            found_sig_drop_spans: None,
+            found_sig_drop_spans: FxHashSet::<Span>::default(),
         }
     }
 }
 
-fn has_significant_drop_in_arms<'tcx, 'a>(cx: &'a LateContext<'tcx>, arms: &'tcx [Arm<'_>]) -> Option<FxHashSet<Span>> {
+fn has_significant_drop_in_arms<'tcx, 'a>(cx: &'a LateContext<'tcx>, arms: &'tcx [Arm<'_>]) -> FxHashSet<Span> {
     let mut helper = ArmSigDropHelper::new(cx);
     for arm in arms {
         helper.visit_expr(arm.body);
@@ -386,9 +388,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ArmSigDropHelper<'a, 'tcx> {
             .sig_drop_checker
             .has_sig_drop_attr(self.sig_drop_checker.cx, self.sig_drop_checker.get_type(ex))
         {
-            self.found_sig_drop_spans
-                .get_or_insert_with(FxHashSet::default)
-                .insert(ex.span);
+            self.found_sig_drop_spans.insert(ex.span);
             return;
         }
         walk_expr(self, ex);
