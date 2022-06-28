@@ -204,7 +204,6 @@ mod issue4804 {
     }
 }
 
-#[expect(clippy::boxed_local)]
-fn check_expect(x: Box<A>) {
+fn check_expect(#[expect(clippy::boxed_local)] x: Box<A>) {
     x.foo();
 }
