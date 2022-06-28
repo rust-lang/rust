@@ -761,7 +761,6 @@ impl FromWithTcx<ItemType> for ItemKind {
             TraitAlias => ItemKind::TraitAlias,
             ProcAttribute => ItemKind::ProcAttribute,
             ProcDerive => ItemKind::ProcDerive,
-            Generic => unreachable!(),
         }
     }
 }

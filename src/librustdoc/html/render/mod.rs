@@ -110,15 +110,44 @@ pub(crate) struct IndexItem {
 /// A type used for the search index.
 #[derive(Debug)]
 pub(crate) struct RenderType {
-    name: Option<String>,
-    generics: Option<Vec<TypeWithKind>>,
+    id: Option<RenderTypeId>,
+    generics: Option<Vec<RenderType>>,
+}
+
+impl Serialize for RenderType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let id = match &self.id {
+            // 0 is a sentinel, everything else is one-indexed
+            None => 0,
+            Some(RenderTypeId::Index(idx)) => idx + 1,
+            _ => panic!("must convert render types to indexes before serializing"),
+        };
+        if let Some(generics) = &self.generics {
+            let mut seq = serializer.serialize_seq(None)?;
+            seq.serialize_element(&id)?;
+            seq.serialize_element(generics)?;
+            seq.end()
+        } else {
+            id.serialize(serializer)
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum RenderTypeId {
+    DefId(DefId),
+    Primitive(clean::PrimitiveType),
+    Index(usize),
 }
 
 /// Full type of functions/methods in the search index.
 #[derive(Debug)]
 pub(crate) struct IndexItemFunctionType {
-    inputs: Vec<TypeWithKind>,
-    output: Vec<TypeWithKind>,
+    inputs: Vec<RenderType>,
+    output: Vec<RenderType>,
 }
 
 impl Serialize for IndexItemFunctionType {
@@ -126,47 +155,27 @@ impl Serialize for IndexItemFunctionType {
     where
         S: Serializer,
     {
-        // If we couldn't figure out a type, just write `null`.
-        let has_missing = self.inputs.iter().chain(self.output.iter()).any(|i| i.ty.name.is_none());
+        // If we couldn't figure out a type, just write `0`.
+        let has_missing = self
+            .inputs
+            .iter()
+            .chain(self.output.iter())
+            .any(|i| i.id.is_none() && i.generics.is_none());
         if has_missing {
-            serializer.serialize_none()
+            0.serialize(serializer)
         } else {
             let mut seq = serializer.serialize_seq(None)?;
-            seq.serialize_element(&self.inputs)?;
-            match self.output.as_slice() {
+            match &self.inputs[..] {
+                [one] if one.generics.is_none() => seq.serialize_element(one)?,
+                _ => seq.serialize_element(&self.inputs)?,
+            }
+            match &self.output[..] {
                 [] => {}
-                [one] => seq.serialize_element(one)?,
-                all => seq.serialize_element(all)?,
+                [one] if one.generics.is_none() => seq.serialize_element(one)?,
+                _ => seq.serialize_element(&self.output)?,
             }
             seq.end()
         }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct TypeWithKind {
-    ty: RenderType,
-    kind: ItemType,
-}
-
-impl From<(RenderType, ItemType)> for TypeWithKind {
-    fn from(x: (RenderType, ItemType)) -> TypeWithKind {
-        TypeWithKind { ty: x.0, kind: x.1 }
-    }
-}
-
-impl Serialize for TypeWithKind {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(None)?;
-        seq.serialize_element(&self.ty.name)?;
-        seq.serialize_element(&self.kind)?;
-        if let Some(generics) = &self.ty.generics {
-            seq.serialize_element(generics)?;
-        }
-        seq.end()
     }
 }
 
@@ -2517,7 +2526,6 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::ProcAttribute => ItemSection::AttributeMacros,
         ItemType::ProcDerive => ItemSection::DeriveMacros,
         ItemType::TraitAlias => ItemSection::TraitAliases,
-        ItemType::Generic => unreachable!(),
     }
 }
 
