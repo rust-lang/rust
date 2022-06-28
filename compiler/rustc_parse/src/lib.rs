@@ -6,6 +6,7 @@
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
+#![feature(rustc_attrs)]
 #![recursion_limit = "256"]
 
 #[macro_use]

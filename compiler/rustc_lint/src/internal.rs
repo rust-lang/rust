@@ -406,9 +406,12 @@ impl LateLintPass<'_> for Diagnostics {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         let Some((span, def_id, substs)) = typeck_results_of_method_fn(cx, expr) else { return };
         debug!(?span, ?def_id, ?substs);
-        if let Ok(Some(instance)) = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs) &&
-            !cx.tcx.has_attr(instance.def_id(), sym::rustc_lint_diagnostics)
-        {
+        let has_attr = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs)
+            .ok()
+            .and_then(|inst| inst)
+            .map(|inst| cx.tcx.has_attr(inst.def_id(), sym::rustc_lint_diagnostics))
+            .unwrap_or(false);
+        if !has_attr {
             return;
         }
 
