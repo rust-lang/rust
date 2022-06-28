@@ -230,3 +230,6 @@ lint-improper-ctypes-array-reason = passing raw arrays by value is not FFI-safe
 lint-improper-ctypes-array-help = consider passing a pointer to the array
 
 lint-improper-ctypes-only-phantomdata = composed only of `PhantomData`
+
+lint-variant-size-differences =
+    enum variant is more than three times larger ({$largest} bytes) than the next largest

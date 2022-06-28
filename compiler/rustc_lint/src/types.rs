@@ -1387,12 +1387,9 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
                     VARIANT_SIZE_DIFFERENCES,
                     enum_definition.variants[largest_index].span,
                     |lint| {
-                        lint.build(&format!(
-                            "enum variant is more than three times \
-                                          larger ({} bytes) than the next largest",
-                            largest
-                        ))
-                        .emit();
+                        lint.build(fluent::lint::variant_size_differences)
+                            .set_arg("largest", largest)
+                            .emit();
                     },
                 );
             }
