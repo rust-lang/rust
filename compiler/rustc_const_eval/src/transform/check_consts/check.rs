@@ -546,6 +546,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // Since no pointer can ever get exposed (rejected above), this is easy to support.
             }
 
+            Rvalue::Cast(CastKind::DynStar, _, _) => {
+                unimplemented!()
+            }
+
             Rvalue::Cast(CastKind::Misc, _, _) => {}
 
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}

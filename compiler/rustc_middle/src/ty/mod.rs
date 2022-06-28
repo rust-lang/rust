@@ -1113,6 +1113,12 @@ pub trait ToPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx>;
 }
 
+impl<'tcx> ToPredicate<'tcx> for Predicate<'tcx> {
+    fn to_predicate(self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        self
+    }
+}
+
 impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, PredicateKind<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {

@@ -928,6 +928,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
 
             (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
+
+            // FIXME: this needs more conditions...
+            (_, DynStar) => Ok(CastKind::DynStarCast),
+
+            // FIXME: do we want to allow dyn* upcasting or other casts?
+            (DynStar, _) => Err(CastError::IllegalCast),
         }
     }
 

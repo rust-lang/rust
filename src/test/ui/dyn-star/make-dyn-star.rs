@@ -1,14 +1,12 @@
-// check-pass
+// run-pass
 #![feature(dyn_star)]
 
 use std::fmt::Debug;
 
-pub fn dyn_star_parameter(_: dyn* Send) {
-}
-
-fn make_dyn_star() {
-    let i = 42usize;
+fn make_dyn_star(i: usize) {
     let dyn_i: dyn* Debug = i as dyn* Debug;
 }
 
-fn main() {}
+fn main() {
+    make_dyn_star(42);
+}

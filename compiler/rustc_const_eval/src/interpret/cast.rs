@@ -108,6 +108,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     _ => span_bug!(self.cur_span(), "closure fn pointer on {:?}", src.layout.ty),
                 }
             }
+
+            DynStar => {
+                unimplemented!()
+            }
         }
         Ok(())
     }

@@ -271,6 +271,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("unexpected non-pair operand");
                         }
                     }
+                    #[allow(unreachable_code, unused)] // FIXME: remove this
+                    mir::CastKind::DynStar => {
+                        let data = match operand.val {
+                            OperandValue::Ref(_, _, _) => todo!(),
+                            OperandValue::Immediate(_) => todo!(),
+                            OperandValue::Pair(_, _) => todo!(),
+                        };
+                        let vtable = todo!();
+                        OperandValue::Pair(data, vtable)
+                    }
                     mir::CastKind::Pointer(
                         PointerCast::MutToConstPointer | PointerCast::ArrayToPointer,
                     )

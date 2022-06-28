@@ -21,6 +21,7 @@ use rustc_target::abi::call::{
 };
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
+use rustc_type_ir::TraitObjectRepresentation;
 
 use std::cmp::{self, Ordering};
 use std::fmt;
@@ -625,6 +626,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.intern_layout(self.scalar_pair(data_ptr, metadata))
             }
 
+            ty::Dynamic(_, _, TraitObjectRepresentation::Sized) => {
+                let mut pointer = scalar_unit(Pointer);
+                pointer.valid_range_mut().start = 1;
+                let mut vtable = scalar_unit(Pointer);
+                vtable.valid_range_mut().start = 1;
+                tcx.intern_layout(self.scalar_pair(pointer, vtable))
+            }
+
             // Arrays and slices.
             ty::Array(element, mut count) => {
                 if count.has_projections() {
@@ -679,7 +688,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             // Odd unit types.
             ty::FnDef(..) => univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?,
-            ty::Dynamic(..) | ty::Foreign(..) => {
+            ty::Dynamic(_, _, TraitObjectRepresentation::Unsized) | ty::Foreign(..) => {
                 let mut unit = self.univariant_uninterned(
                     ty,
                     &[],
@@ -2435,7 +2444,9 @@ where
                 | ty::FnDef(..)
                 | ty::GeneratorWitness(..)
                 | ty::Foreign(..)
-                | ty::Dynamic(..) => bug!("TyAndLayout::field({:?}): not applicable", this),
+                | ty::Dynamic(_, _, TraitObjectRepresentation::Unsized) => {
+                    bug!("TyAndLayout::field({:?}): not applicable", this)
+                }
 
                 // Potentially-fat pointers.
                 ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
@@ -2532,6 +2543,17 @@ where
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
                     }
+                }
+
+                // dyn*
+                ty::Dynamic(_, _, TraitObjectRepresentation::Sized) => {
+                    TyMaybeWithLayout::TyAndLayout(
+                        tcx.layout_of(
+                            ty::ParamEnv::reveal_all()
+                                .and(tcx.mk_tup([tcx.types.usize, tcx.types.usize].into_iter())),
+                        )
+                        .unwrap(),
+                    )
                 }
 
                 ty::Projection(_)
