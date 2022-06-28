@@ -451,13 +451,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         format!("{op} was made to return an error due to isolation"),
                     ProgressReport =>
                         format!("progress report: current operation being executed is here"),
-                    Int2Ptr => format!("pointer-to-integer cast"),
+                    Int2Ptr => format!("integer-to-pointer cast"),
                 };
 
                 let (title, diag_level) = match e {
                     RejectedIsolatedOp(_) =>
                         ("operation rejected by isolation", DiagLevel::Warning),
-                    Int2Ptr => ("pointer-to-integer cast", DiagLevel::Warning),
+                    Int2Ptr => ("integer-to-pointer cast", DiagLevel::Warning),
                     CreatedPointerTag(..)
                     | PoppedPointerTag(..)
                     | CreatedCallId(..)

@@ -1,8 +1,8 @@
-warning: pointer-to-integer cast
+warning: integer-to-pointer cast
   --> $DIR/box.rs:LL:CC
    |
 LL |         let r2 = ((r as usize) + 0) as *mut i32;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pointer-to-integer cast
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ integer-to-pointer cast
    |
    = help: this program is using integer-to-pointer casts or (equivalently) `from_exposed_addr`,
    = help: which means that Miri might miss pointer bugs in this program

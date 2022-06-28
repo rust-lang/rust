@@ -1,8 +1,8 @@
-warning: pointer-to-integer cast
+warning: integer-to-pointer cast
   --> $DIR/extern_types.rs:LL:CC
    |
 LL |     let x: &Foo = unsafe { &*(16 as *const Foo) };
-   |                              ^^^^^^^^^^^^^^^^^^ pointer-to-integer cast
+   |                              ^^^^^^^^^^^^^^^^^^ integer-to-pointer cast
    |
    = help: this program is using integer-to-pointer casts or (equivalently) `from_exposed_addr`,
    = help: which means that Miri might miss pointer bugs in this program
