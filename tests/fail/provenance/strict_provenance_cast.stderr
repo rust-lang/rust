@@ -1,10 +1,10 @@
-error: unsupported operation: integer-to-pointer casts and `from_exposed_addr` are not supported with `-Zmiri-strict-provenance`; use `with_addr` instead
+error: unsupported operation: integer-to-pointer casts and `ptr::from_exposed_addr` are not supported with `-Zmiri-strict-provenance`
   --> $DIR/strict_provenance_cast.rs:LL:CC
    |
 LL |     let _ptr = addr as *const i32;
-   |                ^^^^^^^^^^^^^^^^^^ integer-to-pointer casts and `from_exposed_addr` are not supported with `-Zmiri-strict-provenance`; use `with_addr` instead
+   |                ^^^^^^^^^^^^^^^^^^ integer-to-pointer casts and `ptr::from_exposed_addr` are not supported with `-Zmiri-strict-provenance`
    |
-   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+   = help: use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead
            
    = note: inside `main` at $DIR/strict_provenance_cast.rs:LL:CC
 

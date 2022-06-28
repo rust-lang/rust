@@ -21,6 +21,7 @@ pub enum TerminationInfo {
         help: Option<String>,
         history: Option<TagHistory>,
     },
+    Int2PtrWithStrictProvenance,
     Deadlock,
     MultipleSymbolDefinitions {
         link_name: Symbol,
@@ -42,6 +43,11 @@ impl fmt::Display for TerminationInfo {
             Exit(code) => write!(f, "the evaluated program completed with exit code {}", code),
             Abort(msg) => write!(f, "{}", msg),
             UnsupportedInIsolation(msg) => write!(f, "{}", msg),
+            Int2PtrWithStrictProvenance =>
+                write!(
+                    f,
+                    "integer-to-pointer casts and `ptr::from_exposed_addr` are not supported with `-Zmiri-strict-provenance`"
+                ),
             StackedBorrowsUb { msg, .. } => write!(f, "{}", msg),
             Deadlock => write!(f, "the evaluated program deadlocked"),
             MultipleSymbolDefinitions { link_name, .. } =>
@@ -148,7 +154,8 @@ pub fn report_error<'tcx, 'mir>(
             let title = match info {
                 Exit(code) => return Some(*code),
                 Abort(_) => Some("abnormal termination"),
-                UnsupportedInIsolation(_) => Some("unsupported operation"),
+                UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance =>
+                    Some("unsupported operation"),
                 StackedBorrowsUb { .. } => Some("Undefined Behavior"),
                 Deadlock => Some("deadlock"),
                 MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
@@ -177,7 +184,7 @@ pub fn report_error<'tcx, 'mir>(
                             }
                             if let Some((protecting_tag, protecting_tag_span, protection_span)) = protected {
                                 helps.push((Some(*protecting_tag_span), format!("{:?} was protected due to {:?} which was created here", tag, protecting_tag)));
-                                helps.push((Some(*protection_span), "this protector is live for this call".to_string()));
+                                helps.push((Some(*protection_span), format!("this protector is live for this call")));
                             }
                         }
                         None => {}
@@ -191,6 +198,8 @@ pub fn report_error<'tcx, 'mir>(
                     ],
                 SymbolShimClashing { link_name, span } =>
                     vec![(Some(*span), format!("the `{}` symbol is defined here", link_name))],
+                Int2PtrWithStrictProvenance =>
+                    vec![(None, format!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"))],
                 _ => vec![],
             };
             (title, helps)
@@ -471,12 +480,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let helps = match e {
                     Int2Ptr { details: true } =>
                         vec![
-                            (None, format!("this program is using integer-to-pointer casts or (equivalently) `from_exposed_addr`,")),
-                            (None, format!("which means that Miri might miss pointer bugs in this program")),
-                            (None, format!("see https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation")),
-                            (None, format!("to ensure that Miri does not miss bugs in your program, use `with_addr` (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance) instead")),
-                            (None, format!("you can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics")),
-                            (None, format!("alternatively, the `-Zmiri-permissive-provenance` flag disables this warning")),
+                            (None, format!("This program is using integer-to-pointer casts or (equivalently) `ptr::from_exposed_addr`,")),
+                            (None, format!("which means that Miri might miss pointer bugs in this program.")),
+                            (None, format!("See https://doc.rust-lang.org/nightly/std/ptr/fn.from_exposed_addr.html for more details on that operation.")),
+                            (None, format!("To ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead.")),
+                            (None, format!("You can then pass the `-Zmiri-strict-provenance` flag to Miri, to ensure you are not relying on `from_exposed_addr` semantics.")),
+                            (None, format!("Alternatively, the `-Zmiri-permissive-provenance` flag disables this warning.")),
                         ],
                     _ => vec![],
                 };
