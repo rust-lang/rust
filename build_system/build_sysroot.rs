@@ -205,7 +205,7 @@ fn build_clif_sysroot_for_triple(
     {
         let entry = entry.unwrap();
         if let Some(ext) = entry.path().extension() {
-            if ext == "rmeta" || ext == "d" || ext == "dSYM" {
+            if ext == "rmeta" || ext == "d" || ext == "dSYM" || ext == "clif" {
                 continue;
             }
         } else {
