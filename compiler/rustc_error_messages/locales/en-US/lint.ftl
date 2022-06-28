@@ -338,3 +338,8 @@ lint-builtin-anonymous-params = anonymous parameters are deprecated and will be 
 lint-builtin-deprecated-attr-link = use of deprecated attribute `{$name}`: {$reason}. See {$link}
 lint-builtin-deprecated-attr-used = use of deprecated attribute `{$name}`: no longer used.
 lint-builtin-deprecated-attr-default-suggestion = remove this attribute
+
+lint-builtin-unused-doc-comment = unused doc comment
+    .label = rustdoc does not generate documentation for {$kind}
+    .plain-help = use `//` for a plain comment
+    .block-help = use `/* */` for a plain comment

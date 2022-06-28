@@ -1039,17 +1039,15 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
 
         if is_doc_comment || attr.has_name(sym::doc) {
             cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, |lint| {
-                let mut err = lint.build("unused doc comment");
-                err.span_label(
-                    node_span,
-                    format!("rustdoc does not generate documentation for {}", node_kind),
-                );
+                let mut err = lint.build(fluent::lint::builtin_unused_doc_comment);
+                err.set_arg("kind", node_kind);
+                err.span_label(node_span, fluent::lint::label);
                 match attr.kind {
                     AttrKind::DocComment(CommentKind::Line, _) | AttrKind::Normal(..) => {
-                        err.help("use `//` for a plain comment");
+                        err.help(fluent::lint::plain_help);
                     }
                     AttrKind::DocComment(CommentKind::Block, _) => {
-                        err.help("use `/* */` for a plain comment");
+                        err.help(fluent::lint::block_help);
                     }
                 }
                 err.emit();
