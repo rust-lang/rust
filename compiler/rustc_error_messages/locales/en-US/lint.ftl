@@ -328,3 +328,6 @@ lint-builtin-impl-unsafe-method = implementation of an `unsafe` method
 lint-builtin-missing-doc = missing documentation for {$article} {$desc}
 
 lint-builtin-missing-copy-impl = type could implement `Copy`; consider adding `impl Copy`
+
+lint-builtin-missing-debug-impl =
+    type does not implement `{$debug}`; consider adding `#[derive(Debug)]` or a manual implementation

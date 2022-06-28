@@ -857,12 +857,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
 
         if !self.impling_types.as_ref().unwrap().contains(&item.def_id) {
             cx.struct_span_lint(MISSING_DEBUG_IMPLEMENTATIONS, item.span, |lint| {
-                lint.build(&format!(
-                    "type does not implement `{}`; consider adding `#[derive(Debug)]` \
-                     or a manual implementation",
-                    cx.tcx.def_path_str(debug)
-                ))
-                .emit();
+                lint.build(fluent::lint::builtin_missing_debug_impl)
+                    .set_arg("debug", cx.tcx.def_path_str(debug))
+                    .emit();
             });
         }
     }
