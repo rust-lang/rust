@@ -368,3 +368,6 @@ lint-builtin-type-alias-generic-bounds = bounds on generic parameters are not en
     .suggestion = the bound will not be checked when the type alias is used, and should be removed
 
 lint-builtin-trivial-bounds = {$predicate_kind_name} bound {$predicate} does not depend on any type or lifetime parameters
+
+lint-builtin-ellipsis-inclusive-range-patterns = `...` range patterns are deprecated
+    .suggestion = use `..=` for an inclusive range

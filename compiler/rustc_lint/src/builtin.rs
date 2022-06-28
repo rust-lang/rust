@@ -1775,8 +1775,8 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
         };
 
         if let Some((start, end, join)) = endpoints {
-            let msg = "`...` range patterns are deprecated";
-            let suggestion = "use `..=` for an inclusive range";
+            let msg = fluent::lint::builtin_ellipsis_inclusive_range_patterns;
+            let suggestion = fluent::lint::suggestion;
             if parenthesise {
                 self.node_id = Some(pat.id);
                 let end = expr_to_string(&end);
@@ -1785,8 +1785,11 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                     None => format!("&(..={})", end),
                 };
                 if join.edition() >= Edition::Edition2021 {
-                    let mut err =
-                        rustc_errors::struct_span_err!(cx.sess(), pat.span, E0783, "{}", msg,);
+                    let mut err = cx.sess().struct_span_err_with_code(
+                        pat.span,
+                        msg,
+                        rustc_errors::error_code!(E0783),
+                    );
                     err.span_suggestion(
                         pat.span,
                         suggestion,
@@ -1809,8 +1812,11 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             } else {
                 let replace = "..=";
                 if join.edition() >= Edition::Edition2021 {
-                    let mut err =
-                        rustc_errors::struct_span_err!(cx.sess(), pat.span, E0783, "{}", msg,);
+                    let mut err = cx.sess().struct_span_err_with_code(
+                        pat.span,
+                        msg,
+                        rustc_errors::error_code!(E0783),
+                    );
                     err.span_suggestion_short(
                         join,
                         suggestion,
