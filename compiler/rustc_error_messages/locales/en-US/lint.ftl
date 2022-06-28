@@ -331,3 +331,6 @@ lint-builtin-missing-copy-impl = type could implement `Copy`; consider adding `i
 
 lint-builtin-missing-debug-impl =
     type does not implement `{$debug}`; consider adding `#[derive(Debug)]` or a manual implementation
+
+lint-builtin-anonymous-params = anonymous parameters are deprecated and will be removed in the next edition
+    .suggestion = try naming the parameter or explicitly ignoring it

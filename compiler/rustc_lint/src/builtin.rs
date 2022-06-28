@@ -937,18 +937,14 @@ impl EarlyLintPass for AnonymousParameters {
                                 ("<type>", Applicability::HasPlaceholders)
                             };
 
-                            lint.build(
-                                "anonymous parameters are deprecated and will be \
-                                     removed in the next edition",
-                            )
-                            .span_suggestion(
-                                arg.pat.span,
-                                "try naming the parameter or explicitly \
-                                            ignoring it",
-                                format!("_: {}", ty_snip),
-                                appl,
-                            )
-                            .emit();
+                            lint.build(fluent::lint::builtin_anonymous_params)
+                                .span_suggestion(
+                                    arg.pat.span,
+                                    fluent::lint::suggestion,
+                                    format!("_: {}", ty_snip),
+                                    appl,
+                                )
+                                .emit();
                         })
                     }
                 }
