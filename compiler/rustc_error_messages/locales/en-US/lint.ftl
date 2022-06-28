@@ -281,3 +281,5 @@ lint-path-statement-no-effect = path statement with no effect
 
 lint-unused-delim = unnecessary {$delim} around {$item}
     .suggestion = remove these {$delim}
+
+lint-unused-import-braces = braces around {$node} is unnecessary

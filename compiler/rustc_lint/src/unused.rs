@@ -1118,7 +1118,7 @@ impl UnusedImportBraces {
             };
 
             cx.struct_span_lint(UNUSED_IMPORT_BRACES, item.span, |lint| {
-                lint.build(&format!("braces around {} is unnecessary", node_name)).emit();
+                lint.build(fluent::lint::unused_import_braces).set_arg("node", node_name).emit();
             });
         }
     }
