@@ -1915,7 +1915,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
         let attrs = cx.tcx.hir().attrs(it.hir_id());
         if let Some(attr) = cx.sess().find_by_name(attrs, sym::rustc_test_marker) {
             cx.struct_span_lint(UNNAMEABLE_TEST_ITEMS, attr.span, |lint| {
-                lint.build("cannot test inner items").emit();
+                lint.build(fluent::lint::builtin_unnameable_test_items).emit();
             });
         }
     }

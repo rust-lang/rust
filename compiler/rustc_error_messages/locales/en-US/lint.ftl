@@ -371,3 +371,5 @@ lint-builtin-trivial-bounds = {$predicate_kind_name} bound {$predicate} does not
 
 lint-builtin-ellipsis-inclusive-range-patterns = `...` range patterns are deprecated
     .suggestion = use `..=` for an inclusive range
+
+lint-builtin-unnameable-test-items = cannot test inner items
