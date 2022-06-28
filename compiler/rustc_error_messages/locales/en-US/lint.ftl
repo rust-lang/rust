@@ -273,3 +273,8 @@ lint-unused-generator =
     .note = generators are lazy and do nothing unless resumed
 
 lint-unused-def = unused {$pre}`{$def}`{$post} that must be used
+
+lint-path-statement-drop = path statement drops value
+    .suggestion = use `drop` to clarify the intent
+
+lint-path-statement-no-effect = path statement with no effect

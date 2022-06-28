@@ -360,20 +360,20 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
                 cx.struct_span_lint(PATH_STATEMENTS, s.span, |lint| {
                     let ty = cx.typeck_results().expr_ty(expr);
                     if ty.needs_drop(cx.tcx, cx.param_env) {
-                        let mut lint = lint.build("path statement drops value");
+                        let mut lint = lint.build(fluent::lint::path_statement_drop);
                         if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span) {
                             lint.span_suggestion(
                                 s.span,
-                                "use `drop` to clarify the intent",
+                                fluent::lint::suggestion,
                                 format!("drop({});", snippet),
                                 Applicability::MachineApplicable,
                             );
                         } else {
-                            lint.span_help(s.span, "use `drop` to clarify the intent");
+                            lint.span_help(s.span, fluent::lint::suggestion);
                         }
                         lint.emit();
                     } else {
-                        lint.build("path statement with no effect").emit();
+                        lint.build(fluent::lint::path_statement_no_effect).emit();
                     }
                 });
             }
