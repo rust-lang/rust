@@ -82,12 +82,12 @@ impl<'tcx> ConstEvalErr<'tcx> {
         'tcx: 'mir,
     {
         error.print_backtrace();
-        let stacktrace = ecx.generate_stacktrace();
-        ConstEvalErr {
-            error: error.into_kind(),
-            stacktrace,
-            span: span.unwrap_or_else(|| ecx.cur_span()),
-        }
+        let mut stacktrace = ecx.generate_stacktrace();
+        // Filter out `requires_caller_location` frames.
+        stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
+        // If `span` is missing, use topmost remaining frame, or else the "root" span from `ecx.tcx`.
+        let span = span.or_else(|| stacktrace.first().map(|f| f.span)).unwrap_or(ecx.tcx.span);
+        ConstEvalErr { error: error.into_kind(), stacktrace, span }
     }
 
     pub fn struct_error(
