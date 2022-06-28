@@ -133,7 +133,7 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// The mode that trait queries run in, which informs our error handling
     /// policy. In essence, canonicalized queries need their errors propagated
     /// rather than immediately reported because we do not have accurate spans.
-    query_mode: TraitQueryMode,
+    pub(super) query_mode: TraitQueryMode,
 }
 
 // A stack that walks back up the stack frame.

@@ -1190,11 +1190,16 @@ fn project<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
 ) -> Result<Projected<'tcx>, ProjectionError<'tcx>> {
     if !selcx.tcx().recursion_limit().value_within_limit(obligation.recursion_depth) {
-        // This should really be an immediate error, but some existing code
-        // relies on being able to recover from this.
-        return Err(ProjectionError::TraitSelectionError(SelectionError::Overflow(
-            OverflowError::Canonical,
-        )));
+        match selcx.query_mode {
+            super::TraitQueryMode::Standard => {
+                selcx.infcx().report_overflow_error(&obligation, true);
+            }
+            super::TraitQueryMode::Canonical => {
+                return Err(ProjectionError::TraitSelectionError(SelectionError::Overflow(
+                    OverflowError::Canonical,
+                )));
+            }
+        }
     }
 
     if obligation.predicate.references_error() {
