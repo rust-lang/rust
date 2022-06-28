@@ -197,6 +197,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                     if !alloc.has_relocations() {
                         return Ok(false);
                     }
+                } else {
+                    // We're encountering a ZST here, and can avoid the walk as well.
+                    return Ok(false);
                 }
             }
 
