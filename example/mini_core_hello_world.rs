@@ -124,6 +124,23 @@ fn call_return_u128_pair() {
     return_u128_pair();
 }
 
+#[repr(C)]
+pub struct bool_11 {
+    field0: bool,
+    field1: bool,
+    field2: bool,
+    field3: bool,
+    field4: bool,
+    field5: bool,
+    field6: bool,
+    field7: bool,
+    field8: bool,
+    field9: bool,
+    field10: bool,
+}
+
+extern "C" fn bool_struct_in_11(arg0: bool_11) {}
+
 #[allow(unreachable_code)] // FIXME false positive
 fn main() {
     take_unique(Unique {
@@ -133,6 +150,20 @@ fn main() {
     take_f32(0.1);
 
     call_return_u128_pair();
+
+    bool_struct_in_11(bool_11 {
+        field0: true,
+        field1: true,
+        field2: true,
+        field3: true,
+        field4: true,
+        field5: true,
+        field6: true,
+        field7: true,
+        field8: true,
+        field9: true,
+        field10: true,
+    });
 
     let slice = &[0, 1] as &[i32];
     let slice_ptr = slice as *const [i32] as *const i32;
