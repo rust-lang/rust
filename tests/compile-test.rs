@@ -130,7 +130,7 @@ fn base_config(test_dir: &str) -> compiletest::Config {
     let mut config = compiletest::Config {
         edition: Some("2021".into()),
         mode: TestMode::Ui,
-        ..compiletest::Config::default()
+        ..Default::default()
     };
 
     if let Ok(filters) = env::var("TESTNAME") {
@@ -286,6 +286,24 @@ fn run_ui_cargo() {
                 }
 
                 env::set_current_dir(&src_path)?;
+
+                let cargo_toml_path = case.path().join("Cargo.toml");
+                let cargo_content = fs::read(&cargo_toml_path)?;
+                let cargo_parsed: toml::Value = toml::from_str(
+                    std::str::from_utf8(&cargo_content).expect("`Cargo.toml` is not a valid utf-8 file!"),
+                )
+                .expect("Can't parse `Cargo.toml`");
+
+                let _g = VarGuard::set("CARGO_MANIFEST_DIR", case.path());
+                let _h = VarGuard::set(
+                    "CARGO_PKG_RUST_VERSION",
+                    cargo_parsed
+                        .get("package")
+                        .and_then(|p| p.get("rust-version"))
+                        .and_then(toml::Value::as_str)
+                        .unwrap_or(""),
+                );
+
                 for file in fs::read_dir(&src_path)? {
                     let file = file?;
                     if file.file_type()?.is_dir() {
