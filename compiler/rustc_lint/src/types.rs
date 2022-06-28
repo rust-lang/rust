@@ -1512,13 +1512,13 @@ impl InvalidAtomicOrdering {
         {
             cx.struct_span_lint(INVALID_ATOMIC_ORDERING, ordering_arg.span, |diag| {
                 if method == sym::load {
-                    diag.build("atomic loads cannot have `Release` or `AcqRel` ordering")
-                        .help("consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`")
+                    diag.build(fluent::lint::atomic_ordering_load)
+                        .help(fluent::lint::help)
                         .emit()
                 } else {
                     debug_assert_eq!(method, sym::store);
-                    diag.build("atomic stores cannot have `Acquire` or `AcqRel` ordering")
-                        .help("consider using ordering modes `Release`, `SeqCst` or `Relaxed`")
+                    diag.build(fluent::lint::atomic_ordering_store)
+                        .help(fluent::lint::help)
                         .emit();
                 }
             });
@@ -1533,8 +1533,8 @@ impl InvalidAtomicOrdering {
             && Self::match_ordering(cx, &args[0]) == Some(sym::Relaxed)
         {
             cx.struct_span_lint(INVALID_ATOMIC_ORDERING, args[0].span, |diag| {
-                diag.build("memory fences cannot have `Relaxed` ordering")
-                    .help("consider using ordering modes `Acquire`, `Release`, `AcqRel` or `SeqCst`")
+                diag.build(fluent::lint::atomic_ordering_fence)
+                    .help(fluent::lint::help)
                     .emit();
             });
         }
@@ -1554,13 +1554,11 @@ impl InvalidAtomicOrdering {
 
         if matches!(fail_ordering, sym::Release | sym::AcqRel) {
             cx.struct_span_lint(INVALID_ATOMIC_ORDERING, fail_order_arg.span, |diag| {
-                diag.build(&format!(
-                    "`{method}`'s failure ordering may not be `Release` or `AcqRel`, \
-                    since a failed `{method}` does not result in a write",
-                ))
-                .span_label(fail_order_arg.span, "invalid failure ordering")
-                .help("consider using `Acquire` or `Relaxed` failure ordering instead")
-                .emit();
+                diag.build(fluent::lint::atomic_ordering_invalid)
+                    .set_arg("method", method)
+                    .span_label(fail_order_arg.span, fluent::lint::label)
+                    .help(fluent::lint::help)
+                    .emit();
             });
         }
 
@@ -1578,18 +1576,20 @@ impl InvalidAtomicOrdering {
                     fail_ordering
                 };
             cx.struct_span_lint(INVALID_ATOMIC_ORDERING, success_order_arg.span, |diag| {
-                diag.build(&format!(
-                    "`{method}`'s success ordering must be at least as strong as its failure ordering"
-                ))
-                .span_label(fail_order_arg.span, format!("`{fail_ordering}` failure ordering"))
-                .span_label(success_order_arg.span, format!("`{success_ordering}` success ordering"))
-                .span_suggestion_short(
-                    success_order_arg.span,
-                    format!("consider using `{success_suggestion}` success ordering instead"),
-                    format!("std::sync::atomic::Ordering::{success_suggestion}"),
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+                diag.build(fluent::lint::atomic_ordering_invalid_fail_success)
+                    .set_arg("method", method)
+                    .set_arg("fail_ordering", fail_ordering)
+                    .set_arg("success_ordering", success_ordering)
+                    .set_arg("success_suggestion", success_suggestion)
+                    .span_label(fail_order_arg.span, fluent::lint::fail_label)
+                    .span_label(success_order_arg.span, fluent::lint::success_label)
+                    .span_suggestion_short(
+                        success_order_arg.span,
+                        fluent::lint::suggestion,
+                        format!("std::sync::atomic::Ordering::{success_suggestion}"),
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
             });
         }
     }
