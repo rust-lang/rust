@@ -125,7 +125,7 @@ fn look_in_block<'tcx, 'hir>(cx: &LateContext<'tcx>, kind: &'tcx ExprKind<'hir>)
         // Find id of the local that expr_end_of_block resolves to
         if let ExprKind::Path(QPath::Resolved(None, expr_path)) = expr_end_of_block.kind;
         if let Res::Local(expr_res) = expr_path.res;
-        if let Some(Node::Binding(res_pat)) = cx.tcx.hir().find(expr_res);
+        if let Some(Node::Pat(res_pat)) = cx.tcx.hir().find(expr_res);
 
         // Find id of the local we found in the block
         if let PatKind::Binding(BindingAnnotation::Unannotated, local_hir_id, _ident, None) = local.pat.kind;
