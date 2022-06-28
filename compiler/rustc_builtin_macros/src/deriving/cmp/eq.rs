@@ -2,8 +2,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, MetaItem};
+use rustc_ast::{self as ast, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -52,7 +51,7 @@ fn cs_total_eq_assert(
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
-) -> P<Expr> {
+) -> BlockOrExpr {
     let mut stmts = Vec::new();
     let mut process_variant = |variant: &ast::VariantData| {
         for field in variant.fields() {
@@ -78,5 +77,5 @@ fn cs_total_eq_assert(
         }
         _ => cx.span_bug(trait_span, "unexpected substructure in `derive(Eq)`"),
     }
-    cx.expr_block(cx.block(trait_span, stmts))
+    BlockOrExpr::new_stmts(stmts)
 }

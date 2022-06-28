@@ -2,8 +2,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, Generics, ItemKind, MetaItem, VariantData};
+use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, VariantData};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -98,7 +97,7 @@ fn cs_clone_simple(
     trait_span: Span,
     substr: &Substructure<'_>,
     is_union: bool,
-) -> P<Expr> {
+) -> BlockOrExpr {
     let mut stmts = Vec::new();
     let mut process_variant = |variant: &VariantData| {
         for field in variant.fields() {
@@ -139,8 +138,7 @@ fn cs_clone_simple(
             ),
         }
     }
-    stmts.push(cx.stmt_expr(cx.expr_deref(trait_span, cx.expr_self(trait_span))));
-    cx.expr_block(cx.block(trait_span, stmts))
+    BlockOrExpr::new_mixed(stmts, cx.expr_deref(trait_span, cx.expr_self(trait_span)))
 }
 
 fn cs_clone(
@@ -148,7 +146,7 @@ fn cs_clone(
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
-) -> P<Expr> {
+) -> BlockOrExpr {
     let ctor_path;
     let all_fields;
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
@@ -177,7 +175,7 @@ fn cs_clone(
         }
     }
 
-    match *vdata {
+    let expr = match *vdata {
         VariantData::Struct(..) => {
             let fields = all_fields
                 .iter()
@@ -201,5 +199,6 @@ fn cs_clone(
             cx.expr_call(trait_span, path, subcalls)
         }
         VariantData::Unit(..) => cx.expr_path(ctor_path),
-    }
+    };
+    BlockOrExpr::new_expr(expr)
 }

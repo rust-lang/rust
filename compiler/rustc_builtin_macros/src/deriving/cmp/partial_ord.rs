@@ -2,8 +2,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::{path_std, pathvec_std};
 
-use rustc_ast::ptr::P;
-use rustc_ast::{Expr, MetaItem};
+use rustc_ast::MetaItem;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -48,7 +47,7 @@ pub fn expand_deriving_partial_ord(
     trait_def.expand(cx, mitem, item, push)
 }
 
-pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
+pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
     let test_id = Ident::new(sym::cmp, span);
     let ordering = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
     let ordering_expr = cx.expr_path(ordering.clone());
@@ -69,7 +68,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
     // cmp => cmp
     // }
     //
-    cs_fold(
+    let expr = cs_fold(
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
@@ -110,5 +109,6 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
         cx,
         span,
         substr,
-    )
+    );
+    BlockOrExpr::new_expr(expr)
 }

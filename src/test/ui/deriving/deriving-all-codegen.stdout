@@ -28,7 +28,7 @@ struct Empty;
 #[allow(unused_qualifications)]
 impl ::core::clone::Clone for Empty {
     #[inline]
-    fn clone(&self) -> Empty { { *self } }
+    fn clone(&self) -> Empty { *self }
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
@@ -49,7 +49,7 @@ impl ::core::default::Default for Empty {
 #[automatically_derived]
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Empty {
-    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () { {} }
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
 }
 impl ::core::marker::StructuralPartialEq for Empty {}
 #[automatically_derived]
@@ -65,7 +65,7 @@ impl ::core::cmp::Eq for Empty {
     #[inline]
     #[doc(hidden)]
     #[no_coverage]
-    fn assert_receiver_is_total_eq(&self) -> () { {} }
+    fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
@@ -95,11 +95,9 @@ struct Point {
 impl ::core::clone::Clone for Point {
     #[inline]
     fn clone(&self) -> Point {
-        {
-            let _: ::core::clone::AssertParamIsClone<u32>;
-            let _: ::core::clone::AssertParamIsClone<u32>;
-            *self
-        }
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        *self
     }
 }
 #[automatically_derived]
@@ -128,10 +126,8 @@ impl ::core::default::Default for Point {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Point {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        {
-            ::core::hash::Hash::hash(&self.x, state);
-            ::core::hash::Hash::hash(&self.y, state)
-        }
+        ::core::hash::Hash::hash(&self.x, state);
+        ::core::hash::Hash::hash(&self.y, state)
     }
 }
 impl ::core::marker::StructuralPartialEq for Point {}
@@ -155,10 +151,8 @@ impl ::core::cmp::Eq for Point {
     #[doc(hidden)]
     #[no_coverage]
     fn assert_receiver_is_total_eq(&self) -> () {
-        {
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-        }
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
 #[automatically_derived]
@@ -229,15 +223,13 @@ impl ::core::clone::Clone for Big {
 #[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Big {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        {
-            let names: &'static _ =
-                &["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
-            let values: &[&dyn ::core::fmt::Debug] =
-                &[&&self.b1, &&self.b2, &&self.b3, &&self.b4, &&self.b5,
-                            &&self.b6, &&self.b7, &&self.b8];
-            ::core::fmt::Formatter::debug_struct_fields_finish(f, "Big",
-                names, values)
-        }
+        let names: &'static _ =
+            &["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
+        let values: &[&dyn ::core::fmt::Debug] =
+            &[&&self.b1, &&self.b2, &&self.b3, &&self.b4, &&self.b5,
+                        &&self.b6, &&self.b7, &&self.b8];
+        ::core::fmt::Formatter::debug_struct_fields_finish(f, "Big", names,
+            values)
     }
 }
 #[automatically_derived]
@@ -261,16 +253,14 @@ impl ::core::default::Default for Big {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Big {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        {
-            ::core::hash::Hash::hash(&self.b1, state);
-            ::core::hash::Hash::hash(&self.b2, state);
-            ::core::hash::Hash::hash(&self.b3, state);
-            ::core::hash::Hash::hash(&self.b4, state);
-            ::core::hash::Hash::hash(&self.b5, state);
-            ::core::hash::Hash::hash(&self.b6, state);
-            ::core::hash::Hash::hash(&self.b7, state);
-            ::core::hash::Hash::hash(&self.b8, state)
-        }
+        ::core::hash::Hash::hash(&self.b1, state);
+        ::core::hash::Hash::hash(&self.b2, state);
+        ::core::hash::Hash::hash(&self.b3, state);
+        ::core::hash::Hash::hash(&self.b4, state);
+        ::core::hash::Hash::hash(&self.b5, state);
+        ::core::hash::Hash::hash(&self.b6, state);
+        ::core::hash::Hash::hash(&self.b7, state);
+        ::core::hash::Hash::hash(&self.b8, state)
     }
 }
 impl ::core::marker::StructuralPartialEq for Big {}
@@ -300,16 +290,14 @@ impl ::core::cmp::Eq for Big {
     #[doc(hidden)]
     #[no_coverage]
     fn assert_receiver_is_total_eq(&self) -> () {
-        {
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-        }
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
 #[automatically_derived]
@@ -416,7 +404,8 @@ struct Packed(u32);
 impl ::core::clone::Clone for Packed {
     #[inline]
     fn clone(&self) -> Packed {
-        { let _: ::core::clone::AssertParamIsClone<u32>; *self }
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        *self
     }
 }
 #[automatically_derived]
@@ -426,11 +415,9 @@ impl ::core::marker::Copy for Packed { }
 #[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Packed {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        {
-            let Self(__self_0_0) = *self;
-            ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Packed",
-                &&__self_0_0)
-        }
+        let Self(__self_0_0) = *self;
+        ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Packed",
+            &&__self_0_0)
     }
 }
 #[automatically_derived]
@@ -443,10 +430,8 @@ impl ::core::default::Default for Packed {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Packed {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        {
-            let Self(__self_0_0) = *self;
-            { ::core::hash::Hash::hash(&__self_0_0, state) }
-        }
+        let Self(__self_0_0) = *self;
+        ::core::hash::Hash::hash(&__self_0_0, state)
     }
 }
 impl ::core::marker::StructuralPartialEq for Packed {}
@@ -455,19 +440,15 @@ impl ::core::marker::StructuralPartialEq for Packed {}
 impl ::core::cmp::PartialEq for Packed {
     #[inline]
     fn eq(&self, other: &Packed) -> bool {
-        {
-            let Self(__self_0_0) = *self;
-            let Self(__self_1_0) = *other;
-            __self_0_0 == __self_1_0
-        }
+        let Self(__self_0_0) = *self;
+        let Self(__self_1_0) = *other;
+        __self_0_0 == __self_1_0
     }
     #[inline]
     fn ne(&self, other: &Packed) -> bool {
-        {
-            let Self(__self_0_0) = *self;
-            let Self(__self_1_0) = *other;
-            __self_0_0 != __self_1_0
-        }
+        let Self(__self_0_0) = *self;
+        let Self(__self_1_0) = *other;
+        __self_0_0 != __self_1_0
     }
 }
 impl ::core::marker::StructuralEq for Packed {}
@@ -478,7 +459,7 @@ impl ::core::cmp::Eq for Packed {
     #[doc(hidden)]
     #[no_coverage]
     fn assert_receiver_is_total_eq(&self) -> () {
-        { let _: ::core::cmp::AssertParamIsEq<u32>; }
+        let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
 #[automatically_derived]
@@ -487,15 +468,12 @@ impl ::core::cmp::PartialOrd for Packed {
     #[inline]
     fn partial_cmp(&self, other: &Packed)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        {
-            let Self(__self_0_0) = *self;
-            let Self(__self_1_0) = *other;
-            match ::core::cmp::PartialOrd::partial_cmp(&__self_0_0,
-                    &__self_1_0) {
-                ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
-                    ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                cmp => cmp,
-            }
+        let Self(__self_0_0) = *self;
+        let Self(__self_1_0) = *other;
+        match ::core::cmp::PartialOrd::partial_cmp(&__self_0_0, &__self_1_0) {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                ::core::option::Option::Some(::core::cmp::Ordering::Equal),
+            cmp => cmp,
         }
     }
 }
@@ -504,13 +482,11 @@ impl ::core::cmp::PartialOrd for Packed {
 impl ::core::cmp::Ord for Packed {
     #[inline]
     fn cmp(&self, other: &Packed) -> ::core::cmp::Ordering {
-        {
-            let Self(__self_0_0) = *self;
-            let Self(__self_1_0) = *other;
-            match ::core::cmp::Ord::cmp(&__self_0_0, &__self_1_0) {
-                ::core::cmp::Ordering::Equal => ::core::cmp::Ordering::Equal,
-                cmp => cmp,
-            }
+        let Self(__self_0_0) = *self;
+        let Self(__self_1_0) = *other;
+        match ::core::cmp::Ord::cmp(&__self_0_0, &__self_1_0) {
+            ::core::cmp::Ordering::Equal => ::core::cmp::Ordering::Equal,
+            cmp => cmp,
         }
     }
 }
@@ -521,7 +497,7 @@ enum Enum0 {}
 #[allow(unused_qualifications)]
 impl ::core::clone::Clone for Enum0 {
     #[inline]
-    fn clone(&self) -> Enum0 { { *self } }
+    fn clone(&self) -> Enum0 { *self }
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
@@ -556,7 +532,7 @@ impl ::core::cmp::Eq for Enum0 {
     #[inline]
     #[doc(hidden)]
     #[no_coverage]
-    fn assert_receiver_is_total_eq(&self) -> () { {} }
+    fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
@@ -642,7 +618,7 @@ impl ::core::cmp::Eq for Enum1 {
     #[doc(hidden)]
     #[no_coverage]
     fn assert_receiver_is_total_eq(&self) -> () {
-        { let _: ::core::cmp::AssertParamIsEq<u32>; }
+        let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
 #[automatically_derived]
@@ -693,7 +669,7 @@ enum Fieldless {
 #[allow(unused_qualifications)]
 impl ::core::clone::Clone for Fieldless {
     #[inline]
-    fn clone(&self) -> Fieldless { { *self } }
+    fn clone(&self) -> Fieldless { *self }
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
@@ -733,13 +709,11 @@ impl ::core::marker::StructuralPartialEq for Fieldless {}
 impl ::core::cmp::PartialEq for Fieldless {
     #[inline]
     fn eq(&self, other: &Fieldless) -> bool {
-        {
-            let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-            let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if __self_vi == __arg_1_vi {
-                    match (&*self, &*other) { _ => true, }
-                } else { false }
-        }
+        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+        if __self_vi == __arg_1_vi {
+                match (&*self, &*other) { _ => true, }
+            } else { false }
     }
 }
 impl ::core::marker::StructuralEq for Fieldless {}
@@ -749,7 +723,7 @@ impl ::core::cmp::Eq for Fieldless {
     #[inline]
     #[doc(hidden)]
     #[no_coverage]
-    fn assert_receiver_is_total_eq(&self) -> () { {} }
+    fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
@@ -757,19 +731,16 @@ impl ::core::cmp::PartialOrd for Fieldless {
     #[inline]
     fn partial_cmp(&self, other: &Fieldless)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        {
-            let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-            let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if __self_vi == __arg_1_vi {
-                    match (&*self, &*other) {
-                        _ =>
-                            ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                    }
-                } else {
-                   ::core::cmp::PartialOrd::partial_cmp(&__self_vi,
-                       &__arg_1_vi)
-               }
-        }
+        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+        if __self_vi == __arg_1_vi {
+                match (&*self, &*other) {
+                    _ =>
+                        ::core::option::Option::Some(::core::cmp::Ordering::Equal),
+                }
+            } else {
+               ::core::cmp::PartialOrd::partial_cmp(&__self_vi, &__arg_1_vi)
+           }
     }
 }
 #[automatically_derived]
@@ -777,15 +748,11 @@ impl ::core::cmp::PartialOrd for Fieldless {
 impl ::core::cmp::Ord for Fieldless {
     #[inline]
     fn cmp(&self, other: &Fieldless) -> ::core::cmp::Ordering {
-        {
-            let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-            let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if __self_vi == __arg_1_vi {
-                    match (&*self, &*other) {
-                        _ => ::core::cmp::Ordering::Equal,
-                    }
-                } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
-        }
+        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+        if __self_vi == __arg_1_vi {
+                match (&*self, &*other) { _ => ::core::cmp::Ordering::Equal, }
+            } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
     }
 }
 
@@ -806,12 +773,10 @@ enum Mixed {
 impl ::core::clone::Clone for Mixed {
     #[inline]
     fn clone(&self) -> Mixed {
-        {
-            let _: ::core::clone::AssertParamIsClone<u32>;
-            let _: ::core::clone::AssertParamIsClone<u32>;
-            let _: ::core::clone::AssertParamIsClone<u32>;
-            *self
-        }
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        *self
     }
 }
 #[automatically_derived]
@@ -868,37 +833,33 @@ impl ::core::marker::StructuralPartialEq for Mixed {}
 impl ::core::cmp::PartialEq for Mixed {
     #[inline]
     fn eq(&self, other: &Mixed) -> bool {
-        {
-            let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-            let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if __self_vi == __arg_1_vi {
-                    match (&*self, &*other) {
-                        (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
-                            *__self_0 == *__arg_1_0,
-                        (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
-                            &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
-                            *__self_0 == *__arg_1_0 && *__self_1 == *__arg_1_1,
-                        _ => true,
-                    }
-                } else { false }
-        }
+        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+        if __self_vi == __arg_1_vi {
+                match (&*self, &*other) {
+                    (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
+                        *__self_0 == *__arg_1_0,
+                    (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
+                        &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
+                        *__self_0 == *__arg_1_0 && *__self_1 == *__arg_1_1,
+                    _ => true,
+                }
+            } else { false }
     }
     #[inline]
     fn ne(&self, other: &Mixed) -> bool {
-        {
-            let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-            let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if __self_vi == __arg_1_vi {
-                    match (&*self, &*other) {
-                        (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
-                            *__self_0 != *__arg_1_0,
-                        (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
-                            &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
-                            *__self_0 != *__arg_1_0 || *__self_1 != *__arg_1_1,
-                        _ => false,
-                    }
-                } else { true }
-        }
+        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+        if __self_vi == __arg_1_vi {
+                match (&*self, &*other) {
+                    (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
+                        *__self_0 != *__arg_1_0,
+                    (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
+                        &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
+                        *__self_0 != *__arg_1_0 || *__self_1 != *__arg_1_1,
+                    _ => false,
+                }
+            } else { true }
     }
 }
 impl ::core::marker::StructuralEq for Mixed {}
@@ -909,11 +870,9 @@ impl ::core::cmp::Eq for Mixed {
     #[doc(hidden)]
     #[no_coverage]
     fn assert_receiver_is_total_eq(&self) -> () {
-        {
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-        }
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
 #[automatically_derived]
@@ -922,42 +881,39 @@ impl ::core::cmp::PartialOrd for Mixed {
     #[inline]
     fn partial_cmp(&self, other: &Mixed)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        {
-            let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-            let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if __self_vi == __arg_1_vi {
-                    match (&*self, &*other) {
-                        (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
-                            match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                                    &*__arg_1_0) {
-                                ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                    =>
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                                cmp => cmp,
-                            },
-                        (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
-                            &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
-                            match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                                    &*__arg_1_0) {
-                                ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                    =>
-                                    match ::core::cmp::PartialOrd::partial_cmp(&*__self_1,
-                                            &*__arg_1_1) {
-                                        ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                            =>
-                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                                        cmp => cmp,
-                                    },
-                                cmp => cmp,
-                            },
-                        _ =>
-                            ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                    }
-                } else {
-                   ::core::cmp::PartialOrd::partial_cmp(&__self_vi,
-                       &__arg_1_vi)
-               }
-        }
+        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+        if __self_vi == __arg_1_vi {
+                match (&*self, &*other) {
+                    (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
+                        match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
+                                &*__arg_1_0) {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                =>
+                                ::core::option::Option::Some(::core::cmp::Ordering::Equal),
+                            cmp => cmp,
+                        },
+                    (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
+                        &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
+                        match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
+                                &*__arg_1_0) {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                =>
+                                match ::core::cmp::PartialOrd::partial_cmp(&*__self_1,
+                                        &*__arg_1_1) {
+                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                        =>
+                                        ::core::option::Option::Some(::core::cmp::Ordering::Equal),
+                                    cmp => cmp,
+                                },
+                            cmp => cmp,
+                        },
+                    _ =>
+                        ::core::option::Option::Some(::core::cmp::Ordering::Equal),
+                }
+            } else {
+               ::core::cmp::PartialOrd::partial_cmp(&__self_vi, &__arg_1_vi)
+           }
     }
 }
 #[automatically_derived]
@@ -965,32 +921,30 @@ impl ::core::cmp::PartialOrd for Mixed {
 impl ::core::cmp::Ord for Mixed {
     #[inline]
     fn cmp(&self, other: &Mixed) -> ::core::cmp::Ordering {
-        {
-            let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-            let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if __self_vi == __arg_1_vi {
-                    match (&*self, &*other) {
-                        (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
-                            match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
-                                ::core::cmp::Ordering::Equal =>
-                                    ::core::cmp::Ordering::Equal,
-                                cmp => cmp,
-                            },
-                        (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
-                            &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
-                            match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
-                                ::core::cmp::Ordering::Equal =>
-                                    match ::core::cmp::Ord::cmp(&*__self_1, &*__arg_1_1) {
-                                        ::core::cmp::Ordering::Equal =>
-                                            ::core::cmp::Ordering::Equal,
-                                        cmp => cmp,
-                                    },
-                                cmp => cmp,
-                            },
-                        _ => ::core::cmp::Ordering::Equal,
-                    }
-                } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
-        }
+        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+        if __self_vi == __arg_1_vi {
+                match (&*self, &*other) {
+                    (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
+                        match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
+                            ::core::cmp::Ordering::Equal =>
+                                ::core::cmp::Ordering::Equal,
+                            cmp => cmp,
+                        },
+                    (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
+                        &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
+                        match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
+                            ::core::cmp::Ordering::Equal =>
+                                match ::core::cmp::Ord::cmp(&*__self_1, &*__arg_1_1) {
+                                    ::core::cmp::Ordering::Equal =>
+                                        ::core::cmp::Ordering::Equal,
+                                    cmp => cmp,
+                                },
+                            cmp => cmp,
+                        },
+                    _ => ::core::cmp::Ordering::Equal,
+                }
+            } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
     }
 }
 
@@ -1058,39 +1012,35 @@ impl ::core::marker::StructuralPartialEq for Fielded {}
 impl ::core::cmp::PartialEq for Fielded {
     #[inline]
     fn eq(&self, other: &Fielded) -> bool {
-        {
-            let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-            let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if __self_vi == __arg_1_vi {
-                    match (&*self, &*other) {
-                        (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
-                            *__self_0 == *__arg_1_0,
-                        (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
-                            *__self_0 == *__arg_1_0,
-                        (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
-                            *__self_0 == *__arg_1_0,
-                        _ => unsafe { ::core::intrinsics::unreachable() }
-                    }
-                } else { false }
-        }
+        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+        if __self_vi == __arg_1_vi {
+                match (&*self, &*other) {
+                    (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
+                        *__self_0 == *__arg_1_0,
+                    (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
+                        *__self_0 == *__arg_1_0,
+                    (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
+                        *__self_0 == *__arg_1_0,
+                    _ => unsafe { ::core::intrinsics::unreachable() }
+                }
+            } else { false }
     }
     #[inline]
     fn ne(&self, other: &Fielded) -> bool {
-        {
-            let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-            let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if __self_vi == __arg_1_vi {
-                    match (&*self, &*other) {
-                        (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
-                            *__self_0 != *__arg_1_0,
-                        (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
-                            *__self_0 != *__arg_1_0,
-                        (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
-                            *__self_0 != *__arg_1_0,
-                        _ => unsafe { ::core::intrinsics::unreachable() }
-                    }
-                } else { true }
-        }
+        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+        if __self_vi == __arg_1_vi {
+                match (&*self, &*other) {
+                    (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
+                        *__self_0 != *__arg_1_0,
+                    (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
+                        *__self_0 != *__arg_1_0,
+                    (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
+                        *__self_0 != *__arg_1_0,
+                    _ => unsafe { ::core::intrinsics::unreachable() }
+                }
+            } else { true }
     }
 }
 impl ::core::marker::StructuralEq for Fielded {}
@@ -1101,11 +1051,9 @@ impl ::core::cmp::Eq for Fielded {
     #[doc(hidden)]
     #[no_coverage]
     fn assert_receiver_is_total_eq(&self) -> () {
-        {
-            let _: ::core::cmp::AssertParamIsEq<u32>;
-            let _: ::core::cmp::AssertParamIsEq<bool>;
-            let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
-        }
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<bool>;
+        let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
     }
 }
 #[automatically_derived]
@@ -1114,42 +1062,39 @@ impl ::core::cmp::PartialOrd for Fielded {
     #[inline]
     fn partial_cmp(&self, other: &Fielded)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        {
-            let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-            let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if __self_vi == __arg_1_vi {
-                    match (&*self, &*other) {
-                        (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
-                            match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                                    &*__arg_1_0) {
-                                ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                    =>
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                                cmp => cmp,
-                            },
-                        (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
-                            match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                                    &*__arg_1_0) {
-                                ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                    =>
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                                cmp => cmp,
-                            },
-                        (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
-                            match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                                    &*__arg_1_0) {
-                                ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                    =>
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                                cmp => cmp,
-                            },
-                        _ => unsafe { ::core::intrinsics::unreachable() }
-                    }
-                } else {
-                   ::core::cmp::PartialOrd::partial_cmp(&__self_vi,
-                       &__arg_1_vi)
-               }
-        }
+        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+        if __self_vi == __arg_1_vi {
+                match (&*self, &*other) {
+                    (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
+                        match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
+                                &*__arg_1_0) {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                =>
+                                ::core::option::Option::Some(::core::cmp::Ordering::Equal),
+                            cmp => cmp,
+                        },
+                    (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
+                        match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
+                                &*__arg_1_0) {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                =>
+                                ::core::option::Option::Some(::core::cmp::Ordering::Equal),
+                            cmp => cmp,
+                        },
+                    (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
+                        match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
+                                &*__arg_1_0) {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                =>
+                                ::core::option::Option::Some(::core::cmp::Ordering::Equal),
+                            cmp => cmp,
+                        },
+                    _ => unsafe { ::core::intrinsics::unreachable() }
+                }
+            } else {
+               ::core::cmp::PartialOrd::partial_cmp(&__self_vi, &__arg_1_vi)
+           }
     }
 }
 #[automatically_derived]
@@ -1157,33 +1102,31 @@ impl ::core::cmp::PartialOrd for Fielded {
 impl ::core::cmp::Ord for Fielded {
     #[inline]
     fn cmp(&self, other: &Fielded) -> ::core::cmp::Ordering {
-        {
-            let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-            let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-            if __self_vi == __arg_1_vi {
-                    match (&*self, &*other) {
-                        (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
-                            match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
-                                ::core::cmp::Ordering::Equal =>
-                                    ::core::cmp::Ordering::Equal,
-                                cmp => cmp,
-                            },
-                        (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
-                            match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
-                                ::core::cmp::Ordering::Equal =>
-                                    ::core::cmp::Ordering::Equal,
-                                cmp => cmp,
-                            },
-                        (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
-                            match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
-                                ::core::cmp::Ordering::Equal =>
-                                    ::core::cmp::Ordering::Equal,
-                                cmp => cmp,
-                            },
-                        _ => unsafe { ::core::intrinsics::unreachable() }
-                    }
-                } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
-        }
+        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+        if __self_vi == __arg_1_vi {
+                match (&*self, &*other) {
+                    (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
+                        match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
+                            ::core::cmp::Ordering::Equal =>
+                                ::core::cmp::Ordering::Equal,
+                            cmp => cmp,
+                        },
+                    (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
+                        match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
+                            ::core::cmp::Ordering::Equal =>
+                                ::core::cmp::Ordering::Equal,
+                            cmp => cmp,
+                        },
+                    (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
+                        match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
+                            ::core::cmp::Ordering::Equal =>
+                                ::core::cmp::Ordering::Equal,
+                            cmp => cmp,
+                        },
+                    _ => unsafe { ::core::intrinsics::unreachable() }
+                }
+            } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
     }
 }
 
@@ -1198,7 +1141,8 @@ pub union Union {
 impl ::core::clone::Clone for Union {
     #[inline]
     fn clone(&self) -> Union {
-        { let _: ::core::clone::AssertParamIsCopy<Self>; *self }
+        let _: ::core::clone::AssertParamIsCopy<Self>;
+        *self
     }
 }
 #[automatically_derived]

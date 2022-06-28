@@ -3,7 +3,7 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, MetaItem};
+use rustc_ast::{self as ast, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -51,7 +51,7 @@ pub fn ordering_collapsed(
     cx.expr_call_global(span, fn_cmp_path, vec![lft, rgt])
 }
 
-pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
+pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
     let test_id = Ident::new(sym::cmp, span);
     let equals_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
 
@@ -70,7 +70,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<
     // cmp => cmp
     // }
     //
-    cs_fold(
+    let expr = cs_fold(
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
@@ -107,5 +107,6 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<
         cx,
         span,
         substr,
-    )
+    );
+    BlockOrExpr::new_expr(expr)
 }

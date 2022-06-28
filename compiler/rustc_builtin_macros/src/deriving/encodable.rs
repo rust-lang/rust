@@ -89,8 +89,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::pathvec_std;
 
-use rustc_ast::ptr::P;
-use rustc_ast::{Expr, ExprKind, MetaItem, Mutability};
+use rustc_ast::{ExprKind, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
@@ -147,7 +146,7 @@ fn encodable_substructure(
     trait_span: Span,
     substr: &Substructure<'_>,
     krate: Symbol,
-) -> P<Expr> {
+) -> BlockOrExpr {
     let encoder = substr.nonself_args[0].clone();
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = Ident::new(sym::_e, trait_span);
@@ -208,7 +207,7 @@ fn encodable_substructure(
             let fn_emit_struct_path =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_struct]);
 
-            cx.expr_call_global(
+            let expr = cx.expr_call_global(
                 trait_span,
                 fn_emit_struct_path,
                 vec![
@@ -217,7 +216,8 @@ fn encodable_substructure(
                     cx.expr_usize(trait_span, fields.len()),
                     blk,
                 ],
-            )
+            );
+            BlockOrExpr::new_expr(expr)
         }
 
         EnumMatching(idx, _, variant, ref fields) => {
@@ -279,12 +279,12 @@ fn encodable_substructure(
             let blk = cx.lambda1(trait_span, call, blkarg);
             let fn_emit_enum_path: Vec<_> =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_enum]);
-            let ret = cx.expr_call_global(
+            let expr = cx.expr_call_global(
                 trait_span,
                 fn_emit_enum_path,
                 vec![encoder, cx.expr_str(trait_span, substr.type_ident.name), blk],
             );
-            cx.expr_block(cx.block(trait_span, vec![me, cx.stmt_expr(ret)]))
+            BlockOrExpr::new_mixed(vec![me], expr)
         }
 
         _ => cx.bug("expected Struct or EnumMatching in derive(Encodable)"),

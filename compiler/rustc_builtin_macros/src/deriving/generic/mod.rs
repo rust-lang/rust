@@ -296,7 +296,7 @@ pub enum SubstructureFields<'a> {
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
 pub type CombineSubstructureFunc<'a> =
-    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, &Substructure<'_>) -> P<Expr> + 'a>;
+    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
 
 /// Deal with non-matching enum variants. The slice is the identifiers holding
 /// the variant index value for each of the `Self` arguments.
@@ -312,6 +312,48 @@ pub fn combine_substructure(
 struct TypeParameter {
     bound_generic_params: Vec<ast::GenericParam>,
     ty: P<ast::Ty>,
+}
+
+// The code snippets built up for derived code are sometimes used as blocks
+// (e.g. in a function body) and sometimes used as expressions (e.g. in a match
+// arm). This structure avoids committing to either form until necessary,
+// avoiding the insertion of any unnecessary blocks.
+//
+// The statements come before the expression.
+pub struct BlockOrExpr(Vec<ast::Stmt>, Option<P<Expr>>);
+
+impl BlockOrExpr {
+    pub fn new_stmts(stmts: Vec<ast::Stmt>) -> BlockOrExpr {
+        BlockOrExpr(stmts, None)
+    }
+
+    pub fn new_expr(expr: P<Expr>) -> BlockOrExpr {
+        BlockOrExpr(vec![], Some(expr))
+    }
+
+    pub fn new_mixed(stmts: Vec<ast::Stmt>, expr: P<Expr>) -> BlockOrExpr {
+        BlockOrExpr(stmts, Some(expr))
+    }
+
+    // Converts it into a block.
+    fn into_block(mut self, cx: &ExtCtxt<'_>, span: Span) -> P<ast::Block> {
+        if let Some(expr) = self.1 {
+            self.0.push(cx.stmt_expr(expr));
+        }
+        cx.block(span, self.0)
+    }
+
+    // Converts it into an expression.
+    fn into_expr(self, cx: &ExtCtxt<'_>, span: Span) -> P<Expr> {
+        if self.0.is_empty() {
+            match self.1 {
+                None => cx.expr_block(cx.block(span, vec![])),
+                Some(expr) => expr,
+            }
+        } else {
+            cx.expr_block(self.into_block(cx, span))
+        }
+    }
 }
 
 /// This method helps to extract all the type parameters referenced from a
@@ -827,7 +869,7 @@ impl<'a> MethodDef<'a> {
         type_ident: Ident,
         nonself_args: &[P<Expr>],
         fields: &SubstructureFields<'_>,
-    ) -> P<Expr> {
+    ) -> BlockOrExpr {
         let span = trait_.span;
         let substructure = Substructure { type_ident, nonself_args, fields };
         let mut f = self.combine_substructure.borrow_mut();
@@ -902,7 +944,7 @@ impl<'a> MethodDef<'a> {
         generics: &Generics,
         explicit_self: Option<ast::ExplicitSelf>,
         arg_types: Vec<(Ident, P<ast::Ty>)>,
-        body: P<Expr>,
+        body: BlockOrExpr,
     ) -> P<ast::AssocItem> {
         let span = trait_.span;
         // Create the generics that aren't for `Self`.
@@ -921,7 +963,7 @@ impl<'a> MethodDef<'a> {
 
         let method_ident = Ident::new(self.name, span);
         let fn_decl = cx.fn_decl(args, ast::FnRetTy::Ty(ret_type));
-        let body_block = cx.block_expr(body);
+        let body_block = body.into_block(cx, span);
 
         let trait_lo_sp = span.shrink_to_lo();
 
@@ -986,7 +1028,7 @@ impl<'a> MethodDef<'a> {
         nonself_args: &[P<Expr>],
         use_temporaries: bool,
         is_packed: bool,
-    ) -> P<Expr> {
+    ) -> BlockOrExpr {
         let mut raw_fields = Vec::new(); // Vec<[fields of self], [fields of next Self arg], [etc]>
         let span = trait_.span;
         let mut patterns = Vec::new();
@@ -1047,16 +1089,14 @@ impl<'a> MethodDef<'a> {
         );
 
         if !is_packed {
-            body.span = span;
             body
         } else {
             // Do the let-destructuring.
             let mut stmts: Vec<_> = iter::zip(self_args, patterns)
                 .map(|(arg_expr, pat)| cx.stmt_let_pat(span, pat, arg_expr.clone()))
                 .collect();
-            stmts.push(cx.stmt_expr(body));
-
-            cx.expr_block(cx.block(span, stmts))
+            stmts.extend(std::mem::take(&mut body.0));
+            BlockOrExpr(stmts, body.1)
         }
     }
 
@@ -1067,7 +1107,7 @@ impl<'a> MethodDef<'a> {
         struct_def: &VariantData,
         type_ident: Ident,
         nonself_args: &[P<Expr>],
-    ) -> P<Expr> {
+    ) -> BlockOrExpr {
         let summary = trait_.summarise_struct(cx, struct_def);
 
         self.call_substructure_method(
@@ -1130,7 +1170,7 @@ impl<'a> MethodDef<'a> {
         type_ident: Ident,
         mut self_args: Vec<P<Expr>>,
         nonself_args: &[P<Expr>],
-    ) -> P<Expr> {
+    ) -> BlockOrExpr {
         let span = trait_.span;
         let variants = &enum_def.variants;
 
@@ -1253,13 +1293,9 @@ impl<'a> MethodDef<'a> {
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
                 let substructure = EnumMatching(index, variants.len(), variant, field_tuples);
-                let arm_expr = self.call_substructure_method(
-                    cx,
-                    trait_,
-                    type_ident,
-                    nonself_args,
-                    &substructure,
-                );
+                let arm_expr = self
+                    .call_substructure_method(cx, trait_, type_ident, nonself_args, &substructure)
+                    .into_expr(cx, span);
 
                 cx.arm(span, single_pat, arm_expr)
             })
@@ -1271,13 +1307,16 @@ impl<'a> MethodDef<'a> {
                 // The index and actual variant aren't meaningful in this case,
                 // so just use whatever
                 let substructure = EnumMatching(0, variants.len(), v, Vec::new());
-                Some(self.call_substructure_method(
-                    cx,
-                    trait_,
-                    type_ident,
-                    nonself_args,
-                    &substructure,
-                ))
+                Some(
+                    self.call_substructure_method(
+                        cx,
+                        trait_,
+                        type_ident,
+                        nonself_args,
+                        &substructure,
+                    )
+                    .into_expr(cx, span),
+                )
             }
             _ if variants.len() > 1 && self_args.len() > 1 => {
                 // Since we know that all the arguments will match if we reach
@@ -1341,13 +1380,15 @@ impl<'a> MethodDef<'a> {
                 }
             }
 
-            let arm_expr = self.call_substructure_method(
-                cx,
-                trait_,
-                type_ident,
-                nonself_args,
-                &catch_all_substructure,
-            );
+            let arm_expr = self
+                .call_substructure_method(
+                    cx,
+                    trait_,
+                    type_ident,
+                    nonself_args,
+                    &catch_all_substructure,
+                )
+                .into_expr(cx, span);
 
             // Final wrinkle: the self_args are expressions that deref
             // down to desired places, but we cannot actually deref
@@ -1371,8 +1412,7 @@ impl<'a> MethodDef<'a> {
             //  }
             let all_match = cx.expr_match(span, match_arg, match_arms);
             let arm_expr = cx.expr_if(span, discriminant_test, all_match, Some(arm_expr));
-            index_let_stmts.push(cx.stmt_expr(arm_expr));
-            cx.expr_block(cx.block(span, index_let_stmts))
+            BlockOrExpr(index_let_stmts, Some(arm_expr))
         } else if variants.is_empty() {
             // As an additional wrinkle, For a zero-variant enum A,
             // currently the compiler
@@ -1423,7 +1463,7 @@ impl<'a> MethodDef<'a> {
             // derive Debug on such a type could here generate code
             // that needs the feature gate enabled.)
 
-            deriving::call_unreachable(cx, span)
+            BlockOrExpr(vec![], Some(deriving::call_unreachable(cx, span)))
         } else {
             // Final wrinkle: the self_args are expressions that deref
             // down to desired places, but we cannot actually deref
@@ -1432,7 +1472,7 @@ impl<'a> MethodDef<'a> {
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
             self_args.map_in_place(|self_arg| cx.expr_addr_of(span, self_arg));
             let match_arg = cx.expr(span, ast::ExprKind::Tup(self_args));
-            cx.expr_match(span, match_arg, match_arms)
+            BlockOrExpr(vec![], Some(cx.expr_match(span, match_arg, match_arms)))
         }
     }
 
@@ -1443,7 +1483,7 @@ impl<'a> MethodDef<'a> {
         enum_def: &EnumDef,
         type_ident: Ident,
         nonself_args: &[P<Expr>],
-    ) -> P<Expr> {
+    ) -> BlockOrExpr {
         let summary = enum_def
             .variants
             .iter()
