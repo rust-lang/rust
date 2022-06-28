@@ -253,8 +253,6 @@ pub struct MethodDef<'a> {
 pub struct Substructure<'a> {
     /// ident of self
     pub type_ident: Ident,
-    /// ident of the method
-    pub method_ident: Ident,
     /// dereferenced access to any [`Self_`] or [`Ptr(Self_, _)`][ptr] arguments
     ///
     /// [`Self_`]: ty::Ty::Self_
@@ -845,13 +843,7 @@ impl<'a> MethodDef<'a> {
         fields: &SubstructureFields<'_>,
     ) -> P<Expr> {
         let span = trait_.span;
-        let substructure = Substructure {
-            type_ident,
-            method_ident: Ident::new(self.name, span),
-            self_args,
-            nonself_args,
-            fields,
-        };
+        let substructure = Substructure { type_ident, self_args, nonself_args, fields };
         let mut f = self.combine_substructure.borrow_mut();
         let f: &mut CombineSubstructureFunc<'_> = &mut *f;
         f(cx, span, &substructure)
