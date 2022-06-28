@@ -393,3 +393,6 @@ lint-builtin-clashing-extern-same-name = `{$this_fi}` redeclared with a differen
 lint-builtin-clashing-extern-diff-name = `{$this_fi}` redeclares `{$orig}` with a different signature
     .previous-decl-label = `{$orig}` previously declared here
     .mismatch-label = this signature doesn't match the previous declaration
+
+lint-builtin-deref-nullptr = dereferencing a null pointer
+    .label = this code causes undefined behavior when executed

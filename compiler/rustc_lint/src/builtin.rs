@@ -3068,8 +3068,8 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
         if let rustc_hir::ExprKind::Unary(rustc_hir::UnOp::Deref, expr_deref) = expr.kind {
             if is_null_ptr(cx, expr_deref) {
                 cx.struct_span_lint(DEREF_NULLPTR, expr.span, |lint| {
-                    let mut err = lint.build("dereferencing a null pointer");
-                    err.span_label(expr.span, "this code causes undefined behavior when executed");
+                    let mut err = lint.build(fluent::lint::builtin_deref_nullptr);
+                    err.span_label(expr.span, fluent::lint::label);
                     err.emit();
                 });
             }
