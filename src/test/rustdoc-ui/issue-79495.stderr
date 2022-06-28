@@ -1,0 +1,13 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-79495.rs:9:35
+   |
+LL |     Some(T) = std::mem::size_of::<T>(),
+   |                                   ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: Compilation failed, aborting rustdoc
+
+error: aborting due to 2 previous errors
+
