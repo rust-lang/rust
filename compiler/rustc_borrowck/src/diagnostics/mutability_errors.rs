@@ -362,7 +362,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let upvar_hir_id = captured_place.get_root_variable();
 
-                if let Some(Node::Binding(pat)) = self.infcx.tcx.hir().find(upvar_hir_id)
+                if let Some(Node::Pat(pat)) = self.infcx.tcx.hir().find(upvar_hir_id)
                     && let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated,
                         _,
