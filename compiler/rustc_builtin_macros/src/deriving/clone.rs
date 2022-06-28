@@ -15,23 +15,22 @@ pub fn expand_deriving_clone(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    // check if we can use a short form
+    // The simple form is `fn clone(&self) -> Self { *self }`, possibly with
+    // some additional `AssertParamIsClone` assertions.
     //
-    // the short form is `fn clone(&self) -> Self { *self }`
-    //
-    // we can use the short form if:
-    // - the item is Copy (unfortunately, all we can check is whether it's also deriving Copy)
-    // - there are no generic parameters (after specialization this limitation can be removed)
-    //      if we used the short form with generics, we'd have to bound the generics with
-    //      Clone + Copy, and then there'd be no Clone impl at all if the user fills in something
-    //      that is Clone but not Copy. and until specialization we can't write both impls.
-    // - the item is a union with Copy fields
-    //      Unions with generic parameters still can derive Clone because they require Copy
-    //      for deriving, Clone alone is not enough.
-    //      Wherever Clone is implemented for fields is irrelevant so we don't assert it.
+    // We can use the simple form if either of the following are true.
+    // - The type derives Copy and there are no generic parameters.  (If we
+    //   used the simple form with generics, we'd have to bound the generics
+    //   with Clone + Copy, and then there'd be no Clone impl at all if the
+    //   user fills in something that is Clone but not Copy. After
+    //   specialization we can remove this no-generics limitation.)
+    // - The item is a union. (Unions with generic parameters still can derive
+    //   Clone because they require Copy for deriving, Clone alone is not
+    //   enough. Whether Clone is implemented for fields is irrelevant so we
+    //   don't assert it.)
     let bounds;
     let substructure;
-    let is_shallow;
+    let is_simple;
     match *item {
         Annotatable::Item(ref annitem) => match annitem.kind {
             ItemKind::Struct(_, Generics { ref params, .. })
@@ -44,30 +43,25 @@ pub fn expand_deriving_clone(
                         .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
                 {
                     bounds = vec![];
-                    is_shallow = true;
+                    is_simple = true;
                     substructure = combine_substructure(Box::new(|c, s, sub| {
-                        cs_clone_shallow("Clone", c, s, sub, false)
+                        cs_clone_simple("Clone", c, s, sub, false)
                     }));
                 } else {
                     bounds = vec![];
-                    is_shallow = false;
+                    is_simple = false;
                     substructure =
                         combine_substructure(Box::new(|c, s, sub| cs_clone("Clone", c, s, sub)));
                 }
             }
             ItemKind::Union(..) => {
                 bounds = vec![Literal(path_std!(marker::Copy))];
-                is_shallow = true;
+                is_simple = true;
                 substructure = combine_substructure(Box::new(|c, s, sub| {
-                    cs_clone_shallow("Clone", c, s, sub, true)
+                    cs_clone_simple("Clone", c, s, sub, true)
                 }));
             }
-            _ => {
-                bounds = vec![];
-                is_shallow = false;
-                substructure =
-                    combine_substructure(Box::new(|c, s, sub| cs_clone("Clone", c, s, sub)));
-            }
+            _ => cx.span_bug(span, "`#[derive(Clone)]` on wrong item kind"),
         },
 
         _ => cx.span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
@@ -95,10 +89,10 @@ pub fn expand_deriving_clone(
         associated_types: Vec::new(),
     };
 
-    trait_def.expand_ext(cx, mitem, item, push, is_shallow)
+    trait_def.expand_ext(cx, mitem, item, push, is_simple)
 }
 
-fn cs_clone_shallow(
+fn cs_clone_simple(
     name: &str,
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
@@ -141,7 +135,7 @@ fn cs_clone_shallow(
             }
             _ => cx.span_bug(
                 trait_span,
-                &format!("unexpected substructure in shallow `derive({})`", name),
+                &format!("unexpected substructure in simple `derive({})`", name),
             ),
         }
     }
