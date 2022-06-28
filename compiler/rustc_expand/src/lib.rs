@@ -9,6 +9,7 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
+#![feature(rustc_attrs)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 
