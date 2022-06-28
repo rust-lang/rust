@@ -2,6 +2,7 @@ use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::{Body, Location, Promoted};
+use rustc_middle::mir::{Constant, ConstantKind};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
@@ -77,7 +78,36 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
         debug!(?region);
     }
 
-    fn visit_const(&mut self, constant: &mut ty::Const<'tcx>, _location: Location) {
-        *constant = self.renumber_regions(*constant);
+    #[instrument(skip(self), level = "debug")]
+    fn visit_constant(&mut self, constant: &mut Constant<'tcx>, _location: Location) {
+        let literal = constant.literal;
+        debug!("{:#?}", literal);
+
+        match literal {
+            ConstantKind::Ty(ct) => {
+                let ct = self.renumber_regions(ct);
+                debug!("renumbered ct {:#?}", ct);
+
+                constant.literal = ConstantKind::Ty(ct);
+            }
+            ConstantKind::Unevaluated(uv, ty) => {
+                debug!("uv: {:#?}, ty: {:#?}", uv, ty);
+                let uv = self.renumber_regions(uv);
+                debug!("uv: {:#?}", uv);
+                let ty = self.renumber_regions(ty);
+                debug!("{:#?}", ty);
+                constant.literal = ConstantKind::Unevaluated(uv, ty);
+            }
+            ConstantKind::Val(val, ty) => {
+                let ty = self.renumber_regions(ty);
+                constant.literal = ConstantKind::Val(val, ty);
+            }
+        }
+
+        debug!("constant: {:#?}", constant);
+    }
+
+    fn visit_const(&mut self, _constant: &mut ty::Const<'tcx>, _location: Location) {
+        bug!("should never be called");
     }
 }
