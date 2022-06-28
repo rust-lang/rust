@@ -503,7 +503,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let root_empty = self
             .infcx
-            .next_nll_region_var(NllRegionVariableOrigin::RootEmptyRegion)
+            .next_nll_region_var(NllRegionVariableOrigin::Existential { from_forall: true })
             .to_region_vid();
 
         UniversalRegions {
