@@ -926,6 +926,7 @@ function loadCss(cssFileName) {
     function showHelp() {
         const menu = getHelpMenu(true);
         if (menu.style.display === "none") {
+            window.hidePopoverMenus();
             menu.style.display = "";
         }
     }
@@ -939,6 +940,8 @@ function loadCss(cssFileName) {
         const shouldShowHelp = menu.style.display === "none";
         if (shouldShowHelp) {
             showHelp();
+        } else {
+            window.hidePopoverMenus();
         }
     });
 
