@@ -17,7 +17,7 @@ fn main() {
         Foo {
             value: 3,
             nested: &Bar(4),
-        }  
+        }
     }> = Test;
     let y: Test<{
         Foo {
