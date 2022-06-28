@@ -600,7 +600,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 self.check_safe_pointer(&ptr, "box")?;
 
                 // Check other fields of Box
-                self.walk_value(op)?;
+                self.walk_value(value)?;
                 Ok(true)
             }
             ty::FnPtr(_sig) => {
