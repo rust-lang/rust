@@ -656,3 +656,5 @@ false,
         assert!(test_format_inner(format_code_block, code_block, expected));
     }
 }
+
+// Test rustfmt change.
