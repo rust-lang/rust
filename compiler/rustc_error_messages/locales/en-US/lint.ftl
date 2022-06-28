@@ -324,3 +324,5 @@ lint-builtin-export-name-method = declaration of a method with `export_name`
 lint-builtin-decl-unsafe-fn = declaration of an `unsafe` function
 lint-builtin-decl-unsafe-method = declaration of an `unsafe` method
 lint-builtin-impl-unsafe-method = implementation of an `unsafe` method
+
+lint-builtin-missing-doc = missing documentation for {$article} {$desc}

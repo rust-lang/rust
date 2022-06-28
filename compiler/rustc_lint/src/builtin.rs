@@ -582,7 +582,10 @@ impl MissingDoc {
                 MISSING_DOCS,
                 cx.tcx.sess.source_map().guess_head_span(sp),
                 |lint| {
-                    lint.build(&format!("missing documentation for {} {}", article, desc)).emit();
+                    lint.build(fluent::lint::builtin_missing_doc)
+                        .set_arg("article", article)
+                        .set_arg("desc", desc)
+                        .emit();
                 },
             );
         }
