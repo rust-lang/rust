@@ -419,7 +419,8 @@ function loadCss(cssFileName) {
             return;
         }
 
-        if (document.activeElement.tagName === "INPUT") {
+        if (document.activeElement.tagName === "INPUT" &&
+            document.activeElement.type !== "checkbox") {
             switch (getVirtualKey(ev)) {
             case "Escape":
                 handleEscape(ev);

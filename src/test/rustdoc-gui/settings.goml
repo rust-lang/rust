@@ -122,6 +122,7 @@ click: ".setting-line:last-child .toggle .label"
 assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
 
 // Make sure that "Disable keyboard shortcuts" actually took effect.
+// The help popover won't exist yet.
 press-key: "?"
 wait-for-css: ("#settings-menu .popover", {"display": "block"})
 
