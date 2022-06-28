@@ -184,7 +184,7 @@ static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"
 
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
-static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview", "rust-analyzer-preview"];
+static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview"];
 
 macro_rules! t {
     ($e:expr) => {
@@ -403,6 +403,7 @@ impl Builder {
         rename("rustfmt", "rustfmt-preview");
         rename("clippy", "clippy-preview");
         rename("miri", "miri-preview");
+        rename("rust-analyzer", "rust-analyzer-preview");
     }
 
     fn rust_package(&mut self, manifest: &Manifest) -> Package {
