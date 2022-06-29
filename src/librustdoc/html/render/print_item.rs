@@ -23,6 +23,7 @@ use super::{
     AssocItemLink, Context, ImplRenderingParameters,
 };
 use crate::clean;
+use crate::config::ModuleSorting;
 use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
@@ -246,8 +247,11 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
         compare_names(lhs.as_str(), rhs.as_str())
     }
 
-    if cx.shared.sort_modules_alphabetically {
-        indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2, cx.tcx()));
+    match cx.shared.module_sorting {
+        ModuleSorting::Alphabetical => {
+            indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2, cx.tcx()));
+        }
+        ModuleSorting::DeclarationOrder => {}
     }
     // This call is to remove re-export duplicates in cases such as:
     //
