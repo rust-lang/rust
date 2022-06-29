@@ -126,3 +126,15 @@ wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
 // We now check it takes the full size of the display.
 assert-property: ("body", {"clientWidth": "500", "clientHeight": "700"})
 assert-property: (".sidebar", {"clientWidth": "500", "clientHeight": "700"})
+
+// We now check the display of the toggle once the sidebar is expanded.
+assert-property: ("#sidebar-toggle", {"clientWidth": "500", "clientHeight": "39"})
+assert-css: (
+    "#sidebar-toggle",
+    {
+        "border-top-width": "0px",
+        "border-right-width": "0px",
+        "border-left-width": "0px",
+        "border-bottom-width": "1px",
+    },
+)
