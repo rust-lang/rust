@@ -7,16 +7,13 @@ use crate::rustc_middle::ty::subst::Subst;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::opaque_types::ReplaceOpaqueTypes;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
-use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Span;
-use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::ArgKind;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
@@ -430,14 +427,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // in this binder we are creating.
         assert!(!expected_sig.sig.skip_binder().has_vars_bound_above(ty::INNERMOST));
         let bound_sig = expected_sig.sig.map_bound(|sig| {
-            let output = self.hide_parent_opaque_types(
-                sig.output(),
-                expected_sig.cause_span.unwrap_or(DUMMY_SP),
-                body.id().hir_id,
-            );
             self.tcx.mk_fn_sig(
                 sig.inputs().iter().cloned(),
-                output,
+                sig.output(),
                 sig.c_variadic,
                 hir::Unsafety::Normal,
                 Abi::RustCall,
@@ -609,23 +601,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // function.
                 Some(hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn)) => {
                     debug!("closure is async fn body");
-                    self.deduce_future_output_from_obligations(expr_def_id).unwrap_or_else(|| {
-                        // AFAIK, deducing the future output
-                        // always succeeds *except* in error cases
-                        // like #65159. I'd like to return Error
-                        // here, but I can't because I can't
-                        // easily (and locally) prove that we
-                        // *have* reported an
-                        // error. --nikomatsakis
-                        astconv.ty_infer(None, decl.output.span())
-                    })
+                    self.deduce_future_output_from_obligations(expr_def_id, body.id().hir_id)
+                        .unwrap_or_else(|| {
+                            // AFAIK, deducing the future output
+                            // always succeeds *except* in error cases
+                            // like #65159. I'd like to return Error
+                            // here, but I can't because I can't
+                            // easily (and locally) prove that we
+                            // *have* reported an
+                            // error. --nikomatsakis
+                            astconv.ty_infer(None, decl.output.span())
+                        })
                 }
 
                 _ => astconv.ty_infer(None, decl.output.span()),
             },
         };
-        let supplied_return =
-            self.hide_parent_opaque_types(supplied_return, decl.output.span(), body.id().hir_id);
 
         let result = ty::Binder::bind_with_vars(
             self.tcx.mk_fn_sig(
@@ -646,23 +637,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         result
     }
 
-    /// Closures can't create hidden types for opaque types of their parent, as they
-    /// do not have all the outlives information available. Also `type_of` looks for
-    /// hidden types in the owner (so the closure's parent), so it would not find these
-    /// definitions.
-    fn hide_parent_opaque_types(&self, ty: Ty<'tcx>, span: Span, body_id: hir::HirId) -> Ty<'tcx> {
-        let InferOk { value, obligations } = self.replace_opaque_types_with_inference_vars(
-            ty,
-            body_id,
-            span,
-            ObligationCauseCode::MiscObligation,
-            self.param_env,
-            ReplaceOpaqueTypes::OnlyForRPIT,
-        );
-        self.register_predicates(obligations);
-        value
-    }
-
     /// Invoked when we are translating the generator that results
     /// from desugaring an `async fn`. Returns the "sugared" return
     /// type of the `async fn` -- that is, the return type that the
@@ -670,7 +644,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Future<Output = T>`, so we do this by searching through the
     /// obligations to extract the `T`.
     #[instrument(skip(self), level = "debug")]
-    fn deduce_future_output_from_obligations(&self, expr_def_id: DefId) -> Option<Ty<'tcx>> {
+    fn deduce_future_output_from_obligations(
+        &self,
+        expr_def_id: DefId,
+        body_id: hir::HirId,
+    ) -> Option<Ty<'tcx>> {
         let ret_coercion = self.ret_coercion.as_ref().unwrap_or_else(|| {
             span_bug!(self.tcx.def_span(expr_def_id), "async fn generator outside of a fn")
         });
@@ -700,14 +678,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Infer(ty::TyVar(ret_vid)) => {
                 self.obligations_for_self_ty(ret_vid).find_map(|(_, obligation)| {
                     get_future_output(obligation.predicate, obligation.cause.span)
-                })
+                })?
             }
             ty::Opaque(def_id, substs) => self
                 .tcx
                 .bound_explicit_item_bounds(def_id)
                 .transpose_iter()
                 .map(|e| e.map_bound(|e| *e).transpose_tuple2())
-                .find_map(|(p, s)| get_future_output(p.subst(self.tcx, substs), s.0)),
+                .find_map(|(p, s)| get_future_output(p.subst(self.tcx, substs), s.0))?,
             ty::Error(_) => return None,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
@@ -715,8 +693,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
         };
 
+        // async fn that have opaque types in their return type need to redo the conversion to inference variables
+        // as they fetch the still opaque version from the signature.
+        let InferOk { value: output_ty, obligations } = self
+            .replace_opaque_types_with_inference_vars(
+                output_ty,
+                body_id,
+                self.tcx.def_span(expr_def_id),
+                self.param_env,
+            );
+        self.register_predicates(obligations);
+
         debug!("deduce_future_output_from_obligations: output_ty={:?}", output_ty);
-        output_ty
+        Some(output_ty)
     }
 
     /// Given a projection like

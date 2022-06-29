@@ -13,7 +13,6 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemKind, Node, PathSegment};
-use rustc_infer::infer::opaque_types::ReplaceOpaqueTypes;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
@@ -97,9 +96,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             declared_ret_ty,
             body.value.hir_id,
             decl.output.span(),
-            traits::ObligationCauseCode::OpaqueReturnType(None),
             param_env,
-            ReplaceOpaqueTypes::All,
         ));
     // If we replaced declared_ret_ty with infer vars, then we must be infering
     // an opaque type, so set a flag so we can improve diagnostics.
