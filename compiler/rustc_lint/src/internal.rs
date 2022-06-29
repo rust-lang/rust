@@ -414,7 +414,7 @@ impl LateLintPass<'_> for Diagnostics {
                 let Impl { of_trait: Some(of_trait), .. } = impl_ &&
                 let Some(def_id) = of_trait.trait_def_id() &&
                 let Some(name) = cx.tcx.get_diagnostic_name(def_id) &&
-                matches!(name, sym::SessionDiagnostic | sym::AddSubdiagnostic)
+                matches!(name, sym::SessionDiagnostic | sym::AddSubdiagnostic | sym::DecorateLint)
             {
                 found_impl = true;
                 break;

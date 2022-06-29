@@ -370,7 +370,7 @@ impl fmt::Display for ExplicitBug {
 impl error::Error for ExplicitBug {}
 
 pub use diagnostic::{
-    AddSubdiagnostic, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
+    AddSubdiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
     DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
 pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, LintDiagnosticBuilder};

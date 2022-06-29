@@ -1,7 +1,7 @@
 use crate::snippet::Style;
 use crate::{
-    CodeSuggestion, DiagnosticMessage, Level, MultiSpan, SubdiagnosticMessage, Substitution,
-    SubstitutionPart, SuggestionStyle,
+    CodeSuggestion, DiagnosticMessage, EmissionGuarantee, Level, LintDiagnosticBuilder, MultiSpan,
+    SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_error_messages::FluentValue;
@@ -166,6 +166,14 @@ impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
 pub trait AddSubdiagnostic {
     /// Add a subdiagnostic to an existing diagnostic.
     fn add_to_diagnostic(self, diag: &mut Diagnostic);
+}
+
+/// Trait implemented by lint types. This should not be implemented manually. Instead, use
+/// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
+#[rustc_diagnostic_item = "DecorateLint"]
+pub trait DecorateLint<'a, G: EmissionGuarantee> {
+    /// Decorate and emit a lint.
+    fn decorate_lint(self, diag: LintDiagnosticBuilder<'a, G>);
 }
 
 #[must_use]
