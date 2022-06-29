@@ -13,8 +13,6 @@ LL |                 ABORT();
    = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::sys_common::backtrace::__rust_end_short_backtrace::<[closure@std::panicking::begin_panic_handler::{closure#0}], !>` at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
    = note: inside `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::rt::panic_fmt` at RUSTLIB/core/src/panicking.rs:LL:CC
-   = note: inside `core::panicking::panic` at RUSTLIB/core/src/panicking.rs:LL:CC
 note: inside `main` at RUSTLIB/core/src/panic.rs:LL:CC
   --> $DIR/panic_abort3.rs:LL:CC
    |

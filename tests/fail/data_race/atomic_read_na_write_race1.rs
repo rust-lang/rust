@@ -1,7 +1,7 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 #![feature(core_intrinsics)]
 
-use std::intrinsics::atomic_load;
+use std::intrinsics;
 use std::sync::atomic::AtomicUsize;
 use std::thread::spawn;
 
@@ -22,7 +22,7 @@ pub fn main() {
 
         let j2 = spawn(move || {
             //Equivalent to: (&*c.0).load(Ordering::SeqCst)
-            atomic_load(c.0 as *mut usize) //~ ERROR Data race detected between Atomic Load on Thread(id = 2) and Write on Thread(id = 1)
+            intrinsics::atomic_load_seqcst(c.0 as *mut usize) //~ ERROR Data race detected between Atomic Load on Thread(id = 2) and Write on Thread(id = 1)
         });
 
         j1.join().unwrap();
