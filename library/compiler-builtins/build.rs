@@ -29,6 +29,7 @@ fn main() {
         || (target.contains("sgx") && target.contains("fortanix"))
         || target.contains("-none")
         || target.contains("nvptx")
+        || target.contains("uefi")
     {
         println!("cargo:rustc-cfg=feature=\"mem\"");
     }
