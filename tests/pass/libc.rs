@@ -290,9 +290,31 @@ fn test_clocks() {
     assert_eq!(is_error, 0);
 }
 
+fn test_posix_gettimeofday() {
+    let mut tp = std::mem::MaybeUninit::<libc::timeval>::uninit();
+    let tz = std::ptr::null_mut::<libc::timezone>();
+    #[cfg(target_os = "macos")] // `tz` has a different type on macOS
+    let tz = tz as *mut libc::c_void;
+    let is_error = unsafe { libc::gettimeofday(tp.as_mut_ptr(), tz) };
+    assert_eq!(is_error, 0);
+    let tv = unsafe { tp.assume_init() };
+    assert!(tv.tv_sec > 0);
+    assert!(tv.tv_usec >= 0); // Theoretically this could be 0.
+
+    // Test that non-null tz returns an error.
+    let mut tz = std::mem::MaybeUninit::<libc::timezone>::uninit();
+    let tz_ptr = tz.as_mut_ptr();
+    #[cfg(target_os = "macos")] // `tz` has a different type on macOS
+    let tz_ptr = tz_ptr as *mut libc::c_void;
+    let is_error = unsafe { libc::gettimeofday(tp.as_mut_ptr(), tz_ptr) };
+    assert_eq!(is_error, -1);
+}
+
 fn main() {
     #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     test_posix_fadvise();
+
+    test_posix_gettimeofday();
 
     #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     test_sync_file_range();

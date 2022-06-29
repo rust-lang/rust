@@ -139,6 +139,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
             }
 
+            // Time related shims
+            "gettimeofday" => {
+                let [tv, tz] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.gettimeofday(tv, tz)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+
             // Allocation
             "posix_memalign" => {
                 let [ret, align, size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
