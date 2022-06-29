@@ -218,12 +218,9 @@ pub(crate) struct RenderOptions {
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
     pub(crate) playground_url: Option<String>,
-    /// Whether to sort modules alphabetically on a module page instead of using declaration order.
-    /// `true` by default.
-    //
-    // FIXME(misdreavus): the flag name is `--sort-modules-by-appearance` but the meaning is
-    // inverted once read.
-    pub(crate) sort_modules_alphabetically: bool,
+    /// What sorting mode to use for module pages.
+    /// `ModuleSorting::Alphabetical` by default.
+    pub(crate) module_sorting: ModuleSorting,
     /// List of themes to extend the docs with. Original argument name is included to assist in
     /// displaying errors if it fails a theme check.
     pub(crate) themes: Vec<StylePath>,
@@ -279,6 +276,12 @@ pub(crate) struct RenderOptions {
     pub(crate) call_locations: AllCallLocations,
     /// If `true`, Context::init will not emit shared files.
     pub(crate) no_emit_shared: bool,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ModuleSorting {
+    DeclarationOrder,
+    Alphabetical,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -650,7 +653,11 @@ impl Options {
         let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
         let playground_url = matches.opt_str("playground-url");
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
-        let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
+        let module_sorting = if matches.opt_present("sort-modules-by-appearance") {
+            ModuleSorting::DeclarationOrder
+        } else {
+            ModuleSorting::Alphabetical
+        };
         let resource_suffix = matches.opt_str("resource-suffix").unwrap_or_default();
         let enable_minification = !matches.opt_present("disable-minification");
         let markdown_no_toc = matches.opt_present("markdown-no-toc");
@@ -731,7 +738,7 @@ impl Options {
                 external_html,
                 id_map,
                 playground_url,
-                sort_modules_alphabetically,
+                module_sorting,
                 themes,
                 extension_css,
                 extern_html_root_urls,
