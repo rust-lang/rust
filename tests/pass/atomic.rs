@@ -46,7 +46,6 @@ fn atomic_all_ops() {
     static ATOMIC: AtomicIsize = AtomicIsize::new(0);
     static ATOMIC_UNSIGNED: AtomicU64 = AtomicU64::new(0);
 
-
     // loads
     for o in [Relaxed, Acquire, SeqCst] {
         ATOMIC.load(o);
