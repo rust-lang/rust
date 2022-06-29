@@ -3,7 +3,9 @@
 // by matthieu-m
 use crate::alloc::{self, Layout, LayoutError};
 use core::fmt::{self, Debug, Display, Formatter};
-use core::marker::{PhantomData, Unsize};
+use core::marker::PhantomData;
+#[cfg(not(no_global_oom_handling))]
+use core::marker::Unsize;
 use core::mem;
 use core::ops::{Deref, DerefMut};
 use core::ptr::Pointee;
