@@ -39,7 +39,7 @@ export class Cargo {
         }
 
         const result: ArtifactSpec = { cargoArgs: cargoArgs };
-        if (cargoArgs[0] === "test") {
+        if (cargoArgs[0] === "test" || cargoArgs[0] === "bench") {
             // for instance, `crates\rust-analyzer\tests\heavy_tests\main.rs` tests
             // produce 2 artifacts: {"kind": "bin"} and {"kind": "test"}
             result.filter = (artifacts) => artifacts.filter((it) => it.isTest);
