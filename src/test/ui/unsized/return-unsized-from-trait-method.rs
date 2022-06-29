@@ -7,7 +7,7 @@ trait Foo {
 fn foo(f: Option<&dyn Foo>) {
     if let Some(f) = f {
         let _ = f.foo();
-        //~^ ERROR cannot move a value of type [u8]: the size of [u8] cannot be statically determined
+        //~^ ERROR cannot move a value of type `[u8]`
     }
 }
 

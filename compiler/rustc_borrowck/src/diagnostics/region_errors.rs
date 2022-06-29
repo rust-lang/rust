@@ -24,6 +24,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use crate::borrowck_errors;
+use crate::session_diagnostics::GenericDoesNotLiveLongEnough;
 
 use super::{OutlivesSuggestionBuilder, RegionName};
 use crate::region_infer::BlameConstraint;
@@ -196,9 +197,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // to report it; we could probably handle it by
                         // iterating over the universal regions and reporting
                         // an error that multiple bounds are required.
-                        self.buffer_error(self.infcx.tcx.sess.struct_span_err(
-                            type_test_span,
-                            &format!("`{}` does not live long enough", type_test.generic_kind),
+                        self.buffer_error(self.infcx.tcx.sess.create_err(
+                            GenericDoesNotLiveLongEnough {
+                                kind: type_test.generic_kind.to_string(),
+                                span: type_test_span,
+                            },
                         ));
                     }
                 }
