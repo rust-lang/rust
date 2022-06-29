@@ -69,6 +69,10 @@ while [[ $# -gt 0 ]]; do
             funcs+=(extended_sysroot_tests)
             shift
             ;;
+        "--mini-tests")
+            funcs+=(mini_tests)
+            shift
+            ;;
 
         "--build-sysroot")
             funcs+=(build_sysroot)

@@ -104,9 +104,13 @@ jobs:
         command: build
         args: --release
 
+    - name: Test mini_tests
+      run: |
+        ./test.sh --release --clean --build-sysroot --mini-tests ${{ matrix.libgccjit_version.extra }}
+
     - name: Test std_tests
       run: |
-        ./test.sh --release --clean --build-sysroot --std-tests ${{ matrix.libgccjit_version.extra }}
+        ./test.sh --release --std-tests ${{ matrix.libgccjit_version.extra }}
 
     - name: Test test_libcore
       run: |
