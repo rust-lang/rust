@@ -20,6 +20,7 @@ use synstructure::{BindingInfo, Structure};
 /// The central struct for constructing the `into_diagnostic` method from an annotated struct.
 pub(crate) struct SessionDiagnosticDerive<'a> {
     structure: Structure<'a>,
+    sess: syn::Ident,
     builder: SessionDiagnosticDeriveBuilder,
 }
 
@@ -28,18 +29,18 @@ impl<'a> SessionDiagnosticDerive<'a> {
         Self {
             builder: SessionDiagnosticDeriveBuilder {
                 diag,
-                sess,
                 fields: build_field_mapping(&structure),
                 kind: None,
                 code: None,
                 slug: None,
             },
+            sess,
             structure,
         }
     }
 
     pub(crate) fn into_tokens(self) -> TokenStream {
-        let SessionDiagnosticDerive { mut structure, mut builder } = self;
+        let SessionDiagnosticDerive { mut structure, sess, mut builder } = self;
 
         let ast = structure.ast();
         let attrs = &ast.attrs;
@@ -96,7 +97,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                     .each(|field_binding| builder.generate_field_attrs_code(field_binding));
 
                 let span = ast.span().unwrap();
-                let (diag, sess) = (&builder.diag, &builder.sess);
+                let diag = &builder.diag;
                 let init = match (builder.kind, builder.slug) {
                     (None, _) => {
                         span_err(span, "diagnostic kind not specified")
@@ -159,7 +160,6 @@ impl<'a> SessionDiagnosticDerive<'a> {
             }
         };
 
-        let sess = &builder.sess;
         structure.gen_impl(quote! {
             gen impl<'__session_diagnostic_sess> rustc_session::SessionDiagnostic<'__session_diagnostic_sess, #param_ty>
                     for @Self
@@ -200,8 +200,6 @@ impl SessionDiagnosticKind {
 /// only to be able to destructure and split `self.builder` and the `self.structure` up to avoid a
 /// double mut borrow later on.
 struct SessionDiagnosticDeriveBuilder {
-    /// Name of the session parameter that's passed in to the `as_error` method.
-    sess: syn::Ident,
     /// The identifier to use for the generated `DiagnosticBuilder` instance.
     diag: syn::Ident,
 
