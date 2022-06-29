@@ -19,8 +19,9 @@ impl Foo for Implementor {
     type Fut = impl Future<Output=Self::Fut2>;
 
     fn get_fut(&self) -> Self::Fut {
+    //~^ ERROR `{integer}` is not a future
         async move {
-            42 //~^ ERROR `{integer}` is not a future
+            42
             // 42 does not impl Future and rustc does actually point out the error,
             // but rustc used to panic.
             // Putting a valid Future here always worked fine.

@@ -1,7 +1,6 @@
 // Tests that we correctly handle opaque types being used opaquely,
 // even within their defining scope.
 //
-// check-pass
 #![feature(type_alias_impl_trait)]
 
 type Foo = impl Copy;
@@ -23,6 +22,7 @@ fn constrained_foo() -> Foo {
 // constraints on it.
 fn unconstrained_foo() -> Wrapper<Foo> {
     Wrapper::Second
+    //~^ ERROR: type annotations needed
 }
 
 fn main() {}
