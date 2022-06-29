@@ -373,7 +373,7 @@ pub use diagnostic::{
     AddSubdiagnostic, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
     DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
-pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee};
+pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, LintDiagnosticBuilder};
 use std::backtrace::Backtrace;
 
 /// A handler deals with errors and other compiler output.

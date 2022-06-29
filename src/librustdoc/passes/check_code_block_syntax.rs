@@ -1,7 +1,8 @@
 //! Validates syntax inside Rust code blocks (\`\`\`rust).
 use rustc_data_structures::sync::{Lock, Lrc};
-use rustc_errors::{emitter::Emitter, Applicability, Diagnostic, Handler, LazyFallbackBundle};
-use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_errors::{
+    emitter::Emitter, Applicability, Diagnostic, Handler, LazyFallbackBundle, LintDiagnosticBuilder,
+};
 use rustc_parse::parse_stream_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};

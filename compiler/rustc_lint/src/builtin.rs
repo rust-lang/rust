@@ -32,7 +32,8 @@ use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    fluent, Applicability, Diagnostic, DiagnosticMessage, DiagnosticStyledString, MultiSpan,
+    fluent, Applicability, Diagnostic, DiagnosticMessage, DiagnosticStyledString,
+    LintDiagnosticBuilder, MultiSpan,
 };
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
@@ -40,7 +41,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
 use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, PatKind, PredicateOrigin};
 use rustc_index::vec::Idx;
-use rustc_middle::lint::{in_external_macro, LintDiagnosticBuilder};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::GenericArgKind;

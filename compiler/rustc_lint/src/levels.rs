@@ -3,13 +3,13 @@ use crate::late::unerased_lint_store;
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, MultiSpan};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, LintDiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
-    struct_lint_level, LevelAndSource, LintDiagnosticBuilder, LintExpectation, LintLevelMap,
-    LintLevelSets, LintLevelSource, LintSet, LintStackIndex, COMMAND_LINE,
+    struct_lint_level, LevelAndSource, LintExpectation, LintLevelMap, LintLevelSets,
+    LintLevelSource, LintSet, LintStackIndex, COMMAND_LINE,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
