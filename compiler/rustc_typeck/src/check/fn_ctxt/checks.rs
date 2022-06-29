@@ -1629,7 +1629,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        for error in errors {
+        'outer: for error in errors {
             // Only if the cause is somewhere inside the expression we want try to point at arg.
             // Otherwise, it means that the cause is somewhere else and we should not change
             // anything because we can break the correct span.
@@ -1671,10 +1671,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => continue,
                 };
             let self_ = self.resolve_vars_if_possible(self_);
+            let ty_matches_self = |ty: Ty<'tcx>| ty.walk().any(|arg| arg == self_);
+
+            let typeck_results = self.typeck_results.borrow();
+
+            for (idx, arg) in args.iter().enumerate() {
+                // Don't adjust the span if we already have a more precise span
+                // within one of the args.
+                if arg.span.contains(error.obligation.cause.span) {
+                    let references_arg =
+                        typeck_results.expr_ty_opt(arg).map_or(false, &ty_matches_self)
+                            || expected_tys.get(idx).copied().map_or(false, &ty_matches_self);
+                    if references_arg && !arg.span.from_expansion() {
+                        error.obligation.cause.map_code(|parent_code| {
+                            ObligationCauseCode::FunctionArgumentObligation {
+                                arg_hir_id: args[idx].hir_id,
+                                call_hir_id: expr.hir_id,
+                                parent_code,
+                            }
+                        })
+                    }
+                    continue 'outer;
+                }
+            }
 
             // Collect the argument position for all arguments that could have caused this
             // `FulfillmentError`.
-            let typeck_results = self.typeck_results.borrow();
             let mut referenced_in: Vec<_> = std::iter::zip(expected_tys, args)
                 .enumerate()
                 .flat_map(|(idx, (expected_ty, arg))| {
@@ -1688,7 +1710,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ty = self.resolve_vars_if_possible(ty);
                     // We walk the argument type because the argument's type could have
                     // been `Option<T>`, but the `FulfillmentError` references `T`.
-                    if ty.walk().any(|arg| arg == self_) { Some(i) } else { None }
+                    if ty_matches_self(ty) { Some(i) } else { None }
                 })
                 .collect();
 
@@ -1699,18 +1721,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             referenced_in.sort_unstable();
             referenced_in.dedup();
 
-            if let (Some(ref_in), None) = (referenced_in.pop(), referenced_in.pop()) {
+            if let &[idx] = &referenced_in[..] {
                 // Do not point at the inside of a macro.
                 // That would often result in poor error messages.
-                if args[ref_in].span.from_expansion() {
-                    return;
+                if args[idx].span.from_expansion() {
+                    continue;
                 }
                 // We make sure that only *one* argument matches the obligation failure
                 // and we assign the obligation's span to its expression's.
-                error.obligation.cause.span = args[ref_in].span;
+                error.obligation.cause.span = args[idx].span;
                 error.obligation.cause.map_code(|parent_code| {
                     ObligationCauseCode::FunctionArgumentObligation {
-                        arg_hir_id: args[ref_in].hir_id,
+                        arg_hir_id: args[idx].hir_id,
                         call_hir_id: expr.hir_id,
                         parent_code,
                     }
