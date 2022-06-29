@@ -1759,7 +1759,6 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     match tcx.def_kind(parent) {
         DefKind::Struct | DefKind::Union => false,
         DefKind::Variant => true,
-        // FIXME: what about DefKind::Ctor?
         parent_kind => panic!("unexpected parent kind: {:?}", parent_kind),
     }
 }
