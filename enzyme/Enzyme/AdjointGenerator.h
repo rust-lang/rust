@@ -835,12 +835,23 @@ public:
       }
     }
     if (!gutils->isConstantInstruction(&I) || !gutils->isConstantValue(&I)) {
+      if (looseTypeAnalysis) {
+        auto &DL = gutils->newFunc->getParent()->getDataLayout();
+        auto valType = I.getValOperand()->getType();
+        auto storeSize = DL.getTypeSizeInBits(valType) / 8;
+        auto fp = TR.firstPointer(storeSize, I.getPointerOperand(),
+                                  /*errifnotfound*/ false,
+                                  /*pointerIntSame*/ true);
+        if (!fp.isKnown() && valType->isIntOrIntVectorTy()) {
+          goto noerror;
+        }
+      }
       TR.dump();
       llvm::errs() << "oldFunc: " << *gutils->newFunc << "\n";
       llvm::errs() << "I: " << I << "\n";
+      assert(0 && "Active atomic inst not handled");
     }
-    assert(gutils->isConstantInstruction(&I));
-    assert(gutils->isConstantValue(&I));
+  noerror:;
 
     if (Mode == DerivativeMode::ReverseModeGradient) {
       eraseIfUnused(I, /*erase*/ true, /*check*/ false);
