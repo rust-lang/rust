@@ -29,8 +29,8 @@ pub fn expand_deriving_partial_ord(
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
         generics: Bounds::empty(),
-        explicit_self: borrowed_explicit_self(),
-        args: vec![(borrowed_self(), sym::other)],
+        explicit_self: true,
+        args: vec![(self_ref(), sym::other)],
         ret_ty,
         attributes: attrs,
         unify_fieldless_variants: true,

@@ -120,11 +120,8 @@ pub fn expand_deriving_rustc_encodable(
                     vec![Path::new_(vec![krate, sym::Encoder], None, vec![], PathKind::Global)],
                 )],
             },
-            explicit_self: borrowed_explicit_self(),
-            args: vec![(
-                Ptr(Box::new(Literal(Path::new_local(typaram))), Borrowed(None, Mutability::Mut)),
-                sym::s,
-            )],
+            explicit_self: true,
+            args: vec![(Ref(Box::new(Literal(Path::new_local(typaram))), Mutability::Mut), sym::s)],
             ret_ty: Literal(Path::new_(
                 pathvec_std!(result::Result),
                 None,

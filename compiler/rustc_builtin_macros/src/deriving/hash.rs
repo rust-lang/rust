@@ -30,8 +30,8 @@ pub fn expand_deriving_hash(
         methods: vec![MethodDef {
             name: sym::hash,
             generics: Bounds { bounds: vec![(typaram, vec![path_std!(hash::Hasher)])] },
-            explicit_self: borrowed_explicit_self(),
-            args: vec![(Ptr(Box::new(Literal(arg)), Borrowed(None, Mutability::Mut)), sym::state)],
+            explicit_self: true,
+            args: vec![(Ref(Box::new(Literal(arg)), Mutability::Mut), sym::state)],
             ret_ty: nil_ty(),
             attributes: vec![],
             unify_fieldless_variants: true,

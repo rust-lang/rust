@@ -34,7 +34,7 @@ pub fn expand_deriving_default(
         methods: vec![MethodDef {
             name: kw::Default,
             generics: Bounds::empty(),
-            explicit_self: None,
+            explicit_self: false,
             args: Vec::new(),
             ret_ty: Self_,
             attributes: attrs,

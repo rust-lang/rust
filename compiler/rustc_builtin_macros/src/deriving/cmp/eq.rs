@@ -31,7 +31,7 @@ pub fn expand_deriving_eq(
         methods: vec![MethodDef {
             name: sym::assert_receiver_is_total_eq,
             generics: Bounds::empty(),
-            explicit_self: borrowed_explicit_self(),
+            explicit_self: true,
             args: vec![],
             ret_ty: nil_ty(),
             attributes: attrs,

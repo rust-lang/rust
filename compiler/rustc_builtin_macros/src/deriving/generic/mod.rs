@@ -188,7 +188,7 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
-use ty::{Bounds, Path, Ptr, PtrTy, Self_, Ty};
+use ty::{Bounds, Path, Ref, Self_, Ty};
 
 use crate::deriving;
 
@@ -224,10 +224,8 @@ pub struct MethodDef<'a> {
     /// List of generics, e.g., `R: rand::Rng`
     pub generics: Bounds,
 
-    /// Whether there is a self argument (outer Option) i.e., whether
-    /// this is a static function, and whether it is a pointer (inner
-    /// Option)
-    pub explicit_self: Option<Option<PtrTy>>,
+    /// Is there is a `&self` argument? If not, it is a static function.
+    pub explicit_self: bool,
 
     /// Arguments other than the self argument
     pub args: Vec<(Ty, Symbol)>,
@@ -844,7 +842,7 @@ impl<'a> MethodDef<'a> {
     }
 
     fn is_static(&self) -> bool {
-        self.explicit_self.is_none()
+        !self.explicit_self
     }
 
     fn split_self_nonself_args(
@@ -857,17 +855,15 @@ impl<'a> MethodDef<'a> {
         let mut self_args = Vec::new();
         let mut nonself_args = Vec::new();
         let mut arg_tys = Vec::new();
-        let mut nonstatic = false;
         let span = trait_.span;
 
-        let ast_explicit_self = self.explicit_self.as_ref().map(|self_ptr| {
-            let (self_expr, explicit_self) = ty::get_explicit_self(cx, span, self_ptr);
-
+        let ast_explicit_self = if self.explicit_self {
+            let (self_expr, explicit_self) = ty::get_explicit_self(cx, span);
             self_args.push(self_expr);
-            nonstatic = true;
-
-            explicit_self
-        });
+            Some(explicit_self)
+        } else {
+            None
+        };
 
         for (ty, name) in self.args.iter() {
             let ast_ty = ty.to_ty(cx, span, type_ident, generics);
@@ -879,10 +875,10 @@ impl<'a> MethodDef<'a> {
             match *ty {
                 // for static methods, just treat any Self
                 // arguments as a normal arg
-                Self_ if nonstatic => {
+                Self_ if !self.is_static() => {
                     self_args.push(arg_expr);
                 }
-                Ptr(ref ty, _) if matches!(**ty, Self_) && nonstatic => {
+                Ref(ref ty, _) if matches!(**ty, Self_) && !self.is_static() => {
                     self_args.push(cx.expr_deref(span, arg_expr))
                 }
                 _ => {

@@ -16,8 +16,7 @@ pub fn expand_deriving_debug(
     push: &mut dyn FnMut(Annotatable),
 ) {
     // &mut ::std::fmt::Formatter
-    let fmtr =
-        Ptr(Box::new(Literal(path_std!(fmt::Formatter))), Borrowed(None, ast::Mutability::Mut));
+    let fmtr = Ref(Box::new(Literal(path_std!(fmt::Formatter))), ast::Mutability::Mut);
 
     let trait_def = TraitDef {
         span,
@@ -29,7 +28,7 @@ pub fn expand_deriving_debug(
         methods: vec![MethodDef {
             name: sym::fmt,
             generics: Bounds::empty(),
-            explicit_self: borrowed_explicit_self(),
+            explicit_self: true,
             args: vec![(fmtr, sym::f)],
             ret_ty: Literal(path_std!(fmt::Result)),
             attributes: Vec::new(),

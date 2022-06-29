@@ -35,11 +35,8 @@ pub fn expand_deriving_rustc_decodable(
                     vec![Path::new_(vec![krate, sym::Decoder], None, vec![], PathKind::Global)],
                 )],
             },
-            explicit_self: None,
-            args: vec![(
-                Ptr(Box::new(Literal(Path::new_local(typaram))), Borrowed(None, Mutability::Mut)),
-                sym::d,
-            )],
+            explicit_self: false,
+            args: vec![(Ref(Box::new(Literal(Path::new_local(typaram))), Mutability::Mut), sym::d)],
             ret_ty: Literal(Path::new_(
                 pathvec_std!(result::Result),
                 None,

@@ -79,7 +79,7 @@ pub fn expand_deriving_clone(
         methods: vec![MethodDef {
             name: sym::clone,
             generics: Bounds::empty(),
-            explicit_self: borrowed_explicit_self(),
+            explicit_self: true,
             args: Vec::new(),
             ret_ty: Self_,
             attributes: attrs,
