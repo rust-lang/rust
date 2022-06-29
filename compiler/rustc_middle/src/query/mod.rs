@@ -978,11 +978,9 @@ rustc_queries! {
         desc { "converting type-level constant value to mir constant value"}
     }
 
-    /// Destructure a constant ADT or array into its variant index and its
-    /// field values or return `None` if constant is invalid.
-    ///
-    /// Use infallible `TyCtxt::destructure_const` when you know that constant is valid.
-    query try_destructure_const(key: ty::Const<'tcx>) -> Option<ty::DestructuredConst<'tcx>> {
+    /// Destructures array, ADT or tuple constants into the constants
+    /// of their fields.
+    query destructure_const(key: ty::Const<'tcx>) -> ty::DestructuredConst<'tcx> {
         desc { "destructuring type level constant"}
     }
 

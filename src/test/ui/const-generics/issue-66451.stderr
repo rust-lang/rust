@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-66451.rs:27:10
+   |
+LL |       let y: Test<{
+   |  ____________-
+LL | |         Foo {
+LL | |             value: 3,
+LL | |             nested: &Bar(5),
+LL | |         }
+LL | |     }> = x;
+   | |      -   ^ expected `Foo { value: 3_i32, nested: &Bar::<i32>(5_i32) }`, found `Foo { value: 3_i32, nested: &Bar::<i32>(4_i32) }`
+   | |______|
+   |        expected due to this
+   |
+   = note: expected struct `Test<Foo { value: 3_i32, nested: &Bar::<i32>(5_i32) }>`
+              found struct `Test<Foo { value: 3_i32, nested: &Bar::<i32>(4_i32) }>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
