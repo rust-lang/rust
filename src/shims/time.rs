@@ -64,7 +64,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        this.assert_target_os("macos", "gettimeofday");
+        this.assert_target_os_is_unix("gettimeofday");
         this.check_no_isolation("`gettimeofday`")?;
 
         // Using tz is obsolete and should always be null

@@ -78,11 +78,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Time related shims
-            "gettimeofday" => {
-                let [tv, tz] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.gettimeofday(tv, tz)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
             "mach_absolute_time" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.mach_absolute_time()?;
