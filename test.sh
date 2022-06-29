@@ -17,13 +17,14 @@ export LIBRARY_PATH="$GCC_PATH"
 flags=
 gcc_master_branch=1
 channel="debug"
-func=all
+funcs=()
 build_only=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --release)
             codegen_channel=release
+            channel="release"
             shift
             ;;
         --release-sysroot)
@@ -40,37 +41,41 @@ while [[ $# -gt 0 ]]; do
             flags="$flags --features $1"
             shift
             ;;
-        --release)
-            channel="release"
-            shift
-            ;;
         "--test-rustc")
-            func=test_rustc
+            funcs+=(test_rustc)
             shift
             ;;
 
         "--test-libcore")
-            func=test_libcore
+            funcs+=(test_libcore)
             shift
             ;;
 
         "--clean-ui-tests")
-            func=clean_ui_tests
+            funcs+=(clean_ui_tests)
+            shift
+            ;;
+        "--clean")
+            funcs+=(clean)
             shift
             ;;
 
         "--std-tests")
-            func=std_tests
+            funcs+=(std_tests)
             shift
             ;;
 
         "--extended-tests")
-            func=extended_sysroot_tests
+            funcs+=(extended_sysroot_tests)
+            shift
+            ;;
+        "--mini-tests")
+            funcs+=(mini_tests)
             shift
             ;;
 
         "--build-sysroot")
-            func=build_sysroot
+            funcs+=(build_sysroot)
             shift
             ;;
         "--build")
@@ -87,7 +92,6 @@ done
 if [[ $channel == "release" ]]; then
     export CHANNEL='release'
     CARGO_INCREMENTAL=1 cargo rustc --release $flags
-    shift
 else
     echo $LD_LIBRARY_PATH
     export CHANNEL='debug'
@@ -95,6 +99,7 @@ else
 fi
 
 if (( $build_only == 1 )); then
+    echo "Since it's `build-only`, exiting..."
     exit
 fi
 
@@ -289,4 +294,11 @@ function all() {
     test_rustc
 }
 
-$func
+if [ ${#funcs[@]} -eq 0 ]; then
+    echo "No command passed, running `--all`..."
+    all
+else
+    for t in ${funcs[@]}; do
+        $t
+    done
+fi
