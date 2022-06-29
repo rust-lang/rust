@@ -124,6 +124,8 @@ pub struct MiriConfig {
     pub preemption_rate: f64,
     /// Report the current instruction being executed every N basic blocks.
     pub report_progress: Option<u32>,
+    /// Whether Stacked Borrows retagging should recurse into fields of datatypes.
+    pub retag_fields: bool,
 }
 
 impl Default for MiriConfig {
@@ -154,6 +156,7 @@ impl Default for MiriConfig {
             mute_stdout_stderr: false,
             preemption_rate: 0.01, // 1%
             report_progress: None,
+            retag_fields: false,
         }
     }
 }

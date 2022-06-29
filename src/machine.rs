@@ -354,6 +354,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             Some(RefCell::new(stacked_borrows::GlobalStateInner::new(
                 config.tracked_pointer_tags.clone(),
                 config.tracked_call_ids.clone(),
+                config.retag_fields,
             )))
         } else {
             None
