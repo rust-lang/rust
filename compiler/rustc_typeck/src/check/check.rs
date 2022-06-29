@@ -737,8 +737,7 @@ fn check_opaque_meets_bounds<'tcx>(
             hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {}
             // Can have different predicates to their defining use
             hir::OpaqueTyOrigin::TyAlias => {
-                let mut outlives_environment = OutlivesEnvironment::new(param_env);
-                outlives_environment.save_implied_bounds(hir_id);
+                let outlives_environment = OutlivesEnvironment::new(param_env);
                 infcx.check_region_obligations_and_report_errors(&outlives_environment);
             }
         }

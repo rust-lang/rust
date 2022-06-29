@@ -1,8 +1,6 @@
 use crate::infer::free_regions::FreeRegionMap;
 use crate::infer::{GenericKind, InferCtxt};
 use crate::traits::query::OutlivesBound;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
 use rustc_middle::ty::{self, ReEarlyBound, ReFree, ReVar, Region};
 
 use super::explicit_outlives_bounds;
@@ -31,9 +29,7 @@ pub struct OutlivesEnvironment<'tcx> {
     pub param_env: ty::ParamEnv<'tcx>,
     free_region_map: FreeRegionMap<'tcx>,
 
-    // Contains, for each body B that we are checking (that is, the fn
-    // item, but also any nested closures), the set of implied region
-    // bounds that are in scope in that particular body.
+    // Contains the implied region bounds in scope for our current body.
     //
     // Example:
     //
@@ -43,24 +39,15 @@ pub struct OutlivesEnvironment<'tcx> {
     // } // body B0
     // ```
     //
-    // Here, for body B0, the list would be `[T: 'a]`, because we
+    // Here, when checking the body B0, the list would be `[T: 'a]`, because we
     // infer that `T` must outlive `'a` from the implied bounds on the
     // fn declaration.
     //
-    // For the body B1, the list would be `[T: 'a, T: 'b]`, because we
+    // For the body B1 however, the list would be `[T: 'a, T: 'b]`, because we
     // also can see that -- within the closure body! -- `T` must
     // outlive `'b`. This is not necessarily true outside the closure
     // body, since the closure may never be called.
-    //
-    // We collect this map as we descend the tree. We then use the
-    // results when proving outlives obligations like `T: 'x` later
-    // (e.g., if `T: 'x` must be proven within the body B1, then we
-    // know it is true if either `'a: 'x` or `'b: 'x`).
-    region_bound_pairs_map: FxHashMap<hir::HirId, RegionBoundPairs<'tcx>>,
-
-    // Used to compute `region_bound_pairs_map`: contains the set of
-    // in-scope region-bound pairs thus far.
-    region_bound_pairs_accum: RegionBoundPairs<'tcx>,
+    region_bound_pairs: RegionBoundPairs<'tcx>,
 }
 
 /// "Region-bound pairs" tracks outlives relations that are known to
@@ -73,8 +60,7 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
         let mut env = OutlivesEnvironment {
             param_env,
             free_region_map: Default::default(),
-            region_bound_pairs_map: Default::default(),
-            region_bound_pairs_accum: vec![],
+            region_bound_pairs: Default::default(),
         };
 
         env.add_outlives_bounds(None, explicit_outlives_bounds(param_env));
@@ -87,62 +73,9 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
         &self.free_region_map
     }
 
-    /// Borrows current value of the `region_bound_pairs`.
-    pub fn region_bound_pairs_map(&self) -> &FxHashMap<hir::HirId, RegionBoundPairs<'tcx>> {
-        &self.region_bound_pairs_map
-    }
-
-    /// This is a hack to support the old-school regionck, which
-    /// processes region constraints from the main function and the
-    /// closure together. In that context, when we enter a closure, we
-    /// want to be able to "save" the state of the surrounding a
-    /// function. We can then add implied bounds and the like from the
-    /// closure arguments into the environment -- these should only
-    /// apply in the closure body, so once we exit, we invoke
-    /// `pop_snapshot_post_typeck_child` to remove them.
-    ///
-    /// Example:
-    ///
-    /// ```ignore (pseudo-rust)
-    /// fn foo<T>() {
-    ///    callback(for<'a> |x: &'a T| {
-    ///         // ^^^^^^^ not legal syntax, but probably should be
-    ///         // within this closure body, `T: 'a` holds
-    ///    })
-    /// }
-    /// ```
-    ///
-    /// This "containment" of closure's effects only works so well. In
-    /// particular, we (intentionally) leak relationships between free
-    /// regions that are created by the closure's bounds. The case
-    /// where this is useful is when you have (e.g.) a closure with a
-    /// signature like `for<'a, 'b> fn(x: &'a &'b u32)` -- in this
-    /// case, we want to keep the relationship `'b: 'a` in the
-    /// free-region-map, so that later if we have to take `LUB('b,
-    /// 'a)` we can get the result `'b`.
-    ///
-    /// I have opted to keep **all modifications** to the
-    /// free-region-map, however, and not just those that concern free
-    /// variables bound in the closure. The latter seems more correct,
-    /// but it is not the existing behavior, and I could not find a
-    /// case where the existing behavior went wrong. In any case, it
-    /// seems like it'd be readily fixed if we wanted. There are
-    /// similar leaks around givens that seem equally suspicious, to
-    /// be honest. --nmatsakis
-    pub fn push_snapshot_pre_typeck_child(&self) -> usize {
-        self.region_bound_pairs_accum.len()
-    }
-
-    /// See `push_snapshot_pre_typeck_child`.
-    pub fn pop_snapshot_post_typeck_child(&mut self, len: usize) {
-        self.region_bound_pairs_accum.truncate(len);
-    }
-
-    /// Save the current set of region-bound pairs under the given `body_id`.
-    pub fn save_implied_bounds(&mut self, body_id: hir::HirId) {
-        let old =
-            self.region_bound_pairs_map.insert(body_id, self.region_bound_pairs_accum.clone());
-        assert!(old.is_none());
+    /// Borrows current `region_bound_pairs`.
+    pub fn region_bound_pairs(&self) -> &RegionBoundPairs<'tcx> {
+        &self.region_bound_pairs
     }
 
     /// Processes outlives bounds that are known to hold, whether from implied or other sources.
@@ -164,11 +97,10 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
             debug!("add_outlives_bounds: outlives_bound={:?}", outlives_bound);
             match outlives_bound {
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
-                    self.region_bound_pairs_accum.push((r_a, GenericKind::Param(param_b)));
+                    self.region_bound_pairs.push((r_a, GenericKind::Param(param_b)));
                 }
                 OutlivesBound::RegionSubProjection(r_a, projection_b) => {
-                    self.region_bound_pairs_accum
-                        .push((r_a, GenericKind::Projection(projection_b)));
+                    self.region_bound_pairs.push((r_a, GenericKind::Projection(projection_b)));
                 }
                 OutlivesBound::RegionSubRegion(r_a, r_b) => {
                     if let (ReEarlyBound(_) | ReFree(_), ReVar(vid_b)) = (r_a.kind(), r_b.kind()) {

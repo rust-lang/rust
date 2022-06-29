@@ -65,7 +65,6 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
 
             let mut outlives_environment = OutlivesEnvironment::new(param_env);
             outlives_environment.add_implied_bounds(&fcx.infcx, wf_tys, id);
-            outlives_environment.save_implied_bounds(id);
             fcx.infcx.check_region_obligations_and_report_errors(&outlives_environment);
         });
     }
@@ -660,8 +659,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     tcx.infer_ctxt().enter(|infcx| {
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
         outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id);
-        outlives_environment.save_implied_bounds(id);
-        let region_bound_pairs = outlives_environment.region_bound_pairs_map().get(&id).unwrap();
+        let region_bound_pairs = outlives_environment.region_bound_pairs();
 
         add_constraints(&infcx, region_bound_pairs);
 

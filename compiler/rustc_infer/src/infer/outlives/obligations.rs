@@ -60,19 +60,17 @@
 //! imply that `'b: 'a`.
 
 use crate::infer::outlives::components::{push_outlives_components, Component};
+use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
 use crate::infer::{
     self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, UndoLog, VerifyBound,
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
-
-use crate::infer::outlives::env::OutlivesEnvironment;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_hir as hir;
+use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 use smallvec::smallvec;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
@@ -145,10 +143,10 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// - `param_env` is the parameter environment for the enclosing function.
     /// - `body_id` is the body-id whose region obligations are being
     ///   processed.
-    #[instrument(level = "debug", skip(self, region_bound_pairs_map))]
+    #[instrument(level = "debug", skip(self, region_bound_pairs))]
     pub fn process_registered_region_obligations(
         &self,
-        region_bound_pairs_map: &FxHashMap<hir::HirId, RegionBoundPairs<'tcx>>,
+        region_bound_pairs: &RegionBoundPairs<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) {
         assert!(
@@ -158,7 +156,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         let my_region_obligations = self.take_registered_region_obligations();
 
-        for (body_id, RegionObligation { sup_type, sub_region, origin }) in my_region_obligations {
+        for (_body_id, RegionObligation { sup_type, sub_region, origin }) in my_region_obligations {
             debug!(
                 "process_registered_region_obligations: sup_type={:?} sub_region={:?} origin={:?}",
                 sup_type, sub_region, origin
@@ -166,16 +164,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
             let sup_type = self.resolve_vars_if_possible(sup_type);
 
-            if let Some(region_bound_pairs) = region_bound_pairs_map.get(&body_id) {
-                let outlives =
-                    &mut TypeOutlives::new(self, self.tcx, &region_bound_pairs, None, param_env);
-                outlives.type_must_outlive(origin, sup_type, sub_region);
-            } else {
-                self.tcx.sess.delay_span_bug(
-                    origin.span(),
-                    &format!("no region-bound-pairs for {:?}", body_id),
-                );
-            }
+            let outlives =
+                &mut TypeOutlives::new(self, self.tcx, &region_bound_pairs, None, param_env);
+            outlives.type_must_outlive(origin, sup_type, sub_region);
         }
     }
 
@@ -184,7 +175,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) {
         self.process_registered_region_obligations(
-            outlives_env.region_bound_pairs_map(),
+            outlives_env.region_bound_pairs(),
             outlives_env.param_env,
         );
 

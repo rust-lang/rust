@@ -16,7 +16,6 @@ use crate::traits::{
 //use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::CRATE_HIR_ID;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{util, TraitEngine};
 use rustc_middle::traits::specialization_graph::OverlapMode;
@@ -394,17 +393,9 @@ fn resolve_negative_obligation<'cx, 'tcx>(
         return false;
     }
 
-    let mut outlives_env = OutlivesEnvironment::new(param_env);
-    // FIXME -- add "assumed to be well formed" types into the `outlives_env`
-
-    // "Save" the accumulated implied bounds into the outlives environment
-    // (due to the FIXME above, there aren't any, but this step is still needed).
-    // The "body id" is given as `CRATE_HIR_ID`, which is the same body-id used
-    // by the "dummy" causes elsewhere (body-id is only relevant when checking
-    // function bodies with closures).
-    outlives_env.save_implied_bounds(CRATE_HIR_ID);
-
-    infcx.process_registered_region_obligations(outlives_env.region_bound_pairs_map(), param_env);
+    // FIXME -- also add "assumed to be well formed" types into the `outlives_env`
+    let outlives_env = OutlivesEnvironment::new(param_env);
+    infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
 
     let errors = infcx.resolve_regions(&outlives_env);
 

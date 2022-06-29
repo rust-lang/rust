@@ -212,15 +212,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, errors);
             }
 
-            let body_id_map: FxHashMap<_, _> = infcx
-                .inner
-                .borrow()
-                .region_obligations()
-                .iter()
-                .map(|&(id, _)| (id, vec![]))
-                .collect();
-
-            infcx.process_registered_region_obligations(&body_id_map, full_env);
+            infcx.process_registered_region_obligations(&Default::default(), full_env);
 
             let region_data = infcx
                 .inner
