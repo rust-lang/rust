@@ -63,3 +63,27 @@ pub(crate) struct PanicNonStrErr {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(const_eval::mut_deref, code = "E0658")]
+pub(crate) struct MutDerefErr {
+    #[primary_span]
+    pub span: Span,
+    pub kind: ConstContext,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(const_eval::transient_mut_borrow, code = "E0658")]
+pub(crate) struct TransientMutBorrowErr {
+    #[primary_span]
+    pub span: Span,
+    pub kind: ConstContext,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(const_eval::transient_mut_borrow_raw, code = "E0658")]
+pub(crate) struct TransientMutBorrowErrRaw {
+    #[primary_span]
+    pub span: Span,
+    pub kind: ConstContext,
+}

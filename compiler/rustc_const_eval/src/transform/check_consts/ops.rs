@@ -23,7 +23,8 @@ use rustc_trait_selection::traits::SelectionContext;
 
 use super::ConstCx;
 use crate::errors::{
-    NonConstOpErr, PanicNonStrErr, RawPtrComparisonErr, RawPtrToIntErr, StaticAccessErr,
+    MutDerefErr, NonConstOpErr, PanicNonStrErr, RawPtrComparisonErr, RawPtrToIntErr,
+    StaticAccessErr, TransientMutBorrowErr, TransientMutBorrowErrRaw,
 };
 use crate::util::{call_kind, CallDesugaringKind, CallKind};
 
@@ -595,17 +596,17 @@ impl<'tcx> NonConstOp<'tcx> for TransientMutBorrow {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let raw = match self.0 {
-            hir::BorrowKind::Raw => "raw ",
-            hir::BorrowKind::Ref => "",
-        };
-
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_mut_refs,
-            span,
-            &format!("{}mutable references are not allowed in {}s", raw, ccx.const_kind()),
-        )
+        let kind = ccx.const_kind();
+        match self.0 {
+            hir::BorrowKind::Raw => ccx
+                .tcx
+                .sess
+                .create_feature_err(TransientMutBorrowErrRaw { span, kind }, sym::const_mut_refs),
+            hir::BorrowKind::Ref => ccx
+                .tcx
+                .sess
+                .create_feature_err(TransientMutBorrowErr { span, kind }, sym::const_mut_refs),
+        }
     }
 }
 
@@ -626,12 +627,9 @@ impl<'tcx> NonConstOp<'tcx> for MutDeref {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_mut_refs,
-            span,
-            &format!("mutation through a reference is not allowed in {}s", ccx.const_kind()),
-        )
+        ccx.tcx
+            .sess
+            .create_feature_err(MutDerefErr { span, kind: ccx.const_kind() }, sym::const_mut_refs)
     }
 }
 

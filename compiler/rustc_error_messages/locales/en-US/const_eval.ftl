@@ -26,3 +26,22 @@ const-eval-raw-ptr-comparison =
     .note = see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
 
 const-eval-panic-non-str = argument to `panic!()` in a const context must have type `&str`
+
+const-eval-mut-deref =
+    mutation through a reference is not allowed in { $kind -> 
+        [constant function] constant functions
+        [static] statics
+        *[constant] constants
+    }
+
+const-eval-transient-mut-borrow = mutable references are not allowed in { $kind -> 
+        [constant function] constant functions
+        [static] statics
+        *[constant] constants
+    }
+
+const-eval-transient-mut-borrow-raw = raw mutable references are not allowed in { $kind -> 
+        [constant function] constant functions
+        [static] statics
+        *[constant] constants
+    }
