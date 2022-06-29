@@ -5,8 +5,8 @@ use crate::diagnostics::error::{
     SessionDiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
-    report_error_if_not_applied_to_span, report_type_error, type_is_unit, type_matches_path,
-    Applicability, FieldInfo, FieldInnerTy, HasFieldMap, SetOnce,
+    build_field_mapping, report_error_if_not_applied_to_span, report_type_error, type_is_unit,
+    type_matches_path, Applicability, FieldInfo, FieldInnerTy, HasFieldMap, SetOnce,
 };
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -25,26 +25,11 @@ pub(crate) struct SessionDiagnosticDerive<'a> {
 
 impl<'a> SessionDiagnosticDerive<'a> {
     pub(crate) fn new(diag: syn::Ident, sess: syn::Ident, structure: Structure<'a>) -> Self {
-        // Build the mapping of field names to fields. This allows attributes to peek values from
-        // other fields.
-        let mut fields_map = HashMap::new();
-
-        // Convenience bindings.
-        let ast = structure.ast();
-
-        if let syn::Data::Struct(syn::DataStruct { fields, .. }) = &ast.data {
-            for field in fields.iter() {
-                if let Some(ident) = &field.ident {
-                    fields_map.insert(ident.to_string(), quote! { &self.#ident });
-                }
-            }
-        }
-
         Self {
             builder: SessionDiagnosticDeriveBuilder {
                 diag,
                 sess,
-                fields: fields_map,
+                fields: build_field_mapping(&structure),
                 kind: None,
                 code: None,
                 slug: None,
