@@ -60,8 +60,8 @@ generation and linking obviously will have no effect) [and more][miri-flags].
 For example, you can (cross-)run the driver on a particular file by doing
 
 ```sh
-./miri run tests/run-pass/format.rs
-./miri run tests/run-pass/hello.rs --target i686-unknown-linux-gnu
+./miri run tests/pass/format.rs
+./miri run tests/pass/hello.rs --target i686-unknown-linux-gnu
 ```
 
 and you can (cross-)run the entire test suite using:
@@ -79,7 +79,7 @@ You can get a trace of which MIR statements are being executed by setting the
 `MIRI_LOG` environment variable.  For example:
 
 ```sh
-MIRI_LOG=info ./miri run tests/run-pass/vec.rs
+MIRI_LOG=info ./miri run tests/pass/vec.rs
 ```
 
 Setting `MIRI_LOG` like this will configure logging for Miri itself as well as
@@ -88,7 +88,7 @@ can also do more targeted configuration, e.g. the following helps debug the
 stacked borrows implementation:
 
 ```sh
-MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/run-pass/vec.rs
+MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/pass/vec.rs
 ```
 
 In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
