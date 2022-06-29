@@ -35,6 +35,7 @@ fluent_messages! {
     privacy => "../locales/en-US/privacy.ftl",
     typeck => "../locales/en-US/typeck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
+    borrowck => "../locales/en-US/borrowck.ftl",
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};
