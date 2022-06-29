@@ -4,6 +4,10 @@ on:
   - push
   - pull_request
 
+env:
+  # Enable backtraces for easier debugging
+  RUST_BACKTRACE: 1
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -102,46 +106,18 @@ jobs:
 
     - name: Test std_tests
       run: |
-        # Enable backtraces for easier debugging
-        export RUST_BACKTRACE=1
-
-        # Reduce amount of benchmark runs as they are slow
-        export COMPILE_RUNS=2
-        export RUN_RUNS=2
-
         ./test.sh --release --clean --build-sysroot --std-tests ${{ matrix.libgccjit_version.extra }}
 
     - name: Test test_libcore
       run: |
-        # Enable backtraces for easier debugging
-        export RUST_BACKTRACE=1
-
-        # Reduce amount of benchmark runs as they are slow
-        export COMPILE_RUNS=2
-        export RUN_RUNS=2
-
         ./test.sh --release --test-libcore ${{ matrix.libgccjit_version.extra }}
 
     - name: Test extended_sysroot_tests
       run: |
-        # Enable backtraces for easier debugging
-        export RUST_BACKTRACE=1
-
-        # Reduce amount of benchmark runs as they are slow
-        export COMPILE_RUNS=2
-        export RUN_RUNS=2
-
         ./test.sh --release --extended-tests ${{ matrix.libgccjit_version.extra }}
 
     - name: Test test_rustc
       run: |
-        # Enable backtraces for easier debugging
-        export RUST_BACKTRACE=1
-
-        # Reduce amount of benchmark runs as they are slow
-        export COMPILE_RUNS=2
-        export RUN_RUNS=2
-
         ./test.sh --release --test-rustc ${{ matrix.libgccjit_version.extra }}
 
   duplicates:
