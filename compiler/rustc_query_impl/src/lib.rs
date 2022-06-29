@@ -27,6 +27,8 @@ use rustc_span::Span;
 mod plumbing;
 pub use plumbing::QueryCtxt;
 use rustc_query_system::query::*;
+#[cfg(parallel_compiler)]
+pub use rustc_query_system::query::{deadlock, QueryContext};
 
 mod keys;
 use keys::Key;

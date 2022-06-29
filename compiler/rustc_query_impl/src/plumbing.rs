@@ -132,11 +132,6 @@ impl<'tcx> QueryCtxt<'tcx> {
         self.queries.on_disk_cache.as_ref()
     }
 
-    #[cfg(parallel_compiler)]
-    pub unsafe fn deadlock(self, registry: &rustc_rayon_core::Registry) {
-        rustc_query_system::query::deadlock(self, registry)
-    }
-
     pub(super) fn encode_query_results(
         self,
         encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx>,

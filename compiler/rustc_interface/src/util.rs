@@ -10,7 +10,7 @@ use rustc_errors::registry::Registry;
 use rustc_middle::ty::tls;
 use rustc_parse::validate_attr;
 #[cfg(parallel_compiler)]
-use rustc_query_impl::QueryCtxt;
+use rustc_query_impl::{QueryContext, QueryCtxt};
 use rustc_session as session;
 use rustc_session::config::CheckCfg;
 use rustc_session::config::{self, CrateType};
@@ -166,20 +166,12 @@ pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 unsafe fn handle_deadlock() {
     let registry = rustc_rayon_core::Registry::current();
 
-    let context = tls::get_tlv();
-    assert!(context != 0);
-    rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_, '_>>();
-    let icx: &tls::ImplicitCtxt<'_, '_> = &*(context as *const tls::ImplicitCtxt<'_, '_>);
-
-    let session_globals = rustc_span::with_session_globals(|sg| sg as *const _);
-    let session_globals = &*session_globals;
-    thread::spawn(move || {
-        tls::enter_context(icx, |_| {
-            rustc_span::set_session_globals_then(session_globals, || {
-                tls::with(|tcx| QueryCtxt::from_tcx(tcx).deadlock(&registry))
-            })
-        });
+    let query_map = tls::with(|tcx| {
+        QueryCtxt::from_tcx(tcx)
+            .try_collect_active_jobs()
+            .expect("active jobs shouldn't be locked in deadlock handler")
     });
+    thread::spawn(move || rustc_query_impl::deadlock(query_map, &registry));
 }
 
 #[cfg(parallel_compiler)]
