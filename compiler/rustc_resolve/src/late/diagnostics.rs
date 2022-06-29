@@ -1508,6 +1508,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         Some(match name {
             "byte" => sym::u8, // In Java, bytes are signed, but in practice one almost always wants unsigned bytes.
             "short" => sym::i16,
+            "Bool" => sym::bool,
+            "Boolean" => sym::bool,
             "boolean" => sym::bool,
             "int" => sym::i32,
             "long" => sym::i64,
