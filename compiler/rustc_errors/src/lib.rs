@@ -6,6 +6,7 @@
 #![feature(drain_filter)]
 #![feature(backtrace)]
 #![feature(if_let_guard)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![feature(adt_const_params)]

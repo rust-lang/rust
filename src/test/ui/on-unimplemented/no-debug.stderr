@@ -6,7 +6,7 @@ LL |     println!("{:?} {:?}", Foo, Bar);
    |
    = help: the trait `Debug` is not implemented for `Foo`
    = note: add `#[derive(Debug)]` to `Foo` or manually `impl Debug for Foo`
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` which expands to macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Foo` with `#[derive(Debug)]`
    |
 LL | #[derive(Debug)]
@@ -19,7 +19,7 @@ LL |     println!("{:?} {:?}", Foo, Bar);
    |                                ^^^ `Bar` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = help: the trait `Debug` is not implemented for `Bar`
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` which expands to macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `Foo` doesn't implement `std::fmt::Display`
   --> $DIR/no-debug.rs:11:23
@@ -29,7 +29,7 @@ LL |     println!("{} {}", Foo, Bar);
    |
    = help: the trait `std::fmt::Display` is not implemented for `Foo`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` which expands to macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `Bar` doesn't implement `std::fmt::Display`
   --> $DIR/no-debug.rs:11:28
@@ -39,7 +39,7 @@ LL |     println!("{} {}", Foo, Bar);
    |
    = help: the trait `std::fmt::Display` is not implemented for `Bar`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` which expands to macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

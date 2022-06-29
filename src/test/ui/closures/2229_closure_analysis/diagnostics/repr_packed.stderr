@@ -9,7 +9,7 @@ LL |         println!("{}", foo.x);
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` which expands to macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 
@@ -25,5 +25,5 @@ LL |         println!("{}", foo.x);
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` which expands to macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 

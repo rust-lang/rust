@@ -24,7 +24,7 @@ LL |         macro_rules! m { () => {} }
 ...
 LL | include!();
    | ---------- in this macro invocation
-   = note: this error originates in the macro `gen_gen_inner_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `include` which eventually expands to macro `gen_gen_inner_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:139:42
@@ -52,7 +52,7 @@ LL |         macro_rules! m { () => {} }
 ...
 LL | include!();
    | ---------- in this macro invocation
-   = note: this error originates in the macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `include` which eventually expands to macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:148:9
@@ -136,7 +136,7 @@ LL |         macro_rules! m { () => { Wrong } }
 ...
 LL | include!();
    | ---------- in this macro invocation
-   = note: this error originates in the macro `gen_gen_inner_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `include` which eventually expands to macro `gen_gen_inner_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:218:42
@@ -164,7 +164,7 @@ LL |         macro_rules! m { () => { Wrong } }
 ...
 LL | include!();
    | ---------- in this macro invocation
-   = note: this error originates in the macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `include` which eventually expands to macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-legacy.rs:232:9
@@ -220,7 +220,7 @@ LL |             macro_rules! m { () => {} }
 ...
 LL | include!();
    | ---------- in this macro invocation
-   = note: this error originates in the macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `include` which eventually expands to macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 8 previous errors
 

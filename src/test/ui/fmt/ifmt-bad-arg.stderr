@@ -308,7 +308,7 @@ note: associated function defined here
    |
 LL |     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
    |            ^^^^^^^^^^
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` which expands to macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/ifmt-bad-arg.rs:81:35
@@ -326,7 +326,7 @@ note: associated function defined here
    |
 LL |     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
    |            ^^^^^^^^^^
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` which expands to macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 36 previous errors
 

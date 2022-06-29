@@ -399,11 +399,11 @@ pub trait Emitter {
     ) {
         // Check for spans in macros, before `fix_multispans_in_extern_macros`
         // has a chance to replace them.
-        let has_macro_spans = iter::once(&*span)
+        let has_macro_spans: Vec<_> = iter::once(&*span)
             .chain(children.iter().map(|child| &child.span))
             .flat_map(|span| span.primary_spans())
             .flat_map(|sp| sp.macro_backtrace())
-            .find_map(|expn_data| {
+            .filter_map(|expn_data| {
                 match expn_data.kind {
                     ExpnKind::Root => None,
 
@@ -413,7 +413,8 @@ pub trait Emitter {
 
                     ExpnKind::Macro(macro_kind, name) => Some((macro_kind, name)),
                 }
-            });
+            })
+            .collect();
 
         if !backtrace {
             self.fix_multispans_in_extern_macros(source_map, span, children);
@@ -422,11 +423,23 @@ pub trait Emitter {
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            if let Some((macro_kind, name)) = has_macro_spans {
-                let descr = macro_kind.descr();
+            if let Some((macro_kind, name)) = has_macro_spans.last() {
+                // Mark the actual macro this originates from
+                let and_then = if let Some((macro_kind, first_name)) = has_macro_spans.first()
+                    && first_name != name
+                {
+                    let descr = macro_kind.descr();
+                    format!(
+                        " which{} expands to {descr} `{first_name}`",
+                        if has_macro_spans.len() > 2 { " eventually" } else { "" }
+                    )
+                } else {
+                    "".to_string()
+                };
 
+                let descr = macro_kind.descr();
                 let msg = format!(
-                    "this {level} originates in the {descr} `{name}` \
+                    "this {level} originates in the {descr} `{name}`{and_then} \
                     (in Nightly builds, run with -Z macro-backtrace for more info)",
                 );
 

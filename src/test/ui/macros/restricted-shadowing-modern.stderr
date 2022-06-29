@@ -24,7 +24,7 @@ LL |         macro m() {}
 ...
 LL | include!();
    | ---------- in this macro invocation
-   = note: this error originates in the macro `gen_gen_inner_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `include` which eventually expands to macro `gen_gen_inner_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-modern.rs:147:33
@@ -52,7 +52,7 @@ LL |         macro m() {}
 ...
 LL | include!();
    | ---------- in this macro invocation
-   = note: this error originates in the macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `include` which eventually expands to macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-modern.rs:156:13
@@ -136,7 +136,7 @@ LL |         macro m() { Wrong }
 ...
 LL | include!();
    | ---------- in this macro invocation
-   = note: this error originates in the macro `gen_gen_inner_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `include` which eventually expands to macro `gen_gen_inner_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `m` is ambiguous
   --> $DIR/restricted-shadowing-modern.rs:233:33
@@ -164,7 +164,7 @@ LL |         macro m() { Wrong }
 ...
 LL | include!();
    | ---------- in this macro invocation
-   = note: this error originates in the macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `include` which eventually expands to macro `gen_invoc` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors
 
