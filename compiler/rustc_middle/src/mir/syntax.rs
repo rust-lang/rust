@@ -53,9 +53,9 @@ pub enum MirPhase {
     /// query.
     ConstsPromoted = 2,
     /// Beginning with this phase, the following variants are disallowed:
-    /// * [`TerminatorKind::DropAndReplace`](terminator::TerminatorKind::DropAndReplace)
-    /// * [`TerminatorKind::FalseUnwind`](terminator::TerminatorKind::FalseUnwind)
-    /// * [`TerminatorKind::FalseEdge`](terminator::TerminatorKind::FalseEdge)
+    /// * [`TerminatorKind::DropAndReplace`]
+    /// * [`TerminatorKind::FalseUnwind`]
+    /// * [`TerminatorKind::FalseEdge`]
     /// * [`StatementKind::FakeRead`]
     /// * [`StatementKind::AscribeUserType`]
     /// * [`Rvalue::Ref`] with `BorrowKind::Shallow`
@@ -86,8 +86,8 @@ pub enum MirPhase {
     /// types across a yield point will lead to ICEs becaues of this.
     ///
     /// Beginning with this phase, the following variants are disallowed:
-    /// * [`TerminatorKind::Yield`](terminator::TerminatorKind::Yield)
-    /// * [`TerminatorKind::GeneratorDrop`](terminator::TerminatorKind::GeneratorDrop)
+    /// * [`TerminatorKind::Yield`]
+    /// * [`TerminatorKind::GeneratorDrop`]
     /// * [`ProjectionElem::Deref`] of `Box`
     GeneratorsLowered = 6,
     Optimized = 7,
@@ -712,7 +712,7 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///
 ///  1. The address in memory that the place refers to.
 ///  2. The provenance with which the place is being accessed.
-///  3. The type of the place and an optional variant index. See [`PlaceTy`][tcx::PlaceTy].
+///  3. The type of the place and an optional variant index. See [`PlaceTy`][super::tcx::PlaceTy].
 ///  4. Optionally, some metadata. This exists if and only if the type of the place is not `Sized`.
 ///
 /// We'll give a description below of how all pieces of the place except for the provenance are

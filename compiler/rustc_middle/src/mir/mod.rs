@@ -63,7 +63,7 @@ mod syntax;
 pub use syntax::*;
 mod switch_sources;
 pub mod tcx;
-pub mod terminator;
+mod terminator;
 pub use terminator::*;
 
 pub mod traversal;
