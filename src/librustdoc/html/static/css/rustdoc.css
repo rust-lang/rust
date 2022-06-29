@@ -1926,6 +1926,9 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		width: unset;
 		border-top-right-radius: unset;
 		border-bottom-right-radius: unset;
+		position: sticky;
+		border: 0;
+		border-bottom: 1px solid;
 	}
 
 	#source-sidebar {
