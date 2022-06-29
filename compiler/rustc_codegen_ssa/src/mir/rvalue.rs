@@ -15,14 +15,13 @@ use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_target::abi::{Abi, Int, Variants};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    #[instrument(level = "debug", skip(self, bx))]
     pub fn codegen_rvalue(
         &mut self,
         mut bx: Bx,
         dest: PlaceRef<'tcx, Bx::Value>,
         rvalue: &mir::Rvalue<'tcx>,
     ) -> Bx {
-        debug!("codegen_rvalue(dest.llval={:?}, rvalue={:?})", dest.llval, rvalue);
-
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
                 let cg_operand = self.codegen_operand(&mut bx, operand);

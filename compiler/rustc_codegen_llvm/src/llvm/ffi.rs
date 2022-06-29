@@ -1623,7 +1623,7 @@ extern "C" {
         B: &Builder<'a>,
         Val: &'a Value,
         DestTy: &'a Type,
-        IsSized: bool,
+        IsSigned: bool,
     ) -> &'a Value;
 
     // Comparisons
