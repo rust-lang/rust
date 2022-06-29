@@ -2,7 +2,7 @@ use std::sync::atomic::{compiler_fence, fence, AtomicBool, AtomicIsize, AtomicU6
 
 fn main() {
     atomic_bool();
-    atomic_isize();
+    atomic_all_ops();
     atomic_u64();
     atomic_fences();
     weak_sometimes_fails();
@@ -25,6 +25,7 @@ fn atomic_bool() {
         assert_eq!(*ATOMIC.get_mut(), false);
     }
 }
+
 // There isn't a trait to use to make this generic, so just use a macro
 macro_rules! compare_exchange_weak_loop {
     ($atom:expr, $from:expr, $to:expr, $succ_order:expr, $fail_order:expr) => {
@@ -39,10 +40,40 @@ macro_rules! compare_exchange_weak_loop {
         }
     };
 }
-fn atomic_isize() {
-    static ATOMIC: AtomicIsize = AtomicIsize::new(0);
 
-    // Make sure trans can emit all the intrinsics correctly
+/// Make sure we can handle all the intrinsics
+fn atomic_all_ops() {
+    static ATOMIC: AtomicIsize = AtomicIsize::new(0);
+    static ATOMIC_UNSIGNED: AtomicU64 = AtomicU64::new(0);
+
+
+    // loads
+    for o in [Relaxed, Acquire, SeqCst] {
+        ATOMIC.load(o);
+    }
+
+    // stores
+    for o in [Relaxed, Release, SeqCst] {
+        ATOMIC.store(1, o);
+    }
+
+    // most RMWs
+    for o in [Relaxed, Release, Acquire, AcqRel, SeqCst] {
+        ATOMIC.swap(0, o);
+        ATOMIC.fetch_or(0, o);
+        ATOMIC.fetch_xor(0, o);
+        ATOMIC.fetch_and(0, o);
+        ATOMIC.fetch_nand(0, o);
+        ATOMIC.fetch_add(0, o);
+        ATOMIC.fetch_sub(0, o);
+        ATOMIC.fetch_min(0, o);
+        ATOMIC.fetch_max(0, o);
+        ATOMIC_UNSIGNED.fetch_min(0, o);
+        ATOMIC_UNSIGNED.fetch_max(0, o);
+    }
+
+    // RMWs with deparate failure ordering
+    ATOMIC.store(0, SeqCst);
     assert_eq!(ATOMIC.compare_exchange(0, 1, Relaxed, Relaxed), Ok(0));
     assert_eq!(ATOMIC.compare_exchange(0, 2, Acquire, Relaxed), Err(1));
     assert_eq!(ATOMIC.compare_exchange(0, 1, Release, Relaxed), Err(1));
@@ -59,7 +90,6 @@ fn atomic_isize() {
     assert_eq!(ATOMIC.compare_exchange_weak(0, 1, Release, Relaxed), Err(1));
     compare_exchange_weak_loop!(ATOMIC, 1, 0, AcqRel, Relaxed);
     assert_eq!(ATOMIC.load(Relaxed), 0);
-    ATOMIC.compare_exchange_weak(0, 1, AcqRel, Relaxed).ok();
     ATOMIC.compare_exchange_weak(0, 1, SeqCst, Relaxed).ok();
     ATOMIC.compare_exchange_weak(0, 1, Acquire, Acquire).ok();
     ATOMIC.compare_exchange_weak(0, 1, AcqRel, Acquire).ok();
