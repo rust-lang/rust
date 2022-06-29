@@ -9,7 +9,6 @@ use hir::OpaqueTyOrigin;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::vec_map::VecMap;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -48,6 +47,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::ResultsCursor;
 
+use crate::session_diagnostics::MoveUnsized;
 use crate::{
     borrow_set::BorrowSet,
     constraints::{OutlivesConstraint, OutlivesConstraintSet},
@@ -1780,19 +1780,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // slot or local, so to find all unsized rvalues it is enough
             // to check all temps, return slots and locals.
             if self.reported_errors.replace((ty, span)).is_none() {
-                let mut diag = struct_span_err!(
-                    self.tcx().sess,
-                    span,
-                    E0161,
-                    "cannot move a value of type {0}: the size of {0} \
-                     cannot be statically determined",
-                    ty
-                );
-
                 // While this is located in `nll::typeck` this error is not
                 // an NLL error, it's a required check to prevent creation
                 // of unsized rvalues in a call expression.
-                diag.emit();
+                self.tcx().sess.emit_err(MoveUnsized { ty, span });
             }
         }
     }
