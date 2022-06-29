@@ -8,7 +8,7 @@ use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty, TypeAndMut};
-use rustc_target::abi::{Integer, Variants};
+use rustc_target::abi::Integer;
 use rustc_type_ir::sty::TyKind::*;
 
 use super::{
@@ -127,12 +127,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Float(FloatTy::F64) => {
                 return Ok(self.cast_from_float(src.to_scalar()?.to_f64()?, cast_ty).into());
             }
-            // The rest is integer/pointer-"like", including fn ptr casts and casts from enums that
-            // are represented as integers.
+            // The rest is integer/pointer-"like", including fn ptr casts
             _ => assert!(
                 src.layout.ty.is_bool()
                     || src.layout.ty.is_char()
-                    || src.layout.ty.is_enum()
                     || src.layout.ty.is_integral()
                     || src.layout.ty.is_any_ptr(),
                 "Unexpected cast from type {:?}",
@@ -141,25 +139,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         // # First handle non-scalar source values.
-
-        // Handle cast from a ZST enum (0 or 1 variants).
-        match src.layout.variants {
-            Variants::Single { index } => {
-                if src.layout.abi.is_uninhabited() {
-                    // This is dead code, because an uninhabited enum is UB to
-                    // instantiate.
-                    throw_ub!(Unreachable);
-                }
-                if let Some(discr) = src.layout.ty.discriminant_for_variant(*self.tcx, index) {
-                    assert!(src.layout.is_zst());
-                    let discr_layout = self.layout_of(discr.ty)?;
-
-                    let scalar = Scalar::from_uint(discr.val, discr_layout.layout.size());
-                    return Ok(self.cast_from_int_like(scalar, discr_layout, cast_ty)?.into());
-                }
-            }
-            Variants::Multiple { .. } => {}
-        }
 
         // Handle casting any ptr to raw ptr (might be a fat ptr).
         if src.layout.ty.is_any_ptr() && cast_ty.is_unsafe_ptr() {

@@ -12,7 +12,6 @@ use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
-use rustc_target::abi::{Abi, Int, Variants};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "debug", skip(self, bx))]
@@ -283,74 +282,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             CastTy::from_ty(operand.layout.ty).expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast.ty).expect("bad output type for cast");
                         let ll_t_in = bx.cx().immediate_backend_type(operand.layout);
-                        match operand.layout.variants {
-                            Variants::Single { index } => {
-                                if let Some(discr) =
-                                    operand.layout.ty.discriminant_for_variant(bx.tcx(), index)
-                                {
-                                    let discr_layout = bx.cx().layout_of(discr.ty);
-                                    let discr_t = bx.cx().immediate_backend_type(discr_layout);
-                                    let discr_val = bx.cx().const_uint_big(discr_t, discr.val);
-                                    let discr_val =
-                                        bx.intcast(discr_val, ll_t_out, discr.ty.is_signed());
-
-                                    return (
-                                        bx,
-                                        OperandRef {
-                                            val: OperandValue::Immediate(discr_val),
-                                            layout: cast,
-                                        },
-                                    );
-                                }
-                            }
-                            Variants::Multiple { .. } => {}
-                        }
                         let llval = operand.immediate();
 
-                        let mut signed = false;
-                        if let Abi::Scalar(scalar) = operand.layout.abi {
-                            if let Int(_, s) = scalar.primitive() {
-                                // We use `i1` for bytes that are always `0` or `1`,
-                                // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
-                                // let LLVM interpret the `i1` as signed, because
-                                // then `i1 1` (i.e., E::B) is effectively `i8 -1`.
-                                signed = !scalar.is_bool() && s;
-
-                                if !scalar.is_always_valid(bx.cx())
-                                    && scalar.valid_range(bx.cx()).end
-                                        >= scalar.valid_range(bx.cx()).start
-                                {
-                                    // We want `table[e as usize ± k]` to not
-                                    // have bound checks, and this is the most
-                                    // convenient place to put the `assume`s.
-                                    if scalar.valid_range(bx.cx()).start > 0 {
-                                        let enum_value_lower_bound = bx.cx().const_uint_big(
-                                            ll_t_in,
-                                            scalar.valid_range(bx.cx()).start,
-                                        );
-                                        let cmp_start = bx.icmp(
-                                            IntPredicate::IntUGE,
-                                            llval,
-                                            enum_value_lower_bound,
-                                        );
-                                        bx.assume(cmp_start);
-                                    }
-
-                                    let enum_value_upper_bound = bx
-                                        .cx()
-                                        .const_uint_big(ll_t_in, scalar.valid_range(bx.cx()).end);
-                                    let cmp_end = bx.icmp(
-                                        IntPredicate::IntULE,
-                                        llval,
-                                        enum_value_upper_bound,
-                                    );
-                                    bx.assume(cmp_end);
-                                }
-                            }
-                        }
-
                         let newval = match (r_t_in, r_t_out) {
-                            (CastTy::Int(_), CastTy::Int(_)) => bx.intcast(llval, ll_t_out, signed),
+                            (CastTy::Int(i), CastTy::Int(_)) => {
+                                bx.intcast(llval, ll_t_out, matches!(i, IntTy::I))
+                            }
                             (CastTy::Float, CastTy::Float) => {
                                 let srcsz = bx.cx().float_width(ll_t_in);
                                 let dstsz = bx.cx().float_width(ll_t_out);
@@ -362,8 +299,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     llval
                                 }
                             }
-                            (CastTy::Int(_), CastTy::Float) => {
-                                if signed {
+                            (CastTy::Int(i), CastTy::Float) => {
+                                if matches!(i, IntTy::I) {
                                     bx.sitofp(llval, ll_t_out)
                                 } else {
                                     bx.uitofp(llval, ll_t_out)
@@ -372,8 +309,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Ptr(_)) => {
                                 bx.pointercast(llval, ll_t_out)
                             }
-                            (CastTy::Int(_), CastTy::Ptr(_)) => {
-                                let usize_llval = bx.intcast(llval, bx.cx().type_isize(), signed);
+                            (CastTy::Int(i), CastTy::Ptr(_)) => {
+                                let usize_llval =
+                                    bx.intcast(llval, bx.cx().type_isize(), matches!(i, IntTy::I));
                                 bx.inttoptr(usize_llval, ll_t_out)
                             }
                             (CastTy::Float, CastTy::Int(IntTy::I)) => {

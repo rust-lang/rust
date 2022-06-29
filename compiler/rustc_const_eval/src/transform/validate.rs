@@ -7,9 +7,9 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
-    traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, Local, Location, MirPass,
-    MirPhase, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, Rvalue, SourceScope, Statement,
-    StatementKind, Terminator, TerminatorKind, UnOp, START_BLOCK,
+    traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, CastKind, Local, Location,
+    MirPass, MirPhase, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, Rvalue, SourceScope,
+    Statement, StatementKind, Terminator, TerminatorKind, UnOp, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
@@ -361,6 +361,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
+            Rvalue::Ref(..) => {}
             Rvalue::Len(p) => {
                 let pty = p.ty(&self.body.local_decls, self.tcx).ty;
                 check_kinds!(
@@ -503,7 +504,30 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let a = operand.ty(&self.body.local_decls, self.tcx);
                 check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
             }
-            _ => {}
+            Rvalue::Cast(kind, operand, target_type) => {
+                match kind {
+                    CastKind::Misc => {
+                        let op_ty = operand.ty(self.body, self.tcx);
+                        if op_ty.is_enum() {
+                            self.fail(
+                                location,
+                                format!(
+                                    "enum -> int casts should go through `Rvalue::Discriminant`: {operand:?}:{op_ty} as {target_type}",
+                                ),
+                            );
+                        }
+                    }
+                    // Nothing to check here
+                    CastKind::PointerFromExposedAddress
+                    | CastKind::PointerExposeAddress
+                    | CastKind::Pointer(_) => {}
+                }
+            }
+            Rvalue::Repeat(_, _)
+            | Rvalue::ThreadLocalRef(_)
+            | Rvalue::AddressOf(_, _)
+            | Rvalue::NullaryOp(_, _)
+            | Rvalue::Discriminant(_) => {}
         }
         self.super_rvalue(rvalue, location);
     }

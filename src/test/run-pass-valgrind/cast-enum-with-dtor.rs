@@ -30,5 +30,5 @@ fn main() {
         assert_eq!(e as u32, 2);
         assert_eq!(FLAG.load(Ordering::SeqCst), 0);
     }
-    assert_eq!(FLAG.load(Ordering::SeqCst), 0);
+    assert_eq!(FLAG.load(Ordering::SeqCst), 1);
 }

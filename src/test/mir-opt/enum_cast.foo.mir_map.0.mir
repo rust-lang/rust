@@ -1,0 +1,13 @@
+// MIR for `foo` 0 mir_map
+
+fn foo(_1: Foo) -> usize {
+    debug foo => _1;                     // in scope 0 at $DIR/enum_cast.rs:18:8: 18:11
+    let mut _0: usize;                   // return place in scope 0 at $DIR/enum_cast.rs:18:21: 18:26
+    let mut _2: isize;                   // in scope 0 at $DIR/enum_cast.rs:19:5: 19:8
+
+    bb0: {
+        _2 = discriminant(_1);           // scope 0 at $DIR/enum_cast.rs:19:5: 19:17
+        _0 = move _2 as usize (Misc);    // scope 0 at $DIR/enum_cast.rs:19:5: 19:17
+        return;                          // scope 0 at $DIR/enum_cast.rs:20:2: 20:2
+    }
+}

@@ -1,6 +1,7 @@
 //! See docs in `build/expr/mod.rs`.
 
 use rustc_index::vec::Idx;
+use rustc_middle::ty::util::IntTypeExt;
 
 use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
@@ -190,7 +191,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Cast { source } => {
                 let source = &this.thir[source];
-                let from_ty = CastTy::from_ty(source.ty);
+
+                // Casting an enum to an integer is equivalent to computing the discriminant and casting the
+                // discriminant. Previously every backend had to repeat the logic for this operation. Now we
+                // create all the steps directly in MIR with operations all backends need to support anyway.
+                let (source, ty) = if let ty::Adt(adt_def, ..) = source.ty.kind() && adt_def.is_enum() {
+                    let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
+                    let place = unpack!(block = this.as_place(block, source));
+                    let discr = this.temp(discr_ty, source.span);
+                    this.cfg.push_assign(
+                        block,
+                        source_info,
+                        discr,
+                        Rvalue::Discriminant(place),
+                    );
+
+                    (Operand::Move(discr), discr_ty)
+                } else {
+                    let ty = source.ty;
+                    let source = unpack!(
+                        block = this.as_operand(block, scope, source, None, NeedsTemporary::No)
+                    );
+                    (source, ty)
+                };
+                let from_ty = CastTy::from_ty(ty);
                 let cast_ty = CastTy::from_ty(expr.ty);
                 let cast_kind = match (from_ty, cast_ty) {
                     (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
@@ -201,9 +225,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     (_, _) => CastKind::Misc,
                 };
-                let source = unpack!(
-                    block = this.as_operand(block, scope, source, None, NeedsTemporary::No)
-                );
                 block.and(Rvalue::Cast(cast_kind, source, expr.ty))
             }
             ExprKind::Pointer { cast, source } => {
