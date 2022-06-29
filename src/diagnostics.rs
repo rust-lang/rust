@@ -96,6 +96,9 @@ fn prune_stacktrace<'mir, 'tcx>(
 ) -> (Vec<FrameInfo<'tcx>>, bool) {
     match ecx.machine.backtrace_style {
         BacktraceStyle::Off => {
+            // Remove all frames marked with `caller_location` -- that attribute indicates we
+            // usually want to point at the caller, not them.
+            stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
             // Retain one frame so that we can print a span for the error itself
             stacktrace.truncate(1);
             (stacktrace, false)
@@ -107,6 +110,10 @@ fn prune_stacktrace<'mir, 'tcx>(
             // bug in the Rust runtime, we don't prune away every frame.
             let has_local_frame = stacktrace.iter().any(|frame| ecx.machine.is_local(frame));
             if has_local_frame {
+                // Remove all frames marked with `caller_location` -- that attribute indicates we
+                // usually want to point at the caller, not them.
+                stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
+
                 // This is part of the logic that `std` uses to select the relevant part of a
                 // backtrace. But here, we only look for __rust_begin_short_backtrace, not
                 // __rust_end_short_backtrace because the end symbol comes from a call to the default
