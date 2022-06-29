@@ -3,7 +3,8 @@
 type Foo = impl Fn() -> Foo;
 
 fn foo() -> Foo {
-    foo //~ ERROR: overflow evaluating the requirement `fn() -> Foo {foo}: Sized`
+//~^ ERROR: overflow evaluating the requirement `fn() -> Foo {foo}: Sized`
+    foo
 }
 
 fn main() {}

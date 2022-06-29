@@ -10,12 +10,10 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
-use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Span;
-use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::ArgKind;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
@@ -429,14 +427,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // in this binder we are creating.
         assert!(!expected_sig.sig.skip_binder().has_vars_bound_above(ty::INNERMOST));
         let bound_sig = expected_sig.sig.map_bound(|sig| {
-            let output = self.hide_parent_opaque_types(
-                sig.output(),
-                expected_sig.cause_span.unwrap_or(DUMMY_SP),
-                body.id().hir_id,
-            );
             self.tcx.mk_fn_sig(
                 sig.inputs().iter().cloned(),
-                output,
+                sig.output(),
                 sig.c_variadic,
                 hir::Unsafety::Normal,
                 Abi::RustCall,
@@ -608,23 +601,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // function.
                 Some(hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn)) => {
                     debug!("closure is async fn body");
-                    self.deduce_future_output_from_obligations(expr_def_id).unwrap_or_else(|| {
-                        // AFAIK, deducing the future output
-                        // always succeeds *except* in error cases
-                        // like #65159. I'd like to return Error
-                        // here, but I can't because I can't
-                        // easily (and locally) prove that we
-                        // *have* reported an
-                        // error. --nikomatsakis
-                        astconv.ty_infer(None, decl.output.span())
-                    })
+                    self.deduce_future_output_from_obligations(expr_def_id, body.id().hir_id)
+                        .unwrap_or_else(|| {
+                            // AFAIK, deducing the future output
+                            // always succeeds *except* in error cases
+                            // like #65159. I'd like to return Error
+                            // here, but I can't because I can't
+                            // easily (and locally) prove that we
+                            // *have* reported an
+                            // error. --nikomatsakis
+                            astconv.ty_infer(None, decl.output.span())
+                        })
                 }
 
                 _ => astconv.ty_infer(None, decl.output.span()),
             },
         };
-        let supplied_return =
-            self.hide_parent_opaque_types(supplied_return, decl.output.span(), body.id().hir_id);
 
         let result = ty::Binder::bind_with_vars(
             self.tcx.mk_fn_sig(
@@ -645,18 +637,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         result
     }
 
-    fn hide_parent_opaque_types(&self, ty: Ty<'tcx>, span: Span, body_id: hir::HirId) -> Ty<'tcx> {
-        let InferOk { value, obligations } = self.replace_opaque_types_with_inference_vars(
-            ty,
-            body_id,
-            span,
-            ObligationCauseCode::MiscObligation,
-            self.param_env,
-        );
-        self.register_predicates(obligations);
-        value
-    }
-
     /// Invoked when we are translating the generator that results
     /// from desugaring an `async fn`. Returns the "sugared" return
     /// type of the `async fn` -- that is, the return type that the
@@ -664,15 +644,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Future<Output = T>`, so we do this by searching through the
     /// obligations to extract the `T`.
     #[instrument(skip(self), level = "debug")]
-    fn deduce_future_output_from_obligations(&self, expr_def_id: DefId) -> Option<Ty<'tcx>> {
+    fn deduce_future_output_from_obligations(
+        &self,
+        expr_def_id: DefId,
+        body_id: hir::HirId,
+    ) -> Option<Ty<'tcx>> {
         let ret_coercion = self.ret_coercion.as_ref().unwrap_or_else(|| {
             span_bug!(self.tcx.def_span(expr_def_id), "async fn generator outside of a fn")
         });
 
         let ret_ty = ret_coercion.borrow().expected_ty();
         let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
-        let (def_id, substs) = match *ret_ty.kind() {
-            ty::Opaque(def_id, substs) => (def_id, substs),
+
+        let get_future_output = |predicate: ty::Predicate<'tcx>, span| {
+            // Search for a pending obligation like
+            //
+            // `<R as Future>::Output = T`
+            //
+            // where R is the return type we are expecting. This type `T`
+            // will be our output.
+            let bound_predicate = predicate.kind();
+            if let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder() {
+                self.deduce_future_output_from_projection(
+                    span,
+                    bound_predicate.rebind(proj_predicate),
+                )
+            } else {
+                None
+            }
+        };
+
+        let output_ty = match *ret_ty.kind() {
+            ty::Infer(ty::TyVar(ret_vid)) => {
+                self.obligations_for_self_ty(ret_vid).find_map(|(_, obligation)| {
+                    get_future_output(obligation.predicate, obligation.cause.span)
+                })?
+            }
+            ty::Opaque(def_id, substs) => self
+                .tcx
+                .bound_explicit_item_bounds(def_id)
+                .transpose_iter()
+                .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+                .find_map(|(p, s)| get_future_output(p.subst(self.tcx, substs), s.0))?,
             ty::Error(_) => return None,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
@@ -680,32 +693,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
         };
 
-        let item_bounds = self.tcx.bound_explicit_item_bounds(def_id);
-
-        // Search for a pending obligation like
-        //
-        // `<R as Future>::Output = T`
-        //
-        // where R is the return type we are expecting. This type `T`
-        // will be our output.
-        let output_ty = item_bounds
-            .transpose_iter()
-            .map(|e| e.map_bound(|e| *e).transpose_tuple2())
-            .find_map(|(predicate, span)| {
-                let bound_predicate = predicate.subst(self.tcx, substs).kind();
-                if let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder()
-                {
-                    self.deduce_future_output_from_projection(
-                        span.0,
-                        bound_predicate.rebind(proj_predicate),
-                    )
-                } else {
-                    None
-                }
-            });
+        // async fn that have opaque types in their return type need to redo the conversion to inference variables
+        // as they fetch the still opaque version from the signature.
+        let InferOk { value: output_ty, obligations } = self
+            .replace_opaque_types_with_inference_vars(
+                output_ty,
+                body_id,
+                self.tcx.def_span(expr_def_id),
+                self.param_env,
+            );
+        self.register_predicates(obligations);
 
         debug!("deduce_future_output_from_obligations: output_ty={:?}", output_ty);
-        output_ty
+        Some(output_ty)
     }
 
     /// Given a projection like

@@ -1,5 +1,5 @@
 error[E0658]: `async` blocks are not allowed in constants
-  --> $DIR/issue-78722.rs:12:20
+  --> $DIR/issue-78722.rs:13:20
    |
 LL |         let f: F = async { 1 };
    |                    ^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |         let f: F = async { 1 };
    = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/issue-78722.rs:12:13
+  --> $DIR/issue-78722.rs:13:13
    |
 LL |         let f: F = async { 1 };
    |             ^ constants cannot evaluate destructors
@@ -17,10 +17,10 @@ LL |     }],
    |     - value is dropped here
 
 error[E0271]: type mismatch resolving `<impl Future<Output = ()> as Future>::Output == u8`
-  --> $DIR/issue-78722.rs:10:13
+  --> $DIR/issue-78722.rs:9:30
    |
-LL |             async {}
-   |             ^^^^^^^^ expected `()`, found `u8`
+LL |         fn concrete_use() -> F {
+   |                              ^ expected `()`, found `u8`
 
 error: aborting due to 3 previous errors
 

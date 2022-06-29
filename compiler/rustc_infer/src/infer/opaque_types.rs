@@ -5,7 +5,7 @@ use hir::{HirId, OpaqueTyOrigin};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
-use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{
@@ -44,30 +44,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         body_id: HirId,
         span: Span,
-        code: ObligationCauseCode<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, Ty<'tcx>> {
         if !ty.has_opaque_types() {
             return InferOk { value: ty, obligations: vec![] };
         }
         let mut obligations = vec![];
+        let replace_opaque_type = |def_id| self.opaque_type_origin(def_id, span).is_some();
         let value = ty.fold_with(&mut ty::fold::BottomUpFolder {
             tcx: self.tcx,
             lt_op: |lt| lt,
             ct_op: |ct| ct,
             ty_op: |ty| match *ty.kind() {
-                // Closures can't create hidden types for opaque types of their parent, as they
-                // do not have all the outlives information available. Also `type_of` looks for
-                // hidden types in the owner (so the closure's parent), so it would not find these
-                // definitions.
-                ty::Opaque(def_id, _substs)
-                    if matches!(
-                        self.opaque_type_origin(def_id, span),
-                        Some(OpaqueTyOrigin::FnReturn(..))
-                    ) =>
-                {
-                    let span = if span.is_dummy() { self.tcx.def_span(def_id) } else { span };
-                    let cause = ObligationCause::new(span, body_id, code.clone());
+                ty::Opaque(def_id, _substs) if replace_opaque_type(def_id) => {
+                    let def_span = self.tcx.def_span(def_id);
+                    let span = if span.contains(def_span) { def_span } else { span };
+                    let code = traits::ObligationCauseCode::OpaqueReturnType(None);
+                    let cause = ObligationCause::new(span, body_id, code);
                     // FIXME(compiler-errors): We probably should add a new TypeVariableOriginKind
                     // for opaque types, and then use that kind to fix the spans for type errors
                     // that we see later on.
