@@ -952,17 +952,8 @@ fn phase_runner(binary: &Path, binary_args: env::Args, phase: RunnerPhase) {
             assert!(suffix.starts_with('='));
             // Drop this argument.
         } else if let Some(suffix) = arg.strip_prefix(json_flag) {
-            let suffix = suffix.strip_prefix('=').unwrap();
-            // This is how we pass through --color=always. We detect that Cargo is detecting rustc
-            // to emit the diagnostic structure that Cargo would consume from rustc to emit colored
-            // diagnostics, and ask rustc to emit them.
-            // See https://github.com/rust-lang/miri/issues/2037
-            // First skip over the leading `=`, then check for diagnostic-rendered-ansi in the
-            // comma-separated list
-            if suffix.split(',').any(|a| a == "diagnostic-rendered-ansi") {
-                cmd.arg("--color=always");
-            }
-            // But aside from remembering that colored output was requested, drop this argument.
+            assert!(suffix.starts_with('='));
+            // Drop this argument.
         } else {
             cmd.arg(arg);
         }
