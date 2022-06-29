@@ -195,7 +195,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
         let tcx = self.ecx.tcx;
         let ty = mplace.layout.ty;
         if let ty::Ref(_, referenced_ty, ref_mutability) = *ty.kind() {
-            let value = self.ecx.read_immediate(&(*mplace).into())?;
+            let value = self.ecx.read_immediate(&mplace.into())?;
             let mplace = self.ecx.ref_to_mplace(&value)?;
             assert_eq!(mplace.layout.ty, referenced_ty);
             // Handle trait object vtables.

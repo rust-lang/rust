@@ -204,6 +204,13 @@ impl<'tcx, Tag: Provenance> From<&'_ MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     }
 }
 
+impl<'tcx, Tag: Provenance> From<&'_ mut MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+    #[inline(always)]
+    fn from(mplace: &mut MPlaceTy<'tcx, Tag>) -> Self {
+        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout }
+    }
+}
+
 impl<'tcx, Tag: Provenance> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(val: ImmTy<'tcx, Tag>) -> Self {
