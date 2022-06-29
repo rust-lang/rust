@@ -3,8 +3,8 @@ use rustc_target::abi::VariantIdx;
 
 use std::iter;
 
-/// Tries to destructure array, ADT or tuple constants into the constants
-/// of its fields.
+/// Destructures array, ADT or tuple constants into the constants
+/// of their fields.
 pub(crate) fn destructure_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     const_: ty::Const<'tcx>,
