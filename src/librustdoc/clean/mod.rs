@@ -293,10 +293,10 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::Predicate<'tcx> {
             ty::PredicateKind::TypeOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::Projection(pred) => Some(pred.clean(cx)),
             ty::PredicateKind::ConstEvaluatable(..) => None,
+            ty::PredicateKind::WellFormed(..) => None,
 
             ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::Coerce(..)
-            | ty::PredicateKind::WellFormed(..)
             | ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::ConstEquate(..)

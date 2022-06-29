@@ -154,6 +154,7 @@ where
                 }
                 ControlFlow::CONTINUE
             }
+            ty::PredicateKind::WellFormed(arg) => arg.visit_with(self),
             _ => bug!("unexpected predicate: {:?}", predicate),
         }
     }

@@ -106,8 +106,16 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 ty::PredicateKind::Projection(predicate) => chalk_ir::DomainGoal::Holds(
                     chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)),
                 ),
-                ty::PredicateKind::WellFormed(..)
-                | ty::PredicateKind::ObjectSafe(..)
+                ty::PredicateKind::WellFormed(arg) => match arg.unpack() {
+                    ty::GenericArgKind::Type(ty) => chalk_ir::DomainGoal::WellFormed(
+                        chalk_ir::WellFormed::Ty(ty.lower_into(interner)),
+                    ),
+                    // FIXME(chalk): we need to change `WellFormed` in Chalk to take a `GenericArg`
+                    _ => chalk_ir::DomainGoal::WellFormed(chalk_ir::WellFormed::Ty(
+                        interner.tcx.types.unit.lower_into(interner),
+                    )),
+                },
+                ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)

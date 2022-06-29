@@ -1807,6 +1807,12 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
     let implied_obligations = traits::elaborate_predicates_with_span(fcx.tcx, predicates_with_span);
 
     for obligation in implied_obligations {
+        // We lower empty bounds like `Vec<dyn Copy>:` as
+        // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
+        // regular WF checking
+        if let ty::PredicateKind::WellFormed(..) = obligation.predicate.kind().skip_binder() {
+            continue;
+        }
         let pred = obligation.predicate;
         // Match the existing behavior.
         if pred.is_global() && !pred.has_late_bound_regions() {
