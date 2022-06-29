@@ -836,7 +836,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     .take(bound)
                     .map(|param| {
                         let span = self.tcx.def_span(param.def_id);
-                        spans.push_span_label(span, String::new());
+                        spans.push_span_label(span, "");
                         param
                     })
                     .map(|param| format!("`{}`", param.name))

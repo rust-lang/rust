@@ -1591,8 +1591,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) -> E
             } else {
                 let mut multispan: MultiSpan = spans.clone().into();
                 for span in spans {
-                    multispan
-                        .push_span_label(span, "this returned value is of `!` type".to_string());
+                    multispan.push_span_label(span, "this returned value is of `!` type");
                 }
                 err.span_note(multispan, "these returned values have a concrete \"never\" type");
             }

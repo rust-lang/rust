@@ -601,10 +601,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         };
                         multi_span.push_span_label(sp, msg);
                     }
-                    multi_span.push_span_label(
-                        base_error.span,
-                        "expected this type to be a trait...".to_string(),
-                    );
+                    multi_span
+                        .push_span_label(base_error.span, "expected this type to be a trait...");
                     err.span_help(
                         multi_span,
                         "`+` is used to constrain a \"trait object\" type with lifetimes or \
@@ -1227,17 +1225,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         let mut m: MultiSpan = non_visible_spans.clone().into();
                         non_visible_spans
                             .into_iter()
-                            .for_each(|s| m.push_span_label(s, "private field".to_string()));
+                            .for_each(|s| m.push_span_label(s, "private field"));
                         err.span_note(m, "constructor is not visible here due to private fields");
                     }
 
                     return true;
                 }
 
-                err.span_label(
-                    span,
-                    "constructor is not visible here due to private fields".to_string(),
-                );
+                err.span_label(span, "constructor is not visible here due to private fields");
             }
             (
                 Res::Def(

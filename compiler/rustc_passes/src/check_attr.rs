@@ -857,11 +857,8 @@ impl CheckAttrVisitor<'_> {
             if let Some((prev_inline, prev_span)) = *specified_inline {
                 if do_inline != prev_inline {
                     let mut spans = MultiSpan::from_spans(vec![prev_span, meta.span()]);
-                    spans.push_span_label(prev_span, String::from("this attribute..."));
-                    spans.push_span_label(
-                        meta.span(),
-                        String::from("...conflicts with this attribute"),
-                    );
+                    spans.push_span_label(prev_span, "this attribute...");
+                    spans.push_span_label(meta.span(), "...conflicts with this attribute");
                     self.tcx
                         .sess
                         .struct_span_err(spans, "conflicting doc inlining attributes")

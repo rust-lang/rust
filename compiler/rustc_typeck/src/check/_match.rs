@@ -154,18 +154,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ret_span.push_span_label(
                         expr.span,
                         "this could be implicitly returned but it is a statement, not a \
-                            tail expression"
-                            .to_owned(),
+                            tail expression",
                     );
-                    ret_span.push_span_label(
-                        ret,
-                        "the `match` arms can conform to this return type".to_owned(),
-                    );
+                    ret_span
+                        .push_span_label(ret, "the `match` arms can conform to this return type");
                     ret_span.push_span_label(
                         semi_span,
                         "the `match` is a statement because of this semicolon, consider \
-                            removing it"
-                            .to_owned(),
+                            removing it",
                     );
                     err.span_note(
                         ret_span,

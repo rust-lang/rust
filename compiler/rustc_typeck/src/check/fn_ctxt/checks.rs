@@ -1768,7 +1768,7 @@ fn label_fn_like<'tcx>(
             .flat_map(|id| tcx.hir().body(id).params);
 
         for param in params {
-            spans.push_span_label(param.span, String::new());
+            spans.push_span_label(param.span, "");
         }
 
         let def_kind = tcx.def_kind(def_id);

@@ -638,7 +638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let parent_trait_ref = data.parent_trait_pred;
                         let path = parent_trait_ref.print_modifiers_and_trait_path();
                         let tr_self_ty = parent_trait_ref.skip_binder().self_ty();
-                        let unsatisfied_msg = "unsatisfied trait bound introduced here".to_string();
+                        let unsatisfied_msg = "unsatisfied trait bound introduced here";
                         let derive_msg =
                             "unsatisfied trait bound introduced in this `derive` macro";
                         match self.tcx.hir().get_if_local(impl_def_id) {
@@ -655,7 +655,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             {
                                 let span = ident.span.ctxt().outer_expn_data().call_site;
                                 let mut spans: MultiSpan = span.into();
-                                spans.push_span_label(span, derive_msg.to_string());
+                                spans.push_span_label(span, derive_msg);
                                 let entry = spanned_predicates.entry(spans);
                                 entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
                             }
@@ -678,7 +678,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             {
                                 let span = self_ty.span.ctxt().outer_expn_data().call_site;
                                 let mut spans: MultiSpan = span.into();
-                                spans.push_span_label(span, derive_msg.to_string());
+                                spans.push_span_label(span, derive_msg);
                                 let entry = spanned_predicates.entry(spans);
                                 entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
                             }
@@ -706,7 +706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     ident.span.into()
                                 };
-                                spans.push_span_label(ident.span, "in this trait".to_string());
+                                spans.push_span_label(ident.span, "in this trait");
                                 let entry = spanned_predicates.entry(spans);
                                 entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
                             }
@@ -747,9 +747,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     spans.into()
                                 };
                                 if let Some(trait_ref) = of_trait {
-                                    spans.push_span_label(trait_ref.path.span, String::new());
+                                    spans.push_span_label(trait_ref.path.span, "");
                                 }
-                                spans.push_span_label(self_ty.span, String::new());
+                                spans.push_span_label(self_ty.span, "");
 
                                 let entry = spanned_predicates.entry(spans);
                                 entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);

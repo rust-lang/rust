@@ -85,8 +85,7 @@ pub fn report_object_safety_error<'tcx>(
     let has_multi_span = !multi_span.is_empty();
     let mut note_span = MultiSpan::from_spans(multi_span.clone());
     if let (Some(trait_span), true) = (trait_span, has_multi_span) {
-        note_span
-            .push_span_label(trait_span, "this trait cannot be made into an object...".to_string());
+        note_span.push_span_label(trait_span, "this trait cannot be made into an object...");
     }
     for (span, msg) in iter::zip(multi_span, messages) {
         note_span.push_span_label(span, msg);
