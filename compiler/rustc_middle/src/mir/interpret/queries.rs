@@ -205,14 +205,8 @@ impl<'tcx> TyCtxtEnsure<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Destructure a type-level constant ADT or array into its variant index and its field values.
-    /// Panics if the destructuring fails, use `try_destructure_const` for fallible version.
-    pub fn destructure_const(self, const_: ty::Const<'tcx>) -> ty::DestructuredConst<'tcx> {
-        self.try_destructure_const(const_).unwrap()
-    }
-
     /// Destructure a mir constant ADT or array into its variant index and its field values.
-    /// Panics if the destructuring fails, use `try_destructure_const` for fallible version.
+    /// Panics if the destructuring fails, use `try_destructure_mir_constant` for fallible version.
     pub fn destructure_mir_constant(
         self,
         param_env: ty::ParamEnv<'tcx>,

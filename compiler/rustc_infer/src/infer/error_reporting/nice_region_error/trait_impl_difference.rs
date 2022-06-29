@@ -128,10 +128,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
         let mut type_param_span: MultiSpan = visitor.types.to_vec().into();
         for &span in &visitor.types {
-            type_param_span.push_span_label(
-                span,
-                "consider borrowing this type parameter in the trait".to_string(),
-            );
+            type_param_span
+                .push_span_label(span, "consider borrowing this type parameter in the trait");
         }
 
         err.note(&format!("expected `{}`\n   found `{}`", expected, found));

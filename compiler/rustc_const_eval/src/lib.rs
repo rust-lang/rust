@@ -42,7 +42,6 @@ pub fn provide(providers: &mut Providers) {
     providers.eval_to_const_value_raw = const_eval::eval_to_const_value_raw_provider;
     providers.eval_to_allocation_raw = const_eval::eval_to_allocation_raw_provider;
     providers.const_caller_location = const_eval::const_caller_location;
-    providers.try_destructure_const = |tcx, val| const_eval::try_destructure_const(tcx, val);
     providers.eval_to_valtree = |tcx, param_env_and_value| {
         let (param_env, raw) = param_env_and_value.into_parts();
         const_eval::eval_to_valtree(tcx, param_env, raw)

@@ -421,6 +421,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         Ok(())
     }
 
+    #[cfg(not(no_global_oom_handling))]
     fn shrink(&mut self, cap: usize) -> Result<(), TryReserveError> {
         assert!(cap <= self.capacity(), "Tried to shrink to a larger capacity");
 

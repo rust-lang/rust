@@ -2561,7 +2561,7 @@ fn show_candidates(
                 let span = source_span[local_def_id];
                 let span = session.source_map().guess_head_span(span);
                 let mut multi_span = MultiSpan::from_span(span);
-                multi_span.push_span_label(span, "not accessible".to_string());
+                multi_span.push_span_label(span, "not accessible");
                 err.span_note(multi_span, &msg);
             } else {
                 err.note(&msg);

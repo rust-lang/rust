@@ -645,7 +645,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 err.emit();
             } else {
                 let mut multispan = MultiSpan::from_span(span);
-                multispan.push_span_label(span_late, note.to_string());
+                multispan.push_span_label(span_late, note);
                 tcx.struct_span_lint_hir(
                     LATE_BOUND_LIFETIME_ARGUMENTS,
                     args.args[0].id(),

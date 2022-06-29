@@ -1034,7 +1034,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             sp.push_span_label(
                 rcvr.span,
-                "you probably want to use this value after calling the method...".to_string(),
+                "you probably want to use this value after calling the method...",
             );
             err.span_note(
                 sp,

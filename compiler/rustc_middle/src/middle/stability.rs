@@ -150,7 +150,7 @@ pub fn deprecation_suggestion(
     span: Span,
 ) {
     if let Some(suggestion) = suggestion {
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             span,
             &format!("replace the use of the deprecated {}", kind),
             suggestion,
