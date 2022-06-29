@@ -19,6 +19,13 @@ jobs:
           - { gcc: "libgccjit.so", extra: "" }
           - { gcc: "libgccjit_without_int128.so", extra: "" }
           - { gcc: "libgccjit12.so", extra: "--no-default-features" }
+        commands: [
+          "--mini-tests",
+          "--std-tests",
+          "--test-libcore",
+          "--extended-tests",
+          "--test-rustc",
+        ]
 
     steps:
     - uses: actions/checkout@v2
@@ -104,25 +111,9 @@ jobs:
         command: build
         args: --release
 
-    - name: Test mini_tests
+    - name: Run tests
       run: |
-        ./test.sh --release --clean --build-sysroot --mini-tests ${{ matrix.libgccjit_version.extra }}
-
-    - name: Test std_tests
-      run: |
-        ./test.sh --release --std-tests ${{ matrix.libgccjit_version.extra }}
-
-    - name: Test test_libcore
-      run: |
-        ./test.sh --release --test-libcore ${{ matrix.libgccjit_version.extra }}
-
-    - name: Test extended_sysroot_tests
-      run: |
-        ./test.sh --release --extended-tests ${{ matrix.libgccjit_version.extra }}
-
-    - name: Test test_rustc
-      run: |
-        ./test.sh --release --test-rustc ${{ matrix.libgccjit_version.extra }}
+        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }} ${{ matrix.libgccjit_version.extra }}
 
   duplicates:
     runs-on: ubuntu-latest
