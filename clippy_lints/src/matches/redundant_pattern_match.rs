@@ -4,10 +4,11 @@ use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, needs_ordered_drop};
 use clippy_utils::visitors::any_temporaries_need_ordered_drop;
-use clippy_utils::{higher, is_lang_ctor, is_trait_method};
+use clippy_utils::{higher, is_trait_method};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
 use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
@@ -87,15 +88,21 @@ fn find_sugg_for_if_let<'tcx>(
             }
         },
         PatKind::Path(ref path) => {
-            let method = if is_lang_ctor(cx, path, OptionNone) {
-                "is_none()"
-            } else if is_lang_ctor(cx, path, PollPending) {
-                "is_pending()"
+            if let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(path, check_pat.hir_id)
+                && let Some(variant_id) = cx.tcx.opt_parent(ctor_id)
+            {
+                let method = if cx.tcx.lang_items().option_none_variant() == Some(variant_id) {
+                    "is_none()"
+                } else if cx.tcx.lang_items().poll_pending_variant() == Some(variant_id) {
+                    "is_pending()"
+                } else {
+                    return;
+                };
+                // `None` and `Pending` don't have an inner type.
+                (method, cx.tcx.types.unit)
             } else {
                 return;
-            };
-            // `None` and `Pending` don't have an inner type.
-            (method, cx.tcx.types.unit)
+            }
         },
         _ => return,
     };
