@@ -19,3 +19,10 @@ pub(crate) struct UnstableInStable {
     )]
     pub attr_span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(const_eval::thread_local_access, code = "E0625")]
+pub(crate) struct NonConstOpErr {
+    #[primary_span]
+    pub span: Span,
+}

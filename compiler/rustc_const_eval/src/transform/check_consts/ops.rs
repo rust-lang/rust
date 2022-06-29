@@ -20,6 +20,7 @@ use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::traits::SelectionContext;
 
 use super::ConstCx;
+use crate::errors::NonConstOpErr;
 use crate::util::{call_kind, CallDesugaringKind, CallKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -760,13 +761,7 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        struct_span_err!(
-            ccx.tcx.sess,
-            span,
-            E0625,
-            "thread-local statics cannot be \
-            accessed at compile-time"
-        )
+        ccx.tcx.sess.create_err(NonConstOpErr { span })
     }
 }
 
