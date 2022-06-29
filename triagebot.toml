@@ -219,7 +219,7 @@ changelog-branch = "master"
 
 [mentions."compiler/rustc_apfloat"]
 message = """
-Changes rustc_apfloat. rustc_apfloat is currently in limbo and you almost
+Changes rustc_apfloat. rustc_apfloat is currently in limbo and you almost \
 certainly don't want to change it (see #55993).
 """
 cc = ["@eddyb"]
@@ -258,22 +258,22 @@ cc = ["@GuillaumeGomez"]
 message = """
 Hey! It looks like you've submitted a new PR for the library teams!
 
-If this PR contains changes to any `rust-lang/rust` public library APIs then
-please comment with `@rustbot label +T-libs-api -T-libs` to tag it
-appropriately. If this PR contains changes to any unstable APIs please edit
-the PR description to add a link to the relevant [API Change
-Proposal](https://std-dev-guide.rust-lang.org/feature-lifecycle/api-change-proposals.html)
-or [create one](https://github.com/rust-lang/libs-team/issues/new?assignees=&labels=api-change-proposal%2C+T-libs-api&template=api-change-proposal.md&title=%28My+API+Change+Proposal%29)
-if you haven't already. If you're unsure where your change falls no worries,
-just leave it as is and the reviewer will take a look and make a decision to
+If this PR contains changes to any `rust-lang/rust` public library APIs then \
+please comment with `@rustbot label +T-libs-api -T-libs` to tag it \
+appropriately. If this PR contains changes to any unstable APIs please edit \
+the PR description to add a link to the relevant [API Change \
+Proposal](https://std-dev-guide.rust-lang.org/feature-lifecycle/api-change-proposals.html) \
+or [create one](https://github.com/rust-lang/libs-team/issues/new?assignees=&labels=api-change-proposal%2C+T-libs-api&template=api-change-proposal.md&title=%28My+API+Change+Proposal%29) \
+if you haven't already. If you're unsure where your change falls no worries, \
+just leave it as is and the reviewer will take a look and make a decision to \
 forward on if necessary.
 
 Examples of `T-libs-api` changes:
 
 * Stabilizing library features
-* Introducing insta-stable changes such as new implementations of existing
+* Introducing insta-stable changes such as new implementations of existing \
   stable traits on existing stable types
-* Introducing new or changing existing unstable library APIs (excluding
+* Introducing new or changing existing unstable library APIs (excluding \
   permanently unstable features / features without a tracking issue)
 * Changing public documentation in ways that create new stability guarantees
 * Changing observable runtime behavior of library APIs
@@ -300,8 +300,8 @@ cc = ["@Cldfire"]
 
 [mentions."src/rustdoc-json-types"]
 message = """
-rustdoc-json-types is a **public** (although nightly-only) API.
-If possible, consider changing `src/librustdoc/json/conversions.rs`;
+rustdoc-json-types is a **public** (although nightly-only) API. \
+If possible, consider changing `src/librustdoc/json/conversions.rs`; \
 otherwise, make sure you bump the `FORMAT_VERSION` constant.
 """
 cc = [
