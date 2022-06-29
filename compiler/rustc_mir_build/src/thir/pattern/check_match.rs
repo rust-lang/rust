@@ -947,7 +947,7 @@ fn adt_defined_here<'p, 'tcx>(
 
         span.push_span_label(def_span, String::new());
         for pat in spans {
-            span.push_span_label(pat, "not covered".to_string());
+            span.push_span_label(pat, "not covered");
         }
         err.span_note(span, &format!("`{}` defined here", ty));
     }
