@@ -231,7 +231,8 @@ impl fmt::Debug for c_void {
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
     target_family = "wasm",
     target_arch = "asmjs",
-    windows
+    target_os = "uefi",
+    windows,
 ))]
 #[repr(transparent)]
 #[unstable(
@@ -254,7 +255,8 @@ pub struct VaListImpl<'f> {
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
     target_family = "wasm",
     target_arch = "asmjs",
-    windows
+    target_os = "uefi",
+    windows,
 ))]
 #[unstable(
     feature = "c_variadic",
@@ -276,7 +278,8 @@ impl<'f> fmt::Debug for VaListImpl<'f> {
 #[cfg(all(
     target_arch = "aarch64",
     not(any(target_os = "macos", target_os = "ios")),
-    not(windows)
+    not(target_os = "uefi"),
+    not(windows),
 ))]
 #[repr(C)]
 #[derive(Debug)]
@@ -297,7 +300,7 @@ pub struct VaListImpl<'f> {
 }
 
 /// PowerPC ABI implementation of a `va_list`.
-#[cfg(all(target_arch = "powerpc", not(windows)))]
+#[cfg(all(target_arch = "powerpc", not(target_os = "uefi"), not(windows)))]
 #[repr(C)]
 #[derive(Debug)]
 #[unstable(
@@ -317,7 +320,7 @@ pub struct VaListImpl<'f> {
 }
 
 /// x86_64 ABI implementation of a `va_list`.
-#[cfg(all(target_arch = "x86_64", not(windows)))]
+#[cfg(all(target_arch = "x86_64", not(target_os = "uefi"), not(windows)))]
 #[repr(C)]
 #[derive(Debug)]
 #[unstable(
@@ -354,7 +357,8 @@ pub struct VaList<'a, 'f: 'a> {
         all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
         target_family = "wasm",
         target_arch = "asmjs",
-        windows
+        target_os = "uefi",
+        windows,
     ))]
     inner: VaListImpl<'f>,
 
@@ -363,7 +367,8 @@ pub struct VaList<'a, 'f: 'a> {
         any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
         not(target_family = "wasm"),
         not(target_arch = "asmjs"),
-        not(windows)
+        not(target_os = "uefi"),
+        not(windows),
     ))]
     inner: &'a mut VaListImpl<'f>,
 
@@ -375,7 +380,8 @@ pub struct VaList<'a, 'f: 'a> {
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
     target_family = "wasm",
     target_arch = "asmjs",
-    windows
+    target_os = "uefi",
+    windows,
 ))]
 #[unstable(
     feature = "c_variadic",
@@ -396,7 +402,8 @@ impl<'f> VaListImpl<'f> {
     any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
     not(target_family = "wasm"),
     not(target_arch = "asmjs"),
-    not(windows)
+    not(target_os = "uefi"),
+    not(windows),
 ))]
 #[unstable(
     feature = "c_variadic",
