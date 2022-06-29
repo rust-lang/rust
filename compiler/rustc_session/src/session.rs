@@ -1489,6 +1489,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             ))
         }
     }
+
+    if let Some(dwarf_version) = sess.opts.debugging_opts.dwarf_version {
+        if dwarf_version > 5 {
+            sess.err(&format!("requested DWARF version {} is greater than 5", dwarf_version));
+        }
+    }
 }
 
 /// Holds data on the current incremental compilation session, if there is one.

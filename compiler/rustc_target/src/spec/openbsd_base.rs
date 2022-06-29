@@ -11,7 +11,7 @@ pub fn opts() -> TargetOptions {
         position_independent_executables: true,
         frame_pointer: FramePointer::Always, // FIXME 43575: should be MayOmit...
         relro_level: RelroLevel::Full,
-        dwarf_version: Some(2),
+        default_dwarf_version: 2,
         ..Default::default()
     }
 }
