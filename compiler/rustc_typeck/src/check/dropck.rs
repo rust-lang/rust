@@ -1,5 +1,6 @@
-use crate::check::regionck::RegionCtxt;
-use crate::hir;
+// FIXME(@lcnr): Move this module out of `rustc_typeck`.
+//
+// We don't do any drop checking during hir typeck.
 use crate::hir::def_id::{DefId, LocalDefId};
 use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_middle::ty::error::TypeError;
@@ -7,7 +8,6 @@ use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{self, Predicate, Ty, TyCtxt};
-use rustc_span::Span;
 
 /// This function confirms that the `Drop` implementation identified by
 /// `drop_impl_did` is not any more specialized than the type it is
@@ -227,19 +227,6 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     }
 
     result
-}
-
-/// This function is not only checking that the dropck obligations are met for
-/// the given type, but it's also currently preventing non-regular recursion in
-/// types from causing stack overflows (dropck_no_diverge_on_nonregular_*.rs).
-///
-/// FIXME: Completely rip out dropck and regionck.
-pub(crate) fn check_drop_obligations<'a, 'tcx>(
-    _rcx: &mut RegionCtxt<'a, 'tcx>,
-    _ty: Ty<'tcx>,
-    _span: Span,
-    _body_id: hir::HirId,
-) {
 }
 
 // This is an implementation of the TypeRelation trait with the
