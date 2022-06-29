@@ -412,14 +412,15 @@ function loadCss(cssFileName) {
         window.hidePopoverMenus();
     }
 
-    const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
+        const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
         if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts) {
             return;
         }
 
-        if (document.activeElement.tagName === "INPUT") {
+        if (document.activeElement.tagName === "INPUT" &&
+            document.activeElement.type !== "checkbox") {
             switch (getVirtualKey(ev)) {
             case "Escape":
                 handleEscape(ev);
@@ -926,6 +927,7 @@ function loadCss(cssFileName) {
     function showHelp() {
         const menu = getHelpMenu(true);
         if (menu.style.display === "none") {
+            window.hidePopoverMenus();
             menu.style.display = "";
         }
     }
@@ -939,6 +941,8 @@ function loadCss(cssFileName) {
         const shouldShowHelp = menu.style.display === "none";
         if (shouldShowHelp) {
             showHelp();
+        } else {
+            window.hidePopoverMenus();
         }
     });
 
