@@ -428,11 +428,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn cur_span(&self) -> Span {
-        self.stack()
-            .iter()
-            .rev()
-            .find(|frame| !frame.instance.def.requires_caller_location(*self.tcx))
-            .map_or(self.tcx.span, |f| f.current_span())
+        // This deliberately does *not* honor `requires_caller_location` since it is used for much
+        // more than just panics.
+        self.stack().last().map_or(self.tcx.span, |f| f.current_span())
     }
 
     #[inline(always)]
@@ -939,12 +937,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[must_use]
     pub fn generate_stacktrace(&self) -> Vec<FrameInfo<'tcx>> {
         let mut frames = Vec::new();
-        for frame in self
-            .stack()
-            .iter()
-            .rev()
-            .skip_while(|frame| frame.instance.def.requires_caller_location(*self.tcx))
-        {
+        // This deliberately does *not* honor `requires_caller_location` since it is used for much
+        // more than just panics.
+        for frame in self.stack().iter().rev() {
             let lint_root = frame.current_source_info().and_then(|source_info| {
                 match &frame.body.source_scopes[source_info.scope].local_data {
                     mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
