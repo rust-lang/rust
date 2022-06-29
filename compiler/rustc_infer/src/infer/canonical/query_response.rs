@@ -128,7 +128,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         let region_constraints = self.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 tcx,
-                region_obligations.iter().map(|(_, r_o)| (r_o.sup_type, r_o.sub_region)),
+                region_obligations.iter().map(|r_o| (r_o.sup_type, r_o.sub_region)),
                 region_constraints,
             )
         });

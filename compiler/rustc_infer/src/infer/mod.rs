@@ -15,7 +15,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
@@ -147,7 +146,7 @@ pub struct InferCtxtInner<'tcx> {
     /// for each body-id in this map, which will process the
     /// obligations within. This is expected to be done 'late enough'
     /// that all type inference variables have been bound and so forth.
-    region_obligations: Vec<(hir::HirId, RegionObligation<'tcx>)>,
+    region_obligations: Vec<RegionObligation<'tcx>>,
 
     undo_log: InferCtxtUndoLogs<'tcx>,
 
@@ -171,7 +170,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    pub fn region_obligations(&self) -> &[(hir::HirId, RegionObligation<'tcx>)] {
+    pub fn region_obligations(&self) -> &[RegionObligation<'tcx>] {
         &self.region_obligations
     }
 

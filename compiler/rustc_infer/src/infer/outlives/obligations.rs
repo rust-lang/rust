@@ -68,7 +68,6 @@ use crate::infer::{
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_hir as hir;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 use smallvec::smallvec;
@@ -79,16 +78,11 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// and later processed by regionck, when full type information is
     /// available (see `region_obligations` field for more
     /// information).
-    pub fn register_region_obligation(
-        &self,
-        body_id: hir::HirId,
-        obligation: RegionObligation<'tcx>,
-    ) {
-        debug!("register_region_obligation(body_id={:?}, obligation={:?})", body_id, obligation);
-
+    #[instrument(level = "debug", skip(self))]
+    pub fn register_region_obligation(&self, obligation: RegionObligation<'tcx>) {
         let mut inner = self.inner.borrow_mut();
         inner.undo_log.push(UndoLog::PushRegionObligation);
-        inner.region_obligations.push((body_id, obligation));
+        inner.region_obligations.push(obligation);
     }
 
     pub fn register_region_obligation_with_cause(
@@ -108,14 +102,11 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             )
         });
 
-        self.register_region_obligation(
-            cause.body_id,
-            RegionObligation { sup_type, sub_region, origin },
-        );
+        self.register_region_obligation(RegionObligation { sup_type, sub_region, origin });
     }
 
     /// Trait queries just want to pass back type obligations "as is"
-    pub fn take_registered_region_obligations(&self) -> Vec<(hir::HirId, RegionObligation<'tcx>)> {
+    pub fn take_registered_region_obligations(&self) -> Vec<RegionObligation<'tcx>> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
@@ -156,7 +147,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         let my_region_obligations = self.take_registered_region_obligations();
 
-        for (_body_id, RegionObligation { sup_type, sub_region, origin }) in my_region_obligations {
+        for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
             debug!(
                 "process_registered_region_obligations: sup_type={:?} sub_region={:?} origin={:?}",
                 sup_type, sub_region, origin

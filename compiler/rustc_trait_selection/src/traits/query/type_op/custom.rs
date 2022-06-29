@@ -95,7 +95,7 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
         infcx.tcx,
         region_obligations
             .iter()
-            .map(|(_, r_o)| (r_o.sup_type, r_o.sub_region))
+            .map(|r_o| (r_o.sup_type, r_o.sub_region))
             .map(|(ty, r)| (infcx.resolve_vars_if_possible(ty), r)),
         &region_constraint_data,
     );
