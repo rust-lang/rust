@@ -3,9 +3,9 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, GenericArg, Generics, ItemKind, MetaItem, VariantData};
+use rustc_ast::{self as ast, Expr, Generics, ItemKind, MetaItem, VariantData};
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 
 pub fn expand_deriving_clone(
@@ -107,44 +107,38 @@ fn cs_clone_shallow(
     substr: &Substructure<'_>,
     is_union: bool,
 ) -> P<Expr> {
-    fn assert_ty_bounds(
-        cx: &mut ExtCtxt<'_>,
-        stmts: &mut Vec<ast::Stmt>,
-        ty: P<ast::Ty>,
-        span: Span,
-        helper_name: &str,
-    ) {
-        // Generate statement `let _: helper_name<ty>;`,
-        // set the expn ID so we can use the unstable struct.
-        let span = cx.with_def_site_ctxt(span);
-        let assert_path = cx.path_all(
-            span,
-            true,
-            cx.std_path(&[sym::clone, Symbol::intern(helper_name)]),
-            vec![GenericArg::Type(ty)],
-        );
-        stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
-    }
-    fn process_variant(cx: &mut ExtCtxt<'_>, stmts: &mut Vec<ast::Stmt>, variant: &VariantData) {
+    let mut stmts = Vec::new();
+    let mut process_variant = |variant: &VariantData| {
         for field in variant.fields() {
             // let _: AssertParamIsClone<FieldTy>;
-            assert_ty_bounds(cx, stmts, field.ty.clone(), field.span, "AssertParamIsClone");
+            super::assert_ty_bounds(
+                cx,
+                &mut stmts,
+                field.ty.clone(),
+                field.span,
+                &[sym::clone, sym::AssertParamIsClone],
+            );
         }
-    }
+    };
 
-    let mut stmts = Vec::new();
     if is_union {
         // let _: AssertParamIsCopy<Self>;
         let self_ty = cx.ty_path(cx.path_ident(trait_span, Ident::with_dummy_span(kw::SelfUpper)));
-        assert_ty_bounds(cx, &mut stmts, self_ty, trait_span, "AssertParamIsCopy");
+        super::assert_ty_bounds(
+            cx,
+            &mut stmts,
+            self_ty,
+            trait_span,
+            &[sym::clone, sym::AssertParamIsCopy],
+        );
     } else {
         match *substr.fields {
             StaticStruct(vdata, ..) => {
-                process_variant(cx, &mut stmts, vdata);
+                process_variant(vdata);
             }
             StaticEnum(enum_def, ..) => {
                 for variant in &enum_def.variants {
-                    process_variant(cx, &mut stmts, &variant.data);
+                    process_variant(&variant.data);
                 }
             }
             _ => cx.span_bug(

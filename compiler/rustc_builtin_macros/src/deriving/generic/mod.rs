@@ -1126,75 +1126,43 @@ impl<'a> MethodDef<'a> {
     ///     A1,
     ///     A2(i32)
     /// }
-    ///
-    /// // is equivalent to
-    ///
-    /// impl PartialEq for A {
+    /// ```
+    /// is equivalent to:
+    /// ```
+    /// impl ::core::cmp::PartialEq for A {
+    ///     #[inline]
     ///     fn eq(&self, other: &A) -> bool {
-    ///         use A::*;
-    ///         match (&*self, &*other) {
-    ///             (&A1, &A1) => true,
-    ///             (&A2(ref self_0),
-    ///              &A2(ref __arg_1_0)) => (*self_0).eq(&(*__arg_1_0)),
-    ///             _ => {
-    ///                 let __self_vi = match *self { A1 => 0, A2(..) => 1 };
-    ///                 let __arg_1_vi = match *other { A1 => 0, A2(..) => 1 };
-    ///                 false
+    ///         {
+    ///             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
+    ///             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
+    ///             if true && __self_vi == __arg_1_vi {
+    ///                 match (&*self, &*other) {
+    ///                     (&A::A2(ref __self_0), &A::A2(ref __arg_1_0)) =>
+    ///                         (*__self_0) == (*__arg_1_0),
+    ///                     _ => true,
+    ///                 }
+    ///             } else {
+    ///                 false // catch-all handler
     ///             }
     ///         }
     ///     }
     /// }
     /// ```
-    ///
-    /// (Of course `__self_vi` and `__arg_1_vi` are unused for
-    /// `PartialEq`, and those subcomputations will hopefully be removed
-    /// as their results are unused. The point of `__self_vi` and
-    /// `__arg_1_vi` is for `PartialOrd`; see #15503.)
-    fn expand_enum_method_body<'b>(
-        &self,
-        cx: &mut ExtCtxt<'_>,
-        trait_: &TraitDef<'b>,
-        enum_def: &'b EnumDef,
-        type_ident: Ident,
-        self_args: Vec<P<Expr>>,
-        nonself_args: &[P<Expr>],
-    ) -> P<Expr> {
-        self.build_enum_match_tuple(cx, trait_, enum_def, type_ident, self_args, nonself_args)
-    }
-
     /// Creates a match for a tuple of all `self_args`, where either all
     /// variants match, or it falls into a catch-all for when one variant
     /// does not match.
-
+    ///
     /// There are N + 1 cases because is a case for each of the N
     /// variants where all of the variants match, and one catch-all for
     /// when one does not match.
-
+    ///
     /// As an optimization we generate code which checks whether all variants
     /// match first which makes llvm see that C-like enums can be compiled into
     /// a simple equality check (for PartialEq).
-
+    ///
     /// The catch-all handler is provided access the variant index values
     /// for each of the self-args, carried in precomputed variables.
-
-    /// ```{.text}
-    /// let __self0_vi = std::intrinsics::discriminant_value(&self);
-    /// let __self1_vi = std::intrinsics::discriminant_value(&arg1);
-    /// let __self2_vi = std::intrinsics::discriminant_value(&arg2);
-    ///
-    /// if __self0_vi == __self1_vi && __self0_vi == __self2_vi && ... {
-    ///     match (...) {
-    ///         (Variant1, Variant1, ...) => Body1
-    ///         (Variant2, Variant2, ...) => Body2,
-    ///         ...
-    ///         _ => ::core::intrinsics::unreachable()
-    ///     }
-    /// }
-    /// else {
-    ///     ... // catch-all remainder can inspect above variant index values.
-    /// }
-    /// ```
-    fn build_enum_match_tuple<'b>(
+    fn expand_enum_method_body<'b>(
         &self,
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'b>,
@@ -1392,37 +1360,32 @@ impl<'a> MethodDef<'a> {
             //
             // i.e., for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
             // with three Self args, builds three statements:
-            //
             // ```
-            // let __self0_vi = std::intrinsics::discriminant_value(&self);
-            // let __self1_vi = std::intrinsics::discriminant_value(&arg1);
-            // let __self2_vi = std::intrinsics::discriminant_value(&arg2);
+            // let __self_vi = std::intrinsics::discriminant_value(&self);
+            // let __arg_1_vi = std::intrinsics::discriminant_value(&arg1);
+            // let __arg_2_vi = std::intrinsics::discriminant_value(&arg2);
             // ```
             let mut index_let_stmts: Vec<ast::Stmt> = Vec::with_capacity(vi_idents.len() + 1);
 
-            // We also build an expression which checks whether all discriminants are equal
-            // discriminant_test = __self0_vi == __self1_vi && __self0_vi == __self2_vi && ...
+            // We also build an expression which checks whether all discriminants are equal:
+            // `__self_vi == __arg_1_vi && __self_vi == __arg_2_vi && ...`
             let mut discriminant_test = cx.expr_bool(span, true);
-
-            let mut first_ident = None;
-            for (&ident, self_arg) in iter::zip(&vi_idents, &self_args) {
+            for (i, (&ident, self_arg)) in iter::zip(&vi_idents, &self_args).enumerate() {
                 let self_addr = cx.expr_addr_of(span, self_arg.clone());
                 let variant_value =
                     deriving::call_intrinsic(cx, span, sym::discriminant_value, vec![self_addr]);
                 let let_stmt = cx.stmt_let(span, false, ident, variant_value);
                 index_let_stmts.push(let_stmt);
 
-                match first_ident {
-                    Some(first) => {
-                        let first_expr = cx.expr_ident(span, first);
-                        let id = cx.expr_ident(span, ident);
-                        let test = cx.expr_binary(span, BinOpKind::Eq, first_expr, id);
-                        discriminant_test =
-                            cx.expr_binary(span, BinOpKind::And, discriminant_test, test)
-                    }
-                    None => {
-                        first_ident = Some(ident);
-                    }
+                if i > 0 {
+                    let id0 = cx.expr_ident(span, vi_idents[0]);
+                    let id = cx.expr_ident(span, ident);
+                    let test = cx.expr_binary(span, BinOpKind::Eq, id0, id);
+                    discriminant_test = if i == 1 {
+                        test
+                    } else {
+                        cx.expr_binary(span, BinOpKind::And, discriminant_test, test)
+                    };
                 }
             }
 
@@ -1453,7 +1416,7 @@ impl<'a> MethodDef<'a> {
             //      }
             //  }
             //  else {
-            //      <delegated expression referring to __self0_vi, et al.>
+            //      <delegated expression referring to __self_vi, et al.>
             //  }
             let all_match = cx.expr_match(span, match_arg, match_arms);
             let arm_expr = cx.expr_if(span, discriminant_test, all_match, Some(arm_expr));
