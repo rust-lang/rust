@@ -58,10 +58,7 @@ pub fn search_for_structural_match_violation<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<NonStructuralMatchTy<'tcx>> {
-    // FIXME: we should instead pass in an `infcx` from the outside.
-    tcx.infer_ctxt().enter(|infcx| {
-        ty.visit_with(&mut Search { tcx: infcx.tcx, span, seen: FxHashSet::default() }).break_value()
-    })
+    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default() }).break_value()
 }
 
 /// This method returns true if and only if `adt_ty` itself has been marked as
