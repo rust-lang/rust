@@ -1,7 +1,9 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::def_id::LocalDefId;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{
+    error_code, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -20,7 +22,7 @@ use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::traits::SelectionContext;
 
 use super::ConstCx;
-use crate::errors::NonConstOpErr;
+use crate::errors::{NonConstOpErr, StaticAccessErr};
 use crate::util::{call_kind, CallDesugaringKind, CallKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -731,24 +733,11 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            ccx.tcx.sess,
+        ccx.tcx.sess.create_err(StaticAccessErr {
             span,
-            E0013,
-            "{}s cannot refer to statics",
-            ccx.const_kind()
-        );
-        err.help(
-            "consider extracting the value of the `static` to a `const`, and referring to that",
-        );
-        if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
-            err.note(
-                "`static` and `const` variables can refer to other `const` variables. \
-                    A `const` variable, however, cannot refer to a `static` variable.",
-            );
-            err.help("To fix this, the value can be extracted to a `const` and then used.");
-        }
-        err
+            kind: ccx.const_kind(),
+            teach: ccx.tcx.sess.teach(&error_code!(E0013)).then_some(()),
+        })
     }
 }
 

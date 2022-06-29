@@ -1,3 +1,4 @@
+use rustc_hir::ConstContext;
 use rustc_macros::SessionDiagnostic;
 use rustc_span::Span;
 
@@ -25,4 +26,16 @@ pub(crate) struct UnstableInStable {
 pub(crate) struct NonConstOpErr {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(const_eval::static_access, code = "E0013")]
+#[help]
+pub(crate) struct StaticAccessErr {
+    #[primary_span]
+    pub span: Span,
+    pub kind: ConstContext,
+    #[note(const_eval::teach_note)]
+    #[help(const_eval::teach_help)]
+    pub teach: Option<()>,
 }
