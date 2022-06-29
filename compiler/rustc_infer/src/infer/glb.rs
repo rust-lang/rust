@@ -95,20 +95,12 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
         T: Relate<'tcx>,
     {
         debug!("binders(a={:?}, b={:?})", a, b);
-        if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
-            // When higher-ranked types are involved, computing the GLB is
-            // very challenging, switch to invariance. This is obviously
-            // overly conservative but works ok in practice.
-            self.relate_with_variance(
-                ty::Variance::Invariant,
-                ty::VarianceDiagInfo::default(),
-                a,
-                b,
-            )?;
-            Ok(a)
-        } else {
-            Ok(ty::Binder::dummy(self.relate(a.skip_binder(), b.skip_binder())?))
-        }
+
+        // When higher-ranked types are involved, computing the LUB is
+        // very challenging, switch to invariance. This is obviously
+        // overly conservative but works ok in practice.
+        self.relate_with_variance(ty::Variance::Invariant, ty::VarianceDiagInfo::default(), a, b)?;
+        Ok(a)
     }
 }
 
