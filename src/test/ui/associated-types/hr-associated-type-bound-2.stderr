@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `for<'b> u32: X<'b>`
+error[E0275]: overflow evaluating the requirement `<u32 as X<'b>>::U`
   --> $DIR/hr-associated-type-bound-2.rs:11:1
    |
 LL | / impl X<'_> for u32

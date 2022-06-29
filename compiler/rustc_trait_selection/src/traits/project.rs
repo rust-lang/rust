@@ -1190,6 +1190,7 @@ fn project<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
 ) -> Result<Projected<'tcx>, ProjectionError<'tcx>> {
     if !selcx.tcx().recursion_limit().value_within_limit(obligation.recursion_depth) {
+        // dbg!(selcx.query_mode);
         match selcx.query_mode {
             super::TraitQueryMode::Standard => {
                 selcx.infcx().report_overflow_error(&obligation, true);
