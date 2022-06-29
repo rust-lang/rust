@@ -22,7 +22,9 @@ use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::traits::SelectionContext;
 
 use super::ConstCx;
-use crate::errors::{NonConstOpErr, StaticAccessErr};
+use crate::errors::{
+    NonConstOpErr, PanicNonStrErr, RawPtrComparisonErr, RawPtrToIntErr, StaticAccessErr,
+};
 use crate::util::{call_kind, CallDesugaringKind, CallKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -642,10 +644,7 @@ impl<'tcx> NonConstOp<'tcx> for PanicNonStr {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.struct_span_err(
-            span,
-            "argument to `panic!()` in a const context must have type `&str`",
-        )
+        ccx.tcx.sess.create_err(PanicNonStrErr { span })
     }
 }
 
@@ -660,15 +659,7 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrComparison {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = ccx
-            .tcx
-            .sess
-            .struct_span_err(span, "pointers cannot be reliably compared during const eval");
-        err.note(
-            "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> \
-            for more information",
-        );
-        err
+        ccx.tcx.sess.create_err(RawPtrComparisonErr { span })
     }
 }
 
@@ -704,15 +695,7 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrToIntCast {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = ccx
-            .tcx
-            .sess
-            .struct_span_err(span, "pointers cannot be cast to integers during const eval");
-        err.note("at compile-time, pointers do not have an integer value");
-        err.note(
-            "avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior",
-        );
-        err
+        ccx.tcx.sess.create_err(RawPtrToIntErr { span })
     }
 }
 

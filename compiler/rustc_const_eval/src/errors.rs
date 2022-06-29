@@ -39,3 +39,27 @@ pub(crate) struct StaticAccessErr {
     #[help(const_eval::teach_help)]
     pub teach: Option<()>,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(const_eval::raw_ptr_to_int)]
+#[note]
+#[note(const_eval::note2)]
+pub(crate) struct RawPtrToIntErr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(const_eval::raw_ptr_comparison)]
+#[note]
+pub(crate) struct RawPtrComparisonErr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(const_eval::panic_non_str)]
+pub(crate) struct PanicNonStrErr {
+    #[primary_span]
+    pub span: Span,
+}
