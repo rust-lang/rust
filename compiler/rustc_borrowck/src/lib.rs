@@ -76,6 +76,7 @@ mod places_conflict;
 mod prefixes;
 mod region_infer;
 mod renumber;
+mod session_diagnostics;
 mod type_check;
 mod universal_regions;
 mod used_muts;

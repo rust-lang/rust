@@ -366,22 +366,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
                 assert_eq!(def_a, def_b);
-                if def_a.is_box() || def_b.is_box() {
-                    if !def_a.is_box() || !def_b.is_box() {
-                        span_bug!(
-                            self.cur_span(),
-                            "invalid unsizing between {:?} -> {:?}",
-                            src.layout.ty,
-                            cast_ty.ty
-                        );
-                    }
-                    return self.unsize_into_ptr(
-                        src,
-                        dest,
-                        src.layout.ty.boxed_ty(),
-                        cast_ty.ty.boxed_ty(),
-                    );
-                }
 
                 // unsizing of generic struct with pointer fields
                 // Example: `Arc<T>` -> `Arc<Trait>`
