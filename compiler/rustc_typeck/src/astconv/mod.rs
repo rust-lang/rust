@@ -3015,7 +3015,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let param_name = generics.params.next_type_param_name(None);
 
             let add_generic_sugg = if let Some(span) = generics.span_for_param_suggestion() {
-                let param_name = generics.params.next_type_param_name(Some(&impl_trait_name));
                 (span, format!(", {}: {}", param_name, impl_trait_name))
             } else {
                 (generics.span, format!("<{}: {}>", param_name, impl_trait_name))
@@ -3047,11 +3046,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .map_or(false, |s| s.trim_end().ends_with('<'));
 
             let is_global = poly_trait_ref.trait_ref.path.is_global();
-            let is_local = if let Some(def_id) = poly_trait_ref.trait_ref.trait_def_id() {
-                def_id.is_local()
-            } else {
-                false
-            };
             let sugg = Vec::from_iter([
                 (
                     self_ty.span.shrink_to_lo(),
@@ -3077,9 +3071,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg);
                 diag.multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable);
                 // check if the impl trait that we are considering is a impl of a local trait
-                if is_local {
-                    self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
-                }
+                self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
                 diag.emit();
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
@@ -3094,10 +3086,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             sugg,
                             Applicability::MachineApplicable,
                         );
-                        // check if the impl trait that we are considering is a impl of a local trait
-                        if is_local {
-                            self.maybe_lint_blanket_trait_impl::<()>(&self_ty, &mut diag);
-                        }
+                        self.maybe_lint_blanket_trait_impl::<()>(&self_ty, &mut diag);
                         diag.emit();
                     },
                 );
