@@ -15,6 +15,6 @@ rustc_span = { path = "../rustc_span" }
 chalk-ir = "0.80.0"
 chalk-engine = "0.80.0"
 chalk-solve = "0.80.0"
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 rustc_infer = { path = "../rustc_infer" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }

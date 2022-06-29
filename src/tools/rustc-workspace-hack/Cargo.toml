@@ -84,7 +84,7 @@ quote = { version = "1", features = ["default"] }
 rand_core_0_5 = { package = "rand_core", version = "0.5.1", features = ["getrandom", "alloc", "std"] }
 serde = { version = "1.0.82", features = ['derive'] }
 serde_json = { version = "1.0.31", features = ["raw_value", "unbounded_depth"] }
-smallvec = { version = "1.6.1", features = ['union', 'may_dangle'] }
+smallvec = { version = "1.8.1", features = ['union', 'may_dangle'] }
 syn = { version = "1", features = ['fold', 'full', 'extra-traits', 'visit', 'visit-mut'] }
 url = { version = "2.0", features = ['serde'] }
 

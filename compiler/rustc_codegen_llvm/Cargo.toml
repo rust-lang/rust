@@ -31,6 +31,6 @@ rustc_query_system = { path = "../rustc_query_system" }
 rustc_session = { path = "../rustc_session" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_target = { path = "../rustc_target" }
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
