@@ -168,7 +168,7 @@ fmt)
     ;;
 clippy)
     cargo clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml --all-targets "$@"
-    #cargo clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/ui_test/Cargo.toml --all-targets "$@"
+    cargo clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/ui_test/Cargo.toml --all-targets "$@"
     cargo clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
     ;;
 *)

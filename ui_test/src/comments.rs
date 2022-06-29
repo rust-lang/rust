@@ -90,7 +90,7 @@ impl Comments {
                     path.display()
                 );
                 this.revisions =
-                    Some(revisions.trim().split_whitespace().map(|s| s.to_string()).collect());
+                    Some(revisions.split_whitespace().map(|s| s.to_string()).collect());
             }
             if let Some(s) = line.strip_prefix("// ignore-") {
                 let s = s
