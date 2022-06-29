@@ -18,8 +18,8 @@ assert: "nav.sidebar"
 
 // We now switch to mobile mode.
 size: (600, 600)
-// We check that the sidebar has the expected width (0 and 1px for the border).
-assert-css: ("nav.sidebar", {"width": "1px"})
+// We check that the sidebar has the expected width (0).
+assert-css: ("nav.sidebar", {"width": "0px"})
 // We expand the sidebar.
 click: "#sidebar-toggle"
 assert-css: (".source-sidebar-expanded nav.sidebar", {"width": "600px"})

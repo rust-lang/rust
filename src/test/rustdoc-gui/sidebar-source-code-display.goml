@@ -116,3 +116,13 @@ assert-css: (
     "#source-sidebar .expand + .children .folders .name",
     {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
 )
+
+// Now checking on mobile devices.
+size: (500, 700)
+reload:
+// Waiting for the sidebar to be displayed...
+wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+
+// We now check it takes the full size of the display.
+assert-property: ("body", {"clientWidth": "500", "clientHeight": "700"})
+assert-property: (".sidebar", {"clientWidth": "500", "clientHeight": "700"})
