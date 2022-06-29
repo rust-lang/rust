@@ -434,8 +434,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 match self.local_names[local] {
                     Some(name) if !local_decl.from_compiler_desugaring() => {
-                        let label = match local_decl.local_info.as_ref().unwrap() {
-                            box LocalInfo::User(ClearCrossCrate::Set(
+                        let label = match local_decl.local_info.as_deref().unwrap() {
+                            LocalInfo::User(ClearCrossCrate::Set(
                                 mir::BindingForm::ImplicitSelf(_),
                             )) => {
                                 let (span, suggestion) =
@@ -443,7 +443,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 Some((true, span, suggestion))
                             }
 
-                            box LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
+                            LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
                                 mir::VarBindingForm {
                                     binding_mode: ty::BindingMode::BindByValue(_),
                                     opt_ty_info,
@@ -473,20 +473,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     // on for loops, RHS points to the iterator part
                                     Some(DesugaringKind::ForLoop) => {
                                         self.suggest_similar_mut_method_for_for_loop(&mut err);
-                                        Some((
-                                            false,
-                                            opt_assignment_rhs_span.unwrap(),
-                                            format!(
-                                                "this iterator yields `{SIGIL}` {DESC}s",
-                                                SIGIL = pointer_sigil,
-                                                DESC = pointer_desc
-                                            ),
-                                        ))
+                                        err.span_label(opt_assignment_rhs_span.unwrap(), format!(
+                                            "this iterator yields `{pointer_sigil}` {pointer_desc}s",
+                                        ));
+                                        None
                                     }
                                     // don't create labels for compiler-generated spans
                                     Some(_) => None,
                                     None => {
-                                        let (span, suggestion) = if name != kw::SelfLower {
+                                        let label = if name != kw::SelfLower {
                                             suggest_ampmut(
                                                 self.infcx.tcx,
                                                 local_decl,
@@ -501,7 +496,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                                         ..
                                                     }),
                                                 ))) => {
-                                                    suggest_ampmut_self(self.infcx.tcx, local_decl)
+                                                    let (span, sugg) = suggest_ampmut_self(
+                                                        self.infcx.tcx,
+                                                        local_decl,
+                                                    );
+                                                    (true, span, sugg)
                                                 }
                                                 // explicit self (eg `self: &'a Self`)
                                                 _ => suggest_ampmut(
@@ -512,12 +511,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                                 ),
                                             }
                                         };
-                                        Some((true, span, suggestion))
+                                        Some(label)
                                     }
                                 }
                             }
 
-                            box LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
+                            LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
                                 mir::VarBindingForm {
                                     binding_mode: ty::BindingMode::BindByReference(_),
                                     ..
@@ -528,7 +527,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     .map(|replacement| (true, pattern_span, replacement))
                             }
 
-                            box LocalInfo::User(ClearCrossCrate::Clear) => {
+                            LocalInfo::User(ClearCrossCrate::Clear) => {
                                 bug!("saw cleared local state")
                             }
 
@@ -559,7 +558,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 }
                             }
                             Some((false, err_label_span, message)) => {
-                                err.span_label(err_label_span, &message);
+                                err.span_label(
+                                    err_label_span,
+                                    &format!(
+                                        "consider changing this binding's type to be: `{message}`"
+                                    ),
+                                );
                             }
                             None => {}
                         }
@@ -1004,7 +1008,7 @@ fn suggest_ampmut<'tcx>(
     local_decl: &mir::LocalDecl<'tcx>,
     opt_assignment_rhs_span: Option<Span>,
     opt_ty_info: Option<Span>,
-) -> (Span, String) {
+) -> (bool, Span, String) {
     if let Some(assignment_rhs_span) = opt_assignment_rhs_span
         && let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span)
     {
@@ -1028,24 +1032,24 @@ fn suggest_ampmut<'tcx>(
             let lt_name = &src[1..ws_pos];
             let ty = src[ws_pos..].trim_start();
             if !is_mutbl(ty) {
-                return (assignment_rhs_span, format!("&{lt_name} mut {ty}"));
+                return (true, assignment_rhs_span, format!("&{lt_name} mut {ty}"));
             }
         } else if let Some(stripped) = src.strip_prefix('&') {
             let stripped = stripped.trim_start();
             if !is_mutbl(stripped) {
-                return (assignment_rhs_span, format!("&mut {stripped}"));
+                return (true, assignment_rhs_span, format!("&mut {stripped}"));
             }
         }
     }
 
-    let highlight_span = match opt_ty_info {
+    let (suggestability, highlight_span) = match opt_ty_info {
         // if this is a variable binding with an explicit type,
         // try to highlight that for the suggestion.
-        Some(ty_span) => ty_span,
+        Some(ty_span) => (true, ty_span),
 
         // otherwise, just highlight the span associated with
         // the (MIR) LocalDecl.
-        None => local_decl.source_info.span,
+        None => (false, local_decl.source_info.span),
     };
 
     if let Ok(src) = tcx.sess.source_map().span_to_snippet(highlight_span)
@@ -1053,12 +1057,13 @@ fn suggest_ampmut<'tcx>(
     {
         let lt_name = &src[1..ws_pos];
         let ty = &src[ws_pos..];
-        return (highlight_span, format!("&{} mut{}", lt_name, ty));
+        return (true, highlight_span, format!("&{} mut{}", lt_name, ty));
     }
 
     let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
     assert_eq!(ty_mut.mutbl, hir::Mutability::Not);
     (
+        suggestability,
         highlight_span,
         if local_decl.ty.is_region_ptr() {
             format!("&mut {}", ty_mut.ty)

@@ -2,7 +2,7 @@ error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:6:13
    |
 LL |     let _ = Some(3, 2);
-   |             ^^^^    - argument unexpected
+   |             ^^^^    - argument of type `{integer}` unexpected
    |
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
@@ -18,9 +18,9 @@ error[E0061]: this enum variant takes 1 argument but 3 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:7:13
    |
 LL |     let _ = Ok(3, 6, 2);
-   |             ^^    -  - argument unexpected
+   |             ^^    -  - argument of type `{integer}` unexpected
    |                   |
-   |                   argument unexpected
+   |                   argument of type `{integer}` unexpected
    |
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -68,7 +68,7 @@ error[E0061]: this struct takes 1 argument but 2 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:10:13
    |
 LL |     let _ = Wrapper(5, 2);
-   |             ^^^^^^^    - argument unexpected
+   |             ^^^^^^^    - argument of type `{integer}` unexpected
    |
 note: tuple struct defined here
   --> $DIR/struct-enum-wrong-args.rs:2:8
@@ -116,7 +116,7 @@ error[E0061]: this struct takes 2 arguments but 3 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:13:13
    |
 LL |     let _ = DoubleWrapper(5, 2, 7);
-   |             ^^^^^^^^^^^^^       - argument unexpected
+   |             ^^^^^^^^^^^^^       - argument of type `{integer}` unexpected
    |
 note: tuple struct defined here
   --> $DIR/struct-enum-wrong-args.rs:3:8

@@ -7,7 +7,7 @@ LL |     foo(&10_u32);
    |     required by a bound introduced by this call
    |
    = help: the trait `Trait<2_u8>` is implemented for `u32`
-   = note: required for the cast to the object type `dyn Trait`
+   = note: required for the cast from `u32` to the object type `dyn Trait`
 
 error[E0277]: the trait bound `bool: Traitor<{_: u8}>` is not satisfied
   --> $DIR/trait_objects_fail.rs:28:9
@@ -18,7 +18,7 @@ LL |     bar(&true);
    |     required by a bound introduced by this call
    |
    = help: the trait `Traitor<2_u8, 3_u8>` is implemented for `bool`
-   = note: required for the cast to the object type `dyn Traitor<{_: u8}>`
+   = note: required for the cast from `bool` to the object type `dyn Traitor<{_: u8}>`
 
 error: aborting due to 2 previous errors
 

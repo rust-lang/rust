@@ -1,6 +1,25 @@
 use std::cmp;
 
+use rustc_index::vec::IndexVec;
 use rustc_middle::ty::error::TypeError;
+
+rustc_index::newtype_index! {
+    pub(crate) struct ExpectedIdx {
+        DEBUG_FORMAT = "ExpectedIdx({})",
+    }
+}
+
+rustc_index::newtype_index! {
+    pub(crate) struct ProvidedIdx {
+        DEBUG_FORMAT = "ProvidedIdx({})",
+    }
+}
+
+impl ExpectedIdx {
+    pub fn to_provided_idx(self) -> ProvidedIdx {
+        ProvidedIdx::from_usize(self.as_usize())
+    }
+}
 
 // An issue that might be found in the compatibility matrix
 #[derive(Debug)]
@@ -27,24 +46,24 @@ pub(crate) enum Compatibility<'tcx> {
 #[derive(Debug)]
 pub(crate) enum Error<'tcx> {
     /// The provided argument is the invalid type for the expected input
-    Invalid(usize, usize, Compatibility<'tcx>), // provided, expected
+    Invalid(ProvidedIdx, ExpectedIdx, Compatibility<'tcx>),
     /// There is a missing input
-    Missing(usize),
+    Missing(ExpectedIdx),
     /// There's a superfluous argument
-    Extra(usize),
+    Extra(ProvidedIdx),
     /// Two arguments should be swapped
-    Swap(usize, usize, usize, usize),
+    Swap(ProvidedIdx, ProvidedIdx, ExpectedIdx, ExpectedIdx),
     /// Several arguments should be reordered
-    Permutation(Vec<(usize, usize)>), // dest_arg, dest_input
+    Permutation(Vec<(ExpectedIdx, ProvidedIdx)>),
 }
 
 pub(crate) struct ArgMatrix<'tcx> {
     /// Maps the indices in the `compatibility_matrix` rows to the indices of
     /// the *user provided* inputs
-    input_indexes: Vec<usize>,
+    provided_indices: Vec<ProvidedIdx>,
     /// Maps the indices in the `compatibility_matrix` columns to the indices
     /// of the *expected* args
-    arg_indexes: Vec<usize>,
+    expected_indices: Vec<ExpectedIdx>,
     /// The first dimension (rows) are the remaining user provided inputs to
     /// match and the second dimension (cols) are the remaining expected args
     /// to match
@@ -52,62 +71,64 @@ pub(crate) struct ArgMatrix<'tcx> {
 }
 
 impl<'tcx> ArgMatrix<'tcx> {
-    pub(crate) fn new<F: FnMut(usize, usize) -> Compatibility<'tcx>>(
-        minimum_input_count: usize,
-        provided_arg_count: usize,
+    pub(crate) fn new<F: FnMut(ProvidedIdx, ExpectedIdx) -> Compatibility<'tcx>>(
+        provided_count: usize,
+        expected_input_count: usize,
         mut is_compatible: F,
     ) -> Self {
-        let compatibility_matrix = (0..provided_arg_count)
-            .map(|i| (0..minimum_input_count).map(|j| is_compatible(i, j)).collect())
+        let compatibility_matrix = (0..provided_count)
+            .map(|i| {
+                (0..expected_input_count)
+                    .map(|j| is_compatible(ProvidedIdx::from_usize(i), ExpectedIdx::from_usize(j)))
+                    .collect()
+            })
             .collect();
         ArgMatrix {
-            input_indexes: (0..provided_arg_count).collect(),
-            arg_indexes: (0..minimum_input_count).collect(),
+            provided_indices: (0..provided_count).map(ProvidedIdx::from_usize).collect(),
+            expected_indices: (0..expected_input_count).map(ExpectedIdx::from_usize).collect(),
             compatibility_matrix,
         }
     }
 
     /// Remove a given input from consideration
-    fn eliminate_input(&mut self, idx: usize) {
-        self.input_indexes.remove(idx);
+    fn eliminate_provided(&mut self, idx: usize) {
+        self.provided_indices.remove(idx);
         self.compatibility_matrix.remove(idx);
     }
 
     /// Remove a given argument from consideration
-    fn eliminate_arg(&mut self, idx: usize) {
-        self.arg_indexes.remove(idx);
+    fn eliminate_expected(&mut self, idx: usize) {
+        self.expected_indices.remove(idx);
         for row in &mut self.compatibility_matrix {
             row.remove(idx);
         }
     }
 
     /// "satisfy" an input with a given arg, removing both from consideration
-    fn satisfy_input(&mut self, input_idx: usize, arg_idx: usize) {
-        self.eliminate_input(input_idx);
-        self.eliminate_arg(arg_idx);
+    fn satisfy_input(&mut self, provided_idx: usize, expected_idx: usize) {
+        self.eliminate_provided(provided_idx);
+        self.eliminate_expected(expected_idx);
     }
 
     // Returns a `Vec` of (user input, expected arg) of matched arguments. These
     // are inputs on the remaining diagonal that match.
-    fn eliminate_satisfied(&mut self) -> Vec<(usize, usize)> {
-        let mut i = cmp::min(self.input_indexes.len(), self.arg_indexes.len());
+    fn eliminate_satisfied(&mut self) -> Vec<(ProvidedIdx, ExpectedIdx)> {
+        let num_args = cmp::min(self.provided_indices.len(), self.expected_indices.len());
         let mut eliminated = vec![];
-        while i > 0 {
-            let idx = i - 1;
-            if matches!(self.compatibility_matrix[idx][idx], Compatibility::Compatible) {
-                eliminated.push((self.input_indexes[idx], self.arg_indexes[idx]));
-                self.satisfy_input(idx, idx);
+        for i in (0..num_args).rev() {
+            if matches!(self.compatibility_matrix[i][i], Compatibility::Compatible) {
+                eliminated.push((self.provided_indices[i], self.expected_indices[i]));
+                self.satisfy_input(i, i);
             }
-            i -= 1;
         }
-        return eliminated;
+        eliminated
     }
 
     // Find some issue in the compatibility matrix
     fn find_issue(&self) -> Option<Issue> {
         let mat = &self.compatibility_matrix;
-        let ai = &self.arg_indexes;
-        let ii = &self.input_indexes;
+        let ai = &self.expected_indices;
+        let ii = &self.provided_indices;
 
         for i in 0..cmp::max(ai.len(), ii.len()) {
             // If we eliminate the last row, any left-over inputs are considered missing
@@ -264,12 +285,15 @@ impl<'tcx> ArgMatrix<'tcx> {
     //
     // We'll want to know which arguments and inputs these rows and columns correspond to
     // even after we delete them.
-    pub(crate) fn find_errors(mut self) -> (Vec<Error<'tcx>>, Vec<Option<usize>>) {
-        let provided_arg_count = self.input_indexes.len();
+    pub(crate) fn find_errors(
+        mut self,
+    ) -> (Vec<Error<'tcx>>, IndexVec<ExpectedIdx, Option<ProvidedIdx>>) {
+        let provided_arg_count = self.provided_indices.len();
 
         let mut errors: Vec<Error<'tcx>> = vec![];
         // For each expected argument, the matched *actual* input
-        let mut matched_inputs: Vec<Option<usize>> = vec![None; self.arg_indexes.len()];
+        let mut matched_inputs: IndexVec<ExpectedIdx, Option<ProvidedIdx>> =
+            IndexVec::from_elem_n(None, self.expected_indices.len());
 
         // Before we start looking for issues, eliminate any arguments that are already satisfied,
         // so that an argument which is already spoken for by the input it's in doesn't
@@ -280,34 +304,34 @@ impl<'tcx> ArgMatrix<'tcx> {
         // Without this elimination, the first argument causes the second argument
         // to show up as both a missing input and extra argument, rather than
         // just an invalid type.
-        for (inp, arg) in self.eliminate_satisfied() {
-            matched_inputs[arg] = Some(inp);
+        for (provided, expected) in self.eliminate_satisfied() {
+            matched_inputs[expected] = Some(provided);
         }
 
-        while self.input_indexes.len() > 0 || self.arg_indexes.len() > 0 {
+        while !self.provided_indices.is_empty() || !self.expected_indices.is_empty() {
             match self.find_issue() {
                 Some(Issue::Invalid(idx)) => {
                     let compatibility = self.compatibility_matrix[idx][idx].clone();
-                    let input_idx = self.input_indexes[idx];
-                    let arg_idx = self.arg_indexes[idx];
+                    let input_idx = self.provided_indices[idx];
+                    let arg_idx = self.expected_indices[idx];
                     self.satisfy_input(idx, idx);
                     errors.push(Error::Invalid(input_idx, arg_idx, compatibility));
                 }
                 Some(Issue::Extra(idx)) => {
-                    let input_idx = self.input_indexes[idx];
-                    self.eliminate_input(idx);
+                    let input_idx = self.provided_indices[idx];
+                    self.eliminate_provided(idx);
                     errors.push(Error::Extra(input_idx));
                 }
                 Some(Issue::Missing(idx)) => {
-                    let arg_idx = self.arg_indexes[idx];
-                    self.eliminate_arg(idx);
+                    let arg_idx = self.expected_indices[idx];
+                    self.eliminate_expected(idx);
                     errors.push(Error::Missing(arg_idx));
                 }
                 Some(Issue::Swap(idx, other)) => {
-                    let input_idx = self.input_indexes[idx];
-                    let other_input_idx = self.input_indexes[other];
-                    let arg_idx = self.arg_indexes[idx];
-                    let other_arg_idx = self.arg_indexes[other];
+                    let input_idx = self.provided_indices[idx];
+                    let other_input_idx = self.provided_indices[other];
+                    let arg_idx = self.expected_indices[idx];
+                    let other_arg_idx = self.expected_indices[other];
                     let (min, max) = (cmp::min(idx, other), cmp::max(idx, other));
                     self.satisfy_input(min, max);
                     // Subtract 1 because we already removed the "min" row
@@ -319,13 +343,14 @@ impl<'tcx> ArgMatrix<'tcx> {
                 Some(Issue::Permutation(args)) => {
                     let mut idxs: Vec<usize> = args.iter().filter_map(|&a| a).collect();
 
-                    let mut real_idxs = vec![None; provided_arg_count];
+                    let mut real_idxs: IndexVec<ProvidedIdx, Option<(ExpectedIdx, ProvidedIdx)>> =
+                        IndexVec::from_elem_n(None, provided_arg_count);
                     for (src, dst) in
                         args.iter().enumerate().filter_map(|(src, dst)| dst.map(|dst| (src, dst)))
                     {
-                        let src_input_idx = self.input_indexes[src];
-                        let dst_input_idx = self.input_indexes[dst];
-                        let dest_arg_idx = self.arg_indexes[dst];
+                        let src_input_idx = self.provided_indices[src];
+                        let dst_input_idx = self.provided_indices[dst];
+                        let dest_arg_idx = self.expected_indices[dst];
                         real_idxs[src_input_idx] = Some((dest_arg_idx, dst_input_idx));
                         matched_inputs[dest_arg_idx] = Some(src_input_idx);
                     }

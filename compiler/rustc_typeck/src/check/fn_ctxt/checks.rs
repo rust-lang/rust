@@ -1,6 +1,8 @@
 use crate::astconv::AstConv;
 use crate::check::coercion::CoerceMany;
-use crate::check::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error};
+use crate::check::fn_ctxt::arg_matrix::{
+    ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx,
+};
 use crate::check::gather_locals::Declaration;
 use crate::check::method::MethodCallee;
 use crate::check::Expectation::*;
@@ -17,13 +19,14 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, Node, QPath};
+use rustc_index::vec::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
@@ -214,6 +217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let provided_arg_count = provided_args.len();
 
         // We'll also want to keep track of the fully coerced argument types, for an awkward hack near the end
+        // FIXME(compiler-errors): Get rid of this, actually.
         let mut final_arg_types: Vec<Option<(Ty<'_>, Ty<'_>)>> = vec![None; provided_arg_count];
 
         // We introduce a helper function to demand that a given argument satisfy a given input
@@ -287,54 +291,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        // A "softer" version of the helper above, which checks types without persisting them,
-        // and treats error types differently
-        // This will allow us to "probe" for other argument orders that would likely have been correct
-        let check_compatible = |input_idx, arg_idx| {
-            let formal_input_ty: Ty<'tcx> = formal_input_tys[arg_idx];
-            let expected_input_ty: Ty<'tcx> = expected_input_tys[arg_idx];
-
-            // If either is an error type, we defy the usual convention and consider them to *not* be
-            // coercible.  This prevents our error message heuristic from trying to pass errors into
-            // every argument.
-            if formal_input_ty.references_error() || expected_input_ty.references_error() {
-                return Compatibility::Incompatible(None);
-            }
-
-            let provided_arg: &hir::Expr<'tcx> = &provided_args[input_idx];
-            let expectation = Expectation::rvalue_hint(self, expected_input_ty);
-            // FIXME: check that this is safe; I don't believe this commits any of the obligations, but I can't be sure.
-            //
-            //   I had another method of "soft" type checking before,
-            //   but it was failing to find the type of some expressions (like "")
-            //   so I prodded this method and made it pub(super) so I could call it, and it seems to work well.
-            let checked_ty = self.check_expr_kind(provided_arg, expectation);
-
-            let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
-            let can_coerce = self.can_coerce(checked_ty, coerced_ty);
-
-            if !can_coerce {
-                return Compatibility::Incompatible(None);
-            }
-
-            let subtyping_result = self
-                .at(&self.misc(provided_arg.span), self.param_env)
-                .sup(formal_input_ty, coerced_ty);
-
-            // Same as above: if either the coerce type or the checked type is an error type,
-            // consider them *not* compatible.
-            let coercible =
-                !coerced_ty.references_error() && !checked_ty.references_error() && can_coerce;
-
-            match (coercible, &subtyping_result) {
-                (true, Ok(_)) => Compatibility::Compatible,
-                _ => Compatibility::Incompatible(subtyping_result.err()),
-            }
-        };
-
         // To start, we only care "along the diagonal", where we expect every
         // provided arg to be in the right spot
-        let mut compatibility = vec![Compatibility::Incompatible(None); provided_args.len()];
+        let mut compatibility_diagonal =
+            vec![Compatibility::Incompatible(None); provided_args.len()];
 
         // Keep track of whether we *could possibly* be satisfied, i.e. whether we're on the happy path
         // if the wrong number of arguments were supplied, we CAN'T be satisfied,
@@ -394,7 +354,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let compatible = demand_compatible(idx, &mut final_arg_types);
                 let is_compatible = matches!(compatible, Compatibility::Compatible);
-                compatibility[idx] = compatible;
+                compatibility_diagonal[idx] = compatible;
 
                 if !is_compatible {
                     call_appears_satisfied = false;
@@ -402,582 +362,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        // Logic here is a bit hairy
-        'errors: {
-            // If something above didn't typecheck, we've fallen off the happy path
-            // and we should make some effort to provide better error messages
-            if call_appears_satisfied {
-                break 'errors;
-            }
-
-            self.set_tainted_by_errors();
-
-            // The algorithm here is inspired by levenshtein distance and longest common subsequence.
-            // We'll try to detect 4 different types of mistakes:
-            // - An extra parameter has been provided that doesn't satisfy *any* of the other inputs
-            // - An input is missing, which isn't satisfied by *any* of the other arguments
-            // - Some number of arguments have been provided in the wrong order
-            // - A type is straight up invalid
-
-            // First, let's find the errors
-            let mut compatibility: Vec<_> = compatibility.into_iter().map(Some).collect();
-            let (mut errors, matched_inputs) =
-                ArgMatrix::new(minimum_input_count, provided_arg_count, |i, j| {
-                    if i == j { compatibility[i].take().unwrap() } else { check_compatible(i, j) }
-                })
-                .find_errors();
-
-            // Okay, so here's where it gets complicated in regards to what errors
-            // we emit and how.
-            // There are 3 different "types" of errors we might encounter.
-            //   1) Missing/extra/swapped arguments
-            //   2) Valid but incorrect arguments
-            //   3) Invalid arguments
-            //      - Currently I think this only comes up with `CyclicTy`
-            //
-            // We first need to go through, remove those from (3) and emit those
-            // as their own error, particularly since they're error code and
-            // message is special. From what I can tell, we *must* emit these
-            // here (vs somewhere prior to this function) since the arguments
-            // become invalid *because* of how they get used in the function.
-            // It is what it is.
-
-            let found_errors = !errors.is_empty();
-
-            errors.drain_filter(|error| {
-                let Error::Invalid(input_idx, arg_idx, Compatibility::Incompatible(Some(e))) = error else { return false };
-                let expected_ty = expected_input_tys[*arg_idx];
-                let provided_ty = final_arg_types[*input_idx].map(|ty| ty.0).unwrap_or_else(|| tcx.ty_error());
-                let cause = &self.misc(provided_args[*input_idx].span);
-                let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
-                if !matches!(trace.cause.as_failure_code(e), FailureCode::Error0308(_)) {
-                    self.report_and_explain_type_error(trace, e).emit();
-                    return true;
-                }
-                false
-            });
-
-            // We're done if we found errors, but we already emitted them.
-            // I don't think we *should* be able to enter this bit of code
-            // (`!call_appears_satisfied`) without *also* finding errors, but we
-            // don't want to accidentally not emit an error if there is some
-            // logic bug in the `ArgMatrix` code.
-            if found_errors && errors.is_empty() {
-                break 'errors;
-            }
-
-            // Next, let's construct the error
-            let (error_span, full_call_span, ctor_of) = match &call_expr.kind {
-                hir::ExprKind::Call(
-                    hir::Expr {
-                        span,
-                        kind:
-                            hir::ExprKind::Path(hir::QPath::Resolved(
-                                _,
-                                hir::Path { res: Res::Def(DefKind::Ctor(of, _), _), .. },
-                            )),
-                        ..
-                    },
-                    _,
-                ) => (call_span, *span, Some(of)),
-                hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, None),
-                hir::ExprKind::MethodCall(path_segment, _, span) => {
-                    let ident_span = path_segment.ident.span;
-                    let ident_span = if let Some(args) = path_segment.args {
-                        ident_span.with_hi(args.span_ext.hi())
-                    } else {
-                        ident_span
-                    };
-                    (
-                        *span, ident_span, None, // methods are never ctors
-                    )
-                }
-                k => span_bug!(call_span, "checking argument types on a non-call: `{:?}`", k),
-            };
-            let args_span = error_span.trim_start(full_call_span).unwrap_or(error_span);
-            let call_name = match ctor_of {
-                Some(CtorOf::Struct) => "struct",
-                Some(CtorOf::Variant) => "enum variant",
-                None => "function",
-            };
-            if c_variadic && provided_arg_count < minimum_input_count {
-                err_code = "E0060";
-            }
-
-            // Next special case: The case where we expect a single tuple and
-            // wrapping all the args in parentheses (or adding a comma to
-            // already existing parentheses) will result in a tuple that
-            // satisfies the call.
-            // This isn't super ideal code, because we copy code from elsewhere
-            // and somewhat duplicate this. We also delegate to the general type
-            // mismatch suggestions for the single arg case.
-            let sugg_tuple_wrap_args =
-                self.suggested_tuple_wrap(&expected_input_tys, provided_args);
-            match sugg_tuple_wrap_args {
-                TupleMatchFound::None => {}
-                TupleMatchFound::Single => {
-                    let expected_ty = expected_input_tys[0];
-                    let provided_ty = final_arg_types[0].map(|ty| ty.0).unwrap();
-                    let expected_ty = self.resolve_vars_if_possible(expected_ty);
-                    let provided_ty = self.resolve_vars_if_possible(provided_ty);
-                    let cause = &self.misc(provided_args[0].span);
-                    let compatibility = demand_compatible(0, &mut final_arg_types);
-                    let type_error = match compatibility {
-                        Compatibility::Incompatible(Some(error)) => error,
-                        _ => TypeError::Mismatch,
-                    };
-                    let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
-                    let mut err = self.report_and_explain_type_error(trace, &type_error);
-                    self.emit_coerce_suggestions(
-                        &mut err,
-                        &provided_args[0],
-                        final_arg_types[0].map(|ty| ty.0).unwrap(),
-                        final_arg_types[0].map(|ty| ty.1).unwrap(),
-                        None,
-                        None,
-                    );
-                    err.span_label(
-                        full_call_span,
-                        format!("arguments to this {} are incorrect", call_name),
-                    );
-                    // Call out where the function is defined
-                    label_fn_like(tcx, &mut err, fn_def_id);
-                    err.emit();
-                    break 'errors;
-                }
-                TupleMatchFound::Multiple(start, end) => {
-                    let mut err = tcx.sess.struct_span_err_with_code(
-                        full_call_span,
-                        &format!(
-                            "this {} takes {}{} but {} {} supplied",
-                            call_name,
-                            if c_variadic { "at least " } else { "" },
-                            potentially_plural_count(minimum_input_count, "argument"),
-                            potentially_plural_count(provided_arg_count, "argument"),
-                            if provided_arg_count == 1 { "was" } else { "were" }
-                        ),
-                        DiagnosticId::Error(err_code.to_owned()),
-                    );
-                    // Call out where the function is defined
-                    label_fn_like(tcx, &mut err, fn_def_id);
-                    err.multipart_suggestion(
-                        "use parentheses to construct a tuple",
-                        vec![(start, '('.to_string()), (end, ')'.to_string())],
-                        Applicability::MachineApplicable,
-                    );
-                    err.emit();
-                    break 'errors;
-                }
-            }
-
-            // Okay, now that we've emitted the special errors separately, we
-            // are only left missing/extra/swapped and mismatched arguments, both
-            // can be collated pretty easily if needed.
-
-            // Next special case: if there is only one "Incompatible" error, just emit that
-            if errors.len() == 1 {
-                if let Some(Error::Invalid(
-                    input_idx,
-                    arg_idx,
-                    Compatibility::Incompatible(Some(error)),
-                )) = errors.iter().next()
-                {
-                    let expected_ty = expected_input_tys[*arg_idx];
-                    let provided_ty = final_arg_types[*input_idx]
-                        .map(|ty| ty.0)
-                        .unwrap_or_else(|| tcx.ty_error());
-                    let expected_ty = self.resolve_vars_if_possible(expected_ty);
-                    let provided_ty = self.resolve_vars_if_possible(provided_ty);
-                    let cause = &self.misc(provided_args[*input_idx].span);
-                    let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
-                    let mut err = self.report_and_explain_type_error(trace, error);
-                    self.emit_coerce_suggestions(
-                        &mut err,
-                        &provided_args[*input_idx],
-                        provided_ty,
-                        final_arg_types[*input_idx]
-                            .map(|ty| ty.1)
-                            .unwrap_or_else(|| tcx.ty_error()),
-                        None,
-                        None,
-                    );
-                    err.span_label(
-                        full_call_span,
-                        format!("arguments to this {} are incorrect", call_name),
-                    );
-                    // Call out where the function is defined
-                    label_fn_like(tcx, &mut err, fn_def_id);
-                    err.emit();
-                    break 'errors;
-                }
-            }
-
-            let mut err = if minimum_input_count == provided_arg_count {
-                struct_span_err!(
-                    tcx.sess,
-                    full_call_span,
-                    E0308,
-                    "arguments to this {} are incorrect",
-                    call_name,
-                )
-            } else {
-                tcx.sess.struct_span_err_with_code(
-                    full_call_span,
-                    &format!(
-                        "this {} takes {}{} but {} {} supplied",
-                        call_name,
-                        if c_variadic { "at least " } else { "" },
-                        potentially_plural_count(minimum_input_count, "argument"),
-                        potentially_plural_count(provided_arg_count, "argument"),
-                        if provided_arg_count == 1 { "was" } else { "were" }
-                    ),
-                    DiagnosticId::Error(err_code.to_owned()),
-                )
-            };
-
-            // As we encounter issues, keep track of what we want to provide for the suggestion
-            let mut labels = vec![];
-            // If there is a single error, we give a specific suggestion; otherwise, we change to
-            // "did you mean" with the suggested function call
-            enum SuggestionText {
-                None,
-                Provide(bool),
-                Remove(bool),
-                Swap,
-                Reorder,
-                DidYouMean,
-            }
-            let mut suggestion_text = SuggestionText::None;
-
-            let mut errors = errors.into_iter().peekable();
-            while let Some(error) = errors.next() {
-                match error {
-                    Error::Invalid(input_idx, arg_idx, compatibility) => {
-                        let expected_ty = expected_input_tys[arg_idx];
-                        let provided_ty = final_arg_types[input_idx]
-                            .map(|ty| ty.0)
-                            .unwrap_or_else(|| tcx.ty_error());
-                        let expected_ty = self.resolve_vars_if_possible(expected_ty);
-                        let provided_ty = self.resolve_vars_if_possible(provided_ty);
-                        if let Compatibility::Incompatible(error) = &compatibility {
-                            let cause = &self.misc(provided_args[input_idx].span);
-                            let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
-                            if let Some(e) = error {
-                                self.note_type_err(
-                                    &mut err,
-                                    &trace.cause,
-                                    None,
-                                    Some(trace.values),
-                                    e,
-                                    false,
-                                    true,
-                                );
-                            }
-                        }
-
-                        self.emit_coerce_suggestions(
-                            &mut err,
-                            &provided_args[input_idx],
-                            provided_ty,
-                            // FIXME(compiler-errors): expected_ty?
-                            final_arg_types[input_idx]
-                                .map(|ty| ty.1)
-                                .unwrap_or_else(|| tcx.ty_error()),
-                            None,
-                            None,
-                        );
-                    }
-                    Error::Extra(arg_idx) => {
-                        let arg_type = if let Some((_, ty)) = final_arg_types[arg_idx] {
-                            if ty.references_error() || ty.has_infer_types() {
-                                "".into()
-                            } else {
-                                format!(" of type `{}`", ty)
-                            }
-                        } else {
-                            "".into()
-                        };
-                        labels.push((
-                            provided_args[arg_idx].span,
-                            format!("argument{} unexpected", arg_type),
-                        ));
-                        suggestion_text = match suggestion_text {
-                            SuggestionText::None => SuggestionText::Remove(false),
-                            SuggestionText::Remove(_) => SuggestionText::Remove(true),
-                            _ => SuggestionText::DidYouMean,
-                        };
-                    }
-                    Error::Missing(input_idx) => {
-                        // If there are multiple missing arguments adjacent to each other,
-                        // then we can provide a single error.
-
-                        let mut missing_idxs = vec![input_idx];
-                        while let Some(e) = errors.next_if(|e| matches!(e, Error::Missing(input_idx) if *input_idx == (missing_idxs.last().unwrap() + 1))) {
-                            match e {
-                                Error::Missing(input_idx) => missing_idxs.push(input_idx),
-                                _ => unreachable!(),
-                            }
-                        }
-
-                        // NOTE: Because we might be re-arranging arguments, might have extra
-                        // arguments, etc. it's hard to *really* know where we should provide
-                        // this error label, so as a heuristic, we point to the provided arg, or
-                        // to the call if the missing inputs pass the provided args.
-                        match &missing_idxs[..] {
-                            &[input_idx] => {
-                                let expected_ty = expected_input_tys[input_idx];
-                                let input_ty = self.resolve_vars_if_possible(expected_ty);
-                                let span = if input_idx < provided_arg_count {
-                                    let arg_span = provided_args[input_idx].span;
-                                    Span::new(arg_span.lo(), arg_span.hi(), arg_span.ctxt(), None)
-                                } else {
-                                    args_span
-                                };
-                                let arg_type =
-                                    if input_ty.references_error() || input_ty.has_infer_types() {
-                                        "".into()
-                                    } else {
-                                        format!(" of type `{}`", input_ty)
-                                    };
-                                labels.push((span, format!("an argument{} is missing", arg_type)));
-                                suggestion_text = match suggestion_text {
-                                    SuggestionText::None => SuggestionText::Provide(false),
-                                    SuggestionText::Provide(_) => SuggestionText::Provide(true),
-                                    _ => SuggestionText::DidYouMean,
-                                };
-                            }
-                            &[first_idx, second_idx] => {
-                                let first_input_ty =
-                                    self.resolve_vars_if_possible(expected_input_tys[first_idx]);
-                                let second_input_ty =
-                                    self.resolve_vars_if_possible(expected_input_tys[second_idx]);
-
-                                let span = if second_idx < provided_arg_count {
-                                    let first_arg_span = provided_args[first_idx].span;
-                                    let second_arg_span = provided_args[second_idx].span;
-                                    Span::new(
-                                        first_arg_span.lo(),
-                                        second_arg_span.hi(),
-                                        first_arg_span.ctxt(),
-                                        None,
-                                    )
-                                } else {
-                                    args_span
-                                };
-                                let any_unnameable = false
-                                    || first_input_ty.references_error()
-                                    || first_input_ty.has_infer_types()
-                                    || second_input_ty.references_error()
-                                    || second_input_ty.has_infer_types();
-                                let arg_type = if any_unnameable {
-                                    "".into()
-                                } else {
-                                    format!(
-                                        " of type `{}` and `{}`",
-                                        first_input_ty, second_input_ty
-                                    )
-                                };
-                                labels
-                                    .push((span, format!("two arguments{} are missing", arg_type)));
-                                suggestion_text = match suggestion_text {
-                                    SuggestionText::None | SuggestionText::Provide(_) => {
-                                        SuggestionText::Provide(true)
-                                    }
-                                    _ => SuggestionText::DidYouMean,
-                                };
-                            }
-                            &[first_idx, second_idx, third_idx] => {
-                                let first_input_ty =
-                                    self.resolve_vars_if_possible(expected_input_tys[first_idx]);
-                                let second_input_ty =
-                                    self.resolve_vars_if_possible(expected_input_tys[second_idx]);
-                                let third_input_ty =
-                                    self.resolve_vars_if_possible(expected_input_tys[third_idx]);
-                                let span = if third_idx < provided_arg_count {
-                                    let first_arg_span = provided_args[first_idx].span;
-                                    let third_arg_span = provided_args[third_idx].span;
-                                    Span::new(
-                                        first_arg_span.lo(),
-                                        third_arg_span.hi(),
-                                        first_arg_span.ctxt(),
-                                        None,
-                                    )
-                                } else {
-                                    args_span
-                                };
-                                let any_unnameable = false
-                                    || first_input_ty.references_error()
-                                    || first_input_ty.has_infer_types()
-                                    || second_input_ty.references_error()
-                                    || second_input_ty.has_infer_types()
-                                    || third_input_ty.references_error()
-                                    || third_input_ty.has_infer_types();
-                                let arg_type = if any_unnameable {
-                                    "".into()
-                                } else {
-                                    format!(
-                                        " of type `{}`, `{}`, and `{}`",
-                                        first_input_ty, second_input_ty, third_input_ty
-                                    )
-                                };
-                                labels.push((
-                                    span,
-                                    format!("three arguments{} are missing", arg_type),
-                                ));
-                                suggestion_text = match suggestion_text {
-                                    SuggestionText::None | SuggestionText::Provide(_) => {
-                                        SuggestionText::Provide(true)
-                                    }
-                                    _ => SuggestionText::DidYouMean,
-                                };
-                            }
-                            missing_idxs => {
-                                let first_idx = *missing_idxs.first().unwrap();
-                                let last_idx = *missing_idxs.last().unwrap();
-                                // NOTE: Because we might be re-arranging arguments, might have extra arguments, etc.
-                                // It's hard to *really* know where we should provide this error label, so this is a
-                                // decent heuristic
-                                let span = if last_idx < provided_arg_count {
-                                    let first_arg_span = provided_args[first_idx].span;
-                                    let last_arg_span = provided_args[last_idx].span;
-                                    Span::new(
-                                        first_arg_span.lo(),
-                                        last_arg_span.hi(),
-                                        first_arg_span.ctxt(),
-                                        None,
-                                    )
-                                } else {
-                                    // Otherwise just label the whole function
-                                    args_span
-                                };
-                                labels.push((span, format!("multiple arguments are missing")));
-                                suggestion_text = match suggestion_text {
-                                    SuggestionText::None | SuggestionText::Provide(_) => {
-                                        SuggestionText::Provide(true)
-                                    }
-                                    _ => SuggestionText::DidYouMean,
-                                };
-                            }
-                        }
-                    }
-                    Error::Swap(input_idx, other_input_idx, arg_idx, other_arg_idx) => {
-                        let first_span = provided_args[input_idx].span;
-                        let second_span = provided_args[other_input_idx].span;
-
-                        let first_expected_ty =
-                            self.resolve_vars_if_possible(expected_input_tys[arg_idx]);
-                        let first_provided_ty = if let Some((ty, _)) = final_arg_types[input_idx] {
-                            format!(", found `{}`", ty)
-                        } else {
-                            String::new()
-                        };
-                        labels.push((
-                            first_span,
-                            format!("expected `{}`{}", first_expected_ty, first_provided_ty),
-                        ));
-                        let other_expected_ty =
-                            self.resolve_vars_if_possible(expected_input_tys[other_arg_idx]);
-                        let other_provided_ty =
-                            if let Some((ty, _)) = final_arg_types[other_input_idx] {
-                                format!(", found `{}`", ty)
-                            } else {
-                                String::new()
-                            };
-                        labels.push((
-                            second_span,
-                            format!("expected `{}`{}", other_expected_ty, other_provided_ty),
-                        ));
-                        suggestion_text = match suggestion_text {
-                            SuggestionText::None => SuggestionText::Swap,
-                            _ => SuggestionText::DidYouMean,
-                        };
-                    }
-                    Error::Permutation(args) => {
-                        for (dst_arg, dest_input) in args {
-                            let expected_ty =
-                                self.resolve_vars_if_possible(expected_input_tys[dst_arg]);
-                            let provided_ty = if let Some((ty, _)) = final_arg_types[dest_input] {
-                                format!(", found `{}`", ty)
-                            } else {
-                                String::new()
-                            };
-                            labels.push((
-                                provided_args[dest_input].span,
-                                format!("expected `{}`{}", expected_ty, provided_ty),
-                            ));
-                        }
-
-                        suggestion_text = match suggestion_text {
-                            SuggestionText::None => SuggestionText::Reorder,
-                            _ => SuggestionText::DidYouMean,
-                        };
-                    }
-                }
-            }
-
-            // If we have less than 5 things to say, it would be useful to call out exactly what's wrong
-            if labels.len() <= 5 {
-                for (span, label) in labels {
-                    err.span_label(span, label);
-                }
-            }
-
-            // Call out where the function is defined
-            label_fn_like(tcx, &mut err, fn_def_id);
-
-            // And add a suggestion block for all of the parameters
-            let suggestion_text = match suggestion_text {
-                SuggestionText::None => None,
-                SuggestionText::Provide(plural) => {
-                    Some(format!("provide the argument{}", if plural { "s" } else { "" }))
-                }
-                SuggestionText::Remove(plural) => {
-                    Some(format!("remove the extra argument{}", if plural { "s" } else { "" }))
-                }
-                SuggestionText::Swap => Some("swap these arguments".to_string()),
-                SuggestionText::Reorder => Some("reorder these arguments".to_string()),
-                SuggestionText::DidYouMean => Some("did you mean".to_string()),
-            };
-            if let Some(suggestion_text) = suggestion_text {
-                let source_map = self.sess().source_map();
-                let mut suggestion = format!(
-                    "{}(",
-                    source_map.span_to_snippet(full_call_span).unwrap_or_else(|_| String::new())
-                );
-                for (arg_index, input_idx) in matched_inputs.iter().enumerate() {
-                    let suggestion_text = if let Some(input_idx) = input_idx {
-                        let arg_span = provided_args[*input_idx].span.source_callsite();
-                        let arg_text = source_map.span_to_snippet(arg_span).unwrap();
-                        arg_text
-                    } else {
-                        // Propose a placeholder of the correct type
-                        let expected_ty = expected_input_tys[arg_index];
-                        let input_ty = self.resolve_vars_if_possible(expected_ty);
-                        if input_ty.is_unit() {
-                            "()".to_string()
-                        } else if !input_ty.is_ty_var() {
-                            format!("/* {} */", input_ty)
-                        } else {
-                            "/* value */".to_string()
-                        }
-                    };
-                    suggestion += &suggestion_text;
-                    if arg_index < minimum_input_count - 1 {
-                        suggestion += ", ";
-                    }
-                }
-                suggestion += ")";
-                err.span_suggestion_verbose(
-                    error_span,
-                    &suggestion_text,
-                    suggestion,
-                    Applicability::HasPlaceholders,
-                );
-            }
-            err.emit();
+        if c_variadic && provided_arg_count < minimum_input_count {
+            err_code = "E0060";
         }
 
         for arg in provided_args.iter().skip(minimum_input_count) {
+            // Make sure we've checked this expr at least once.
             let arg_ty = self.check_expr(&arg);
 
             // If the function is c-style variadic, we skipped a bunch of arguments
@@ -1018,6 +408,669 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
+
+        if !call_appears_satisfied {
+            // Next, let's construct the error
+            let (error_span, full_call_span, ctor_of) = match &call_expr.kind {
+                hir::ExprKind::Call(
+                    hir::Expr {
+                        span,
+                        kind:
+                            hir::ExprKind::Path(hir::QPath::Resolved(
+                                _,
+                                hir::Path { res: Res::Def(DefKind::Ctor(of, _), _), .. },
+                            )),
+                        ..
+                    },
+                    _,
+                ) => (call_span, *span, Some(of)),
+                hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, None),
+                hir::ExprKind::MethodCall(path_segment, _, span) => {
+                    let ident_span = path_segment.ident.span;
+                    let ident_span = if let Some(args) = path_segment.args {
+                        ident_span.with_hi(args.span_ext.hi())
+                    } else {
+                        ident_span
+                    };
+                    (
+                        *span, ident_span, None, // methods are never ctors
+                    )
+                }
+                k => span_bug!(call_span, "checking argument types on a non-call: `{:?}`", k),
+            };
+            let args_span = error_span.trim_start(full_call_span).unwrap_or(error_span);
+            let call_name = match ctor_of {
+                Some(CtorOf::Struct) => "struct",
+                Some(CtorOf::Variant) => "enum variant",
+                None => "function",
+            };
+
+            let try_tuple_wrap_args = || {
+                // The case where we expect a single tuple and wrapping all the args
+                // in parentheses (or adding a comma to already existing parentheses)
+                // will result in a tuple that satisfies the call.
+                // This isn't super ideal code, because we copy code from elsewhere
+                // and somewhat duplicate this. We also delegate to the general type
+                // mismatch suggestions for the single arg case.
+                match self.suggested_tuple_wrap(&expected_input_tys, provided_args) {
+                    TupleMatchFound::Single => {
+                        let expected_ty = expected_input_tys[0];
+                        let provided_ty = final_arg_types[0].map(|ty| ty.0).unwrap();
+                        let expected_ty = self.resolve_vars_if_possible(expected_ty);
+                        let provided_ty = self.resolve_vars_if_possible(provided_ty);
+                        let cause = &self.misc(provided_args[0].span);
+                        let compatibility = demand_compatible(0, &mut final_arg_types);
+                        let type_error = match compatibility {
+                            Compatibility::Incompatible(Some(error)) => error,
+                            _ => TypeError::Mismatch,
+                        };
+                        let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
+                        let mut err = self.report_and_explain_type_error(trace, &type_error);
+                        self.emit_coerce_suggestions(
+                            &mut err,
+                            &provided_args[0],
+                            final_arg_types[0].map(|ty| ty.0).unwrap(),
+                            final_arg_types[0].map(|ty| ty.1).unwrap(),
+                            None,
+                            None,
+                        );
+                        err.span_label(
+                            full_call_span,
+                            format!("arguments to this {} are incorrect", call_name),
+                        );
+                        // Call out where the function is defined
+                        label_fn_like(tcx, &mut err, fn_def_id);
+                        err.emit();
+                        return true;
+                    }
+                    TupleMatchFound::Multiple(start, end) => {
+                        let mut err = tcx.sess.struct_span_err_with_code(
+                            full_call_span,
+                            &format!(
+                                "this {} takes {}{} but {} {} supplied",
+                                call_name,
+                                if c_variadic { "at least " } else { "" },
+                                potentially_plural_count(minimum_input_count, "argument"),
+                                potentially_plural_count(provided_arg_count, "argument"),
+                                if provided_arg_count == 1 { "was" } else { "were" }
+                            ),
+                            DiagnosticId::Error(err_code.to_owned()),
+                        );
+                        // Call out where the function is defined
+                        label_fn_like(tcx, &mut err, fn_def_id);
+                        err.multipart_suggestion(
+                            "use parentheses to construct a tuple",
+                            vec![(start, '('.to_string()), (end, ')'.to_string())],
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+                        return true;
+                    }
+                    TupleMatchFound::None => {}
+                }
+                false
+            };
+
+            let compatibility_diagonal = IndexVec::from_raw(compatibility_diagonal);
+            let provided_args = IndexVec::from_iter(provided_args.iter().take(if c_variadic {
+                minimum_input_count
+            } else {
+                provided_arg_count
+            }));
+            debug_assert_eq!(
+                formal_input_tys.len(),
+                expected_input_tys.len(),
+                "expected formal_input_tys to be the same size as expected_input_tys"
+            );
+            let formal_and_expected_inputs = IndexVec::from_iter(
+                formal_input_tys
+                    .iter()
+                    .copied()
+                    .zip(expected_input_tys.iter().copied())
+                    .map(|vars| self.resolve_vars_if_possible(vars)),
+            );
+
+            self.report_arg_errors(
+                compatibility_diagonal,
+                formal_and_expected_inputs,
+                provided_args,
+                full_call_span,
+                error_span,
+                args_span,
+                call_name,
+                c_variadic,
+                err_code,
+                fn_def_id,
+                try_tuple_wrap_args,
+            );
+        }
+    }
+
+    fn report_arg_errors(
+        &self,
+        compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
+        formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
+        provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
+        full_call_span: Span,
+        error_span: Span,
+        args_span: Span,
+        call_name: &str,
+        c_variadic: bool,
+        err_code: &str,
+        fn_def_id: Option<DefId>,
+        try_tuple_wrap_args: impl FnOnce() -> bool,
+    ) {
+        // Don't print if it has error types or is just plain `_`
+        fn has_error_or_infer<'tcx>(tys: impl IntoIterator<Item = Ty<'tcx>>) -> bool {
+            tys.into_iter().any(|ty| ty.references_error() || ty.is_ty_var())
+        }
+
+        self.set_tainted_by_errors();
+        let tcx = self.tcx;
+
+        // A "softer" version of the `demand_compatible`, which checks types without persisting them,
+        // and treats error types differently
+        // This will allow us to "probe" for other argument orders that would likely have been correct
+        let check_compatible = |provided_idx: ProvidedIdx, expected_idx: ExpectedIdx| {
+            if provided_idx.as_usize() == expected_idx.as_usize() {
+                return compatibility_diagonal[provided_idx].clone();
+            }
+
+            let (formal_input_ty, expected_input_ty) = formal_and_expected_inputs[expected_idx];
+            // If either is an error type, we defy the usual convention and consider them to *not* be
+            // coercible.  This prevents our error message heuristic from trying to pass errors into
+            // every argument.
+            if (formal_input_ty, expected_input_ty).references_error() {
+                return Compatibility::Incompatible(None);
+            }
+
+            let provided_arg: &hir::Expr<'tcx> = &provided_args[provided_idx];
+            let expectation = Expectation::rvalue_hint(self, expected_input_ty);
+            // FIXME: check that this is safe; I don't believe this commits any of the obligations, but I can't be sure.
+            //
+            //   I had another method of "soft" type checking before,
+            //   but it was failing to find the type of some expressions (like "")
+            //   so I prodded this method and made it pub(super) so I could call it, and it seems to work well.
+            let checked_ty = self.check_expr_kind(provided_arg, expectation);
+
+            let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
+            let can_coerce = self.can_coerce(checked_ty, coerced_ty);
+            if !can_coerce {
+                return Compatibility::Incompatible(None);
+            }
+
+            let subtyping_result = self
+                .at(&self.misc(provided_arg.span), self.param_env)
+                .sup(formal_input_ty, coerced_ty);
+
+            // Same as above: if either the coerce type or the checked type is an error type,
+            // consider them *not* compatible.
+            let references_error = (coerced_ty, checked_ty).references_error();
+            match (references_error, &subtyping_result) {
+                (false, Ok(_)) => Compatibility::Compatible,
+                _ => Compatibility::Incompatible(subtyping_result.err()),
+            }
+        };
+
+        // The algorithm here is inspired by levenshtein distance and longest common subsequence.
+        // We'll try to detect 4 different types of mistakes:
+        // - An extra parameter has been provided that doesn't satisfy *any* of the other inputs
+        // - An input is missing, which isn't satisfied by *any* of the other arguments
+        // - Some number of arguments have been provided in the wrong order
+        // - A type is straight up invalid
+
+        // First, let's find the errors
+        let (mut errors, matched_inputs) =
+            ArgMatrix::new(provided_args.len(), formal_and_expected_inputs.len(), check_compatible)
+                .find_errors();
+
+        // Precompute the provided types and spans, since that's all we typically need for below
+        let provided_arg_tys: IndexVec<ProvidedIdx, (Ty<'tcx>, Span)> = provided_args
+            .iter()
+            .map(|expr| {
+                let ty = self
+                    .in_progress_typeck_results
+                    .as_ref()
+                    .unwrap()
+                    .borrow()
+                    .expr_ty_adjusted_opt(*expr)
+                    .unwrap_or_else(|| tcx.ty_error());
+                (self.resolve_vars_if_possible(ty), expr.span)
+            })
+            .collect();
+
+        // Okay, so here's where it gets complicated in regards to what errors
+        // we emit and how.
+        // There are 3 different "types" of errors we might encounter.
+        //   1) Missing/extra/swapped arguments
+        //   2) Valid but incorrect arguments
+        //   3) Invalid arguments
+        //      - Currently I think this only comes up with `CyclicTy`
+        //
+        // We first need to go through, remove those from (3) and emit those
+        // as their own error, particularly since they're error code and
+        // message is special. From what I can tell, we *must* emit these
+        // here (vs somewhere prior to this function) since the arguments
+        // become invalid *because* of how they get used in the function.
+        // It is what it is.
+
+        if errors.is_empty() {
+            if cfg!(debug_assertions) {
+                span_bug!(error_span, "expected errors from argument matrix");
+            } else {
+                tcx.sess
+                    .struct_span_err(
+                        error_span,
+                        "argument type mismatch was detected, \
+                        but rustc had trouble determining where",
+                    )
+                    .note(
+                        "we would appreciate a bug report: \
+                        https://github.com/rust-lang/rust-clippy/issues/new",
+                    )
+                    .emit();
+            }
+            return;
+        }
+
+        errors.drain_filter(|error| {
+                let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(error)) = error else { return false };
+                let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
+                let (expected_ty, _) = formal_and_expected_inputs[*expected_idx];
+                let cause = &self.misc(provided_span);
+                let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
+                if let Some(e) = error {
+                    if !matches!(trace.cause.as_failure_code(e), FailureCode::Error0308(_)) {
+                        self.report_and_explain_type_error(trace, e).emit();
+                        return true;
+                    }
+                }
+                false
+            });
+
+        // We're done if we found errors, but we already emitted them.
+        if errors.is_empty() {
+            return;
+        }
+
+        // Okay, now that we've emitted the special errors separately, we
+        // are only left missing/extra/swapped and mismatched arguments, both
+        // can be collated pretty easily if needed.
+
+        // Next special case: if there is only one "Incompatible" error, just emit that
+        if let [
+            Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(err))),
+        ] = &errors[..]
+        {
+            let (formal_ty, expected_ty) = formal_and_expected_inputs[*expected_idx];
+            let (provided_ty, provided_arg_span) = provided_arg_tys[*provided_idx];
+            let cause = &self.misc(provided_arg_span);
+            let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
+            let mut err = self.report_and_explain_type_error(trace, err);
+            self.emit_coerce_suggestions(
+                &mut err,
+                &provided_args[*provided_idx],
+                provided_ty,
+                Expectation::rvalue_hint(self, expected_ty)
+                    .only_has_type(self)
+                    .unwrap_or(formal_ty),
+                None,
+                None,
+            );
+            err.span_label(
+                full_call_span,
+                format!("arguments to this {} are incorrect", call_name),
+            );
+            // Call out where the function is defined
+            label_fn_like(tcx, &mut err, fn_def_id);
+            err.emit();
+            return;
+        }
+
+        // Second, let's try tuple wrapping the args.
+        // FIXME(compiler-errors): This is currently in its own closure because
+        // I didn't want to factor it out.
+        if try_tuple_wrap_args() {
+            return;
+        }
+
+        let mut err = if formal_and_expected_inputs.len() == provided_args.len() {
+            struct_span_err!(
+                tcx.sess,
+                full_call_span,
+                E0308,
+                "arguments to this {} are incorrect",
+                call_name,
+            )
+        } else {
+            tcx.sess.struct_span_err_with_code(
+                full_call_span,
+                &format!(
+                    "this {} takes {}{} but {} {} supplied",
+                    call_name,
+                    if c_variadic { "at least " } else { "" },
+                    potentially_plural_count(formal_and_expected_inputs.len(), "argument"),
+                    potentially_plural_count(provided_args.len(), "argument"),
+                    if provided_args.len() == 1 { "was" } else { "were" }
+                ),
+                DiagnosticId::Error(err_code.to_owned()),
+            )
+        };
+
+        // As we encounter issues, keep track of what we want to provide for the suggestion
+        let mut labels = vec![];
+        // If there is a single error, we give a specific suggestion; otherwise, we change to
+        // "did you mean" with the suggested function call
+        enum SuggestionText {
+            None,
+            Provide(bool),
+            Remove(bool),
+            Swap,
+            Reorder,
+            DidYouMean,
+        }
+        let mut suggestion_text = SuggestionText::None;
+
+        let mut errors = errors.into_iter().peekable();
+        while let Some(error) = errors.next() {
+            match error {
+                Error::Invalid(provided_idx, expected_idx, compatibility) => {
+                    let (formal_ty, expected_ty) = formal_and_expected_inputs[expected_idx];
+                    let (provided_ty, provided_span) = provided_arg_tys[provided_idx];
+                    if let Compatibility::Incompatible(error) = &compatibility {
+                        let cause = &self.misc(provided_span);
+                        let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
+                        if let Some(e) = error {
+                            self.note_type_err(
+                                &mut err,
+                                &trace.cause,
+                                None,
+                                Some(trace.values),
+                                e,
+                                false,
+                                true,
+                            );
+                        }
+                    }
+
+                    self.emit_coerce_suggestions(
+                        &mut err,
+                        &provided_args[provided_idx],
+                        provided_ty,
+                        Expectation::rvalue_hint(self, expected_ty)
+                            .only_has_type(self)
+                            .unwrap_or(formal_ty),
+                        None,
+                        None,
+                    );
+                }
+                Error::Extra(arg_idx) => {
+                    let (provided_ty, provided_span) = provided_arg_tys[arg_idx];
+                    let provided_ty_name = if !has_error_or_infer([provided_ty]) {
+                        // FIXME: not suggestable, use something else
+                        format!(" of type `{}`", provided_ty)
+                    } else {
+                        "".to_string()
+                    };
+                    labels
+                        .push((provided_span, format!("argument{} unexpected", provided_ty_name)));
+                    suggestion_text = match suggestion_text {
+                        SuggestionText::None => SuggestionText::Remove(false),
+                        SuggestionText::Remove(_) => SuggestionText::Remove(true),
+                        _ => SuggestionText::DidYouMean,
+                    };
+                }
+                Error::Missing(expected_idx) => {
+                    // If there are multiple missing arguments adjacent to each other,
+                    // then we can provide a single error.
+
+                    let mut missing_idxs = vec![expected_idx];
+                    while let Some(e) = errors.next_if(|e| {
+                        matches!(e, Error::Missing(next_expected_idx)
+                            if *next_expected_idx == *missing_idxs.last().unwrap() + 1)
+                    }) {
+                        match e {
+                            Error::Missing(expected_idx) => missing_idxs.push(expected_idx),
+                            _ => unreachable!(),
+                        }
+                    }
+
+                    // NOTE: Because we might be re-arranging arguments, might have extra
+                    // arguments, etc. it's hard to *really* know where we should provide
+                    // this error label, so as a heuristic, we point to the provided arg, or
+                    // to the call if the missing inputs pass the provided args.
+                    match &missing_idxs[..] {
+                        &[expected_idx] => {
+                            let (_, input_ty) = formal_and_expected_inputs[expected_idx];
+                            let span = if let Some((_, arg_span)) =
+                                provided_arg_tys.get(expected_idx.to_provided_idx())
+                            {
+                                *arg_span
+                            } else {
+                                args_span
+                            };
+                            let rendered = if !has_error_or_infer([input_ty]) {
+                                format!(" of type `{}`", input_ty)
+                            } else {
+                                "".to_string()
+                            };
+                            labels.push((span, format!("an argument{} is missing", rendered)));
+                            suggestion_text = match suggestion_text {
+                                SuggestionText::None => SuggestionText::Provide(false),
+                                SuggestionText::Provide(_) => SuggestionText::Provide(true),
+                                _ => SuggestionText::DidYouMean,
+                            };
+                        }
+                        &[first_idx, second_idx] => {
+                            let (_, first_expected_ty) = formal_and_expected_inputs[first_idx];
+                            let (_, second_expected_ty) = formal_and_expected_inputs[second_idx];
+                            let span = if let (Some((_, first_span)), Some((_, second_span))) = (
+                                provided_arg_tys.get(first_idx.to_provided_idx()),
+                                provided_arg_tys.get(second_idx.to_provided_idx()),
+                            ) {
+                                first_span.to(*second_span)
+                            } else {
+                                args_span
+                            };
+                            let rendered =
+                                if !has_error_or_infer([first_expected_ty, second_expected_ty]) {
+                                    format!(
+                                        " of type `{}` and `{}`",
+                                        first_expected_ty, second_expected_ty
+                                    )
+                                } else {
+                                    "".to_string()
+                                };
+                            labels.push((span, format!("two arguments{} are missing", rendered)));
+                            suggestion_text = match suggestion_text {
+                                SuggestionText::None | SuggestionText::Provide(_) => {
+                                    SuggestionText::Provide(true)
+                                }
+                                _ => SuggestionText::DidYouMean,
+                            };
+                        }
+                        &[first_idx, second_idx, third_idx] => {
+                            let (_, first_expected_ty) = formal_and_expected_inputs[first_idx];
+                            let (_, second_expected_ty) = formal_and_expected_inputs[second_idx];
+                            let (_, third_expected_ty) = formal_and_expected_inputs[third_idx];
+                            let span = if let (Some((_, first_span)), Some((_, third_span))) = (
+                                provided_arg_tys.get(first_idx.to_provided_idx()),
+                                provided_arg_tys.get(third_idx.to_provided_idx()),
+                            ) {
+                                first_span.to(*third_span)
+                            } else {
+                                args_span
+                            };
+                            let rendered = if !has_error_or_infer([
+                                first_expected_ty,
+                                second_expected_ty,
+                                third_expected_ty,
+                            ]) {
+                                format!(
+                                    " of type `{}`, `{}`, and `{}`",
+                                    first_expected_ty, second_expected_ty, third_expected_ty
+                                )
+                            } else {
+                                "".to_string()
+                            };
+                            labels.push((span, format!("three arguments{} are missing", rendered)));
+                            suggestion_text = match suggestion_text {
+                                SuggestionText::None | SuggestionText::Provide(_) => {
+                                    SuggestionText::Provide(true)
+                                }
+                                _ => SuggestionText::DidYouMean,
+                            };
+                        }
+                        missing_idxs => {
+                            let first_idx = *missing_idxs.first().unwrap();
+                            let last_idx = *missing_idxs.last().unwrap();
+                            // NOTE: Because we might be re-arranging arguments, might have extra arguments, etc.
+                            // It's hard to *really* know where we should provide this error label, so this is a
+                            // decent heuristic
+                            let span = if let (Some((_, first_span)), Some((_, last_span))) = (
+                                provided_arg_tys.get(first_idx.to_provided_idx()),
+                                provided_arg_tys.get(last_idx.to_provided_idx()),
+                            ) {
+                                first_span.to(*last_span)
+                            } else {
+                                args_span
+                            };
+                            labels.push((span, format!("multiple arguments are missing")));
+                            suggestion_text = match suggestion_text {
+                                SuggestionText::None | SuggestionText::Provide(_) => {
+                                    SuggestionText::Provide(true)
+                                }
+                                _ => SuggestionText::DidYouMean,
+                            };
+                        }
+                    }
+                }
+                Error::Swap(
+                    first_provided_idx,
+                    second_provided_idx,
+                    first_expected_idx,
+                    second_expected_idx,
+                ) => {
+                    let (first_provided_ty, first_span) = provided_arg_tys[first_provided_idx];
+                    let (_, first_expected_ty) = formal_and_expected_inputs[first_expected_idx];
+                    let first_provided_ty_name = if !has_error_or_infer([first_provided_ty]) {
+                        format!(", found `{}`", first_provided_ty)
+                    } else {
+                        String::new()
+                    };
+                    labels.push((
+                        first_span,
+                        format!("expected `{}`{}", first_expected_ty, first_provided_ty_name),
+                    ));
+
+                    let (second_provided_ty, second_span) = provided_arg_tys[second_provided_idx];
+                    let (_, second_expected_ty) = formal_and_expected_inputs[second_expected_idx];
+                    let second_provided_ty_name = if !has_error_or_infer([second_provided_ty]) {
+                        format!(", found `{}`", second_provided_ty)
+                    } else {
+                        String::new()
+                    };
+                    labels.push((
+                        second_span,
+                        format!("expected `{}`{}", second_expected_ty, second_provided_ty_name),
+                    ));
+
+                    suggestion_text = match suggestion_text {
+                        SuggestionText::None => SuggestionText::Swap,
+                        _ => SuggestionText::DidYouMean,
+                    };
+                }
+                Error::Permutation(args) => {
+                    for (dst_arg, dest_input) in args {
+                        let (_, expected_ty) = formal_and_expected_inputs[dst_arg];
+                        let (provided_ty, provided_span) = provided_arg_tys[dest_input];
+                        let provided_ty_name = if !has_error_or_infer([provided_ty]) {
+                            format!(", found `{}`", provided_ty)
+                        } else {
+                            String::new()
+                        };
+                        // FIXME(compiler-errors): Why do we get permutations with the same type?
+                        if expected_ty != provided_ty {
+                            labels.push((
+                                provided_span,
+                                format!("expected `{}`{}", expected_ty, provided_ty_name),
+                            ));
+                        }
+                    }
+
+                    suggestion_text = match suggestion_text {
+                        SuggestionText::None => SuggestionText::Reorder,
+                        _ => SuggestionText::DidYouMean,
+                    };
+                }
+            }
+        }
+
+        // If we have less than 5 things to say, it would be useful to call out exactly what's wrong
+        if labels.len() <= 5 {
+            for (span, label) in labels {
+                err.span_label(span, label);
+            }
+        }
+
+        // Call out where the function is defined
+        label_fn_like(tcx, &mut err, fn_def_id);
+
+        // And add a suggestion block for all of the parameters
+        let suggestion_text = match suggestion_text {
+            SuggestionText::None => None,
+            SuggestionText::Provide(plural) => {
+                Some(format!("provide the argument{}", if plural { "s" } else { "" }))
+            }
+            SuggestionText::Remove(plural) => {
+                Some(format!("remove the extra argument{}", if plural { "s" } else { "" }))
+            }
+            SuggestionText::Swap => Some("swap these arguments".to_string()),
+            SuggestionText::Reorder => Some("reorder these arguments".to_string()),
+            SuggestionText::DidYouMean => Some("did you mean".to_string()),
+        };
+        if let Some(suggestion_text) = suggestion_text {
+            let source_map = self.sess().source_map();
+            let mut suggestion = format!(
+                "{}(",
+                source_map.span_to_snippet(full_call_span).unwrap_or_else(|_| fn_def_id
+                    .map_or("".to_string(), |fn_def_id| tcx.item_name(fn_def_id).to_string()))
+            );
+            let mut needs_comma = false;
+            for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
+                if needs_comma {
+                    suggestion += ", ";
+                } else {
+                    needs_comma = true;
+                }
+                let suggestion_text =
+                    if let Some(provided_idx) = provided_idx
+                    && let (_, provided_span) = provided_arg_tys[*provided_idx]
+                    && let Ok(arg_text) = source_map.span_to_snippet(provided_span.source_callsite()) {
+                    arg_text
+                } else {
+                    // Propose a placeholder of the correct type
+                    let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
+                    if expected_ty.is_unit() {
+                        "()".to_string()
+                    } else if expected_ty.is_suggestable(tcx) {
+                        format!("/* {} */", expected_ty)
+                    } else {
+                        "/* value */".to_string()
+                    }
+                };
+                suggestion += &suggestion_text;
+            }
+            suggestion += ")";
+            err.span_suggestion_verbose(
+                error_span,
+                &suggestion_text,
+                suggestion,
+                Applicability::HasPlaceholders,
+            );
+        }
+
+        err.emit();
     }
 
     fn suggested_tuple_wrap(
