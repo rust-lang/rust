@@ -96,6 +96,9 @@ fn prune_stacktrace<'mir, 'tcx>(
 ) -> (Vec<FrameInfo<'tcx>>, bool) {
     match ecx.machine.backtrace_style {
         BacktraceStyle::Off => {
+            // Remove all frames marked with `caller_location` -- that attribute indicates we
+            // usually want to point at the caller, not them.
+            stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
             // Retain one frame so that we can print a span for the error itself
             stacktrace.truncate(1);
             (stacktrace, false)
