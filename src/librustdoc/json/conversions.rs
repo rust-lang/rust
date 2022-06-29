@@ -255,7 +255,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         AssocTypeItem(t, b) => ItemEnum::AssocType {
             generics: t.generics.into_tcx(tcx),
             bounds: b.into_iter().map(|x| x.into_tcx(tcx)).collect(),
-            default: t.item_type.map(|ty| ty.into_tcx(tcx)),
+            default: Some(t.item_type.unwrap_or(t.type_).into_tcx(tcx)),
         },
         // `convert_item` early returns `None` for striped items and keywords.
         StrippedItem(_) | KeywordItem(_) => unreachable!(),
