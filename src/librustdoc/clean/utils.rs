@@ -73,7 +73,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
         }));
     }
 
-    Crate { module, primitives, external_traits: cx.external_traits.clone() }
+    Crate { module, external_traits: cx.external_traits.clone() }
 }
 
 pub(crate) fn substs_to_args<'tcx>(
