@@ -29,7 +29,7 @@ fn main() {
 }
     ";
     let path = Path::new("$DIR/<dummy>");
-    let comments = Comments::parse(&path, s);
+    let comments = Comments::parse(path, s);
     let mut errors = vec![];
     let config = config();
     let messages = vec![

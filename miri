@@ -28,6 +28,9 @@ times and slower execution times.
 ./miri fmt <flags>:
 Format all sources and tests.  <flags> are passed to `rustfmt`.
 
+./miri clippy <flags>:
+Format all sources and tests.  <flags> are passed to `cargo clippy`.
+
   ENVIRONMENT VARIABLES
 
 MIRI_SYSROOT:
@@ -162,6 +165,11 @@ run|run-debug)
 fmt)
     find "$MIRIDIR" -not \( -name target -prune \) -name '*.rs' \
         | xargs rustfmt --edition=2021 --config-path "$MIRIDIR/rustfmt.toml" "$@"
+    ;;
+clippy)
+    cargo clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml --all-targets "$@"
+    cargo clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/ui_test/Cargo.toml --all-targets "$@"
+    cargo clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
     ;;
 *)
     if [ -n "$COMMAND" ]; then

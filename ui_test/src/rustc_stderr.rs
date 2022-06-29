@@ -117,16 +117,16 @@ impl Span {
 
 pub(crate) fn filter_annotations_from_rendered(rendered: &str) -> std::borrow::Cow<'_, str> {
     let annotations = Regex::new(r"\s*//(\[[^\]]\])?~.*").unwrap();
-    annotations.replace_all(&rendered, "")
+    annotations.replace_all(rendered, "")
 }
 
 pub(crate) fn process(file: &Path, stderr: &[u8]) -> Diagnostics {
-    let stderr = std::str::from_utf8(&stderr).unwrap();
+    let stderr = std::str::from_utf8(stderr).unwrap();
     let mut rendered = String::new();
     let mut messages = vec![];
     let mut messages_from_unknown_file_or_line = vec![];
     for line in stderr.lines() {
-        if line.starts_with("{") {
+        if line.starts_with('{') {
             match serde_json::from_str::<RustcMessage>(line) {
                 Ok(msg) => {
                     write!(

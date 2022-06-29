@@ -1,3 +1,5 @@
+#![allow(clippy::enum_variant_names, clippy::useless_format, clippy::too_many_arguments)]
+
 use std::collections::VecDeque;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
@@ -338,17 +340,17 @@ fn check_test_result(
         revised("stderr"),
         target,
         &config.stderr_filters,
-        &config,
+        config,
         comments,
     );
     check_output(
-        &stdout,
+        stdout,
         path,
         errors,
         revised("stdout"),
         target,
         &config.stdout_filters,
-        &config,
+        config,
         comments,
     );
     // Check error annotations in the source against output

@@ -98,12 +98,8 @@ jobs:
           ./rustup-toolchain "" -c clippy
       - name: rustfmt
         run: ./miri fmt --check
-      - name: clippy (miri)
-        run: cargo clippy --all-targets -- -D warnings
-      #- name: Clippy (ui_test)
-      #  run: cargo clippy --manifest-path ui_test/Cargo.toml --all-targets -- -D warnings
-      - name: clippy (cargo-miri)
-        run: cargo clippy --manifest-path cargo-miri/Cargo.toml --all-targets -- -D warnings
+      - name: clippy
+        run: ./miri clippy -- -D warnings
       - name: rustdoc
         run: RUSTDOCFLAGS="-Dwarnings" cargo doc --document-private-items
 
