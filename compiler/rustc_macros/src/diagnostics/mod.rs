@@ -56,7 +56,7 @@ use synstructure::Structure;
 /// ```
 ///
 /// See rustc dev guide for more examples on using the `#[derive(SessionDiagnostic)]`:
-/// <https://rustc-dev-guide.rust-lang.org/diagnostics/sessiondiagnostic.html>
+/// <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html>
 pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
     // Names for the diagnostic we build and the session we build it from.
     let diag = format_ident!("diag");
