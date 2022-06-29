@@ -189,9 +189,13 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
             if let Entry::Message(Message { id: Identifier { name }, attributes, .. }) = entry {
                 let _ = previous_defns.entry(name.to_string()).or_insert(ident_span);
 
-                // `typeck-foo-bar` => `foo_bar`
+                // `typeck-foo-bar` => `foo_bar` (in `typeck.ftl`)
+                // `const-eval-baz` => `baz` (in `const_eval.ftl`)
                 let snake_name = Ident::new(
-                    &name.replace(&format!("{}-", res.ident), "").replace("-", "_"),
+                    // FIXME: should probably trim prefix, not replace all occurrences
+                    &name
+                        .replace(&format!("{}-", res.ident).replace("_", "-"), "")
+                        .replace("-", "_"),
                     span,
                 );
                 constants.extend(quote! {
