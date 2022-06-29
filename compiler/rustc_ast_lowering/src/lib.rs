@@ -928,11 +928,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     _ => (false, itctx),
                 };
 
-                //if desugar_to_impl_trait
-                if self.resolver.opt_local_def_id(constraint.impl_trait_id).is_some() {
+                let desugar = if let ImplTraitContext::Universal = itctx {
+                    self.is_in_dyn_type
+                } else {
+                    self.resolver.opt_local_def_id(constraint.impl_trait_id).is_some()
+                };
+                //if desugar_to_impl_trait {
+                //if self.resolver.opt_local_def_id(constraint.impl_trait_id).is_some() {
+                if desugar {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
                     // constructing the HIR for `impl bounds...` and then lowering that.
-                    debug!("desug111: {:?}, {:?}", desugar_to_impl_trait, itctx);
+                    debug!("desugaring occurs: {:?}, {:?}", desugar_to_impl_trait, itctx);
                     //let parent_def_id = self.current_hir_id_owner;
                     let impl_trait_node_id = constraint.impl_trait_id;
 
@@ -961,7 +967,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Desugar `AssocTy: Bounds` into a type binding where the
                     // later desugars into a trait predicate.
                     let bounds = self.lower_param_bounds(bounds, itctx);
-                    debug!("desug1111 NO: {:?}, {:?}", desugar_to_impl_trait, itctx);
+                    debug!("desugaring does not occur: {:?}, {:?}", desugar_to_impl_trait, itctx);
 
                     hir::TypeBindingKind::Constraint { bounds }
                 }

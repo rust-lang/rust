@@ -345,8 +345,13 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
 
                 self.with_parent(parent_def, |this| visit::walk_ty(this, ty))
             }
-            TyKind::TraitObject(..) => {
+            TyKind::TraitObject(_, TraitObjectSyntax::Dyn) => {
                 self.with_impl_trait(ImplTraitContext::UniversalInDyn(self.parent_def), |this| {
+                    visit::walk_ty(this, ty)
+                });
+            }
+            TyKind::TraitObject(..) => {
+                self.with_impl_trait(ImplTraitContext::Universal(self.parent_def), |this| {
                     visit::walk_ty(this, ty)
                 });
             }
