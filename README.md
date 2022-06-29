@@ -369,6 +369,9 @@ to Miri failing to detect cases of undefined behavior in a program.
   application instead of raising an error within the context of Miri (and halting
   execution). Note that code might not expect these operations to ever panic, so
   this flag can lead to strange (mis)behavior.
+* `-Zmiri-retag-fields` changes Stacked Borrows retagging to recurse into fields.
+  This means that references in fields of structs/enums/tuples/arrays/... are retagged,
+  and in particular, they are protected when passed as function arguments.
 * `-Zmiri-track-alloc-id=<id1>,<id2>,...` shows a backtrace when the given allocations are
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs. Specifying this argument multiple times does not overwrite the previous

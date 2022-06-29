@@ -383,6 +383,8 @@ fn main() {
             miri_config.provenance_mode = ProvenanceMode::Permissive;
         } else if arg == "-Zmiri-mute-stdout-stderr" {
             miri_config.mute_stdout_stderr = true;
+        } else if arg == "-Zmiri-retag-fields" {
+            miri_config.retag_fields = true;
         } else if arg == "-Zmiri-track-raw-pointers" {
             eprintln!(
                 "WARNING: `-Zmiri-track-raw-pointers` has no effect; it is enabled by default"

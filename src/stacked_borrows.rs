@@ -156,6 +156,8 @@ pub struct GlobalStateInner {
     tracked_pointer_tags: HashSet<SbTag>,
     /// The call ids to trace
     tracked_call_ids: HashSet<CallId>,
+    /// Whether to recurse into datatypes when searching for pointers to retag.
+    retag_fields: bool,
 }
 
 /// We need interior mutable access to the global state.
@@ -204,7 +206,11 @@ impl fmt::Display for RefKind {
 
 /// Utilities for initialization and ID generation
 impl GlobalStateInner {
-    pub fn new(tracked_pointer_tags: HashSet<SbTag>, tracked_call_ids: HashSet<CallId>) -> Self {
+    pub fn new(
+        tracked_pointer_tags: HashSet<SbTag>,
+        tracked_call_ids: HashSet<CallId>,
+        retag_fields: bool,
+    ) -> Self {
         GlobalStateInner {
             next_ptr_tag: SbTag(NonZeroU64::new(1).unwrap()),
             base_ptr_tags: FxHashMap::default(),
@@ -212,6 +218,7 @@ impl GlobalStateInner {
             active_calls: FxHashSet::default(),
             tracked_pointer_tags,
             tracked_call_ids,
+            retag_fields,
         }
     }
 
@@ -1035,17 +1042,69 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
 
-        // We only reborrow "bare" references/boxes.
-        // Not traversing into fields helps with <https://github.com/rust-lang/unsafe-code-guidelines/issues/125>,
-        // but might also cost us optimization and analyses. We will have to experiment more with this.
+        // We need a visitor to visit all references. However, that requires
+        // a `MPlaceTy` (or `OpTy), so we have a fast path for reference types that
+        // avoids allocating.
+
         if let Some((mutbl, protector)) = qualify(place.layout.ty, kind) {
             // Fast path.
             let val = this.read_immediate(&this.place_to_op(place)?)?;
             let val = this.retag_reference(&val, mutbl, protector)?;
             this.write_immediate(*val, place)?;
+            return Ok(());
         }
 
-        Ok(())
+        // If we don't want to recurse, we are already done.
+        if !this.machine.stacked_borrows.as_mut().unwrap().get_mut().retag_fields {
+            return Ok(());
+        }
+
+        // Skip some types that have no further structure we might care about.
+        if matches!(
+            place.layout.ty.kind(),
+            ty::RawPtr(..)
+                | ty::Ref(..)
+                | ty::Int(..)
+                | ty::Uint(..)
+                | ty::Float(..)
+                | ty::Bool
+                | ty::Char
+        ) {
+            return Ok(());
+        }
+        // Now go visit this thing.
+        let place = this.force_allocation(place)?;
+
+        let mut visitor = RetagVisitor { ecx: this, kind };
+        return visitor.visit_value(&place);
+
+        // The actual visitor.
+        struct RetagVisitor<'ecx, 'mir, 'tcx> {
+            ecx: &'ecx mut MiriEvalContext<'mir, 'tcx>,
+            kind: RetagKind,
+        }
+        impl<'ecx, 'mir, 'tcx> MutValueVisitor<'mir, 'tcx, Evaluator<'mir, 'tcx>>
+            for RetagVisitor<'ecx, 'mir, 'tcx>
+        {
+            type V = MPlaceTy<'tcx, Tag>;
+
+            #[inline(always)]
+            fn ecx(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
+                &mut self.ecx
+            }
+
+            fn visit_value(&mut self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+                if let Some((mutbl, protector)) = qualify(place.layout.ty, self.kind) {
+                    let val = self.ecx.read_immediate(&place.into())?;
+                    let val = self.ecx.retag_reference(&val, mutbl, protector)?;
+                    self.ecx.write_immediate(*val, &(*place).into())?;
+                } else {
+                    // Maybe we need to go deeper.
+                    self.walk_value(place)?;
+                }
+                Ok(())
+            }
+        }
     }
 
     /// After a stack frame got pushed, retag the return place so that we are sure
