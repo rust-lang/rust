@@ -1312,7 +1312,7 @@ impl DefWithBody {
                         );
                     }
                 }
-                BodyValidationDiagnostic::MissingMatchArms { match_expr } => {
+                BodyValidationDiagnostic::MissingMatchArms { match_expr, uncovered_patterns } => {
                     match source_map.expr_syntax(match_expr) {
                         Ok(source_ptr) => {
                             let root = source_ptr.file_syntax(db.upcast());
@@ -1324,6 +1324,7 @@ impl DefWithBody {
                                         MissingMatchArms {
                                             file: source_ptr.file_id,
                                             match_expr: AstPtr::new(&match_expr),
+                                            uncovered_patterns,
                                         }
                                         .into(),
                                     );

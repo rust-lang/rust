@@ -51,13 +51,13 @@ use std::{
 use hir_def::{EnumVariantId, HasModule, LocalFieldId, VariantId};
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
-use syntax::SmolStr;
 
 use crate::{infer::normalize, AdtId, Interner, Scalar, Ty, TyExt, TyKind};
 
 use super::{
+    is_box,
     usefulness::{helper::Captures, MatchCheckCtx, PatCtxt},
-    Pat, PatKind,
+    FieldPat, Pat, PatKind,
 };
 
 use self::Constructor::*;
@@ -141,6 +141,24 @@ impl IntRange {
             Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi) })
         } else {
             None
+        }
+    }
+
+    fn to_pat(&self, _cx: &MatchCheckCtx, ty: Ty) -> Pat {
+        match ty.kind(Interner) {
+            TyKind::Scalar(Scalar::Bool) => {
+                let kind = match self.boundaries() {
+                    (0, 0) => PatKind::LiteralBool { value: false },
+                    (1, 1) => PatKind::LiteralBool { value: true },
+                    (0, 1) => PatKind::Wild,
+                    (lo, hi) => {
+                        never!("bad range for bool pattern: {}..={}", lo, hi);
+                        PatKind::Wild
+                    }
+                };
+                Pat { ty, kind: kind.into() }
+            }
+            _ => unimplemented!(),
         }
     }
 
@@ -260,12 +278,12 @@ pub(super) struct Slice {
 
 impl Slice {
     fn arity(self) -> usize {
-        unimplemented!()
+        match self._unimplemented {}
     }
 
     /// See `Constructor::is_covered_by`
     fn is_covered_by(self, _other: Self) -> bool {
-        unimplemented!() // never called as Slice contains Void
+        match self._unimplemented {}
     }
 }
 
@@ -363,7 +381,7 @@ impl Constructor {
                 TyKind::Tuple(arity, ..) => arity,
                 TyKind::Ref(..) => 1,
                 TyKind::Adt(adt, ..) => {
-                    if adt_is_box(adt.0, pcx.cx) {
+                    if is_box(adt.0, pcx.cx.db) {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
                         1
@@ -424,7 +442,7 @@ impl Constructor {
                 split_range.split(int_ranges.cloned());
                 split_range.iter().map(IntRange).collect()
             }
-            Slice(_) => unimplemented!(),
+            Slice(slice) => match slice._unimplemented {},
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
         }
@@ -447,12 +465,8 @@ impl Constructor {
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
             (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
-            (FloatRange(..), FloatRange(..)) => {
-                unimplemented!()
-            }
-            (Str(..), Str(..)) => {
-                unimplemented!()
-            }
+            (FloatRange(void), FloatRange(..)) => match *void {},
+            (Str(void), Str(..)) => match *void {},
             (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 
             // We are trying to inspect an opaque constant. Thus we skip the row.
@@ -782,7 +796,7 @@ impl<'p> Fields<'p> {
                 }
                 TyKind::Ref(.., rty) => Fields::wildcards_from_tys(cx, once(rty.clone())),
                 &TyKind::Adt(AdtId(adt), ref substs) => {
-                    if adt_is_box(adt, cx) {
+                    if is_box(adt, cx.db) {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
                         let subst_ty = substs.at(Interner, 0).assert_ty_ref(Interner).clone();
@@ -799,9 +813,7 @@ impl<'p> Fields<'p> {
                     Fields::wildcards_from_tys(cx, once(ty.clone()))
                 }
             },
-            Slice(..) => {
-                unimplemented!()
-            }
+            Slice(slice) => match slice._unimplemented {},
             Str(..)
             | FloatRange(..)
             | IntRange(..)
@@ -865,8 +877,8 @@ impl<'p> DeconstructedPat<'p> {
         let ctor;
         let fields;
         match pat.kind.as_ref() {
-            PatKind::Binding { subpattern: Some(subpat) } => return mkpat(subpat),
-            PatKind::Binding { subpattern: None } | PatKind::Wild => {
+            PatKind::Binding { subpattern: Some(subpat), .. } => return mkpat(subpat),
+            PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
                 fields = Fields::empty();
             }
@@ -889,7 +901,7 @@ impl<'p> DeconstructedPat<'p> {
                         }
                         fields = Fields::from_iter(cx, wilds)
                     }
-                    TyKind::Adt(adt, substs) if adt_is_box(adt.0, cx) => {
+                    TyKind::Adt(adt, substs) if is_box(adt.0, cx.db) => {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
                         // FIXME(Nadrieril): A `Box` can in theory be matched either with `Box(_,
@@ -963,10 +975,67 @@ impl<'p> DeconstructedPat<'p> {
         DeconstructedPat::new(ctor, fields, pat.ty.clone())
     }
 
-    // // FIXME(iDawer): implement reporting of noncovered patterns
-    // pub(crate) fn to_pat(&self, _cx: &MatchCheckCtx<'_, 'p>) -> Pat {
-    //     Pat { ty: self.ty.clone(), kind: PatKind::Wild.into() }
-    // }
+    pub(crate) fn to_pat(&self, cx: &MatchCheckCtx<'_, 'p>) -> Pat {
+        let mut subpatterns = self.iter_fields().map(|p| p.to_pat(cx));
+        let pat = match &self.ctor {
+            Single | Variant(_) => match self.ty.kind(Interner) {
+                TyKind::Tuple(..) => PatKind::Leaf {
+                    subpatterns: subpatterns
+                        .zip(0u32..)
+                        .map(|(p, i)| FieldPat {
+                            field: LocalFieldId::from_raw(i.into()),
+                            pattern: p,
+                        })
+                        .collect(),
+                },
+                TyKind::Adt(adt, _) if is_box(adt.0, cx.db) => {
+                    // Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
+                    // of `std`). So this branch is only reachable when the feature is enabled and
+                    // the pattern is a box pattern.
+                    PatKind::Deref { subpattern: subpatterns.next().unwrap() }
+                }
+                TyKind::Adt(adt, substs) => {
+                    let variant = self.ctor.variant_id_for_adt(adt.0);
+                    let subpatterns = Fields::list_variant_nonhidden_fields(cx, self.ty(), variant)
+                        .zip(subpatterns)
+                        .map(|((field, _ty), pattern)| FieldPat { field, pattern })
+                        .collect();
+
+                    if let VariantId::EnumVariantId(enum_variant) = variant {
+                        PatKind::Variant { substs: substs.clone(), enum_variant, subpatterns }
+                    } else {
+                        PatKind::Leaf { subpatterns }
+                    }
+                }
+                // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+                // be careful to reconstruct the correct constant pattern here. However a string
+                // literal pattern will never be reported as a non-exhaustiveness witness, so we
+                // ignore this issue.
+                TyKind::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
+                _ => {
+                    never!("unexpected ctor for type {:?} {:?}", self.ctor, self.ty);
+                    PatKind::Wild
+                }
+            },
+            &Slice(slice) => match slice._unimplemented {},
+            &Str(void) => match void {},
+            &FloatRange(void) => match void {},
+            IntRange(range) => return range.to_pat(cx, self.ty.clone()),
+            Wildcard | NonExhaustive => PatKind::Wild,
+            Missing { .. } => {
+                never!(
+                    "trying to convert a `Missing` constructor into a `Pat`; this is a bug, \
+                    `Missing` should have been processed in `apply_constructors`"
+                );
+                PatKind::Wild
+            }
+            Opaque | Or => {
+                never!("can't convert to pattern: {:?}", self.ctor);
+                PatKind::Wild
+            }
+        };
+        Pat { ty: self.ty.clone(), kind: Box::new(pat) }
+    }
 
     pub(super) fn is_or_pat(&self) -> bool {
         matches!(self.ctor, Or)
@@ -980,7 +1049,7 @@ impl<'p> DeconstructedPat<'p> {
         &self.ty
     }
 
-    pub(super) fn iter_fields<'a>(&'a self) -> impl Iterator<Item = &'a DeconstructedPat<'a>> + 'a {
+    pub(super) fn iter_fields<'a>(&'a self) -> impl Iterator<Item = &'p DeconstructedPat<'p>> + 'a {
         self.fields.iter_patterns()
     }
 
@@ -999,7 +1068,7 @@ impl<'p> DeconstructedPat<'p> {
             (Slice(self_slice), Slice(other_slice))
                 if self_slice.arity() != other_slice.arity() =>
             {
-                unimplemented!()
+                match self_slice._unimplemented {}
             }
             _ => self.fields.iter_patterns().collect(),
         }
@@ -1022,12 +1091,4 @@ fn is_field_list_non_exhaustive(variant_id: VariantId, cx: &MatchCheckCtx<'_, '_
         VariantId::UnionId(id) => id.into(),
     };
     cx.db.attrs(attr_def_id).by_key("non_exhaustive").exists()
-}
-
-fn adt_is_box(adt: hir_def::AdtId, cx: &MatchCheckCtx<'_, '_>) -> bool {
-    use hir_def::lang_item::LangItemTarget;
-    match cx.db.lang_item(cx.module.krate(), SmolStr::new_inline("owned_box")) {
-        Some(LangItemTarget::StructId(box_id)) => adt == box_id.into(),
-        _ => false,
-    }
 }

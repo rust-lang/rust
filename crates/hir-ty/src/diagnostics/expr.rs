@@ -2,11 +2,13 @@
 //! through the body using inference results: mismatched arg counts, missing
 //! fields, etc.
 
+use std::fmt;
 use std::sync::Arc;
 
-use hir_def::{path::path, resolver::HasResolver, AssocItemId, DefWithBodyId, HasModule};
+use hir_def::{path::path, resolver::HasResolver, AdtId, AssocItemId, DefWithBodyId, HasModule};
 use hir_expand::name;
 use itertools::Either;
+use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use typed_arena::Arena;
 
@@ -17,7 +19,8 @@ use crate::{
         deconstruct_pat::DeconstructedPat,
         usefulness::{compute_match_usefulness, MatchCheckCtx},
     },
-    InferenceResult, TyExt,
+    display::HirDisplay,
+    InferenceResult, Ty, TyExt,
 };
 
 pub(crate) use hir_def::{
@@ -37,6 +40,7 @@ pub enum BodyValidationDiagnostic {
     },
     MissingMatchArms {
         match_expr: ExprId,
+        uncovered_patterns: String,
     },
 }
 
@@ -211,10 +215,11 @@ impl ExprValidator {
         // https://github.com/rust-lang/rust/blob/f31622a50/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L200
 
         let witnesses = report.non_exhaustiveness_witnesses;
-        // FIXME Report witnesses
-        // eprintln!("compute_match_usefulness(..) -> {:?}", &witnesses);
         if !witnesses.is_empty() {
-            self.diagnostics.push(BodyValidationDiagnostic::MissingMatchArms { match_expr: id });
+            self.diagnostics.push(BodyValidationDiagnostic::MissingMatchArms {
+                match_expr: id,
+                uncovered_patterns: missing_match_arms(&cx, match_expr_ty, witnesses, arms),
+            });
         }
     }
 
@@ -366,4 +371,43 @@ fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResul
     let mut has_type_mismatches = false;
     walk(pat, body, infer, &mut has_type_mismatches);
     !has_type_mismatches
+}
+
+fn missing_match_arms<'p>(
+    cx: &MatchCheckCtx<'_, 'p>,
+    scrut_ty: &Ty,
+    witnesses: Vec<DeconstructedPat<'p>>,
+    arms: &[MatchArm],
+) -> String {
+    struct DisplayWitness<'a, 'p>(&'a DeconstructedPat<'p>, &'a MatchCheckCtx<'a, 'p>);
+    impl<'a, 'p> fmt::Display for DisplayWitness<'a, 'p> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let DisplayWitness(witness, cx) = *self;
+            let pat = witness.to_pat(cx);
+            write!(f, "{}", pat.display(cx.db))
+        }
+    }
+
+    let non_empty_enum = match scrut_ty.as_adt() {
+        Some((AdtId::EnumId(e), _)) => !cx.db.enum_data(e).variants.is_empty(),
+        _ => false,
+    };
+    if arms.is_empty() && !non_empty_enum {
+        format!("type `{}` is non-empty", scrut_ty.display(cx.db))
+    } else {
+        let pat_display = |witness| DisplayWitness(witness, cx);
+        const LIMIT: usize = 3;
+        match &*witnesses {
+            [witness] => format!("`{}` not covered", pat_display(witness)),
+            [head @ .., tail] if head.len() < LIMIT => {
+                let head = head.iter().map(pat_display);
+                format!("`{}` and `{}` not covered", head.format("`, `"), pat_display(tail))
+            }
+            _ => {
+                let (head, tail) = witnesses.split_at(LIMIT);
+                let head = head.iter().map(pat_display);
+                format!("`{}` and {} more not covered", head.format("`, `"), tail.len())
+            }
+        }
+    }
 }
