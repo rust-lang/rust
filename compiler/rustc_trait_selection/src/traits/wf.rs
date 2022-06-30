@@ -907,8 +907,9 @@ impl<'tcx> WfPredicates<'tcx> {
                     ));
                 }
 
-                ty::TyAlias(..) => {
-                    bug!("unexpected TyAlias in WfPredicates::compute");
+                ty::TyAlias(did, substs) => {
+                    let obligations = self.nominal_obligations(did, substs);
+                    self.out.extend(obligations);
                 }
             }
 

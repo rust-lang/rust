@@ -465,7 +465,12 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         }
     }
 
-    fn fold_reveal(&mut self, ty: Ty<'tcx>, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+    fn fold_alias_or_revealed_opaque(
+        &mut self,
+        ty: Ty<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Ty<'tcx> {
         let recursion_limit = self.tcx().recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
             let obligation =
@@ -534,11 +539,11 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty.super_fold_with(self),
-                    Reveal::All => self.fold_reveal(ty, def_id, substs),
+                    Reveal::All => self.fold_alias_or_revealed_opaque(ty, def_id, substs),
                 }
             }
 
-            ty::TyAlias(def_id, substs) => self.fold_reveal(ty, def_id, substs),
+            ty::TyAlias(def_id, substs) => self.fold_alias_or_revealed_opaque(ty, def_id, substs),
 
             ty::Projection(data) if !data.has_escaping_bound_vars() => {
                 // This branch is *mostly* just an optimization: when we don't
@@ -1418,7 +1423,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     let bounds = match *obligation.predicate.self_ty().kind() {
         ty::Projection(ref data) => tcx.bound_item_bounds(data.item_def_id).subst(tcx, data.substs),
         ty::Opaque(def_id, substs) => tcx.bound_item_bounds(def_id).subst(tcx, substs),
-        ty::TyAlias(def_id, substs) => tcx.bound_item_bounds(def_id).subst(tcx, substs),
+        // ty::TyAlias(def_id, substs) => tcx.bound_item_bounds(def_id).subst(tcx, substs),
         ty::Infer(ty::TyVar(_)) => {
             // If the self-type is an inference variable, then it MAY wind up
             // being a projected type, so induce an ambiguity.

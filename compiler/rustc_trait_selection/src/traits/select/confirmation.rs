@@ -154,6 +154,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let (def_id, substs) = match *placeholder_self_ty.kind() {
             ty::Projection(proj) => (proj.item_def_id, proj.substs),
             ty::Opaque(def_id, substs) => (def_id, substs),
+            ty::TyAlias(def_id, substs) => (def_id, substs),
             _ => bug!("projection candidate for unexpected type: {:?}", placeholder_self_ty),
         };
 

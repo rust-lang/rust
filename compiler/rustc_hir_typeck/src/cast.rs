@@ -123,7 +123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We should really try to normalize here.
             ty::Projection(ref pi) => Some(PointerKind::OfProjection(pi)),
             ty::Opaque(def_id, substs) => Some(PointerKind::OfOpaque(def_id, substs)),
-            ty::TyAlias(..) => span_bug!(span, "unexpected TyAlias in pointer_kind"),
+            ty::TyAlias(..) => bug!("unexpected TyAlias in pointer_kind"),
             ty::Param(ref p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
             ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) => None,

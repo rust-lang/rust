@@ -670,7 +670,7 @@ where
                     // as the `Abi` or `FieldsShape` is checked by users.
                     if i == 0 {
                         let nil = tcx.mk_unit();
-                        let unit_ptr_ty = if this.ty.is_unsafe_ptr() {
+                        let unit_ptr_ty = if ty.is_unsafe_ptr() {
                             tcx.mk_mut_ptr(nil)
                         } else {
                             tcx.mk_mut_ref(tcx.lifetimes.re_static, nil)
@@ -680,7 +680,7 @@ where
                         // the `Result` should always work because the type is
                         // always either `*mut ()` or `&'static mut ()`.
                         return TyMaybeWithLayout::TyAndLayout(TyAndLayout {
-                            ty: this.ty,
+                            ty,
                             ..tcx.layout_of(ty::ParamEnv::reveal_all().and(unit_ptr_ty)).unwrap()
                         });
                     }
@@ -779,7 +779,7 @@ where
                 | ty::Param(_)
                 | ty::Infer(_)
                 | ty::TyAlias(_, _)
-                | ty::Error(_) => bug!("TyAndLayout::field: unexpected type `{}`", this.ty),
+                | ty::Error(_) => bug!("TyAndLayout::field: unexpected type `{}`", ty),
             }
         }
 

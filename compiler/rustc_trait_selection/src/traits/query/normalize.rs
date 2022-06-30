@@ -166,7 +166,7 @@ struct QueryNormalizer<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> QueryNormalizer<'cx, 'tcx> {
-    fn fold_reveal(
+    fn fold_alias_or_revealed_opaque(
         &mut self,
         ty: Ty<'tcx>,
         def_id: DefId,
@@ -238,11 +238,11 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty.try_super_fold_with(self),
-                    Reveal::All => self.fold_reveal(ty, def_id, substs),
+                    Reveal::All => self.fold_alias_or_revealed_opaque(ty, def_id, substs),
                 }
             }
 
-            ty::TyAlias(def_id, substs) => self.fold_reveal(ty, def_id, substs),
+            ty::TyAlias(def_id, substs) => self.fold_alias_or_revealed_opaque(ty, def_id, substs),
 
             ty::Projection(data) if !data.has_escaping_bound_vars() => {
                 // This branch is just an optimization: when we don't have escaping bound vars,
