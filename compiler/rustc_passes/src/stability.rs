@@ -13,13 +13,12 @@ use rustc_hir::{FieldDef, Generics, HirId, Item, ItemKind, TraitRef, Ty, TyKind,
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability::{AllowUnstable, DeprecationEntry, Index};
-use rustc_middle::ty::{self, query::Providers, TyCtxt};
+use rustc_middle::ty::{query::Providers, TyCtxt};
 use rustc_session::lint;
 use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPRECATED};
-use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use std::cmp::Ordering;
@@ -762,69 +761,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     if let Some(def_id) = impl_item.trait_item_def_id {
                         // Pass `None` to skip deprecation warnings.
                         self.tcx.check_stability(def_id, None, impl_item_ref.span, None);
-                    }
-                }
-            }
-
-            // There's no good place to insert stability check for non-Copy unions,
-            // so semi-randomly perform it here in stability.rs
-            hir::ItemKind::Union(..) if !self.tcx.features().untagged_unions => {
-                let ty = self.tcx.type_of(item.def_id);
-                let ty::Adt(adt_def, substs) = ty.kind() else { bug!() };
-
-                #[allow(rustc::usage_of_qualified_ty)] // `Ty` is `hir::Ty` here, we really want `ty::Ty`.
-                fn allowed_union_field<'tcx>(
-                    tcx: TyCtxt<'tcx>,
-                    param_env: ty::ParamEnv<'tcx>,
-                    ty: ty::Ty<'tcx>,
-                ) -> bool {
-                    // We don't just accept all !needs_drop fields, due to semver concerns.
-                    match ty.kind() {
-                        ty::Ref(..) => true, // references never drop (even mutable refs, which are non-Copy and hence fail the later check)
-                        ty::Tuple(tys) => {
-                            // allow tuples of allowed types
-                            tys.iter().all(|ty| allowed_union_field(tcx, param_env, ty))
-                        }
-                        ty::Array(elem, _len) => {
-                            // Like `Copy`, we do *not* special-case length 0.
-                            allowed_union_field(tcx, param_env, *elem)
-                        }
-                        _ => {
-                            // Fallback case: allow `ManuallyDrop` and things that are `Copy`.
-                            ty.ty_adt_def().map_or(false, |adt_def| adt_def.is_manually_drop())
-                                || ty.is_copy_modulo_regions(tcx.at(DUMMY_SP), param_env)
-                        }
-                    }
-                }
-
-                // `allowed_union_field` determines which fields are allowed on stable.
-                let param_env = self.tcx.param_env(item.def_id);
-                for field in &adt_def.non_enum_variant().fields {
-                    let field_ty = field.ty(self.tcx, substs);
-                    if !allowed_union_field(self.tcx, param_env, field_ty) {
-                        if field_ty.needs_drop(self.tcx, param_env) {
-                            // Avoid duplicate error: This will error later anyway because fields
-                            // that need drop are not allowed.
-                            self.tcx.sess.delay_span_bug(
-                                item.span,
-                                "union should have been rejected due to potentially dropping field",
-                            );
-                        } else {
-                            feature_err(
-                                &self.tcx.sess.parse_sess,
-                                sym::untagged_unions,
-                                self.tcx.def_span(field.did),
-                                "unions with non-`Copy` fields other than `ManuallyDrop<T>`, \
-                                references, and tuples of such types are unstable",
-                            )
-                            .emit();
-                        }
-                    } else {
-                        // We allow this field. Make extra sure it does not drop.
-                        assert!(
-                            !field_ty.needs_drop(self.tcx, param_env),
-                            "we should accept no maybe-dropping union fields"
-                        );
                     }
                 }
             }

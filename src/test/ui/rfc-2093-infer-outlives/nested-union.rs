@@ -1,5 +1,4 @@
 #![feature(rustc_attrs)]
-#![feature(untagged_unions)]
 
 #[rustc_outlives]
 union Foo<'a, T: Copy> { //~ ERROR rustc_outlives
@@ -7,6 +6,7 @@ union Foo<'a, T: Copy> { //~ ERROR rustc_outlives
 }
 
 // Type U needs to outlive lifetime 'b
+#[derive(Clone, Copy)]
 union Bar<'b, U: Copy> {
     field2: &'b U
 }

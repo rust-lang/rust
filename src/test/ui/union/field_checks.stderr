@@ -1,14 +1,5 @@
-error[E0658]: unions with non-`Copy` fields other than `ManuallyDrop<T>`, references, and tuples of such types are unstable
-  --> $DIR/feature-gate-untagged_unions.rs:29:5
-   |
-LL |     a: std::cell::RefCell<i32>,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #55149 <https://github.com/rust-lang/rust/issues/55149> for more information
-   = help: add `#![feature(untagged_unions)]` to the crate attributes to enable
-
 error[E0740]: unions cannot contain fields that may need dropping
-  --> $DIR/feature-gate-untagged_unions.rs:25:5
+  --> $DIR/field_checks.rs:25:5
    |
 LL |     a: String,
    |     ^^^^^^^^^
@@ -20,7 +11,19 @@ LL |     a: std::mem::ManuallyDrop<String>,
    |        +++++++++++++++++++++++      +
 
 error[E0740]: unions cannot contain fields that may need dropping
-  --> $DIR/feature-gate-untagged_unions.rs:33:5
+  --> $DIR/field_checks.rs:29:5
+   |
+LL |     a: std::cell::RefCell<i32>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a type is guaranteed not to need dropping when it implements `Copy`, or when it is the special `ManuallyDrop<_>` type
+help: when the type does not implement `Copy`, wrap it inside a `ManuallyDrop<_>` and ensure it is manually dropped
+   |
+LL |     a: std::mem::ManuallyDrop<std::cell::RefCell<i32>>,
+   |        +++++++++++++++++++++++                       +
+
+error[E0740]: unions cannot contain fields that may need dropping
+  --> $DIR/field_checks.rs:33:5
    |
 LL |     a: T,
    |     ^^^^
@@ -32,7 +35,7 @@ LL |     a: std::mem::ManuallyDrop<T>,
    |        +++++++++++++++++++++++ +
 
 error[E0740]: unions cannot contain fields that may need dropping
-  --> $DIR/feature-gate-untagged_unions.rs:45:5
+  --> $DIR/field_checks.rs:45:5
    |
 LL |     nest: U5,
    |     ^^^^^^^^
@@ -45,5 +48,4 @@ LL |     nest: std::mem::ManuallyDrop<U5>,
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0658, E0740.
-For more information about an error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0740`.
