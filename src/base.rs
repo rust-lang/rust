@@ -100,20 +100,6 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         context.add_command_line_option("-mvpclmulqdq");
         context.add_command_line_option("-mavx");
 
-        if env::var("CG_GCCJIT_ENABLE_AVX512").as_deref() == Ok("1") {
-            context.add_command_line_option("-mavx512f");
-            context.add_command_line_option("-mavx512vpopcntdq");
-            context.add_command_line_option("-mavx512vl");
-            context.add_command_line_option("-mavx512vnni");
-            context.add_command_line_option("-mavx512bw");
-            context.add_command_line_option("-mavx512bitalg");
-            context.add_command_line_option("-mavx512bf16");
-            context.add_command_line_option("-mavx512vbmi2");
-            context.add_command_line_option("-mavx512vbmi");
-            context.add_command_line_option("-mavx512ifma");
-            context.add_command_line_option("-mavx512cd");
-        }
-
         for arg in &tcx.sess.opts.cg.llvm_args {
             context.add_command_line_option(arg);
         }

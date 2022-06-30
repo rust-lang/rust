@@ -190,24 +190,6 @@ pub struct GccContext {
     context: Context<'static>,
 }
 
-impl GccContext {
-    fn new<'tcx>(tcx: TyCtxt<'tcx>) -> Self {
-        let context = create_context(tcx);
-        Self {
-            context,
-        }
-    }
-}
-
-fn create_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
-    let context = Context::default();
-    if tcx.sess.target.is_builtin {
-        //let features = global_gcc_features(sess, false);
-        println!("Features: {:?}", tcx.sess.opts.cg.target_feature);
-    }
-    context
-}
-
 unsafe impl Send for GccContext {}
 // FIXME(antoyo): that shouldn't be Sync. Parallel compilation is currently disabled with "-Zno-parallel-llvm". Try to disable it here.
 unsafe impl Sync for GccContext {}

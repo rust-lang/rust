@@ -287,9 +287,9 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
 pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc, 'tcx>, mut return_value: RValue<'gcc>, func_name: &str, args: &[RValue<'gcc>], args_adjusted: bool) -> RValue<'gcc> {
     match func_name {
         "__builtin_ia32_vfmaddss3_round" | "__builtin_ia32_vfmaddsd3_round" => {
-            let zero = builder.context.new_rvalue_zero(builder.int_type);
             #[cfg(feature="master")]
             {
+                let zero = builder.context.new_rvalue_zero(builder.int_type);
                 return_value = builder.context.new_vector_access(None, return_value, zero).to_rvalue();
             }
         },

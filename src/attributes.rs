@@ -1,4 +1,6 @@
-use gccjit::{FnAttribute, Function};
+#[cfg_attr(not(feature="master"), allow(unused_imports))]
+use gccjit::FnAttribute;
+use gccjit::Function;
 use rustc_attr::InstructionSetAttr;
 use rustc_codegen_ssa::target_features::tied_target_features;
 use rustc_data_structures::fx::FxHashMap;
@@ -72,6 +74,7 @@ fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]> {
 /// attributes.
 pub fn from_fn_attrs<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
+    #[cfg_attr(not(feature="master"), allow(unused_variables))]
     func: Function<'gcc>,
     instance: ty::Instance<'tcx>,
 ) {
@@ -109,6 +112,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     function_features.extend(&mut global_features);
     let target_features = function_features.join(",");
     if !target_features.is_empty() {
+        #[cfg(feature="master")]
         func.add_attribute(FnAttribute::Target, &target_features);
     }
 }

@@ -1,4 +1,6 @@
-use gccjit::{BinaryOp, RValue, Type, ToRValue, ComparisonOp, UnaryOp};
+#[cfg_attr(not(feature="master"), allow(unused_imports))]
+use gccjit::{ToRValue, ComparisonOp, UnaryOp};
+use gccjit::{BinaryOp, RValue, Type};
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{TypeKind, span_invalid_monomorphization_error};
 use rustc_codegen_ssa::mir::operand::OperandRef;
