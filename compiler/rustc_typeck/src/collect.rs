@@ -2158,7 +2158,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
                     ref generics,
-                    origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
+                    origin: hir::OpaqueTyOrigin::FnReturn(..),
                     ..
                 }) => {
                     // return-position impl trait
@@ -2180,6 +2180,25 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     }
 
                     generics
+                }
+                ItemKind::OpaqueTy(OpaqueTy {
+                    origin: hir::OpaqueTyOrigin::AsyncFn(..), ..
+                }) => {
+                    // return-position impl trait
+                    //
+                    // We don't inherit predicates from the parent here:
+                    // If we have, say `fn f<'a, T: 'a>() -> impl Sized {}`
+                    // then the return type is `f::<'static, T>::{{opaque}}`.
+                    //
+                    // If we inherited the predicates of `f` then we would
+                    // require that `T: 'static` to show that the return
+                    // type is well-formed.
+                    //
+                    // The only way to have something with this opaque type
+                    // is from the return type of the containing function,
+                    // which will ensure that the function's predicates
+                    // hold.
+                    return ty::GenericPredicates { parent: None, predicates: &[] };
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
                     ref generics,
