@@ -1,9 +1,9 @@
 WARNING: `-Zmiri-allow-uninit-numbers` is deprecated and planned to be removed. Please let us know at <https://github.com/rust-lang/miri/issues/2187> if you rely on this flag.
-error: Undefined Behavior: type validation failed at .<enum-tag>: encountered uninitialized bytes, but expected a valid enum tag
+error: Undefined Behavior: constructing invalid value at .<enum-tag>: encountered uninitialized bytes, but expected a valid enum tag
   --> $DIR/invalid_enum_tag_256variants_uninit.rs:LL:CC
    |
 LL |     let _a = unsafe { MyUninit { init: () }.uninit };
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<enum-tag>: encountered uninitialized bytes, but expected a valid enum tag
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered uninitialized bytes, but expected a valid enum tag
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

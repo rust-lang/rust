@@ -1,8 +1,8 @@
-error: Undefined Behavior: type validation failed at .value: encountered uninitialized bytes, but expected initialized bytes
+error: Undefined Behavior: constructing invalid value at .value: encountered uninitialized bytes, but expected initialized bytes
   --> $DIR/uninit_float.rs:LL:CC
    |
 LL |     let _val = unsafe { std::mem::MaybeUninit::<f32>::uninit().assume_init() };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .value: encountered uninitialized bytes, but expected initialized bytes
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .value: encountered uninitialized bytes, but expected initialized bytes
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

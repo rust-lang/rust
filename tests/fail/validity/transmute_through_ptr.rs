@@ -14,6 +14,6 @@ fn main() {
     let mut x = Bool::True;
     evil(&mut x);
     let y = x; // reading this ought to be enough to trigger validation
-    //~^ ERROR type validation failed at .<enum-tag>: encountered 0x0000002c, but expected a valid enum tag
+    //~^ ERROR constructing invalid value at .<enum-tag>: encountered 0x0000002c, but expected a valid enum tag
     println!("{:?}", y); // make sure it is used (and not optimized away)
 }

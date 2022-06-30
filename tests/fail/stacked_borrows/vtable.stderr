@@ -1,8 +1,8 @@
-error: Undefined Behavior: type validation failed: encountered vtable pointer does not have permission to read drop function pointer
+error: Undefined Behavior: constructing invalid value: encountered vtable pointer does not have permission to read drop function pointer
   --> RUSTLIB/core/src/ptr/metadata.rs:LL:CC
    |
 LL |     unsafe { PtrRepr { components: PtrComponents { data_address, metadata } }.const_ptr }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered vtable pointer does not have permission to read drop function pointer
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered vtable pointer does not have permission to read drop function pointer
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

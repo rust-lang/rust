@@ -1,8 +1,8 @@
-error: Undefined Behavior: type validation failed: encountered a null function pointer
+error: Undefined Behavior: constructing invalid value: encountered a null function pointer
   --> $DIR/invalid_fnptr_null.rs:LL:CC
    |
 LL |     let _b: fn() = unsafe { std::mem::transmute(0usize) };
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a null function pointer
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a null function pointer
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
