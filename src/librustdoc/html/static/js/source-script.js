@@ -10,6 +10,7 @@
 (function() {
 
 const rootPath = document.getElementById("rustdoc-vars").attributes["data-root-path"].value;
+let oldScrollPosition = 0;
 
 function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     const name = document.createElement("div");
@@ -65,10 +66,24 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 function toggleSidebar() {
     const child = this.children[0];
     if (child.innerText === ">") {
+        if (window.innerWidth < 701) {
+            // This is to keep the scroll position on mobile.
+            oldScrollPosition = window.scrollY;
+            document.body.style.position = "fixed";
+            document.body.style.top = `-${oldScrollPosition}px`;
+        }
         addClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = "<";
         updateLocalStorage("source-sidebar-show", "true");
     } else {
+        if (window.innerWidth < 701) {
+            // This is to keep the scroll position on mobile.
+            document.body.style.position = "";
+            document.body.style.top = "";
+            // The scroll position is lost when resetting the style, hence why we store it in
+            // `oldScroll`.
+            window.scrollTo(0, oldScrollPosition);
+        }
         removeClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = ">";
         updateLocalStorage("source-sidebar-show", "false");
