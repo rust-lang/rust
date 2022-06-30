@@ -84,17 +84,41 @@ error: this expression creates a reference which is immediately dereferenced by 
 LL |     let y: &mut i32 = &mut &mut x;
    |                       ^^^^^^^^^^^ help: change this to: `x`
 
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:67:14
+   |
+LL |         0 => &mut x,
+   |              ^^^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:73:14
+   |
+LL |         0 => &mut x,
+   |              ^^^^^^ help: change this to: `x`
+
 error: this expression borrows a value the compiler would automatically borrow
-  --> $DIR/needless_borrow.rs:74:13
+  --> $DIR/needless_borrow.rs:85:13
    |
 LL |     let _ = (&x).0;
    |             ^^^^ help: change this to: `x`
 
 error: this expression borrows a value the compiler would automatically borrow
-  --> $DIR/needless_borrow.rs:76:22
+  --> $DIR/needless_borrow.rs:87:22
    |
 LL |     let _ = unsafe { (&*x).0 };
    |                      ^^^^^ help: change this to: `(*x)`
 
-error: aborting due to 16 previous errors
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:97:5
+   |
+LL |     (&&()).foo();
+   |     ^^^^^^ help: change this to: `(&())`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:106:5
+   |
+LL |     (&&5).foo();
+   |     ^^^^^ help: change this to: `(&5)`
+
+error: aborting due to 20 previous errors
 

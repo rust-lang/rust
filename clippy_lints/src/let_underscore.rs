@@ -99,12 +99,13 @@ declare_clippy_lint! {
 
 declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_DROP]);
 
-const SYNC_GUARD_PATHS: [&[&str]; 5] = [
+const SYNC_GUARD_PATHS: [&[&str]; 6] = [
     &paths::MUTEX_GUARD,
     &paths::RWLOCK_READ_GUARD,
     &paths::RWLOCK_WRITE_GUARD,
-    &paths::PARKING_LOT_RAWMUTEX,
-    &paths::PARKING_LOT_RAWRWLOCK,
+    &paths::PARKING_LOT_MUTEX_GUARD,
+    &paths::PARKING_LOT_RWLOCK_READ_GUARD,
+    &paths::PARKING_LOT_RWLOCK_WRITE_GUARD,
 ];
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {

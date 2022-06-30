@@ -791,7 +791,7 @@ declare_clippy_lint! {
     /// the match block and thus will not unlock.
     ///
     /// ### Example
-    /// ```rust.ignore
+    /// ```rust,ignore
     /// # use std::sync::Mutex;
     ///
     /// # struct State {}
@@ -963,7 +963,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 return;
             }
             if matches!(source, MatchSource::Normal | MatchSource::ForLoopDesugar) {
-                significant_drop_in_scrutinee::check(cx, expr, ex, source);
+                significant_drop_in_scrutinee::check(cx, expr, ex, arms, source);
             }
 
             collapsible_match::check_match(cx, arms);
