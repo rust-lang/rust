@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHasher;
 use rustc_hir::def::Res;
 use rustc_hir::HirIdMap;
 use rustc_hir::{
-    ArrayLen, BinOpKind, Block, BodyId, Expr, ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, Guard, HirId,
+    ArrayLen, BinOpKind, Closure, Block, BodyId, Expr, ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, Guard, HirId,
     InlineAsmOperand, Let, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path, PathSegment, QPath, Stmt,
     StmtKind, Ty, TyKind, TypeBinding,
 };
@@ -662,9 +662,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(e);
                 self.hash_ty(ty);
             },
-            ExprKind::Closure {
+            ExprKind::Closure(&Closure {
                 capture_clause, body, ..
-            } => {
+            }) => {
                 std::mem::discriminant(&capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
                 self.hash_expr(&self.cx.tcx.hir().body(body).value);

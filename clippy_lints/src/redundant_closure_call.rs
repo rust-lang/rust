@@ -69,7 +69,7 @@ impl EarlyLintPass for RedundantClosureCall {
         if_chain! {
             if let ast::ExprKind::Call(ref paren, _) = expr.kind;
             if let ast::ExprKind::Paren(ref closure) = paren.kind;
-            if let ast::ExprKind::Closure(_, _, _, ref decl, ref block, _) = closure.kind;
+            if let ast::ExprKind::Closure(_, _, _, _, ref decl, ref block, _) = closure.kind;
             then {
                 let mut visitor = ReturnVisitor::new();
                 visitor.visit_expr(block);

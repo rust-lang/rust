@@ -6,7 +6,7 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    AsyncGeneratorKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound, HirId,
+    AsyncGeneratorKind, Block, Body, Closure, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound, HirId,
     IsAsync, ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -177,7 +177,7 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
         if let Some(block_expr) = block.expr;
         if let Some(args) = match_function_call(cx, block_expr, &FUTURE_FROM_GENERATOR);
         if args.len() == 1;
-        if let Expr{kind: ExprKind::Closure { body, .. }, ..} = args[0];
+        if let Expr{kind: ExprKind::Closure(&Closure { body, .. }), ..} = args[0];
         let closure_body = cx.tcx.hir().body(body);
         if closure_body.generator_kind == Some(GeneratorKind::Async(AsyncGeneratorKind::Block));
         then {
