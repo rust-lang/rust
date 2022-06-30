@@ -729,7 +729,17 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("--show-type-layout");
                 cargo.rustdocflag("--generate-link-to-definition");
                 cargo.rustdocflag("-Zunstable-options");
-                builder.run(&mut cargo.into());
+                if $in_tree == true {
+                    builder.run(&mut cargo.into());
+                } else {
+                    // Allow out-of-tree docs to fail (since the tool might be in a broken state).
+                    if !builder.try_run(&mut cargo.into()) {
+                        builder.info(&format!(
+                            "WARNING: tool {} failed to document; ignoring failure because it is an out-of-tree tool",
+                            stringify!($tool).to_lowercase(),
+                        ));
+                    }
+                }
             }
         }
     }
