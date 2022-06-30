@@ -73,6 +73,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.ftruncate64(fd, length)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "realpath$DARWIN_EXTSN" => {
+                let [path, resolved_path] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.realpath(path, resolved_path)?;
+                this.write_pointer(result, dest)?;
+            }
 
             // Environment related shims
             "_NSGetEnviron" => {

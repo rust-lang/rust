@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::convert::TryInto;
 use std::fs::{
     read_dir, remove_dir, remove_file, rename, DirBuilder, File, FileType, OpenOptions, ReadDir,
 };
@@ -1661,6 +1662,67 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let enotty = this.eval_libc("ENOTTY")?;
         this.set_last_error(enotty)?;
         Ok(0)
+    }
+
+    fn realpath(
+        &mut self,
+        path_op: &OpTy<'tcx, Provenance>,
+        processed_path_op: &OpTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+        let this = self.eval_context_mut();
+        this.assert_target_os_is_unix("realpath");
+
+        let pathname = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
+        let processed_ptr = this.read_pointer(processed_path_op)?;
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`realpath`", reject_with)?;
+            let eacc = this.eval_libc("EACCES")?;
+            this.set_last_error(eacc)?;
+            return Ok(Pointer::null());
+        }
+
+        let result = std::fs::canonicalize(pathname);
+        match result {
+            Ok(resolved) => {
+                let path_max = this
+                    .eval_libc_i32("PATH_MAX")?
+                    .try_into()
+                    .expect("PATH_MAX does not fit in u64");
+                let dest = if this.ptr_is_null(processed_ptr)? {
+                    // POSIX says behavior when passing a null pointer is implementation-defined,
+                    // but GNU/linux, freebsd, netbsd, bionic/android, and macos all treat a null pointer
+                    // similarly to:
+                    //
+                    // "If resolved_path is specified as NULL, then realpath() uses
+                    // malloc(3) to allocate a buffer of up to PATH_MAX bytes to hold
+                    // the resolved pathname, and returns a pointer to this buffer.  The
+                    // caller should deallocate this buffer using free(3)."
+                    // <https://man7.org/linux/man-pages/man3/realpath.3.html>
+                    this.alloc_os_str_as_c_str(resolved.as_os_str(), MiriMemoryKind::C.into())?
+                } else {
+                    let (wrote_path, _) =
+                        this.write_path_to_c_str(&resolved, processed_ptr, path_max)?;
+
+                    if !wrote_path {
+                        // Note that we do not explicitly handle `FILENAME_MAX`
+                        // (different from `PATH_MAX` above) as it is Linux-specific and
+                        // seems like a bit of a mess anyway: <https://eklitzke.org/path-max-is-tricky>.
+                        let enametoolong = this.eval_libc("ENAMETOOLONG")?;
+                        this.set_last_error(enametoolong)?;
+                        return Ok(Pointer::null());
+                    }
+                    processed_ptr
+                };
+
+                Ok(dest)
+            }
+            Err(e) => {
+                this.set_last_error_from_io_error(e.kind())?;
+                Ok(Pointer::null())
+            }
+        }
     }
 }
 

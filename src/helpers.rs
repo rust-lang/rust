@@ -37,6 +37,7 @@ const UNIX_IO_ERROR_TABLE: &[(std::io::ErrorKind, &str)] = {
         (NotFound, "ENOENT"),
         (Interrupted, "EINTR"),
         (InvalidInput, "EINVAL"),
+        (InvalidFilename, "ENAMETOOLONG"),
         (TimedOut, "ETIMEDOUT"),
         (AlreadyExists, "EEXIST"),
         (WouldBlock, "EWOULDBLOCK"),
