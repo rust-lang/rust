@@ -5,7 +5,7 @@ Language
 --------
 
 - [Stabilize `#[derive(Default)]` on enums with a `#[default]` variant][94457]
-- [Stop validating some checks in dead code after functions with uninhabited return types][93313]
+- [Teach flow sensitive checks that visibly uninhabited call expressions never return][93313]
 - [Fix constants not getting dropped if part of a diverging expression][94775]
 - [Support unit struct/enum variant in destructuring assignment][95380]
 - [Remove mutable_borrow_reservation_conflict lint and allow the code pattern][96268]
