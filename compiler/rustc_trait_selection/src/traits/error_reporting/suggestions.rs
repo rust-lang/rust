@@ -761,6 +761,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             Ok(
                 EvaluationResult::EvaluatedToOk
                 | EvaluationResult::EvaluatedToOkModuloRegions
+                | EvaluationResult::EvaluatedToOkModuloOpaqueTypes
                 | EvaluationResult::EvaluatedToAmbig,
             ) => {}
             _ => return false,
