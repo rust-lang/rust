@@ -638,7 +638,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.63"
+version = "0.1.64"
 dependencies = [
  "clippy_lints",
  "clippy_utils",
@@ -661,6 +661,7 @@ dependencies = [
  "termize",
  "tester",
  "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -679,10 +680,9 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.63"
+version = "0.1.64"
 dependencies = [
  "cargo_metadata",
- "clippy_dev",
  "clippy_utils",
  "if_chain",
  "itertools",
@@ -702,7 +702,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.63"
+version = "0.1.64"
 dependencies = [
  "arrayvec",
  "if_chain",
