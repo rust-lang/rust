@@ -857,7 +857,7 @@ impl Config {
         let build = toml.build.unwrap_or_default();
 
         set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
-        set(&mut config.out, build.build_dir.map(PathBuf::from));
+        set(&mut config.out, flags.build_dir.or_else(|| build.build_dir.map(PathBuf::from)));
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
         if !config.out.is_absolute() {
