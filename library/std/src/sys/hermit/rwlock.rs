@@ -1,6 +1,5 @@
 use crate::cell::UnsafeCell;
 use crate::sys::locks::{MovableCondvar, Mutex};
-use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
 pub struct RwLock {
     lock: Mutex,

@@ -3,7 +3,7 @@ use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::io::{self, Error, ErrorKind};
 use crate::io::{IoSlice, IoSliceMut, ReadBuf, SeekFrom};
-use crate::os::unix::ffi::OsStrExt;
+use crate::os::hermit::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
 use crate::sys::cvt;
 use crate::sys::hermit::abi;

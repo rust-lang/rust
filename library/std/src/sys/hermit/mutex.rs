@@ -2,7 +2,6 @@ use crate::cell::UnsafeCell;
 use crate::collections::VecDeque;
 use crate::hint;
 use crate::ops::{Deref, DerefMut, Drop};
-use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::hermit::abi;
 
