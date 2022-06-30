@@ -108,7 +108,7 @@ pub fn expand_deriving_rustc_encodable(
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: Path::new_(vec![krate, sym::Encodable], None, vec![], PathKind::Global),
+        path: Path::new_(vec![krate, sym::Encodable], vec![], PathKind::Global),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         supports_unions: false,
@@ -117,19 +117,17 @@ pub fn expand_deriving_rustc_encodable(
             generics: Bounds {
                 bounds: vec![(
                     typaram,
-                    vec![Path::new_(vec![krate, sym::Encoder], None, vec![], PathKind::Global)],
+                    vec![Path::new_(vec![krate, sym::Encoder], vec![], PathKind::Global)],
                 )],
             },
             explicit_self: true,
             args: vec![(Ref(Box::new(Literal(Path::new_local(typaram))), Mutability::Mut), sym::s)],
             ret_ty: Literal(Path::new_(
                 pathvec_std!(result::Result),
-                None,
                 vec![
                     Box::new(Tuple(Vec::new())),
                     Box::new(Literal(Path::new_(
                         vec![typaram, sym::Error],
-                        None,
                         vec![],
                         PathKind::Local,
                     ))),

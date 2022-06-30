@@ -11,11 +11,10 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 
 /// A path, e.g., `::std::option::Option::<i32>` (global). Has support
-/// for type parameters and a lifetime.
+/// for type parameters.
 #[derive(Clone)]
 pub struct Path {
     path: Vec<Symbol>,
-    lifetime: Option<Ident>,
     params: Vec<Box<Ty>>,
     kind: PathKind,
 }
@@ -29,18 +28,13 @@ pub enum PathKind {
 
 impl Path {
     pub fn new(path: Vec<Symbol>) -> Path {
-        Path::new_(path, None, Vec::new(), PathKind::Std)
+        Path::new_(path, Vec::new(), PathKind::Std)
     }
     pub fn new_local(path: Symbol) -> Path {
-        Path::new_(vec![path], None, Vec::new(), PathKind::Local)
+        Path::new_(vec![path], Vec::new(), PathKind::Local)
     }
-    pub fn new_(
-        path: Vec<Symbol>,
-        lifetime: Option<Ident>,
-        params: Vec<Box<Ty>>,
-        kind: PathKind,
-    ) -> Path {
-        Path { path, lifetime, params, kind }
+    pub fn new_(path: Vec<Symbol>, params: Vec<Box<Ty>>, kind: PathKind) -> Path {
+        Path { path, params, kind }
     }
 
     pub fn to_ty(
@@ -60,10 +54,8 @@ impl Path {
         self_generics: &Generics,
     ) -> ast::Path {
         let mut idents = self.path.iter().map(|s| Ident::new(*s, span)).collect();
-        let lt = mk_lifetimes(cx, span, &self.lifetime);
         let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics));
-        let params =
-            lt.into_iter().map(GenericArg::Lifetime).chain(tys.map(GenericArg::Type)).collect();
+        let params = tys.map(GenericArg::Type).collect();
 
         match self.kind {
             PathKind::Global => cx.path_all(span, true, idents, params),
@@ -96,14 +88,6 @@ pub fn self_ref() -> Ty {
 
 pub fn nil_ty() -> Ty {
     Tuple(Vec::new())
-}
-
-fn mk_lifetime(cx: &ExtCtxt<'_>, span: Span, lt: &Option<Ident>) -> Option<ast::Lifetime> {
-    lt.map(|ident| cx.lifetime(span, ident))
-}
-
-fn mk_lifetimes(cx: &ExtCtxt<'_>, span: Span, lt: &Option<Ident>) -> Vec<ast::Lifetime> {
-    mk_lifetime(cx, span, lt).into_iter().collect()
 }
 
 impl Ty {

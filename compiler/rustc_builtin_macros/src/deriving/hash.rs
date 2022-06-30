@@ -15,7 +15,7 @@ pub fn expand_deriving_hash(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    let path = Path::new_(pathvec_std!(hash::Hash), None, vec![], PathKind::Std);
+    let path = Path::new_(pathvec_std!(hash::Hash), vec![], PathKind::Std);
 
     let typaram = sym::__H;
 
