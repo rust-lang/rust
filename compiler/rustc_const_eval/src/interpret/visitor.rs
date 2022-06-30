@@ -92,7 +92,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        Ok((*self).into())
+        Ok(self.into())
     }
 
     #[inline(always)]
