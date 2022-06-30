@@ -2196,12 +2196,9 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Finds usages of [`char::is_digit`]
-    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_digit) that
-    /// can be replaced with [`is_ascii_digit`]
-    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_digit) or
-    /// [`is_ascii_hexdigit`]
-    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_hexdigit).
+    /// Finds usages of [`char::is_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_digit) that
+    /// can be replaced with [`is_ascii_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_digit) or
+    /// [`is_ascii_hexdigit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_hexdigit).
     ///
     /// ### Why is this bad?
     /// `is_digit(..)` is slower and requires specifying the radix.
