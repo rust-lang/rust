@@ -573,6 +573,7 @@ fn get_new_lifetime_name<'tcx>(
 
 /// Returns the predicates defined on `item_def_id` of the form
 /// `X: Foo` where `X` is the type parameter `def_id`.
+#[instrument(level = "trace", skip(tcx))]
 fn type_param_predicates(
     tcx: TyCtxt<'_>,
     (item_def_id, def_id, assoc_name): (DefId, LocalDefId, Ident),
@@ -682,7 +683,7 @@ impl<'tcx> ItemCtxt<'tcx> {
     /// AST. We do this to avoid having to convert *all* the bounds, which
     /// would create artificial cycles. Instead, we can only convert the
     /// bounds for a type parameter `X` if `X::Foo` is used.
-    #[instrument(level = "trace", skip(self, ast_generics))]
+    #[instrument(level = "trace", skip(self))]
     fn type_parameter_bounds_in_generics(
         &self,
         ast_generics: &'tcx hir::Generics<'tcx>,
