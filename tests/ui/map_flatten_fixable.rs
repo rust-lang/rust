@@ -34,21 +34,21 @@ fn main() {
 }
 
 fn issue8734() {
-    //     let _ = [0u8, 1, 2, 3]
-    //         .into_iter()
-    //         .map(|n| match n {
-    //             1 => [n
-    //                 .saturating_add(1)
-    //                 .saturating_add(1)
-    //                 .saturating_add(1)
-    //                 .saturating_add(1)
-    //                 .saturating_add(1)
-    //                 .saturating_add(1)
-    //                 .saturating_add(1)
-    //                 .saturating_add(1)],
-    //             n => [n],
-    //         })
-    //         .flatten();
+    let _ = [0u8, 1, 2, 3]
+        .into_iter()
+        .map(|n| match n {
+            1 => [n
+                .saturating_add(1)
+                .saturating_add(1)
+                .saturating_add(1)
+                .saturating_add(1)
+                .saturating_add(1)
+                .saturating_add(1)
+                .saturating_add(1)
+                .saturating_add(1)],
+            n => [n],
+        })
+        .flatten();
 }
 
 #[allow(clippy::bind_instead_of_map)] // map + flatten will be suggested to `and_then`, but afterwards `map` is suggested again
