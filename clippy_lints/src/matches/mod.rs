@@ -791,7 +791,7 @@ declare_clippy_lint! {
     /// the match block and thus will not unlock.
     ///
     /// ### Example
-    /// ```rust.ignore
+    /// ```rust,ignore
     /// # use std::sync::Mutex;
     ///
     /// # struct State {}
