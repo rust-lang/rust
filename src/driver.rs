@@ -153,7 +153,8 @@ You can use tool lints to allow or deny lints from your code, eg.:
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new";
 
-static ICE_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> = LazyLock::new(|| {
+type PanicCallback = dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static;
+static ICE_HOOK: LazyLock<Box<PanicCallback>> = LazyLock::new(|| {
     let hook = panic::take_hook();
     panic::set_hook(Box::new(|info| report_clippy_ice(info, BUG_REPORT_URL)));
     hook
