@@ -396,7 +396,7 @@ fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: 
         // `.iter()` and `.len()` called on same `Path`
         if let ExprKind::Path(QPath::Resolved(_, iter_path)) = iter_args[0].kind;
         if let ExprKind::Path(QPath::Resolved(_, len_path)) = len_args[0].kind;
-        if SpanlessEq::new(cx).eq_path_segments(&iter_path.segments, &len_path.segments);
+        if SpanlessEq::new(cx).eq_path_segments(iter_path.segments, len_path.segments);
         then {
             span_lint(cx,
                 RANGE_ZIP_WITH_LEN,

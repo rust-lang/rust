@@ -55,7 +55,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         cx,
                         (ex, expr),
                         (bind_names, matched_vars),
-                        &*snippet_body,
+                        &snippet_body,
                         &mut applicability,
                         Some(span),
                     );
@@ -88,7 +88,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
                         cx,
                         (ex, expr),
                         (bind_names, matched_vars),
-                        &*snippet_body,
+                        &snippet_body,
                         &mut applicability,
                         None,
                     );

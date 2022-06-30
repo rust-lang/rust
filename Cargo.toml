@@ -31,6 +31,7 @@ termize = "0.1"
 compiletest_rs = { version = "0.8", features = ["tmp"] }
 tester = "0.9"
 regex = "1.5"
+toml = "0.5"
 # This is used by the `collect-metadata` alias.
 filetime = "0.2"
 
@@ -40,6 +41,7 @@ filetime = "0.2"
 rustc-workspace-hack = "1.0"
 
 # UI test dependencies
+clap = { version = "3.1", features = ["derive"] }
 clippy_utils = { path = "clippy_utils" }
 derive-new = "0.5"
 if_chain = "1.0"

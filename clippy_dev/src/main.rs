@@ -5,6 +5,7 @@
 use clap::{Arg, ArgAction, ArgMatches, Command, PossibleValue};
 use clippy_dev::{bless, fmt, lint, new_lint, serve, setup, update_lints};
 use indoc::indoc;
+
 fn main() {
     let matches = get_clap_config();
 
@@ -84,6 +85,11 @@ fn main() {
             let new_name = matches.get_one::<String>("new_name").unwrap_or(old_name);
             let uplift = matches.contains_id("uplift");
             update_lints::rename(old_name, new_name, uplift);
+        },
+        Some(("deprecate", matches)) => {
+            let name = matches.get_one::<String>("name").unwrap();
+            let reason = matches.get_one("reason");
+            update_lints::deprecate(name, reason);
         },
         _ => {},
     }
@@ -265,6 +271,18 @@ fn get_clap_config() -> ArgMatches {
                 Arg::new("uplift")
                     .long("uplift")
                     .help("This lint will be uplifted into rustc"),
+            ]),
+            Command::new("deprecate").about("Deprecates the given lint").args([
+                Arg::new("name")
+                    .index(1)
+                    .required(true)
+                    .help("The name of the lint to deprecate"),
+                Arg::new("reason")
+                    .long("reason")
+                    .short('r')
+                    .required(false)
+                    .takes_value(true)
+                    .help("The reason for deprecation"),
             ]),
         ])
         .get_matches()
