@@ -540,6 +540,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                             return None;
                         } // conservative handling
                         StatementKind::Assign(_)
+                        | StatementKind::Assume(_)
                         | StatementKind::FakeRead(_)
                         | StatementKind::SetDiscriminant { .. }
                         | StatementKind::Deinit(_)
