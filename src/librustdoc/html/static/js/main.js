@@ -4,40 +4,6 @@
 
 "use strict";
 
-if (!String.prototype.startsWith) {
-    String.prototype.startsWith = function(searchString, position) {
-        position = position || 0;
-        return this.indexOf(searchString, position) === position;
-    };
-}
-if (!String.prototype.endsWith) {
-    String.prototype.endsWith = function(suffix, length) {
-        const l = length || this.length;
-        return this.indexOf(suffix, l - suffix.length) !== -1;
-    };
-}
-
-if (!DOMTokenList.prototype.add) {
-    DOMTokenList.prototype.add = function(className) {
-        if (className && !hasClass(this, className)) {
-            if (this.className && this.className.length > 0) {
-                this.className += " " + className;
-            } else {
-                this.className = className;
-            }
-        }
-    };
-}
-
-if (!DOMTokenList.prototype.remove) {
-    DOMTokenList.prototype.remove = function(className) {
-        if (className && this.className) {
-            this.className = (" " + this.className + " ").replace(" " + className + " ", " ")
-                                                         .trim();
-        }
-    };
-}
-
 // Get a value from the rustdoc-vars div, which is used to convey data from
 // Rust to the JS. If there is no such element, return null.
 function getVar(name) {
