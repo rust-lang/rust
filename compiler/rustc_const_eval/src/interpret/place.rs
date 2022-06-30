@@ -118,7 +118,21 @@ impl<'tcx, Tag: Provenance> std::ops::Deref for MPlaceTy<'tcx, Tag> {
 impl<'tcx, Tag: Provenance> From<MPlaceTy<'tcx, Tag>> for PlaceTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
-        PlaceTy { place: Place::Ptr(mplace.mplace), layout: mplace.layout }
+        PlaceTy { place: Place::Ptr(*mplace), layout: mplace.layout }
+    }
+}
+
+impl<'tcx, Tag: Provenance> From<&'_ MPlaceTy<'tcx, Tag>> for PlaceTy<'tcx, Tag> {
+    #[inline(always)]
+    fn from(mplace: &MPlaceTy<'tcx, Tag>) -> Self {
+        PlaceTy { place: Place::Ptr(**mplace), layout: mplace.layout }
+    }
+}
+
+impl<'tcx, Tag: Provenance> From<&'_ mut MPlaceTy<'tcx, Tag>> for PlaceTy<'tcx, Tag> {
+    #[inline(always)]
+    fn from(mplace: &mut MPlaceTy<'tcx, Tag>) -> Self {
+        PlaceTy { place: Place::Ptr(**mplace), layout: mplace.layout }
     }
 }
 
