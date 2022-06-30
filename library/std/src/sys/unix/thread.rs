@@ -113,7 +113,7 @@ impl Thread {
 
     pub fn yield_now() {
         let ret = unsafe { libc::sched_yield() };
-        debug_assert_eq!(ret, 0);
+        assert_eq!(ret, 0, "unexpected error during sched_yield: {:?}", ret);
     }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -267,7 +267,7 @@ impl Thread {
 impl Drop for Thread {
     fn drop(&mut self) {
         let ret = unsafe { libc::pthread_detach(self.id) };
-        debug_assert_eq!(ret, 0);
+        assert_eq!(ret, 0, "unexpected error during pthread_detach: {:?}", ret);
     }
 }
 

@@ -22,7 +22,7 @@ impl Condvar {
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
         let r = c::SleepConditionVariableSRW(self.inner.get(), mutex::raw(mutex), c::INFINITE, 0);
-        debug_assert!(r != 0);
+        assert!(r != 0, "unexpected error during SleepConditionVariableSRW: {:?}", r);
     }
 
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
@@ -33,7 +33,12 @@ impl Condvar {
             0,
         );
         if r == 0 {
-            debug_assert_eq!(os::errno() as usize, c::ERROR_TIMEOUT as usize);
+            assert_eq!(
+                os::errno() as usize,
+                c::ERROR_TIMEOUT as usize,
+                "unexpected error during SleepConditionariableSRW: {:?}",
+                r
+            );
             false
         } else {
             true

@@ -14,7 +14,7 @@ pub unsafe fn create(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
 #[inline]
 pub unsafe fn set(key: Key, value: *mut u8) {
     let r = libc::pthread_setspecific(key, value as *mut _);
-    debug_assert_eq!(r, 0);
+    assert_eq!(r, 0, "unexpected error during pthread_setspecific: {:?}", r);
 }
 
 #[inline]
@@ -25,7 +25,7 @@ pub unsafe fn get(key: Key) -> *mut u8 {
 #[inline]
 pub unsafe fn destroy(key: Key) {
     let r = libc::pthread_key_delete(key);
-    debug_assert_eq!(r, 0);
+    assert_eq!(r, 0, "unexpected error during pthread_key_delete: {:?}", r);
 }
 
 #[inline]

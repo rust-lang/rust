@@ -205,7 +205,11 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
                 _ => 3,
             };
         }
-        debug_assert!(String::from_utf16(&utf16[..written]).unwrap() == utf8[..count]);
+        assert_eq!(
+            String::from_utf16(&utf16[..written]).unwrap(),
+            utf8[..count],
+            "unexpected partial lenght written"
+        );
         Ok(count)
     }
 }

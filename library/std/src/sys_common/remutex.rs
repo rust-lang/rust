@@ -123,7 +123,12 @@ impl<T> ReentrantMutex<T> {
             } else {
                 self.mutex.lock();
                 self.owner.store(this_thread, Relaxed);
-                debug_assert_eq!(*self.lock_count.get(), 0);
+                assert_eq!(
+                    *self.lock_count.get(),
+                    0,
+                    "unexpected value of lock_count: {:?}",
+                    *self.lock_count.get()
+                );
                 *self.lock_count.get() = 1;
             }
         }
@@ -152,7 +157,12 @@ impl<T> ReentrantMutex<T> {
                 Some(ReentrantMutexGuard { lock: self })
             } else if self.mutex.try_lock() {
                 self.owner.store(this_thread, Relaxed);
-                debug_assert_eq!(*self.lock_count.get(), 0);
+                assert_eq!(
+                    *self.lock_count.get(),
+                    0,
+                    "unexpected value of lock_count: {:?}",
+                    *self.lock_count.get()
+                );
                 *self.lock_count.get() = 1;
                 Some(ReentrantMutexGuard { lock: self })
             } else {

@@ -58,7 +58,7 @@ pub unsafe fn create(dtor: Option<Dtor>) -> Key {
 #[inline]
 pub unsafe fn set(key: Key, value: *mut u8) {
     let r = c::TlsSetValue(key, value as c::LPVOID);
-    debug_assert!(r != 0);
+    assert!(r != 0, "unexpected error during TlsSetValue: {:?}", r);
 }
 
 #[inline]

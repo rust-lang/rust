@@ -80,19 +80,19 @@ impl Condvar {
     #[inline]
     pub unsafe fn notify_one(&self) {
         let r = libc::pthread_cond_signal(self.inner.get());
-        debug_assert_eq!(r, 0);
+        assert_eq!(r, 0, "unexpected error during pthread_cond_signal: {:?}", r);
     }
 
     #[inline]
     pub unsafe fn notify_all(&self) {
         let r = libc::pthread_cond_broadcast(self.inner.get());
-        debug_assert_eq!(r, 0);
+        assert_eq!(r, 0, "unexpected error during pthread_cond_broadcast: {:?}", r);
     }
 
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
         let r = libc::pthread_cond_wait(self.inner.get(), pthread_mutex::raw(mutex));
-        debug_assert_eq!(r, 0);
+        assert_eq!(r, 0, "unexpected error during pthread_cond_wait: {:?}");
     }
 
     // This implementation is used on systems that support pthread_condattr_setclock
@@ -168,7 +168,7 @@ impl Condvar {
         let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
         let stable_now = Instant::now();
         let r = libc::gettimeofday(&mut sys_now, ptr::null_mut());
-        debug_assert_eq!(r, 0);
+        assert_eq!(r, 0, "unexpected error during gettimeofday: {:?}", r);
 
         let nsec = dur.subsec_nanos() as libc::c_long + (sys_now.tv_usec * 1000) as libc::c_long;
         let extra = (nsec / 1_000_000_000) as libc::time_t;
@@ -184,7 +184,11 @@ impl Condvar {
 
         // And wait!
         let r = libc::pthread_cond_timedwait(self.inner.get(), pthread_mutex::raw(mutex), &timeout);
-        debug_assert!(r == libc::ETIMEDOUT || r == 0);
+        assert!(
+            r == libc::ETIMEDOUT || r == 0,
+            "unexpected error during pthread_conf_timedwait: {:?}",
+            r
+        );
 
         // ETIMEDOUT is not a totally reliable method of determining timeout due
         // to clock shifts, so do the check ourselves
@@ -195,7 +199,7 @@ impl Condvar {
     #[cfg(not(target_os = "dragonfly"))]
     unsafe fn destroy(&mut self) {
         let r = libc::pthread_cond_destroy(self.inner.get());
-        debug_assert_eq!(r, 0);
+        assert_eq!(r, 0, "unexpected error during pthread_cond_destroy: {:?}", r);
     }
 
     #[inline]
@@ -206,7 +210,11 @@ impl Condvar {
         // a condvar that was just initialized with
         // libc::PTHREAD_COND_INITIALIZER. Once it is used or
         // pthread_cond_init() is called, this behaviour no longer occurs.
-        debug_assert!(r == 0 || r == libc::EINVAL);
+        assert!(
+            r == 0 || r == libc::EINVAL,
+            "unexpected error during pthread_cond_destroy: {:?}",
+            r
+        );
     }
 }
 

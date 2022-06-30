@@ -426,7 +426,7 @@ fn reserve_and_pad<A: Allocator>(
         // realise the `reserve` it does can be eliminated. So we do it manually
         // to eliminate that extra branch
         let spare = vec.spare_capacity_mut();
-        debug_assert!(spare.len() >= diff);
+        assert!(spare.len() >= diff, "unexpected allocated capacity");
         // Safety: we have allocated enough capacity for this.
         // And we are only writing, not reading
         unsafe {
@@ -444,7 +444,7 @@ unsafe fn vec_write_unchecked<A>(pos: usize, vec: &mut Vec<u8, A>, buf: &[u8]) -
 where
     A: Allocator,
 {
-    debug_assert!(vec.capacity() >= pos + buf.len());
+    assert!(vec.capacity() >= pos + buf.len(), "unexpected write out of bound");
     vec.as_mut_ptr().add(pos).copy_from(buf.as_ptr(), buf.len());
     pos + buf.len()
 }

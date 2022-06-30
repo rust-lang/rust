@@ -376,7 +376,7 @@ impl<R: Read> BufRead for BufReader<R> {
         // Branch using `>=` instead of the more correct `==`
         // to tell the compiler that the pos..cap slice is always valid.
         if self.pos >= self.cap {
-            debug_assert!(self.pos == self.cap);
+            assert!(self.pos == self.cap, "unexpected end of buffer");
 
             let mut readbuf = ReadBuf::uninit(&mut self.buf);
 

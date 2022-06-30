@@ -87,12 +87,12 @@ impl Mutex {
     #[inline]
     pub unsafe fn lock(&self) {
         let r = libc::pthread_mutex_lock(self.inner.get());
-        debug_assert_eq!(r, 0);
+        assert_eq!(r, 0, "unexpected error during pthread_mutex_lock: {:?}", r);
     }
     #[inline]
     pub unsafe fn unlock(&self) {
         let r = libc::pthread_mutex_unlock(self.inner.get());
-        debug_assert_eq!(r, 0);
+        assert_eq!(r, 0, "unexpected error during pthread_mutex_unlock: {:?}", r);
     }
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
@@ -102,7 +102,7 @@ impl Mutex {
     #[cfg(not(target_os = "dragonfly"))]
     unsafe fn destroy(&mut self) {
         let r = libc::pthread_mutex_destroy(self.inner.get());
-        debug_assert_eq!(r, 0);
+        assert_eq!(r, 0, "unexpected error during pthread_mutex_destroy: {:?}", r);
     }
     #[inline]
     #[cfg(target_os = "dragonfly")]
@@ -112,7 +112,11 @@ impl Mutex {
         // mutex that was just initialized with libc::PTHREAD_MUTEX_INITIALIZER.
         // Once it is used (locked/unlocked) or pthread_mutex_init() is called,
         // this behaviour no longer occurs.
-        debug_assert!(r == 0 || r == libc::EINVAL);
+        assert!(
+            r == 0 || r == libc::EINVAL,
+            "unexpected error during pthread_mutex_destroy: {:?}",
+            r
+        );
     }
 }
 
@@ -129,7 +133,11 @@ impl Drop for PthreadMutexAttr<'_> {
     fn drop(&mut self) {
         unsafe {
             let result = libc::pthread_mutexattr_destroy(self.0.as_mut_ptr());
-            debug_assert_eq!(result, 0);
+            assert_eq!(
+                result, 0,
+                "unexpected error during: pthread_mutexattr_destroy: {:?}",
+                result
+            );
         }
     }
 }

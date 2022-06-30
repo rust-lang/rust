@@ -749,7 +749,7 @@ impl<'a> Components<'a> {
     // parse a component from the left, saying how many bytes to consume to
     // remove the component
     fn parse_next_component(&self) -> (usize, Option<Component<'a>>) {
-        debug_assert!(self.front == State::Body);
+        assert!(self.front == State::Body, "unexpected component during parsing: {:?}", self.front);
         let (extra, comp) = match self.path.iter().position(|b| self.is_sep_byte(*b)) {
             None => (0, self.path),
             Some(i) => (1, &self.path[..i]),
@@ -760,7 +760,7 @@ impl<'a> Components<'a> {
     // parse a component from the right, saying how many bytes to consume to
     // remove the component
     fn parse_next_component_back(&self) -> (usize, Option<Component<'a>>) {
-        debug_assert!(self.back == State::Body);
+        assert!(self.back == State::Body, "unexpected component during parsing: {:?}", self.back);
         let start = self.len_before_body();
         let (extra, comp) = match self.path[start..].iter().rposition(|b| self.is_sep_byte(*b)) {
             None => (0, &self.path[start..]),
@@ -893,7 +893,11 @@ impl<'a> Iterator for Components<'a> {
             match self.front {
                 State::Prefix if self.prefix_len() > 0 => {
                     self.front = State::StartDir;
-                    debug_assert!(self.prefix_len() <= self.path.len());
+                    assert!(
+                        self.prefix_len() <= self.path.len(),
+                        "unexpected prefix len: {:?}",
+                        self.prefix_len()
+                    );
                     let raw = &self.path[..self.prefix_len()];
                     self.path = &self.path[self.prefix_len()..];
                     return Some(Component::Prefix(PrefixComponent {
@@ -907,7 +911,7 @@ impl<'a> Iterator for Components<'a> {
                 State::StartDir => {
                     self.front = State::Body;
                     if self.has_physical_root {
-                        debug_assert!(!self.path.is_empty());
+                        assert!(!self.path.is_empty(), "unexpected path value");
                         self.path = &self.path[1..];
                         return Some(Component::RootDir);
                     } else if let Some(p) = self.prefix {
@@ -915,7 +919,7 @@ impl<'a> Iterator for Components<'a> {
                             return Some(Component::RootDir);
                         }
                     } else if self.include_cur_dir() {
-                        debug_assert!(!self.path.is_empty());
+                        assert!(!self.path.is_empty(), "unexpected path value");
                         self.path = &self.path[1..];
                         return Some(Component::CurDir);
                     }
@@ -1406,7 +1410,7 @@ impl PathBuf {
     fn _set_file_name(&mut self, file_name: &OsStr) {
         if self.file_name().is_some() {
             let popped = self.pop();
-            debug_assert!(popped);
+            assert!(popped, "unexpected error during unwrap file name");
         }
         self.push(file_name);
     }

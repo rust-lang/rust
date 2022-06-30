@@ -123,7 +123,7 @@ impl Iterator for ReadDir {
 impl Drop for FindNextFileHandle {
     fn drop(&mut self) {
         let r = unsafe { c::FindClose(self.0) };
-        debug_assert!(r != 0);
+        assert!(r != 0, "unexpected error during FindClose: {:?}", r);
     }
 }
 

@@ -112,7 +112,7 @@ impl RwLock {
         } else {
             // According to POSIX, for a properly initialized rwlock this can only
             // return EDEADLK or 0. We rely on that.
-            debug_assert_eq!(r, 0);
+            assert_eq!(r, 0, "unexpected error during pthread_rwlock_wrlock: {:?}", r);
         }
         *self.write_locked.get() = true;
     }
@@ -135,18 +135,18 @@ impl RwLock {
     #[inline]
     unsafe fn raw_unlock(&self) {
         let r = libc::pthread_rwlock_unlock(self.inner.get());
-        debug_assert_eq!(r, 0);
+        assert_eq!(r, 0, "unexpected error during pthread_rwlock_unlock: {:?}", r);
     }
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        debug_assert!(!*self.write_locked.get());
+        assert!(!*self.write_locked.get(), "trying to unlock a thread already unlocked");
         self.num_readers.fetch_sub(1, Ordering::Relaxed);
         self.raw_unlock();
     }
     #[inline]
     pub unsafe fn write_unlock(&self) {
         debug_assert_eq!(self.num_readers.load(Ordering::Relaxed), 0);
-        debug_assert!(*self.write_locked.get());
+        assert!(*self.write_locked.get(), "trying to unlock a thread already unlocked");
         *self.write_locked.get() = false;
         self.raw_unlock();
     }
@@ -158,9 +158,13 @@ impl RwLock {
         // libc::PTHREAD_RWLOCK_INITIALIZER. Once it is used (locked/unlocked)
         // or pthread_rwlock_init() is called, this behaviour no longer occurs.
         if cfg!(target_os = "dragonfly") {
-            debug_assert!(r == 0 || r == libc::EINVAL);
+            assert!(
+                r == 0 || r == libc::EINVAL,
+                "unexpected error during pthread_rwlock_destroy: {:?}",
+                r
+            );
         } else {
-            debug_assert_eq!(r, 0);
+            assert_eq!(r, 0, "unexpected error during pthread_rwlock_destroy: {:?}", r);
         }
     }
 }

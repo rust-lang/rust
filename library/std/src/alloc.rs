@@ -154,7 +154,7 @@ impl System {
         new_layout: Layout,
         zeroed: bool,
     ) -> Result<NonNull<[u8]>, AllocError> {
-        debug_assert!(
+        assert!(
             new_layout.size() >= old_layout.size(),
             "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
         );
@@ -246,7 +246,7 @@ unsafe impl Allocator for System {
         old_layout: Layout,
         new_layout: Layout,
     ) -> Result<NonNull<[u8]>, AllocError> {
-        debug_assert!(
+        assert!(
             new_layout.size() <= old_layout.size(),
             "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
         );

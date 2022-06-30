@@ -428,7 +428,7 @@ impl<W: Write> BufWriter<W> {
     // i.e., that input buffer length is less than or equal to spare capacity.
     #[inline]
     unsafe fn write_to_buffer_unchecked(&mut self, buf: &[u8]) {
-        debug_assert!(buf.len() <= self.spare_capacity());
+        assert!(buf.len() <= self.spare_capacity(), "unexpected write operation");
         let old_len = self.buf.len();
         let buf_len = buf.len();
         let src = buf.as_ptr();
@@ -610,7 +610,7 @@ impl<W: Write> Write for BufWriter<W> {
             } else {
                 return Ok(0);
             };
-            debug_assert!(total_written != 0);
+            assert!(total_written != 0, "unexpected `total_written` value: {:?}", total_written);
             for buf in iter {
                 if buf.len() <= self.spare_capacity() {
                     // SAFETY: safe by above conditional.
