@@ -384,7 +384,7 @@ impl Layout {
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
         let size = self.size().checked_mul(n).ok_or(LayoutError)?;
         // The safe constructor is called here to enforce the isize size limit.
-        Layout::from_size_align(size as usize, self.align())
+        Layout::from_size_align(size, self.align())
     }
 
     /// Creates a layout describing the record for `self` followed by
