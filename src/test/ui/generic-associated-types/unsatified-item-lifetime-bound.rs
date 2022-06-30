@@ -11,7 +11,6 @@ impl X for () {
 
 struct B<'a, T: for<'r> X<Y<'r> = &'r ()>> {
     f: <T as X>::Y<'a>,
-    //~^ ERROR lifetime bound not satisfied
 }
 
 struct C<'a, T: X> {

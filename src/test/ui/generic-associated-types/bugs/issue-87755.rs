@@ -1,14 +1,13 @@
-// check-fail
-// known-bug: #87755
-
-// This should pass.
+// check-pass
 
 #![feature(generic_associated_types)]
 
 use std::fmt::Debug;
 
 trait Foo {
-    type Ass where Self::Ass: Debug;
+    type Ass
+    where
+        Self::Ass: Debug;
 }
 
 #[derive(Debug)]

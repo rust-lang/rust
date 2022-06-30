@@ -1,3 +1,5 @@
+// check-pass
+
 #![feature(generic_associated_types)]
 
 struct Texture;
@@ -20,7 +22,6 @@ trait Swapchain {
 
 impl<'s> Surface for &'s Texture {
     type TextureIter<'a> = std::option::IntoIter<&'a Texture>;
-    //~^ ERROR the type
 
     fn get_texture(&self) -> Self::TextureIter<'_> {
         let option: Option<&Texture> = Some(self);

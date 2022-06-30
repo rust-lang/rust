@@ -1951,7 +1951,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     match infcx.at(cause, param_env).eq(cache_projection, obligation_projection) {
         Ok(InferOk { value: _, obligations }) => {
             nested_obligations.extend(obligations);
-            assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
+            // NDM assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
             // FIXME(associated_const_equality): Handle consts here as well? Maybe this progress type should just take
             // a term instead.
             Progress { term: cache_entry.term, obligations: nested_obligations }

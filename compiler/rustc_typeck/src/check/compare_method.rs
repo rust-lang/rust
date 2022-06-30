@@ -222,8 +222,11 @@ fn compare_predicate_entailment<'tcx>(
         let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_substs);
         for (predicate, span) in iter::zip(impl_m_own_bounds.predicates, impl_m_own_bounds.spans) {
             let normalize_cause = traits::ObligationCause::misc(span, impl_m_hir_id);
+            debug!("predicate before normalization: {:?}", predicate);
             let traits::Normalized { value: predicate, obligations } =
                 traits::normalize(&mut selcx, param_env, normalize_cause, predicate);
+            debug!("predicate after normalization: {:?}", predicate);
+            debug!("normalization obligations: {:#?}", obligations);
 
             inh.register_predicates(obligations);
             let cause = ObligationCause::new(

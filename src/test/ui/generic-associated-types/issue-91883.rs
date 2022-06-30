@@ -1,3 +1,7 @@
+// Regression test.
+//
+// check-pass
+
 #![feature(generic_associated_types)]
 
 use std::fmt::Debug;
@@ -29,7 +33,7 @@ pub trait Transaction<'db>: Send + Sync + Debug + Sized {
 impl<'tx> Cursor<'tx> for CursorImpl<'tx> {}
 
 impl<'db> Transaction<'db> for TransactionImpl<'db> {
-    type Cursor<'tx> = CursorImpl<'tx>; //~ ERROR lifetime bound not satisfied
+    type Cursor<'tx> = CursorImpl<'tx>;
 
     fn cursor<'tx>(&'tx self) -> Result<Self::Cursor<'tx>, ()>
     where
