@@ -1,20 +1,24 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::peel_mid_ty_refs;
-use clippy_utils::{get_parent_expr, get_parent_node, is_lint_allowed, path_to_local};
+use clippy_utils::ty::{expr_sig, peel_mid_ty_refs, variant_of_res};
+use clippy_utils::{get_parent_expr, is_lint_allowed, path_to_local, walk_to_expr_usage};
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
+use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
-    BindingAnnotation, Body, BodyId, BorrowKind, Destination, Expr, ExprKind, HirId, MatchSource, Mutability, Node,
-    Pat, PatKind, UnOp,
+    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Expr, ExprKind, GenericArg, HirId, ImplItem,
+    ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
+    TraitItemKind, TyKind, UnOp,
 };
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::{symbol::sym, Span, Symbol};
+use rustc_trait_selection::infer::InferCtxtExt;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -104,10 +108,34 @@ declare_clippy_lint! {
     "`ref` binding to a reference"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for dereferencing expressions which would be covered by auto-deref.
+    ///
+    /// ### Why is this bad?
+    /// This unnecessarily complicates the code.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x = String::new();
+    /// let y: &str = &*x;
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let x = String::new();
+    /// let y: &str = &x;
+    /// ```
+    #[clippy::version = "1.60.0"]
+    pub EXPLICIT_AUTO_DEREF,
+    complexity,
+    "dereferencing when the compiler would automatically dereference"
+}
+
 impl_lint_pass!(Dereferencing => [
     EXPLICIT_DEREF_METHODS,
     NEEDLESS_BORROW,
     REF_BINDING_TO_REFERENCE,
+    EXPLICIT_AUTO_DEREF,
 ]);
 
 #[derive(Default)]
@@ -136,6 +164,12 @@ struct StateData {
     /// Span of the top level expression
     span: Span,
     hir_id: HirId,
+    position: Position,
+}
+
+struct DerefedBorrow {
+    count: usize,
+    msg: &'static str,
 }
 
 enum State {
@@ -147,11 +181,19 @@ enum State {
         /// The required mutability
         target_mut: Mutability,
     },
-    DerefedBorrow {
-        count: usize,
-        required_precedence: i8,
-        msg: &'static str,
+    DerefedBorrow(DerefedBorrow),
+    ExplicitDeref {
+        // Span and id of the top-level deref expression if the parent expression is a borrow.
+        deref_span_id: Option<(Span, HirId)>,
     },
+    ExplicitDerefField {
+        name: Symbol,
+    },
+    Reborrow {
+        deref_span: Span,
+        deref_hir_id: HirId,
+    },
+    Borrow,
 }
 
 // A reference operation considered by this lint pass
@@ -207,13 +249,28 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
 
         match (self.state.take(), kind) {
             (None, kind) => {
-                let parent = get_parent_node(cx.tcx, expr.hir_id);
                 let expr_ty = typeck.expr_ty(expr);
+                let (position, adjustments) = walk_parents(cx, expr);
 
                 match kind {
+                    RefOp::Deref => {
+                        if let Position::FieldAccess(name) = position
+                            && !ty_contains_field(typeck.expr_ty(sub_expr), name)
+                        {
+                            self.state = Some((
+                                State::ExplicitDerefField { name },
+                                StateData { span: expr.span, hir_id: expr.hir_id, position },
+                            ));
+                        } else if position.is_deref_stable() {
+                            self.state = Some((
+                                State::ExplicitDeref { deref_span_id: None },
+                                StateData { span: expr.span, hir_id: expr.hir_id, position },
+                            ));
+                        }
+                    }
                     RefOp::Method(target_mut)
                         if !is_lint_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
-                            && is_linted_explicit_deref_position(parent, expr.hir_id, expr.span) =>
+                            && position.lint_explicit_deref() =>
                     {
                         self.state = Some((
                             State::DerefMethod {
@@ -228,12 +285,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             StateData {
                                 span: expr.span,
                                 hir_id: expr.hir_id,
+                                position
                             },
                         ));
                     },
                     RefOp::AddrOf => {
                         // Find the number of times the borrow is auto-derefed.
-                        let mut iter = find_adjustments(cx.tcx, typeck, expr).iter();
+                        let mut iter = adjustments.iter();
                         let mut deref_count = 0usize;
                         let next_adjust = loop {
                             match iter.next() {
@@ -274,40 +332,43 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             "this expression creates a reference which is immediately dereferenced by the compiler";
                         let borrow_msg = "this expression borrows a value the compiler would automatically borrow";
 
-                        let (required_refs, required_precedence, msg) = if is_auto_borrow_position(parent, expr.hir_id)
-                        {
-                            (1, PREC_POSTFIX, if deref_count == 1 { borrow_msg } else { deref_msg })
+                        let (required_refs, msg) = if position.can_auto_borrow() {
+                            (1, if deref_count == 1 { borrow_msg } else { deref_msg })
                         } else if let Some(&Adjust::Borrow(AutoBorrow::Ref(_, mutability))) =
                             next_adjust.map(|a| &a.kind)
                         {
-                            if matches!(mutability, AutoBorrowMutability::Mut { .. })
-                                && !is_auto_reborrow_position(parent)
+                            if matches!(mutability, AutoBorrowMutability::Mut { .. }) && !position.is_reborrow_stable()
                             {
-                                (3, 0, deref_msg)
+                                (3, deref_msg)
                             } else {
-                                (2, 0, deref_msg)
+                                (2, deref_msg)
                             }
                         } else {
-                            (2, 0, deref_msg)
+                            (2, deref_msg)
                         };
 
                         if deref_count >= required_refs {
                             self.state = Some((
-                                State::DerefedBorrow {
+                                State::DerefedBorrow(DerefedBorrow {
                                     // One of the required refs is for the current borrow expression, the remaining ones
                                     // can't be removed without breaking the code. See earlier comment.
                                     count: deref_count - required_refs,
-                                    required_precedence,
                                     msg,
-                                },
+                                }),
+                                StateData { span: expr.span, hir_id: expr.hir_id, position },
+                            ));
+                        } else if position.is_deref_stable() {
+                            self.state = Some((
+                                State::Borrow,
                                 StateData {
                                     span: expr.span,
                                     hir_id: expr.hir_id,
+                                    position
                                 },
                             ));
                         }
                     },
-                    _ => (),
+                    RefOp::Method(..) => (),
                 }
             },
             (
@@ -334,25 +395,89 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                     data,
                 ));
             },
+            (Some((State::DerefedBorrow(state), data)), RefOp::AddrOf) if state.count != 0 => {
+                self.state = Some((
+                    State::DerefedBorrow(DerefedBorrow {
+                        count: state.count - 1,
+                        ..state
+                    }),
+                    data,
+                ));
+            },
+            (Some((State::DerefedBorrow(state), data)), RefOp::AddrOf) => {
+                let position = data.position;
+                report(cx, expr, State::DerefedBorrow(state), data);
+                if position.is_deref_stable() {
+                    self.state = Some((
+                        State::Borrow,
+                        StateData {
+                            span: expr.span,
+                            hir_id: expr.hir_id,
+                            position,
+                        },
+                    ));
+                }
+            },
+            (Some((State::DerefedBorrow(state), data)), RefOp::Deref) => {
+                let position = data.position;
+                report(cx, expr, State::DerefedBorrow(state), data);
+                if let Position::FieldAccess(name) = position
+                    && !ty_contains_field(typeck.expr_ty(sub_expr), name)
+                {
+                    self.state = Some((
+                        State::ExplicitDerefField { name },
+                        StateData { span: expr.span, hir_id: expr.hir_id, position },
+                    ));
+                } else if position.is_deref_stable() {
+                    self.state = Some((
+                        State::ExplicitDeref { deref_span_id: None },
+                        StateData { span: expr.span, hir_id: expr.hir_id, position },
+                    ));
+                }
+            },
+
+            (Some((State::Borrow, data)), RefOp::Deref) => {
+                if typeck.expr_ty(sub_expr).is_ref() {
+                    self.state = Some((
+                        State::Reborrow {
+                            deref_span: expr.span,
+                            deref_hir_id: expr.hir_id,
+                        },
+                        data,
+                    ));
+                } else {
+                    self.state = Some((
+                        State::ExplicitDeref {
+                            deref_span_id: Some((expr.span, expr.hir_id)),
+                        },
+                        data,
+                    ));
+                }
+            },
             (
                 Some((
-                    State::DerefedBorrow {
-                        count,
-                        required_precedence,
-                        msg,
+                    State::Reborrow {
+                        deref_span,
+                        deref_hir_id,
                     },
                     data,
                 )),
-                RefOp::AddrOf,
-            ) if count != 0 => {
+                RefOp::Deref,
+            ) => {
                 self.state = Some((
-                    State::DerefedBorrow {
-                        count: count - 1,
-                        required_precedence,
-                        msg,
+                    State::ExplicitDeref {
+                        deref_span_id: Some((deref_span, deref_hir_id)),
                     },
                     data,
                 ));
+            },
+            (state @ Some((State::ExplicitDeref { .. }, _)), RefOp::Deref) => {
+                self.state = state;
+            },
+            (Some((State::ExplicitDerefField { name }, data)), RefOp::Deref)
+                if !ty_contains_field(typeck.expr_ty(sub_expr), name) =>
+            {
+                self.state = Some((State::ExplicitDerefField { name }, data));
             },
 
             (Some((state, data)), _) => report(cx, expr, state, data),
@@ -473,131 +598,362 @@ fn deref_method_same_type<'tcx>(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
     }
 }
 
-// Checks whether the parent node is a suitable context for switching from a deref method to the
-// deref operator.
-fn is_linted_explicit_deref_position(parent: Option<Node<'_>>, child_id: HirId, child_span: Span) -> bool {
-    let parent = match parent {
-        Some(Node::Expr(e)) if e.span.ctxt() == child_span.ctxt() => e,
-        _ => return true,
-    };
-    match parent.kind {
-        // Leave deref calls in the middle of a method chain.
-        // e.g. x.deref().foo()
-        ExprKind::MethodCall(_, [self_arg, ..], _) if self_arg.hir_id == child_id => false,
-
-        // Leave deref calls resulting in a called function
-        // e.g. (x.deref())()
-        ExprKind::Call(func_expr, _) if func_expr.hir_id == child_id => false,
-
-        // Makes an ugly suggestion
-        // e.g. *x.deref() => *&*x
-        ExprKind::Unary(UnOp::Deref, _)
-        // Postfix expressions would require parens
-        | ExprKind::Match(_, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar)
-        | ExprKind::Field(..)
-        | ExprKind::Index(..)
-        | ExprKind::Err => false,
-
-        ExprKind::Box(..)
-        | ExprKind::ConstBlock(..)
-        | ExprKind::Array(_)
-        | ExprKind::Call(..)
-        | ExprKind::MethodCall(..)
-        | ExprKind::Tup(..)
-        | ExprKind::Binary(..)
-        | ExprKind::Unary(..)
-        | ExprKind::Lit(..)
-        | ExprKind::Cast(..)
-        | ExprKind::Type(..)
-        | ExprKind::DropTemps(..)
-        | ExprKind::If(..)
-        | ExprKind::Loop(..)
-        | ExprKind::Match(..)
-        | ExprKind::Let(..)
-        | ExprKind::Closure{..}
-        | ExprKind::Block(..)
-        | ExprKind::Assign(..)
-        | ExprKind::AssignOp(..)
-        | ExprKind::Path(..)
-        | ExprKind::AddrOf(..)
-        | ExprKind::Break(..)
-        | ExprKind::Continue(..)
-        | ExprKind::Ret(..)
-        | ExprKind::InlineAsm(..)
-        | ExprKind::Struct(..)
-        | ExprKind::Repeat(..)
-        | ExprKind::Yield(..) => true,
-    }
+/// The position of an expression relative to it's parent.
+#[derive(Clone, Copy)]
+enum Position {
+    MethodReceiver,
+    /// The method is defined on a reference type. e.g. `impl Foo for &T`
+    MethodReceiverRefImpl,
+    Callee,
+    FieldAccess(Symbol),
+    Postfix,
+    Deref,
+    /// Any other location which will trigger auto-deref to a specific time.
+    DerefStable(i8),
+    /// Any other location which will trigger auto-reborrowing.
+    ReborrowStable(i8),
+    Other(i8),
 }
-
-/// Checks if the given expression is in a position which can be auto-reborrowed.
-/// Note: This is only correct assuming auto-deref is already occurring.
-fn is_auto_reborrow_position(parent: Option<Node<'_>>) -> bool {
-    match parent {
-        Some(Node::Expr(parent)) => matches!(parent.kind, ExprKind::MethodCall(..) | ExprKind::Call(..)),
-        Some(Node::Local(_)) => true,
-        _ => false,
+impl Position {
+    fn is_deref_stable(self) -> bool {
+        matches!(self, Self::DerefStable(_))
     }
-}
 
-/// Checks if the given expression is a position which can auto-borrow.
-fn is_auto_borrow_position(parent: Option<Node<'_>>, child_id: HirId) -> bool {
-    if let Some(Node::Expr(parent)) = parent {
-        match parent.kind {
-            // ExprKind::MethodCall(_, [self_arg, ..], _) => self_arg.hir_id == child_id,
-            ExprKind::Field(..) => true,
-            ExprKind::Call(f, _) => f.hir_id == child_id,
-            _ => false,
+    fn is_reborrow_stable(self) -> bool {
+        matches!(self, Self::DerefStable(_) | Self::ReborrowStable(_))
+    }
+
+    fn can_auto_borrow(self) -> bool {
+        matches!(self, Self::MethodReceiver | Self::FieldAccess(_) | Self::Callee)
+    }
+
+    fn lint_explicit_deref(self) -> bool {
+        matches!(self, Self::Other(_) | Self::DerefStable(_) | Self::ReborrowStable(_))
+    }
+
+    fn precedence(self) -> i8 {
+        match self {
+            Self::MethodReceiver
+            | Self::MethodReceiverRefImpl
+            | Self::Callee
+            | Self::FieldAccess(_)
+            | Self::Postfix => PREC_POSTFIX,
+            Self::Deref => PREC_PREFIX,
+            Self::DerefStable(p) | Self::ReborrowStable(p) | Self::Other(p) => p,
         }
+    }
+}
+
+/// Walks up the parent expressions attempting to determine both how stable the auto-deref result
+/// is, and which adjustments will be applied to it. Note this will not consider auto-borrow
+/// locations as those follow different rules.
+#[allow(clippy::too_many_lines)]
+fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &'tcx [Adjustment<'tcx>]) {
+    let mut adjustments = [].as_slice();
+    let mut precedence = 0i8;
+    let ctxt = e.span.ctxt();
+    let position = walk_to_expr_usage(cx, e, &mut |parent, child_id| {
+        // LocalTableInContext returns the wrong lifetime, so go use `expr_adjustments` instead.
+        if adjustments.is_empty() && let Node::Expr(e) = cx.tcx.hir().get(child_id) {
+            adjustments = cx.typeck_results().expr_adjustments(e);
+        }
+        match parent {
+            Node::Local(Local { ty: Some(ty), span, .. }) if span.ctxt() == ctxt => {
+                Some(binding_ty_auto_deref_stability(ty, precedence))
+            },
+            Node::Item(&Item {
+                kind: ItemKind::Static(..) | ItemKind::Const(..),
+                def_id,
+                span,
+                ..
+            })
+            | Node::TraitItem(&TraitItem {
+                kind: TraitItemKind::Const(..),
+                def_id,
+                span,
+                ..
+            })
+            | Node::ImplItem(&ImplItem {
+                kind: ImplItemKind::Const(..),
+                def_id,
+                span,
+                ..
+            }) if span.ctxt() == ctxt => {
+                let ty = cx.tcx.type_of(def_id);
+                Some(if ty.is_ref() {
+                    Position::DerefStable(precedence)
+                } else {
+                    Position::Other(precedence)
+                })
+            },
+
+            Node::Item(&Item {
+                kind: ItemKind::Fn(..),
+                def_id,
+                span,
+                ..
+            })
+            | Node::TraitItem(&TraitItem {
+                kind: TraitItemKind::Fn(..),
+                def_id,
+                span,
+                ..
+            })
+            | Node::ImplItem(&ImplItem {
+                kind: ImplItemKind::Fn(..),
+                def_id,
+                span,
+                ..
+            }) if span.ctxt() == ctxt => {
+                let output = cx.tcx.fn_sig(def_id.to_def_id()).skip_binder().output();
+                Some(if !output.is_ref() {
+                    Position::Other(precedence)
+                } else if output.has_placeholders() || output.has_opaque_types() {
+                    Position::ReborrowStable(precedence)
+                } else {
+                    Position::DerefStable(precedence)
+                })
+            },
+
+            Node::Expr(parent) if parent.span.ctxt() == ctxt => match parent.kind {
+                ExprKind::Ret(_) => {
+                    let output = cx
+                        .tcx
+                        .fn_sig(cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()))
+                        .skip_binder()
+                        .output();
+                    Some(if !output.is_ref() {
+                        Position::Other(precedence)
+                    } else if output.has_placeholders() || output.has_opaque_types() {
+                        Position::ReborrowStable(precedence)
+                    } else {
+                        Position::DerefStable(precedence)
+                    })
+                },
+                ExprKind::Call(func, _) if func.hir_id == child_id => (child_id == e.hir_id).then(|| Position::Callee),
+                ExprKind::Call(func, args) => args
+                    .iter()
+                    .position(|arg| arg.hir_id == child_id)
+                    .zip(expr_sig(cx, func))
+                    .and_then(|(i, sig)| sig.input_with_hir(i))
+                    .map(|(hir_ty, ty)| match hir_ty {
+                        // Type inference for closures can depend on how they're called. Only go by the explicit
+                        // types here.
+                        Some(ty) => binding_ty_auto_deref_stability(ty, precedence),
+                        None => param_auto_deref_stability(ty.skip_binder(), precedence),
+                    }),
+                ExprKind::MethodCall(_, args, _) => {
+                    let id = cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap();
+                    args.iter().position(|arg| arg.hir_id == child_id).map(|i| {
+                        if i == 0 {
+                            // Check for calls to trait methods where the trait is implemented on a reference.
+                            // Two cases need to be handled:
+                            // * `self` methods on `&T` will never have auto-borrow
+                            // * `&self` methods on `&T` can have auto-borrow, but `&self` methods on `T` will take
+                            //   priority.
+                            if e.hir_id != child_id {
+                                Position::ReborrowStable(precedence)
+                            } else if let Some(trait_id) = cx.tcx.trait_of_item(id)
+                                && let arg_ty = cx.tcx.erase_regions(cx.typeck_results().expr_ty_adjusted(e))
+                                && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
+                                && let subs = cx.typeck_results().node_substs_opt(child_id).unwrap_or_else(
+                                    || cx.tcx.mk_substs([].iter())
+                                ) && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
+                                    // Trait methods taking `&self`
+                                    sub_ty
+                                } else {
+                                    // Trait methods taking `self`
+                                    arg_ty
+                                } && impl_ty.is_ref()
+                                && cx.tcx.infer_ctxt().enter(|infcx|
+                                    infcx
+                                        .type_implements_trait(trait_id, impl_ty, subs, cx.param_env)
+                                        .must_apply_modulo_regions()
+                                )
+                            {
+                                Position::MethodReceiverRefImpl
+                            } else {
+                                Position::MethodReceiver
+                            }
+                        } else {
+                            param_auto_deref_stability(cx.tcx.fn_sig(id).skip_binder().inputs()[i], precedence)
+                        }
+                    })
+                },
+                ExprKind::Struct(path, fields, _) => {
+                    let variant = variant_of_res(cx, cx.qpath_res(path, parent.hir_id));
+                    fields
+                        .iter()
+                        .find(|f| f.expr.hir_id == child_id)
+                        .zip(variant)
+                        .and_then(|(field, variant)| variant.fields.iter().find(|f| f.name == field.ident.name))
+                        .map(|field| param_auto_deref_stability(cx.tcx.type_of(field.did), precedence))
+                },
+                ExprKind::Field(child, name) if child.hir_id == e.hir_id => Some(Position::FieldAccess(name.name)),
+                ExprKind::Unary(UnOp::Deref, child) if child.hir_id == e.hir_id => Some(Position::Deref),
+                ExprKind::Match(child, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar)
+                | ExprKind::Index(child, _)
+                    if child.hir_id == e.hir_id =>
+                {
+                    Some(Position::Postfix)
+                },
+                _ if child_id == e.hir_id => {
+                    precedence = parent.precedence().order();
+                    None
+                },
+                _ => None,
+            },
+            _ => None,
+        }
+    })
+    .unwrap_or(Position::Other(precedence));
+    (position, adjustments)
+}
+
+// Checks the stability of auto-deref when assigned to a binding with the given explicit type.
+//
+// e.g.
+// let x = Box::new(Box::new(0u32));
+// let y1: &Box<_> = x.deref();
+// let y2: &Box<_> = &x;
+//
+// Here `y1` and `y2` would resolve to different types, so the type `&Box<_>` is not stable when
+// switching to auto-dereferencing.
+fn binding_ty_auto_deref_stability(ty: &hir::Ty<'_>, precedence: i8) -> Position {
+    let TyKind::Rptr(_, ty) = &ty.kind else {
+        return Position::Other(precedence);
+    };
+    let mut ty = ty;
+
+    loop {
+        break match ty.ty.kind {
+            TyKind::Rptr(_, ref ref_ty) => {
+                ty = ref_ty;
+                continue;
+            },
+            TyKind::Path(
+                QPath::TypeRelative(_, path)
+                | QPath::Resolved(
+                    _,
+                    Path {
+                        segments: [.., path], ..
+                    },
+                ),
+            ) => {
+                if let Some(args) = path.args
+                    && args.args.iter().any(|arg| match arg {
+                        GenericArg::Infer(_) => true,
+                        GenericArg::Type(ty) => ty_contains_infer(ty),
+                        _ => false,
+                    })
+                {
+                    Position::ReborrowStable(precedence)
+                } else {
+                    Position::DerefStable(precedence)
+                }
+            },
+            TyKind::Slice(_)
+            | TyKind::Array(..)
+            | TyKind::BareFn(_)
+            | TyKind::Never
+            | TyKind::Tup(_)
+            | TyKind::Ptr(_)
+            | TyKind::TraitObject(..)
+            | TyKind::Path(_) => Position::DerefStable(precedence),
+            TyKind::OpaqueDef(..)
+            | TyKind::Infer
+            | TyKind::Typeof(..)
+            | TyKind::Err => Position::ReborrowStable(precedence),
+        };
+    }
+}
+
+// Checks whether a type is inferred at some point.
+// e.g. `_`, `Box<_>`, `[_]`
+fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
+    struct V(bool);
+    impl Visitor<'_> for V {
+        fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
+            if self.0
+                || matches!(
+                    ty.kind,
+                    TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err
+                )
+            {
+                self.0 = true;
+            } else {
+                walk_ty(self, ty);
+            }
+        }
+
+        fn visit_generic_arg(&mut self, arg: &GenericArg<'_>) {
+            if self.0 || matches!(arg, GenericArg::Infer(_)) {
+                self.0 = true;
+            } else if let GenericArg::Type(ty) = arg {
+                self.visit_ty(ty);
+            }
+        }
+    }
+    let mut v = V(false);
+    v.visit_ty(ty);
+    v.0
+}
+
+// Checks whether a type is stable when switching to auto dereferencing,
+fn param_auto_deref_stability(ty: Ty<'_>, precedence: i8) -> Position {
+    let ty::Ref(_, mut ty, _) = *ty.kind() else {
+        return Position::Other(precedence);
+    };
+
+    loop {
+        break match *ty.kind() {
+            ty::Ref(_, ref_ty, _) => {
+                ty = ref_ty;
+                continue;
+            },
+            ty::Infer(_)
+            | ty::Error(_)
+            | ty::Param(_)
+            | ty::Bound(..)
+            | ty::Opaque(..)
+            | ty::Placeholder(_)
+            | ty::Dynamic(..) => Position::ReborrowStable(precedence),
+            ty::Adt(..) if ty.has_placeholders() || ty.has_param_types_or_consts() => {
+                Position::ReborrowStable(precedence)
+            },
+            ty::Adt(..)
+            | ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(..)
+            | ty::Slice(..)
+            | ty::RawPtr(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(_)
+            | ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Projection(_) => Position::DerefStable(precedence),
+        };
+    }
+}
+
+fn ty_contains_field(ty: Ty<'_>, name: Symbol) -> bool {
+    if let ty::Adt(adt, _) = *ty.kind() {
+        adt.is_struct() && adt.all_fields().any(|f| f.name == name)
     } else {
         false
     }
 }
 
-/// Adjustments are sometimes made in the parent block rather than the expression itself.
-fn find_adjustments<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    typeck: &'tcx TypeckResults<'tcx>,
-    expr: &'tcx Expr<'tcx>,
-) -> &'tcx [Adjustment<'tcx>] {
-    let map = tcx.hir();
-    let mut iter = map.parent_iter(expr.hir_id);
-    let mut prev = expr;
-
-    loop {
-        match typeck.expr_adjustments(prev) {
-            [] => (),
-            a => break a,
-        };
-
-        match iter.next().map(|(_, x)| x) {
-            Some(Node::Block(_)) => {
-                if let Some((_, Node::Expr(e))) = iter.next() {
-                    prev = e;
-                } else {
-                    // This shouldn't happen. Blocks are always contained in an expression.
-                    break &[];
-                }
-            },
-            Some(Node::Expr(&Expr {
-                kind: ExprKind::Break(Destination { target_id: Ok(id), .. }, _),
-                ..
-            })) => {
-                if let Some(Node::Expr(e)) = map.find(id) {
-                    prev = e;
-                    iter = map.parent_iter(id);
-                } else {
-                    // This shouldn't happen. The destination should exist.
-                    break &[];
-                }
-            },
-            _ => break &[],
-        }
-    }
-}
-
-#[expect(clippy::needless_pass_by_value)]
-fn report<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, state: State, data: StateData) {
+#[expect(clippy::needless_pass_by_value, clippy::too_many_lines)]
+fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data: StateData) {
     match state {
         State::DerefMethod {
             ty_changed_count,
@@ -647,15 +1003,14 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, state: State, data: S
                 app,
             );
         },
-        State::DerefedBorrow {
-            required_precedence,
-            msg,
-            ..
-        } => {
+        State::DerefedBorrow(state) => {
             let mut app = Applicability::MachineApplicable;
-            let snip = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app).0;
-            span_lint_hir_and_then(cx, NEEDLESS_BORROW, data.hir_id, data.span, msg, |diag| {
-                let sugg = if required_precedence > expr.precedence().order() && !has_enclosing_paren(&snip) {
+            let (snip, snip_is_macro) = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app);
+            span_lint_hir_and_then(cx, NEEDLESS_BORROW, data.hir_id, data.span, state.msg, |diag| {
+                let sugg = if !snip_is_macro
+                    && expr.precedence().order() < data.position.precedence()
+                    && !has_enclosing_paren(&snip)
+                {
                     format!("({})", snip)
                 } else {
                     snip.into()
@@ -663,6 +1018,48 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, state: State, data: S
                 diag.span_suggestion(data.span, "change this to", sugg, app);
             });
         },
+        State::ExplicitDeref { deref_span_id } => {
+            let (span, hir_id, precedence) = if let Some((span, hir_id)) = deref_span_id
+                && !cx.typeck_results().expr_ty(expr).is_ref()
+            {
+                (span, hir_id, PREC_PREFIX)
+            } else {
+                (data.span, data.hir_id, data.position.precedence())
+            };
+            span_lint_hir_and_then(
+                cx,
+                EXPLICIT_AUTO_DEREF,
+                hir_id,
+                span,
+                "deref which would be done by auto-deref",
+                |diag| {
+                    let mut app = Applicability::MachineApplicable;
+                    let (snip, snip_is_macro) = snippet_with_context(cx, expr.span, span.ctxt(), "..", &mut app);
+                    let sugg =
+                        if !snip_is_macro && expr.precedence().order() < precedence && !has_enclosing_paren(&snip) {
+                            format!("({})", snip)
+                        } else {
+                            snip.into()
+                        };
+                    diag.span_suggestion(span, "try this", sugg, app);
+                },
+            );
+        },
+        State::ExplicitDerefField { .. } => {
+            span_lint_hir_and_then(
+                cx,
+                EXPLICIT_AUTO_DEREF,
+                data.hir_id,
+                data.span,
+                "deref which would be done by auto-deref",
+                |diag| {
+                    let mut app = Applicability::MachineApplicable;
+                    let snip = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app).0;
+                    diag.span_suggestion(data.span, "try this", snip.into_owned(), app);
+                },
+            );
+        },
+        State::Borrow | State::Reborrow { .. } => (),
     }
 }
 

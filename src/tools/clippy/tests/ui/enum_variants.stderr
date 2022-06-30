@@ -120,5 +120,30 @@ LL | | }
    |
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
-error: aborting due to 12 previous errors
+error: all variants have the same prefix: `_Type`
+  --> $DIR/enum_variants.rs:162:5
+   |
+LL | /     enum DoLint {
+LL | |         _TypeCreate,
+LL | |         _TypeRead,
+LL | |         _TypeUpdate,
+LL | |         _TypeDestroy,
+LL | |     }
+   | |_____^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: all variants have the same postfix: `Type`
+  --> $DIR/enum_variants.rs:169:5
+   |
+LL | /     enum DoLintToo {
+LL | |         _CreateType,
+LL | |         _UpdateType,
+LL | |         _DeleteType,
+LL | |     }
+   | |_____^
+   |
+   = help: remove the postfixes and use full paths to the variants instead of glob imports
+
+error: aborting due to 14 previous errors
 
