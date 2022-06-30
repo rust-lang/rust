@@ -48,7 +48,7 @@ LL |     let _ = rw.try_write();
    = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: non-binding let on a synchronization lock
-  --> $DIR/let_underscore_lock.rs:19:5
+  --> $DIR/let_underscore_lock.rs:23:5
    |
 LL |     let _ = p_m.lock();
    |     ^^^^^^^^^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL |     let _ = p_m.lock();
    = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: non-binding let on a synchronization lock
-  --> $DIR/let_underscore_lock.rs:22:5
+  --> $DIR/let_underscore_lock.rs:26:5
    |
 LL |     let _ = p_m1.lock();
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL |     let _ = p_m1.lock();
    = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: non-binding let on a synchronization lock
-  --> $DIR/let_underscore_lock.rs:25:5
+  --> $DIR/let_underscore_lock.rs:29:5
    |
 LL |     let _ = p_rw.read();
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL |     let _ = p_rw.read();
    = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: non-binding let on a synchronization lock
-  --> $DIR/let_underscore_lock.rs:26:5
+  --> $DIR/let_underscore_lock.rs:30:5
    |
 LL |     let _ = p_rw.write();
    |     ^^^^^^^^^^^^^^^^^^^^^

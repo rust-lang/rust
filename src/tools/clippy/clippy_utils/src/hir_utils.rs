@@ -1,4 +1,5 @@
 use crate::consts::constant_simple;
+use crate::macros::macro_backtrace;
 use crate::source::snippet_opt;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
@@ -12,8 +13,12 @@ use rustc_hir::{
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
-use rustc_span::Symbol;
+use rustc_span::{sym, Symbol};
 use std::hash::{Hash, Hasher};
+
+/// Callback that is called when two expressions are not equal in the sense of `SpanlessEq`, but
+/// other conditions would make them equal.
+type SpanlessEqCallback<'a> = dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a;
 
 /// Type used to check whether two ast are the same. This is different from the
 /// operator `==` on ast types as this operator would compare true equality with
@@ -25,7 +30,7 @@ pub struct SpanlessEq<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<(&'tcx TypeckResults<'tcx>, &'tcx TypeckResults<'tcx>)>,
     allow_side_effects: bool,
-    expr_fallback: Option<Box<dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a>>,
+    expr_fallback: Option<Box<SpanlessEqCallback<'a>>>,
 }
 
 impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
@@ -121,6 +126,9 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     /// Checks whether two blocks are the same.
     fn eq_block(&mut self, left: &Block<'_>, right: &Block<'_>) -> bool {
+        if self.cannot_be_compared_block(left) || self.cannot_be_compared_block(right) {
+            return false;
+        }
         match (left.stmts, left.expr, right.stmts, right.expr) {
             ([], None, [], None) => {
                 // For empty blocks, check to see if the tokens are equal. This will catch the case where a macro
@@ -169,6 +177,38 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
             },
         }
+    }
+
+    fn cannot_be_compared_block(&mut self, block: &Block<'_>) -> bool {
+        if block.stmts.last().map_or(false, |stmt| {
+            matches!(
+                stmt.kind,
+                StmtKind::Semi(semi_expr) if self.should_ignore(semi_expr)
+            )
+        }) {
+            return true;
+        }
+
+        if let Some(block_expr) = block.expr
+            && self.should_ignore(block_expr)
+        {
+            return true
+        }
+
+        false
+    }
+
+    fn should_ignore(&mut self, expr: &Expr<'_>) -> bool {
+        if macro_backtrace(expr.span).last().map_or(false, |macro_call| {
+            matches!(
+                &self.inner.cx.tcx.get_diagnostic_name(macro_call.def_id),
+                Some(sym::todo_macro | sym::unimplemented_macro)
+            )
+        }) {
+            return true;
+        }
+
+        false
     }
 
     pub fn eq_array_length(&mut self, left: ArrayLen, right: ArrayLen) -> bool {

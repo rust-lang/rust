@@ -72,3 +72,17 @@ pub fn mini_macro(_: TokenStream) -> TokenStream {
         }
     )
 }
+
+#[proc_macro_derive(ExtraLifetimeDerive)]
+#[allow(unused)]
+pub fn extra_lifetime(_input: TokenStream) -> TokenStream {
+    quote!(
+        pub struct ExtraLifetime;
+
+        impl<'b> ExtraLifetime {
+            pub fn something<'c>() -> Self {
+                Self
+            }
+        }
+    )
+}

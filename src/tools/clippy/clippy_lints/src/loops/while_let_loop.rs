@@ -2,71 +2,60 @@ use super::WHILE_LET_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::needs_ordered_drop;
+use clippy_utils::visitors::any_temporaries_need_ordered_drop;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, MatchSource, Pat, StmtKind};
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
+use rustc_hir::{Block, Expr, ExprKind, Local, MatchSource, Pat, StmtKind};
+use rustc_lint::LateContext;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'tcx Block<'_>) {
-    // extract the expression from the first statement (if any) in a block
-    let inner_stmt_expr = extract_expr_from_first_stmt(loop_block);
-    // or extract the first expression (if any) from the block
-    if let Some(inner) = inner_stmt_expr.or_else(|| extract_first_expr(loop_block)) {
-        if let Some(higher::IfLet {
-            let_pat,
-            let_expr,
-            if_else: Some(if_else),
-            ..
-        }) = higher::IfLet::hir(cx, inner)
-        {
-            if is_simple_break_expr(if_else) {
-                could_be_while_let(cx, expr, let_pat, let_expr);
+    let (init, has_trailing_exprs) = match (loop_block.stmts, loop_block.expr) {
+        ([stmt, stmts @ ..], expr) => {
+            if let StmtKind::Local(&Local { init: Some(e), .. }) | StmtKind::Semi(e) | StmtKind::Expr(e) = stmt.kind {
+                (e, !stmts.is_empty() || expr.is_some())
+            } else {
+                return;
             }
-        }
-
-        if let ExprKind::Match(matchexpr, arms, MatchSource::Normal) = inner.kind {
-            if arms.len() == 2
-                && arms[0].guard.is_none()
-                && arms[1].guard.is_none()
-                && is_simple_break_expr(arms[1].body)
-            {
-                could_be_while_let(cx, expr, arms[0].pat, matchexpr);
-            }
-        }
-    }
-}
-
-/// If a block begins with a statement (possibly a `let` binding) and has an
-/// expression, return it.
-fn extract_expr_from_first_stmt<'tcx>(block: &Block<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    if let Some(first_stmt) = block.stmts.get(0) {
-        if let StmtKind::Local(local) = first_stmt.kind {
-            return local.init;
-        }
-    }
-    None
-}
-
-/// If a block begins with an expression (with or without semicolon), return it.
-fn extract_first_expr<'tcx>(block: &Block<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    match block.expr {
-        Some(expr) if block.stmts.is_empty() => Some(expr),
-        None if !block.stmts.is_empty() => match block.stmts[0].kind {
-            StmtKind::Expr(expr) | StmtKind::Semi(expr) => Some(expr),
-            StmtKind::Local(..) | StmtKind::Item(..) => None,
         },
-        _ => None,
+        ([], Some(e)) => (e, false),
+        _ => return,
+    };
+
+    if let Some(if_let) = higher::IfLet::hir(cx, init)
+        && let Some(else_expr) = if_let.if_else
+        && is_simple_break_expr(else_expr)
+    {
+        could_be_while_let(cx, expr, if_let.let_pat, if_let.let_expr, has_trailing_exprs);
+    } else if let ExprKind::Match(scrutinee, [arm1, arm2], MatchSource::Normal) = init.kind
+        && arm1.guard.is_none()
+        && arm2.guard.is_none()
+        && is_simple_break_expr(arm2.body)
+    {
+        could_be_while_let(cx, expr, arm1.pat, scrutinee, has_trailing_exprs);
     }
 }
 
-/// Returns `true` if expr contains a single break expr without destination label
-/// and
-/// passed expression. The expression may be within a block.
-fn is_simple_break_expr(expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        ExprKind::Break(dest, ref passed_expr) if dest.label.is_none() && passed_expr.is_none() => true,
-        ExprKind::Block(b, _) => extract_first_expr(b).map_or(false, is_simple_break_expr),
-        _ => false,
+/// Returns `true` if expr contains a single break expression without a label or eub-expression.
+fn is_simple_break_expr(e: &Expr<'_>) -> bool {
+    matches!(peel_blocks(e).kind, ExprKind::Break(dest, None) if dest.label.is_none())
+}
+
+/// Removes any blocks containing only a single expression.
+fn peel_blocks<'tcx>(e: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
+    if let ExprKind::Block(b, _) = e.kind {
+        match (b.stmts, b.expr) {
+            ([s], None) => {
+                if let StmtKind::Expr(e) | StmtKind::Semi(e) = s.kind {
+                    peel_blocks(e)
+                } else {
+                    e
+                }
+            },
+            ([], Some(e)) => peel_blocks(e),
+            _ => e,
+        }
+    } else {
+        e
     }
 }
 
@@ -75,8 +64,13 @@ fn could_be_while_let<'tcx>(
     expr: &'tcx Expr<'_>,
     let_pat: &'tcx Pat<'_>,
     let_expr: &'tcx Expr<'_>,
+    has_trailing_exprs: bool,
 ) {
-    if in_external_macro(cx.sess(), expr.span) {
+    if has_trailing_exprs
+        && (needs_ordered_drop(cx, cx.typeck_results().expr_ty(let_expr))
+            || any_temporaries_need_ordered_drop(cx, let_expr))
+    {
+        // Switching to a `while let` loop will extend the lifetime of some values.
         return;
     }
 

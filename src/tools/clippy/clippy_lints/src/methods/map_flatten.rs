@@ -14,14 +14,17 @@ use super::MAP_FLATTEN;
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, map_arg: &Expr<'_>, map_span: Span) {
     if let Some((caller_ty_name, method_to_use)) = try_get_caller_ty_name_and_method_name(cx, expr, recv, map_arg) {
         let mut applicability = Applicability::MachineApplicable;
-        
+
         let closure_snippet = snippet_with_applicability(cx, map_arg.span, "..", &mut applicability);
         span_lint_and_sugg(
             cx,
             MAP_FLATTEN,
             expr.span.with_lo(map_span.lo()),
             &format!("called `map(..).flatten()` on `{}`", caller_ty_name),
-            &format!("try replacing `map` with `{}` and remove the `.flatten()`", method_to_use),
+            &format!(
+                "try replacing `map` with `{}` and remove the `.flatten()`",
+                method_to_use
+            ),
             format!("{}({})", method_to_use, closure_snippet),
             applicability,
         );

@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_hir;
 use clippy_utils::ty::contains_ty;
 use rustc_hir::intravisit;
 use rustc_hir::{self, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind};
@@ -118,9 +118,10 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         });
 
         for node in v.set {
-            span_lint(
+            span_lint_hir(
                 cx,
                 BOXED_LOCAL,
+                node,
                 cx.tcx.hir().span(node),
                 "local variable doesn't need to be boxed here",
             );

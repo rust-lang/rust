@@ -15,6 +15,7 @@
     clippy::use_self,
     clippy::useless_format,
     clippy::wrong_self_convention,
+    clippy::unused_async,
     clippy::unused_self,
     unused
 )]

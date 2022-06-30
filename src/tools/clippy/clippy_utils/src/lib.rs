@@ -1539,9 +1539,13 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
     None
 }
 
-/// Returns `true` if the lint is allowed in the current context
+/// Returns `true` if the lint is allowed in the current context. This is useful for
+/// skipping long running code when it's unnecessary
 ///
-/// Useful for skipping long running code when it's unnecessary
+/// This function should check the lint level for the same node, that the lint will
+/// be emitted at. If the information is buffered to be emitted at a later point, please
+/// make sure to use `span_lint_hir` functions to emit the lint. This ensures that
+/// expectations at the checked nodes will be fulfilled.
 pub fn is_lint_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool {
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
@@ -2058,6 +2062,21 @@ pub fn peel_hir_expr_refs<'a>(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
     (e, count)
 }
 
+/// Peels off all references on the type. Returns the underlying type and the number of references
+/// removed.
+pub fn peel_hir_ty_refs<'a>(mut ty: &'a hir::Ty<'a>) -> (&'a hir::Ty<'a>, usize) {
+    let mut count = 0;
+    loop {
+        match &ty.kind {
+            TyKind::Rptr(_, ref_ty) => {
+                ty = ref_ty.ty;
+                count += 1;
+            },
+            _ => break (ty, count),
+        }
+    }
+}
+
 /// Removes `AddrOf` operators (`&`) or deref operators (`*`), but only if a reference type is
 /// dereferenced. An overloaded deref such as `Vec` to slice would not be removed.
 pub fn peel_ref_operators<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
@@ -2110,7 +2129,7 @@ fn with_test_item_names<'tcx>(tcx: TyCtxt<'tcx>, module: LocalDefId, f: impl Fn(
                 }
             }
             names.sort_unstable();
-            f(&*entry.insert(names))
+            f(entry.insert(names))
         },
     }
 }
@@ -2166,6 +2185,50 @@ pub fn is_test_module_or_function(tcx: TyCtxt<'_>, item: &Item<'_>) -> bool {
     is_in_test_function(tcx, item.hir_id())
         || matches!(item.kind, ItemKind::Mod(..))
             && item.ident.name.as_str().split('_').any(|a| a == "test" || a == "tests")
+}
+
+/// Walks the HIR tree from the given expression, up to the node where the value produced by the
+/// expression is consumed. Calls the function for every node encountered this way until it returns
+/// `Some`.
+///
+/// This allows walking through `if`, `match`, `break`, block expressions to find where the value
+/// produced by the expression is consumed.
+pub fn walk_to_expr_usage<'tcx, T>(
+    cx: &LateContext<'tcx>,
+    e: &Expr<'tcx>,
+    mut f: impl FnMut(Node<'tcx>, HirId) -> Option<T>,
+) -> Option<T> {
+    let map = cx.tcx.hir();
+    let mut iter = map.parent_iter(e.hir_id);
+    let mut child_id = e.hir_id;
+
+    while let Some((parent_id, parent)) = iter.next() {
+        if let Some(x) = f(parent, child_id) {
+            return Some(x);
+        }
+        let parent = match parent {
+            Node::Expr(e) => e,
+            Node::Block(Block { expr: Some(body), .. }) | Node::Arm(Arm { body, .. }) if body.hir_id == child_id => {
+                child_id = parent_id;
+                continue;
+            },
+            Node::Arm(a) if a.body.hir_id == child_id => {
+                child_id = parent_id;
+                continue;
+            },
+            _ => return None,
+        };
+        match parent.kind {
+            ExprKind::If(child, ..) | ExprKind::Match(child, ..) if child.hir_id != child_id => child_id = parent_id,
+            ExprKind::Break(Destination { target_id: Ok(id), .. }, _) => {
+                child_id = id;
+                iter = map.parent_iter(id);
+            },
+            ExprKind::Block(..) => child_id = parent_id,
+            _ => return None,
+        }
+    }
+    None
 }
 
 macro_rules! op_utils {
