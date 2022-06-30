@@ -107,7 +107,7 @@ else
 fi
 
 if (( $build_only == 1 )); then
-    echo "Since it's `build-only`, exiting..."
+    echo "Since it's 'build-only', exiting..."
     exit
 fi
 
