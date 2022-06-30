@@ -278,12 +278,12 @@ pub(super) struct Slice {
 
 impl Slice {
     fn arity(self) -> usize {
-        unimplemented!()
+        match self._unimplemented {}
     }
 
     /// See `Constructor::is_covered_by`
     fn is_covered_by(self, _other: Self) -> bool {
-        unimplemented!() // never called as Slice contains Void
+        match self._unimplemented {}
     }
 }
 
@@ -442,7 +442,7 @@ impl Constructor {
                 split_range.split(int_ranges.cloned());
                 split_range.iter().map(IntRange).collect()
             }
-            Slice(_) => unimplemented!(),
+            Slice(slice) => match slice._unimplemented {},
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
         }
@@ -465,12 +465,8 @@ impl Constructor {
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
             (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
-            (FloatRange(..), FloatRange(..)) => {
-                unimplemented!()
-            }
-            (Str(..), Str(..)) => {
-                unimplemented!()
-            }
+            (FloatRange(void), FloatRange(..)) => match *void {},
+            (Str(void), Str(..)) => match *void {},
             (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 
             // We are trying to inspect an opaque constant. Thus we skip the row.
@@ -817,9 +813,7 @@ impl<'p> Fields<'p> {
                     Fields::wildcards_from_tys(cx, once(ty.clone()))
                 }
             },
-            Slice(..) => {
-                unimplemented!()
-            }
+            Slice(slice) => match slice._unimplemented {},
             Str(..)
             | FloatRange(..)
             | IntRange(..)
@@ -1023,9 +1017,9 @@ impl<'p> DeconstructedPat<'p> {
                     PatKind::Wild
                 }
             },
-            &Slice(Slice { _unimplemented: _void }) => unimplemented!(),
-            &Str(_void) => unimplemented!(),
-            &FloatRange(_void) => unimplemented!(),
+            &Slice(slice) => match slice._unimplemented {},
+            &Str(void) => match void {},
+            &FloatRange(void) => match void {},
             IntRange(range) => return range.to_pat(cx, self.ty.clone()),
             Wildcard | NonExhaustive => PatKind::Wild,
             Missing { .. } => {
@@ -1074,7 +1068,7 @@ impl<'p> DeconstructedPat<'p> {
             (Slice(self_slice), Slice(other_slice))
                 if self_slice.arity() != other_slice.arity() =>
             {
-                unimplemented!()
+                match self_slice._unimplemented {}
             }
             _ => self.fields.iter_patterns().collect(),
         }
