@@ -1,4 +1,4 @@
-#[allow(unused_variables)]
+#[allow(unused_variables, clippy::eq_op)]
 #[warn(clippy::zero_divided_by_zero)]
 fn main() {
     let nan = 0.0 / 0.0;

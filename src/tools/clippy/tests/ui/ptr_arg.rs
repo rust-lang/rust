@@ -1,3 +1,4 @@
+#![feature(lint_reasons)]
 #![allow(unused, clippy::many_single_char_names, clippy::redundant_clone)]
 #![warn(clippy::ptr_arg)]
 
@@ -109,8 +110,11 @@ mod issue_5644 {
         #[allow(clippy::ptr_arg)] _s: &String,
         #[allow(clippy::ptr_arg)] _p: &PathBuf,
         #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
+        #[expect(clippy::ptr_arg)] _expect: &Cow<[i32]>,
     ) {
     }
+
+    fn some_allowed(#[allow(clippy::ptr_arg)] _v: &Vec<u32>, _s: &String) {}
 
     struct S;
     impl S {
@@ -119,6 +123,7 @@ mod issue_5644 {
             #[allow(clippy::ptr_arg)] _s: &String,
             #[allow(clippy::ptr_arg)] _p: &PathBuf,
             #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
+            #[expect(clippy::ptr_arg)] _expect: &Cow<[i32]>,
         ) {
         }
     }
@@ -129,6 +134,7 @@ mod issue_5644 {
             #[allow(clippy::ptr_arg)] _s: &String,
             #[allow(clippy::ptr_arg)] _p: &PathBuf,
             #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
+            #[expect(clippy::ptr_arg)] _expect: &Cow<[i32]>,
         ) {
         }
     }

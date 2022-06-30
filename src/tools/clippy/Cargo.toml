@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.63"
+version = "0.1.64"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -31,6 +31,7 @@ termize = "0.1"
 compiletest_rs = { version = "0.8", features = ["tmp"] }
 tester = "0.9"
 regex = "1.5"
+toml = "0.5"
 # This is used by the `collect-metadata` alias.
 filetime = "0.2"
 

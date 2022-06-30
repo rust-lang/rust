@@ -104,7 +104,7 @@ macro_rules! RENAME_VALUE_TEMPLATE {
     };
 }
 
-const LINT_EMISSION_FUNCTIONS: [&[&str]; 8] = [
+const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
     &["clippy_utils", "diagnostics", "span_lint"],
     &["clippy_utils", "diagnostics", "span_lint_and_help"],
     &["clippy_utils", "diagnostics", "span_lint_and_note"],
@@ -190,7 +190,12 @@ impl MetadataCollector {
             lints: BinaryHeap::<LintMetadata>::default(),
             applicability_info: FxHashMap::<String, ApplicabilityInfo>::default(),
             config: collect_configs(),
-            clippy_project_root: clippy_dev::clippy_project_root(),
+            clippy_project_root: std::env::current_dir()
+                .expect("failed to get current dir")
+                .ancestors()
+                .nth(1)
+                .expect("failed to get project root")
+                .to_path_buf(),
         }
     }
 
@@ -841,7 +846,7 @@ fn get_lint_level_from_group(lint_group: &str) -> Option<&'static str> {
         .find_map(|(group_name, group_level)| (*group_name == lint_group).then(|| *group_level))
 }
 
-fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
+pub(super) fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     if let hir::TyKind::Path(ref path) = ty.kind {
         if let hir::def::Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, ty.hir_id) {
             return match_def_path(cx, def_id, &DEPRECATED_LINT_TYPE);
