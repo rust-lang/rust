@@ -93,6 +93,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty());
                 bx
             }
+            mir::StatementKind::Assume(box ref op) => {
+                let op_val = self.codegen_operand(&mut bx, op);
+                bx.assume(op_val.immediate());
+                bx
+            }
             mir::StatementKind::FakeRead(..)
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::AscribeUserType(..)

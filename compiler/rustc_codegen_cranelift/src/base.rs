@@ -791,6 +791,8 @@ fn codegen_stmt<'tcx>(
         | StatementKind::Nop
         | StatementKind::FakeRead(..)
         | StatementKind::Retag { .. }
+        // We ignore `assume` intrinsics, they are only useful for optimizations
+        | StatementKind::Assume(..)
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),

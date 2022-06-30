@@ -250,6 +250,7 @@ pub fn statement_kind_name(statement: &Statement<'_>) -> &'static str {
         AscribeUserType(..) => "AscribeUserType",
         Coverage(..) => "Coverage",
         CopyNonOverlapping(..) => "CopyNonOverlapping",
+        Assume(..) => "Assume",
         Nop => "Nop",
     }
 }

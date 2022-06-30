@@ -62,6 +62,17 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         drop(args);
                         terminator.kind = TerminatorKind::Goto { target };
                     }
+                    sym::assume => {
+                        let target = target.unwrap();
+                        let mut args = args.drain(..);
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assume(Box::new(args.next().unwrap())),
+                        });
+                        assert_eq!(args.next(), None, "Extra argument for assume intrinsic");
+                        drop(args);
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
                     sym::wrapping_add | sym::wrapping_sub | sym::wrapping_mul => {
                         if let Some(target) = *target {
                             let lhs;

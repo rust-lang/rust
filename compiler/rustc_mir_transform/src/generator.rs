@@ -1453,6 +1453,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Assume(..)
             | StatementKind::Nop => {}
         }
     }

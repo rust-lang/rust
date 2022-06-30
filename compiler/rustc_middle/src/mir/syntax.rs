@@ -342,6 +342,14 @@ pub enum StatementKind<'tcx> {
     /// I vaguely remember Ralf saying somewhere that he thought it should not be.
     CopyNonOverlapping(Box<CopyNonOverlapping<'tcx>>),
 
+    /// Denotes a call to the intrinsic function `assume`.
+    ///
+    /// The operand must be a boolean. Optimizers may use the value of the boolean to backtrack its
+    /// computation to infer information about other variables. So if the boolean came from a
+    /// `x < y` operation, subsequent operations on `x` and `y` could elide various bound checks.
+    /// If the argument is `false`, this operation is equivalent to `TerminatorKind::Unreachable`.
+    Assume(Box<Operand<'tcx>>),
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }

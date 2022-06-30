@@ -122,6 +122,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.copy_intrinsic(&src, &dst, &count, /* nonoverlapping */ true)?;
             }
 
+            // Call Assume
+            Assume(box op) => {
+                let op = self.eval_operand(op, None)?;
+                let cond = self.read_scalar(&op)?.to_bool()?;
+                if !cond {
+                    throw_ub_format!("`assume` called with `false`");
+                }
+            }
+
             // Statements we do not track.
             AscribeUserType(..) => {}
 

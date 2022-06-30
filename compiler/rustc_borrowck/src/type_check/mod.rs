@@ -1309,6 +1309,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 "Unexpected StatementKind::CopyNonOverlapping, should only appear after lowering_intrinsics",
             ),
             StatementKind::FakeRead(..)
+            | StatementKind::Assume(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
             | StatementKind::Retag { .. }

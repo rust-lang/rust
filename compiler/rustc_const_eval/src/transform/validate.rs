@@ -636,6 +636,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
+            StatementKind::Assume(box ref op) => {
+                let ty = op.ty(&self.body.local_decls, self.tcx);
+                if !ty.is_bool() {
+                    self.fail(
+                        location,
+                        format!("`assume` argument must be `bool`, but got: `{}`", ty),
+                    );
+                }
+            }
             StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
                 ref src,
                 ref dst,

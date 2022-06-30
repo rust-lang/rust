@@ -434,6 +434,9 @@ macro_rules! make_mir_visitor {
                       self.visit_operand(dst, location);
                       self.visit_operand(count, location)
                     }
+                    StatementKind::Assume(box ref $($mutability)? val) => {
+                        self.visit_operand(val, location)
+                    }
                     StatementKind::Nop => {}
                 }
             }

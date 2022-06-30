@@ -679,6 +679,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Assume(..)
             | StatementKind::Nop => {}
         }
     }

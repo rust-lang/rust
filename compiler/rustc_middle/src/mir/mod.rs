@@ -1377,6 +1377,7 @@ impl Debug for Statement<'_> {
             }) => {
                 write!(fmt, "copy_nonoverlapping(src={:?}, dst={:?}, count={:?})", src, dst, count)
             }
+            Assume(box ref cond) => write!(fmt, "assume({:?})", cond),
             Nop => write!(fmt, "nop"),
         }
     }

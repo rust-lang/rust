@@ -506,12 +506,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // These just return their argument
                 self.copy_op(&args[0], dest, /*allow_transmute*/ false)?;
             }
-            sym::assume => {
-                let cond = self.read_scalar(&args[0])?.to_bool()?;
-                if !cond {
-                    throw_ub_format!("`assume` intrinsic called with `false`");
-                }
-            }
             sym::raw_eq => {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;

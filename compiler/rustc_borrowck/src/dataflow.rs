@@ -392,6 +392,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::Coverage(..)
             | mir::StatementKind::CopyNonOverlapping(..)
+            | mir::StatementKind::Assume(..)
             | mir::StatementKind::Nop => {}
         }
     }

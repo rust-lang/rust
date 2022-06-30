@@ -538,6 +538,7 @@ impl<'a> Conflicts<'a> {
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Assume(..)
             | StatementKind::Nop => {}
         }
     }

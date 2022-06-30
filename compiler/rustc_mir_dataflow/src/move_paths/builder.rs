@@ -331,6 +331,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Assume(..)
             | StatementKind::Nop => {}
         }
     }
