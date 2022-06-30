@@ -185,6 +185,10 @@ impl<'tcx> InferCtxtUndoLogs<'tcx> {
         })
     }
 
+    pub(crate) fn opaque_types_in_snapshot(&self, s: &Snapshot<'tcx>) -> bool {
+        self.logs[s.undo_len..].iter().any(|log| matches!(log, UndoLog::OpaqueTypes(..)))
+    }
+
     pub(crate) fn region_constraints(
         &self,
     ) -> impl Iterator<Item = &'_ region_constraints::UndoLog<'tcx>> + Clone {

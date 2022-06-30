@@ -207,11 +207,6 @@ impl FlagComputation {
 
             &ty::FnDef(_, substs) => {
                 self.add_substs(substs);
-                // HACK(#98608, oli-obk): Function items with opaque types in their signature will
-                // end up not having the HAS_TY_OPAQUE flag set, causing `evaluate_obligation` to
-                // optimistically assume the function item matches any signature. See documentation
-                // on `HAS_FREE_LOCAL_NAMES` for details.
-                self.add_flags(TypeFlags::HAS_TY_OPAQUE);
             }
 
             &ty::FnPtr(fn_sig) => self.bound_computation(fn_sig, |computation, fn_sig| {
