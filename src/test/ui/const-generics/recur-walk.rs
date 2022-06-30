@@ -18,7 +18,7 @@ fn baz<const A: usize>(a: [u32; A]) -> [u32; A + 1] {
 }
 
 fn blah<T>() {
-    baz::<{1 + 2}>([123]);
+    baz::<{1 + 2}>([123, 231, 312]);
 }
 
 fn main() {}

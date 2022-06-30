@@ -668,8 +668,19 @@ where
         ct: AbstractConst<'tcx>,
         f: &mut dyn FnMut(AbstractConst<'tcx>) -> ControlFlow<R>,
     ) -> ControlFlow<R> {
-        f(ct)?;
         let root = ct.root(tcx);
+        if let Node::Leaf(leaf) = root {
+            if let ty::ConstKind::Unevaluated(uv) = leaf.kind() {
+                if let Ok(Some(ac)) = AbstractConst::new(tcx, uv.shrink()) {
+                    return recurse(tcx, ac, f);
+                } else if uv.substs.has_param_types_or_consts()
+                    && tcx.def_kind(uv.def.did) == DefKind::AnonConst
+                {
+                    return ControlFlow::CONTINUE;
+                }
+            }
+        }
+        f(ct)?;
         match root {
             Node::Leaf(_) => ControlFlow::CONTINUE,
             Node::Binop(_, l, r) => {
