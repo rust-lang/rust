@@ -395,9 +395,6 @@ pub fn check(path: &Path, bad: &mut bool) {
                 );
             };
             suppressible_tidy_err!(err, skip_file_length, "");
-        } else if lines > (LINES * 7) / 10 {
-            // Just set it to something that doesn't trigger the "unnecessarily ignored" warning.
-            skip_file_length = Directive::Ignore(true);
         }
 
         if let Directive::Ignore(false) = skip_cr {
@@ -405,12 +402,6 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
         if let Directive::Ignore(false) = skip_tab {
             tidy_error!(bad, "{}: ignoring tab characters unnecessarily", file.display());
-        }
-        if let Directive::Ignore(false) = skip_line_length {
-            tidy_error!(bad, "{}: ignoring line length unnecessarily", file.display());
-        }
-        if let Directive::Ignore(false) = skip_file_length {
-            tidy_error!(bad, "{}: ignoring file length unnecessarily", file.display());
         }
         if let Directive::Ignore(false) = skip_end_whitespace {
             tidy_error!(bad, "{}: ignoring trailing whitespace unnecessarily", file.display());
@@ -424,5 +415,9 @@ pub fn check(path: &Path, bad: &mut bool) {
         if let Directive::Ignore(false) = skip_copyright {
             tidy_error!(bad, "{}: ignoring copyright unnecessarily", file.display());
         }
+        // We deliberately do not warn about these being unnecessary,
+        // that would just lead to annoying churn.
+        let _unused = skip_line_length;
+        let _unused = skip_file_length;
     })
 }
