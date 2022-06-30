@@ -15,7 +15,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericArg, GenericParam, LifetimeName, Node};
-use rustc_hir::{GenericParamKind, HirIdMap};
+use rustc_hir::{GenericParamKind, HirIdMap, LifetimeParamKind};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
@@ -629,8 +629,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     })
                     .unzip();
 
-            // FIXME: missing_named_lifetime_spots
-
             self.map.late_bound_vars.insert(e.hir_id, binders);
             let scope = Scope::Binder {
                 hir_id: e.hir_id,
@@ -642,11 +640,41 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 allow_late_bound: true,
                 where_bound_origin: None,
             };
+
+            if let &hir::ClosureBinder::For { span, .. } = binder {
+                let last_lt = bound_generic_params
+                    .iter()
+                    .filter(|p| {
+                        matches!(
+                            p,
+                            GenericParam {
+                                kind: GenericParamKind::Lifetime {
+                                    kind: LifetimeParamKind::Explicit
+                                },
+                                ..
+                            }
+                        )
+                    })
+                    .last();
+                let (span, span_type) = match last_lt {
+                    Some(GenericParam { span: last_sp, .. }) => {
+                        (last_sp.shrink_to_hi(), ForLifetimeSpanType::ClosureTail)
+                    }
+                    None => (span, ForLifetimeSpanType::ClosureEmpty),
+                };
+                self.missing_named_lifetime_spots
+                    .push(MissingLifetimeSpot::HigherRanked { span, span_type });
+            }
+
             self.with(scope, |this| {
                 // a closure has no bounds, so everything
                 // contained within is scoped within its binder.
                 intravisit::walk_expr(this, e)
             });
+
+            if let hir::ClosureBinder::For { .. } = binder {
+                self.missing_named_lifetime_spots.pop();
+            }
         } else {
             intravisit::walk_expr(self, e)
         }
