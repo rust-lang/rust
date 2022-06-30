@@ -55,7 +55,7 @@ pub fn expand_deriving_clone(
                 }
             }
             ItemKind::Union(..) => {
-                bounds = vec![Literal(path_std!(marker::Copy))];
+                bounds = vec![Path(path_std!(marker::Copy))];
                 is_simple = true;
                 substructure = combine_substructure(Box::new(|c, s, sub| {
                     cs_clone_simple("Clone", c, s, sub, true)

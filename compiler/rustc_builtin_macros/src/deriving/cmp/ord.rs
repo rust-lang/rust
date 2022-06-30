@@ -29,7 +29,7 @@ pub fn expand_deriving_ord(
             generics: Bounds::empty(),
             explicit_self: true,
             args: vec![(self_ref(), sym::other)],
-            ret_ty: Literal(path_std!(cmp::Ordering)),
+            ret_ty: Path(path_std!(cmp::Ordering)),
             attributes: attrs,
             unify_fieldless_variants: true,
             combine_substructure: combine_substructure(Box::new(|a, b, c| cs_cmp(a, b, c))),

@@ -71,7 +71,7 @@ pub fn expand_deriving_partial_eq(
                 generics: Bounds::empty(),
                 explicit_self: true,
                 args: vec![(self_ref(), sym::other)],
-                ret_ty: Literal(path_local!(bool)),
+                ret_ty: Path(path_local!(bool)),
                 attributes: attrs,
                 unify_fieldless_variants: true,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| $f(a, b, c))),

@@ -121,16 +121,12 @@ pub fn expand_deriving_rustc_encodable(
                 )],
             },
             explicit_self: true,
-            args: vec![(Ref(Box::new(Literal(Path::new_local(typaram))), Mutability::Mut), sym::s)],
-            ret_ty: Literal(Path::new_(
+            args: vec![(Ref(Box::new(Path(Path::new_local(typaram))), Mutability::Mut), sym::s)],
+            ret_ty: Path(Path::new_(
                 pathvec_std!(result::Result),
                 vec![
                     Box::new(Tuple(Vec::new())),
-                    Box::new(Literal(Path::new_(
-                        vec![typaram, sym::Error],
-                        vec![],
-                        PathKind::Local,
-                    ))),
+                    Box::new(Path(Path::new_(vec![typaram, sym::Error], vec![], PathKind::Local))),
                 ],
                 PathKind::Std,
             )),

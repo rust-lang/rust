@@ -15,12 +15,9 @@ pub fn expand_deriving_partial_ord(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    let ordering_ty = Literal(path_std!(cmp::Ordering));
-    let ret_ty = Literal(Path::new_(
-        pathvec_std!(option::Option),
-        vec![Box::new(ordering_ty)],
-        PathKind::Std,
-    ));
+    let ordering_ty = Path(path_std!(cmp::Ordering));
+    let ret_ty =
+        Path(Path::new_(pathvec_std!(option::Option), vec![Box::new(ordering_ty)], PathKind::Std));
 
     let inline = cx.meta_word(span, sym::inline);
     let attrs = vec![cx.attribute(inline)];
