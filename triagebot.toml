@@ -316,7 +316,12 @@ cc = ["@ehuss"]
 cc = ["@rust-lang/clippy"]
 
 [mentions."src/tools/miri"]
+message = "The Miri submodule was changed"
 cc = ["@rust-lang/miri"]
 
 [mentions."src/tools/rustfmt"]
 cc = ["@rust-lang/rustfmt"]
+
+[mentions."compiler/rustc_middle/src/mir/syntax.rs"]
+message = "This PR changes MIR"
+cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco"]
