@@ -13,15 +13,12 @@ use crate::context::CodegenCx;
 
 // Given a map from target_features to whether they are enabled or disabled,
 // ensure only valid combinations are allowed.
-pub fn check_tied_features(
-    sess: &Session,
-    features: &FxHashMap<&str, bool>,
-) -> Option<&'static [&'static str]> {
+pub fn check_tied_features(sess: &Session, features: &FxHashMap<&str, bool>) -> Option<&'static [&'static str]> {
     for tied in tied_target_features(sess) {
         // Tied features must be set to the same value, or not set at all
         let mut tied_iter = tied.iter();
         let enabled = features.get(tied_iter.next().unwrap());
-        if tied_iter.any(|f| enabled != features.get(f)) {
+        if tied_iter.any(|feature| enabled != features.get(feature)) {
             return Some(tied);
         }
     }
@@ -81,16 +78,13 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
 
     let function_features =
-        codegen_fn_attrs.target_features.iter().map(|f| f.as_str()).collect::<Vec<&str>>();
+        codegen_fn_attrs.target_features.iter().map(|features| features.as_str()).collect::<Vec<&str>>();
 
-    if let Some(f) = check_tied_features(cx.tcx.sess, &function_features.iter().map(|f| (*f, true)).collect()) {
+    if let Some(features) = check_tied_features(cx.tcx.sess, &function_features.iter().map(|features| (*features, true)).collect()) {
         let span = cx.tcx
             .get_attr(instance.def_id(), sym::target_feature)
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
-        let msg = format!(
-            "the target features {} must all be either enabled or disabled together",
-            f.join(", ")
-        );
+        let msg = format!("the target features {} must all be either enabled or disabled together", features.join(", "));
         let mut err = cx.tcx.sess.struct_span_err(span, &msg);
         err.help("add the missing features in a `target_feature` attribute");
         err.emit();
