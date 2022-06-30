@@ -11,7 +11,7 @@ use crate::sync::Arc;
 /// See [`scope`] for details.
 #[stable(feature = "scoped_threads", since = "1.63.0")]
 pub struct Scope<'scope, 'env: 'scope> {
-    data: ScopeData,
+    data: Arc<ScopeData>,
     /// Invariance over 'scope, to make sure 'scope cannot shrink,
     /// which is necessary for soundness.
     ///
@@ -130,12 +130,14 @@ pub fn scope<'env, F, T>(f: F) -> T
 where
     F: for<'scope> FnOnce(&'scope Scope<'scope, 'env>) -> T,
 {
+    // We put the `ScopeData` into an `Arc` so that other threads can finish their
+    // `decrement_num_running_threads` even after this function returns.
     let scope = Scope {
-        data: ScopeData {
+        data: Arc::new(ScopeData {
             num_running_threads: AtomicUsize::new(0),
             main_thread: current(),
             a_thread_panicked: AtomicBool::new(false),
-        },
+        }),
         env: PhantomData,
         scope: PhantomData,
     };
@@ -250,7 +252,7 @@ impl Builder {
         F: FnOnce() -> T + Send + 'scope,
         T: Send + 'scope,
     {
-        Ok(ScopedJoinHandle(unsafe { self.spawn_unchecked_(f, Some(&scope.data)) }?))
+        Ok(ScopedJoinHandle(unsafe { self.spawn_unchecked_(f, Some(scope.data.clone())) }?))
     }
 }
 
