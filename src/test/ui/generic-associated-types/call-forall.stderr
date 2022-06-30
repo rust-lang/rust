@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/call-forall.rs:36:5
+   |
+LL | fn ok_i_will1<'test>() {
+   |               ----- lifetime `'test` defined here
+...
+LL |     call_me::<&'test [u32]>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ requires that `'test` must outlive `'static`
+
+error: aborting due to previous error
+
