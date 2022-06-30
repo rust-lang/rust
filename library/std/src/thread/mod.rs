@@ -159,6 +159,7 @@ use crate::cell::UnsafeCell;
 use crate::ffi::{CStr, CString};
 use crate::fmt;
 use crate::io;
+use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::NonZeroU64;
 use crate::num::NonZeroUsize;
@@ -462,7 +463,7 @@ impl Builder {
     unsafe fn spawn_unchecked_<'a, 'scope, F, T>(
         self,
         f: F,
-        scope_data: Option<&'scope scoped::ScopeData>,
+        scope_data: Option<Arc<scoped::ScopeData>>,
     ) -> io::Result<JoinInner<'scope, T>>
     where
         F: FnOnce() -> T,
@@ -479,8 +480,11 @@ impl Builder {
         }));
         let their_thread = my_thread.clone();
 
-        let my_packet: Arc<Packet<'scope, T>> =
-            Arc::new(Packet { scope: scope_data, result: UnsafeCell::new(None) });
+        let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
+            scope: scope_data,
+            result: UnsafeCell::new(None),
+            _marker: PhantomData,
+        });
         let their_packet = my_packet.clone();
 
         let output_capture = crate::io::set_output_capture(None);
@@ -507,7 +511,7 @@ impl Builder {
             unsafe { *their_packet.result.get() = Some(try_result) };
         };
 
-        if let Some(scope_data) = scope_data {
+        if let Some(scope_data) = &my_packet.scope {
             scope_data.increment_num_running_threads();
         }
 
@@ -1298,8 +1302,9 @@ pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 // An Arc to the packet is stored into a `JoinInner` which in turns is placed
 // in `JoinHandle`.
 struct Packet<'scope, T> {
-    scope: Option<&'scope scoped::ScopeData>,
+    scope: Option<Arc<scoped::ScopeData>>,
     result: UnsafeCell<Option<Result<T>>>,
+    _marker: PhantomData<Option<&'scope scoped::ScopeData>>,
 }
 
 // Due to the usage of `UnsafeCell` we need to manually implement Sync.
@@ -1330,7 +1335,7 @@ impl<'scope, T> Drop for Packet<'scope, T> {
             rtabort!("thread result panicked on drop");
         }
         // Book-keeping so the scope knows when it's done.
-        if let Some(scope) = self.scope {
+        if let Some(scope) = &self.scope {
             // Now that there will be no more user code running on this thread
             // that can use 'scope, mark the thread as 'finished'.
             // It's important we only do this after the `result` has been dropped,
