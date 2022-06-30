@@ -6,6 +6,7 @@ use log::trace;
 
 use rustc_middle::ty;
 use rustc_span::{source_map::DUMMY_SP, Span, SpanData, Symbol};
+use rustc_target::abi::{Align, Size};
 
 use crate::helpers::HexRange;
 use crate::stacked_borrows::{diagnostics::TagHistory, AccessKind};
@@ -71,7 +72,7 @@ pub enum NonHaltingDiagnostic {
     /// a deallocation when the second argument is `None`.
     PoppedPointerTag(Item, Option<(SbTagExtra, AccessKind)>),
     CreatedCallId(CallId),
-    CreatedAlloc(AllocId),
+    CreatedAlloc(AllocId, Size, Align, MemoryKind<MiriMemoryKind>),
     FreedAlloc(AllocId),
     RejectedIsolatedOp(String),
     ProgressReport,
@@ -463,7 +464,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             }
                         },
                     CreatedCallId(id) => format!("function call with id {id}"),
-                    CreatedAlloc(AllocId(id)) => format!("created allocation with id {id}"),
+                    CreatedAlloc(AllocId(id), size, align, kind) =>
+                        format!("created {kind} allocation of {} bytes (alignment {} bytes) with id {id}", size.bytes(), align.bytes()),
                     FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
                     RejectedIsolatedOp(ref op) =>
                         format!("{op} was made to return an error due to isolation"),
