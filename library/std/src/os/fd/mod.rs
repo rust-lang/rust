@@ -1,8 +1,7 @@
 //! Owned and borrowed Unix-like file descriptors.
 //!
-//! This module is supported on Unix platforms, and also some non-Unix
-//! platforms which use a similar file descriptor system for referencing OS
-//! resources.
+//! This module is supported on Unix platforms and WASI, which both use a
+//! similar file descriptor system for referencing OS resources.
 
 #![stable(feature = "io_safety", since = "1.63.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
