@@ -398,11 +398,12 @@ fn setup(subcommand: MiriCommand) {
     if !dir.exists() {
         fs::create_dir_all(&dir).unwrap();
     }
-    // The interesting bit: Xargo.toml
-    File::create(dir.join("Xargo.toml"))
-        .unwrap()
-        .write_all(
-            br#"
+    let mut xargo_toml = File::create(dir.join("Xargo.toml")).unwrap();
+    if std::env::var_os("MIRI_NO_STD").is_none() {
+        // The interesting bit: Xargo.toml (only needs content if we actually need std)
+        xargo_toml
+            .write_all(
+                br#"
 [dependencies.std]
 default_features = false
 # We support unwinding, so enable that panic runtime.
@@ -410,8 +411,9 @@ features = ["panic_unwind", "backtrace"]
 
 [dependencies.test]
 "#,
-        )
-        .unwrap();
+            )
+            .unwrap();
+    }
     // The boring bits: a dummy project for xargo.
     // FIXME: With xargo-check, can we avoid doing this?
     File::create(dir.join("Cargo.toml"))
@@ -428,7 +430,7 @@ path = "lib.rs"
 "#,
         )
         .unwrap();
-    File::create(dir.join("lib.rs")).unwrap();
+    File::create(dir.join("lib.rs")).unwrap().write_all(b"#![no_std]").unwrap();
 
     // Determine architectures.
     // We always need to set a target so rustc bootstrap can tell apart host from target crates.

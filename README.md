@@ -419,6 +419,8 @@ Moreover, Miri recognizes some environment variables:
 * `MIRI_TEST_TARGET` (recognized by the test suite) indicates which target
   architecture to test against.  `miri` and `cargo miri` accept the `--target`
   flag for the same purpose.
+* `MIRI_NO_STD` (recognized by `cargo miri` and the test suite) makes sure that the target's
+  sysroot is built without libstd. This allows testing and running no_std programs.
 * `MIRI_BLESS` (recognized by the test suite) overwrite all `stderr` and `stdout` files
   instead of checking whether the output matches.
 * `MIRI_SKIP_UI_CHECKS` (recognized by the test suite) don't check whether the
