@@ -132,6 +132,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
+        copied_constant_arguments: &[PlaceRef<'tcx, <Bx as BackendTypes>::Value>],
     ) {
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
@@ -172,6 +173,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             if let Some((ret_dest, target)) = destination {
                 bx.switch_to_block(fx.llbb(target));
                 fx.set_debug_loc(bx, self.terminator.source_info);
+                for tmp in copied_constant_arguments {
+                    bx.lifetime_end(tmp.llval, tmp.layout.size);
+                }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, invokeret);
             }
         } else {
@@ -186,6 +190,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
 
             if let Some((ret_dest, target)) = destination {
+                for tmp in copied_constant_arguments {
+                    bx.lifetime_end(tmp.llval, tmp.layout.size);
+                }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, llret);
                 self.funclet_br(fx, bx, target);
             } else {
@@ -415,6 +422,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             args,
             Some((ReturnDest::Nothing, target)),
             unwind,
+            &[],
         );
     }
 
@@ -492,7 +500,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), lang_item);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup);
+        helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup, &[]);
     }
 
     fn codegen_abort_terminator(
@@ -508,7 +516,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), LangItem::PanicNoUnwind);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, &mut bx, fn_abi, llfn, &[], None, None);
+        helper.do_call(self, &mut bx, fn_abi, llfn, &[], None, None, &[]);
     }
 
     /// Returns `true` if this is indeed a panic intrinsic and codegen is done.
@@ -579,6 +587,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     &[msg.0, msg.1, location],
                     target.as_ref().map(|bb| (ReturnDest::Nothing, *bb)),
                     cleanup,
+                    &[],
                 );
             } else {
                 // a NOP
@@ -786,6 +795,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (args, None)
         };
 
+        let mut copied_constant_arguments = vec![];
         'make_args: for (i, arg) in first_args.iter().enumerate() {
             let mut op = self.codegen_operand(&mut bx, arg);
 
@@ -851,8 +861,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (&mir::Operand::Copy(_), Ref(_, None, _))
                 | (&mir::Operand::Constant(_), Ref(_, None, _)) => {
                     let tmp = PlaceRef::alloca(&mut bx, op.layout);
+                    bx.lifetime_start(tmp.llval, tmp.layout.size);
                     op.val.store(&mut bx, tmp);
                     op.val = Ref(tmp.llval, None, tmp.align);
+                    copied_constant_arguments.push(tmp);
                 }
                 _ => {}
             }
@@ -925,6 +937,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 &llargs,
                 target.as_ref().map(|&target| (ret_dest, target)),
                 cleanup,
+                &copied_constant_arguments,
             );
 
             bx.switch_to_block(bb_fail);
@@ -942,6 +955,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             &llargs,
             target.as_ref().map(|&target| (ret_dest, target)),
             cleanup,
+            &copied_constant_arguments,
         );
     }
 
