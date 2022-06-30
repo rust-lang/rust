@@ -78,16 +78,12 @@ pub enum Ty {
     /// `mod::mod::Type<[lifetime], [Params...]>`, including a plain type
     /// parameter, and things like `i32`
     Path(Path),
-    /// includes unit
-    Tuple(Vec<Ty>),
+    /// For () return types.
+    Unit,
 }
 
 pub fn self_ref() -> Ty {
     Ref(Box::new(Self_), ast::Mutability::Not)
-}
-
-pub fn nil_ty() -> Ty {
-    Tuple(Vec::new())
 }
 
 impl Ty {
@@ -105,10 +101,8 @@ impl Ty {
             }
             Path(p) => p.to_ty(cx, span, self_ty, self_generics),
             Self_ => cx.ty_path(self.to_path(cx, span, self_ty, self_generics)),
-            Tuple(fields) => {
-                let ty = ast::TyKind::Tup(
-                    fields.iter().map(|f| f.to_ty(cx, span, self_ty, self_generics)).collect(),
-                );
+            Unit => {
+                let ty = ast::TyKind::Tup(vec![]);
                 cx.ty(span, ty)
             }
         }
@@ -143,7 +137,7 @@ impl Ty {
             }
             Path(ref p) => p.to_path(cx, span, self_ty, generics),
             Ref(..) => cx.span_bug(span, "ref in a path in generic `derive`"),
-            Tuple(..) => cx.span_bug(span, "tuple in a path in generic `derive`"),
+            Unit => cx.span_bug(span, "unit in a path in generic `derive`"),
         }
     }
 }

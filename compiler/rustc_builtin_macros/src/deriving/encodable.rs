@@ -125,7 +125,7 @@ pub fn expand_deriving_rustc_encodable(
             ret_ty: Path(Path::new_(
                 pathvec_std!(result::Result),
                 vec![
-                    Box::new(Tuple(Vec::new())),
+                    Box::new(Unit),
                     Box::new(Path(Path::new_(vec![typaram, sym::Error], vec![], PathKind::Local))),
                 ],
                 PathKind::Std,
