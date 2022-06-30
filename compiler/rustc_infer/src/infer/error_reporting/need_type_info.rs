@@ -735,7 +735,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     return self.path_inferred_subst_iter(expr.hir_id, substs, path);
                 }
             }
-            // FIXME: Ideally we would also deal with type relative
+            // FIXME(#98711): Ideally we would also deal with type relative
             // paths here, even if that is quite rare.
             //
             // See the `need_type_info/expr-struct-type-relative-gat.rs` test
