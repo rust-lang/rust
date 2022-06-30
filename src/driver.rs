@@ -21,11 +21,11 @@ use rustc_tools_util::VersionInfo;
 
 use std::borrow::Cow;
 use std::env;
-use std::lazy::SyncLazy;
 use std::ops::Deref;
 use std::panic;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
+use std::sync::LazyLock;
 
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
@@ -153,7 +153,8 @@ You can use tool lints to allow or deny lints from your code, eg.:
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new";
 
-static ICE_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> = SyncLazy::new(|| {
+type PanicCallback = dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static;
+static ICE_HOOK: LazyLock<Box<PanicCallback>> = LazyLock::new(|| {
     let hook = panic::take_hook();
     panic::set_hook(Box::new(|info| report_clippy_ice(info, BUG_REPORT_URL)));
     hook
@@ -220,7 +221,7 @@ fn toolchain_path(home: Option<String>, toolchain: Option<String>) -> Option<Pat
 #[allow(clippy::too_many_lines)]
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
-    SyncLazy::force(&ICE_HOOK);
+    LazyLock::force(&ICE_HOOK);
     exit(rustc_driver::catch_with_exit_code(move || {
         let mut orig_args: Vec<String> = env::args().collect();
 

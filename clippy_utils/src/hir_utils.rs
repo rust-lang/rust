@@ -16,6 +16,10 @@ use rustc_middle::ty::TypeckResults;
 use rustc_span::{sym, Symbol};
 use std::hash::{Hash, Hasher};
 
+/// Callback that is called when two expressions are not equal in the sense of `SpanlessEq`, but
+/// other conditions would make them equal.
+type SpanlessEqCallback<'a> = dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a;
+
 /// Type used to check whether two ast are the same. This is different from the
 /// operator `==` on ast types as this operator would compare true equality with
 /// ID and span.
@@ -26,7 +30,7 @@ pub struct SpanlessEq<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<(&'tcx TypeckResults<'tcx>, &'tcx TypeckResults<'tcx>)>,
     allow_side_effects: bool,
-    expr_fallback: Option<Box<dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a>>,
+    expr_fallback: Option<Box<SpanlessEqCallback<'a>>>,
 }
 
 impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {

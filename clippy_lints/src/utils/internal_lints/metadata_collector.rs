@@ -104,7 +104,7 @@ macro_rules! RENAME_VALUE_TEMPLATE {
     };
 }
 
-const LINT_EMISSION_FUNCTIONS: [&[&str]; 8] = [
+const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
     &["clippy_utils", "diagnostics", "span_lint"],
     &["clippy_utils", "diagnostics", "span_lint_and_help"],
     &["clippy_utils", "diagnostics", "span_lint_and_note"],
@@ -112,7 +112,6 @@ const LINT_EMISSION_FUNCTIONS: [&[&str]; 8] = [
     &["clippy_utils", "diagnostics", "span_lint_and_sugg"],
     &["clippy_utils", "diagnostics", "span_lint_and_then"],
     &["clippy_utils", "diagnostics", "span_lint_hir_and_then"],
-    &["clippy_utils", "diagnostics", "span_lint_and_sugg_for_edges"],
 ];
 const SUGGESTION_DIAGNOSTIC_BUILDER_METHODS: [(&str, bool); 9] = [
     ("span_suggestion", false),

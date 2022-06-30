@@ -64,7 +64,7 @@ pub use self::hir_utils::{
 
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
-use std::lazy::SyncOnceCell;
+use std::sync::OnceLock;
 use std::sync::{Mutex, MutexGuard};
 
 use if_chain::if_chain;
@@ -2099,7 +2099,7 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     false
 }
 
-static TEST_ITEM_NAMES_CACHE: SyncOnceCell<Mutex<FxHashMap<LocalDefId, Vec<Symbol>>>> = SyncOnceCell::new();
+static TEST_ITEM_NAMES_CACHE: OnceLock<Mutex<FxHashMap<LocalDefId, Vec<Symbol>>>> = OnceLock::new();
 
 fn with_test_item_names<'tcx>(tcx: TyCtxt<'tcx>, module: LocalDefId, f: impl Fn(&[Symbol]) -> bool) -> bool {
     let cache = TEST_ITEM_NAMES_CACHE.get_or_init(|| Mutex::new(FxHashMap::default()));

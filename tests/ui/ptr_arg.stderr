@@ -56,7 +56,8 @@ LL |     let f = e.clone(); // OK
 LL |     let g = x;
 LL ~     let h = g.to_owned();
 LL |     let i = (e).clone();
- ...
+LL ~     x.to_owned()
+   |
 
 error: writing `&String` instead of `&str` involves a new object where a slice will do
   --> $DIR/ptr_arg.rs:58:18

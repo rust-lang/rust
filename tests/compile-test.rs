@@ -12,8 +12,8 @@ use std::env::{self, remove_var, set_var, var_os};
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
-use std::lazy::SyncLazy;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use test_utils::IS_RUSTC_TEST_SUITE;
 
 mod test_utils;
@@ -75,7 +75,7 @@ extern crate tokio;
 /// dependencies must be added to Cargo.toml at the project root. Test
 /// dependencies that are not *directly* used by this test module require an
 /// `extern crate` declaration.
-static EXTERN_FLAGS: SyncLazy<String> = SyncLazy::new(|| {
+static EXTERN_FLAGS: LazyLock<String> = LazyLock::new(|| {
     let current_exe_depinfo = {
         let mut path = env::current_exe().unwrap();
         path.set_extension("d");

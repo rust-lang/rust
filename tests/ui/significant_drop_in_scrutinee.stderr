@@ -311,7 +311,9 @@ LL +         _ => mutex2.lock().unwrap(),
 LL +     }
 LL +     .s
 LL +     .len()
- ...
+LL +         > 1;
+LL ~     match value
+   |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
   --> $DIR/significant_drop_in_scrutinee.rs:410:11
@@ -341,7 +343,10 @@ LL +     } else {
 LL +         mutex2.lock().unwrap()
 LL +     }
 LL +     .s
- ...
+LL +     .len()
+LL +         > 1;
+LL ~     match value
+   |
 
 error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
   --> $DIR/significant_drop_in_scrutinee.rs:464:11

@@ -9,7 +9,7 @@ help: use `println!` instead
    |
 LL -     print!("Hello/n");
 LL +     println!("Hello");
-   | 
+   |
 
 error: using `print!()` with a format string that ends in a single newline
   --> $DIR/print_with_newline.rs:9:5
@@ -21,7 +21,7 @@ help: use `println!` instead
    |
 LL -     print!("Hello {}/n", "world");
 LL +     println!("Hello {}", "world");
-   | 
+   |
 
 error: using `print!()` with a format string that ends in a single newline
   --> $DIR/print_with_newline.rs:10:5
@@ -33,7 +33,7 @@ help: use `println!` instead
    |
 LL -     print!("Hello {} {}/n", "world", "#2");
 LL +     println!("Hello {} {}", "world", "#2");
-   | 
+   |
 
 error: using `print!()` with a format string that ends in a single newline
   --> $DIR/print_with_newline.rs:11:5
@@ -45,7 +45,7 @@ help: use `println!` instead
    |
 LL -     print!("{}/n", 1265);
 LL +     println!("{}", 1265);
-   | 
+   |
 
 error: using `print!()` with a format string that ends in a single newline
   --> $DIR/print_with_newline.rs:12:5
@@ -57,7 +57,7 @@ help: use `println!` instead
    |
 LL -     print!("/n");
 LL +     println!();
-   | 
+   |
 
 error: using `print!()` with a format string that ends in a single newline
   --> $DIR/print_with_newline.rs:31:5
@@ -69,7 +69,7 @@ help: use `println!` instead
    |
 LL -     print!("//n"); // should fail
 LL +     println!("/"); // should fail
-   | 
+   |
 
 error: using `print!()` with a format string that ends in a single newline
   --> $DIR/print_with_newline.rs:38:5
@@ -111,7 +111,7 @@ help: use `println!` instead
    |
 LL -     print!("/r/n"); //~ ERROR
 LL +     println!("/r"); //~ ERROR
-   | 
+   |
 
 error: using `print!()` with a format string that ends in a single newline
   --> $DIR/print_with_newline.rs:51:5
@@ -123,7 +123,7 @@ help: use `println!` instead
    |
 LL -     print!("foo/rbar/n") // ~ ERROR
 LL +     println!("foo/rbar") // ~ ERROR
-   | 
+   |
 
 error: aborting due to 10 previous errors
 

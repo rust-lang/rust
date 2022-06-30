@@ -4,12 +4,12 @@
 use crate::cargo_clippy_path;
 use std::ffi::OsStr;
 use std::fs;
-use std::lazy::SyncLazy;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use walkdir::{DirEntry, WalkDir};
 
-static CLIPPY_BUILD_TIME: SyncLazy<Option<std::time::SystemTime>> =
-    SyncLazy::new(|| cargo_clippy_path().metadata().ok()?.modified().ok());
+static CLIPPY_BUILD_TIME: LazyLock<Option<std::time::SystemTime>> =
+    LazyLock::new(|| cargo_clippy_path().metadata().ok()?.modified().ok());
 
 /// # Panics
 ///

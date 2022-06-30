@@ -98,7 +98,8 @@ LL +         id: e_id,
 LL +         name: "Player 1".to_string(),
 LL +         some_data: vec![0x12, 0x34, 0x56, 0x78, 0x90],
 LL +     };
- ...
+LL +     process_data(pack);
+   |
 
 error: all if blocks contain the same code at both the start and the end
   --> $DIR/shared_at_top_and_bottom.rs:94:5

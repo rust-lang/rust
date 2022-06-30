@@ -109,16 +109,50 @@ LL |         None.unwrap_or( unsafe { ptr_to_ref(s) }    );
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| unsafe { ptr_to_ref(s) })`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:189:14
+  --> $DIR/or_fun_call.rs:182:9
    |
-LL |             .unwrap_or(String::new());
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
+LL | /         frames
+LL | |             .iter()
+LL | |             .map(|f: &String| f.to_lowercase())
+LL | |             .reduce(|mut acc, f| {
+...  |
+LL | |             })
+LL | |             .unwrap_or(String::new());
+   | |_____________________________________^
+   |
+help: try this
+   |
+LL ~         frames
+LL +             .iter()
+LL +             .map(|f: &String| f.to_lowercase())
+LL +             .reduce(|mut acc, f| {
+LL +                 acc.push_str(&f);
+LL +                 acc
+LL ~             }).unwrap_or_default();
+   |
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:202:14
+  --> $DIR/or_fun_call.rs:195:9
    |
-LL |             .unwrap_or(String::new());
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
+LL | /         iter.map(|f: &String| f.to_lowercase())
+LL | |             .reduce(|mut acc, f| {
+LL | |                 let _ = "";
+LL | |                 let _ = "";
+...  |
+LL | |             })
+LL | |             .unwrap_or(String::new());
+   | |_____________________________________^
+   |
+help: try this
+   |
+LL ~         iter.map(|f: &String| f.to_lowercase())
+LL +             .reduce(|mut acc, f| {
+LL +                 let _ = "";
+LL +                 let _ = "";
+LL +                 acc.push_str(&f);
+LL +                 acc
+LL ~             }).unwrap_or_default();
+   |
 
 error: use of `unwrap_or` followed by a call to `new`
   --> $DIR/or_fun_call.rs:208:9
