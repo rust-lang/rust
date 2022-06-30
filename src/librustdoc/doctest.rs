@@ -1003,8 +1003,10 @@ impl Tester for Collector {
         let outdir = if let Some(mut path) = rustdoc_options.persist_doctests.clone() {
             path.push(&test_id);
 
-            std::fs::create_dir_all(&path)
-                .expect("Couldn't create directory for doctest executables");
+            if let Err(err) = std::fs::create_dir_all(&path) {
+                eprintln!("Couldn't create directory for doctest executables: {}", err);
+                panic::resume_unwind(box ());
+            }
 
             DirState::Perm(path)
         } else {
