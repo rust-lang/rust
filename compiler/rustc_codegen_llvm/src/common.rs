@@ -109,8 +109,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     pub fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
         unsafe {
             assert_eq!(idx as c_uint as u64, idx);
-            let us = &[idx as c_uint];
-            let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
+            let r = llvm::LLVMGetAggregateElement(v, idx as c_uint).unwrap();
 
             debug!("const_get_elt(v={:?}, idx={}, r={:?})", v, idx, r);
 
