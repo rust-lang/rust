@@ -31,4 +31,9 @@ const NO_ANN: &dyn Display = &70;
 static STATIC_TUPLE: (AtomicUsize, String) = (ATOMIC, STRING);
 //^ there should be no lints on this line
 
+// issue #8493
+thread_local! {
+    static THREAD_LOCAL: Cell<i32> = const { Cell::new(0) };
+}
+
 fn main() {}

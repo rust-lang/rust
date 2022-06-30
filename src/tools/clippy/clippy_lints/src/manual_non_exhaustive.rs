@@ -1,6 +1,6 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{is_doc_hidden, is_lint_allowed, meets_msrv, msrvs};
+use clippy_utils::{is_doc_hidden, meets_msrv, msrvs};
 use rustc_ast::ast::{self, VisibilityKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -190,12 +190,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
                 !self
                     .constructed_enum_variants
                     .contains(&(enum_id.to_def_id(), variant_id.to_def_id()))
-                    && !is_lint_allowed(cx, MANUAL_NON_EXHAUSTIVE, cx.tcx.hir().local_def_id_to_hir_id(enum_id))
             })
         {
-            span_lint_and_then(
+            let hir_id = cx.tcx.hir().local_def_id_to_hir_id(enum_id);
+            span_lint_hir_and_then(
                 cx,
                 MANUAL_NON_EXHAUSTIVE,
+                hir_id,
                 enum_span,
                 "this seems like a manual implementation of the non-exhaustive pattern",
                 |diag| {

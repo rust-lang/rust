@@ -1,3 +1,4 @@
+#![feature(lint_reasons)]
 #![allow(unused, clippy::diverging_sub_expression)]
 #![warn(clippy::logic_bug)]
 
@@ -23,4 +24,11 @@ fn equality_stuff() {
     let _ = a < b && a >= b;
     let _ = a > b && a <= b;
     let _ = a > b && a == b;
+}
+
+fn check_expect() {
+    let a: i32 = unimplemented!();
+    let b: i32 = unimplemented!();
+    #[expect(clippy::logic_bug)]
+    let _ = a < b && a >= b;
 }

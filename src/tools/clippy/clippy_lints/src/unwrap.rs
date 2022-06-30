@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{path_to_local, usage::is_potentially_mutated};
@@ -251,9 +251,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                             unwrappable.kind.error_variant_pattern()
                         };
 
-                        span_lint_and_then(
+                        span_lint_hir_and_then(
                             self.cx,
                             UNNECESSARY_UNWRAP,
+                            expr.hir_id,
                             expr.span,
                             &format!(
                                 "called `{}` on `{}` after checking its variant with `{}`",
@@ -283,9 +284,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                             },
                         );
                     } else {
-                        span_lint_and_then(
+                        span_lint_hir_and_then(
                             self.cx,
                             PANICKING_UNWRAP,
+                            expr.hir_id,
                             expr.span,
                             &format!("this call to `{}()` will always panic",
                             method_name.ident.name),

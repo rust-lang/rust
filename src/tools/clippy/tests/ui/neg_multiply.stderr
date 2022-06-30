@@ -36,5 +36,17 @@ error: this multiplication by -1 can be written more succinctly
 LL |     0xcafe | 0xff00 * -1;
    |              ^^^^^^^^^^^ help: consider using: `-0xff00`
 
-error: aborting due to 6 previous errors
+error: this multiplication by -1 can be written more succinctly
+  --> $DIR/neg_multiply.rs:41:5
+   |
+LL |     3_usize as i32 * -1;
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `-(3_usize as i32)`
+
+error: this multiplication by -1 can be written more succinctly
+  --> $DIR/neg_multiply.rs:42:5
+   |
+LL |     (3_usize as i32) * -1;
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `-(3_usize as i32)`
+
+error: aborting due to 8 previous errors
 
