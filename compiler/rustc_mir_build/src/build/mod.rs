@@ -997,7 +997,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 continue;
             };
             let pat = match tcx.hir().get(arg.pat.hir_id) {
-                Node::Pat(pat) | Node::Binding(pat) => pat,
+                Node::Pat(pat) => pat,
                 node => bug!("pattern became {:?}", node),
             };
             let pattern = pat_from_hir(tcx, self.param_env, self.typeck_results, pat);

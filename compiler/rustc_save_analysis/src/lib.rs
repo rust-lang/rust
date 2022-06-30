@@ -623,9 +623,9 @@ impl<'tcx> SaveContext<'tcx> {
                 }
             },
 
-            Node::Binding(&hir::Pat {
-                kind: hir::PatKind::Binding(_, canonical_id, ..), ..
-            }) => Res::Local(canonical_id),
+            Node::Pat(&hir::Pat { kind: hir::PatKind::Binding(_, canonical_id, ..), .. }) => {
+                Res::Local(canonical_id)
+            }
 
             _ => Res::Err,
         }
