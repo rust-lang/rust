@@ -1,8 +1,8 @@
-error: Undefined Behavior: type validation failed: encountered uninitialized bytes, but expected a boolean
+error: Undefined Behavior: constructing invalid value: encountered uninitialized bytes, but expected a boolean
   --> $DIR/invalid_bool_uninit.rs:LL:CC
    |
 LL |     let _b = unsafe { MyUninit { init: () }.uninit };
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a boolean
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered uninitialized bytes, but expected a boolean
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

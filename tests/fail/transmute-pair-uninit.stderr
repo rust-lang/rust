@@ -1,8 +1,8 @@
-error: Undefined Behavior: type validation failed: encountered uninitialized bytes, but expected initialized bytes
+error: Undefined Behavior: constructing invalid value: encountered uninitialized bytes, but expected initialized bytes
   --> $DIR/transmute-pair-uninit.rs:LL:CC
    |
 LL |     let v = unsafe { *z.offset(first_undef) };
-   |                      ^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized bytes
+   |                      ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered uninitialized bytes, but expected initialized bytes
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

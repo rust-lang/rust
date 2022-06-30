@@ -2,5 +2,5 @@
 
 fn main() {
     let _val = unsafe { std::mem::MaybeUninit::<f32>::uninit().assume_init() };
-    //~^ ERROR type validation failed at .value: encountered uninitialized bytes, but expected initialized bytes
+    //~^ ERROR constructing invalid value at .value: encountered uninitialized bytes, but expected initialized bytes
 }

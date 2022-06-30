@@ -1,8 +1,8 @@
-error: Undefined Behavior: type validation failed: encountered dangling vtable pointer in wide pointer
+error: Undefined Behavior: constructing invalid value: encountered dangling vtable pointer in wide pointer
   --> $DIR/invalid_wide_raw.rs:LL:CC
    |
 LL |     dbg!(S { x: unsafe { std::mem::transmute((0usize, 0usize)) } });
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered dangling vtable pointer in wide pointer
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered dangling vtable pointer in wide pointer
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -1,8 +1,8 @@
-error: Undefined Behavior: type validation failed: encountered invalid drop function pointer in vtable (function has incompatible signature)
+error: Undefined Behavior: constructing invalid value: encountered invalid drop function pointer in vtable (function has incompatible signature)
   --> $DIR/issue-miri-1112.rs:LL:CC
    |
 LL |         let obj = std::mem::transmute::<FatPointer, *mut FunnyPointer>(obj);
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered invalid drop function pointer in vtable (function has incompatible signature)
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered invalid drop function pointer in vtable (function has incompatible signature)
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

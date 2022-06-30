@@ -1,8 +1,8 @@
-error: Undefined Behavior: type validation failed: encountered 0x02, but expected a boolean
+error: Undefined Behavior: constructing invalid value: encountered 0x02, but expected a boolean
   --> $DIR/invalid_bool.rs:LL:CC
    |
 LL |     let _b = unsafe { std::mem::transmute::<u8, bool>(2) };
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x02, but expected a boolean
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0x02, but expected a boolean
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

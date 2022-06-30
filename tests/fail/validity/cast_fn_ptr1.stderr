@@ -1,8 +1,8 @@
-error: Undefined Behavior: type validation failed: encountered a null reference
+error: Undefined Behavior: constructing invalid value: encountered a null reference
   --> $DIR/cast_fn_ptr1.rs:LL:CC
    |
 LL |     g(0usize as *const i32)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a null reference
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a null reference
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
