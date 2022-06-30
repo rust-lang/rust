@@ -185,6 +185,10 @@ impl<'tcx> TypeSuperVisitable<'tcx> for ConstantKind<'tcx> {
         match *self {
             ConstantKind::Ty(c) => c.visit_with(visitor),
             ConstantKind::Val(_, t) => t.visit_with(visitor),
+            ConstantKind::Unevaluated(uv, t) => {
+                uv.visit_with(visitor)?;
+                t.visit_with(visitor)
+            }
         }
     }
 }

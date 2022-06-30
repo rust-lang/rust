@@ -313,7 +313,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         }
 
         match constant {
-            ConstantKind::Ty(_) => constant.super_visit_with(self),
+            ConstantKind::Ty(ct) => ct.visit_with(self),
             ConstantKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted: Some(p) }, _)
                 // Avoid considering `T` unused when constants are of the form:
                 //   `<Self as Foo<T>>::foo::promoted[p]`

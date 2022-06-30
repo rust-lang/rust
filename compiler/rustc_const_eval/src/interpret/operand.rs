@@ -585,7 +585,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         uneval: &ty::Unevaluated<'tcx>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let instance = self.resolve(uneval.def, uneval.substs)?;
-        Ok(self.eval_to_allocation(GlobalId { instance, promoted: None })?.into())
+        Ok(self.eval_to_allocation(GlobalId { instance, promoted: uneval.promoted })?.into())
     }
 
     pub fn mir_const_to_op(
