@@ -1,8 +1,7 @@
 #![deny(unused_must_use)]
 
 use crate::diagnostics::error::{
-    span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err,
-    SessionDiagnosticDeriveError,
+    span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err, DiagnosticDeriveError,
 };
 use crate::diagnostics::utils::{
     report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span,
@@ -214,7 +213,7 @@ impl<'a> HasFieldMap for SessionSubdiagnosticDeriveBuilder<'a> {
 }
 
 impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
-    fn identify_kind(&mut self) -> Result<(), SessionDiagnosticDeriveError> {
+    fn identify_kind(&mut self) -> Result<(), DiagnosticDeriveError> {
         for attr in self.variant.ast().attrs {
             let span = attr.span().unwrap();
 
@@ -351,7 +350,7 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
         &mut self,
         binding: &BindingInfo<'_>,
         is_suggestion: bool,
-    ) -> Result<TokenStream, SessionDiagnosticDeriveError> {
+    ) -> Result<TokenStream, DiagnosticDeriveError> {
         let ast = binding.ast();
 
         let inner_ty = FieldInnerTy::from_type(&ast.ty);
@@ -411,7 +410,7 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
         Ok(inner_ty.with(binding, generated))
     }
 
-    fn into_tokens(&mut self) -> Result<TokenStream, SessionDiagnosticDeriveError> {
+    fn into_tokens(&mut self) -> Result<TokenStream, DiagnosticDeriveError> {
         self.identify_kind()?;
         let Some(kind) = self.kind.map(|(kind, _)| kind) else {
             throw_span_err!(
