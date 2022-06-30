@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 use std::mem::ManuallyDrop;
 
 union U1 { // OK
@@ -45,6 +44,10 @@ union U5Nested { // a nested union that drops is NOT OK
     nest: U5, //~ ERROR unions cannot contain fields that may need dropping
 }
 
+union U5Nested2 { // for now we don't special-case empty arrays
+    nest: [U5; 0], //~ ERROR unions cannot contain fields that may need dropping
+}
+
 union U6 { // OK
     s: &'static i32,
     m: &'static mut i32,
@@ -52,6 +55,11 @@ union U6 { // OK
 
 union U7<T> { // OK
     f: (&'static mut i32, ManuallyDrop<T>, i32),
+}
+
+union U8<T> { // OK
+    f1: [(&'static mut i32, i32); 8],
+    f2: [ManuallyDrop<T>; 2],
 }
 
 fn main() {}
