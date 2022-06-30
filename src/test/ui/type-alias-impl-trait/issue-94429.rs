@@ -13,7 +13,8 @@ impl Runnable for Implementor {
     type Gen = impl Generator<Yield = (), Return = ()>;
 
     fn run(&mut self) -> Self::Gen {
-        move || { //~ ERROR: type mismatch resolving
+    //~^ ERROR: type mismatch resolving
+        move || {
             yield 1;
         }
     }

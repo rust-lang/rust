@@ -7,7 +7,8 @@ type F = impl core::future::Future<Output = u8>;
 struct Bug {
     V1: [(); {
         fn concrete_use() -> F {
-            async {} //~ ERROR type mismatch
+            //~^ ERROR type mismatch
+            async {}
         }
         let f: F = async { 1 };
         //~^ ERROR `async` blocks are not allowed in constants

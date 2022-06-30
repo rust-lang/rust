@@ -1,8 +1,11 @@
 error[E0277]: can't compare `&i32` with `Bar<'b, 'a>`
-  --> $DIR/self-referential.rs:6:5
+  --> $DIR/self-referential.rs:5:31
    |
+LL | fn bar<'a, 'b>(i: &'a i32) -> Bar<'a, 'b> {
+   |                               ^^^^^^^^^^^ no implementation for `&i32 == Bar<'b, 'a>`
+LL |
 LL |     i
-   |     ^ no implementation for `&i32 == Bar<'b, 'a>`
+   |     - return type was inferred to be `&i32` here
    |
    = help: the trait `PartialEq<Bar<'b, 'a>>` is not implemented for `&i32`
    = help: the following other types implement trait `PartialEq<Rhs>`:
@@ -17,10 +20,13 @@ LL |     i
            and 6 others
 
 error[E0277]: can't compare `&i32` with `(i32, &i32)`
-  --> $DIR/self-referential.rs:12:10
+  --> $DIR/self-referential.rs:12:31
    |
+LL | fn foo<'a, 'b>(i: &'a i32) -> Foo<'a, 'b> {
+   |                               ^^^^^^^^^^^ no implementation for `&i32 == (i32, &i32)`
+LL |
 LL |     (42, i)
-   |          ^ no implementation for `&i32 == (i32, &i32)`
+   |     ------- return type was inferred to be `(i32, &i32)` here
    |
    = help: the trait `PartialEq<(i32, &i32)>` is not implemented for `&i32`
    = help: the following other types implement trait `PartialEq<Rhs>`:
@@ -35,10 +41,13 @@ LL |     (42, i)
            and 6 others
 
 error[E0277]: can't compare `&i32` with `(i32, Moo<'b, 'a>::{opaque#0})`
-  --> $DIR/self-referential.rs:18:10
+  --> $DIR/self-referential.rs:19:31
    |
+LL | fn moo<'a, 'b>(i: &'a i32) -> Moo<'a, 'b> {
+   |                               ^^^^^^^^^^^ no implementation for `&i32 == (i32, Moo<'b, 'a>::{opaque#0})`
+LL |
 LL |     (42, i)
-   |          ^ no implementation for `&i32 == (i32, Moo<'b, 'a>::{opaque#0})`
+   |     ------- return type was inferred to be `(i32, &i32)` here
    |
    = help: the trait `PartialEq<(i32, Moo<'b, 'a>::{opaque#0})>` is not implemented for `&i32`
    = help: the following other types implement trait `PartialEq<Rhs>`:

@@ -95,8 +95,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         fcx.register_infer_ok_obligations(fcx.infcx.replace_opaque_types_with_inference_vars(
             declared_ret_ty,
             body.value.hir_id,
-            DUMMY_SP,
-            traits::ObligationCauseCode::OpaqueReturnType(None),
+            decl.output.span(),
             param_env,
         ));
     // If we replaced declared_ret_ty with infer vars, then we must be infering

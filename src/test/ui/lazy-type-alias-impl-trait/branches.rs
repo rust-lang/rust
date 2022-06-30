@@ -7,8 +7,19 @@ fn foo(b: bool) -> Foo {
         vec![42_i32]
     } else {
         std::iter::empty().collect()
-        //~^ ERROR `Foo` cannot be built from an iterator over elements of type `_`
     }
+}
+
+type Bar = impl std::fmt::Debug;
+
+fn bar(b: bool) -> Bar {
+    let x: Bar = if b {
+        vec![42_i32]
+    } else {
+        std::iter::empty().collect()
+        //~^ ERROR  a value of type `Bar` cannot be built from an iterator over elements of type `_`
+    };
+    x
 }
 
 fn main() {}
