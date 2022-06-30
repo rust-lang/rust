@@ -61,7 +61,7 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
     MIRI_TEST_TARGET=i686-pc-windows-msvc run_tests
     MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec
-    MIRI_NO_STD=1 ./miri run tests/pass/no_std.rs --target thumbv7em-none-eabihf # no_std embedded architecture minimal test
+    MIRI_TEST_TARGET=thumbv7em-none-eabihf MIRI_NO_STD=1 run_tests_minimal no_std # no_std embedded architecture
     ;;
   x86_64-apple-darwin)
     MIRI_TEST_TARGET=mips64-unknown-linux-gnuabi64 run_tests # big-endian architecture
