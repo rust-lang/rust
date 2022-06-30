@@ -1772,9 +1772,11 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	/* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
 	   so don't bump down the main content or the sidebar. */
 	.source main,
-	.source .sidebar {
+	.rustdoc.source .sidebar {
 		top: 0;
 		padding: 0;
+		height: 100vh;
+		border: 0;
 	}
 
 	.sidebar.shown,
@@ -1924,6 +1926,9 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		width: unset;
 		border-top-right-radius: unset;
 		border-bottom-right-radius: unset;
+		position: sticky;
+		border: 0;
+		border-bottom: 1px solid;
 	}
 
 	#source-sidebar {
