@@ -91,6 +91,8 @@ cargo dev fmt
 cargo dev update_lints
 # create a new lint and register it
 cargo dev new_lint
+# deprecate a lint and attempt to remove code relating to it
+cargo dev deprecate
 # automatically formatting all code before each commit
 cargo dev setup git-hook
 # (experimental) Setup Clippy to work with IntelliJ-Rust
