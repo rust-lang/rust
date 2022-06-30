@@ -324,7 +324,7 @@ function all() {
 }
 
 if [ ${#funcs[@]} -eq 0 ]; then
-    echo "No command passed, running `--all`..."
+    echo "No command passed, running '--all'..."
     all
 else
     for t in ${funcs[@]}; do
