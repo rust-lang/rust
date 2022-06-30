@@ -285,8 +285,9 @@ environment variable. We first document the most relevant and most commonly used
   harness](https://github.com/rust-lang/miri/issues/1702). This has no effect unless
   `-Zmiri-disable-isolation` is also set.
 * `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
-  be used multiple times to forward several variables. This has no effect if
-  `-Zmiri-disable-isolation` is set.
+  be used multiple times to forward several variables. This takes precedence over
+  `-Zmiri-env-exclude`: if a variable is both forwarded and exluced, it *will* get forwarded. This
+  means in particular `-Zmiri-env-forward=TERM` overwrites the default exclusion of `TERM`.
 * `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
   remaining threads to exist when the main thread exits.
 * `-Zmiri-permissive-provenance` disables the warning for integer-to-pointer casts and
