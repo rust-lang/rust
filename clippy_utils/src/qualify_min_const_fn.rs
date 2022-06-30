@@ -211,6 +211,9 @@ fn check_statement<'tcx>(
         StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
             check_place(tcx, **place, span, body)
         },
+        StatementKind::Assume(box op) => {
+            check_operand(tcx, op, span, body)
+        },
 
         StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
             check_operand(tcx, dst, span, body)?;
