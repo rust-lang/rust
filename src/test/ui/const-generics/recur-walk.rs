@@ -13,4 +13,12 @@ fn bar<const N: usize>() {
     foo::<LEN>([123]);
 }
 
+fn baz<const A: usize>(a: [u32; A]) -> [u32; A + 1] {
+    panic!()
+}
+
+fn blah<T>() {
+    baz::<{1 + 2}>([123]);
+}
+
 fn main() {}
