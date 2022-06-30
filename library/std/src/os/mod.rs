@@ -63,7 +63,6 @@ pub mod windows {}
 #[cfg(any(unix, doc))]
 pub mod unix;
 
-
 // linux
 #[cfg(not(all(
     doc,
