@@ -525,13 +525,6 @@ declare_features! (
     (incomplete, unsized_locals, "1.30.0", Some(48055), None),
     /// Allows unsized tuple coercion.
     (active, unsized_tuple_coercion, "1.20.0", Some(42877), None),
-    /// Allows `union`s to implement `Drop`. Moreover, `union`s may now include fields
-    /// that don't implement `Copy` as long as they don't have any drop glue.
-    /// This is checked recursively. On encountering type variable where no progress can be made,
-    /// `T: Copy` is used as a substitute for "no drop glue".
-    ///
-    /// NOTE: A limited form of `union U { ... }` was accepted in 1.19.0.
-    (active, untagged_unions, "1.13.0", Some(55149), None),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (active, used_with_arg, "1.60.0", Some(93798), None),
     /// Allows `extern "wasm" fn`

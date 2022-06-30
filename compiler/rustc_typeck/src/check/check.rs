@@ -402,11 +402,37 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
     let item_type = tcx.type_of(item_def_id);
     if let ty::Adt(def, substs) = item_type.kind() {
         assert!(def.is_union());
-        let fields = &def.non_enum_variant().fields;
+
+        fn allowed_union_field<'tcx>(
+            ty: Ty<'tcx>,
+            tcx: TyCtxt<'tcx>,
+            param_env: ty::ParamEnv<'tcx>,
+            span: Span,
+        ) -> bool {
+            // We don't just accept all !needs_drop fields, due to semver concerns.
+            match ty.kind() {
+                ty::Ref(..) => true, // references never drop (even mutable refs, which are non-Copy and hence fail the later check)
+                ty::Tuple(tys) => {
+                    // allow tuples of allowed types
+                    tys.iter().all(|ty| allowed_union_field(ty, tcx, param_env, span))
+                }
+                ty::Array(elem, _len) => {
+                    // Like `Copy`, we do *not* special-case length 0.
+                    allowed_union_field(*elem, tcx, param_env, span)
+                }
+                _ => {
+                    // Fallback case: allow `ManuallyDrop` and things that are `Copy`.
+                    ty.ty_adt_def().map_or(false, |adt_def| adt_def.is_manually_drop())
+                        || ty.is_copy_modulo_regions(tcx.at(span), param_env)
+                }
+            }
+        }
+
         let param_env = tcx.param_env(item_def_id);
-        for field in fields {
+        for field in &def.non_enum_variant().fields {
             let field_ty = field.ty(tcx, substs);
-            if field_ty.needs_drop(tcx, param_env) {
+
+            if !allowed_union_field(field_ty, tcx, param_env, span) {
                 let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {
                     // We are currently checking the type this field came from, so it must be local.
                     Some(Node::Field(field)) => (field.span, field.ty.span),
@@ -433,6 +459,9 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 )
                 .emit();
                 return false;
+            } else if field_ty.needs_drop(tcx, param_env) {
+                // This should never happen. But we can get here e.g. in case of name resolution errors.
+                tcx.sess.delay_span_bug(span, "we should never accept maybe-dropping union fields");
             }
         }
     } else {

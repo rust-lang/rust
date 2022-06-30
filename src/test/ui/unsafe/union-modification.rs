@@ -2,8 +2,6 @@
 // revisions: mir thir
 // [thir]compile-flags: -Z thir-unsafeck
 
-#![feature(untagged_unions)]
-
 union Foo {
     bar: i8,
     _blah: isize,
