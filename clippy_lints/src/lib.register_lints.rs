@@ -56,6 +56,7 @@ store.register_lints(&[
     await_holding_invalid::AWAIT_HOLDING_REFCELL_REF,
     blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS,
     bool_assert_comparison::BOOL_ASSERT_COMPARISON,
+    bool_to_int_with_if::BOOL_TO_INT_WITH_IF,
     booleans::NONMINIMAL_BOOL,
     booleans::OVERLY_COMPLEX_BOOL_EXPR,
     borrow_deref_ref::BORROW_DEREF_REF,
