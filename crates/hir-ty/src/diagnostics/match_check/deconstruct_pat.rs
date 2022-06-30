@@ -1030,7 +1030,7 @@ impl<'p> DeconstructedPat<'p> {
             Wildcard | NonExhaustive => PatKind::Wild,
             Missing { .. } => {
                 never!(
-                    "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
+                    "trying to convert a `Missing` constructor into a `Pat`; this is a bug, \
                     `Missing` should have been processed in `apply_constructors`"
                 );
                 PatKind::Wild
