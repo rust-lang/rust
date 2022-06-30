@@ -6,14 +6,6 @@ LL |     *(u.p) = 13;
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-error[E0133]: assignment to union field that might need dropping is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:38:5
-   |
-LL |     u.a = (ManuallyDrop::new(RefCell::new(0)), 1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assignment to union field that might need dropping
-   |
-   = note: the previous content of the field will be dropped, which causes undefined behavior if the field was not properly initialized
-
 error[E0133]: access to union field is unsafe and requires unsafe function or block
   --> $DIR/union-unsafe.rs:46:6
    |
@@ -78,6 +70,6 @@ LL |     *u3.a = String::from("new");
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0133`.
