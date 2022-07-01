@@ -15,7 +15,7 @@ pub fn expand_deriving_hash(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    let path = Path::new_(pathvec_std!(hash::Hash), None, vec![], PathKind::Std);
+    let path = Path::new_(pathvec_std!(hash::Hash), vec![], PathKind::Std);
 
     let typaram = sym::__H;
 
@@ -26,16 +26,14 @@ pub fn expand_deriving_hash(
         path,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::hash,
             generics: Bounds { bounds: vec![(typaram, vec![path_std!(hash::Hasher)])] },
-            explicit_self: borrowed_explicit_self(),
-            args: vec![(Ptr(Box::new(Literal(arg)), Borrowed(None, Mutability::Mut)), sym::state)],
-            ret_ty: nil_ty(),
+            explicit_self: true,
+            args: vec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
+            ret_ty: Unit,
             attributes: vec![],
-            is_unsafe: false,
             unify_fieldless_variants: true,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 hash_substructure(a, b, c)

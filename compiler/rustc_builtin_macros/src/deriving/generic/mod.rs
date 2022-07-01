@@ -146,8 +146,6 @@
 //!
 //! ```{.text}
 //! EnumNonMatchingCollapsed(
-//!     vec![<ident of self>, <ident of __arg_1>],
-//!     &[<ast::Variant for C0>, <ast::Variant for C1>],
 //!     &[<ident for self index value>, <ident of __arg_1 index value>])
 //! ```
 //!
@@ -190,7 +188,7 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
-use ty::{Bounds, Path, Ptr, PtrTy, Self_, Ty};
+use ty::{Bounds, Path, Ref, Self_, Ty};
 
 use crate::deriving;
 
@@ -212,9 +210,6 @@ pub struct TraitDef<'a> {
     /// Any extra lifetimes and/or bounds, e.g., `D: serialize::Decoder`
     pub generics: Bounds,
 
-    /// Is it an `unsafe` trait?
-    pub is_unsafe: bool,
-
     /// Can this trait be derived for unions?
     pub supports_unions: bool,
 
@@ -229,10 +224,8 @@ pub struct MethodDef<'a> {
     /// List of generics, e.g., `R: rand::Rng`
     pub generics: Bounds,
 
-    /// Whether there is a self argument (outer Option) i.e., whether
-    /// this is a static function, and whether it is a pointer (inner
-    /// Option)
-    pub explicit_self: Option<Option<PtrTy>>,
+    /// Is there is a `&self` argument? If not, it is a static function.
+    pub explicit_self: bool,
 
     /// Arguments other than the self argument
     pub args: Vec<(Ty, Symbol)>,
@@ -241,9 +234,6 @@ pub struct MethodDef<'a> {
     pub ret_ty: Ty,
 
     pub attributes: Vec<ast::Attribute>,
-
-    // Is it an `unsafe fn`?
-    pub is_unsafe: bool,
 
     /// Can we combine fieldless variants for enums into a single match arm?
     pub unify_fieldless_variants: bool,
@@ -255,14 +245,7 @@ pub struct MethodDef<'a> {
 pub struct Substructure<'a> {
     /// ident of self
     pub type_ident: Ident,
-    /// ident of the method
-    pub method_ident: Ident,
-    /// dereferenced access to any [`Self_`] or [`Ptr(Self_, _)`][ptr] arguments
-    ///
-    /// [`Self_`]: ty::Ty::Self_
-    /// [ptr]: ty::Ty::Ptr
-    pub self_args: &'a [P<Expr>],
-    /// verbatim access to any other arguments
+    /// verbatim access to any non-self arguments
     pub nonself_args: &'a [P<Expr>],
     pub fields: &'a SubstructureFields<'a>,
 }
@@ -299,13 +282,10 @@ pub enum SubstructureFields<'a> {
     /// variant.
     EnumMatching(usize, usize, &'a ast::Variant, Vec<FieldInfo<'a>>),
 
-    /// Non-matching variants of the enum, but with all state hidden from
-    /// the consequent code. The first component holds `Ident`s for all of
-    /// the `Self` arguments; the second component is a slice of all of the
-    /// variants for the enum itself, and the third component is a list of
-    /// `Ident`s bound to the variant index values for each of the actual
-    /// input `Self` arguments.
-    EnumNonMatchingCollapsed(Vec<Ident>, &'a [ast::Variant], &'a [Ident]),
+    /// Non-matching variants of the enum, but with all state hidden from the
+    /// consequent code. The field is a list of `Ident`s bound to the variant
+    /// index values for each of the actual input `Self` arguments.
+    EnumNonMatchingCollapsed(&'a [Ident]),
 
     /// A static method where `Self` is a struct.
     StaticStruct(&'a ast::VariantData, StaticFields),
@@ -318,13 +298,10 @@ pub enum SubstructureFields<'a> {
 pub type CombineSubstructureFunc<'a> =
     Box<dyn FnMut(&mut ExtCtxt<'_>, Span, &Substructure<'_>) -> P<Expr> + 'a>;
 
-/// Deal with non-matching enum variants. The tuple is a list of
-/// identifiers (one for each `Self` argument, which could be any of the
-/// variants since they have been collapsed together) and the identifiers
-/// holding the variant index value for each of the `Self` arguments. The
-/// last argument is all the non-`Self` args of the method being derived.
+/// Deal with non-matching enum variants. The slice is the identifiers holding
+/// the variant index value for each of the `Self` arguments.
 pub type EnumNonMatchCollapsedFunc<'a> =
-    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
+    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, &[Ident]) -> P<Expr> + 'a>;
 
 pub fn combine_substructure(
     f: CombineSubstructureFunc<'_>,
@@ -727,14 +704,12 @@ impl<'a> TraitDef<'a> {
         let mut a = vec![attr, unused_qual];
         a.extend(self.attributes.iter().cloned());
 
-        let unsafety = if self.is_unsafe { ast::Unsafe::Yes(self.span) } else { ast::Unsafe::No };
-
         cx.item(
             self.span,
             Ident::empty(),
             a,
             ast::ItemKind::Impl(Box::new(ast::Impl {
-                unsafety,
+                unsafety: ast::Unsafe::No,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
                 constness: ast::Const::No,
@@ -771,7 +746,6 @@ impl<'a> TraitDef<'a> {
                         self,
                         struct_def,
                         type_ident,
-                        &self_args,
                         &nonself_args,
                     )
                 } else {
@@ -820,7 +794,6 @@ impl<'a> TraitDef<'a> {
                         self,
                         enum_def,
                         type_ident,
-                        &self_args,
                         &nonself_args,
                     )
                 } else {
@@ -848,18 +821,11 @@ impl<'a> MethodDef<'a> {
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
-        self_args: &[P<Expr>],
         nonself_args: &[P<Expr>],
         fields: &SubstructureFields<'_>,
     ) -> P<Expr> {
         let span = trait_.span;
-        let substructure = Substructure {
-            type_ident,
-            method_ident: Ident::new(self.name, span),
-            self_args,
-            nonself_args,
-            fields,
-        };
+        let substructure = Substructure { type_ident, nonself_args, fields };
         let mut f = self.combine_substructure.borrow_mut();
         let f: &mut CombineSubstructureFunc<'_> = &mut *f;
         f(cx, span, &substructure)
@@ -876,7 +842,7 @@ impl<'a> MethodDef<'a> {
     }
 
     fn is_static(&self) -> bool {
-        self.explicit_self.is_none()
+        !self.explicit_self
     }
 
     fn split_self_nonself_args(
@@ -889,17 +855,15 @@ impl<'a> MethodDef<'a> {
         let mut self_args = Vec::new();
         let mut nonself_args = Vec::new();
         let mut arg_tys = Vec::new();
-        let mut nonstatic = false;
         let span = trait_.span;
 
-        let ast_explicit_self = self.explicit_self.as_ref().map(|self_ptr| {
-            let (self_expr, explicit_self) = ty::get_explicit_self(cx, span, self_ptr);
-
+        let ast_explicit_self = if self.explicit_self {
+            let (self_expr, explicit_self) = ty::get_explicit_self(cx, span);
             self_args.push(self_expr);
-            nonstatic = true;
-
-            explicit_self
-        });
+            Some(explicit_self)
+        } else {
+            None
+        };
 
         for (ty, name) in self.args.iter() {
             let ast_ty = ty.to_ty(cx, span, type_ident, generics);
@@ -911,10 +875,10 @@ impl<'a> MethodDef<'a> {
             match *ty {
                 // for static methods, just treat any Self
                 // arguments as a normal arg
-                Self_ if nonstatic => {
+                Self_ if !self.is_static() => {
                     self_args.push(arg_expr);
                 }
-                Ptr(ref ty, _) if matches!(**ty, Self_) && nonstatic => {
+                Ref(ref ty, _) if matches!(**ty, Self_) && !self.is_static() => {
                     self_args.push(cx.expr_deref(span, arg_expr))
                 }
                 _ => {
@@ -955,15 +919,9 @@ impl<'a> MethodDef<'a> {
         let fn_decl = cx.fn_decl(args, ast::FnRetTy::Ty(ret_type));
         let body_block = cx.block_expr(body);
 
-        let unsafety = if self.is_unsafe { ast::Unsafe::Yes(span) } else { ast::Unsafe::No };
-
         let trait_lo_sp = span.shrink_to_lo();
 
-        let sig = ast::FnSig {
-            header: ast::FnHeader { unsafety, ext: ast::Extern::None, ..ast::FnHeader::default() },
-            decl: fn_decl,
-            span,
-        };
+        let sig = ast::FnSig { header: ast::FnHeader::default(), decl: fn_decl, span };
         let defaultness = ast::Defaultness::Final;
 
         // Create the method.
@@ -1083,7 +1041,6 @@ impl<'a> MethodDef<'a> {
             cx,
             trait_,
             type_ident,
-            self_args,
             nonself_args,
             &Struct(struct_def, fields),
         );
@@ -1104,7 +1061,6 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         struct_def: &VariantData,
         type_ident: Ident,
-        self_args: &[P<Expr>],
         nonself_args: &[P<Expr>],
     ) -> P<Expr> {
         let summary = trait_.summarise_struct(cx, struct_def);
@@ -1113,7 +1069,6 @@ impl<'a> MethodDef<'a> {
             cx,
             trait_,
             type_ident,
-            self_args,
             nonself_args,
             &StaticStruct(struct_def, summary),
         )
@@ -1184,11 +1139,6 @@ impl<'a> MethodDef<'a> {
             )
             .collect::<Vec<String>>();
 
-        let self_arg_idents = self_arg_names
-            .iter()
-            .map(|name| Ident::from_str_and_span(name, span))
-            .collect::<Vec<Ident>>();
-
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to an int
         // value corresponding to its discriminant.
@@ -1203,8 +1153,7 @@ impl<'a> MethodDef<'a> {
         // Builds, via callback to call_substructure_method, the
         // delegated expression that handles the catch-all case,
         // using `__variants_tuple` to drive logic if necessary.
-        let catch_all_substructure =
-            EnumNonMatchingCollapsed(self_arg_idents, &variants, &vi_idents);
+        let catch_all_substructure = EnumNonMatchingCollapsed(&vi_idents);
 
         let first_fieldless = variants.iter().find(|v| v.data.fields().is_empty());
 
@@ -1303,7 +1252,6 @@ impl<'a> MethodDef<'a> {
                     cx,
                     trait_,
                     type_ident,
-                    &self_args[..],
                     nonself_args,
                     &substructure,
                 );
@@ -1322,7 +1270,6 @@ impl<'a> MethodDef<'a> {
                     cx,
                     trait_,
                     type_ident,
-                    &self_args[..],
                     nonself_args,
                     &substructure,
                 ))
@@ -1393,7 +1340,6 @@ impl<'a> MethodDef<'a> {
                 cx,
                 trait_,
                 type_ident,
-                &self_args[..],
                 nonself_args,
                 &catch_all_substructure,
             );
@@ -1491,7 +1437,6 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         enum_def: &EnumDef,
         type_ident: Ident,
-        self_args: &[P<Expr>],
         nonself_args: &[P<Expr>],
     ) -> P<Expr> {
         let summary = enum_def
@@ -1507,7 +1452,6 @@ impl<'a> MethodDef<'a> {
             cx,
             trait_,
             type_ident,
-            self_args,
             nonself_args,
             &StaticEnum(enum_def, summary),
         )
@@ -1628,7 +1572,7 @@ impl<'a> TraitDef<'a> {
 
 // helpful premade recipes
 
-pub fn cs_fold_fields<'a, F>(
+fn cs_fold_fields<'a, F>(
     use_foldl: bool,
     mut f: F,
     base: P<Expr>,
@@ -1650,21 +1594,19 @@ where
     }
 }
 
-pub fn cs_fold_enumnonmatch(
+fn cs_fold_enumnonmatch(
     mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substructure: &Substructure<'_>,
 ) -> P<Expr> {
     match *substructure.fields {
-        EnumNonMatchingCollapsed(ref all_args, _, tuple) => {
-            enum_nonmatch_f(cx, trait_span, (&all_args[..], tuple), substructure.nonself_args)
-        }
+        EnumNonMatchingCollapsed(tuple) => enum_nonmatch_f(cx, trait_span, tuple),
         _ => cx.span_bug(trait_span, "cs_fold_enumnonmatch expected an EnumNonMatchingCollapsed"),
     }
 }
 
-pub fn cs_fold_static(cx: &mut ExtCtxt<'_>, trait_span: Span) -> P<Expr> {
+fn cs_fold_static(cx: &mut ExtCtxt<'_>, trait_span: Span) -> P<Expr> {
     cx.span_bug(trait_span, "static function in `derive`")
 }
 
@@ -1717,22 +1659,21 @@ where
 {
     match *substructure.fields {
         EnumMatching(.., ref all_fields) | Struct(_, ref all_fields) => {
-            let (base, all_fields) = match (all_fields.is_empty(), use_foldl) {
+            let (base, rest) = match (all_fields.is_empty(), use_foldl) {
                 (false, true) => {
-                    let field = &all_fields[0];
-                    let args = (field.span, field.self_.clone(), &field.other[..]);
-                    (b(cx, Some(args)), &all_fields[1..])
+                    let (first, rest) = all_fields.split_first().unwrap();
+                    let args = (first.span, first.self_.clone(), &first.other[..]);
+                    (b(cx, Some(args)), rest)
                 }
                 (false, false) => {
-                    let idx = all_fields.len() - 1;
-                    let field = &all_fields[idx];
-                    let args = (field.span, field.self_.clone(), &field.other[..]);
-                    (b(cx, Some(args)), &all_fields[..idx])
+                    let (last, rest) = all_fields.split_last().unwrap();
+                    let args = (last.span, last.self_.clone(), &last.other[..]);
+                    (b(cx, Some(args)), rest)
                 }
                 (true, _) => (b(cx, None), &all_fields[..]),
             };
 
-            cs_fold_fields(use_foldl, f, base, cx, all_fields)
+            cs_fold_fields(use_foldl, f, base, cx, rest)
         }
         EnumNonMatchingCollapsed(..) => {
             cs_fold_enumnonmatch(enum_nonmatch_f, cx, trait_span, substructure)

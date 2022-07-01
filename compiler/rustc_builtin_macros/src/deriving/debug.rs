@@ -16,8 +16,7 @@ pub fn expand_deriving_debug(
     push: &mut dyn FnMut(Annotatable),
 ) {
     // &mut ::std::fmt::Formatter
-    let fmtr =
-        Ptr(Box::new(Literal(path_std!(fmt::Formatter))), Borrowed(None, ast::Mutability::Mut));
+    let fmtr = Ref(Box::new(Path(path_std!(fmt::Formatter))), ast::Mutability::Mut);
 
     let trait_def = TraitDef {
         span,
@@ -25,16 +24,14 @@ pub fn expand_deriving_debug(
         path: path_std!(fmt::Debug),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::fmt,
             generics: Bounds::empty(),
-            explicit_self: borrowed_explicit_self(),
+            explicit_self: true,
             args: vec![(fmtr, sym::f)],
-            ret_ty: Literal(path_std!(fmt::Result)),
+            ret_ty: Path(path_std!(fmt::Result)),
             attributes: Vec::new(),
-            is_unsafe: false,
             unify_fieldless_variants: false,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 show_substructure(a, b, c)
@@ -64,8 +61,6 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     let (is_struct, args_per_field) = match vdata {
         ast::VariantData::Unit(..) => {
             // Special fast path for unit variants.
-            //let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
-            //return cx.expr_call_global(span, fn_path_write_str, vec![fmt, name]);
             assert!(fields.is_empty());
             (false, 0)
         }

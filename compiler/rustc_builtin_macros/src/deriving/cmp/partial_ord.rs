@@ -15,13 +15,9 @@ pub fn expand_deriving_partial_ord(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    let ordering_ty = Literal(path_std!(cmp::Ordering));
-    let ret_ty = Literal(Path::new_(
-        pathvec_std!(option::Option),
-        None,
-        vec![Box::new(ordering_ty)],
-        PathKind::Std,
-    ));
+    let ordering_ty = Path(path_std!(cmp::Ordering));
+    let ret_ty =
+        Path(Path::new_(pathvec_std!(option::Option), vec![Box::new(ordering_ty)], PathKind::Std));
 
     let inline = cx.meta_word(span, sym::inline);
     let attrs = vec![cx.attribute(inline)];
@@ -29,11 +25,10 @@ pub fn expand_deriving_partial_ord(
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
         generics: Bounds::empty(),
-        explicit_self: borrowed_explicit_self(),
-        args: vec![(borrowed_self(), sym::other)],
+        explicit_self: true,
+        args: vec![(self_ref(), sym::other)],
         ret_ty,
         attributes: attrs,
-        is_unsafe: false,
         unify_fieldless_variants: true,
         combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
             cs_partial_cmp(cx, span, substr)
@@ -46,7 +41,6 @@ pub fn expand_deriving_partial_ord(
         path: path_std!(cmp::PartialOrd),
         additional_bounds: vec![],
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![partial_cmp_def],
         associated_types: Vec::new(),
@@ -102,8 +96,8 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
             cx.expr_match(span, new, vec![eq_arm, neq_arm])
         },
         equals_expr,
-        Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
-            if self_args.len() != 2 {
+        Box::new(|cx, span, tag_tuple| {
+            if tag_tuple.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
             } else {
                 let lft = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[0]));
