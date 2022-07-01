@@ -624,7 +624,7 @@ impl FromWithTcx<clean::VariantStruct> for Struct {
         let clean::VariantStruct { struct_type, fields } = struct_;
         Struct {
             struct_type: from_ctor_kind(struct_type),
-            generics: Default::default(),
+            generics: Generics { params: vec![], where_predicates: vec![] },
             fields_stripped,
             fields: ids(fields, tcx),
             impls: Vec::new(),
