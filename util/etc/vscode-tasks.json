@@ -28,7 +28,7 @@
                     // This task will usually execute all UI tests inside `tests/ui` you can
                     // optionally uncomment the line below and only run a specific test.
                     //
-                    // See: https://github.com/rust-lang/rust-clippy/blob/master/doc/adding_lints.md#testing
+                    // See: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/adding_lints.md#testing
                     //
                     // "TESTNAME": "<TODO>",
                 },
