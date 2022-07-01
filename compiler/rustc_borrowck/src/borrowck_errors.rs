@@ -478,7 +478,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         struct_span_err!(self, span, E0716, "temporary value dropped while borrowed",)
     }
 
-    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
+    #[rustc_lint_diagnostics]
     fn struct_span_err_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,

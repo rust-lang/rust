@@ -286,7 +286,7 @@ impl Diagnostic {
     ///
     /// This span is *not* considered a ["primary span"][`MultiSpan`]; only
     /// the `Span` supplied when creating the diagnostic is primary.
-    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
+    #[rustc_lint_diagnostics]
     pub fn span_label(&mut self, span: Span, label: impl Into<SubdiagnosticMessage>) -> &mut Self {
         self.span.push_span_label(span, self.subdiagnostic_message_to_diagnostic_message(label));
         self
@@ -405,7 +405,7 @@ impl Diagnostic {
     }
 
     /// Add a note attached to this diagnostic.
-    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
+    #[rustc_lint_diagnostics]
     pub fn note(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
         self.sub(Level::Note, msg, MultiSpan::new(), None);
         self
@@ -428,7 +428,7 @@ impl Diagnostic {
 
     /// Prints the span with a note above it.
     /// This is like [`Diagnostic::note()`], but it gets its own span.
-    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
+    #[rustc_lint_diagnostics]
     pub fn span_note<S: Into<MultiSpan>>(
         &mut self,
         sp: S,
@@ -450,7 +450,7 @@ impl Diagnostic {
     }
 
     /// Add a warning attached to this diagnostic.
-    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
+    #[rustc_lint_diagnostics]
     pub fn warn(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
         self.sub(Level::Warning(None), msg, MultiSpan::new(), None);
         self
@@ -458,7 +458,7 @@ impl Diagnostic {
 
     /// Prints the span with a warning above it.
     /// This is like [`Diagnostic::warn()`], but it gets its own span.
-    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
+    #[rustc_lint_diagnostics]
     pub fn span_warn<S: Into<MultiSpan>>(
         &mut self,
         sp: S,
@@ -469,7 +469,7 @@ impl Diagnostic {
     }
 
     /// Add a help message attached to this diagnostic.
-    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
+    #[rustc_lint_diagnostics]
     pub fn help(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
         self.sub(Level::Help, msg, MultiSpan::new(), None);
         self
@@ -483,7 +483,7 @@ impl Diagnostic {
 
     /// Prints the span with some help above it.
     /// This is like [`Diagnostic::help()`], but it gets its own span.
-    #[cfg_attr(not(bootstrap), rustc_lint_diagnostics)]
+    #[rustc_lint_diagnostics]
     pub fn span_help<S: Into<MultiSpan>>(
         &mut self,
         sp: S,

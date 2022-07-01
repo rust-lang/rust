@@ -13,7 +13,6 @@
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
-#![cfg_attr(bootstrap, feature(nll))]
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
 #![allow(rustc::potential_query_instability)]

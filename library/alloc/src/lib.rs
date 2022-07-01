@@ -149,7 +149,6 @@
 #![feature(allocator_internals)]
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_bounds)]
-#![cfg_attr(bootstrap, feature(box_syntax))]
 #![feature(cfg_sanitize)]
 #![feature(const_deref)]
 #![feature(const_mut_refs)]
