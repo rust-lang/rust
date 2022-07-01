@@ -259,7 +259,23 @@ impl<'tcx> AbstractConst<'tcx> {
     pub fn root(self, tcx: TyCtxt<'tcx>) -> Node<'tcx> {
         let node = self.inner.last().copied().unwrap();
         match node {
-            Node::Leaf(leaf) => Node::Leaf(EarlyBinder(leaf).subst(tcx, self.substs)),
+            Node::Leaf(leaf) => {
+                if let ty::ConstKind::Unevaluated(uv) = leaf.kind() {
+                    if let Ok(Some(ac)) = AbstractConst::new(tcx, uv.shrink()) {
+                        return ac.root(tcx);
+                    } else if uv.substs.has_param_types_or_consts()
+                        && tcx.def_kind(uv.def.did) == DefKind::AnonConst
+                    {
+                        // FIXME(julianknodt): this doesn't actually seem to have any effect?
+                        return Node::Leaf(ty::Const::from_anon_const(
+                            tcx,
+                            uv.def.did.expect_local(),
+                        ));
+                    }
+                    // FIXME(julianknodt): handle inline consts?
+                }
+                Node::Leaf(EarlyBinder(leaf).subst(tcx, self.substs))
+            }
             Node::Cast(kind, operand, ty) => {
                 Node::Cast(kind, operand, EarlyBinder(ty).subst(tcx, self.substs))
             }
