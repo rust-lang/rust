@@ -2,7 +2,7 @@ error[E0599]: no method named `kind` found for struct `InferOk` in the current s
   --> $DIR/field-has-method.rs:19:15
    |
 LL | struct InferOk<T> {
-   |        ------- method `kind` not found for this struct
+   | ----------------- method `kind` not found for this struct
 ...
 LL |     let k = i.kind();
    |               ^^^^ method not found in `InferOk<Ty>`

@@ -2,7 +2,7 @@ error[E0599]: no method named `pick` found for struct `Chaenomeles` in the curre
   --> $DIR/dont-wrap-ambiguous-receivers.rs:18:25
    |
 LL |     pub struct Chaenomeles;
-   |                ----------- method `pick` not found for this struct
+   |     ---------------------- method `pick` not found for this struct
 ...
 LL |     banana::Chaenomeles.pick()
    |                         ^^^^ method not found in `Chaenomeles`

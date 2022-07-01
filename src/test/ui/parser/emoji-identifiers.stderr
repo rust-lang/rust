@@ -77,7 +77,7 @@ error[E0599]: no function or associated item named `full_of✨` found for struct
   --> $DIR/emoji-identifiers.rs:9:8
    |
 LL | struct 👀;
-   |        -- function or associated item `full_of✨` not found for this struct
+   | --------- function or associated item `full_of✨` not found for this struct
 ...
 LL |     👀::full_of✨()
    |         ^^^^^^^^^

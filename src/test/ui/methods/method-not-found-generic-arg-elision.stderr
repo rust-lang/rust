@@ -2,7 +2,7 @@ error[E0599]: no method named `distance` found for struct `Point<i32>` in the cu
   --> $DIR/method-not-found-generic-arg-elision.rs:82:23
    |
 LL | struct Point<T> {
-   |        ----- method `distance` not found for this struct
+   | --------------- method `distance` not found for this struct
 ...
 LL |     let d = point_i32.distance();
    |                       ^^^^^^^^ method not found in `Point<i32>`
@@ -14,7 +14,7 @@ error[E0599]: no method named `other` found for struct `Point` in the current sc
   --> $DIR/method-not-found-generic-arg-elision.rs:84:23
    |
 LL | struct Point<T> {
-   |        ----- method `other` not found for this struct
+   | --------------- method `other` not found for this struct
 ...
 LL |     let d = point_i32.other();
    |                       ^^^^^ method not found in `Point<i32>`
@@ -29,7 +29,7 @@ error[E0599]: no method named `method` found for struct `Wrapper<bool>` in the c
   --> $DIR/method-not-found-generic-arg-elision.rs:90:13
    |
 LL | struct Wrapper<T>(T);
-   |        ------- method `method` not found for this struct
+   | ----------------- method `method` not found for this struct
 ...
 LL |     wrapper.method();
    |             ^^^^^^ method not found in `Wrapper<bool>`
@@ -45,7 +45,7 @@ error[E0599]: no method named `other` found for struct `Wrapper` in the current 
   --> $DIR/method-not-found-generic-arg-elision.rs:92:13
    |
 LL | struct Wrapper<T>(T);
-   |        ------- method `other` not found for this struct
+   | ----------------- method `other` not found for this struct
 ...
 LL |     wrapper.other();
    |             ^^^^^ method not found in `Wrapper<bool>`
@@ -54,7 +54,7 @@ error[E0599]: no method named `method` found for struct `Wrapper2<'_, bool, 3_us
   --> $DIR/method-not-found-generic-arg-elision.rs:96:13
    |
 LL | struct Wrapper2<'a, T, const C: usize> {
-   |        -------- method `method` not found for this struct
+   | -------------------------------------- method `method` not found for this struct
 ...
 LL |     wrapper.method();
    |             ^^^^^^ method not found in `Wrapper2<'_, bool, 3_usize>`
@@ -68,7 +68,7 @@ error[E0599]: no method named `other` found for struct `Wrapper2` in the current
   --> $DIR/method-not-found-generic-arg-elision.rs:98:13
    |
 LL | struct Wrapper2<'a, T, const C: usize> {
-   |        -------- method `other` not found for this struct
+   | -------------------------------------- method `other` not found for this struct
 ...
 LL |     wrapper.other();
    |             ^^^^^ method not found in `Wrapper2<'_, bool, 3_usize>`
@@ -83,7 +83,7 @@ error[E0599]: the method `method` exists for struct `Struct<f64>`, but its trait
   --> $DIR/method-not-found-generic-arg-elision.rs:104:7
    |
 LL | struct Struct<T>{
-   |        ------ method `method` not found for this struct
+   | ---------------- method `method` not found for this struct
 ...
 LL |     s.method();
    |       ^^^^^^ method cannot be called on `Struct<f64>` due to unsatisfied trait bounds

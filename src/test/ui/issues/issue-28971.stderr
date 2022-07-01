@@ -2,7 +2,7 @@ error[E0599]: no variant or associated item named `Baz` found for enum `Foo` in 
   --> $DIR/issue-28971.rs:7:18
    |
 LL | enum Foo {
-   |      --- variant or associated item `Baz` not found for this enum
+   | -------- variant or associated item `Baz` not found for this enum
 ...
 LL |             Foo::Baz(..) => (),
    |                  ^^^

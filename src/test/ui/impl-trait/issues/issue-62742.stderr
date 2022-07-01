@@ -21,7 +21,7 @@ LL | pub struct RawImpl<T>(PhantomData<T>);
    | --------------------- doesn't satisfy `RawImpl<()>: Raw<()>`
 ...
 LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
-   |            -------- function or associated item `foo` not found for this struct
+   | ----------------------------------------- function or associated item `foo` not found for this struct
    |
    = note: the following trait bounds were not satisfied:
            `RawImpl<()>: Raw<()>`

@@ -348,9 +348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let type_param = generics.type_param(param_type, self.tcx);
                         Some(self.tcx.def_span(type_param.def_id))
                     }
-                    ty::Adt(def, _) if def.did().is_local() => {
-                        tcx.def_ident_span(def.did()).map(|span| span)
-                    }
+                    ty::Adt(def, _) if def.did().is_local() => Some(tcx.def_span(def.did())),
                     _ => None,
                 };
 
@@ -621,12 +619,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Find all the requirements that come from a local `impl` block.
                     let mut skip_list: FxHashSet<_> = Default::default();
                     let mut spanned_predicates: FxHashMap<MultiSpan, _> = Default::default();
-                    for (data, p, parent_p, impl_def_id, cause_span) in unsatisfied_predicates
+                    for (data, p, parent_p, impl_def_id, cause) in unsatisfied_predicates
                         .iter()
                         .filter_map(|(p, parent, c)| c.as_ref().map(|c| (p, parent, c)))
                         .filter_map(|(p, parent, c)| match c.code() {
                             ObligationCauseCode::ImplDerivedObligation(ref data) => {
-                                Some((&data.derived, p, parent, data.impl_def_id, data.span))
+                                Some((&data.derived, p, parent, data.impl_def_id, data))
                             }
                             _ => None,
                         })
@@ -695,9 +693,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     let _ = format_pred(*pred);
                                 }
                                 skip_list.insert(p);
-                                let mut spans = if cause_span != *item_span {
-                                    let mut spans: MultiSpan = cause_span.into();
-                                    spans.push_span_label(cause_span, unsatisfied_msg);
+                                let mut spans = if cause.span != *item_span {
+                                    let mut spans: MultiSpan = cause.span.into();
+                                    spans.push_span_label(cause.span, unsatisfied_msg);
                                     spans
                                 } else {
                                     ident.span.into()
@@ -709,7 +707,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                             // Unmet obligation coming from an `impl`.
                             Some(Node::Item(hir::Item {
-                                kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
+                                kind:
+                                    hir::ItemKind::Impl(hir::Impl {
+                                        of_trait, self_ty, generics, ..
+                                    }),
                                 span: item_span,
                                 ..
                             })) if !matches!(
@@ -725,14 +726,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Some(ExpnKind::Macro(MacroKind::Derive, _))
                             ) =>
                             {
+                                let sized_pred =
+                                    unsatisfied_predicates.iter().any(|(pred, _, _)| {
+                                        match pred.kind().skip_binder() {
+                                            ty::PredicateKind::Trait(pred) => {
+                                                Some(pred.def_id())
+                                                    == self.tcx.lang_items().sized_trait()
+                                                    && pred.polarity == ty::ImplPolarity::Positive
+                                            }
+                                            _ => false,
+                                        }
+                                    });
+                                for param in generics.params {
+                                    if param.span == cause.span && sized_pred {
+                                        let (sp, sugg) = match param.colon_span {
+                                            Some(sp) => (sp.shrink_to_hi(), " ?Sized +"),
+                                            None => (param.span.shrink_to_hi(), ": ?Sized"),
+                                        };
+                                        err.span_suggestion_verbose(
+                                            sp,
+                                            "consider relaxing the type parameter's implicit \
+                                             `Sized` bound",
+                                            sugg,
+                                            Applicability::MachineApplicable,
+                                        );
+                                    }
+                                }
                                 if let Some(pred) = parent_p {
                                     // Done to add the "doesn't satisfy" `span_label`.
                                     let _ = format_pred(*pred);
                                 }
                                 skip_list.insert(p);
-                                let mut spans = if cause_span != *item_span {
-                                    let mut spans: MultiSpan = cause_span.into();
-                                    spans.push_span_label(cause_span, unsatisfied_msg);
+                                let mut spans = if cause.span != *item_span {
+                                    let mut spans: MultiSpan = cause.span.into();
+                                    spans.push_span_label(cause.span, unsatisfied_msg);
                                     spans
                                 } else {
                                     let mut spans = Vec::with_capacity(2);

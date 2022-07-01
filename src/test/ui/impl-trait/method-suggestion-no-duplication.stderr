@@ -2,7 +2,7 @@ error[E0599]: no method named `is_empty` found for struct `Foo` in the current s
   --> $DIR/method-suggestion-no-duplication.rs:7:15
    |
 LL | struct Foo;
-   |        --- method `is_empty` not found for this struct
+   | ---------- method `is_empty` not found for this struct
 ...
 LL |     foo(|s| s.is_empty());
    |               ^^^^^^^^ method not found in `Foo`
