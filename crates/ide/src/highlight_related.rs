@@ -689,7 +689,7 @@ fn foo() ->$0 u32 {
     never();
  // ^^^^^^^
     never!();
- // FIXME sema doesn't give us types for macrocalls
+ // ^^^^^^^^
 
     Never.never();
  // ^^^^^^^^^^^^^

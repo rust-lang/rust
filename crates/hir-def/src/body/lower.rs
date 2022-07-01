@@ -13,7 +13,6 @@ use hir_expand::{
 use la_arena::Arena;
 use profile::Count;
 use rustc_hash::FxHashMap;
-use smallvec::smallvec;
 use syntax::{
     ast::{
         self, ArrayExprKind, AstChildren, HasArgList, HasLoopBody, HasName, LiteralKind,
@@ -97,7 +96,6 @@ pub(super) fn lower(
             or_pats: Default::default(),
         },
         expander,
-        statements_in_scope: Vec::new(),
         name_to_pat_grouping: Default::default(),
         is_lowering_inside_or_pat: false,
     }
@@ -109,7 +107,6 @@ struct ExprCollector<'a> {
     expander: Expander,
     body: Body,
     source_map: BodySourceMap,
-    statements_in_scope: Vec<Statement>,
     // a poor-mans union-find?
     name_to_pat_grouping: FxHashMap<Name, Vec<PatId>>,
     is_lowering_inside_or_pat: bool,
@@ -514,27 +511,25 @@ impl ExprCollector<'_> {
             ast::Expr::MacroExpr(e) => {
                 let e = e.macro_call()?;
                 let macro_ptr = AstPtr::new(&e);
-                let id = self.collect_macro_call(e, macro_ptr.clone(), true, |this, expansion| {
+                let id = self.collect_macro_call(e, macro_ptr, true, |this, expansion| {
                     expansion.map(|it| this.collect_expr(it))
                 });
                 match id {
                     Some(id) => {
-                        self.source_map
-                            .macro_call_to_exprs
-                            .insert(self.expander.to_source(macro_ptr), smallvec![id]);
+                        // Make the macro-call point to its expanded expression so we can query
+                        // semantics on syntax pointers to the macro
+                        let src = self.expander.to_source(syntax_ptr);
+                        self.source_map.expr_map.insert(src, id);
                         id
                     }
-                    None => self.alloc_expr(Expr::Missing, syntax_ptr.clone()),
+                    None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
             ast::Expr::MacroStmts(e) => {
-                e.statements().for_each(|s| self.collect_stmt(s));
-                let tail = e
-                    .expr()
-                    .map(|e| self.collect_expr(e))
-                    .unwrap_or_else(|| self.alloc_expr(Expr::Missing, syntax_ptr.clone()));
+                let statements = e.statements().filter_map(|s| self.collect_stmt(s)).collect();
+                let tail = e.expr().map(|e| self.collect_expr(e));
 
-                self.alloc_expr(Expr::MacroStmts { tail }, syntax_ptr)
+                self.alloc_expr(Expr::MacroStmts { tail, statements }, syntax_ptr)
             }
             ast::Expr::UnderscoreExpr(_) => self.alloc_expr(Expr::Underscore, syntax_ptr),
         })
@@ -607,11 +602,11 @@ impl ExprCollector<'_> {
         }
     }
 
-    fn collect_stmt(&mut self, s: ast::Stmt) {
+    fn collect_stmt(&mut self, s: ast::Stmt) -> Option<Statement> {
         match s {
             ast::Stmt::LetStmt(stmt) => {
                 if self.check_cfg(&stmt).is_none() {
-                    return;
+                    return None;
                 }
                 let pat = self.collect_pat_opt(stmt.pat());
                 let type_ref =
@@ -621,70 +616,62 @@ impl ExprCollector<'_> {
                     .let_else()
                     .and_then(|let_else| let_else.block_expr())
                     .map(|block| self.collect_block(block));
-                self.statements_in_scope.push(Statement::Let {
-                    pat,
-                    type_ref,
-                    initializer,
-                    else_branch,
-                });
+                Some(Statement::Let { pat, type_ref, initializer, else_branch })
             }
             ast::Stmt::ExprStmt(stmt) => {
-                if let Some(expr) = stmt.expr() {
-                    if self.check_cfg(&expr).is_none() {
-                        return;
+                let expr = stmt.expr();
+                if let Some(expr) = &expr {
+                    if self.check_cfg(expr).is_none() {
+                        return None;
                     }
                 }
                 let has_semi = stmt.semicolon_token().is_some();
-                // Note that macro could be expended to multiple statements
-                if let Some(ast::Expr::MacroExpr(e)) = stmt.expr() {
-                    let m = match e.macro_call() {
-                        Some(it) => it,
-                        None => return,
-                    };
-                    let macro_ptr = AstPtr::new(&m);
-                    let syntax_ptr = AstPtr::new(&stmt.expr().unwrap());
-
-                    let prev_stmt = self.statements_in_scope.len();
-                    self.collect_macro_call(m, macro_ptr.clone(), false, |this, expansion| {
-                        match expansion {
+                // Note that macro could be expanded to multiple statements
+                if let Some(expr @ ast::Expr::MacroExpr(mac)) = &expr {
+                    let mac_call = mac.macro_call()?;
+                    let syntax_ptr = AstPtr::new(expr);
+                    let macro_ptr = AstPtr::new(&mac_call);
+                    // let prev_stmt = self.statements_in_scope.len();
+                    let stmt = self.collect_macro_call(
+                        mac_call,
+                        macro_ptr,
+                        false,
+                        |this, expansion: Option<ast::MacroStmts>| match expansion {
                             Some(expansion) => {
-                                let statements: ast::MacroStmts = expansion;
+                                let statements = expansion
+                                    .statements()
+                                    .filter_map(|stmt| this.collect_stmt(stmt))
+                                    .collect();
+                                let tail = expansion.expr().map(|expr| this.collect_expr(expr));
 
-                                statements.statements().for_each(|stmt| this.collect_stmt(stmt));
-                                if let Some(expr) = statements.expr() {
-                                    let expr = this.collect_expr(expr);
-                                    this.statements_in_scope
-                                        .push(Statement::Expr { expr, has_semi });
-                                }
-                            }
-                            None => {
-                                let expr = this.alloc_expr(Expr::Missing, syntax_ptr.clone());
-                                this.statements_in_scope.push(Statement::Expr { expr, has_semi });
-                            }
-                        }
-                    });
+                                let mac_stmts = this.alloc_expr(
+                                    Expr::MacroStmts { tail, statements },
+                                    AstPtr::new(&ast::Expr::MacroStmts(expansion)),
+                                );
 
-                    let mut macro_exprs = smallvec![];
-                    for stmt in &self.statements_in_scope[prev_stmt..] {
-                        match *stmt {
-                            Statement::Let { initializer, else_branch, .. } => {
-                                macro_exprs.extend(initializer);
-                                macro_exprs.extend(else_branch);
+                                Some(mac_stmts)
                             }
-                            Statement::Expr { expr, .. } => macro_exprs.push(expr),
+                            None => None,
+                        },
+                    );
+
+                    let expr = match stmt {
+                        Some(expr) => {
+                            // Make the macro-call point to its expanded expression so we can query
+                            // semantics on syntax pointers to the macro
+                            let src = self.expander.to_source(syntax_ptr);
+                            self.source_map.expr_map.insert(src, expr);
+                            expr
                         }
-                    }
-                    if !macro_exprs.is_empty() {
-                        self.source_map
-                            .macro_call_to_exprs
-                            .insert(self.expander.to_source(macro_ptr), macro_exprs);
-                    }
+                        None => self.alloc_expr(Expr::Missing, syntax_ptr),
+                    };
+                    Some(Statement::Expr { expr, has_semi })
                 } else {
-                    let expr = self.collect_expr_opt(stmt.expr());
-                    self.statements_in_scope.push(Statement::Expr { expr, has_semi });
+                    let expr = self.collect_expr_opt(expr);
+                    Some(Statement::Expr { expr, has_semi })
                 }
             }
-            ast::Stmt::Item(_item) => {}
+            ast::Stmt::Item(_item) => None,
         }
     }
 
@@ -703,22 +690,10 @@ impl ExprCollector<'_> {
         };
         let prev_def_map = mem::replace(&mut self.expander.def_map, def_map);
         let prev_local_module = mem::replace(&mut self.expander.module, module);
-        let prev_statements = std::mem::take(&mut self.statements_in_scope);
 
-        block.statements().for_each(|s| self.collect_stmt(s));
-        block.tail_expr().and_then(|e| {
-            let expr = self.maybe_collect_expr(e)?;
-            self.statements_in_scope.push(Statement::Expr { expr, has_semi: false });
-            Some(())
-        });
+        let statements = block.statements().filter_map(|s| self.collect_stmt(s)).collect();
+        let tail = block.tail_expr().and_then(|e| self.maybe_collect_expr(e));
 
-        let mut tail = None;
-        if let Some(Statement::Expr { expr, has_semi: false }) = self.statements_in_scope.last() {
-            tail = Some(*expr);
-            self.statements_in_scope.pop();
-        }
-        let tail = tail;
-        let statements = std::mem::replace(&mut self.statements_in_scope, prev_statements).into();
         let syntax_node_ptr = AstPtr::new(&block.into());
         let expr_id = self.alloc_expr(
             Expr::Block { id: block_id, statements, tail, label: None },
@@ -903,10 +878,12 @@ impl ExprCollector<'_> {
             ast::Pat::MacroPat(mac) => match mac.macro_call() {
                 Some(call) => {
                     let macro_ptr = AstPtr::new(&call);
+                    let src = self.expander.to_source(Either::Left(AstPtr::new(&pat)));
                     let pat =
                         self.collect_macro_call(call, macro_ptr, true, |this, expanded_pat| {
                             this.collect_pat_opt_(expanded_pat)
                         });
+                    self.source_map.pat_map.insert(src, pat);
                     return pat;
                 }
                 None => Pat::Missing,
