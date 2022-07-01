@@ -82,7 +82,7 @@ use rustc_const_eval::interpret::{
 };
 use rustc_data_structures::fx::FxHashMap;
 
-use crate::{AtomicReadOp, AtomicRwOp, AtomicWriteOp, Tag, VClock, VTimestamp, VectorIdx};
+use crate::{AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, Tag, VClock, VTimestamp, VectorIdx};
 
 use super::{
     data_race::{GlobalState, ThreadClockSet},
@@ -443,7 +443,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         &mut self,
         new_val: ScalarMaybeUninit<Tag>,
         place: &MPlaceTy<'tcx, Tag>,
-        atomic: AtomicRwOp,
+        atomic: AtomicRwOrd,
         init: ScalarMaybeUninit<Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -453,14 +453,14 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             crate::Evaluator { data_race: Some(global), .. },
         ) = this.get_alloc_extra_mut(alloc_id)?
         {
-            if atomic == AtomicRwOp::SeqCst {
+            if atomic == AtomicRwOrd::SeqCst {
                 global.sc_read();
                 global.sc_write();
             }
             let range = alloc_range(base_offset, place.layout.size);
             let buffer = alloc_buffers.get_or_create_store_buffer_mut(range, init)?;
             buffer.read_from_last_store(global);
-            buffer.buffered_write(new_val, global, atomic == AtomicRwOp::SeqCst)?;
+            buffer.buffered_write(new_val, global, atomic == AtomicRwOrd::SeqCst)?;
         }
         Ok(())
     }
@@ -468,7 +468,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
     fn buffered_atomic_read(
         &self,
         place: &MPlaceTy<'tcx, Tag>,
-        atomic: AtomicReadOp,
+        atomic: AtomicReadOrd,
         latest_in_mo: ScalarMaybeUninit<Tag>,
         validate: impl FnOnce() -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
@@ -476,7 +476,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         if let Some(global) = &this.machine.data_race {
             let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
             if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
-                if atomic == AtomicReadOp::SeqCst {
+                if atomic == AtomicReadOrd::SeqCst {
                     global.sc_read();
                 }
                 let mut rng = this.machine.rng.borrow_mut();
@@ -486,7 +486,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 )?;
                 let loaded = buffer.buffered_read(
                     global,
-                    atomic == AtomicReadOp::SeqCst,
+                    atomic == AtomicReadOrd::SeqCst,
                     &mut *rng,
                     validate,
                 )?;
@@ -504,7 +504,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         &mut self,
         val: ScalarMaybeUninit<Tag>,
         dest: &MPlaceTy<'tcx, Tag>,
-        atomic: AtomicWriteOp,
+        atomic: AtomicWriteOrd,
         init: ScalarMaybeUninit<Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -514,7 +514,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             crate::Evaluator { data_race: Some(global), .. },
         ) = this.get_alloc_extra_mut(alloc_id)?
         {
-            if atomic == AtomicWriteOp::SeqCst {
+            if atomic == AtomicWriteOrd::SeqCst {
                 global.sc_write();
             }
 
@@ -535,7 +535,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 buffer.buffer.pop_front();
             }
 
-            buffer.buffered_write(val, global, atomic == AtomicWriteOp::SeqCst)?;
+            buffer.buffered_write(val, global, atomic == AtomicWriteOrd::SeqCst)?;
         }
 
         // Caller should've written to dest with the vanilla scalar write, we do nothing here
@@ -548,13 +548,13 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
     fn perform_read_on_buffered_latest(
         &self,
         place: &MPlaceTy<'tcx, Tag>,
-        atomic: AtomicReadOp,
+        atomic: AtomicReadOrd,
         init: ScalarMaybeUninit<Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
 
         if let Some(global) = &this.machine.data_race {
-            if atomic == AtomicReadOp::SeqCst {
+            if atomic == AtomicReadOrd::SeqCst {
                 global.sc_read();
             }
             let size = place.layout.size;

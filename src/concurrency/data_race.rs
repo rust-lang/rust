@@ -62,9 +62,9 @@ use super::weak_memory::EvalContextExt as _;
 
 pub type AllocExtra = VClockAlloc;
 
-/// Valid atomic read-write operations, alias of atomic::Ordering (not non-exhaustive).
+/// Valid atomic read-write orderings, alias of atomic::Ordering (not non-exhaustive).
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum AtomicRwOp {
+pub enum AtomicRwOrd {
     Relaxed,
     Acquire,
     Release,
@@ -72,25 +72,25 @@ pub enum AtomicRwOp {
     SeqCst,
 }
 
-/// Valid atomic read operations, subset of atomic::Ordering.
+/// Valid atomic read orderings, subset of atomic::Ordering.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum AtomicReadOp {
+pub enum AtomicReadOrd {
     Relaxed,
     Acquire,
     SeqCst,
 }
 
-/// Valid atomic write operations, subset of atomic::Ordering.
+/// Valid atomic write orderings, subset of atomic::Ordering.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum AtomicWriteOp {
+pub enum AtomicWriteOrd {
     Relaxed,
     Release,
     SeqCst,
 }
 
-/// Valid atomic fence operations, subset of atomic::Ordering.
+/// Valid atomic fence orderings, subset of atomic::Ordering.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum AtomicFenceOp {
+pub enum AtomicFenceOrd {
     Acquire,
     Release,
     AcqRel,
@@ -486,7 +486,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         op: &OpTy<'tcx, Tag>,
         offset: u64,
         layout: TyAndLayout<'tcx>,
-        atomic: AtomicReadOp,
+        atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_ref();
         let value_place = this.deref_operand_and_offset(op, offset, layout)?;
@@ -500,7 +500,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         offset: u64,
         value: impl Into<ScalarMaybeUninit<Tag>>,
         layout: TyAndLayout<'tcx>,
-        atomic: AtomicWriteOp,
+        atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let value_place = this.deref_operand_and_offset(op, offset, layout)?;
@@ -511,7 +511,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn read_scalar_atomic(
         &self,
         place: &MPlaceTy<'tcx, Tag>,
-        atomic: AtomicReadOp,
+        atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_ref();
         // This will read from the last store in the modification order of this location. In case
@@ -531,7 +531,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         &mut self,
         val: ScalarMaybeUninit<Tag>,
         dest: &MPlaceTy<'tcx, Tag>,
-        atomic: AtomicWriteOp,
+        atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.validate_overlapping_atomic(dest)?;
@@ -552,7 +552,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         rhs: &ImmTy<'tcx, Tag>,
         op: mir::BinOp,
         neg: bool,
-        atomic: AtomicRwOp,
+        atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
         let this = self.eval_context_mut();
 
@@ -581,7 +581,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         &mut self,
         place: &MPlaceTy<'tcx, Tag>,
         new: ScalarMaybeUninit<Tag>,
-        atomic: AtomicRwOp,
+        atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_mut();
 
@@ -602,7 +602,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         place: &MPlaceTy<'tcx, Tag>,
         rhs: ImmTy<'tcx, Tag>,
         min: bool,
-        atomic: AtomicRwOp,
+        atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
         let this = self.eval_context_mut();
 
@@ -642,8 +642,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         place: &MPlaceTy<'tcx, Tag>,
         expect_old: &ImmTy<'tcx, Tag>,
         new: ScalarMaybeUninit<Tag>,
-        success: AtomicRwOp,
-        fail: AtomicReadOp,
+        success: AtomicRwOrd,
+        fail: AtomicReadOrd,
         can_fail_spuriously: bool,
     ) -> InterpResult<'tcx, Immediate<Tag>> {
         use rand::Rng as _;
@@ -696,7 +696,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn validate_atomic_load(
         &self,
         place: &MPlaceTy<'tcx, Tag>,
-        atomic: AtomicReadOp,
+        atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         this.validate_overlapping_atomic(place)?;
@@ -705,7 +705,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             atomic,
             "Atomic Load",
             move |memory, clocks, index, atomic| {
-                if atomic == AtomicReadOp::Relaxed {
+                if atomic == AtomicReadOrd::Relaxed {
                     memory.load_relaxed(&mut *clocks, index)
                 } else {
                     memory.load_acquire(&mut *clocks, index)
@@ -719,7 +719,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn validate_atomic_store(
         &mut self,
         place: &MPlaceTy<'tcx, Tag>,
-        atomic: AtomicWriteOp,
+        atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.validate_overlapping_atomic(place)?;
@@ -728,7 +728,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             atomic,
             "Atomic Store",
             move |memory, clocks, index, atomic| {
-                if atomic == AtomicWriteOp::Relaxed {
+                if atomic == AtomicWriteOrd::Relaxed {
                     memory.store_relaxed(clocks, index)
                 } else {
                     memory.store_release(clocks, index)
@@ -742,9 +742,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn validate_atomic_rmw(
         &mut self,
         place: &MPlaceTy<'tcx, Tag>,
-        atomic: AtomicRwOp,
+        atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx> {
-        use AtomicRwOp::*;
+        use AtomicRwOrd::*;
         let acquire = matches!(atomic, Acquire | AcqRel | SeqCst);
         let release = matches!(atomic, Release | AcqRel | SeqCst);
         let this = self.eval_context_mut();
@@ -764,7 +764,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     }
 
     /// Update the data-race detector for an atomic fence on the current thread.
-    fn validate_atomic_fence(&mut self, atomic: AtomicFenceOp) -> InterpResult<'tcx> {
+    fn validate_atomic_fence(&mut self, atomic: AtomicFenceOrd) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if let Some(data_race) = &mut this.machine.data_race {
             data_race.maybe_perform_sync_operation(|index, mut clocks| {
@@ -773,22 +773,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                 // Apply data-race detection for the current fences
                 // this treats AcqRel and SeqCst as the same as an acquire
                 // and release fence applied in the same timestamp.
-                if atomic != AtomicFenceOp::Release {
+                if atomic != AtomicFenceOrd::Release {
                     // Either Acquire | AcqRel | SeqCst
                     clocks.apply_acquire_fence();
                 }
-                if atomic != AtomicFenceOp::Acquire {
+                if atomic != AtomicFenceOrd::Acquire {
                     // Either Release | AcqRel | SeqCst
                     clocks.apply_release_fence();
                 }
-                if atomic == AtomicFenceOp::SeqCst {
+                if atomic == AtomicFenceOrd::SeqCst {
                     data_race.last_sc_fence.borrow_mut().set_at_index(&clocks.clock, index);
                     clocks.fence_seqcst.join(&data_race.last_sc_fence.borrow());
                     clocks.write_seqcst.join(&data_race.last_sc_write.borrow());
                 }
 
                 // Increment timestamp in case of release semantics.
-                Ok(atomic != AtomicFenceOp::Acquire)
+                Ok(atomic != AtomicFenceOrd::Acquire)
             })
         } else {
             Ok(())

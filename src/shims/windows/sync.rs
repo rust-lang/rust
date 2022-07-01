@@ -15,8 +15,8 @@ fn srwlock_get_or_create_id<'mir, 'tcx: 'mir>(
                 &value_place,
                 &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
                 next_id.to_u32_scalar().into(),
-                AtomicRwOp::Relaxed,
-                AtomicReadOp::Relaxed,
+                AtomicRwOrd::Relaxed,
+                AtomicReadOrd::Relaxed,
                 false,
             )?
             .to_scalar_pair()

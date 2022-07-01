@@ -169,7 +169,7 @@ pub fn futex<'tcx>(
             //
             // Thankfully, preemptions cannot happen inside a Miri shim, so we do not need to
             // do anything special to guarantee fence-load-comparison atomicity.
-            this.atomic_fence(&[], AtomicFenceOp::SeqCst)?;
+            this.atomic_fence(&[], AtomicFenceOrd::SeqCst)?;
             // Read an `i32` through the pointer, regardless of any wrapper types.
             // It's not uncommon for `addr` to be passed as another type than `*mut i32`, such as `*const AtomicI32`.
             let futex_val = this
@@ -177,7 +177,7 @@ pub fn futex<'tcx>(
                     &addr.into(),
                     0,
                     this.machine.layouts.i32,
-                    AtomicReadOp::Relaxed,
+                    AtomicReadOrd::Relaxed,
                 )?
                 .to_i32()?;
             if val == futex_val {
@@ -240,7 +240,7 @@ pub fn futex<'tcx>(
             // Together with the SeqCst fence in futex_wait, this makes sure that futex_wait
             // will see the latest value on addr which could be changed by our caller
             // before doing the syscall.
-            this.atomic_fence(&[], AtomicFenceOp::SeqCst)?;
+            this.atomic_fence(&[], AtomicFenceOrd::SeqCst)?;
             let mut n = 0;
             for _ in 0..val {
                 if let Some(thread) = this.futex_wake(addr_usize, bitset) {
