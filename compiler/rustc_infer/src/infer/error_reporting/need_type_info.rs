@@ -602,41 +602,58 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     /// Sources with a small cost are prefer and should result
     /// in a clearer and idiomatic suggestion.
     fn source_cost(&self, source: &InferSource<'tcx>) -> usize {
-        let tcx = self.infcx.tcx;
-
-        fn arg_cost<'tcx>(arg: GenericArg<'tcx>) -> usize {
-            match arg.unpack() {
-                GenericArgKind::Lifetime(_) => 0, // erased
-                GenericArgKind::Type(ty) => ty_cost(ty),
-                GenericArgKind::Const(_) => 3, // some non-zero value
-            }
+        #[derive(Clone, Copy)]
+        struct CostCtxt<'tcx> {
+            tcx: TyCtxt<'tcx>,
         }
-        fn ty_cost<'tcx>(ty: Ty<'tcx>) -> usize {
-            match ty.kind() {
-                ty::Closure(..) => 100,
-                ty::FnDef(..) => 20,
-                ty::FnPtr(..) => 10,
-                ty::Infer(..) => 0,
-                _ => 1,
+        impl<'tcx> CostCtxt<'tcx> {
+            fn arg_cost(self, arg: GenericArg<'tcx>) -> usize {
+                match arg.unpack() {
+                    GenericArgKind::Lifetime(_) => 0, // erased
+                    GenericArgKind::Type(ty) => self.ty_cost(ty),
+                    GenericArgKind::Const(_) => 3, // some non-zero value
+                }
+            }
+            fn ty_cost(self, ty: Ty<'tcx>) -> usize {
+                match ty.kind() {
+                    ty::Closure(..) => 1000,
+                    ty::FnDef(..) => 150,
+                    ty::FnPtr(..) => 30,
+                    ty::Adt(def, substs) => {
+                        5 + self
+                            .tcx
+                            .generics_of(def.did())
+                            .own_substs_no_defaults(self.tcx, substs)
+                            .iter()
+                            .map(|&arg| self.arg_cost(arg))
+                            .sum::<usize>()
+                    }
+                    ty::Tuple(args) => 5 + args.iter().map(|arg| self.ty_cost(arg)).sum::<usize>(),
+                    ty::Infer(..) => 0,
+                    _ => 1,
+                }
             }
         }
 
         // The sources are listed in order of preference here.
+        let tcx = self.infcx.tcx;
+        let ctx = CostCtxt { tcx };
         match source.kind {
-            InferSourceKind::LetBinding { ty, .. } => ty_cost(ty),
-            InferSourceKind::ClosureArg { ty, .. } => 5 + ty_cost(ty),
+            InferSourceKind::LetBinding { ty, .. } => ctx.ty_cost(ty),
+            InferSourceKind::ClosureArg { ty, .. } => ctx.ty_cost(ty),
             InferSourceKind::GenericArg { def_id, generic_args, .. } => {
                 let variant_cost = match tcx.def_kind(def_id) {
-                    DefKind::Variant | DefKind::Ctor(CtorOf::Variant, _) => 15, // `None::<u32>` and friends are ugly.
-                    _ => 12,
+                    // `None::<u32>` and friends are ugly.
+                    DefKind::Variant | DefKind::Ctor(CtorOf::Variant, _) => 15,
+                    _ => 10,
                 };
-                variant_cost + generic_args.iter().map(|&arg| arg_cost(arg)).sum::<usize>()
+                variant_cost + generic_args.iter().map(|&arg| ctx.arg_cost(arg)).sum::<usize>()
             }
             InferSourceKind::FullyQualifiedMethodCall { substs, .. } => {
-                20 + substs.iter().map(|arg| arg_cost(arg)).sum::<usize>()
+                20 + substs.iter().map(|arg| ctx.arg_cost(arg)).sum::<usize>()
             }
             InferSourceKind::ClosureReturn { ty, should_wrap_expr, .. } => {
-                30 + ty_cost(ty) + if should_wrap_expr.is_some() { 10 } else { 0 }
+                30 + ctx.ty_cost(ty) + if should_wrap_expr.is_some() { 10 } else { 0 }
             }
         }
     }
@@ -646,6 +663,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn update_infer_source(&mut self, new_source: InferSource<'tcx>) {
         let cost = self.source_cost(&new_source) + self.attempt;
+        debug!(?cost);
         self.attempt += 1;
         if cost < self.infer_source_cost {
             self.infer_source_cost = cost;

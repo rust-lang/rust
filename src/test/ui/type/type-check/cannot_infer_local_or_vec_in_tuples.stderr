@@ -1,13 +1,15 @@
-error[E0282]: type annotations needed for `(Vec<T>,)`
-  --> $DIR/cannot_infer_local_or_vec_in_tuples.rs:2:9
+error[E0282]: type annotations needed
+  --> $DIR/cannot_infer_local_or_vec_in_tuples.rs:2:18
    |
 LL |     let (x, ) = (vec![], );
-   |         ^^^^^
+   |                  ^^^^^^ cannot infer type of the type parameter `T` declared on the struct `Vec`
    |
-help: consider giving this pattern a type, where the type for type parameter `T` is specified
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider specifying the generic argument
+  --> $SRC_DIR/alloc/src/macros.rs:LL:COL
    |
-LL |     let (x, ): (Vec<T>,) = (vec![], );
-   |              +++++++++++
+LL |         $crate::__rust_force_expr!($crate::vec::Vec::<T>::new())
+   |                                                    +++++
 
 error: aborting due to previous error
 
