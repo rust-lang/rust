@@ -13,7 +13,7 @@ error[E0283]: type annotations needed
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:26:7
    |
 LL |     x.foo();
-   |       ^^^ cannot infer type for struct `Vec<_>`
+   |       ^^^
    |
 note: multiple `impl`s satisfying `Vec<_>: Foo` found
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:9:1
@@ -23,6 +23,10 @@ LL | impl Foo for Vec<usize> {
 ...
 LL | impl Foo for Vec<isize> {
    | ^^^^^^^^^^^^^^^^^^^^^^^
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     <Vec<T> as Foo>::foo(&x);
+   |     ++++++++++++++++++++++ ~
 
 error[E0308]: mismatched types
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:33:20

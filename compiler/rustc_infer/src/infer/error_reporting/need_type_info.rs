@@ -692,6 +692,11 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         }
     }
 
+    fn node_substs_opt(&self, hir_id: HirId) -> Option<SubstsRef<'tcx>> {
+        let substs = self.typeck_results.node_substs_opt(hir_id);
+        self.infcx.resolve_vars_if_possible(substs)
+    }
+
     fn opt_node_type(&self, hir_id: HirId) -> Option<Ty<'tcx>> {
         let ty = self.typeck_results.node_type_opt(hir_id);
         self.infcx.resolve_vars_if_possible(ty)
@@ -774,7 +779,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         let tcx = self.infcx.tcx;
         match expr.kind {
             hir::ExprKind::Path(ref path) => {
-                if let Some(substs) = self.typeck_results.node_substs_opt(expr.hir_id) {
+                if let Some(substs) = self.node_substs_opt(expr.hir_id) {
                     return self.path_inferred_subst_iter(expr.hir_id, substs, path);
                 }
             }
@@ -802,7 +807,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                         if generics.has_impl_trait() {
                             None?
                         }
-                        let substs = self.typeck_results.node_substs_opt(expr.hir_id)?;
+                        let substs = self.node_substs_opt(expr.hir_id)?;
                         let span = tcx.hir().span(segment.hir_id?);
                         let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                         InsertableGenericArgs {
@@ -1074,7 +1079,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             .any(|generics| generics.has_impl_trait())
         };
         if let ExprKind::MethodCall(path, args, span) = expr.kind
-            && let Some(substs) = self.typeck_results.node_substs_opt(expr.hir_id)
+            && let Some(substs) = self.node_substs_opt(expr.hir_id)
             && substs.iter().any(|arg| self.generic_arg_contains_target(arg))
             && let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id)
             && self.infcx.tcx.trait_of_item(def_id).is_some()
