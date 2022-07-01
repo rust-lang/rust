@@ -1,27 +1,9 @@
-/* General structure and fonts */
-
-body, .popover, .popover::before {
-	background-color: white;
-	color: black;
-}
-
-.setting-line .radio-line input {
-	border-color: black;
-}
-.setting-line .radio-line input:checked {
-	box-shadow: inset 0 0 0 3px white;
-	background-color: #2196f3;
-}
-.setting-line .radio-line input:focus {
-	box-shadow: 0 0 1px 1px #2196f3;
-}
-/* In here we combine both `:focus` and `:checked` properties. */
-.setting-line .radio-line input:checked:focus {
-	box-shadow: inset 0 0 0 3px white,
-		0 0 2px 2px #2196f3;
-}
-.setting-line .radio-line input:hover {
-	border-color: #2196f3 !important;
+:root {
+	--main-background-color: white;
+	--main-color: black;
+	--settings-input-color: #2196f3;
+	--sidebar-background-color: #F5F5F5;
+	--sidebar-background-color-hover: #E0E0E0;
 }
 
 .slider {
@@ -30,16 +12,10 @@ body, .popover, .popover::before {
 .slider:before {
 	background-color: white;
 }
-input:checked + .slider {
-	background-color: #2196F3;
-}
 input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
 }
 
-h1, h2, h3, h4 {
-	color: black;
-}
 h1.fqn {
 	border-bottom-color: #DDDDDD;
 }
@@ -49,10 +25,6 @@ h2, h3, h4 {
 
 .in-band {
 	background-color: white;
-}
-
-.invisible {
-	background: rgba(0, 0, 0, 0);
 }
 
 .docblock code, .docblock-short code {
@@ -100,10 +72,6 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #fff;
 }
 
-.source .sidebar {
-	background-color: #f1f1f1;
-}
-
 .line-numbers span { color: #c67e2d; }
 .line-numbers .line-highlighted {
 	background-color: #FDFFD3 !important;
@@ -115,12 +83,6 @@ pre, .rustdoc.source .example-wrap {
 
 .docblock table td, .docblock table th {
 	border-color: #ddd;
-}
-
-.content .method .where,
-.content .fn .where,
-.content .where.fmt-newline {
-	color: #4E4C4C;
 }
 
 .search-results a:hover {
@@ -213,20 +175,6 @@ a {
 	color: #3873AD;
 }
 
-a#toggle-all-docs,
-a.anchor,
-.small-section-header a,
-#source-sidebar a,
-pre.rust a,
-.sidebar h2 a,
-.sidebar h3 a,
-.mobile-topbar h2 a,
-.in-band a {
-	color: #000;
-}
-.search-results a {
-	color: initial;
-}
 a.test-arrow {
 	color: #f5f5f5;
 }
@@ -250,11 +198,6 @@ details.undocumented > summary::before {
 	border-color: #66afe9;
 }
 
-.module-item .stab,
-.import-item .stab {
-	color: #000;
-}
-
 .stab.empty-impl { background: #FFF5D6; border-color: #FFC600; }
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
 .stab.deprecated { background: #ffc4c4; border-color: #db7b7b; }
@@ -273,10 +216,6 @@ details.undocumented > summary::before {
 .rightside,
 .out-of-band {
 	color: grey;
-}
-
-.result-name .primitive > i, .result-name .keyword > i {
-	color: black;
 }
 
 .line-numbers :target { background-color: transparent; }
@@ -472,15 +411,6 @@ kbd {
 	color: #999;
 }
 
-#sidebar-toggle {
-	background-color: #F5F5F5;
-}
-#sidebar-toggle:hover {
-	background-color: #E0E0E0;
-}
-#source-sidebar {
-	background-color: #F5F5F5;
-}
 #source-sidebar > .title {
 	border-bottom-color: #ccc;
 }
