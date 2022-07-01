@@ -116,3 +116,39 @@ assert-css: (
     "#source-sidebar .expand + .children .folders .name",
     {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
 )
+
+// Now checking on mobile devices.
+size: (500, 700)
+reload:
+// Waiting for the sidebar to be displayed...
+wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+
+// We now check it takes the full size of the display.
+assert-property: ("body", {"clientWidth": "500", "clientHeight": "700"})
+assert-property: (".sidebar", {"clientWidth": "500", "clientHeight": "700"})
+
+// We now check the display of the toggle once the sidebar is expanded.
+assert-property: ("#sidebar-toggle", {"clientWidth": "500", "clientHeight": "39"})
+assert-css: (
+    "#sidebar-toggle",
+    {
+        "border-top-width": "0px",
+        "border-right-width": "0px",
+        "border-left-width": "0px",
+        "border-bottom-width": "1px",
+    },
+)
+
+// We now check that the scroll position is kept when opening the sidebar.
+click: "#sidebar-toggle"
+wait-for-css: (".sidebar", {"width": "0px"})
+// We scroll to line 117 to change the scroll position.
+scroll-to: '//*[@id="117"]'
+assert-window-property: {"pageYOffset": "2519"}
+// Expanding the sidebar...
+click: "#sidebar-toggle"
+wait-for-css: (".sidebar", {"width": "500px"})
+click: "#sidebar-toggle"
+wait-for-css: (".sidebar", {"width": "0px"})
+// The "scrollTop" property should be the same.
+assert-window-property: {"pageYOffset": "2519"}

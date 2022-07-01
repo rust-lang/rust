@@ -1447,7 +1447,7 @@ impl HandlerInner {
                 self.flags.treat_err_as_bug.map(|c| c.get()).unwrap_or(0),
             ) {
                 (1, 1) => panic!("aborting due to `-Z treat-err-as-bug=1`"),
-                (0, _) | (1, _) => {}
+                (0 | 1, _) => {}
                 (count, as_bug) => panic!(
                     "aborting after {} errors due to `-Z treat-err-as-bug={}`",
                     count, as_bug,

@@ -1865,3 +1865,11 @@ extern "C" void LLVMRustGetMangledName(LLVMValueRef V, RustStringRef Str) {
   GlobalValue *GV = unwrap<GlobalValue>(V);
   Mangler().getNameWithPrefix(OS, GV, true);
 }
+
+// LLVMGetAggregateElement was added in LLVM 15. For earlier LLVM versions just
+// use its implementation.
+#if LLVM_VERSION_LT(15, 0)
+extern "C" LLVMValueRef LLVMGetAggregateElement(LLVMValueRef C, unsigned Idx) {
+    return wrap(unwrap<Constant>(C)->getAggregateElement(Idx));
+}
+#endif
