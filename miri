@@ -63,14 +63,14 @@ esac
 
 ## Preparation
 # macOS does not have a useful readlink/realpath so we have to use Python instead...
-MIRIDIR=$(dirname "$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$0")")
+MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
 # Determine toolchain *in the Miri dir* and use that.
 TOOLCHAIN=$(cd "$MIRIDIR"; rustup show active-toolchain | head -n 1 | cut -d ' ' -f 1)
+
 # Determine some toolchain properties
 TARGET=$(rustc +$TOOLCHAIN --version --verbose | grep "^host:" | cut -d ' ' -f 2)
 SYSROOT=$(rustc +$TOOLCHAIN --print sysroot)
 LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib
-
 if ! test -d "$LIBDIR"; then
     echo "Something went wrong determining the library dir."
     echo "I got $LIBDIR but that does not exist."
@@ -78,6 +78,7 @@ if ! test -d "$LIBDIR"; then
     exit 2
 fi
 
+# Prepare flags for cargo and rustc.
 CARGO="cargo +$TOOLCHAIN"
 if [ -z "$CARGO_INCREMENTAL" ]; then
     # Default CARGO_INCREMENTAL to 1.
@@ -91,6 +92,19 @@ fi
 # We enable debug-assertions to get tracing.
 # We enable line-only debuginfo for backtraces.
 export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR -C debug-assertions -C debuginfo=1 $RUSTFLAGS"
+# Determine flags passed to all cargo invocations.
+# This is a bit more annoying that one would hope due to
+# <https://github.com/rust-lang/cargo/issues/6992>.
+case "$COMMAND" in
+*-debug)
+    CARGO_INSTALL_FLAGS="--target $TARGET --debug $CARGO_EXTRA_FLAGS"
+    CARGO_BUILD_FLAGS="--target $TARGET $CARGO_EXTRA_FLAGS"
+    ;;
+*)
+    CARGO_INSTALL_FLAGS="--target $TARGET $CARGO_EXTRA_FLAGS"
+    CARGO_BUILD_FLAGS="--target $TARGET --release $CARGO_EXTRA_FLAGS"
+    ;;
+esac
 
 ## Helper functions
 
@@ -118,20 +132,6 @@ find_sysroot() {
 }
 
 ## Main
-
-# Determine flags passed to all cargo invocations.
-# This is a bit more annoying that one would hope due to
-# <https://github.com/rust-lang/cargo/issues/6992>.
-case "$COMMAND" in
-*-debug)
-    CARGO_INSTALL_FLAGS="--target $TARGET --debug $CARGO_EXTRA_FLAGS"
-    CARGO_BUILD_FLAGS="--target $TARGET $CARGO_EXTRA_FLAGS"
-    ;;
-*)
-    CARGO_INSTALL_FLAGS="--target $TARGET $CARGO_EXTRA_FLAGS"
-    CARGO_BUILD_FLAGS="--target $TARGET --release $CARGO_EXTRA_FLAGS"
-    ;;
-esac
 
 # Run command.
 case "$COMMAND" in
