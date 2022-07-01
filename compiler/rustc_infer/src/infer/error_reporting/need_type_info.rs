@@ -315,8 +315,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         body_id: Option<hir::BodyId>,
         failure_span: Span,
         arg: GenericArg<'tcx>,
-        // FIXME(#94483): Either use this or remove it.
-        _impl_candidates: Vec<ty::TraitRef<'tcx>>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
