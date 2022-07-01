@@ -1760,7 +1760,8 @@ impl<'a> Builder<'a> {
             let needs_unstable_opts = target.contains("linux")
                 || target.contains("windows")
                 || target.contains("bsd")
-                || target.contains("dragonfly");
+                || target.contains("dragonfly")
+                || target.contains("illumos");
 
             if needs_unstable_opts {
                 rustflags.arg("-Zunstable-options");
