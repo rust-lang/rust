@@ -532,6 +532,22 @@ enum InferSourceKind<'tcx> {
     },
 }
 
+impl<'tcx> InferSource<'tcx> {
+    /// Returns the span where we're going to insert our suggestion.
+    ///
+    /// Used when computing the cost of this infer source to check whether
+    /// we're inside of a macro expansion.
+    fn main_insert_span(&self) -> Span {
+        match self.kind {
+            InferSourceKind::LetBinding { insert_span, .. } => insert_span,
+            InferSourceKind::ClosureArg { insert_span, .. } => insert_span,
+            InferSourceKind::GenericArg { insert_span, .. } => insert_span,
+            InferSourceKind::FullyQualifiedMethodCall { receiver, .. } => receiver.span,
+            InferSourceKind::ClosureReturn { data, .. } => data.span(),
+        }
+    }
+}
+
 impl<'tcx> InferSourceKind<'tcx> {
     fn ty_msg(&self, infcx: &InferCtxt<'_, 'tcx>) -> String {
         match *self {
@@ -638,7 +654,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         // The sources are listed in order of preference here.
         let tcx = self.infcx.tcx;
         let ctx = CostCtxt { tcx };
-        match source.kind {
+        let base_cost = match source.kind {
             InferSourceKind::LetBinding { ty, .. } => ctx.ty_cost(ty),
             InferSourceKind::ClosureArg { ty, .. } => ctx.ty_cost(ty),
             InferSourceKind::GenericArg { def_id, generic_args, .. } => {
@@ -655,7 +671,12 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             InferSourceKind::ClosureReturn { ty, should_wrap_expr, .. } => {
                 30 + ctx.ty_cost(ty) + if should_wrap_expr.is_some() { 10 } else { 0 }
             }
-        }
+        };
+
+        let suggestion_may_apply =
+            if source.main_insert_span().can_be_used_for_suggestions() { 0 } else { 10000 };
+
+        base_cost + suggestion_may_apply
     }
 
     /// Uses `fn source_cost` to determine whether this inference source is preferable to
