@@ -24,6 +24,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.write_null(dest)?;
             }
+
+            // errno
+            "__error" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let errno_place = this.last_error_place()?;
+                this.write_scalar(errno_place.to_ref(this).to_scalar()?, dest)?;
+            }
+
             _ => return Ok(EmulateByNameResult::NotSupported),
         }
         Ok(EmulateByNameResult::NeedsJumping)
