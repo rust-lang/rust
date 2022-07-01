@@ -1,8 +1,9 @@
 // run-rustfix
 
+#![feature(lint_reasons)]
 #![warn(clippy::let_unit_value)]
 #![allow(clippy::no_effect)]
-#![allow(unused_variables)]
+#![allow(unused)]
 
 macro_rules! let_and_return {
     ($n:expr) => {{
@@ -112,4 +113,13 @@ fn _returns_generic() {
         Some(1) => f2(3),
         Some(_) => (),
     };
+}
+
+fn attributes() {
+    fn f() {}
+
+    #[allow(clippy::let_unit_value)]
+    let _ = f();
+    #[expect(clippy::let_unit_value)]
+    let _ = f();
 }
