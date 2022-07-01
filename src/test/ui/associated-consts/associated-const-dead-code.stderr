@@ -1,8 +1,8 @@
 error: associated constant `BAR` is never used
-  --> $DIR/associated-const-dead-code.rs:6:5
+  --> $DIR/associated-const-dead-code.rs:6:11
    |
 LL |     const BAR: u32 = 1;
-   |     ^^^^^^^^^^^^^^^^^^^
+   |           ^^^
    |
 note: the lint level is defined here
   --> $DIR/associated-const-dead-code.rs:1:9
