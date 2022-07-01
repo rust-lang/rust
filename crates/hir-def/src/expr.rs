@@ -199,7 +199,8 @@ pub enum Expr {
         body: ExprId,
     },
     MacroStmts {
-        tail: ExprId,
+        statements: Box<[Statement]>,
+        tail: Option<ExprId>,
     },
     Array(Array),
     Literal(Literal),
@@ -254,7 +255,7 @@ impl Expr {
             Expr::Let { expr, .. } => {
                 f(*expr);
             }
-            Expr::Block { statements, tail, .. } => {
+            Expr::MacroStmts { tail, statements } | Expr::Block { statements, tail, .. } => {
                 for stmt in statements.iter() {
                     match stmt {
                         Statement::Let { initializer, .. } => {
@@ -344,7 +345,6 @@ impl Expr {
                     f(*repeat)
                 }
             },
-            Expr::MacroStmts { tail } => f(*tail),
             Expr::Literal(_) => {}
             Expr::Underscore => {}
         }

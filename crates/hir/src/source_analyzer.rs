@@ -539,24 +539,26 @@ impl SourceAnalyzer {
                 _ => (),
             }
         }
+        let macro_expr = match macro_call
+            .map(|it| it.syntax().parent().and_then(ast::MacroExpr::cast))
+            .transpose()
+        {
+            Some(it) => it,
+            None => return false,
+        };
+
         if let (Some((def, body, sm)), Some(infer)) = (&self.def, &self.infer) {
-            if let Some(expr_ids) = sm.macro_expansion_expr(macro_call) {
+            if let Some(expanded_expr) = sm.macro_expansion_expr(macro_expr.as_ref()) {
                 let mut is_unsafe = false;
-                for &expr_id in expr_ids {
-                    unsafe_expressions(
-                        db,
-                        infer,
-                        *def,
-                        body,
-                        expr_id,
-                        &mut |UnsafeExpr { inside_unsafe_block, .. }| {
-                            is_unsafe |= !inside_unsafe_block
-                        },
-                    );
-                    if is_unsafe {
-                        return true;
-                    }
-                }
+                unsafe_expressions(
+                    db,
+                    infer,
+                    *def,
+                    body,
+                    expanded_expr,
+                    &mut |UnsafeExpr { inside_unsafe_block, .. }| is_unsafe |= !inside_unsafe_block,
+                );
+                return is_unsafe;
             }
         }
         false

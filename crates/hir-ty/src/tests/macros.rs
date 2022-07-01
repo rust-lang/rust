@@ -1,6 +1,8 @@
 use expect_test::expect;
 use test_utils::{bench, bench_fixture, skip_slow_tests};
 
+use crate::tests::check_infer_with_mismatches;
+
 use super::{check_infer, check_types};
 
 #[test]
@@ -191,6 +193,8 @@ fn expr_macro_def_expanded_in_various_places() {
             !0..6 '1isize': isize
             !0..6 '1isize': isize
             !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
             39..442 '{     ...!(); }': ()
             73..94 'spam!(...am!())': {unknown}
             100..119 'for _ ...!() {}': ()
@@ -272,6 +276,8 @@ fn expr_macro_rules_expanded_in_various_places() {
             !0..6 '1isize': isize
             !0..6 '1isize': isize
             !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
             53..456 '{     ...!(); }': ()
             87..108 'spam!(...am!())': {unknown}
             114..133 'for _ ...!() {}': ()
@@ -307,7 +313,6 @@ fn expr_macro_expanded_in_stmts() {
         "#,
         expect![[r#"
             !0..8 'leta=();': ()
-            !0..8 'leta=();': ()
             !3..4 'a': ()
             !5..7 '()': ()
             57..84 '{     ...); } }': ()
@@ -335,11 +340,11 @@ fn recurisve_macro_expanded_in_stmts() {
         }
         "#,
         expect![[r#"
-            !0..7 'leta=3;': {unknown}
-            !0..7 'leta=3;': {unknown}
-            !0..13 'ng!{[leta=3]}': {unknown}
-            !0..13 'ng!{[leta=]3}': {unknown}
-            !0..13 'ng!{[leta]=3}': {unknown}
+            !0..7 'leta=3;': ()
+            !0..13 'ng!{[leta=3]}': ()
+            !0..13 'ng!{[leta=]3}': ()
+            !0..13 'ng!{[leta]=3}': ()
+            !0..13 'ng!{[let]a=3}': ()
             !3..4 'a': i32
             !5..6 '3': i32
             196..237 '{     ...= a; }': ()
@@ -364,8 +369,8 @@ fn recursive_inner_item_macro_rules() {
         "#,
         expect![[r#"
             !0..1 '1': i32
-            !0..26 'macro_...>{1};}': {unknown}
-            !0..26 'macro_...>{1};}': {unknown}
+            !0..7 'mac!($)': ()
+            !0..26 'macro_...>{1};}': ()
             107..143 '{     ...!(); }': ()
             129..130 'a': i32
         "#]],
@@ -1241,6 +1246,31 @@ fn infinitely_recursive_macro_type() {
             166..197 '{     ...: B; }': ()
             176..177 'a': {unknown}
             190..191 'b': Bar<{unknown}, u32>
+        "#]],
+    );
+}
+
+#[test]
+fn cfg_tails() {
+    check_infer_with_mismatches(
+        r#"
+//- /lib.rs crate:foo cfg:feature=foo
+struct S {}
+
+impl S {
+    fn new2(bar: u32) -> Self {
+        #[cfg(feature = "foo")]
+        { Self { } }
+        #[cfg(not(feature = "foo"))]
+        { Self { } }
+    }
+}
+"#,
+        expect![[r#"
+            34..37 'bar': u32
+            52..170 '{     ...     }': S
+            62..106 '#[cfg(... { } }': S
+            96..104 'Self { }': S
         "#]],
     );
 }

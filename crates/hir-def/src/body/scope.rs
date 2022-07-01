@@ -145,27 +145,28 @@ fn compute_block_scopes(
     tail: Option<ExprId>,
     body: &Body,
     scopes: &mut ExprScopes,
-    mut scope: ScopeId,
+    scope: &mut ScopeId,
 ) {
     for stmt in statements {
         match stmt {
             Statement::Let { pat, initializer, else_branch, .. } => {
                 if let Some(expr) = initializer {
-                    compute_expr_scopes(*expr, body, scopes, &mut scope);
+                    compute_expr_scopes(*expr, body, scopes, scope);
                 }
                 if let Some(expr) = else_branch {
-                    compute_expr_scopes(*expr, body, scopes, &mut scope);
+                    compute_expr_scopes(*expr, body, scopes, scope);
                 }
-                scope = scopes.new_scope(scope);
-                scopes.add_bindings(body, scope, *pat);
+
+                *scope = scopes.new_scope(*scope);
+                scopes.add_bindings(body, *scope, *pat);
             }
             Statement::Expr { expr, .. } => {
-                compute_expr_scopes(*expr, body, scopes, &mut scope);
+                compute_expr_scopes(*expr, body, scopes, scope);
             }
         }
     }
     if let Some(expr) = tail {
-        compute_expr_scopes(expr, body, scopes, &mut scope);
+        compute_expr_scopes(expr, body, scopes, scope);
     }
 }
 
@@ -175,12 +176,15 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
 
     scopes.set_scope(expr, *scope);
     match &body[expr] {
+        Expr::MacroStmts { statements, tail } => {
+            compute_block_scopes(statements, *tail, body, scopes, scope);
+        }
         Expr::Block { statements, tail, id, label } => {
-            let scope = scopes.new_block_scope(*scope, *id, make_label(label));
+            let mut scope = scopes.new_block_scope(*scope, *id, make_label(label));
             // Overwrite the old scope for the block expr, so that every block scope can be found
             // via the block itself (important for blocks that only contain items, no expressions).
             scopes.set_scope(expr, scope);
-            compute_block_scopes(statements, *tail, body, scopes, scope);
+            compute_block_scopes(statements, *tail, body, scopes, &mut scope);
         }
         Expr::For { iterable, pat, body: body_expr, label } => {
             compute_expr_scopes(*iterable, body, scopes, scope);

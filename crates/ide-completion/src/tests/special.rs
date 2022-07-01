@@ -810,3 +810,33 @@ fn main() {
         "#]],
     )
 }
+
+#[test]
+fn regression_12644() {
+    check(
+        r#"
+macro_rules! __rust_force_expr {
+    ($e:expr) => {
+        $e
+    };
+}
+macro_rules! vec {
+    ($elem:expr) => {
+        __rust_force_expr!($elem)
+    };
+}
+
+struct Struct;
+impl Struct {
+    fn foo(self) {}
+}
+
+fn f() {
+    vec![Struct].$0;
+}
+"#,
+        expect![[r#"
+            me foo() fn(self)
+        "#]],
+    );
+}

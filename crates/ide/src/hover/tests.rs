@@ -4920,3 +4920,34 @@ impl T for () {
         "#]],
     );
 }
+
+#[test]
+fn hover_ranged_macro_call() {
+    check_hover_range(
+        r#"
+macro_rules! __rust_force_expr {
+    ($e:expr) => {
+        $e
+    };
+}
+macro_rules! vec {
+    ($elem:expr) => {
+        __rust_force_expr!($elem)
+    };
+}
+
+struct Struct;
+impl Struct {
+    fn foo(self) {}
+}
+
+fn f() {
+    $0vec![Struct]$0;
+}
+"#,
+        expect![[r#"
+            ```rust
+            Struct
+            ```"#]],
+    );
+}

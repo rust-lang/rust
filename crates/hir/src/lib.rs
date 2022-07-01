@@ -2223,6 +2223,7 @@ impl Local {
         let src = source_map.pat_syntax(self.pat_id).unwrap(); // Hmm...
         let root = src.file_syntax(db.upcast());
         src.map(|ast| match ast {
+            // Suspicious unwrap
             Either::Left(it) => Either::Left(it.cast().unwrap().to_node(&root)),
             Either::Right(it) => Either::Right(it.to_node(&root)),
         })
