@@ -11,13 +11,13 @@ use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parse_stream_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
-use rustc_span::symbol::{self, kw, sym, Symbol};
+use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 
-use pm::bridge::{server, DelimSpan, ExpnGlobals, Group, Punct, TokenTree};
+use pm::bridge::{server, DelimSpan, ExpnGlobals, Group, Ident, Punct, TokenTree};
 use pm::{Delimiter, Level, LineColumn};
+use std::ascii;
 use std::ops::Bound;
-use std::{ascii, panic};
 
 trait FromInternal<T> {
     fn from_internal(x: T) -> Self;
@@ -50,7 +50,7 @@ impl ToInternal<token::Delimiter> for Delimiter {
 }
 
 impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)>
-    for Vec<TokenTree<TokenStream, Span, Ident, Literal>>
+    for Vec<TokenTree<TokenStream, Span, Symbol, Literal>>
 {
     fn from_internal((stream, rustc): (TokenStream, &mut Rustc<'_, '_>)) -> Self {
         use rustc_ast::token::*;
@@ -135,13 +135,12 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)>
                 Question => op("?"),
                 SingleQuote => op("'"),
 
-                Ident(name, false) if name == kw::DollarCrate => trees.push(TokenTree::Ident(Ident::dollar_crate(span))),
-                Ident(name, is_raw) => trees.push(TokenTree::Ident(Ident::new(rustc.sess(), name, is_raw, span))),
+                Ident(sym, is_raw) => trees.push(TokenTree::Ident(Ident { sym, is_raw, span })),
                 Lifetime(name) => {
                     let ident = symbol::Ident::new(name, span).without_first_quote();
                     trees.extend([
                         TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
-                        TokenTree::Ident(Ident::new(rustc.sess(), ident.name, false, span)),
+                        TokenTree::Ident(Ident { sym: ident.name, is_raw: false, span }),
                     ]);
                 }
                 Literal(lit) => trees.push(TokenTree::Literal(self::Literal { lit, span })),
@@ -170,7 +169,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)>
                 }
 
                 Interpolated(nt) if let NtIdent(ident, is_raw) = *nt => {
-                    trees.push(TokenTree::Ident(Ident::new(rustc.sess(), ident.name, is_raw, ident.span)))
+                    trees.push(TokenTree::Ident(Ident { sym: ident.name, is_raw, span: ident.span }))
                 }
 
                 Interpolated(nt) => {
@@ -200,11 +199,14 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)>
     }
 }
 
-impl ToInternal<TokenStream> for TokenTree<TokenStream, Span, Ident, Literal> {
+impl ToInternal<TokenStream>
+    for (TokenTree<TokenStream, Span, Symbol, Literal>, &mut Rustc<'_, '_>)
+{
     fn to_internal(self) -> TokenStream {
         use rustc_ast::token::*;
 
-        let (ch, joint, span) = match self {
+        let (tree, rustc) = self;
+        let (ch, joint, span) = match tree {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),
             TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
                 return tokenstream::TokenTree::Delimited(
@@ -215,6 +217,7 @@ impl ToInternal<TokenStream> for TokenTree<TokenStream, Span, Ident, Literal> {
                 .into();
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
+                rustc.sess().symbol_gallery.insert(sym, span);
                 return tokenstream::TokenTree::token(Ident(sym, is_raw), span).into();
             }
             TokenTree::Literal(self::Literal {
@@ -289,33 +292,6 @@ impl ToInternal<rustc_errors::Level> for Level {
 
 pub struct FreeFunctions;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Ident {
-    sym: Symbol,
-    is_raw: bool,
-    span: Span,
-}
-
-impl Ident {
-    fn new(sess: &ParseSess, sym: Symbol, is_raw: bool, span: Span) -> Ident {
-        let sym = nfc_normalize(sym.as_str());
-        let string = sym.as_str();
-        if !rustc_lexer::is_ident(string) {
-            panic!("`{:?}` is not a valid identifier", string)
-        }
-        if is_raw && !sym.can_be_raw() {
-            panic!("`{}` cannot be a raw identifier", string);
-        }
-        sess.symbol_gallery.insert(sym, span);
-        Ident { sym, is_raw, span }
-    }
-
-    fn dollar_crate(span: Span) -> Ident {
-        // `$crate` is accepted as an ident only if it comes from the compiler.
-        Ident { sym: kw::DollarCrate, is_raw: false, span }
-    }
-}
-
 // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
 #[derive(Clone, Debug)]
 pub struct Literal {
@@ -357,12 +333,12 @@ impl<'a, 'b> Rustc<'a, 'b> {
 impl server::Types for Rustc<'_, '_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type Ident = Ident;
     type Literal = Literal;
     type SourceFile = Lrc<SourceFile>;
     type MultiSpan = Vec<Span>;
     type Diagnostic = Diagnostic;
     type Span = Span;
+    type Symbol = Symbol;
 }
 
 impl server::FreeFunctions for Rustc<'_, '_> {
@@ -453,22 +429,22 @@ impl server::TokenStream for Rustc<'_, '_> {
 
     fn from_token_tree(
         &mut self,
-        tree: TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>,
+        tree: TokenTree<Self::TokenStream, Self::Span, Self::Symbol, Self::Literal>,
     ) -> Self::TokenStream {
-        tree.to_internal()
+        (tree, &mut *self).to_internal()
     }
 
     fn concat_trees(
         &mut self,
         base: Option<Self::TokenStream>,
-        trees: Vec<TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>>,
+        trees: Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol, Self::Literal>>,
     ) -> Self::TokenStream {
         let mut builder = tokenstream::TokenStreamBuilder::new();
         if let Some(base) = base {
             builder.push(base);
         }
         for tree in trees {
-            builder.push(tree.to_internal());
+            builder.push((tree, &mut *self).to_internal());
         }
         builder.build()
     }
@@ -491,22 +467,8 @@ impl server::TokenStream for Rustc<'_, '_> {
     fn into_trees(
         &mut self,
         stream: Self::TokenStream,
-    ) -> Vec<TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>> {
+    ) -> Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol, Self::Literal>> {
         FromInternal::from_internal((stream, self))
-    }
-}
-
-impl server::Ident for Rustc<'_, '_> {
-    fn new(&mut self, string: &str, span: Self::Span, is_raw: bool) -> Self::Ident {
-        Ident::new(self.sess(), Symbol::intern(string), is_raw, span)
-    }
-
-    fn span(&mut self, ident: Self::Ident) -> Self::Span {
-        ident.span
-    }
-
-    fn with_span(&mut self, ident: Self::Ident, span: Self::Span) -> Self::Ident {
-        Ident { span, ..ident }
     }
 }
 
@@ -812,6 +774,13 @@ impl server::Span for Rustc<'_, '_> {
     }
 }
 
+impl server::Symbol for Rustc<'_, '_> {
+    fn normalize_and_validate_ident(&mut self, string: &str) -> Result<Self::Symbol, ()> {
+        let sym = nfc_normalize(string);
+        if rustc_lexer::is_ident(sym.as_str()) { Ok(sym) } else { Err(()) }
+    }
+}
+
 impl server::Server for Rustc<'_, '_> {
     fn globals(&mut self) -> ExpnGlobals<Self::Span> {
         ExpnGlobals {
@@ -819,5 +788,13 @@ impl server::Server for Rustc<'_, '_> {
             call_site: self.call_site,
             mixed_site: self.mixed_site,
         }
+    }
+
+    fn intern_symbol(string: &str) -> Self::Symbol {
+        Symbol::intern(string)
+    }
+
+    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
+        f(&symbol.as_str())
     }
 }

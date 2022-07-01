@@ -181,7 +181,6 @@ define_handles! {
     Diagnostic,
 
     'interned:
-    Ident,
     Span,
 }
 
@@ -241,6 +240,8 @@ impl fmt::Debug for Span {
         f.write_str(&self.debug())
     }
 }
+
+pub(crate) use super::symbol::Symbol;
 
 macro_rules! define_client_side {
     ($($name:ident {
@@ -405,6 +406,9 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
         maybe_install_panic_hook(force_show_panics);
 
+        // Make sure the symbol store is empty before decoding inputs.
+        Symbol::invalidate_all();
+
         let reader = &mut &buf[..];
         let (globals, input) = <(ExpnGlobals<Span>, A)>::decode(reader, &mut ());
 
@@ -438,6 +442,10 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
         buf.clear();
         Err::<(), _>(e).encode(&mut buf, &mut ());
     });
+
+    // Now that a response has been serialized, invalidate all symbols
+    // registered with the interner.
+    Symbol::invalidate_all();
     buf
 }
 

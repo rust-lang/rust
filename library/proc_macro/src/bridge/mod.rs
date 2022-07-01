@@ -65,11 +65,11 @@ macro_rules! with_api {
                 fn from_str(src: &str) -> $S::TokenStream;
                 fn to_string($self: &$S::TokenStream) -> String;
                 fn from_token_tree(
-                    tree: TokenTree<$S::TokenStream, $S::Span, $S::Ident, $S::Literal>,
+                    tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol, $S::Literal>,
                 ) -> $S::TokenStream;
                 fn concat_trees(
                     base: Option<$S::TokenStream>,
-                    trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Ident, $S::Literal>>,
+                    trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol, $S::Literal>>,
                 ) -> $S::TokenStream;
                 fn concat_streams(
                     base: Option<$S::TokenStream>,
@@ -77,12 +77,7 @@ macro_rules! with_api {
                 ) -> $S::TokenStream;
                 fn into_trees(
                     $self: $S::TokenStream
-                ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Ident, $S::Literal>>;
-            },
-            Ident {
-                fn new(string: &str, span: $S::Span, is_raw: bool) -> $S::Ident;
-                fn span($self: $S::Ident) -> $S::Span;
-                fn with_span($self: $S::Ident, span: $S::Span) -> $S::Ident;
+                ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol, $S::Literal>>;
             },
             Literal {
                 fn drop($self: $S::Literal);
@@ -146,6 +141,9 @@ macro_rules! with_api {
                 fn save_span($self: $S::Span) -> usize;
                 fn recover_proc_macro_span(id: usize) -> $S::Span;
             },
+            Symbol {
+                fn normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
+            },
         }
     };
 }
@@ -171,6 +169,8 @@ macro_rules! reverse_decode {
 }
 
 #[allow(unsafe_code)]
+mod arena;
+#[allow(unsafe_code)]
 mod buffer;
 #[forbid(unsafe_code)]
 pub mod client;
@@ -189,6 +189,8 @@ mod scoped_cell;
 mod selfless_reify;
 #[forbid(unsafe_code)]
 pub mod server;
+#[allow(unsafe_code)]
+mod symbol;
 
 use buffer::Buffer;
 pub use rpc::PanicMessage;
@@ -466,16 +468,25 @@ pub struct Punct<Span> {
 
 compound_traits!(struct Punct<Span> { ch, joint, span });
 
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct Ident<Span, Symbol> {
+    pub sym: Symbol,
+    pub is_raw: bool,
+    pub span: Span,
+}
+
+compound_traits!(struct Ident<Span, Symbol> { sym, is_raw, span });
+
 #[derive(Clone)]
-pub enum TokenTree<TokenStream, Span, Ident, Literal> {
+pub enum TokenTree<TokenStream, Span, Symbol, Literal> {
     Group(Group<TokenStream, Span>),
     Punct(Punct<Span>),
-    Ident(Ident),
+    Ident(Ident<Span, Symbol>),
     Literal(Literal),
 }
 
 compound_traits!(
-    enum TokenTree<TokenStream, Span, Ident, Literal> {
+    enum TokenTree<TokenStream, Span, Symbol, Literal> {
         Group(tt),
         Punct(tt),
         Ident(tt),
