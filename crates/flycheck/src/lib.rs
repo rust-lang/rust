@@ -157,12 +157,9 @@ impl FlycheckActor {
         while let Some(event) = self.next_event(&inbox) {
             match event {
                 Event::Restart(Restart) => {
-                    if let Some(cargo_handle) = self.cargo_handle.take() {
-                        // Cancel the previously spawned process
-                        cargo_handle.cancel();
-                    }
+                    // Cancel the previously spawned process
+                    self.cancel_check_process();
                     while let Ok(Restart) = inbox.recv_timeout(Duration::from_millis(50)) {}
-                    self.progress(Progress::DidCancel);
 
                     let command = self.check_command();
                     tracing::debug!(?command, "will restart flycheck");
@@ -221,6 +218,7 @@ impl FlycheckActor {
             self.progress(Progress::DidCancel);
         }
     }
+
     fn check_command(&self) -> Command {
         let mut cmd = match &self.config {
             FlycheckConfig::CargoCommand {
