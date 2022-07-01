@@ -204,12 +204,16 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         any_members
     }
 
-    fn inject_dll_import_lib(
-        &mut self,
+    fn sess(&self) -> &Session {
+        self.sess
+    }
+
+    fn create_dll_import_lib(
+        _sess: &Session,
         _lib_name: &str,
         _dll_imports: &[rustc_session::cstore::DllImport],
-        _tmpdir: &rustc_data_structures::temp_dir::MaybeTempDir,
-    ) {
-        bug!("injecting dll imports is not supported");
+        _tmpdir: &Path,
+    ) -> PathBuf {
+        bug!("creating dll imports is not supported");
     }
 }
