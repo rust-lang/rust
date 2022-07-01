@@ -74,12 +74,18 @@ impl<'a> dot::Labeller<'a> for DropRangesGraph<'_, '_> {
 
     fn node_label(&'a self, n: &Self::Node) -> dot::LabelText<'a> {
         dot::LabelText::LabelStr(
-            self.drop_ranges
-                .post_order_map
-                .iter()
-                .find(|(_hir_id, &post_order_id)| post_order_id == *n)
-                .map_or("<unknown>".into(), |(hir_id, _)| self.tcx.hir().node_to_string(*hir_id))
-                .into(),
+            format!(
+                "{n:?}: {}",
+                self.drop_ranges
+                    .post_order_map
+                    .iter()
+                    .find(|(_hir_id, &post_order_id)| post_order_id == *n)
+                    .map_or("<unknown>".into(), |(hir_id, _)| self
+                        .tcx
+                        .hir()
+                        .node_to_string(*hir_id))
+            )
+            .into(),
         )
     }
 }
