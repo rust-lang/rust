@@ -5,7 +5,7 @@ Language
 --------
 
 - [Stabilize `#[derive(Default)]` on enums with a `#[default]` variant][94457]
-- [Stop validating some checks in dead code after functions with uninhabited return types][93313]
+- [Teach flow sensitive checks that visibly uninhabited call expressions never return][93313]
 - [Fix constants not getting dropped if part of a diverging expression][94775]
 - [Support unit struct/enum variant in destructuring assignment][95380]
 - [Remove mutable_borrow_reservation_conflict lint and allow the code pattern][96268]
@@ -75,6 +75,7 @@ Compatibility Notes
 - `cargo test` now passes `--target` to `rustdoc` if the specified target is
   the same as the host target.
   [#10594](https://github.com/rust-lang/cargo/pull/10594)
+- [rustdoc: doctests are now run on unexported `macro_rules!` macros, matching other private items][96630]
 - [rustdoc: Remove .woff font files][96279]
 - [Enforce Copy bounds for repeat elements while considering lifetimes][95819]
 
@@ -109,6 +110,7 @@ and related tools.
 [96393]: https://github.com/rust-lang/rust/pull/96393/
 [96436]: https://github.com/rust-lang/rust/pull/96436/
 [96557]: https://github.com/rust-lang/rust/pull/96557/
+[96630]: https://github.com/rust-lang/rust/pull/96630/
 
 [`bool::then_some`]: https://doc.rust-lang.org/stable/std/primitive.bool.html#method.then_some
 [`f32::total_cmp`]: https://doc.rust-lang.org/stable/std/primitive.f32.html#method.total_cmp

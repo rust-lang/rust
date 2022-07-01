@@ -156,6 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().field_indices_mut().insert(hir_id, index);
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(in super::super) fn write_resolution(
         &self,
         hir_id: hir::HirId,
@@ -164,8 +165,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().type_dependent_defs_mut().insert(hir_id, r);
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub fn write_method_call(&self, hir_id: hir::HirId, method: MethodCallee<'tcx>) {
-        debug!("write_method_call(hir_id={:?}, method={:?})", hir_id, method);
         self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_substs(hir_id, method.substs);
 

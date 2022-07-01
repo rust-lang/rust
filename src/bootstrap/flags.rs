@@ -51,6 +51,7 @@ pub struct Flags {
     pub host: Option<Vec<TargetSelection>>,
     pub target: Option<Vec<TargetSelection>>,
     pub config: Option<PathBuf>,
+    pub build_dir: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
@@ -174,6 +175,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         opts.optflagmulti("v", "verbose", "use verbose output (-vv for very verbose)");
         opts.optflag("i", "incremental", "use incremental compilation");
         opts.optopt("", "config", "TOML configuration file for build", "FILE");
+        opts.optopt(
+            "",
+            "build-dir",
+            "Build directory, overrides `build.build-dir` in `config.toml`",
+            "DIR",
+        );
         opts.optopt("", "build", "build target of the stage0 compiler", "BUILD");
         opts.optmulti("", "host", "host targets to build", "HOST");
         opts.optmulti("", "target", "target targets to build", "TARGET");
@@ -649,6 +656,7 @@ Arguments:
                 None
             },
             config: matches.opt_str("config").map(PathBuf::from),
+            build_dir: matches.opt_str("build-dir").map(PathBuf::from),
             jobs: matches.opt_str("jobs").map(|j| j.parse().expect("`jobs` should be a number")),
             cmd,
             incremental: matches.opt_present("incremental"),
