@@ -5,14 +5,14 @@ USAGE=$(cat <<"EOF"
 
 ./miri install <flags>:
 Installs the miri driver and cargo-miri. <flags> are passed to `cargo
-install`.  Sets up the rpath such that the installed binary should work in any
+install`. Sets up the rpath such that the installed binary should work in any
 working directory.
 
 ./miri build <flags>:
-Just build miri.  <flags> are passed to `cargo build`.
+Just build miri. <flags> are passed to `cargo build`.
 
 ./miri check <flags>:
-Just check miri.  <flags> are passed to `cargo check`.
+Just check miri. <flags> are passed to `cargo check`.
 
 ./miri test <flags>:
 Build miri, set up a sysroot and then run the test suite. <flags> are passed
@@ -26,10 +26,10 @@ The commands above also exist in a "-debug" variant (e.g. "./miri run-debug
 times and slower execution times.
 
 ./miri fmt <flags>:
-Format all sources and tests.  <flags> are passed to `rustfmt`.
+Format all sources and tests. <flags> are passed to `rustfmt`.
 
 ./miri clippy <flags>:
-Format all sources and tests.  <flags> are passed to `cargo clippy`.
+Format all sources and tests. <flags> are passed to `cargo clippy`.
 
   ENVIRONMENT VARIABLES
 
@@ -42,17 +42,23 @@ EOF
 )
 
 ## Preparation
-TARGET=$(rustc --version --verbose | grep "^host:" | cut -d ' ' -f 2)
-SYSROOT=$(rustc --print sysroot)
-LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib
 # macOS does not have a useful readlink/realpath so we have to use Python instead...
 MIRIDIR=$(dirname "$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$0")")
+# Determine toolchain *in the Miri dir* and use that.
+TOOLCHAIN=$(cd "$MIRIDIR"; rustup show active-toolchain | head -n 1 | cut -d ' ' -f 1)
+# Determine some toolchain properties
+TARGET=$(rustc +$TOOLCHAIN --version --verbose | grep "^host:" | cut -d ' ' -f 2)
+SYSROOT=$(rustc +$TOOLCHAIN --print sysroot)
+LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib
+
 if ! test -d "$LIBDIR"; then
     echo "Something went wrong determining the library dir."
     echo "I got $LIBDIR but that does not exist."
     echo "Please report a bug at https://github.com/rust-lang/miri/issues."
     exit 2
 fi
+
+CARGO="cargo +$TOOLCHAIN"
 if [ -z "$CARGO_INCREMENTAL" ]; then
     # Default CARGO_INCREMENTAL to 1.
     export CARGO_INCREMENTAL=1
@@ -68,15 +74,15 @@ export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR -C debug-assertions -C debugin
 
 ## Helper functions
 
-# Build a sysroot and set MIRI_SYSROOT to use it.  Arguments are passed to `cargo miri setup`.
+# Build a sysroot and set MIRI_SYSROOT to use it. Arguments are passed to `cargo miri setup`.
 build_sysroot() {
     # Build once, for the user to see.
-    cargo run $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -- miri setup "$@"
+    $CARGO run $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -- miri setup "$@"
     # Call again, to just set env var.
-    export MIRI_SYSROOT="$(cargo run $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -q -- miri setup --print-sysroot "$@")"
+    export MIRI_SYSROOT="$($CARGO run $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -q -- miri setup --print-sysroot "$@")"
 }
 
-# Prepare and set MIRI_SYSROOT.  Respects `MIRI_TEST_TARGET` and takes into account
+# Prepare and set MIRI_SYSROOT. Respects `MIRI_TEST_TARGET` and takes into account
 # locally built vs. distributed rustc.
 find_sysroot() {
     if [ -n "$MIRI_SYSROOT" ]; then
@@ -116,22 +122,22 @@ case "$COMMAND" in
 install|install-debug)
     # "--locked" to respect the Cargo.lock file if it exists,
     # "--offline" to avoid querying the registry (for yanked packages).
-    cargo install $CARGO_INSTALL_FLAGS --path "$MIRIDIR" --force --locked --offline "$@"
-    cargo install $CARGO_INSTALL_FLAGS --path "$MIRIDIR"/cargo-miri --force --locked --offline "$@"
+    $CARGO install $CARGO_INSTALL_FLAGS --path "$MIRIDIR" --force --locked --offline "$@"
+    $CARGO install $CARGO_INSTALL_FLAGS --path "$MIRIDIR"/cargo-miri --force --locked --offline "$@"
     ;;
 check|check-debug)
     # Check, and let caller control flags.
-    cargo check $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml --all-targets "$@"
-    cargo check $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
+    $CARGO check $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml --all-targets "$@"
+    $CARGO check $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
     ;;
 build|build-debug)
     # Build, and let caller control flags.
-    cargo build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml "$@"
-    cargo build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
+    $CARGO build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml "$@"
+    $CARGO build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
     ;;
 test|test-debug|bless|bless-debug)
     # First build and get a sysroot.
-    cargo build $CARGO_BUILD_FLAGS
+    $CARGO build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml
     find_sysroot
     case "$COMMAND" in
     bless|bless-debug)
@@ -140,8 +146,8 @@ test|test-debug|bless|bless-debug)
     esac
     # Then test, and let caller control flags.
     # Only in root project and ui_test as `cargo-miri` has no tests.
-    cargo test $CARGO_BUILD_FLAGS "$@"
-    cargo test $CARGO_BUILD_FLAGS --manifest-path ui_test/Cargo.toml "$@"
+    $CARGO test $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml "$@"
+    $CARGO test $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/ui_test/Cargo.toml "$@"
     ;;
 run|run-debug)
     # Scan for "--target" to set the "MIRI_TEST_TARGET" env var so
@@ -157,19 +163,19 @@ run|run-debug)
         done
     fi
     # First build and get a sysroot.
-    cargo build $CARGO_BUILD_FLAGS
+    $CARGO build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml
     find_sysroot
     # Then run the actual command.
-    exec cargo run $CARGO_BUILD_FLAGS -- --sysroot "$MIRI_SYSROOT" "$@"
+    exec $CARGO run $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- --sysroot "$MIRI_SYSROOT" "$@"
     ;;
 fmt)
     find "$MIRIDIR" -not \( -name target -prune \) -name '*.rs' \
-        | xargs rustfmt --edition=2021 --config-path "$MIRIDIR/rustfmt.toml" "$@"
+        | xargs rustfmt +$TOOLCHAIN --edition=2021 --config-path "$MIRIDIR/rustfmt.toml" "$@"
     ;;
 clippy)
-    cargo clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml --all-targets "$@"
-    cargo clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/ui_test/Cargo.toml --all-targets "$@"
-    cargo clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
+    $CARGO clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml --all-targets "$@"
+    $CARGO clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/ui_test/Cargo.toml --all-targets "$@"
+    $CARGO clippy $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
     ;;
 *)
     if [ -n "$COMMAND" ]; then
