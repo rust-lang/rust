@@ -624,11 +624,16 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>> {
+        let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         if ecx.machine.tracked_alloc_ids.contains(&id) {
-            register_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id));
+            register_diagnostic(NonHaltingDiagnostic::CreatedAlloc(
+                id,
+                alloc.size(),
+                alloc.align,
+                kind,
+            ));
         }
 
-        let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
         let stacks = if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
             Some(Stacks::new_allocation(
