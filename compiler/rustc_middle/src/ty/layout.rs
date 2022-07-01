@@ -3375,18 +3375,20 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         // Pass and return structures up to 2 pointers in size by value,
                         // matching `ScalarPair`. LLVM will usually pass these in 2 registers
                         // which is more efficient than by-ref.
-                        let ptr_size = Pointer.size(self);
-                        let max_by_val_size = ptr_size * 2;
+                        let max_by_val_size = Pointer.size(self) * 2;
                         let size = arg.layout.size;
 
                         if arg.layout.is_unsized() || size > max_by_val_size {
                             arg.make_indirect();
-                        } else if size > ptr_size && self.has_all_float(&arg.layout) {
+                        } else if self.has_all_float(&arg.layout) {
                             // We don't want to aggregate floats as an aggregates of Integer
-                            // because this will hurt the generated assembly (#93490) but as an
-                            // optimization we want to pass homogeneous aggregate of floats
-                            // greater than pointer size as indirect.
-                            arg.make_indirect();
+                            // because this will hurt the generated assembly (#93490)
+                            //
+                            // As an optimization we want to pass homogeneous aggregate of floats
+                            // greater than pointer size as indirect
+                            if size > Pointer.size(self) {
+                                arg.make_indirect();
+                            }
                         } else {
                             // We want to pass small aggregates as immediates, but using
                             // a LLVM aggregate type for this leads to bad optimizations,

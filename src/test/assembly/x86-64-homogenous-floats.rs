@@ -15,15 +15,12 @@ pub fn sum_f32(a: f32, b: f32) -> f32 {
     a + b
 }
 
-// CHECK-LABEL: sum_f64x2:
-// CHECK:      mov     rax, [[PTR_IN:.*]]
-// CHECK-NEXT: movupd  [[XMMA:xmm[0-9]]], xmmword ptr [rsi]
-// CHECK-NEXT: movupd  [[XMMB:xmm[0-9]]], xmmword ptr [rdx]
-// CHECK-NEXT: addpd   [[XMMB]], [[XMMA]]
-// CHECK-NEXT: movupd  xmmword ptr {{\[}}[[PTR_IN]]{{\]}}, [[XMMB]]
+// CHECK-LABEL: sum_f32x2:
+// CHECK:      addss xmm{{[0-9]}}, xmm{{[0-9]}}
+// CHECK-NEXT: addss xmm{{[0-9]}}, xmm{{[0-9]}}
 // CHECK-NEXT: ret
 #[no_mangle]
-pub fn sum_f64x2(a: [f64; 2], b: [f64; 2]) -> [f64; 2] {
+pub fn sum_f32x2(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
     [
         a[0] + b[0],
         a[1] + b[1],
