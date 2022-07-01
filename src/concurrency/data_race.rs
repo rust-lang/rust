@@ -964,7 +964,7 @@ impl VClockAlloc {
             let (index, clocks) = global.current_thread_state();
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
             for (offset, range) in alloc_ranges.iter_mut(range.start, range.size) {
-                if let Err(DataRace) = range.read_race_detect(&*clocks, index) {
+                if let Err(DataRace) = range.read_race_detect(&clocks, index) {
                     // Report data-race.
                     return Self::report_data_race(
                         global,
@@ -992,7 +992,7 @@ impl VClockAlloc {
         if global.race_detecting() {
             let (index, clocks) = global.current_thread_state();
             for (offset, range) in self.alloc_ranges.get_mut().iter_mut(range.start, range.size) {
-                if let Err(DataRace) = range.write_race_detect(&*clocks, index, write_type) {
+                if let Err(DataRace) = range.write_race_detect(&clocks, index, write_type) {
                     // Report data-race
                     return Self::report_data_race(
                         global,
@@ -1072,7 +1072,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                     for (offset, range) in
                         alloc_meta.alloc_ranges.borrow_mut().iter_mut(base_offset, size)
                     {
-                        if let Err(DataRace) = op(range, &mut *clocks, index, atomic) {
+                        if let Err(DataRace) = op(range, &mut clocks, index, atomic) {
                             mem::drop(clocks);
                             return VClockAlloc::report_data_race(
                                 data_race,

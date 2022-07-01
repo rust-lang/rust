@@ -215,7 +215,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             let arg_place =
                 ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Machine.into())?;
             ecx.write_os_str_to_c_str(OsStr::new(arg), arg_place.ptr, size)?;
-            ecx.mark_immutable(&*arg_place);
+            ecx.mark_immutable(&arg_place);
             argvs.push(arg_place.to_ref(&ecx));
         }
         // Make an array with all these pointers, in the Miri memory.
@@ -227,7 +227,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             let place = ecx.mplace_field(&argvs_place, idx)?;
             ecx.write_immediate(arg, &place.into())?;
         }
-        ecx.mark_immutable(&*argvs_place);
+        ecx.mark_immutable(&argvs_place);
         // A pointer to that place is the 3rd argument for main.
         let argv = argvs_place.to_ref(&ecx);
         // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
@@ -235,7 +235,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             let argc_place =
                 ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
             ecx.write_scalar(argc, &argc_place.into())?;
-            ecx.mark_immutable(&*argc_place);
+            ecx.mark_immutable(&argc_place);
             ecx.machine.argc = Some(*argc_place);
 
             let argv_place = ecx.allocate(
@@ -243,7 +243,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 MiriMemoryKind::Machine.into(),
             )?;
             ecx.write_immediate(argv, &argv_place.into())?;
-            ecx.mark_immutable(&*argv_place);
+            ecx.mark_immutable(&argv_place);
             ecx.machine.argv = Some(*argv_place);
         }
         // Store command line as UTF-16 for Windows `GetCommandLineW`.
@@ -260,7 +260,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 let place = ecx.mplace_field(&cmd_place, idx)?;
                 ecx.write_scalar(Scalar::from_u16(c), &place.into())?;
             }
-            ecx.mark_immutable(&*cmd_place);
+            ecx.mark_immutable(&cmd_place);
         }
         argv
     };

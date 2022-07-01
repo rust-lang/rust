@@ -928,7 +928,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             orig_tag,
                             item,
                             (alloc_id, range, offset),
-                            &mut *global,
+                            &mut global,
                             current_span,
                             history,
                             exposed_tags,
@@ -1090,7 +1090,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             #[inline(always)]
             fn ecx(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
-                &mut self.ecx
+                self.ecx
             }
 
             fn visit_value(&mut self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
