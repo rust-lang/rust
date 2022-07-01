@@ -928,7 +928,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             orig_tag,
                             item,
                             (alloc_id, range, offset),
-                            &mut *global,
+                            &mut global,
                             current_span,
                             history,
                             exposed_tags,
@@ -1090,14 +1090,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             #[inline(always)]
             fn ecx(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
-                &mut self.ecx
+                self.ecx
             }
 
             fn visit_value(&mut self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
                 if let Some((mutbl, protector)) = qualify(place.layout.ty, self.kind) {
                     let val = self.ecx.read_immediate(&place.into())?;
                     let val = self.ecx.retag_reference(&val, mutbl, protector)?;
-                    self.ecx.write_immediate(*val, &(*place).into())?;
+                    self.ecx.write_immediate(*val, &place.into())?;
                 } else {
                     // Maybe we need to go deeper.
                     self.walk_value(place)?;
