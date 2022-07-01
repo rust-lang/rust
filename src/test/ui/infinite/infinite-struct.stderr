@@ -2,9 +2,8 @@ error[E0072]: recursive type `Take` has infinite size
   --> $DIR/infinite-struct.rs:1:1
    |
 LL | struct Take(Take);
-   | ^^^^^^^^^^^^----^^
-   | |           |
-   | |           recursive without indirection
+   | ^^^^^^^^^^^ ---- recursive without indirection
+   | |
    | recursive type has infinite size
    |
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Take` representable
@@ -16,7 +15,7 @@ error[E0391]: cycle detected when computing drop-check constraints for `Take`
   --> $DIR/infinite-struct.rs:1:1
    |
 LL | struct Take(Take);
-   | ^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^
    |
    = note: ...which immediately requires computing drop-check constraints for `Take` again
    = note: cycle used when computing dropck types for `Canonical { max_universe: U0, variables: [], value: ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: UserFacing, constness: NotConst }, value: Take } }`

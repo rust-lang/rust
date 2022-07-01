@@ -27,7 +27,7 @@ error: static of uninhabited type
   --> $DIR/uninhabited-static.rs:12:1
    |
 LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
@@ -37,7 +37,7 @@ error: static of uninhabited type
   --> $DIR/uninhabited-static.rs:16:1
    |
 LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>

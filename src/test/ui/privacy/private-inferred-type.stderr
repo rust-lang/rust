@@ -2,19 +2,19 @@ error[E0446]: private type `Priv` in public interface
   --> $DIR/private-inferred-type.rs:61:36
    |
 LL |     struct Priv;
-   |     ------------ `Priv` declared as private
+   |     ----------- `Priv` declared as private
 ...
 LL |     impl TraitWithAssocTy for u8 { type AssocTy = Priv; }
-   |                                    ^^^^^^^^^^^^^^^^^^^^ can't leak private type
+   |                                    ^^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `S2` in public interface
   --> $DIR/private-inferred-type.rs:83:9
    |
 LL |     struct S2;
-   |     ---------- `S2` declared as private
+   |     --------- `S2` declared as private
 ...
 LL |         type Target = S2Alias;
-   |         ^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
+   |         ^^^^^^^^^^^ can't leak private type
 
 error: type `Priv` is private
   --> $DIR/private-inferred-type.rs:97:9

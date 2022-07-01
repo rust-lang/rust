@@ -1,11 +1,8 @@
 error: rustc_outlives
   --> $DIR/self-dyn.rs:8:1
    |
-LL | / struct Foo<'a, 'b, A>
-LL | | {
-LL | |     foo: Box<dyn Trait<'a, 'b, A>>
-LL | | }
-   | |_^
+LL | struct Foo<'a, 'b, A>
+   | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: A: 'a
 

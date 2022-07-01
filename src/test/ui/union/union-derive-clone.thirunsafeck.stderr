@@ -8,7 +8,7 @@ LL | union U5<T> {
    | doesn't satisfy `U5<CloneNoCopy>: Clone`
 ...
 LL | struct CloneNoCopy;
-   | ------------------- doesn't satisfy `CloneNoCopy: Copy`
+   | ------------------ doesn't satisfy `CloneNoCopy: Copy`
 ...
 LL |     let w = u.clone();
    |               ^^^^^ method cannot be called on `U5<CloneNoCopy>` due to unsatisfied trait bounds

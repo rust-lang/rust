@@ -8,7 +8,7 @@ note: associated constant defined here does not match type
   --> $DIR/assoc-const-ty-mismatch.rs:5:3
    |
 LL |   const N: usize;
-   |   ^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
 
 error: mismatch in bind of associated type, got const
   --> $DIR/assoc-const-ty-mismatch.rs:25:18
@@ -20,7 +20,7 @@ note: associated type defined here does not match const
   --> $DIR/assoc-const-ty-mismatch.rs:9:3
    |
 LL |   type T;
-   |   ^^^^^^^
+   |   ^^^^^^
 
 error: aborting due to 2 previous errors
 

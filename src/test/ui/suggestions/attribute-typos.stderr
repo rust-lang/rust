@@ -19,7 +19,7 @@ LL | #[tests]
   ::: $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |
 LL |     pub macro test($item:item) {
-   |     -------------------------- similarly named attribute macro `test` defined here
+   |     -------------- similarly named attribute macro `test` defined here
 
 error: cannot find attribute `deprcated` in this scope
   --> $DIR/attribute-typos.rs:1:3

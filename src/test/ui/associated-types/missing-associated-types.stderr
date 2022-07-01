@@ -13,7 +13,7 @@ error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (
   --> $DIR/missing-associated-types.rs:12:21
    |
 LL |     type A;
-   |     ------- `A` defined here
+   |     ------ `A` defined here
 ...
 LL | type Foo<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Y<Rhs>;
    |                     ^^^^^^^^   ^^^^^^^^   ^^^^^^   ^^^^^^ associated type `A` must be specified
@@ -42,9 +42,9 @@ error[E0191]: the value of the associated types `A` (from trait `Z`), `B` (from 
   --> $DIR/missing-associated-types.rs:15:21
    |
 LL |     type A;
-   |     ------- `A` defined here
+   |     ------ `A` defined here
 LL |     type B;
-   |     ------- `B` defined here
+   |     ------ `B` defined here
 ...
 LL | type Bar<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs>;
    |                     ^^^^^^^^   ^^^^^^^^   ^^^^^^   ^^^^^^ associated types `A`, `B`, `Output` must be specified
@@ -78,7 +78,7 @@ error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (
   --> $DIR/missing-associated-types.rs:18:21
    |
 LL |     type A;
-   |     ------- `A` defined here
+   |     ------ `A` defined here
 ...
 LL | type Baz<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Y<Rhs>;
    |                     ^^^^^^^^   ^^^^^^^^   ^^^^^^ associated type `A` must be specified

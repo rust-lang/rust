@@ -10,11 +10,8 @@ error: vtable entries for `<S as D>`: [
        ]
   --> $DIR/vtable-diamond.rs:21:1
    |
-LL | / trait D: B + C {
-LL | |
-LL | |     fn foo_d(&self) {}
-LL | | }
-   | |_^
+LL | trait D: B + C {
+   | ^^^^^^^^^^^^^^
 
 error: vtable entries for `<S as C>`: [
            MetadataDropInPlace,
@@ -25,11 +22,8 @@ error: vtable entries for `<S as C>`: [
        ]
   --> $DIR/vtable-diamond.rs:15:1
    |
-LL | / trait C: A {
-LL | |
-LL | |     fn foo_c(&self) {}
-LL | | }
-   | |_^
+LL | trait C: A {
+   | ^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

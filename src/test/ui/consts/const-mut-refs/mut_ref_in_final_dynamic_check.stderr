@@ -14,7 +14,7 @@ error: encountered dangling pointer in final constant
   --> $DIR/mut_ref_in_final_dynamic_check.rs:25:1
    |
 LL | const B: Option<&mut i32> = helper2();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

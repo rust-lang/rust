@@ -12,7 +12,7 @@ error[E0599]: the method `foo_one` exists for struct `MyStruct`, but its trait b
   --> $DIR/specialization-trait-not-implemented.rs:22:29
    |
 LL | struct MyStruct;
-   | ----------------
+   | ---------------
    | |      |
    | |      method `foo_one` not found for this struct
    | doesn't satisfy `MyStruct: Foo`
@@ -21,18 +21,17 @@ LL |     println!("{}", MyStruct.foo_one());
    |                             ^^^^^^^ method cannot be called on `MyStruct` due to unsatisfied trait bounds
    |
 note: trait bound `MyStruct: Foo` was not satisfied
-  --> $DIR/specialization-trait-not-implemented.rs:14:17
+  --> $DIR/specialization-trait-not-implemented.rs:14:1
    |
 LL | default impl<T> Foo for T {
-   |                 ^^^     ^
+   | ^^^^^^^^^^^^^^^^---^^^^^-
+   | |
+   | unsatisfied trait bound introduced here
 note: the following trait must be implemented
   --> $DIR/specialization-trait-not-implemented.rs:7:1
    |
-LL | / trait Foo {
-LL | |     fn foo_one(&self) -> &'static str;
-LL | |     fn foo_two(&self) -> &'static str;
-LL | | }
-   | |_^
+LL | trait Foo {
+   | ^^^^^^^^^
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Foo` defines an item `foo_one`, perhaps you need to implement it
   --> $DIR/specialization-trait-not-implemented.rs:7:1

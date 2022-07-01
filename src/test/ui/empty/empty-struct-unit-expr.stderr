@@ -2,7 +2,7 @@ error[E0618]: expected function, found `Empty2`
   --> $DIR/empty-struct-unit-expr.rs:15:14
    |
 LL | struct Empty2;
-   | -------------- `Empty2` defined here
+   | ------------- `Empty2` defined here
 ...
 LL |     let e2 = Empty2();
    |              ^^^^^^--

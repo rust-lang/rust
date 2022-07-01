@@ -16,9 +16,7 @@ error: any use of this value will cause an error
   --> $DIR/issue-88434-removal-index-should-be-less.rs:3:23
    |
 LL | const _CONST: &[u8] = &f(&[], |_| {});
-   | ----------------------^^^^^^^^^^^^^^^-
-   |                       |
-   |                       referenced constant has errors
+   | -------------------   ^^^^^^^^^^^^^^^ referenced constant has errors
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -32,9 +30,7 @@ error: any use of this value will cause an error
   --> $DIR/issue-88434-removal-index-should-be-less.rs:3:23
    |
 LL | const _CONST: &[u8] = &f(&[], |_| {});
-   | ----------------------^^^^^^^^^^^^^^^-
-   |                       |
-   |                       referenced constant has errors
+   | -------------------   ^^^^^^^^^^^^^^^ referenced constant has errors
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

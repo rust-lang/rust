@@ -9,12 +9,8 @@ error: vtable entries for `<S as B>`: [
        ]
   --> $DIR/vtable-vacant.rs:15:1
    |
-LL | / trait B: A {
-LL | |
-LL | |     fn foo_b1(&self) {}
-LL | |     fn foo_b2(&self) where Self: Send {}
-LL | | }
-   | |_^
+LL | trait B: A {
+   | ^^^^^^^^^^
 
 error: aborting due to previous error
 

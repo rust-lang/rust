@@ -25,12 +25,12 @@ note: the anonymous lifetime #1 defined here...
   --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:16:5
    |
 LL |     pub fn repro(_: Wrapper<Ref>);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...does not necessarily outlive the static lifetime introduced by the compatible `impl`
   --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:13:1
    |
 LL | impl Trait for Ref {}
-   | ^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

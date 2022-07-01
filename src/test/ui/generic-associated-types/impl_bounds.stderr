@@ -2,25 +2,25 @@ error: `impl` associated type signature for `A` doesn't match `trait` associated
   --> $DIR/impl_bounds.rs:15:5
    |
 LL |     type A<'a> where Self: 'a;
-   |     -------------------------- expected
+   |     ---------- expected
 ...
 LL |     type A<'a> = (&'a ()) where Self: 'static;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found
+   |     ^^^^^^^^^^ found
 
 error: `impl` associated type signature for `B` doesn't match `trait` associated type signature
   --> $DIR/impl_bounds.rs:17:5
    |
 LL |     type B<'a, 'b> where 'a: 'b;
-   |     ---------------------------- expected
+   |     -------------- expected
 ...
 LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found
+   |     ^^^^^^^^^^^^^^ found
 
 error[E0478]: lifetime bound not satisfied
   --> $DIR/impl_bounds.rs:17:22
    |
 LL |     type B<'a, 'b> where 'a: 'b;
-   |     ---------------------------- definition of `B` from trait
+   |     -------------- definition of `B` from trait
 ...
 LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |                      ^^^^^^^^^^^^^^^             - help: try copying this clause from the trait: `, 'a: 'b`
@@ -40,7 +40,7 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/impl_bounds.rs:20:5
    |
 LL |     type C = String where Self: Copy;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |     ^^^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
   --> $DIR/impl_bounds.rs:11:10
@@ -54,7 +54,7 @@ LL | trait Foo {
    |       --- in this trait
 ...
 LL |     type C where Self: Clone;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ this trait associated type doesn't have the requirement `Fooy<T>: Copy`
+   |     ^^^^^^ this trait associated type doesn't have the requirement `Fooy<T>: Copy`
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |

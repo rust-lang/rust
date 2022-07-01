@@ -400,11 +400,8 @@ LL |         let _val: Fruit = mem::uninitialized();
 note: enums have to be initialized to a variant
   --> $DIR/uninitialized-zeroed.rs:26:1
    |
-LL | / enum Fruit {
-LL | |     Apple,
-LL | |     Banana,
-LL | | }
-   | |_^
+LL | enum Fruit {
+   | ^^^^^^^^^^
 
 error: the type `[bool; 2]` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:101:31

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/const-in-struct-pat.rs:8:17
    |
 LL | struct foo;
-   | ----------- unit struct defined here
+   | ---------- unit struct defined here
 ...
 LL |     let Thing { foo } = t;
    |                 ^^^     - this expression has type `Thing`

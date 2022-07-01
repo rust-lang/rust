@@ -1,10 +1,8 @@
 error: rustc_outlives
   --> $DIR/nested-regions.rs:4:1
    |
-LL | / struct Foo<'a, 'b, T> {
-LL | |     x: &'a &'b T
-LL | | }
-   | |_^
+LL | struct Foo<'a, 'b, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: 'b: 'a
    = note: T: 'a

@@ -11,13 +11,11 @@ LL | #![feature(specialization)]
 error[E0520]: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
   --> $DIR/issue-50452-fail.rs:10:5
    |
-LL |       fn foo() {}
-   |       ^^^^^^^^^^^ cannot specialize default item `foo`
+LL |     fn foo() {}
+   |     ^^^^^^^^^^^ cannot specialize default item `foo`
 ...
-LL | / impl<T> Foo for T {
-LL | |     fn foo() {}
-LL | | }
-   | |_- parent `impl` is here
+LL | impl<T> Foo for T {
+   | ----------------- parent `impl` is here
    |
    = note: to specialize, `foo` in the parent `impl` must be marked `default`
 

@@ -2,9 +2,7 @@ warning: any use of this value will cause an error
   --> $DIR/assoc_const_generic_impl.rs:11:34
    |
 LL |     const I_AM_ZERO_SIZED: ()  = [()][std::mem::size_of::<Self>()];
-   |     -----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |                                  |
-   |                                  index out of bounds: the length is 1 but the index is 4
+   |     -------------------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 4
    |
 note: the lint level is defined here
   --> $DIR/assoc_const_generic_impl.rs:3:9
@@ -27,9 +25,7 @@ warning: any use of this value will cause an error
   --> $DIR/assoc_const_generic_impl.rs:11:34
    |
 LL |     const I_AM_ZERO_SIZED: ()  = [()][std::mem::size_of::<Self>()];
-   |     -----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |                                  |
-   |                                  index out of bounds: the length is 1 but the index is 4
+   |     -------------------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 4
    |
 note: the lint level is defined here
   --> $DIR/assoc_const_generic_impl.rs:3:9

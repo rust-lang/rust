@@ -40,7 +40,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:30:16
    |
 LL | struct S(usize, usize);
-   | ----------------------- fn(usize, usize) -> S {S} defined here
+   | -------- fn(usize, usize) -> S {S} defined here
 ...
 LL |     let _: S = S;
    |            -   ^ expected struct `S`, found fn item
@@ -76,7 +76,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:32:16
    |
 LL | struct V();
-   | ----------- fn() -> V {V} defined here
+   | -------- fn() -> V {V} defined here
 ...
 LL |     let _: V = V;
    |            -   ^ expected struct `V`, found fn item

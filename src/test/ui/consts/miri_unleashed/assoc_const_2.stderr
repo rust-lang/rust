@@ -12,9 +12,7 @@ warning: any use of this value will cause an error
   --> $DIR/assoc_const_2.rs:12:20
    |
 LL |     const F: u32 = 100 / U::X;
-   |     ---------------^^^^^^^^^^-
-   |                    |
-   |                    attempt to divide `100_u32` by zero
+   |     ------------   ^^^^^^^^^^ attempt to divide `100_u32` by zero
    |
 note: the lint level is defined here
   --> $DIR/assoc_const_2.rs:3:10

@@ -8,9 +8,7 @@ LL | / pub trait Public: Private<
 LL | |
 LL | |     <Self as Public>::P,
 LL | |     <Self as Public>::R
-...  |
-LL | |     fn call_inner(&self);
-LL | | }
+LL | | > {
    | |_^ can't leak private trait
 
 error: aborting due to previous error

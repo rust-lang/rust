@@ -96,11 +96,12 @@ impl Context {
     }
 
     pub fn enter_body(&mut self, cx: &LateContext<'_>, body: &hir::Body<'_>) {
-        let body_owner = cx.tcx.hir().body_owner_def_id(body.id());
+        let body_owner = cx.tcx.hir().body_owner(body.id());
+        let body_owner_def_id = cx.tcx.hir().local_def_id(body_owner);
 
-        match cx.tcx.hir().body_owner_kind(body_owner) {
+        match cx.tcx.hir().body_owner_kind(body_owner_def_id) {
             hir::BodyOwnerKind::Static(_) | hir::BodyOwnerKind::Const => {
-                let body_span = cx.tcx.def_span(body_owner);
+                let body_span = cx.tcx.hir().span_with_body(body_owner);
 
                 if let Some(span) = self.const_span {
                     if span.contains(body_span) {
@@ -115,7 +116,7 @@ impl Context {
 
     pub fn body_post(&mut self, cx: &LateContext<'_>, body: &hir::Body<'_>) {
         let body_owner = cx.tcx.hir().body_owner(body.id());
-        let body_span = cx.tcx.hir().span(body_owner);
+        let body_span = cx.tcx.hir().span_with_body(body_owner);
 
         if let Some(span) = self.const_span {
             if span.contains(body_span) {

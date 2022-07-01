@@ -10,7 +10,7 @@ note: the type is defined here
   --> $DIR/repr-transparent-issue-87496.rs:6:1
    |
 LL | struct TransparentCustomZst(());
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 

@@ -2,9 +2,7 @@ error: any use of this value will cause an error
   --> $DIR/defaults-not-assumed-fail.rs:8:19
    |
 LL |     const B: u8 = Self::A + 1;
-   |     --------------^^^^^^^^^^^-
-   |                   |
-   |                   attempt to compute `u8::MAX + 1_u8`, which would overflow
+   |     -----------   ^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -34,9 +32,7 @@ error: any use of this value will cause an error
   --> $DIR/defaults-not-assumed-fail.rs:8:19
    |
 LL |     const B: u8 = Self::A + 1;
-   |     --------------^^^^^^^^^^^-
-   |                   |
-   |                   attempt to compute `u8::MAX + 1_u8`, which would overflow
+   |     -----------   ^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
