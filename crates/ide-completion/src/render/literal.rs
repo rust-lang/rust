@@ -72,17 +72,21 @@ fn render(
         }
         None => (name.clone().into(), name.into(), false),
     };
-    let qualified_name = qualified_name.to_string();
+    let (qualified_name, escaped_qualified_name) =
+        (qualified_name.to_string(), qualified_name.escaped().to_string());
     let snippet_cap = ctx.snippet_cap();
 
     let mut rendered = match kind {
         StructKind::Tuple if should_add_parens => {
-            render_tuple_lit(db, snippet_cap, &fields, &qualified_name)
+            render_tuple_lit(db, snippet_cap, &fields, &escaped_qualified_name)
         }
         StructKind::Record if should_add_parens => {
-            render_record_lit(db, snippet_cap, &fields, &qualified_name)
+            render_record_lit(db, snippet_cap, &fields, &escaped_qualified_name)
         }
-        _ => RenderedLiteral { literal: qualified_name.clone(), detail: qualified_name.clone() },
+        _ => RenderedLiteral {
+            literal: escaped_qualified_name.clone(),
+            detail: escaped_qualified_name.clone(),
+        },
     };
 
     if snippet_cap.is_some() {

@@ -27,11 +27,12 @@ pub(crate) fn render_struct_pat(
         return None;
     }
 
-    let name = local_name.unwrap_or_else(|| strukt.name(ctx.db())).to_smol_str();
+    let name = local_name.unwrap_or_else(|| strukt.name(ctx.db()));
+    let (name, escaped_name) = (name.to_smol_str(), name.escaped().to_smol_str());
     let pat = render_pat(
         &ctx,
         pattern_ctx,
-        &name,
+        &escaped_name,
         strukt.kind(ctx.db()),
         &visible_fields,
         fields_omitted,
@@ -52,14 +53,17 @@ pub(crate) fn render_variant_pat(
     let fields = variant.fields(ctx.db());
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
 
-    let name = match path {
-        Some(path) => path.to_string().into(),
-        None => local_name.unwrap_or_else(|| variant.name(ctx.db())).to_smol_str(),
+    let (name, escaped_name) = match path {
+        Some(path) => (path.to_string().into(), path.escaped().to_string().into()),
+        None => {
+            let name = local_name.unwrap_or_else(|| variant.name(ctx.db()));
+            (name.to_smol_str(), name.escaped().to_smol_str())
+        }
     };
     let pat = render_pat(
         &ctx,
         pattern_ctx,
-        &name,
+        &escaped_name,
         variant.kind(ctx.db()),
         &visible_fields,
         fields_omitted,

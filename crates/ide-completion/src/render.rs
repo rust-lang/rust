@@ -116,7 +116,8 @@ pub(crate) fn render_field(
     ty: &hir::Type,
 ) -> CompletionItem {
     let is_deprecated = ctx.is_deprecated(field);
-    let name = field.name(ctx.db()).to_smol_str();
+    let name = field.name(ctx.db());
+    let (name, escaped_name) = (name.to_smol_str(), name.escaped().to_smol_str());
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
@@ -131,10 +132,7 @@ pub(crate) fn render_field(
         .set_documentation(field.docs(ctx.db()))
         .set_deprecated(is_deprecated)
         .lookup_by(name.clone());
-    let is_keyword = SyntaxKind::from_keyword(name.as_str()).is_some();
-    if is_keyword && !matches!(name.as_str(), "self" | "crate" | "super" | "Self") {
-        item.insert_text(format!("r#{}", name));
-    }
+    item.insert_text(escaped_name);
     if let Some(receiver) = &dot_access.receiver {
         if let Some(ref_match) = compute_ref_match(ctx.completion, ty) {
             item.ref_match(ref_match, receiver.syntax().text_range().start());
@@ -235,7 +233,7 @@ fn render_resolution_pat(
         _ => (),
     }
 
-    render_resolution_simple_(ctx, local_name, import_to_add, resolution)
+    render_resolution_simple_(ctx, &local_name, import_to_add, resolution)
 }
 
 fn render_resolution_path(
@@ -274,7 +272,10 @@ fn render_resolution_path(
     let config = completion.config;
 
     let name = local_name.to_smol_str();
-    let mut item = render_resolution_simple_(ctx, local_name, import_to_add, resolution);
+    let mut item = render_resolution_simple_(ctx, &local_name, import_to_add, resolution);
+    if local_name.escaped().is_escaped() {
+        item.insert_text(local_name.escaped().to_smol_str());
+    }
     // Add `<>` for generic types
     let type_path_no_ty_args = matches!(
         path_ctx,
@@ -295,7 +296,7 @@ fn render_resolution_path(
                 item.lookup_by(name.clone())
                     .label(SmolStr::from_iter([&name, "<…>"]))
                     .trigger_call_info()
-                    .insert_snippet(cap, format!("{}<$0>", name));
+                    .insert_snippet(cap, format!("{}<$0>", local_name.escaped()));
             }
         }
     }
@@ -321,7 +322,7 @@ fn render_resolution_path(
 
 fn render_resolution_simple_(
     ctx: RenderContext<'_>,
-    local_name: hir::Name,
+    local_name: &hir::Name,
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> Builder {
@@ -1724,5 +1725,150 @@ fn f() {
                 st BufWriter (use std::io::BufWriter) [requires_import]
             "#]],
         );
+    }
+
+    #[test]
+    fn completes_struct_with_raw_identifier() {
+        check_edit(
+            "type",
+            r#"
+mod m { pub struct r#type {} }
+fn main() {
+    let r#type = m::t$0;
+}
+"#,
+            r#"
+mod m { pub struct r#type {} }
+fn main() {
+    let r#type = m::r#type;
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn completes_fn_with_raw_identifier() {
+        check_edit(
+            "type",
+            r#"
+mod m { pub fn r#type {} }
+fn main() {
+    m::t$0
+}
+"#,
+            r#"
+mod m { pub fn r#type {} }
+fn main() {
+    m::r#type()$0
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn completes_macro_with_raw_identifier() {
+        check_edit(
+            "let!",
+            r#"
+macro_rules! r#let { () => {} }
+fn main() {
+    $0
+}
+"#,
+            r#"
+macro_rules! r#let { () => {} }
+fn main() {
+    r#let!($0)
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn completes_variant_with_raw_identifier() {
+        check_edit(
+            "type",
+            r#"
+enum A { r#type }
+fn main() {
+    let a = A::t$0
+}
+"#,
+            r#"
+enum A { r#type }
+fn main() {
+    let a = A::r#type$0
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn completes_field_with_raw_identifier() {
+        check_edit(
+            "fn",
+            r#"
+mod r#type {
+    pub struct r#struct {
+        pub r#fn: u32
+    }
+}
+
+fn main() {
+    let a = r#type::r#struct {};
+    a.$0
+}
+"#,
+            r#"
+mod r#type {
+    pub struct r#struct {
+        pub r#fn: u32
+    }
+}
+
+fn main() {
+    let a = r#type::r#struct {};
+    a.r#fn
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn completes_const_with_raw_identifier() {
+        check_edit(
+            "type",
+            r#"
+struct r#struct {}
+impl r#struct { pub const r#type: u8 = 1; }
+fn main() {
+    r#struct::t$0
+}
+"#,
+            r#"
+struct r#struct {}
+impl r#struct { pub const r#type: u8 = 1; }
+fn main() {
+    r#struct::r#type
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn completes_type_alias_with_raw_identifier() {
+        check_edit(
+            "type type",
+            r#"
+struct r#struct {}
+trait r#trait { type r#type; }
+impl r#trait for r#struct { type t$0 }
+"#,
+            r#"
+struct r#struct {}
+trait r#trait { type r#type; }
+impl r#trait for r#struct { type r#type = $0; }
+"#,
+        )
     }
 }

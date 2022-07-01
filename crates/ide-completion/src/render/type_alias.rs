@@ -29,10 +29,14 @@ fn render(
 ) -> Option<CompletionItem> {
     let db = ctx.db();
 
-    let name = if with_eq {
-        SmolStr::from_iter([&*type_alias.name(db).to_smol_str(), " = "])
+    let name = type_alias.name(db);
+    let (name, escaped_name) = if with_eq {
+        (
+            SmolStr::from_iter([&name.to_smol_str(), " = "]),
+            SmolStr::from_iter([&name.escaped().to_smol_str(), " = "]),
+        )
     } else {
-        type_alias.name(db).to_smol_str()
+        (name.to_smol_str(), name.escaped().to_smol_str())
     };
     let detail = type_alias.display(db).to_string();
 
@@ -45,9 +49,9 @@ fn render(
     if let Some(actm) = type_alias.as_assoc_item(db) {
         if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
             item.trait_name(trt.name(db).to_smol_str());
-            item.insert_text(name);
         }
     }
+    item.insert_text(escaped_name);
 
     Some(item.build())
 }

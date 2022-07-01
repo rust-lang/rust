@@ -232,10 +232,11 @@ fn add_type_alias_impl(
     replacement_range: TextRange,
     type_alias: hir::TypeAlias,
 ) {
-    let alias_name = type_alias.name(ctx.db).to_smol_str();
+    let alias_name = type_alias.name(ctx.db);
+    let (alias_name, escaped_name) = (alias_name.to_smol_str(), alias_name.escaped().to_smol_str());
 
     let label = format!("type {} =", alias_name);
-    let replacement = format!("type {} = ", alias_name);
+    let replacement = format!("type {} = ", escaped_name);
 
     let mut item = CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label);
     item.lookup_by(format!("type {}", alias_name))

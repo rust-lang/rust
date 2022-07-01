@@ -50,9 +50,12 @@ fn render(
 
     let name = local_name.unwrap_or_else(|| func.name(db));
 
-    let call = match &func_kind {
-        FuncKind::Method(_, Some(receiver)) => format!("{}.{}", receiver, &name).into(),
-        _ => name.to_smol_str(),
+    let (call, escaped_call) = match &func_kind {
+        FuncKind::Method(_, Some(receiver)) => (
+            format!("{}.{}", receiver, &name).into(),
+            format!("{}.{}", receiver.escaped(), name.escaped()).into(),
+        ),
+        _ => (name.to_smol_str(), name.escaped().to_smol_str()),
     };
     let mut item = CompletionItem::new(
         if func.self_param(db).is_some() {
@@ -115,7 +118,15 @@ fn render(
                 if let Some((self_param, params)) =
                     params(ctx.completion, func, &func_kind, has_dot_receiver)
                 {
-                    add_call_parens(&mut item, completion, cap, call, self_param, params);
+                    add_call_parens(
+                        &mut item,
+                        completion,
+                        cap,
+                        call,
+                        escaped_call,
+                        self_param,
+                        params,
+                    );
                 }
             }
         }
@@ -142,13 +153,14 @@ pub(super) fn add_call_parens<'b>(
     ctx: &CompletionContext,
     cap: SnippetCap,
     name: SmolStr,
+    escaped_name: SmolStr,
     self_param: Option<hir::SelfParam>,
     params: Vec<hir::Param>,
 ) -> &'b mut Builder {
     cov_mark::hit!(inserts_parens_for_function_calls);
 
     let (snippet, label_suffix) = if self_param.is_none() && params.is_empty() {
-        (format!("{}()$0", name), "()")
+        (format!("{}()$0", escaped_name), "()")
     } else {
         builder.trigger_call_info();
         let snippet = if let Some(CallableSnippets::FillArguments) = ctx.config.callable {
@@ -179,19 +191,19 @@ pub(super) fn add_call_parens<'b>(
                 Some(self_param) => {
                     format!(
                         "{}(${{1:{}}}{}{})$0",
-                        name,
+                        escaped_name,
                         self_param.display(ctx.db),
                         if params.is_empty() { "" } else { ", " },
                         function_params_snippet
                     )
                 }
                 None => {
-                    format!("{}({})$0", name, function_params_snippet)
+                    format!("{}({})$0", escaped_name, function_params_snippet)
                 }
             }
         } else {
             cov_mark::hit!(suppress_arg_snippets);
-            format!("{}($0)", name)
+            format!("{}($0)", escaped_name)
         };
 
         (snippet, "(…)")
