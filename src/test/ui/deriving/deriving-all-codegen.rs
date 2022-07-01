@@ -66,3 +66,11 @@ enum Fielded {
     Y(bool),
     Z(Option<i32>),
 }
+
+// A union. Most builtin traits are not derivable for unions.
+#[derive(Clone, Copy)]
+pub union Union {
+    pub b: bool,
+    pub u: u32,
+    pub i: i32,
+}

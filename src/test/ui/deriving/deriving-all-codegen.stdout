@@ -1020,3 +1020,21 @@ impl ::core::cmp::Ord for Fielded {
         }
     }
 }
+
+// A union. Most builtin traits are not derivable for unions.
+pub union Union {
+    pub b: bool,
+    pub u: u32,
+    pub i: i32,
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::clone::Clone for Union {
+    #[inline]
+    fn clone(&self) -> Union {
+        { let _: ::core::clone::AssertParamIsCopy<Self>; *self }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::marker::Copy for Union { }
