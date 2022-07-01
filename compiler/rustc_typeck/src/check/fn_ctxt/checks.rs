@@ -483,6 +483,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.set_tainted_by_errors();
         let tcx = self.tcx;
 
+        // Precompute the provided types and spans, since that's all we typically need for below
+        let provided_arg_tys: IndexVec<ProvidedIdx, (Ty<'tcx>, Span)> = provided_args
+            .iter()
+            .map(|expr| {
+                let ty = self
+                    .typeck_results
+                    .borrow()
+                    .expr_ty_adjusted_opt(*expr)
+                    .unwrap_or_else(|| tcx.ty_error());
+                (self.resolve_vars_if_possible(ty), expr.span)
+            })
+            .collect();
+
         // A "softer" version of the `demand_compatible`, which checks types without persisting them,
         // and treats error types differently
         // This will allow us to "probe" for other argument orders that would likely have been correct
@@ -499,31 +512,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Compatibility::Incompatible(None);
             }
 
-            let provided_arg: &hir::Expr<'tcx> = &provided_args[provided_idx];
-            let expectation = Expectation::rvalue_hint(self, expected_input_ty);
-            // FIXME: check that this is safe; I don't believe this commits any of the obligations, but I can't be sure.
-            //
-            //   I had another method of "soft" type checking before,
-            //   but it was failing to find the type of some expressions (like "")
-            //   so I prodded this method and made it pub(super) so I could call it, and it seems to work well.
-            let checked_ty = self.check_expr_kind(provided_arg, expectation);
+            let (arg_ty, arg_span) = provided_arg_tys[provided_idx];
 
+            let expectation = Expectation::rvalue_hint(self, expected_input_ty);
             let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
-            let can_coerce = self.can_coerce(checked_ty, coerced_ty);
+            let can_coerce = self.can_coerce(arg_ty, coerced_ty);
             if !can_coerce {
                 return Compatibility::Incompatible(None);
             }
 
             // Using probe here, since we don't want this subtyping to affect inference.
             let subtyping_error = self.probe(|_| {
-                self.at(&self.misc(provided_arg.span), self.param_env)
-                    .sup(formal_input_ty, coerced_ty)
-                    .err()
+                self.at(&self.misc(arg_span), self.param_env).sup(formal_input_ty, coerced_ty).err()
             });
 
             // Same as above: if either the coerce type or the checked type is an error type,
             // consider them *not* compatible.
-            let references_error = (coerced_ty, checked_ty).references_error();
+            let references_error = (coerced_ty, arg_ty).references_error();
             match (references_error, subtyping_error) {
                 (false, None) => Compatibility::Compatible,
                 (_, subtyping_error) => Compatibility::Incompatible(subtyping_error),
@@ -541,19 +546,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (mut errors, matched_inputs) =
             ArgMatrix::new(provided_args.len(), formal_and_expected_inputs.len(), check_compatible)
                 .find_errors();
-
-        // Precompute the provided types and spans, since that's all we typically need for below
-        let provided_arg_tys: IndexVec<ProvidedIdx, (Ty<'tcx>, Span)> = provided_args
-            .iter()
-            .map(|expr| {
-                let ty = self
-                    .typeck_results
-                    .borrow()
-                    .expr_ty_adjusted_opt(*expr)
-                    .unwrap_or_else(|| tcx.ty_error());
-                (self.resolve_vars_if_possible(ty), expr.span)
-            })
-            .collect();
 
         // First, check if we just need to wrap some arguments in a tuple.
         if let Some((mismatch_idx, terr)) =
