@@ -204,14 +204,6 @@ bitflags! {
                                           | TypeFlags::HAS_CT_INFER.bits
                                           | TypeFlags::HAS_TY_PLACEHOLDER.bits
                                           | TypeFlags::HAS_CT_PLACEHOLDER.bits
-                                          // The `evaluate_obligation` query does not return further
-                                          // obligations. If it evaluates an obligation with an opaque
-                                          // type, that opaque type may get compared to another type,
-                                          // constraining it. We would lose this information.
-                                          // FIXME: differentiate between crate-local opaque types
-                                          // and opaque types from other crates, as only opaque types
-                                          // from the local crate can possibly be a local name
-                                          | TypeFlags::HAS_TY_OPAQUE.bits
                                           // We consider 'freshened' types and constants
                                           // to depend on a particular fn.
                                           // The freshening process throws away information,
