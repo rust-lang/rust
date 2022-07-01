@@ -1097,7 +1097,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if let Some((mutbl, protector)) = qualify(place.layout.ty, self.kind) {
                     let val = self.ecx.read_immediate(&place.into())?;
                     let val = self.ecx.retag_reference(&val, mutbl, protector)?;
-                    self.ecx.write_immediate(*val, &(*place).into())?;
+                    self.ecx.write_immediate(*val, &place.into())?;
                 } else {
                     // Maybe we need to go deeper.
                     self.walk_value(place)?;

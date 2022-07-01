@@ -535,7 +535,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.validate_overlapping_atomic(dest)?;
-        this.allow_data_races_mut(move |this| this.write_scalar(val, &(*dest).into()))?;
+        this.allow_data_races_mut(move |this| this.write_scalar(val, &dest.into()))?;
         this.validate_atomic_store(dest, atomic)?;
         // FIXME: it's not possible to get the value before write_scalar. A read_scalar will cause
         // side effects from a read the program did not perform. So we have to initialise
@@ -562,7 +562,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         // Atomics wrap around on overflow.
         let val = this.binary_op(op, &old, rhs)?;
         let val = if neg { this.unary_op(mir::UnOp::Not, &val)? } else { val };
-        this.allow_data_races_mut(|this| this.write_immediate(*val, &(*place).into()))?;
+        this.allow_data_races_mut(|this| this.write_immediate(*val, &place.into()))?;
 
         this.validate_atomic_rmw(place, atomic)?;
 
@@ -587,7 +587,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
         this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_scalar(&place.into()))?;
-        this.allow_data_races_mut(|this| this.write_scalar(new, &(*place).into()))?;
+        this.allow_data_races_mut(|this| this.write_scalar(new, &place.into()))?;
 
         this.validate_atomic_rmw(place, atomic)?;
 
@@ -616,7 +616,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             if lt { &rhs } else { &old }
         };
 
-        this.allow_data_races_mut(|this| this.write_immediate(**new_val, &(*place).into()))?;
+        this.allow_data_races_mut(|this| this.write_immediate(**new_val, &place.into()))?;
 
         this.validate_atomic_rmw(place, atomic)?;
 
@@ -675,7 +675,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         // if successful, perform a full rw-atomic validation
         // otherwise treat this as an atomic load with the fail ordering.
         if cmpxchg_success {
-            this.allow_data_races_mut(|this| this.write_scalar(new, &(*place).into()))?;
+            this.allow_data_races_mut(|this| this.write_scalar(new, &place.into()))?;
             this.validate_atomic_rmw(place, success)?;
             this.buffered_atomic_rmw(new, place, success, old.to_scalar_or_uninit())?;
         } else {
