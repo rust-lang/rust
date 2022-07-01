@@ -484,7 +484,8 @@ kbd {
 #source-sidebar > .title {
 	border-bottom-color: #ccc;
 }
-#source-sidebar div.files > a:hover, div.name:hover {
+#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
+#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
 	background-color: #E0E0E0;
 }
 #source-sidebar div.files > .selected {
