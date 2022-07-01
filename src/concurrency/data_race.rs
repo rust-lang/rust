@@ -882,7 +882,7 @@ impl VClockAlloc {
     ) -> InterpResult<'tcx> {
         let (current_index, current_clocks) = global.current_thread_state(thread_mgr);
         let write_clock;
-        let (other_action, other_thread, other_clock) = if range.write
+        let (other_action, other_thread, _other_clock) = if range.write
             > current_clocks.clock[range.write_index]
         {
             // Convert the write action into the vector clock it
@@ -920,14 +920,12 @@ impl VClockAlloc {
 
         // Throw the data-race detection.
         throw_ub_format!(
-            "Data race detected between {} on {} and {} on {} at {:?} (current vector clock = {:?}, conflicting timestamp = {:?})",
+            "Data race detected between {} on {} and {} on {} at {:?}",
             action,
             current_thread_info,
             other_action,
             other_thread_info,
             ptr_dbg,
-            current_clocks.clock,
-            other_clock
         )
     }
 
@@ -1208,8 +1206,7 @@ impl GlobalState {
         };
 
         // Setup the main-thread since it is not explicitly created:
-        // uses vector index and thread-id 0, also the rust runtime gives
-        // the main-thread a name of "main".
+        // uses vector index and thread-id 0.
         let index = global_state.vector_clocks.get_mut().push(ThreadClockSet::default());
         global_state.vector_info.get_mut().push(ThreadId::new(0));
         global_state
@@ -1448,12 +1445,8 @@ impl GlobalState {
         vector: VectorIdx,
     ) -> String {
         let thread = self.vector_info.borrow()[vector];
-        let thread_name = thread_mgr.get_thread_name();
-        format!(
-            "Thread(id = {:?}, name = {:?})",
-            thread.to_u32(),
-            String::from_utf8_lossy(thread_name)
-        )
+        let thread_name = thread_mgr.get_thread_name(thread);
+        format!("thread `{}`", String::from_utf8_lossy(thread_name))
     }
 
     /// Acquire a lock, express that the previous call of

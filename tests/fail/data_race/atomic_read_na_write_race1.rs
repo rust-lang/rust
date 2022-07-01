@@ -22,7 +22,7 @@ pub fn main() {
 
         let j2 = spawn(move || {
             //Equivalent to: (&*c.0).load(Ordering::SeqCst)
-            intrinsics::atomic_load_seqcst(c.0 as *mut usize) //~ ERROR Data race detected between Atomic Load on Thread(id = 2) and Write on Thread(id = 1)
+            intrinsics::atomic_load_seqcst(c.0 as *mut usize) //~ ERROR Data race detected between Atomic Load on thread `<unnamed>` and Write on thread `<unnamed>`
         });
 
         j1.join().unwrap();

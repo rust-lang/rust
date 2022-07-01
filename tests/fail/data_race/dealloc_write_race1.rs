@@ -23,7 +23,7 @@ pub fn main() {
 
         let j2 = spawn(move || {
             __rust_dealloc(
-                //~^ ERROR Data race detected between Deallocate on Thread(id = 2) and Write on Thread(id = 1)
+                //~^ ERROR Data race detected between Deallocate on thread `<unnamed>` and Write on thread `<unnamed>`
                 ptr.0 as *mut _,
                 std::mem::size_of::<usize>(),
                 std::mem::align_of::<usize>(),

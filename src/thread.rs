@@ -170,6 +170,14 @@ impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
     }
 }
 
+impl<'mir, 'tcx> Thread<'mir, 'tcx> {
+    fn new(name: &str) -> Self {
+        let mut thread = Thread::default();
+        thread.thread_name = Some(Vec::from(name.as_bytes()));
+        thread
+    }
+}
+
 /// A specific moment in time.
 #[derive(Debug)]
 pub enum Time {
@@ -230,7 +238,7 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
     fn default() -> Self {
         let mut threads = IndexVec::new();
         // Create the main thread and add it to the list of threads.
-        let mut main_thread = Thread::default();
+        let mut main_thread = Thread::new("main");
         // The main thread can *not* be joined on.
         main_thread.join_status = ThreadJoinStatus::Detached;
         threads.push(main_thread);
@@ -379,13 +387,18 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Set the name of the active thread.
-    fn set_thread_name(&mut self, new_thread_name: Vec<u8>) {
+    fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) {
         self.active_thread_mut().thread_name = Some(new_thread_name);
     }
 
     /// Get the name of the active thread.
-    pub fn get_thread_name(&self) -> &[u8] {
+    pub fn get_active_thread_name(&self) -> &[u8] {
         self.active_thread_ref().thread_name()
+    }
+
+    /// Get the name of the given thread.
+    pub fn get_thread_name(&self, thread: ThreadId) -> &[u8] {
+        self.threads[thread].thread_name()
     }
 
     /// Put the thread into the blocked state.
@@ -475,7 +488,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         for (i, thread) in self.threads.iter_enumerated_mut() {
             if thread.state == ThreadState::BlockedOnJoin(self.active_thread) {
                 // The thread has terminated, mark happens-before edge to joining thread
-                if let Some(_) = data_race {
+                if data_race.is_some() {
                     joined_threads.push(i);
                 }
                 trace!("unblocking {:?} because {:?} terminated", i, self.active_thread);
@@ -683,7 +696,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) {
         let this = self.eval_context_mut();
-        this.machine.threads.set_thread_name(new_thread_name);
+        this.machine.threads.set_active_thread_name(new_thread_name);
     }
 
     #[inline]
@@ -692,7 +705,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         'mir: 'c,
     {
         let this = self.eval_context_ref();
-        this.machine.threads.get_thread_name()
+        this.machine.threads.get_active_thread_name()
     }
 
     #[inline]

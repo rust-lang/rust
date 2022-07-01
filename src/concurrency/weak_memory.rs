@@ -9,7 +9,7 @@
 //! Note that this implementation does not take into account of C++20's memory model revision to SC accesses
 //! and fences introduced by P0668 (<https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0668r5.html>).
 //! This implementation is not fully correct under the revised C++20 model and may generate behaviours C++20
-//! disallows.
+//! disallows (<https://github.com/rust-lang/miri/issues/2301>).
 //!
 //! Rust follows the C++20 memory model (except for the Consume ordering and some operations not performable through C++'s
 //! std::atomic<T> API). It is therefore possible for this implementation to generate behaviours never observable when the

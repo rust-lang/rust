@@ -34,7 +34,7 @@ fn main() {
 
     let join2 = unsafe {
         spawn(move || {
-            *c.0 = 64; //~ ERROR Data race detected between Write on Thread(id = 3) and Write on Thread(id = 1)
+            *c.0 = 64; //~ ERROR Data race detected between Write on thread `<unnamed>` and Write on thread `<unnamed>`
         })
     };
 
