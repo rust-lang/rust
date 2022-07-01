@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// let mut s = String::new();
     /// let _ = write!(s, "0x{:X}", 1024);
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub FORMAT_PUSH_STRING,
     perf,
     "`format!(..)` appended to existing `String`"
