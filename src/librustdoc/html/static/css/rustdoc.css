@@ -1528,6 +1528,10 @@ kbd {
 	margin-bottom: 1em;
 }
 
+details.dir-entry {
+	padding-left: 4px;
+}
+
 details.dir-entry > summary {
 	margin: 0 0 0 13px;
 	list-style-position: outside;
@@ -1535,7 +1539,7 @@ details.dir-entry > summary {
 }
 
 details.dir-entry div.folders, details.dir-entry div.files {
-	padding-left: 27px;
+	padding-left: 23px;
 }
 
 details.dir-entry a {
