@@ -59,7 +59,7 @@ cargo uitest
 # only run UI tests starting with `test_`
 TESTNAME="test_" cargo uitest
 # only run dogfood tests
-cargo test --test dogfood
+cargo dev dogfood
 ```
 
 If the output of a [UI test] differs from the expected output, you can update
@@ -97,6 +97,8 @@ cargo dev deprecate
 cargo dev setup git-hook
 # (experimental) Setup Clippy to work with IntelliJ-Rust
 cargo dev setup intellij
+# runs the `dogfood` tests
+cargo dev dogfood
 ```
 
 More about intellij command usage and reasons
