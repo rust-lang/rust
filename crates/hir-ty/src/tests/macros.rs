@@ -191,6 +191,8 @@ fn expr_macro_def_expanded_in_various_places() {
             !0..6 '1isize': isize
             !0..6 '1isize': isize
             !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
             39..442 '{     ...!(); }': ()
             73..94 'spam!(...am!())': {unknown}
             100..119 'for _ ...!() {}': ()
@@ -272,6 +274,8 @@ fn expr_macro_rules_expanded_in_various_places() {
             !0..6 '1isize': isize
             !0..6 '1isize': isize
             !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
             53..456 '{     ...!(); }': ()
             87..108 'spam!(...am!())': {unknown}
             114..133 'for _ ...!() {}': ()
@@ -307,7 +311,6 @@ fn expr_macro_expanded_in_stmts() {
         "#,
         expect![[r#"
             !0..8 'leta=();': ()
-            !0..8 'leta=();': ()
             !3..4 'a': ()
             !5..7 '()': ()
             57..84 '{     ...); } }': ()
@@ -335,16 +338,16 @@ fn recurisve_macro_expanded_in_stmts() {
         }
         "#,
         expect![[r#"
-            !0..7 'leta=3;': {unknown}
-            !0..7 'leta=3;': {unknown}
-            !0..13 'ng!{[leta=3]}': {unknown}
-            !0..13 'ng!{[leta=]3}': {unknown}
-            !0..13 'ng!{[leta]=3}': {unknown}
+            !0..7 'leta=3;': ()
+            !0..13 'ng!{[leta=3]}': ()
+            !0..13 'ng!{[leta=]3}': ()
+            !0..13 'ng!{[leta]=3}': ()
+            !0..13 'ng!{[let]a=3}': ()
             !3..4 'a': i32
             !5..6 '3': i32
             196..237 '{     ...= a; }': ()
-            229..230 'b': i32
-            233..234 'a': i32
+            229..230 'b': {unknown}
+            233..234 'a': {unknown}
         "#]],
     );
 }
@@ -364,8 +367,8 @@ fn recursive_inner_item_macro_rules() {
         "#,
         expect![[r#"
             !0..1 '1': i32
-            !0..26 'macro_...>{1};}': {unknown}
-            !0..26 'macro_...>{1};}': {unknown}
+            !0..7 'mac!($)': ()
+            !0..26 'macro_...>{1};}': ()
             107..143 '{     ...!(); }': ()
             129..130 'a': i32
         "#]],

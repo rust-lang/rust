@@ -175,6 +175,9 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
 
     scopes.set_scope(expr, *scope);
     match &body[expr] {
+        Expr::MacroStmts { statements, tail } => {
+            compute_block_scopes(statements, *tail, body, scopes, *scope);
+        }
         Expr::Block { statements, tail, id, label } => {
             let scope = scopes.new_block_scope(*scope, *id, make_label(label));
             // Overwrite the old scope for the block expr, so that every block scope can be found

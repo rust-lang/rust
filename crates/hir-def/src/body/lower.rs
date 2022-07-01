@@ -631,7 +631,6 @@ impl ExprCollector<'_> {
                     let mac_call = mac.macro_call()?;
                     let syntax_ptr = AstPtr::new(expr);
                     let macro_ptr = AstPtr::new(&mac_call);
-                    // let prev_stmt = self.statements_in_scope.len();
                     let stmt = self.collect_macro_call(
                         mac_call,
                         macro_ptr,
