@@ -1274,3 +1274,65 @@ impl S {
         "#]],
     );
 }
+
+#[test]
+fn infer_in_unexpandable_attr_proc_macro_1() {
+    check_types(
+        r#"
+//- /main.rs crate:main deps:mac
+#[mac::attr_macro]
+fn foo() {
+    let xxx = 1;
+      //^^^ i32
+}
+
+//- /mac.rs crate:mac
+#![crate_type="proc-macro"]
+#[proc_macro_attribute]
+pub fn attr_macro() {}
+"#,
+    );
+}
+
+#[test]
+fn infer_in_unexpandable_attr_proc_macro_in_impl() {
+    check_types(
+        r#"
+//- /main.rs crate:main deps:mac
+struct Foo;
+impl Foo {
+    #[mac::attr_macro]
+    fn foo() {
+        let xxx = 1;
+          //^^^ i32
+    }
+}
+
+//- /mac.rs crate:mac
+#![crate_type="proc-macro"]
+#[proc_macro_attribute]
+pub fn attr_macro() {}
+"#,
+    );
+}
+
+#[test]
+fn infer_in_unexpandable_attr_proc_macro_in_trait() {
+    check_types(
+        r#"
+//- /main.rs crate:main deps:mac
+trait Foo {
+    #[mac::attr_macro]
+    fn foo() {
+        let xxx = 1;
+          //^^^ i32
+    }
+}
+
+//- /mac.rs crate:mac
+#![crate_type="proc-macro"]
+#[proc_macro_attribute]
+pub fn attr_macro() {}
+"#,
+    );
+}
