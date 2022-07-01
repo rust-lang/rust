@@ -35,6 +35,13 @@ assert-css: (
     "#source-sidebar details[open] > .files a:not(.selected)",
     {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .files a:not(.selected)"
+wait-for-css: (
+    "#source-sidebar details[open] > .files a:not(.selected)",
+    {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
+)
+focus: ".search-input"
 // With hover.
 move-cursor-to: "#source-sidebar details[open] > .files a:not(.selected)"
 assert-css: (
@@ -46,6 +53,13 @@ assert-css: (
     "#source-sidebar details[open] > .folders > details > summary",
     {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .folders > details > summary"
+wait-for-css: (
+    "#source-sidebar details[open] > .folders > details > summary",
+    {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
+)
+focus: ".search-input"
 // With hover.
 move-cursor-to: "#source-sidebar details[open] > .folders > details > summary"
 assert-css: (
@@ -67,6 +81,13 @@ assert-css: (
     "#source-sidebar details[open] > .files > a:not(.selected)",
     {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .files a:not(.selected)"
+wait-for-css: (
+    "#source-sidebar details[open] > .files a:not(.selected)",
+    {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
+)
+focus: ".search-input"
 // With hover.
 move-cursor-to: "#source-sidebar details[open] > .files a:not(.selected)"
 assert-css: (
@@ -78,6 +99,13 @@ assert-css: (
     "#source-sidebar details[open] > .folders > details > summary",
     {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .folders > details > summary"
+wait-for-css: (
+    "#source-sidebar details[open] > .folders > details > summary",
+    {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
+)
+focus: ".search-input"
 // With hover.
 move-cursor-to: "#source-sidebar details[open] > .folders > details > summary"
 assert-css: (
@@ -99,6 +127,13 @@ assert-css: (
     "#source-sidebar details[open] > .files a:not(.selected)",
     {"color": "rgb(197, 197, 197)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .files a:not(.selected)"
+wait-for-css: (
+    "#source-sidebar details[open] > .files a:not(.selected)",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
+)
+focus: ".search-input"
 // With hover.
 move-cursor-to: "#source-sidebar details[open] > .files a:not(.selected)"
 assert-css: (
@@ -110,6 +145,13 @@ assert-css: (
     "#source-sidebar details[open] > .folders > details > summary",
     {"color": "rgb(197, 197, 197)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .folders > details > summary"
+wait-for-css: (
+    "#source-sidebar details[open] > .folders > details > summary",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
+)
+focus: ".search-input"
 // With hover.
 move-cursor-to: "#source-sidebar details[open] > .folders > details > summary"
 assert-css: (
