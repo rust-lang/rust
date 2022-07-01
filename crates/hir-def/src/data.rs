@@ -2,7 +2,7 @@
 
 use std::{mem, sync::Arc};
 
-use hir_expand::{name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId};
+use hir_expand::{name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroDefKind};
 use syntax::ast;
 
 use crate::{
@@ -497,6 +497,17 @@ impl<'a> AssocItemCollector<'a> {
                     // If proc attribute macro expansion is disabled, skip expanding it here
                     if !self.db.enable_proc_attr_macros() {
                         continue 'attrs;
+                    }
+                    let loc = self.db.lookup_intern_macro_call(call_id);
+                    if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
+                        // If there's no expander for the proc macro (e.g. the
+                        // proc macro is ignored, or building the proc macro
+                        // crate failed), skip expansion like we would if it was
+                        // disabled. This is analogous to the handling in
+                        // `DefCollector::collect_macros`.
+                        if exp.is_dummy() {
+                            continue 'attrs;
+                        }
                     }
                     match self.expander.enter_expand_id(self.db, call_id) {
                         ExpandResult { value: Some((mark, mac)), .. } => {
