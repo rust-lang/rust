@@ -1,6 +1,7 @@
 There is no file shebang for python that works on all platforms (#71818).
-To minimize breakage we have chosen to make this work when `env` is in path, or when using python/python2/python3 directly.
-Unfortunately, this breaks users using the `py` wrapper on Windows, where env isn't supported outside of MingW shells.
+To minimize breakage we have chosen to make this work when `bash` is available, or when using python/python2/python3 directly.
+Unfortunately, this breaks users using the `py` wrapper on Windows, where `bash` isn't supported outside of MingW shells.
+Existing versions of `py` will see the bash shebang line and try to respect it and interpret the file with `bash`.
 
 You can do one of the following things to get x.py working:
 1. Use any of `python`, `python2`, `python3`, `py -2`, or `py -3` to invoke x.py.
