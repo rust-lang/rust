@@ -475,7 +475,13 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
 
                 let suggestion = suggestion_for_allocator_api(self, def_id, span, feature);
-                EvalResult::Deny { feature, reason, issue, suggestion, is_soft }
+                EvalResult::Deny {
+                    feature,
+                    reason: reason.to_opt_reason(),
+                    issue,
+                    suggestion,
+                    is_soft,
+                }
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
