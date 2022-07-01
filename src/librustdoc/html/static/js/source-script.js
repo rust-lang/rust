@@ -2,7 +2,7 @@
 /* global sourcesIndex */
 
 // Local js definitions:
-/* global addClass, getCurrentValue, hasClass, onEachLazy, removeClass, browserSupportsHistoryApi */
+/* global addClass, getCurrentValue, onEachLazy, removeClass, browserSupportsHistoryApi */
 /* global updateLocalStorage */
 
 "use strict";
