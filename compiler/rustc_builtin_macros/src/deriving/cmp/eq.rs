@@ -27,16 +27,14 @@ pub fn expand_deriving_eq(
         path: path_std!(cmp::Eq),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::assert_receiver_is_total_eq,
             generics: Bounds::empty(),
-            explicit_self: borrowed_explicit_self(),
+            explicit_self: true,
             args: vec![],
-            ret_ty: nil_ty(),
+            ret_ty: Unit,
             attributes: attrs,
-            is_unsafe: false,
             unify_fieldless_variants: true,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 cs_total_eq_assert(a, b, c)

@@ -23,16 +23,14 @@ pub fn expand_deriving_ord(
         path: path_std!(cmp::Ord),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::cmp,
             generics: Bounds::empty(),
-            explicit_self: borrowed_explicit_self(),
-            args: vec![(borrowed_self(), sym::other)],
-            ret_ty: Literal(path_std!(cmp::Ordering)),
+            explicit_self: true,
+            args: vec![(self_ref(), sym::other)],
+            ret_ty: Path(path_std!(cmp::Ordering)),
             attributes: attrs,
-            is_unsafe: false,
             unify_fieldless_variants: true,
             combine_substructure: combine_substructure(Box::new(|a, b, c| cs_cmp(a, b, c))),
         }],
@@ -99,8 +97,8 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<
             cx.expr_match(span, new, vec![eq_arm, neq_arm])
         },
         cx.expr_path(equals_path.clone()),
-        Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
-            if self_args.len() != 2 {
+        Box::new(|cx, span, tag_tuple| {
+            if tag_tuple.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`")
             } else {
                 ordering_collapsed(cx, span, tag_tuple)

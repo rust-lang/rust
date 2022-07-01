@@ -1,7 +1,6 @@
 //! A mini version of ast::Ty, which is easier to use, and features an explicit `Self` type to use
 //! when specifying impls to be derived.
 
-pub use PtrTy::*;
 pub use Ty::*;
 
 use rustc_ast::ptr::P;
@@ -11,22 +10,11 @@ use rustc_span::source_map::{respan, DUMMY_SP};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 
-/// The types of pointers
-#[derive(Clone)]
-pub enum PtrTy {
-    /// &'lifetime mut
-    Borrowed(Option<Ident>, ast::Mutability),
-    /// *mut
-    #[allow(dead_code)]
-    Raw(ast::Mutability),
-}
-
 /// A path, e.g., `::std::option::Option::<i32>` (global). Has support
-/// for type parameters and a lifetime.
+/// for type parameters.
 #[derive(Clone)]
 pub struct Path {
     path: Vec<Symbol>,
-    lifetime: Option<Ident>,
     params: Vec<Box<Ty>>,
     kind: PathKind,
 }
@@ -40,18 +28,13 @@ pub enum PathKind {
 
 impl Path {
     pub fn new(path: Vec<Symbol>) -> Path {
-        Path::new_(path, None, Vec::new(), PathKind::Std)
+        Path::new_(path, Vec::new(), PathKind::Std)
     }
     pub fn new_local(path: Symbol) -> Path {
-        Path::new_(vec![path], None, Vec::new(), PathKind::Local)
+        Path::new_(vec![path], Vec::new(), PathKind::Local)
     }
-    pub fn new_(
-        path: Vec<Symbol>,
-        lifetime: Option<Ident>,
-        params: Vec<Box<Ty>>,
-        kind: PathKind,
-    ) -> Path {
-        Path { path, lifetime, params, kind }
+    pub fn new_(path: Vec<Symbol>, params: Vec<Box<Ty>>, kind: PathKind) -> Path {
+        Path { path, params, kind }
     }
 
     pub fn to_ty(
@@ -71,10 +54,8 @@ impl Path {
         self_generics: &Generics,
     ) -> ast::Path {
         let mut idents = self.path.iter().map(|s| Ident::new(*s, span)).collect();
-        let lt = mk_lifetimes(cx, span, &self.lifetime);
         let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics));
-        let params =
-            lt.into_iter().map(GenericArg::Lifetime).chain(tys.map(GenericArg::Type)).collect();
+        let params = tys.map(GenericArg::Type).collect();
 
         match self.kind {
             PathKind::Global => cx.path_all(span, true, idents, params),
@@ -92,40 +73,17 @@ impl Path {
 #[derive(Clone)]
 pub enum Ty {
     Self_,
-    /// &/Box/ Ty
-    Ptr(Box<Ty>, PtrTy),
+    /// A reference.
+    Ref(Box<Ty>, ast::Mutability),
     /// `mod::mod::Type<[lifetime], [Params...]>`, including a plain type
     /// parameter, and things like `i32`
-    Literal(Path),
-    /// includes unit
-    Tuple(Vec<Ty>),
+    Path(Path),
+    /// For () return types.
+    Unit,
 }
 
-pub fn borrowed_ptrty() -> PtrTy {
-    Borrowed(None, ast::Mutability::Not)
-}
-pub fn borrowed(ty: Box<Ty>) -> Ty {
-    Ptr(ty, borrowed_ptrty())
-}
-
-pub fn borrowed_explicit_self() -> Option<Option<PtrTy>> {
-    Some(Some(borrowed_ptrty()))
-}
-
-pub fn borrowed_self() -> Ty {
-    borrowed(Box::new(Self_))
-}
-
-pub fn nil_ty() -> Ty {
-    Tuple(Vec::new())
-}
-
-fn mk_lifetime(cx: &ExtCtxt<'_>, span: Span, lt: &Option<Ident>) -> Option<ast::Lifetime> {
-    lt.map(|ident| cx.lifetime(span, ident))
-}
-
-fn mk_lifetimes(cx: &ExtCtxt<'_>, span: Span, lt: &Option<Ident>) -> Vec<ast::Lifetime> {
-    mk_lifetime(cx, span, lt).into_iter().collect()
+pub fn self_ref() -> Ty {
+    Ref(Box::new(Self_), ast::Mutability::Not)
 }
 
 impl Ty {
@@ -136,23 +94,15 @@ impl Ty {
         self_ty: Ident,
         self_generics: &Generics,
     ) -> P<ast::Ty> {
-        match *self {
-            Ptr(ref ty, ref ptr) => {
+        match self {
+            Ref(ty, mutbl) => {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
-                match *ptr {
-                    Borrowed(ref lt, mutbl) => {
-                        let lt = mk_lifetime(cx, span, lt);
-                        cx.ty_rptr(span, raw_ty, lt, mutbl)
-                    }
-                    Raw(mutbl) => cx.ty_ptr(span, raw_ty, mutbl),
-                }
+                cx.ty_rptr(span, raw_ty, None, *mutbl)
             }
-            Literal(ref p) => p.to_ty(cx, span, self_ty, self_generics),
+            Path(p) => p.to_ty(cx, span, self_ty, self_generics),
             Self_ => cx.ty_path(self.to_path(cx, span, self_ty, self_generics)),
-            Tuple(ref fields) => {
-                let ty = ast::TyKind::Tup(
-                    fields.iter().map(|f| f.to_ty(cx, span, self_ty, self_generics)).collect(),
-                );
+            Unit => {
+                let ty = ast::TyKind::Tup(vec![]);
                 cx.ty(span, ty)
             }
         }
@@ -185,9 +135,9 @@ impl Ty {
 
                 cx.path_all(span, false, vec![self_ty], params)
             }
-            Literal(ref p) => p.to_path(cx, span, self_ty, generics),
-            Ptr(..) => cx.span_bug(span, "pointer in a path in generic `derive`"),
-            Tuple(..) => cx.span_bug(span, "tuple in a path in generic `derive`"),
+            Path(ref p) => p.to_path(cx, span, self_ty, generics),
+            Ref(..) => cx.span_bug(span, "ref in a path in generic `derive`"),
+            Unit => cx.span_bug(span, "unit in a path in generic `derive`"),
         }
     }
 }
@@ -245,28 +195,10 @@ impl Bounds {
     }
 }
 
-pub fn get_explicit_self(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    self_ptr: &Option<PtrTy>,
-) -> (P<Expr>, ast::ExplicitSelf) {
+pub fn get_explicit_self(cx: &ExtCtxt<'_>, span: Span) -> (P<Expr>, ast::ExplicitSelf) {
     // this constructs a fresh `self` path
     let self_path = cx.expr_self(span);
-    match *self_ptr {
-        None => (self_path, respan(span, SelfKind::Value(ast::Mutability::Not))),
-        Some(ref ptr) => {
-            let self_ty = respan(
-                span,
-                match *ptr {
-                    Borrowed(ref lt, mutbl) => {
-                        let lt = lt.map(|s| cx.lifetime(span, s));
-                        SelfKind::Region(lt, mutbl)
-                    }
-                    Raw(_) => cx.span_bug(span, "attempted to use *self in deriving definition"),
-                },
-            );
-            let self_expr = cx.expr_deref(span, self_path);
-            (self_expr, self_ty)
-        }
-    }
+    let self_ty = respan(span, SelfKind::Region(None, ast::Mutability::Not));
+    let self_expr = cx.expr_deref(span, self_path);
+    (self_expr, self_ty)
 }

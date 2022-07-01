@@ -1707,12 +1707,14 @@ fn drop_location_span<'tcx>(tcx: TyCtxt<'tcx>, hir_id: hir::HirId) -> Span {
         hir::Node::Item(item) => match item.kind {
             hir::ItemKind::Fn(_, _, owner_id) => tcx.hir().span(owner_id.hir_id),
             _ => {
-                bug!("Drop location span error: need to handle more ItemKind {:?}", item.kind);
+                bug!("Drop location span error: need to handle more ItemKind '{:?}'", item.kind);
             }
         },
         hir::Node::Block(block) => tcx.hir().span(block.hir_id),
+        hir::Node::TraitItem(item) => tcx.hir().span(item.hir_id()),
+        hir::Node::ImplItem(item) => tcx.hir().span(item.hir_id()),
         _ => {
-            bug!("Drop location span error: need to handle more Node {:?}", owner_node);
+            bug!("Drop location span error: need to handle more Node '{:?}'", owner_node);
         }
     };
     tcx.sess.source_map().end_point(owner_span)

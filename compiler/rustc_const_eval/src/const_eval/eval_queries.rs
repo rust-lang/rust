@@ -19,11 +19,9 @@ use rustc_target::abi::{self, Abi};
 use std::borrow::Cow;
 use std::convert::TryInto;
 
-pub fn note_on_undefined_behavior_error() -> &'static str {
-    "The rules on what exactly is undefined behavior aren't clear, \
+const NOTE_ON_UNDEFINED_BEHAVIOR_ERROR: &str = "The rules on what exactly is undefined behavior aren't clear, \
      so this check might be overzealous. Please open an issue on the rustc \
-     repository if you believe it should not be considered undefined behavior."
-}
+     repository if you believe it should not be considered undefined behavior.";
 
 // Returns a pointer to where the result lives
 fn eval_body_using_ecx<'mir, 'tcx>(
@@ -375,7 +373,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     ecx.tcx,
                     "it is undefined behavior to use this value",
                     |diag| {
-                        diag.note(note_on_undefined_behavior_error());
+                        diag.note(NOTE_ON_UNDEFINED_BEHAVIOR_ERROR);
                         diag.note(&format!(
                             "the raw bytes of the constant ({}",
                             display_allocation(

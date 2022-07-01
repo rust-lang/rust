@@ -48,7 +48,7 @@ pub fn expand_deriving_partial_eq(
                     None => cx.expr_bool(span, base),
                 }
             },
-            Box::new(|cx, span, _, _| cx.expr_bool(span, !base)),
+            Box::new(|cx, span, _| cx.expr_bool(span, !base)),
             cx,
             span,
             substr,
@@ -69,11 +69,10 @@ pub fn expand_deriving_partial_eq(
             MethodDef {
                 name: $name,
                 generics: Bounds::empty(),
-                explicit_self: borrowed_explicit_self(),
-                args: vec![(borrowed_self(), sym::other)],
-                ret_ty: Literal(path_local!(bool)),
+                explicit_self: true,
+                args: vec![(self_ref(), sym::other)],
+                ret_ty: Path(path_local!(bool)),
                 attributes: attrs,
-                is_unsafe: false,
                 unify_fieldless_variants: true,
                 combine_substructure: combine_substructure(Box::new(|a, b, c| $f(a, b, c))),
             }
@@ -102,7 +101,6 @@ pub fn expand_deriving_partial_eq(
         path: path_std!(cmp::PartialEq),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods,
         associated_types: Vec::new(),
