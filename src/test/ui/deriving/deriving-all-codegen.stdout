@@ -515,6 +515,172 @@ impl ::core::cmp::Ord for Packed {
     }
 }
 
+// An empty enum.
+enum Enum0 {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::clone::Clone for Enum0 {
+    #[inline]
+    fn clone(&self) -> Enum0 { { *self } }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::marker::Copy for Enum0 { }
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::fmt::Debug for Enum0 {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        unsafe { ::core::intrinsics::unreachable() }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::hash::Hash for Enum0 {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        unsafe { ::core::intrinsics::unreachable() }
+    }
+}
+impl ::core::marker::StructuralPartialEq for Enum0 {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialEq for Enum0 {
+    #[inline]
+    fn eq(&self, other: &Enum0) -> bool {
+        unsafe { ::core::intrinsics::unreachable() }
+    }
+}
+impl ::core::marker::StructuralEq for Enum0 {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Eq for Enum0 {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () { {} }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialOrd for Enum0 {
+    #[inline]
+    fn partial_cmp(&self, other: &Enum0)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        unsafe { ::core::intrinsics::unreachable() }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Ord for Enum0 {
+    #[inline]
+    fn cmp(&self, other: &Enum0) -> ::core::cmp::Ordering {
+        unsafe { ::core::intrinsics::unreachable() }
+    }
+}
+
+// A single-variant enum.
+enum Enum1 {
+    Single {
+        x: u32,
+    },
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::clone::Clone for Enum1 {
+    #[inline]
+    fn clone(&self) -> Enum1 {
+        match (&*self,) {
+            (&Enum1::Single { x: ref __self_0 },) =>
+                Enum1::Single { x: ::core::clone::Clone::clone(&*__self_0) },
+        }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::fmt::Debug for Enum1 {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match (&*self,) {
+            (&Enum1::Single { x: ref __self_0 },) =>
+                ::core::fmt::Formatter::debug_struct_field1_finish(f,
+                    "Single", "x", &&*__self_0),
+        }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::hash::Hash for Enum1 {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        match (&*self,) {
+            (&Enum1::Single { x: ref __self_0 },) => {
+                ::core::hash::Hash::hash(&*__self_0, state)
+            }
+        }
+    }
+}
+impl ::core::marker::StructuralPartialEq for Enum1 {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialEq for Enum1 {
+    #[inline]
+    fn eq(&self, other: &Enum1) -> bool {
+        match (&*self, &*other) {
+            (&Enum1::Single { x: ref __self_0 }, &Enum1::Single {
+                x: ref __arg_1_0 }) => *__self_0 == *__arg_1_0,
+        }
+    }
+    #[inline]
+    fn ne(&self, other: &Enum1) -> bool {
+        match (&*self, &*other) {
+            (&Enum1::Single { x: ref __self_0 }, &Enum1::Single {
+                x: ref __arg_1_0 }) => *__self_0 != *__arg_1_0,
+        }
+    }
+}
+impl ::core::marker::StructuralEq for Enum1 {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Eq for Enum1 {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        { let _: ::core::cmp::AssertParamIsEq<u32>; }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialOrd for Enum1 {
+    #[inline]
+    fn partial_cmp(&self, other: &Enum1)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match (&*self, &*other) {
+            (&Enum1::Single { x: ref __self_0 }, &Enum1::Single {
+                x: ref __arg_1_0 }) =>
+                match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
+                        &*__arg_1_0) {
+                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                        =>
+                        ::core::option::Option::Some(::core::cmp::Ordering::Equal),
+                    cmp => cmp,
+                },
+        }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Ord for Enum1 {
+    #[inline]
+    fn cmp(&self, other: &Enum1) -> ::core::cmp::Ordering {
+        match (&*self, &*other) {
+            (&Enum1::Single { x: ref __self_0 }, &Enum1::Single {
+                x: ref __arg_1_0 }) =>
+                match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
+                    ::core::cmp::Ordering::Equal =>
+                        ::core::cmp::Ordering::Equal,
+                    cmp => cmp,
+                },
+        }
+    }
+}
+
 // A C-like, fieldless enum.
 enum Fieldless {
 

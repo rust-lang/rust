@@ -39,6 +39,16 @@ struct Big {
 #[repr(packed)]
 struct Packed(u32);
 
+// An empty enum.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+enum Enum0 {}
+
+// A single-variant enum.
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+enum Enum1 {
+    Single { x: u32 }
+}
+
 // A C-like, fieldless enum.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 enum Fieldless {
