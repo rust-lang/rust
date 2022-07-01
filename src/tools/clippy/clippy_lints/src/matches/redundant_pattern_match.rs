@@ -3,16 +3,13 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::needs_ordered_drop;
-use clippy_utils::{higher, match_def_path};
-use clippy_utils::{is_lang_ctor, is_trait_method, paths};
+use clippy_utils::visitors::any_temporaries_need_ordered_drop;
+use clippy_utils::{higher, is_lang_ctor, is_trait_method, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, PollPending};
-use rustc_hir::{
-    intravisit::{walk_expr, Visitor},
-    Arm, Block, Expr, ExprKind, Node, Pat, PatKind, QPath, UnOp,
-};
+use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, subst::GenericArgKind, DefIdTree, Ty};
 use rustc_span::sym;
@@ -45,79 +42,6 @@ fn try_get_generic_ty(ty: Ty<'_>, index: usize) -> Option<Ty<'_>> {
             None
         }
     }
-}
-
-// Checks if there are any temporaries created in the given expression for which drop order
-// matters.
-fn temporaries_need_ordered_drop<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    struct V<'a, 'tcx> {
-        cx: &'a LateContext<'tcx>,
-        res: bool,
-    }
-    impl<'a, 'tcx> Visitor<'tcx> for V<'a, 'tcx> {
-        fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-            match expr.kind {
-                // Taking the reference of a value leaves a temporary
-                // e.g. In `&String::new()` the string is a temporary value.
-                // Remaining fields are temporary values
-                // e.g. In `(String::new(), 0).1` the string is a temporary value.
-                ExprKind::AddrOf(_, _, expr) | ExprKind::Field(expr, _) => {
-                    if !matches!(expr.kind, ExprKind::Path(_)) {
-                        if needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(expr)) {
-                            self.res = true;
-                        } else {
-                            self.visit_expr(expr);
-                        }
-                    }
-                },
-                // the base type is always taken by reference.
-                // e.g. In `(vec![0])[0]` the vector is a temporary value.
-                ExprKind::Index(base, index) => {
-                    if !matches!(base.kind, ExprKind::Path(_)) {
-                        if needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(base)) {
-                            self.res = true;
-                        } else {
-                            self.visit_expr(base);
-                        }
-                    }
-                    self.visit_expr(index);
-                },
-                // Method calls can take self by reference.
-                // e.g. In `String::new().len()` the string is a temporary value.
-                ExprKind::MethodCall(_, [self_arg, args @ ..], _) => {
-                    if !matches!(self_arg.kind, ExprKind::Path(_)) {
-                        let self_by_ref = self
-                            .cx
-                            .typeck_results()
-                            .type_dependent_def_id(expr.hir_id)
-                            .map_or(false, |id| self.cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref());
-                        if self_by_ref && needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(self_arg)) {
-                            self.res = true;
-                        } else {
-                            self.visit_expr(self_arg);
-                        }
-                    }
-                    args.iter().for_each(|arg| self.visit_expr(arg));
-                },
-                // Either explicitly drops values, or changes control flow.
-                ExprKind::DropTemps(_)
-                | ExprKind::Ret(_)
-                | ExprKind::Break(..)
-                | ExprKind::Yield(..)
-                | ExprKind::Block(Block { expr: None, .. }, _)
-                | ExprKind::Loop(..) => (),
-
-                // Only consider the final expression.
-                ExprKind::Block(Block { expr: Some(expr), .. }, _) => self.visit_expr(expr),
-
-                _ => walk_expr(self, expr),
-            }
-        }
-    }
-
-    let mut v = V { cx, res: false };
-    v.visit_expr(expr);
-    v.res
 }
 
 fn find_sugg_for_if_let<'tcx>(
@@ -191,7 +115,7 @@ fn find_sugg_for_if_let<'tcx>(
     // scrutinee would be, so they have to be considered as well.
     // e.g. in `if let Some(x) = foo.lock().unwrap().baz.as_ref() { .. }` the lock will be held
     // for the duration if body.
-    let needs_drop = needs_ordered_drop(cx, check_ty) || temporaries_need_ordered_drop(cx, let_expr);
+    let needs_drop = needs_ordered_drop(cx, check_ty) || any_temporaries_need_ordered_drop(cx, let_expr);
 
     // check that `while_let_on_iterator` lint does not trigger
     if_chain! {
@@ -362,9 +286,9 @@ fn find_good_method_for_match<'a>(
         .qpath_res(path_right, arms[1].pat.hir_id)
         .opt_def_id()?;
     let body_node_pair = if match_def_path(cx, left_id, expected_left) && match_def_path(cx, right_id, expected_right) {
-        (&(*arms[0].body).kind, &(*arms[1].body).kind)
+        (&arms[0].body.kind, &arms[1].body.kind)
     } else if match_def_path(cx, right_id, expected_left) && match_def_path(cx, right_id, expected_right) {
-        (&(*arms[1].body).kind, &(*arms[0].body).kind)
+        (&arms[1].body.kind, &arms[0].body.kind)
     } else {
         return None;
     };
