@@ -458,7 +458,6 @@ impl<'a> AssocItemCollector<'a> {
             def_map: module_id.def_map(db),
             container,
             expander: Expander::new(db, file_id, module_id),
-
             items: Vec::new(),
             attr_calls: Vec::new(),
         }
@@ -473,6 +472,7 @@ impl<'a> AssocItemCollector<'a> {
         }
     }
 
+    // FIXME: proc-macro diagnostics
     fn collect(&mut self, tree_id: TreeId, assoc_items: &[AssocItem]) {
         let item_tree = tree_id.item_tree(self.db);
 
@@ -482,7 +482,7 @@ impl<'a> AssocItemCollector<'a> {
                 continue;
             }
 
-            for attr in &*attrs {
+            'attrs: for attr in &*attrs {
                 let ast_id =
                     AstId::new(self.expander.current_file_id(), item.ast_id(&item_tree).upcast());
                 let ast_id_with_path = AstIdWithPath { path: (*attr.path).clone(), ast_id };
@@ -494,9 +494,17 @@ impl<'a> AssocItemCollector<'a> {
                     attr,
                 ) {
                     self.attr_calls.push((ast_id, call_id));
-                    let res = self.expander.enter_expand_id(self.db, call_id);
-                    self.collect_macro_items(res);
-                    continue 'items;
+                    // If proc attribute macro expansion is disabled, skip expanding it here
+                    if !self.db.enable_proc_attr_macros() {
+                        continue 'attrs;
+                    }
+                    match self.expander.enter_expand_id(self.db, call_id) {
+                        ExpandResult { value: Some((mark, mac)), .. } => {
+                            self.collect_macro_items(mark, mac);
+                            continue 'items;
+                        }
+                        ExpandResult { .. } => {}
+                    }
                 }
             }
 
@@ -537,25 +545,23 @@ impl<'a> AssocItemCollector<'a> {
                         stdx::panic_context::enter(format!("collect_items MacroCall: {}", call));
                     let res = self.expander.enter_expand(self.db, call);
 
-                    if let Ok(res) = res {
-                        self.collect_macro_items(res);
+                    if let Ok(ExpandResult { value: Some((mark, mac)), .. }) = res {
+                        self.collect_macro_items(mark, mac);
                     }
                 }
             }
         }
     }
 
-    fn collect_macro_items(&mut self, res: ExpandResult<Option<(Mark, ast::MacroItems)>>) {
-        if let Some((mark, mac)) = res.value {
-            let src: InFile<ast::MacroItems> = self.expander.to_source(mac);
-            let tree_id = item_tree::TreeId::new(src.file_id, None);
-            let item_tree = tree_id.item_tree(self.db);
-            let iter: Vec<_> =
-                item_tree.top_level_items().iter().filter_map(ModItem::as_assoc_item).collect();
+    fn collect_macro_items(&mut self, mark: Mark, mac: ast::MacroItems) {
+        let src: InFile<ast::MacroItems> = self.expander.to_source(mac);
+        let tree_id = item_tree::TreeId::new(src.file_id, None);
+        let item_tree = tree_id.item_tree(self.db);
+        let iter: Vec<_> =
+            item_tree.top_level_items().iter().filter_map(ModItem::as_assoc_item).collect();
 
-            self.collect(tree_id, &iter);
+        self.collect(tree_id, &iter);
 
-            self.expander.exit(self.db, mark);
-        }
+        self.expander.exit(self.db, mark);
     }
 }
