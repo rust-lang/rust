@@ -635,7 +635,7 @@ kbd {
 	background-color: #14191f;
 	color: #ffb44c;
 }
-#source-sidebar div.files > .selected {
+#source-sidebar div.files > a.selected {
 	background-color: #14191f;
 	color: #ffb44c;
 }

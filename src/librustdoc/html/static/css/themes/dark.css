@@ -504,7 +504,7 @@ kbd {
 #source-sidebar div.files > a:focus, details.dir-entry summary:focus {
 	background-color: #444;
 }
-#source-sidebar div.files > .selected {
+#source-sidebar div.files > a.selected {
 	background-color: #333;
 }
 
