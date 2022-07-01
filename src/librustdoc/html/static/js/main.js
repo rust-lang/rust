@@ -382,8 +382,7 @@ function loadCss(cssFileName) {
 
     function onHashChange(ev) {
         // If we're in mobile mode, we should hide the sidebar in any case.
-        const sidebar = document.getElementsByClassName("sidebar")[0];
-        removeClass(sidebar, "shown");
+        hideSidebar();
         handleHashes(ev);
     }
 
@@ -764,10 +763,49 @@ function loadCss(cssFileName) {
         });
     }());
 
+    let oldSidebarScrollPosition = null;
+
+    function showSidebar() {
+        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+            // This is to keep the scroll position on mobile.
+            oldSidebarScrollPosition = window.scrollY;
+            document.body.style.width = `${document.body.offsetWidth}px`;
+            document.body.style.position = "fixed";
+            document.body.style.top = `-${oldSidebarScrollPosition}px`;
+            document.querySelector(".mobile-topbar").style.top = `${oldSidebarScrollPosition}px`;
+            document.querySelector(".mobile-topbar").style.position = "relative";
+        } else {
+            oldSidebarScrollPosition = null;
+        }
+        const sidebar = document.getElementsByClassName("sidebar")[0];
+        addClass(sidebar, "shown");
+    }
+
     function hideSidebar() {
+        if (oldSidebarScrollPosition !== null) {
+            // This is to keep the scroll position on mobile.
+            document.body.style.width = "";
+            document.body.style.position = "";
+            document.body.style.top = "";
+            document.querySelector(".mobile-topbar").style.top = "";
+            document.querySelector(".mobile-topbar").style.position = "";
+            // The scroll position is lost when resetting the style, hence why we store it in
+            // `oldSidebarScrollPosition`.
+            window.scrollTo(0, oldSidebarScrollPosition);
+            oldSidebarScrollPosition = null;
+        }
         const sidebar = document.getElementsByClassName("sidebar")[0];
         removeClass(sidebar, "shown");
     }
+
+    window.addEventListener("resize", () => {
+        if (window.innerWidth >= window.RUSTDOC_MOBILE_BREAKPOINT &&
+            oldSidebarScrollPosition !== null) {
+            // If the user opens the sidebar in "mobile" mode, and then grows the browser window,
+            // we need to switch away from mobile mode and make the main content area scrollable.
+            hideSidebar();
+        }
+    });
 
     function handleClick(id, f) {
         const elem = document.getElementById(id);
@@ -811,9 +849,9 @@ function loadCss(cssFileName) {
         sidebar_menu_toggle.addEventListener("click", () => {
             const sidebar = document.getElementsByClassName("sidebar")[0];
             if (!hasClass(sidebar, "shown")) {
-                addClass(sidebar, "shown");
+                showSidebar();
             } else {
-                removeClass(sidebar, "shown");
+                hideSidebar();
             }
         });
     }

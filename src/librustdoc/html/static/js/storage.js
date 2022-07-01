@@ -9,6 +9,8 @@ const darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
 window.mainTheme = document.getElementById("mainThemeStyle");
 
+window.RUSTDOC_MOBILE_BREAKPOINT = 701;
+
 const settingsDataset = (function() {
     const settingsElement = document.getElementById("default-settings");
     if (settingsElement === null) {

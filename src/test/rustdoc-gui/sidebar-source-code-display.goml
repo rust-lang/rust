@@ -152,3 +152,10 @@ click: "#sidebar-toggle"
 wait-for-css: (".sidebar", {"width": "0px"})
 // The "scrollTop" property should be the same.
 assert-window-property: {"pageYOffset": "2519"}
+
+// We now check that the scroll position is restored if the window is resized.
+click: "#sidebar-toggle"
+wait-for-css: (".sidebar", {"width": "500px"})
+assert-window-property: {"pageYOffset": "0"}
+size: (900, 900)
+assert-window-property: {"pageYOffset": "2519"}
