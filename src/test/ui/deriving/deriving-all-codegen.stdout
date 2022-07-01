@@ -161,13 +161,7 @@ impl ::core::cmp::PartialOrd for Point {
         -> ::core::option::Option<::core::cmp::Ordering> {
         match ::core::cmp::PartialOrd::partial_cmp(&self.x, &other.x) {
             ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
-                match ::core::cmp::PartialOrd::partial_cmp(&self.y, &other.y)
-                    {
-                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                        =>
-                        ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                    cmp => cmp,
-                },
+                ::core::cmp::PartialOrd::partial_cmp(&self.y, &other.y),
             cmp => cmp,
         }
     }
@@ -179,11 +173,7 @@ impl ::core::cmp::Ord for Point {
     fn cmp(&self, other: &Point) -> ::core::cmp::Ordering {
         match ::core::cmp::Ord::cmp(&self.x, &other.x) {
             ::core::cmp::Ordering::Equal =>
-                match ::core::cmp::Ord::cmp(&self.y, &other.y) {
-                    ::core::cmp::Ordering::Equal =>
-                        ::core::cmp::Ordering::Equal,
-                    cmp => cmp,
-                },
+                ::core::cmp::Ord::cmp(&self.y, &other.y),
             cmp => cmp,
         }
     }
@@ -323,13 +313,7 @@ impl ::core::cmp::PartialOrd for Big {
                                                                 &other.b7) {
                                                             ::core::option::Option::Some(::core::cmp::Ordering::Equal)
                                                                 =>
-                                                                match ::core::cmp::PartialOrd::partial_cmp(&self.b8,
-                                                                        &other.b8) {
-                                                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                                                        =>
-                                                                        ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                                                                    cmp => cmp,
-                                                                },
+                                                                ::core::cmp::PartialOrd::partial_cmp(&self.b8, &other.b8),
                                                             cmp => cmp,
                                                         },
                                                     cmp => cmp,
@@ -365,11 +349,7 @@ impl ::core::cmp::Ord for Big {
                                                     ::core::cmp::Ordering::Equal =>
                                                         match ::core::cmp::Ord::cmp(&self.b7, &other.b7) {
                                                             ::core::cmp::Ordering::Equal =>
-                                                                match ::core::cmp::Ord::cmp(&self.b8, &other.b8) {
-                                                                    ::core::cmp::Ordering::Equal =>
-                                                                        ::core::cmp::Ordering::Equal,
-                                                                    cmp => cmp,
-                                                                },
+                                                                ::core::cmp::Ord::cmp(&self.b8, &other.b8),
                                                             cmp => cmp,
                                                         },
                                                     cmp => cmp,
@@ -461,11 +441,7 @@ impl ::core::cmp::PartialOrd for Packed {
         -> ::core::option::Option<::core::cmp::Ordering> {
         let Self(__self_0_0) = *self;
         let Self(__self_1_0) = *other;
-        match ::core::cmp::PartialOrd::partial_cmp(&__self_0_0, &__self_1_0) {
-            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
-                ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-            cmp => cmp,
-        }
+        ::core::cmp::PartialOrd::partial_cmp(&__self_0_0, &__self_1_0)
     }
 }
 #[automatically_derived]
@@ -475,10 +451,7 @@ impl ::core::cmp::Ord for Packed {
     fn cmp(&self, other: &Packed) -> ::core::cmp::Ordering {
         let Self(__self_0_0) = *self;
         let Self(__self_1_0) = *other;
-        match ::core::cmp::Ord::cmp(&__self_0_0, &__self_1_0) {
-            ::core::cmp::Ordering::Equal => ::core::cmp::Ordering::Equal,
-            cmp => cmp,
-        }
+        ::core::cmp::Ord::cmp(&__self_0_0, &__self_1_0)
     }
 }
 
@@ -621,13 +594,7 @@ impl ::core::cmp::PartialOrd for Enum1 {
         match (&*self, &*other) {
             (&Enum1::Single { x: ref __self_0 }, &Enum1::Single {
                 x: ref __arg_1_0 }) =>
-                match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                        &*__arg_1_0) {
-                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                        =>
-                        ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                    cmp => cmp,
-                },
+                ::core::cmp::PartialOrd::partial_cmp(&*__self_0, &*__arg_1_0),
         }
     }
 }
@@ -639,11 +606,7 @@ impl ::core::cmp::Ord for Enum1 {
         match (&*self, &*other) {
             (&Enum1::Single { x: ref __self_0 }, &Enum1::Single {
                 x: ref __arg_1_0 }) =>
-                match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
-                    ::core::cmp::Ordering::Equal =>
-                        ::core::cmp::Ordering::Equal,
-                    cmp => cmp,
-                },
+                ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
         }
     }
 }
@@ -873,26 +836,16 @@ impl ::core::cmp::PartialOrd for Mixed {
         if __self_vi == __arg_1_vi {
                 match (&*self, &*other) {
                     (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
-                        match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                                &*__arg_1_0) {
-                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                =>
-                                ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                            cmp => cmp,
-                        },
+                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
+                            &*__arg_1_0),
                     (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
                         &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
                         match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
                                 &*__arg_1_0) {
                             ::core::option::Option::Some(::core::cmp::Ordering::Equal)
                                 =>
-                                match ::core::cmp::PartialOrd::partial_cmp(&*__self_1,
-                                        &*__arg_1_1) {
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                        =>
-                                        ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                                    cmp => cmp,
-                                },
+                                ::core::cmp::PartialOrd::partial_cmp(&*__self_1,
+                                    &*__arg_1_1),
                             cmp => cmp,
                         },
                     _ =>
@@ -913,20 +866,12 @@ impl ::core::cmp::Ord for Mixed {
         if __self_vi == __arg_1_vi {
                 match (&*self, &*other) {
                     (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
-                        match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
-                            ::core::cmp::Ordering::Equal =>
-                                ::core::cmp::Ordering::Equal,
-                            cmp => cmp,
-                        },
+                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
                     (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
                         &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
                         match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
                             ::core::cmp::Ordering::Equal =>
-                                match ::core::cmp::Ord::cmp(&*__self_1, &*__arg_1_1) {
-                                    ::core::cmp::Ordering::Equal =>
-                                        ::core::cmp::Ordering::Equal,
-                                    cmp => cmp,
-                                },
+                                ::core::cmp::Ord::cmp(&*__self_1, &*__arg_1_1),
                             cmp => cmp,
                         },
                     _ => ::core::cmp::Ordering::Equal,
@@ -1054,29 +999,14 @@ impl ::core::cmp::PartialOrd for Fielded {
         if __self_vi == __arg_1_vi {
                 match (&*self, &*other) {
                     (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
-                        match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                                &*__arg_1_0) {
-                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                =>
-                                ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                            cmp => cmp,
-                        },
+                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
+                            &*__arg_1_0),
                     (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
-                        match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                                &*__arg_1_0) {
-                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                =>
-                                ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                            cmp => cmp,
-                        },
+                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
+                            &*__arg_1_0),
                     (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
-                        match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                                &*__arg_1_0) {
-                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                =>
-                                ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                            cmp => cmp,
-                        },
+                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
+                            &*__arg_1_0),
                     _ => unsafe { ::core::intrinsics::unreachable() }
                 }
             } else {
@@ -1094,23 +1024,11 @@ impl ::core::cmp::Ord for Fielded {
         if __self_vi == __arg_1_vi {
                 match (&*self, &*other) {
                     (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
-                        match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
-                            ::core::cmp::Ordering::Equal =>
-                                ::core::cmp::Ordering::Equal,
-                            cmp => cmp,
-                        },
+                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
                     (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
-                        match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
-                            ::core::cmp::Ordering::Equal =>
-                                ::core::cmp::Ordering::Equal,
-                            cmp => cmp,
-                        },
+                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
                     (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
-                        match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
-                            ::core::cmp::Ordering::Equal =>
-                                ::core::cmp::Ordering::Equal,
-                            cmp => cmp,
-                        },
+                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
                     _ => unsafe { ::core::intrinsics::unreachable() }
                 }
             } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }

@@ -1694,31 +1694,6 @@ fn cs_fold_static(cx: &mut ExtCtxt<'_>, trait_span: Span) -> P<Expr> {
     cx.span_bug(trait_span, "static function in `derive`")
 }
 
-/// Fold the fields. `use_foldl` controls whether this is done
-/// left-to-right (`true`) or right-to-left (`false`).
-pub fn cs_fold<F>(
-    use_foldl: bool,
-    f: F,
-    base: P<Expr>,
-    enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
-    cx: &mut ExtCtxt<'_>,
-    trait_span: Span,
-    substructure: &Substructure<'_>,
-) -> P<Expr>
-where
-    F: FnMut(&mut ExtCtxt<'_>, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>,
-{
-    match *substructure.fields {
-        EnumMatching(.., ref all_fields) | Struct(_, ref all_fields) => {
-            cs_fold_fields(use_foldl, f, base, cx, all_fields)
-        }
-        EnumNonMatchingCollapsed(..) => {
-            cs_fold_enumnonmatch(enum_nonmatch_f, cx, trait_span, substructure)
-        }
-        StaticEnum(..) | StaticStruct(..) => cs_fold_static(cx, trait_span),
-    }
-}
-
 /// Function to fold over fields, with three cases, to generate more efficient and concise code.
 /// When the `substructure` has grouped fields, there are two cases:
 /// Zero fields: call the base case function with `None` (like the usual base case of `cs_fold`).
