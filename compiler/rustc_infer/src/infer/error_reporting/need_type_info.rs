@@ -533,18 +533,19 @@ enum InferSourceKind<'tcx> {
 }
 
 impl<'tcx> InferSource<'tcx> {
-    /// Returns the span where we're going to insert our suggestion.
-    ///
-    /// Used when computing the cost of this infer source to check whether
-    /// we're inside of a macro expansion.
-    fn main_insert_span(&self) -> Span {
-        match self.kind {
-            InferSourceKind::LetBinding { insert_span, .. } => insert_span,
-            InferSourceKind::ClosureArg { insert_span, .. } => insert_span,
-            InferSourceKind::GenericArg { insert_span, .. } => insert_span,
-            InferSourceKind::FullyQualifiedMethodCall { receiver, .. } => receiver.span,
-            InferSourceKind::ClosureReturn { data, .. } => data.span(),
-        }
+    fn from_expansion(&self) -> bool {
+        let source_from_expansion = match self.kind {
+            InferSourceKind::LetBinding { insert_span, .. }
+            | InferSourceKind::ClosureArg { insert_span, .. }
+            | InferSourceKind::GenericArg { insert_span, .. } => insert_span.from_expansion(),
+            InferSourceKind::FullyQualifiedMethodCall { receiver, .. } => {
+                receiver.span.from_expansion()
+            }
+            InferSourceKind::ClosureReturn { data, should_wrap_expr, .. } => {
+                data.span().from_expansion() || should_wrap_expr.map_or(false, Span::from_expansion)
+            }
+        };
+        source_from_expansion || self.span.from_expansion()
     }
 }
 
@@ -631,7 +632,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 }
             }
             fn ty_cost(self, ty: Ty<'tcx>) -> usize {
-                match ty.kind() {
+                match *ty.kind() {
                     ty::Closure(..) => 1000,
                     ty::FnDef(..) => 150,
                     ty::FnPtr(..) => 30,
@@ -645,6 +646,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                             .sum::<usize>()
                     }
                     ty::Tuple(args) => 5 + args.iter().map(|arg| self.ty_cost(arg)).sum::<usize>(),
+                    ty::Ref(_, ty, _) => 2 + self.ty_cost(ty),
                     ty::Infer(..) => 0,
                     _ => 1,
                 }
@@ -673,8 +675,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             }
         };
 
-        let suggestion_may_apply =
-            if source.main_insert_span().can_be_used_for_suggestions() { 0 } else { 10000 };
+        let suggestion_may_apply = if source.from_expansion() { 10000 } else { 0 };
 
         base_cost + suggestion_may_apply
     }
@@ -1022,8 +1023,10 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             debug!(?args);
             let InsertableGenericArgs { insert_span, substs, generics_def_id, def_id } = args;
             let generics = tcx.generics_of(generics_def_id);
-            if let Some(argument_index) =
-                generics.own_substs(substs).iter().position(|&arg| self.generic_arg_is_target(arg))
+            if let Some(argument_index) = generics
+                .own_substs(substs)
+                .iter()
+                .position(|&arg| self.generic_arg_contains_target(arg))
             {
                 let substs = self.infcx.resolve_vars_if_possible(substs);
                 let generic_args = &generics.own_substs_no_defaults(tcx, substs)
