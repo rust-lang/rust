@@ -72,7 +72,8 @@ features! {
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] pmull: "pmull";
     /// FEAT_PMULL (Polynomial Multiply)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] fp: "fp";
-    /// FEAT_FP (Floating point support)
+    implied by target_features: ["neon"];
+    /// FEAT_FP (Floating point support) - Implied by `neon` target_feature
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] fp16: "fp16";
     /// FEAT_FP16 (Half-float support)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sve: "sve";
