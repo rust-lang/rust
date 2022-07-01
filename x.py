@@ -1,4 +1,6 @@
-#!/usr/bin/env bash
+#!/usr/bin/env -S -u If_this_file_fails_to_run,read_README_ENTRYPOINT.md bash
+# `py` fails when using a shebang other than /usr/bin/python{,2,3}.
+# Try and give a better error by embedding a comment in the shebang.
 
 # Modern Linux and macOS systems commonly only have a thing called `python3` and
 # not `python`, while Windows commonly does not have `python3`, so we cannot
