@@ -4,18 +4,17 @@ use clippy_utils::visitors::for_each_value_source;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Expr, ExprKind, PatKind, Stmt, StmtKind};
+use rustc_hir::{Expr, ExprKind, Local, PatKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty, TypeFoldable, TypeSuperFoldable, TypeVisitor};
 
 use super::LET_UNIT_VALUE;
 
-pub(super) fn check(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
-    if let StmtKind::Local(local) = stmt.kind
-        && let Some(init) = local.init
+pub(super) fn check(cx: &LateContext<'_>, local: &Local<'_>) {
+    if let Some(init) = local.init
         && !local.pat.span.from_expansion()
-        && !in_external_macro(cx.sess(), stmt.span)
+        && !in_external_macro(cx.sess(), local.span)
         && cx.typeck_results().pat_ty(local.pat).is_unit()
     {
         let needs_inferred = for_each_value_source(init, &mut |e| if needs_inferred_result_ty(cx, e) {
@@ -29,7 +28,7 @@ pub(super) fn check(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
                 span_lint_and_then(
                     cx,
                     LET_UNIT_VALUE,
-                    stmt.span,
+                    local.span,
                     "this let-binding has unit value",
                     |diag| {
                             diag.span_suggestion(
@@ -45,15 +44,15 @@ pub(super) fn check(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
             span_lint_and_then(
                 cx,
                 LET_UNIT_VALUE,
-                stmt.span,
+                local.span,
                 "this let-binding has unit value",
                 |diag| {
                     if let Some(expr) = &local.init {
                         let snip = snippet_with_macro_callsite(cx, expr.span, "()");
                         diag.span_suggestion(
-                            stmt.span,
+                            local.span,
                             "omit the `let` binding",
-                            format!("{};", snip),
+                            format!("{snip};"),
                             Applicability::MachineApplicable, // snippet
                         );
                     }
