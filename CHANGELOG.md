@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-See [Changelog Update](doc/changelog_update.md) if you want to update this
+See [Changelog Update](book/src/development/infrastructure/changelog_update.md) if you want to update this
 document.
 
 ## Unreleased / In Rust Nightly
@@ -1577,7 +1577,7 @@ Released 2021-03-25
 * Add `cargo dev-lintcheck` tool to the Clippy Dev Tool
   [#6469](https://github.com/rust-lang/rust-clippy/pull/6469)
 
-[Roadmap]: https://github.com/rust-lang/rust-clippy/blob/master/doc/roadmap-2021.md
+[Roadmap]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/proposals/roadmap-2021.md
 [Roadmap project page]: https://github.com/rust-lang/rust-clippy/projects/3
 
 ## Rust 1.50
@@ -3426,7 +3426,7 @@ Released 2018-09-13
 [`AsRef`]: https://doc.rust-lang.org/std/convert/trait.AsRef.html
 [configuration file]: ./rust-clippy#configuration
 [pull3665]: https://github.com/rust-lang/rust-clippy/pull/3665
-[adding_lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/adding_lints.md
+[adding_lints]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/adding_lints.md
 [`README.md`]: https://github.com/rust-lang/rust-clippy/blob/master/README.md
 
 <!-- lint disable no-unused-definitions -->
