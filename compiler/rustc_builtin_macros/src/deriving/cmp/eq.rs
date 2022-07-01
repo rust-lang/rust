@@ -3,6 +3,7 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 use rustc_ast::{self as ast, MetaItem};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -53,16 +54,24 @@ fn cs_total_eq_assert(
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
     let mut stmts = Vec::new();
+    let mut seen_type_names = FxHashSet::default();
     let mut process_variant = |variant: &ast::VariantData| {
         for field in variant.fields() {
-            // let _: AssertParamIsEq<FieldTy>;
-            super::assert_ty_bounds(
-                cx,
-                &mut stmts,
-                field.ty.clone(),
-                field.span,
-                &[sym::cmp, sym::AssertParamIsEq],
-            );
+            // This basic redundancy checking only prevents duplication of
+            // assertions like `AssertParamIsEq<Foo>` where the type is a
+            // simple name. That's enough to get a lot of cases, though.
+            if let Some(name) = field.ty.kind.is_simple_path() && !seen_type_names.insert(name) {
+                // Already produced an assertion for this type.
+            } else {
+                // let _: AssertParamIsEq<FieldTy>;
+                super::assert_ty_bounds(
+                    cx,
+                    &mut stmts,
+                    field.ty.clone(),
+                    field.span,
+                    &[sym::cmp, sym::AssertParamIsEq],
+                );
+            }
         }
     };
 

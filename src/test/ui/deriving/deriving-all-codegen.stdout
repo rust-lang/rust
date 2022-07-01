@@ -96,7 +96,6 @@ impl ::core::clone::Clone for Point {
     #[inline]
     fn clone(&self) -> Point {
         let _: ::core::clone::AssertParamIsClone<u32>;
-        let _: ::core::clone::AssertParamIsClone<u32>;
         *self
     }
 }
@@ -151,7 +150,6 @@ impl ::core::cmp::Eq for Point {
     #[doc(hidden)]
     #[no_coverage]
     fn assert_receiver_is_total_eq(&self) -> () {
-        let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -290,13 +288,6 @@ impl ::core::cmp::Eq for Big {
     #[doc(hidden)]
     #[no_coverage]
     fn assert_receiver_is_total_eq(&self) -> () {
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-        let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
@@ -774,8 +765,6 @@ impl ::core::clone::Clone for Mixed {
     #[inline]
     fn clone(&self) -> Mixed {
         let _: ::core::clone::AssertParamIsClone<u32>;
-        let _: ::core::clone::AssertParamIsClone<u32>;
-        let _: ::core::clone::AssertParamIsClone<u32>;
         *self
     }
 }
@@ -870,8 +859,6 @@ impl ::core::cmp::Eq for Mixed {
     #[doc(hidden)]
     #[no_coverage]
     fn assert_receiver_is_total_eq(&self) -> () {
-        let _: ::core::cmp::AssertParamIsEq<u32>;
-        let _: ::core::cmp::AssertParamIsEq<u32>;
         let _: ::core::cmp::AssertParamIsEq<u32>;
     }
 }
