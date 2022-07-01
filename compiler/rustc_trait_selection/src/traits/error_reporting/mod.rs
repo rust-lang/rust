@@ -1958,6 +1958,37 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 if predicate.references_error() {
                     return;
                 }
+
+                // This is kind of a hack: it frequently happens that some earlier
+                // error prevents types from being fully inferred, and then we get
+                // a bunch of uninteresting errors saying something like "<generic
+                // #0> doesn't implement Sized".  It may even be true that we
+                // could just skip over all checks where the self-ty is an
+                // inference variable, but I was afraid that there might be an
+                // inference variable created, registered as an obligation, and
+                // then never forced by writeback, and hence by skipping here we'd
+                // be ignoring the fact that we don't KNOW the type works
+                // out. Though even that would probably be harmless, given that
+                // we're only talking about builtin traits, which are known to be
+                // inhabited. We used to check for `self.tcx.sess.has_errors()` to
+                // avoid inundating the user with unnecessary errors, but we now
+                // check upstream for type errors and don't add the obligations to
+                // begin with in those cases.
+                if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
+                    if !self.is_tainted_by_errors() {
+                        self.emit_inference_failure_err(
+                            body_id,
+                            span,
+                            trait_ref.self_ty().skip_binder().into(),
+                            vec![],
+                            ErrorCode::E0282,
+                            false,
+                        )
+                        .emit();
+                    }
+                    return;
+                }
+
                 // Typically, this ambiguity should only happen if
                 // there are unresolved type inference variables
                 // (otherwise it would suggest a coherence
@@ -1996,37 +2027,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         predicate,
                     )
                 };
-
-                // This is kind of a hack: it frequently happens that some earlier
-                // error prevents types from being fully inferred, and then we get
-                // a bunch of uninteresting errors saying something like "<generic
-                // #0> doesn't implement Sized".  It may even be true that we
-                // could just skip over all checks where the self-ty is an
-                // inference variable, but I was afraid that there might be an
-                // inference variable created, registered as an obligation, and
-                // then never forced by writeback, and hence by skipping here we'd
-                // be ignoring the fact that we don't KNOW the type works
-                // out. Though even that would probably be harmless, given that
-                // we're only talking about builtin traits, which are known to be
-                // inhabited. We used to check for `self.tcx.sess.has_errors()` to
-                // avoid inundating the user with unnecessary errors, but we now
-                // check upstream for type errors and don't add the obligations to
-                // begin with in those cases.
-                if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
-                    if !self.is_tainted_by_errors() {
-                        self.emit_inference_failure_err(
-                            body_id,
-                            span,
-                            trait_ref.self_ty().skip_binder().into(),
-                            vec![],
-                            ErrorCode::E0282,
-                            false,
-                        )
-                        .emit();
-                    }
-                    err.cancel();
-                    return;
-                }
 
                 let obligation = Obligation::new(
                     obligation.cause.clone(),

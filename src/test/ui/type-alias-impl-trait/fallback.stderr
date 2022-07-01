@@ -1,6 +1,8 @@
 error[E0283]: type annotations needed
   --> $DIR/fallback.rs:24:5
    |
+LL | fn unconstrained_foo() -> Wrapper<Foo> {
+   |                           ------------ type must be known at this point
 LL |     Wrapper::Second
    |     ^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the enum `Wrapper`
    |
