@@ -1044,12 +1044,6 @@ impl Step for RustAnalyzer {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        // This prevents rust-analyzer from being built for "dist" or "install"
-        // on the stable/beta channels. It is a nightly-only tool and should
-        // not be included.
-        if !builder.build.unstable_features() {
-            return None;
-        }
         let compiler = self.compiler;
         let target = self.target;
 
