@@ -20,6 +20,7 @@ to the final `cargo test` invocation.
 
 ./miri run <flags>:
 Build miri, set up a sysroot and then run the driver with the given <flags>.
+(Also respects MIRIFLAGS environment variable.)
 
 The commands above also exist in a "-debug" variant (e.g. "./miri run-debug
 <flags>") which uses debug builds instead of release builds, for faster build
@@ -31,6 +32,11 @@ Format all sources and tests. <flags> are passed to `rustfmt`.
 ./miri clippy <flags>:
 Format all sources and tests. <flags> are passed to `cargo clippy`.
 
+./miri many-seeds <command>:
+Runs <command> over and over again with different seeds for Miri. The MIRIFLAGS
+variable is set to its original value appended with ` -Zmiri-seed=$SEED` for
+many different seeds.
+
   ENVIRONMENT VARIABLES
 
 MIRI_SYSROOT:
@@ -40,6 +46,20 @@ CARGO_EXTRA_FLAGS:
 Pass extra flags to all cargo invocations.
 EOF
 )
+
+# Determine command.
+COMMAND="$1"
+[ $# -gt 0 ] && shift
+
+## Handle some commands early, since they should *not* alter the environment.
+case "$COMMAND" in
+many-seeds)
+    for SEED in $({ echo obase=16; seq 0 255; } | bc); do
+        MIRIFLAGS="$MIRIFLAGS -Zmiri-seed=$SEED" $@ || { echo "Failing seed: $SEED"; break; }
+    done
+    exit 0
+    ;;
+esac
 
 ## Preparation
 # macOS does not have a useful readlink/realpath so we have to use Python instead...
@@ -98,10 +118,6 @@ find_sysroot() {
 }
 
 ## Main
-
-# Determine command.
-COMMAND="$1"
-[ $# -gt 0 ] && shift
 
 # Determine flags passed to all cargo invocations.
 # This is a bit more annoying that one would hope due to
@@ -166,7 +182,7 @@ run|run-debug)
     $CARGO build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml
     find_sysroot
     # Then run the actual command.
-    exec $CARGO run $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- --sysroot "$MIRI_SYSROOT" "$@"
+    exec $CARGO run $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- --sysroot "$MIRI_SYSROOT" $MIRIFLAGS "$@"
     ;;
 fmt)
     find "$MIRIDIR" -not \( -name target -prune \) -name '*.rs' \
