@@ -4,6 +4,7 @@ use rustc_index::vec;
 use smallvec::SmallVec;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::mem;
+use crate::fingerprint::Fingerprint;
 
 #[cfg(test)]
 mod tests;
@@ -355,6 +356,46 @@ impl<CTX> HashStable<CTX> for [u8] {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.len().hash_stable(ctx, hasher);
         hasher.write(self);
+    }
+}
+
+impl<CTX> HashStable<CTX> for [Fingerprint] {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.len().hash_stable(ctx, hasher);
+
+        // SAFETY: this is probably a not a good idea
+        let slice: &[u8] = unsafe { std::mem::transmute(self) };
+        hasher.write(slice);
+    }
+}
+
+impl<CTX> HashStable<CTX> for [u32] {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.len().hash_stable(ctx, hasher);
+
+        // SAFETY: this is probably a not a good idea
+        let slice: &[u8] = unsafe { std::mem::transmute(self) };
+        hasher.write(slice);
+    }
+}
+
+impl<CTX> HashStable<CTX> for [u64] {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.len().hash_stable(ctx, hasher);
+
+        // SAFETY: this is probably a not a good idea
+        let slice: &[u8] = unsafe { std::mem::transmute(self) };
+        hasher.write(slice);
+    }
+}
+
+impl<CTX> HashStable<CTX> for [u128] {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.len().hash_stable(ctx, hasher);
+
+        // SAFETY: this is probably a not a good idea
+        let slice: &[u8] = unsafe { std::mem::transmute(self) };
+        hasher.write(slice);
     }
 }
 
