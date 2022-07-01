@@ -333,9 +333,9 @@ struct TypeVerifier<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
-    fn visit_span(&mut self, span: &Span) {
+    fn visit_span(&mut self, span: Span) {
         if !span.is_dummy() {
-            self.last_span = *span;
+            self.last_span = span;
         }
     }
 

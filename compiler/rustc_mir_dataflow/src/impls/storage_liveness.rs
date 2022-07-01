@@ -288,12 +288,12 @@ impl<'a, 'mir, 'tcx, T> Visitor<'tcx> for MoveVisitor<'a, 'mir, 'tcx, T>
 where
     T: GenKill<Local>,
 {
-    fn visit_local(&mut self, local: &Local, context: PlaceContext, loc: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, loc: Location) {
         if PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) == context {
             let mut borrowed_locals = self.borrowed_locals.borrow_mut();
             borrowed_locals.seek_before_primary_effect(loc);
-            if !borrowed_locals.contains(*local) {
-                self.trans.kill(*local);
+            if !borrowed_locals.contains(local) {
+                self.trans.kill(local);
             }
         }
     }

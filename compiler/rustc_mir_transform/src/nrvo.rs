@@ -219,7 +219,7 @@ impl IsReturnPlaceRead {
 }
 
 impl<'tcx> Visitor<'tcx> for IsReturnPlaceRead {
-    fn visit_local(&mut self, &l: &Local, ctxt: PlaceContext, _: Location) {
+    fn visit_local(&mut self, l: Local, ctxt: PlaceContext, _: Location) {
         if l == mir::RETURN_PLACE && ctxt.is_use() && !ctxt.is_place_assignment() {
             self.0 = true;
         }

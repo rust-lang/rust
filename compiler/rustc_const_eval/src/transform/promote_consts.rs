@@ -106,7 +106,7 @@ struct Collector<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
-    fn visit_local(&mut self, &index: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, index: Local, context: PlaceContext, location: Location) {
         debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
         // We're only interested in temporaries and the return place
         match self.ccx.body.local_kind(index) {

@@ -143,13 +143,13 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx,
             // now that we have moved to the "slice of projections" representation.
             if let mir::ProjectionElem::Index(local) = elem {
                 self.visit_local(
-                    &local,
+                    local,
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                     location,
                 );
             }
         } else {
-            self.visit_local(&place_ref.local, context, location);
+            self.visit_local(place_ref.local, context, location);
         }
     }
 }
@@ -185,7 +185,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         self.process_place(&place.as_ref(), context, location);
     }
 
-    fn visit_local(&mut self, &local: &mir::Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, local: mir::Local, context: PlaceContext, location: Location) {
         match context {
             PlaceContext::MutatingUse(MutatingUseContext::Call)
             | PlaceContext::MutatingUse(MutatingUseContext::Yield) => {

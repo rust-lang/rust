@@ -81,7 +81,7 @@ where
     // deinitialized, although clearly it is only partially deinitialized. This analysis is not
     // actually used anywhere at the moment, so this is not critical, but this does need to be fixed
     // before it starts being used again.
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
         use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, NonUseContext};
         match context {
             // These are handled specially in `call_return_effect` and `yield_resume_effect`.
