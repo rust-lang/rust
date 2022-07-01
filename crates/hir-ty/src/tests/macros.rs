@@ -1,6 +1,8 @@
 use expect_test::expect;
 use test_utils::{bench, bench_fixture, skip_slow_tests};
 
+use crate::tests::check_infer_with_mismatches;
+
 use super::{check_infer, check_types};
 
 #[test]
@@ -1244,6 +1246,31 @@ fn infinitely_recursive_macro_type() {
             166..197 '{     ...: B; }': ()
             176..177 'a': {unknown}
             190..191 'b': Bar<{unknown}, u32>
+        "#]],
+    );
+}
+
+#[test]
+fn cfg_tails() {
+    check_infer_with_mismatches(
+        r#"
+//- /lib.rs crate:foo cfg:feature=foo
+struct S {}
+
+impl S {
+    fn new2(bar: u32) -> Self {
+        #[cfg(feature = "foo")]
+        { Self { } }
+        #[cfg(not(feature = "foo"))]
+        { Self { } }
+    }
+}
+"#,
+        expect![[r#"
+            34..37 'bar': u32
+            52..170 '{     ...     }': S
+            62..106 '#[cfg(... { } }': S
+            96..104 'Self { }': S
         "#]],
     );
 }

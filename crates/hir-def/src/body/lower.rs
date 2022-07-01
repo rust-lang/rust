@@ -690,12 +690,26 @@ impl ExprCollector<'_> {
         let prev_def_map = mem::replace(&mut self.expander.def_map, def_map);
         let prev_local_module = mem::replace(&mut self.expander.module, module);
 
-        let statements = block.statements().filter_map(|s| self.collect_stmt(s)).collect();
+        let mut statements: Vec<_> =
+            block.statements().filter_map(|s| self.collect_stmt(s)).collect();
         let tail = block.tail_expr().and_then(|e| self.maybe_collect_expr(e));
+        let tail = tail.or_else(|| {
+            let stmt = statements.pop()?;
+            if let Statement::Expr { expr, has_semi: false } = stmt {
+                return Some(expr);
+            }
+            statements.push(stmt);
+            None
+        });
 
         let syntax_node_ptr = AstPtr::new(&block.into());
         let expr_id = self.alloc_expr(
-            Expr::Block { id: block_id, statements, tail, label: None },
+            Expr::Block {
+                id: block_id,
+                statements: statements.into_boxed_slice(),
+                tail,
+                label: None,
+            },
             syntax_node_ptr,
         );
 
