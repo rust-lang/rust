@@ -866,6 +866,7 @@ def bootstrap(help_triggered):
 
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
+    parser.add_argument('--build-dir')
     parser.add_argument('--build')
     parser.add_argument('--color', choices=['always', 'never', 'auto'])
     parser.add_argument('--clean', action='store_true')
@@ -915,7 +916,7 @@ def bootstrap(help_triggered):
 
     build.check_vendored_status()
 
-    build_dir = build.get_toml('build-dir', 'build') or 'build'
+    build_dir = args.build_dir or build.get_toml('build-dir', 'build') or 'build'
     build.build_dir = os.path.abspath(build_dir)
 
     with open(os.path.join(build.rust_root, "src", "stage0.json")) as f:
