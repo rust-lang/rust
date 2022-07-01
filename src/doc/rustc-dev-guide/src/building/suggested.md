@@ -36,7 +36,7 @@ you can write: <!-- date: 2022-04 --><!-- the date comment is for the edition be
         "./build/$TARGET_TRIPLE/stage0/bin/rustfmt",
         "--edition=2021"
     ],
-    "editor.formatOnSave": true,
+    "rust-analyzer.procMacro.enable": true,
     "rust-analyzer.cargo.buildScripts.enable": true,
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
         "cargo",
@@ -46,7 +46,6 @@ you can write: <!-- date: 2022-04 --><!-- the date comment is for the edition be
         "--message-format=json"
     ],
     "rust-analyzer.rustc.source": "./Cargo.toml",
-    "rust-analyzer.procMacro.enable": true,
 }
 ```
 
