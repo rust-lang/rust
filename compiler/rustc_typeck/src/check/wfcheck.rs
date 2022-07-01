@@ -1180,7 +1180,7 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_fo
             fcx.register_bound(
                 item_ty,
                 tcx.require_lang_item(LangItem::Sized, None),
-                traits::ObligationCause::new(ty_span, fcx.body_id, traits::MiscObligation),
+                traits::ObligationCause::new(ty_span, fcx.body_id, traits::WellFormed(None)),
             );
         }
 

@@ -271,7 +271,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     }
 
     fn normalize(mut self) -> Vec<traits::PredicateObligation<'tcx>> {
-        let cause = self.cause(traits::MiscObligation);
+        let cause = self.cause(traits::WellFormed(None));
         let infcx = &mut self.infcx;
         let param_env = self.param_env;
         let mut obligations = Vec::with_capacity(self.out.len());
@@ -385,7 +385,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         self.out.extend(obligations);
 
         let tcx = self.tcx();
-        let cause = self.cause(traits::MiscObligation);
+        let cause = self.cause(traits::WellFormed(None));
         let param_env = self.param_env;
         let depth = self.recursion_depth;
 
@@ -445,7 +445,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             let predicate =
                                 ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv.shrink()))
                                     .to_predicate(self.tcx());
-                            let cause = self.cause(traits::MiscObligation);
+                            let cause = self.cause(traits::WellFormed(None));
                             self.out.push(traits::Obligation::with_depth(
                                 cause,
                                 self.recursion_depth,
@@ -457,7 +457,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             let resolved = self.infcx.shallow_resolve(infer);
                             // the `InferConst` changed, meaning that we made progress.
                             if resolved != infer {
-                                let cause = self.cause(traits::MiscObligation);
+                                let cause = self.cause(traits::WellFormed(None));
 
                                 let resolved_constant = self.infcx.tcx.mk_const(ty::ConstS {
                                     kind: ty::ConstKind::Infer(resolved),
@@ -648,7 +648,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     let defer_to_coercion = self.tcx().features().object_safe_for_dispatch;
 
                     if !defer_to_coercion {
-                        let cause = self.cause(traits::MiscObligation);
+                        let cause = self.cause(traits::WellFormed(None));
                         let component_traits = data.auto_traits().chain(data.principal_def_id());
                         let tcx = self.tcx();
                         self.out.extend(component_traits.map(|did| {
@@ -679,7 +679,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     let ty = self.infcx.shallow_resolve(ty);
                     if let ty::Infer(ty::TyVar(_)) = ty.kind() {
                         // Not yet resolved, but we've made progress.
-                        let cause = self.cause(traits::MiscObligation);
+                        let cause = self.cause(traits::WellFormed(None));
                         self.out.push(traits::Obligation::with_depth(
                             cause,
                             self.recursion_depth,
