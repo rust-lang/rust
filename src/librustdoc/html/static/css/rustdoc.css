@@ -1433,6 +1433,7 @@ pre.rust {
 	bottom: 0;
 	left: 0;
 	right: 0;
+	/* work around button layout strangeness: https://stackoverflow.com/q/7271561 */
 	width: 100%;
 	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
 	-webkit-appearance: none;
