@@ -16,10 +16,13 @@ else
 endif
 	$(RUSTC) --crate-type lib --crate-name raw_dylib_test lib.rs
 	$(RUSTC) --crate-type bin driver.rs -L "$(TMPDIR)"
+	$(RUSTC) --crate-type bin --crate-name raw_dylib_test_bin lib.rs
 	"$(TMPDIR)"/driver > "$(TMPDIR)"/output.txt
+	"$(TMPDIR)"/raw_dylib_test_bin > "$(TMPDIR)"/output_bin.txt
 
 ifdef RUSTC_BLESS_TEST
 	cp "$(TMPDIR)"/output.txt output.txt
 else
 	$(DIFF) output.txt "$(TMPDIR)"/output.txt
+	$(DIFF) output.txt "$(TMPDIR)"/output_bin.txt
 endif
