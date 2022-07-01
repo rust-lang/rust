@@ -3,8 +3,10 @@ error[E0282]: type annotations needed for `Option<T>`
    |
 LL |     let mut closure0 = None;
    |         ^^^^^^^^^^^^
+...
+LL |                         return c();
+   |                                --- type must be known at this point
    |
-   = note: type must be known at this point
 help: consider giving `closure0` an explicit type, where the placeholders `_` are specified
    |
 LL |     let mut closure0: Option<T> = None;

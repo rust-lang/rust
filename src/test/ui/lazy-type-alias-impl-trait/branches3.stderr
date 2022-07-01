@@ -2,9 +2,8 @@ error[E0282]: type annotations needed
   --> $DIR/branches3.rs:8:10
    |
 LL |         |s| s.len()
-   |          ^
+   |          ^  - type must be known at this point
    |
-   = note: type must be known at this point
 help: consider giving this closure parameter an explicit type
    |
 LL |         |s: _| s.len()
@@ -14,9 +13,8 @@ error[E0282]: type annotations needed
   --> $DIR/branches3.rs:15:10
    |
 LL |         |s| s.len()
-   |          ^
+   |          ^  - type must be known at this point
    |
-   = note: type must be known at this point
 help: consider giving this closure parameter an explicit type
    |
 LL |         |s: _| s.len()
@@ -26,9 +24,8 @@ error[E0282]: type annotations needed
   --> $DIR/branches3.rs:23:10
    |
 LL |         |s| s.len()
-   |          ^
+   |          ^  - type must be known at this point
    |
-   = note: type must be known at this point
 help: consider giving this closure parameter an explicit type
    |
 LL |         |s: _| s.len()
@@ -38,9 +35,8 @@ error[E0282]: type annotations needed
   --> $DIR/branches3.rs:30:10
    |
 LL |         |s| s.len()
-   |          ^
+   |          ^  - type must be known at this point
    |
-   = note: type must be known at this point
 help: consider giving this closure parameter an explicit type
    |
 LL |         |s: _| s.len()

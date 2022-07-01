@@ -2,7 +2,7 @@ error[E0282]: type annotations needed for `[_; 0]`
   --> $DIR/suggest-closure-return-type-2.rs:4:18
    |
 LL |     unbound_drop(|| { [] })
-   |                  ^^
+   |                  ^^   -- type must be known at this point
    |
 help: try giving this closure an explicit return type
    |

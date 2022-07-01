@@ -4,7 +4,6 @@ error[E0282]: type annotations needed
 LL |     let [_, _] = a.into();
    |         ^^^^^^
    |
-   = note: type must be known at this point
 help: consider giving this pattern a type
    |
 LL |     let [_, _]: _ = a.into();

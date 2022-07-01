@@ -114,6 +114,9 @@ body {
 	-webkit-font-feature-settings: "kern", "liga";
 	-moz-font-feature-settings: "kern", "liga";
 	font-feature-settings: "kern", "liga";
+
+	background-color: var(--main-background-color);
+	color: var(--main-color);
 }
 
 h1 {
@@ -158,8 +161,8 @@ h1.fqn {
 	Underlines elsewhere in the documentation break up visual flow and tend to invert
 	section hierarchies. */
 h2,
-.top-doc h3,
-.top-doc h4 {
+.top-doc .docblock > h3,
+.top-doc .docblock > h4 {
 	border-bottom: 1px solid;
 }
 h3.code-header {
@@ -212,6 +215,26 @@ a.srclink,
 /* This selector is for the items listed in the "all items" page. */
 #main-content > ul.docblock > li > a {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
+}
+
+h1, h2, h3, h4,
+a#toggle-all-docs,
+a.anchor,
+.small-section-header a,
+#source-sidebar a,
+pre.rust a,
+.sidebar h2 a,
+.sidebar h3 a,
+.mobile-topbar h2 a,
+.in-band a,
+.search-results a,
+.module-item .stab,
+.import-item .stab,
+.result-name .primitive > i, .result-name .keyword > i,
+.content .method .where,
+.content .fn .where,
+.content .where.fmt-newline {
+	color: var(--main-color);
 }
 
 ol, ul {
@@ -389,6 +412,14 @@ nav.sub {
 
 .rustdoc.source .sidebar .sidebar-logo {
 	display: none;
+}
+
+.source .sidebar, #sidebar-toggle, #source-sidebar {
+	background-color: var(--sidebar-background-color);
+}
+
+#sidebar-toggle:hover {
+	background-color: var(--sidebar-background-color-hover);
 }
 
 .source .sidebar > *:not(#sidebar-toggle) {
@@ -627,11 +658,6 @@ h2.location a {
 .method > .code-header, .trait-impl > .code-header {
 	max-width: calc(100% - 41px);
 	display: block;
-}
-
-.invisible {
-	width: 100%;
-	display: inline-block;
 }
 
 .content .in-band {
@@ -1006,6 +1032,11 @@ table,
 	padding: 4px;
 	transform: rotate(-45deg);
 	top: -5px;
+}
+
+.popover, .popover::before {
+	background-color: var(--main-background-color);
+	color: var(--main-color);
 }
 
 #help-button .popover {
@@ -1428,6 +1459,25 @@ pre.rust {
 	animation: rotating 2s linear infinite;
 }
 
+.setting-line .radio-line input:checked {
+	box-shadow: inset 0 0 0 3px var(--main-background-color);
+	background-color: var(--settings-input-color);
+}
+.setting-line .radio-line input:focus {
+	box-shadow: 0 0 1px 1px var(--settings-input-color);
+}
+/* In here we combine both `:focus` and `:checked` properties. */
+.setting-line .radio-line input:checked:focus {
+	box-shadow: inset 0 0 0 3px var(--main-background-color),
+		0 0 2px 2px var(--settings-input-color);
+}
+.setting-line .radio-line input:hover {
+	border-color: var(--settings-input-color) !important;
+}
+input:checked + .slider {
+	background-color: var(--settings-input-color);
+}
+
 #help-button > button {
 	font-family: "Fira Sans", Arial, sans-serif;
 	text-align: center;
@@ -1679,6 +1729,11 @@ details.rustdoc-toggle[open] > summary.hideme::before {
 details.rustdoc-toggle[open] > summary::after,
 details.rustdoc-toggle[open] > summary.hideme::after {
 	content: "Collapse";
+}
+
+/* This is needed in docblocks to have the "▶" element to be on the same line. */
+.docblock summary > * {
+	display: inline-block;
 }
 
 /* Media Queries */

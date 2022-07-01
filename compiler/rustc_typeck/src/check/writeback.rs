@@ -694,6 +694,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     t.into(),
                     vec![],
                     E0282,
+                    false,
                 )
                 .emit();
         }
@@ -708,6 +709,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     c.into(),
                     vec![],
                     E0282,
+                    false,
                 )
                 .emit();
         }

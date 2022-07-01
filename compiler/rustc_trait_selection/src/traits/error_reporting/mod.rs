@@ -1958,26 +1958,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 if predicate.references_error() {
                     return;
                 }
-                // Typically, this ambiguity should only happen if
-                // there are unresolved type inference variables
-                // (otherwise it would suggest a coherence
-                // failure). But given #21974 that is not necessarily
-                // the case -- we can have multiple where clauses that
-                // are only distinguished by a region, which results
-                // in an ambiguity even when all types are fully
-                // known, since we don't dispatch based on region
-                // relationships.
-
-                // Pick the first substitution that still contains inference variables as the one
-                // we're going to emit an error for. If there are none (see above), fall back to
-                // the substitution for `Self`.
-                let subst = {
-                    let substs = data.trait_ref.substs;
-                    substs
-                        .iter()
-                        .find(|s| s.has_infer_types_or_consts())
-                        .unwrap_or_else(|| substs[0])
-                };
 
                 // This is kind of a hack: it frequently happens that some earlier
                 // error prevents types from being fully inferred, and then we get
@@ -1999,27 +1979,54 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         self.emit_inference_failure_err(
                             body_id,
                             span,
-                            subst,
+                            trait_ref.self_ty().skip_binder().into(),
                             vec![],
                             ErrorCode::E0282,
+                            false,
                         )
                         .emit();
                     }
                     return;
                 }
 
-                let impl_candidates = self
-                    .find_similar_impl_candidates(trait_ref)
-                    .into_iter()
-                    .map(|candidate| candidate.trait_ref)
-                    .collect();
-                let mut err = self.emit_inference_failure_err(
-                    body_id,
-                    span,
-                    subst,
-                    impl_candidates,
-                    ErrorCode::E0283,
-                );
+                // Typically, this ambiguity should only happen if
+                // there are unresolved type inference variables
+                // (otherwise it would suggest a coherence
+                // failure). But given #21974 that is not necessarily
+                // the case -- we can have multiple where clauses that
+                // are only distinguished by a region, which results
+                // in an ambiguity even when all types are fully
+                // known, since we don't dispatch based on region
+                // relationships.
+
+                // Pick the first substitution that still contains inference variables as the one
+                // we're going to emit an error for. If there are none (see above), fall back to
+                // a more general error.
+                let subst = data.trait_ref.substs.iter().find(|s| s.has_infer_types_or_consts());
+
+                let mut err = if let Some(subst) = subst {
+                    let impl_candidates = self
+                        .find_similar_impl_candidates(trait_ref)
+                        .into_iter()
+                        .map(|candidate| candidate.trait_ref)
+                        .collect();
+                    self.emit_inference_failure_err(
+                        body_id,
+                        span,
+                        subst,
+                        impl_candidates,
+                        ErrorCode::E0283,
+                        true,
+                    )
+                } else {
+                    struct_span_err!(
+                        self.tcx.sess,
+                        span,
+                        E0283,
+                        "type annotations needed: cannot satisfy `{}`",
+                        predicate,
+                    )
+                };
 
                 let obligation = Obligation::new(
                     obligation.cause.clone(),
@@ -2110,7 +2117,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                self.emit_inference_failure_err(body_id, span, arg, vec![], ErrorCode::E0282)
+                self.emit_inference_failure_err(body_id, span, arg, vec![], ErrorCode::E0282, false)
             }
 
             ty::PredicateKind::Subtype(data) => {
@@ -2124,26 +2131,38 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
-                self.emit_inference_failure_err(body_id, span, a.into(), vec![], ErrorCode::E0282)
+                self.emit_inference_failure_err(
+                    body_id,
+                    span,
+                    a.into(),
+                    vec![],
+                    ErrorCode::E0282,
+                    true,
+                )
             }
             ty::PredicateKind::Projection(data) => {
-                let self_ty = data.projection_ty.self_ty();
-                let term = data.term;
                 if predicate.references_error() || self.is_tainted_by_errors() {
                     return;
                 }
-                if self_ty.needs_infer() && term.needs_infer() {
-                    // We do this for the `foo.collect()?` case to produce a suggestion.
+                let subst = data
+                    .projection_ty
+                    .substs
+                    .iter()
+                    .chain(Some(data.term.into_arg()))
+                    .find(|g| g.has_infer_types_or_consts());
+                if let Some(subst) = subst {
                     let mut err = self.emit_inference_failure_err(
                         body_id,
                         span,
-                        self_ty.into(),
+                        subst,
                         vec![],
                         ErrorCode::E0284,
+                        true,
                     );
                     err.note(&format!("cannot satisfy `{}`", predicate));
                     err
                 } else {
+                    // If we can't find a substitution, just print a generic error
                     let mut err = struct_span_err!(
                         self.tcx.sess,
                         span,

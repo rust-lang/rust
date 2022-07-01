@@ -34,19 +34,19 @@ LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    = help: const parameters may only be used as standalone arguments, i.e. `J`
    = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
-error[E0283]: type annotations needed
+error[E0283]: type annotations needed: cannot satisfy `IsLessOrEqual<I, 8_u32>: True`
   --> $DIR/issue-72787.rs:21:26
    |
 LL |     IsLessOrEqual<I, 8>: True,
-   |                          ^^^^ cannot infer type for struct `IsLessOrEqual<I, 8_u32>`
+   |                          ^^^^
    |
    = note: cannot satisfy `IsLessOrEqual<I, 8_u32>: True`
 
-error[E0283]: type annotations needed
+error[E0283]: type annotations needed: cannot satisfy `IsLessOrEqual<I, 8_u32>: True`
   --> $DIR/issue-72787.rs:21:26
    |
 LL |     IsLessOrEqual<I, 8>: True,
-   |                          ^^^^ cannot infer type for struct `IsLessOrEqual<I, 8_u32>`
+   |                          ^^^^
    |
    = note: cannot satisfy `IsLessOrEqual<I, 8_u32>: True`
 
