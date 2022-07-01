@@ -34,19 +34,13 @@ assert-document-property: ({"URL": "/lib.rs.html"}, ENDS_WITH)
 click: "#sidebar-toggle"
 assert: ".source-sidebar-expanded"
 
-// We check that the first entry of the sidebar is collapsed (which, for whatever reason,
-// is number 2 and not 1...).
-assert-attribute: ("#source-sidebar .name:nth-child(2)", {"class": "name"})
-assert-text: ("#source-sidebar .name:nth-child(2)", "implementors")
-// We also check its children are hidden too.
-assert-css: ("#source-sidebar .name:nth-child(2) + .children", {"display": "none"})
+// We check that the first entry of the sidebar is collapsed
+assert-property: ("#source-sidebar details:first-of-type", {"open": "false"})
+assert-text: ("#source-sidebar details:first-of-type > summary", "implementors")
 // We now click on it.
-click: "#source-sidebar .name:nth-child(2)"
-assert-attribute: ("#source-sidebar .name:nth-child(2)", {"class": "name expand"})
-// Checking that its children are displayed as well.
-assert-css: ("#source-sidebar .name:nth-child(2) + .children", {"display": "block"})
+click: "#source-sidebar details:first-of-type > summary"
+assert-property: ("#source-sidebar details:first-of-type", {"open": "true"})
 
 // And now we collapse it again.
-click: "#source-sidebar .name:nth-child(2)"
-assert-attribute: ("#source-sidebar .name:nth-child(2)", {"class": "name"})
-assert-css: ("#source-sidebar .name:nth-child(2) + .children", {"display": "none"})
+click: "#source-sidebar details:first-of-type > summary"
+assert-property: ("#source-sidebar details:first-of-type", {"open": "false"})

@@ -1528,37 +1528,18 @@ kbd {
 	margin-bottom: 1em;
 }
 
-div.children {
-	padding-left: 27px;
-	display: none;
-}
-div.name {
+details.dir-entry > summary {
+	margin: 0 0 0 13px;
+	list-style-position: outside;
 	cursor: pointer;
-	position: relative;
-	margin-left: 16px;
 }
-div.files > a {
+
+details.dir-entry div.folders, details.dir-entry div.files {
+	padding-left: 27px;
+}
+
+details.dir-entry a {
 	display: block;
-	padding: 0 3px;
-}
-div.files > a:hover, div.name:hover {
-	background-color: #a14b4b;
-}
-div.name.expand + .children {
-	display: block;
-}
-div.name::before {
-	content: "\25B6";
-	padding-left: 4px;
-	font-size: 0.625rem;
-	position: absolute;
-	left: -16px;
-	top: 4px;
-}
-div.name.expand::before {
-	transform: rotate(90deg);
-	left: -15px;
-	top: 2px;
 }
 
 /* The hideme class is used on summary tags that contain a span with

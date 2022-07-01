@@ -19,33 +19,27 @@ function closeSidebarIfMobile() {
 }
 
 function createDirEntry(elem, parent, fullPath, hasFoundFile) {
-    const name = document.createElement("div");
-    name.className = "name";
+    const dirEntry = document.createElement("details");
+    const summary = document.createElement("summary");
+
+    dirEntry.className = "dir-entry";
 
     fullPath += elem["name"] + "/";
 
-    name.onclick = ev => {
-        if (hasClass(ev.target, "expand")) {
-            removeClass(ev.target, "expand");
-        } else {
-            addClass(ev.target, "expand");
-        }
-    };
-    name.innerText = elem["name"];
+    summary.innerText = elem["name"];
+    dirEntry.appendChild(summary);
 
-    const children = document.createElement("div");
-    children.className = "children";
     const folders = document.createElement("div");
     folders.className = "folders";
     if (elem.dirs) {
         for (const dir of elem.dirs) {
             if (createDirEntry(dir, folders, fullPath, hasFoundFile)) {
-                addClass(name, "expand");
+                dirEntry.open = true;
                 hasFoundFile = true;
             }
         }
     }
-    children.appendChild(folders);
+    dirEntry.appendChild(folders);
 
     const files = document.createElement("div");
     files.className = "files";
@@ -58,15 +52,14 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
             const w = window.location.href.split("#")[0];
             if (!hasFoundFile && w === file.href) {
                 file.className = "selected";
-                addClass(name, "expand");
+                dirEntry.open = true;
                 hasFoundFile = true;
             }
             files.appendChild(file);
         }
     }
-    children.appendChild(files);
-    parent.appendChild(name);
-    parent.appendChild(children);
+    dirEntry.appendChild(files);
+    parent.appendChild(dirEntry);
     return hasFoundFile;
 }
 
