@@ -620,7 +620,7 @@ kbd {
 #sidebar-toggle {
 	background-color: #14191f;
 }
-#sidebar-toggle:hover {
+#sidebar-toggle:hover, #sidebar-toggle > button:focus {
 	background-color: rgba(70, 70, 70, 0.33);
 }
 #source-sidebar {

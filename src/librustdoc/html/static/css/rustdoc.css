@@ -1370,7 +1370,6 @@ pre.rust {
 	position: sticky;
 	top: 0;
 	left: 0;
-	cursor: pointer;
 	font-weight: bold;
 	font-size: 1.25rem;
 	border-bottom: 1px solid;
@@ -1391,7 +1390,23 @@ pre.rust {
 	border-bottom: 1px solid;
 	margin-bottom: 6px;
 }
-
+#sidebar-toggle > button {
+	background: none;
+	color: inherit;
+	cursor: pointer;
+	text-align: center;
+	border: none;
+	outline: none;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	width: 100%;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
+}
 #settings-menu, #help-button {
 	margin-left: 4px;
 	outline: none;

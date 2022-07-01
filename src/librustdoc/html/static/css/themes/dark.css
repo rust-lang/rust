@@ -491,7 +491,7 @@ kbd {
 #sidebar-toggle {
 	background-color: #565656;
 }
-#sidebar-toggle:hover {
+#sidebar-toggle:hover, #sidebar-toggle > button:focus {
 	background-color: #676767;
 }
 #source-sidebar {
