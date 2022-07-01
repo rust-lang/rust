@@ -3381,7 +3381,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                         if arg.layout.is_unsized() || size > max_by_val_size {
                             arg.make_indirect();
-                        } else if size > ptr_size && unlikely!(self.has_all_float(&arg.layout)) {
+                        } else if size > ptr_size && self.has_all_float(&arg.layout) {
                             // We don't want to aggregate floats as an aggregates of Integer
                             // because this will hurt the generated assembly (#93490) but as an
                             // optimization we want to pass homogeneous aggregate of floats
