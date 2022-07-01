@@ -289,13 +289,19 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Get the id of the currently active thread.
-    fn get_active_thread_id(&self) -> ThreadId {
+    pub fn get_active_thread_id(&self) -> ThreadId {
         self.active_thread
     }
 
     /// Get the total number of threads that were ever spawn by this program.
-    fn get_total_thread_count(&self) -> usize {
+    pub fn get_total_thread_count(&self) -> usize {
         self.threads.len()
+    }
+
+    /// Get the total of threads that are currently live, i.e., not yet terminated.
+    /// (They might be blocked.)
+    pub fn get_live_thread_count(&self) -> usize {
+        self.threads.iter().filter(|t| !matches!(t.state, ThreadState::Terminated)).count()
     }
 
     /// Has the given thread terminated?
@@ -366,7 +372,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         } else {
             // The thread has already terminated - mark join happens-before
             if let Some(data_race) = data_race {
-                data_race.thread_joined(self.active_thread, joined_thread_id);
+                data_race.thread_joined(self, self.active_thread, joined_thread_id);
             }
         }
         Ok(())
@@ -378,7 +384,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Get the name of the active thread.
-    fn get_thread_name(&self) -> &[u8] {
+    pub fn get_thread_name(&self) -> &[u8] {
         self.active_thread_ref().thread_name()
     }
 
@@ -460,20 +466,24 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
                 false
             });
         }
-        // Set the thread into a terminated state in the data-race detector
+        // Set the thread into a terminated state in the data-race detector.
         if let Some(ref mut data_race) = data_race {
-            data_race.thread_terminated();
+            data_race.thread_terminated(self);
         }
         // Check if we need to unblock any threads.
+        let mut joined_threads = vec![]; // store which threads joined, we'll need it
         for (i, thread) in self.threads.iter_enumerated_mut() {
             if thread.state == ThreadState::BlockedOnJoin(self.active_thread) {
                 // The thread has terminated, mark happens-before edge to joining thread
-                if let Some(ref mut data_race) = data_race {
-                    data_race.thread_joined(i, self.active_thread);
+                if let Some(_) = data_race {
+                    joined_threads.push(i);
                 }
                 trace!("unblocking {:?} because {:?} terminated", i, self.active_thread);
                 thread.state = ThreadState::Enabled;
             }
+        }
+        for &i in &joined_threads {
+            data_race.as_mut().unwrap().thread_joined(self, i, self.active_thread);
         }
         free_tls_statics
     }
@@ -484,10 +494,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// used in stateless model checkers such as Loom: run the active thread as
     /// long as we can and switch only when we have to (the active thread was
     /// blocked, terminated, or has explicitly asked to be preempted).
-    fn schedule(
-        &mut self,
-        data_race: &Option<data_race::GlobalState>,
-    ) -> InterpResult<'tcx, SchedulingAction> {
+    fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
         // Check whether the thread has **just** terminated (`check_terminated`
         // checks whether the thread has popped all its stack and if yes, sets
         // the thread state to terminated).
@@ -535,9 +542,6 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             debug_assert_ne!(self.active_thread, id);
             if thread.state == ThreadState::Enabled {
                 self.active_thread = id;
-                if let Some(data_race) = data_race {
-                    data_race.thread_set_active(self.active_thread);
-                }
                 break;
             }
         }
@@ -598,7 +602,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let id = this.machine.threads.create_thread();
         if let Some(data_race) = &mut this.machine.data_race {
-            data_race.thread_created(id);
+            data_race.thread_created(&this.machine.threads, id);
         }
         id
     }
@@ -619,9 +623,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn set_active_thread(&mut self, thread_id: ThreadId) -> ThreadId {
         let this = self.eval_context_mut();
-        if let Some(data_race) = &this.machine.data_race {
-            data_race.thread_set_active(thread_id);
-        }
         this.machine.threads.set_active_thread_id(thread_id)
     }
 
@@ -682,11 +683,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) {
         let this = self.eval_context_mut();
-        if let Some(data_race) = &mut this.machine.data_race {
-            if let Ok(string) = String::from_utf8(new_thread_name.clone()) {
-                data_race.thread_set_name(this.machine.threads.active_thread, string);
-            }
-        }
         this.machine.threads.set_thread_name(new_thread_name);
     }
 
@@ -776,8 +772,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
         let this = self.eval_context_mut();
-        let data_race = &this.machine.data_race;
-        this.machine.threads.schedule(data_race)
+        this.machine.threads.schedule()
     }
 
     /// Handles thread termination of the active thread: wakes up threads joining on this one,

@@ -82,10 +82,12 @@ use rustc_const_eval::interpret::{
 };
 use rustc_data_structures::fx::FxHashMap;
 
-use crate::{AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, Tag, VClock, VTimestamp, VectorIdx};
+use crate::{
+    AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, Tag, ThreadManager, VClock, VTimestamp, VectorIdx,
+};
 
 use super::{
-    data_race::{GlobalState, ThreadClockSet},
+    data_race::{GlobalState as DataRaceState, ThreadClockSet},
     range_object_map::{AccessType, RangeObjectMap},
 };
 
@@ -149,7 +151,7 @@ impl StoreBufferAlloc {
     /// before without data race, we can determine that the non-atomic access fully happens
     /// after all the prior atomic accesses so the location no longer needs to exhibit
     /// any weak memory behaviours until further atomic accesses.
-    pub fn memory_accessed(&self, range: AllocRange, global: &GlobalState) {
+    pub fn memory_accessed(&self, range: AllocRange, global: &DataRaceState) {
         if !global.ongoing_action_data_race_free() {
             let mut buffers = self.store_buffers.borrow_mut();
             let access_type = buffers.access_type(range);
@@ -236,17 +238,18 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
     }
 
     /// Reads from the last store in modification order
-    fn read_from_last_store(&self, global: &GlobalState) {
+    fn read_from_last_store(&self, global: &DataRaceState, thread_mgr: &ThreadManager<'_, '_>) {
         let store_elem = self.buffer.back();
         if let Some(store_elem) = store_elem {
-            let (index, clocks) = global.current_thread_state();
+            let (index, clocks) = global.current_thread_state(thread_mgr);
             store_elem.load_impl(index, &clocks);
         }
     }
 
     fn buffered_read(
         &self,
-        global: &GlobalState,
+        global: &DataRaceState,
+        thread_mgr: &ThreadManager<'_, '_>,
         is_seqcst: bool,
         rng: &mut (impl rand::Rng + ?Sized),
         validate: impl FnOnce() -> InterpResult<'tcx>,
@@ -257,7 +260,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         let store_elem = {
             // The `clocks` we got here must be dropped before calling validate_atomic_load
             // as the race detector will update it
-            let (.., clocks) = global.current_thread_state();
+            let (.., clocks) = global.current_thread_state(thread_mgr);
             // Load from a valid entry in the store buffer
             self.fetch_store(is_seqcst, &clocks, &mut *rng)
         };
@@ -268,7 +271,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         // requires access to ThreadClockSet.clock, which is updated by the race detector
         validate()?;
 
-        let (index, clocks) = global.current_thread_state();
+        let (index, clocks) = global.current_thread_state(thread_mgr);
         let loaded = store_elem.load_impl(index, &clocks);
         Ok(loaded)
     }
@@ -276,10 +279,11 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
     fn buffered_write(
         &mut self,
         val: ScalarMaybeUninit<Tag>,
-        global: &GlobalState,
+        global: &DataRaceState,
+        thread_mgr: &ThreadManager<'_, '_>,
         is_seqcst: bool,
     ) -> InterpResult<'tcx> {
-        let (index, clocks) = global.current_thread_state();
+        let (index, clocks) = global.current_thread_state(thread_mgr);
 
         self.store_impl(val, index, &clocks.clock, is_seqcst);
         Ok(())
@@ -428,8 +432,11 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         {
             let range = alloc_range(base_offset, place.layout.size);
             if alloc_buffers.is_overlapping(range)
-                && !alloc_clocks
-                    .race_free_with_atomic(range, this.machine.data_race.as_ref().unwrap())
+                && !alloc_clocks.race_free_with_atomic(
+                    range,
+                    this.machine.data_race.as_ref().unwrap(),
+                    &this.machine.threads,
+                )
             {
                 throw_unsup_format!(
                     "racy imperfectly overlapping atomic access is not possible in the C++20 memory model, and not supported by Miri's weak memory emulation"
@@ -450,17 +457,17 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
         if let (
             crate::AllocExtra { weak_memory: Some(alloc_buffers), .. },
-            crate::Evaluator { data_race: Some(global), .. },
+            crate::Evaluator { data_race: Some(global), threads, .. },
         ) = this.get_alloc_extra_mut(alloc_id)?
         {
             if atomic == AtomicRwOrd::SeqCst {
-                global.sc_read();
-                global.sc_write();
+                global.sc_read(threads);
+                global.sc_write(threads);
             }
             let range = alloc_range(base_offset, place.layout.size);
             let buffer = alloc_buffers.get_or_create_store_buffer_mut(range, init)?;
-            buffer.read_from_last_store(global);
-            buffer.buffered_write(new_val, global, atomic == AtomicRwOrd::SeqCst)?;
+            buffer.read_from_last_store(global, threads);
+            buffer.buffered_write(new_val, global, threads, atomic == AtomicRwOrd::SeqCst)?;
         }
         Ok(())
     }
@@ -477,7 +484,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
             if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
                 if atomic == AtomicReadOrd::SeqCst {
-                    global.sc_read();
+                    global.sc_read(&this.machine.threads);
                 }
                 let mut rng = this.machine.rng.borrow_mut();
                 let buffer = alloc_buffers.get_or_create_store_buffer(
@@ -486,6 +493,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 )?;
                 let loaded = buffer.buffered_read(
                     global,
+                    &this.machine.threads,
                     atomic == AtomicReadOrd::SeqCst,
                     &mut *rng,
                     validate,
@@ -511,11 +519,11 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(dest.ptr)?;
         if let (
             crate::AllocExtra { weak_memory: Some(alloc_buffers), .. },
-            crate::Evaluator { data_race: Some(global), .. },
+            crate::Evaluator { data_race: Some(global), threads, .. },
         ) = this.get_alloc_extra_mut(alloc_id)?
         {
             if atomic == AtomicWriteOrd::SeqCst {
-                global.sc_write();
+                global.sc_write(threads);
             }
 
             // UGLY HACK: in write_scalar_atomic() we don't know the value before our write,
@@ -535,7 +543,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 buffer.buffer.pop_front();
             }
 
-            buffer.buffered_write(val, global, atomic == AtomicWriteOrd::SeqCst)?;
+            buffer.buffered_write(val, global, threads, atomic == AtomicWriteOrd::SeqCst)?;
         }
 
         // Caller should've written to dest with the vanilla scalar write, we do nothing here
@@ -555,14 +563,14 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
         if let Some(global) = &this.machine.data_race {
             if atomic == AtomicReadOrd::SeqCst {
-                global.sc_read();
+                global.sc_read(&this.machine.threads);
             }
             let size = place.layout.size;
             let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
             if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
                 let buffer = alloc_buffers
                     .get_or_create_store_buffer(alloc_range(base_offset, size), init)?;
-                buffer.read_from_last_store(global);
+                buffer.read_from_last_store(global, &this.machine.threads);
             }
         }
         Ok(())

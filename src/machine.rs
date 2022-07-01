@@ -647,7 +647,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             None
         };
         let race_alloc = if let Some(data_race) = &ecx.machine.data_race {
-            Some(data_race::AllocExtra::new_allocation(data_race, alloc.size(), kind))
+            Some(data_race::AllocExtra::new_allocation(
+                data_race,
+                &ecx.machine.threads,
+                alloc.size(),
+                kind,
+            ))
         } else {
             None
         };
@@ -756,7 +761,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &alloc_extra.data_race {
-            data_race.read(alloc_id, range, machine.data_race.as_ref().unwrap())?;
+            data_race.read(
+                alloc_id,
+                range,
+                machine.data_race.as_ref().unwrap(),
+                &machine.threads,
+            )?;
         }
         if let Some(stacked_borrows) = &alloc_extra.stacked_borrows {
             stacked_borrows.borrow_mut().memory_read(
@@ -782,7 +792,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.write(alloc_id, range, machine.data_race.as_mut().unwrap())?;
+            data_race.write(
+                alloc_id,
+                range,
+                machine.data_race.as_mut().unwrap(),
+                &machine.threads,
+            )?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
             stacked_borrows.get_mut().memory_written(
@@ -811,7 +826,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             register_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
         }
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.deallocate(alloc_id, range, machine.data_race.as_mut().unwrap())?;
+            data_race.deallocate(
+                alloc_id,
+                range,
+                machine.data_race.as_mut().unwrap(),
+                &machine.threads,
+            )?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
             stacked_borrows.get_mut().memory_deallocated(

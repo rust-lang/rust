@@ -1038,20 +1038,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             #[rustfmt::skip]
             "atomic_xsub_relaxed" =>
                 this.atomic_op(args, dest, AtomicOp::MirOp(BinOp::Sub, false), AtomicRwOrd::Relaxed)?,
-            "atomic_min_seqcst" => this.atomic_op(args, dest, AtomicOp::Min, AtomicRwOrd::SeqCst)?,
+            "atomic_min_seqcst" =>
+                this.atomic_op(args, dest, AtomicOp::Min, AtomicRwOrd::SeqCst)?,
             "atomic_min_acquire" =>
                 this.atomic_op(args, dest, AtomicOp::Min, AtomicRwOrd::Acquire)?,
             "atomic_min_release" =>
                 this.atomic_op(args, dest, AtomicOp::Min, AtomicRwOrd::Release)?,
-            "atomic_min_acqrel" => this.atomic_op(args, dest, AtomicOp::Min, AtomicRwOrd::AcqRel)?,
+            "atomic_min_acqrel" =>
+                this.atomic_op(args, dest, AtomicOp::Min, AtomicRwOrd::AcqRel)?,
             "atomic_min_relaxed" =>
                 this.atomic_op(args, dest, AtomicOp::Min, AtomicRwOrd::Relaxed)?,
-            "atomic_max_seqcst" => this.atomic_op(args, dest, AtomicOp::Max, AtomicRwOrd::SeqCst)?,
+            "atomic_max_seqcst" =>
+                this.atomic_op(args, dest, AtomicOp::Max, AtomicRwOrd::SeqCst)?,
             "atomic_max_acquire" =>
                 this.atomic_op(args, dest, AtomicOp::Max, AtomicRwOrd::Acquire)?,
             "atomic_max_release" =>
                 this.atomic_op(args, dest, AtomicOp::Max, AtomicRwOrd::Release)?,
-            "atomic_max_acqrel" => this.atomic_op(args, dest, AtomicOp::Max, AtomicRwOrd::AcqRel)?,
+            "atomic_max_acqrel" =>
+                this.atomic_op(args, dest, AtomicOp::Max, AtomicRwOrd::AcqRel)?,
             "atomic_max_relaxed" =>
                 this.atomic_op(args, dest, AtomicOp::Max, AtomicRwOrd::Relaxed)?,
             "atomic_umin_seqcst" =>
