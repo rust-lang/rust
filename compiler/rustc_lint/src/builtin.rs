@@ -1098,12 +1098,12 @@ impl EarlyLintPass for UnusedDocComment {
     }
 
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
-        warn_if_doc(cx, block.span, "block", &block.attrs());
+        warn_if_doc(cx, block.span, "blocks", &block.attrs());
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         if let ast::ItemKind::ForeignMod(_) = item.kind {
-            warn_if_doc(cx, item.span, "extern block", &item.attrs);
+            warn_if_doc(cx, item.span, "extern blocks", &item.attrs);
         }
     }
 }
