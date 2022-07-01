@@ -3,8 +3,6 @@ error[E0282]: type annotations needed
    |
 LL |     let x = buffer.last().unwrap().0.clone();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `T`
-   |
-   = note: type must be known at this point
 
 error[E0609]: no field `0` on type `&_`
   --> $DIR/issue-65611.rs:59:36

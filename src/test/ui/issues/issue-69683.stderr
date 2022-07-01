@@ -1,8 +1,14 @@
-error[E0284]: type annotations needed: cannot satisfy `<u8 as Element<_>>::Array == [u8; 3]`
+error[E0284]: type annotations needed
   --> $DIR/issue-69683.rs:30:10
    |
 LL |     0u16.foo(b);
-   |          ^^^ cannot satisfy `<u8 as Element<_>>::Array == [u8; 3]`
+   |          ^^^
+   |
+   = note: cannot satisfy `<u8 as Element<_>>::Array == [u8; 3]`
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     <u16 as Foo<I>>::foo(0u16, b);
+   |     +++++++++++++++++++++    ~
 
 error[E0283]: type annotations needed
   --> $DIR/issue-69683.rs:30:10

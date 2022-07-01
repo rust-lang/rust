@@ -914,8 +914,16 @@ impl<'tcx> Term<'tcx> {
     pub fn ty(&self) -> Option<Ty<'tcx>> {
         if let Term::Ty(ty) = self { Some(*ty) } else { None }
     }
+
     pub fn ct(&self) -> Option<Const<'tcx>> {
         if let Term::Const(c) = self { Some(*c) } else { None }
+    }
+
+    pub fn into_arg(self) -> GenericArg<'tcx> {
+        match self {
+            Term::Ty(ty) => ty.into(),
+            Term::Const(c) => c.into(),
+        }
     }
 }
 
