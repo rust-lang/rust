@@ -4,8 +4,8 @@ This document explains the basics for hacking on Clippy. Besides others, this
 includes how to build and test Clippy. For a more in depth description on the
 codebase take a look at [Adding Lints] or [Common Tools].
 
-[Adding Lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/adding_lints.md
-[Common Tools]: https://github.com/rust-lang/rust-clippy/blob/master/doc/common_tools_writing_lints.md
+[Adding Lints]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/adding_lints.md
+[Common Tools]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/common_tools_writing_lints.md
 
 - [Basics for hacking on Clippy](#basics-for-hacking-on-clippy)
   - [Get the Code](#get-the-code)
