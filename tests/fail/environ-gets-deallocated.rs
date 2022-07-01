@@ -1,6 +1,6 @@
 // ignore-windows: Windows does not have a global environ list that the program can access directly
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "freebsd"))]
 fn get_environ() -> *const *const u8 {
     extern "C" {
         static mut environ: *const *const u8;
