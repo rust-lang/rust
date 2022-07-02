@@ -55,6 +55,7 @@ COMMAND="$1"
 case "$COMMAND" in
 many-seeds)
     for SEED in $({ echo obase=16; seq 0 255; } | bc); do
+        echo "Trying seed: $SEED"
         MIRIFLAGS="$MIRIFLAGS -Zmiri-seed=$SEED" $@ || { echo "Failing seed: $SEED"; break; }
     done
     exit 0
