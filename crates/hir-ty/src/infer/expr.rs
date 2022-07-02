@@ -593,8 +593,28 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::BinaryOp { lhs, rhs, op } => match op {
                 Some(BinaryOp::Assignment { op: None }) => {
-                    let rhs_ty = self.infer_expr(*rhs, &Expectation::none());
-                    self.infer_assignee_expr(*lhs, &rhs_ty);
+                    let lhs = *lhs;
+                    let is_ordinary = match &self.body[lhs] {
+                        Expr::Array(_)
+                        | Expr::RecordLit { .. }
+                        | Expr::Tuple { .. }
+                        | Expr::Underscore => false,
+                        Expr::Call { callee, .. } => !matches!(&self.body[*callee], Expr::Path(_)),
+                        _ => true,
+                    };
+
+                    // In ordinary (non-destructuring) assignments, the type of
+                    // `lhs` must be inferred first so that the ADT fields
+                    // instantiations in RHS can be coerced to it. Note that this
+                    // cannot happen in destructuring assignments because of how
+                    // they are desugared.
+                    if is_ordinary {
+                        let lhs_ty = self.infer_expr(lhs, &Expectation::none());
+                        self.infer_expr_coerce(*rhs, &Expectation::has_type(lhs_ty));
+                    } else {
+                        let rhs_ty = self.infer_expr(*rhs, &Expectation::none());
+                        self.infer_assignee_expr(lhs, &rhs_ty);
+                    }
                     self.result.standard_types.unit.clone()
                 }
                 Some(BinaryOp::LogicOp(_)) => {
