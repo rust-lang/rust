@@ -26,7 +26,6 @@ use diagnostics::{AllocHistory, TagHistory};
 pub mod stack;
 use stack::Stack;
 
-pub type PtrId = NonZeroU64;
 pub type CallId = NonZeroU64;
 
 // Even reading memory can have effects on the stack, so we need a `RefCell` here.
@@ -479,7 +478,7 @@ impl<'tcx> Stack {
             )
         })?;
 
-        // Step 2: Remove all items.  Also checks for protectors.
+        // Step 2: Consider all items removed. This checks for protectors.
         for idx in (0..self.len()).rev() {
             let item = self.get(idx).unwrap();
             Stack::item_popped(&item, None, global, alloc_history)?;
@@ -579,8 +578,8 @@ impl<'tcx> Stacks {
     /// Creates new stack with initial tag.
     fn new(size: Size, perm: Permission, tag: SbTag) -> Self {
         let item = Item { perm, tag, protector: None };
-
         let stack = Stack::new(item);
+
         Stacks {
             stacks: RangeMap::new(size, stack),
             history: AllocHistory::new(),
@@ -826,14 +825,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // We have to use shared references to alloc/memory_extra here since
                 // `visit_freeze_sensitive` needs to access the global state.
                 let extra = this.get_alloc_extra(alloc_id)?;
-
                 let mut stacked_borrows = extra
                     .stacked_borrows
                     .as_ref()
                     .expect("we should have Stacked Borrows data")
                     .borrow_mut();
-                let mut current_span = this.machine.current_span();
-
                 this.visit_freeze_sensitive(place, size, |mut range, frozen| {
                     // Adjust range.
                     range.start += base_offset;
@@ -858,7 +854,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             item,
                             (alloc_id, range, offset),
                             &mut global,
-                            &mut current_span,
+                            current_span,
                             history,
                             exposed_tags,
                         )

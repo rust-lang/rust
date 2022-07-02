@@ -27,8 +27,7 @@ pub struct Stack {
     /// we never have the unknown-to-known boundary in an SRW group.
     unknown_bottom: Option<SbTag>,
 
-    /// A small LRU cache of searches of the borrow stack. This only caches accesses of `Tagged`,
-    /// because those are unique in the stack.
+    /// A small LRU cache of searches of the borrow stack.
     #[cfg(feature = "stack-cache")]
     cache: StackCache,
     /// On a read, we need to disable all `Unique` above the granting item. We can avoid most of
@@ -42,6 +41,11 @@ pub struct Stack {
 /// probably-cold random access into the borrow stack to figure out what `Permission` an
 /// `SbTag` grants. We could avoid this by also storing the `Permission` in the cache, but
 /// most lookups into the cache are immediately followed by access of the full borrow stack anyway.
+///
+/// It may seem like maintaining this cache is a waste for small stacks, but
+/// (a) iterating over small fixed-size arrays is super fast, and (b) empirically this helps *a lot*,
+/// probably because runtime is dominated by large stacks.
+/// arrays is super fast
 #[cfg(feature = "stack-cache")]
 #[derive(Clone, Debug)]
 struct StackCache {
@@ -81,7 +85,9 @@ impl<'tcx> Stack {
     /// - There are no Unique tags outside of first_unique..last_unique
     #[cfg(feature = "expensive-debug-assertions")]
     fn verify_cache_consistency(&self) {
-        if self.borrows.len() > CACHE_LEN {
+        // Only a full cache needs to be valid. Also see the comments in find_granting_cache
+        // and set_unknown_bottom.
+        if self.borrows.len() >= CACHE_LEN {
             for (tag, stack_idx) in self.cache.tags.iter().zip(self.cache.idx.iter()) {
                 assert_eq!(self.borrows[*stack_idx].tag, *tag);
             }
@@ -154,7 +160,7 @@ impl<'tcx> Stack {
         }
 
         // If we didn't find the tag in the cache, fall back to a linear search of the
-        // whole stack, and add the tag to the stack.
+        // whole stack, and add the tag to the cache.
         for (stack_idx, item) in self.borrows.iter().enumerate().rev() {
             if tag == item.tag && item.perm.grants(access) {
                 #[cfg(feature = "stack-cache")]
@@ -185,8 +191,11 @@ impl<'tcx> Stack {
         // If we found the tag, look up its position in the stack to see if it grants
         // the required permission
         if self.borrows[stack_idx].perm.grants(access) {
-            // If it does, and it's not already in the most-recently-used position, move it there.
-            // Except if the tag is in position 1, this is equivalent to just a swap, so do that.
+            // If it does, and it's not already in the most-recently-used position, re-insert it at
+            // the most-recently-used position. This technically reduces the efficiency of the
+            // cache by duplicating elements, but current benchmarks do not seem to benefit from
+            // avoiding this duplication.
+            // But if the tag is in position 1, avoiding the duplicating add is trivial.
             if cache_idx == 1 {
                 self.cache.tags.swap(0, 1);
                 self.cache.idx.swap(0, 1);
@@ -287,7 +296,6 @@ impl<'tcx> Stack {
         let unique_range = 0..self.len();
 
         if disable_start <= unique_range.end {
-            // add 1 so we don't disable the granting item
             let lower = unique_range.start.max(disable_start);
             let upper = (unique_range.end + 1).min(self.borrows.len());
             for item in &mut self.borrows[lower..upper] {
