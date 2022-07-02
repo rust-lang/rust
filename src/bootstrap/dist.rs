@@ -2025,6 +2025,8 @@ impl Step for RustDev {
         let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);
         tarball.set_overlay(OverlayKind::LLVM);
 
+        builder.ensure(crate::native::Llvm { target });
+
         let src_bindir = builder.llvm_out(target).join("bin");
         // If updating this list, you likely want to change
         // src/bootstrap/download-ci-llvm-stamp as well, otherwise local users
