@@ -26,6 +26,7 @@ wait-for-css: (".sidebar", {"width": "300px"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
 click: ".sidebar a.selected"
 goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+wait-for-css: (".sidebar", {"width": "300px"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
 
 // Now we check the display of the sidebar items.
@@ -169,8 +170,16 @@ assert-window-property: {"pageYOffset": "2519"}
 // you click one of them, you probably want to actually see the file's contents, and not just
 // make it the current selection.
 click: "#sidebar-toggle"
-wait-for-css: (".sidebar", {"width": "500px"})
+wait-for-css: ("#source-sidebar", {"visibility": "visible"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
 click: ".sidebar a.selected"
 goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "false"}
+// Resize back to desktop size, to check that the sidebar doesn't spontaneously open.
+size: (1000, 1000)
+wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "false"}
+click: "#sidebar-toggle"
+wait-for-css: ("#source-sidebar", {"visibility": "visible"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
