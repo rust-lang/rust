@@ -418,7 +418,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }
                     };
-                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_local(reborrowed_place_ref.local, ctx, location);
                     self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }
@@ -431,7 +431,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
-                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_local(reborrowed_place_ref.local, ctx, location);
                     self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }

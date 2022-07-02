@@ -18,8 +18,8 @@ struct AllLocalUsesVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for AllLocalUsesVisitor {
-    fn visit_local(&mut self, local: &Local, _context: PlaceContext, location: Location) {
-        if *local == self.for_local {
+    fn visit_local(&mut self, local: Local, _context: PlaceContext, location: Location) {
+        if local == self.for_local {
             self.uses.insert(location);
         }
     }

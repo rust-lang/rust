@@ -773,7 +773,7 @@ impl CanConstProp {
 }
 
 impl Visitor<'_> for CanConstProp {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
         use rustc_middle::mir::visit::PlaceContext::*;
         match context {
             // Projections are fine, because `&mut foo.x` will be caught by

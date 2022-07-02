@@ -928,7 +928,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
     fn visit_local(
         &mut self,
-        _place_local: &Local,
+        _place_local: Local,
         _context: mir::visit::PlaceContext,
         _location: Location,
     ) {

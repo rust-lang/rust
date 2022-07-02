@@ -106,7 +106,7 @@ enum DefUseResult {
 }
 
 impl<'cx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'tcx> {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
         let local_ty = self.body.local_decls[local].ty;
 
         let mut found_it = false;

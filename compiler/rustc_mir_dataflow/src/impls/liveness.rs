@@ -111,7 +111,7 @@ where
         }
     }
 
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
         // Because we do not call `super_place` above, `visit_local` is only called for locals that
         // do not appear as part of  a `Place` in the MIR. This handles cases like the implicit use
         // of the return place in a `Return` terminator or the index in an `Index` projection.

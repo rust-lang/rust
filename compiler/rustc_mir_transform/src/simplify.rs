@@ -509,12 +509,12 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
         }
     }
 
-    fn visit_local(&mut self, local: &Local, _ctx: PlaceContext, _location: Location) {
+    fn visit_local(&mut self, local: Local, _ctx: PlaceContext, _location: Location) {
         if self.increment {
-            self.use_count[*local] += 1;
+            self.use_count[local] += 1;
         } else {
-            assert_ne!(self.use_count[*local], 0);
-            self.use_count[*local] -= 1;
+            assert_ne!(self.use_count[local], 0);
+            self.use_count[local] -= 1;
         }
     }
 }
