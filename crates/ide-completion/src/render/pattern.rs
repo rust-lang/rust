@@ -96,7 +96,7 @@ fn render_pat(
         StructKind::Record => {
             render_record_as_pat(ctx.db(), ctx.snippet_cap(), fields, name, fields_omitted)
         }
-        StructKind::Unit => return None,
+        StructKind::Unit => name.to_string(),
     };
 
     let needs_ascription = matches!(
@@ -131,7 +131,7 @@ fn render_record_as_pat(
             format!(
                 "{name} {{ {}{} }}",
                 fields.enumerate().format_with(", ", |(idx, field), f| {
-                    f(&format_args!("{}${}", field.name(db), idx + 1))
+                    f(&format_args!("{}${}", field.name(db).escaped(), idx + 1))
                 }),
                 if fields_omitted { ", .." } else { "" },
                 name = name
@@ -140,7 +140,7 @@ fn render_record_as_pat(
         None => {
             format!(
                 "{name} {{ {}{} }}",
-                fields.map(|field| field.name(db)).format(", "),
+                fields.map(|field| field.name(db).escaped().to_smol_str()).format(", "),
                 if fields_omitted { ", .." } else { "" },
                 name = name
             )

@@ -164,6 +164,7 @@ fn foo() {
             ev Variant
             bn Record {…}        Record { field$1 }$0
             bn Tuple(…)          Tuple($1)$0
+            bn Variant           Variant$0
             kw mut
             kw ref
         "#]],
@@ -243,6 +244,7 @@ fn foo() {
         expect![[r#"
             en E
             ma m!(…) macro_rules! m
+            bn E::X  E::X$0
             kw mut
             kw ref
         "#]],
@@ -318,6 +320,7 @@ fn func() {
             ct ASSOC_CONST const ASSOC_CONST: ()
             bn RecordV {…} RecordV { field$1 }$0
             bn TupleV(…)   TupleV($1)$0
+            bn UnitV       UnitV$0
         "#]],
     );
 }
@@ -487,6 +490,57 @@ fn foo() {
     }
 }
 "#,
+    );
+}
+
+#[test]
+fn completes_enum_variant_pat_escape() {
+    cov_mark::check!(enum_variant_pattern_path);
+    check_empty(
+        r#"
+enum Enum {
+    A,
+    B { r#type: i32 },
+    r#type,
+    r#struct { r#type: i32 },
+}
+fn foo() {
+    match (Enum::A) {
+        $0
+    }
+}
+"#,
+        expect![[r#"
+            en Enum
+            bn Enum::A          Enum::A$0
+            bn Enum::B {…}      Enum::B { r#type$1 }$0
+            bn Enum::struct {…} Enum::r#struct { r#type$1 }$0
+            bn Enum::type       Enum::r#type$0
+            kw mut
+            kw ref
+        "#]],
+    );
+
+    check_empty(
+        r#"
+enum Enum {
+    A,
+    B { r#type: i32 },
+    r#type,
+    r#struct { r#type: i32 },
+}
+fn foo() {
+    match (Enum::A) {
+        Enum::$0
+    }
+}
+"#,
+        expect![[r#"
+            bn A          A$0
+            bn B {…}      B { r#type$1 }$0
+            bn struct {…} r#struct { r#type$1 }$0
+            bn type       r#type$0
+        "#]],
     );
 }
 
