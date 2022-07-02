@@ -1875,6 +1875,18 @@ impl<'test> TestCx<'test> {
                 rustc.arg("-Zdeduplicate-diagnostics=no");
             }
             Ui => {
+                // If optimize-tests is true we still only want to optimize tests that actually get
+                // executed and that don't specify their own optimization levels
+                if self.config.optimize_tests
+                    && self.props.pass_mode(&self.config) == Some(PassMode::Run)
+                    && !self
+                        .props
+                        .compile_flags
+                        .iter()
+                        .any(|arg| arg == "-O" || arg.contains("opt-level"))
+                {
+                    rustc.arg("-O");
+                }
                 if !self.props.compile_flags.iter().any(|s| s.starts_with("--error-format")) {
                     rustc.args(&["--error-format", "json"]);
                     rustc.args(&["--json", "future-incompat"]);

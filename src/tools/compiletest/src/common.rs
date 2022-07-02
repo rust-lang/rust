@@ -269,6 +269,11 @@ pub struct Config {
     /// Flags to pass to the compiler when building for the target
     pub target_rustcflags: Option<String>,
 
+    /// Whether tests should be optimized.
+    /// Currently only provides a default for UI-tests that are run-pass.
+    /// Other tests are controlled by rustcflags or the testfiles themselves.
+    pub optimize_tests: bool,
+
     /// What panic strategy the target is built with.  Unwind supports Abort, but
     /// not vice versa.
     pub target_panic: PanicStrategy,

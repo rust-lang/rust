@@ -102,6 +102,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
         .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
+        .optflag("", "optimize-tests", "build UI tests with optimization enabled")
         .optopt("", "target-panic", "what panic strategy the target supports", "unwind | abort")
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
@@ -253,6 +254,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         runtool: matches.opt_str("runtool"),
         host_rustcflags: Some(matches.opt_strs("host-rustcflags").join(" ")),
         target_rustcflags: Some(matches.opt_strs("target-rustcflags").join(" ")),
+        optimize_tests: matches.opt_present("optimize-tests"),
         target_panic: match matches.opt_str("target-panic").as_deref() {
             Some("unwind") | None => PanicStrategy::Unwind,
             Some("abort") => PanicStrategy::Abort,
