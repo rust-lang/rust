@@ -102,7 +102,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
         .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
-        .optflag("", "optimize-tests", "build UI tests with optimization enabled")
+        .optflag("", "optimize-tests", "run tests with optimizations enabled")
         .optopt("", "target-panic", "what panic strategy the target supports", "unwind | abort")
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
