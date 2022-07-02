@@ -2667,13 +2667,16 @@ impl Item {
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub enum Extern {
     None,
-    Implicit,
-    Explicit(StrLit),
+    Implicit(Span),
+    Explicit(StrLit, Span),
 }
 
 impl Extern {
-    pub fn from_abi(abi: Option<StrLit>) -> Extern {
-        abi.map_or(Extern::Implicit, Extern::Explicit)
+    pub fn from_abi(abi: Option<StrLit>, span: Span) -> Extern {
+        match abi {
+            Some(name) => Extern::Explicit(name, span),
+            None => Extern::Implicit(span),
+        }
     }
 }
 

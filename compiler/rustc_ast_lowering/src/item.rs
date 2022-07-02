@@ -1272,8 +1272,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_extern(&mut self, ext: Extern) -> abi::Abi {
         match ext {
             Extern::None => abi::Abi::Rust,
-            Extern::Implicit => abi::Abi::FALLBACK,
-            Extern::Explicit(abi) => self.lower_abi(abi),
+            Extern::Implicit(_) => abi::Abi::FALLBACK,
+            Extern::Explicit(abi, _) => self.lower_abi(abi),
         }
     }
 

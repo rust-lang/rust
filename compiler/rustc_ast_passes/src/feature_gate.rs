@@ -283,7 +283,7 @@ impl<'a> PostExpansionVisitor<'a> {
     }
 
     fn check_extern(&self, ext: ast::Extern, constness: ast::Const) {
-        if let ast::Extern::Explicit(abi) = ext {
+        if let ast::Extern::Explicit(abi, _) = ext {
             self.check_abi(abi, constness);
         }
     }

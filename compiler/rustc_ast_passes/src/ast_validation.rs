@@ -630,7 +630,8 @@ impl<'a> AstValidator<'a> {
         match (fk.ctxt(), fk.header()) {
             (Some(FnCtxt::Foreign), _) => return,
             (Some(FnCtxt::Free), Some(header)) => match header.ext {
-                Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }) | Extern::Implicit
+                Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }, _)
+                | Extern::Implicit(_)
                     if matches!(header.unsafety, Unsafe::Yes(_)) =>
                 {
                     return;
@@ -842,7 +843,7 @@ impl<'a> AstValidator<'a> {
                     .emit();
                 });
                 self.check_late_bound_lifetime_defs(&bfty.generic_params);
-                if let Extern::Implicit = bfty.ext {
+                if let Extern::Implicit(_) = bfty.ext {
                     let sig_span = self.session.source_map().next_point(ty.span.shrink_to_lo());
                     self.maybe_lint_missing_abi(sig_span, ty.id);
                 }
@@ -1556,7 +1557,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let FnKind::Fn(
             _,
             _,
-            FnSig { span: sig_span, header: FnHeader { ext: Extern::Implicit, .. }, .. },
+            FnSig { span: sig_span, header: FnHeader { ext: Extern::Implicit(_), .. }, .. },
             _,
             _,
             _,

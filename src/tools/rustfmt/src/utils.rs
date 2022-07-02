@@ -138,8 +138,8 @@ pub(crate) fn format_extern(
 ) -> Cow<'static, str> {
     let abi = match ext {
         ast::Extern::None => "Rust".to_owned(),
-        ast::Extern::Implicit => "C".to_owned(),
-        ast::Extern::Explicit(abi) => abi.symbol_unescaped.to_string(),
+        ast::Extern::Implicit(_) => "C".to_owned(),
+        ast::Extern::Explicit(abi, _) => abi.symbol_unescaped.to_string(),
     };
 
     if abi == "Rust" && !is_mod {
