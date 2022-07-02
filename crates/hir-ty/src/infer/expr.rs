@@ -911,7 +911,15 @@ impl<'a> InferenceContext<'a> {
                 let lhs_ty = self.insert_type_vars_shallow(lhs_ty);
                 let ty = match self.coerce(None, &rhs_ty, &lhs_ty) {
                     Ok(ty) => ty,
-                    Err(_) => self.err_ty(),
+                    Err(_) => {
+                        self.result.type_mismatches.insert(
+                            lhs.into(),
+                            TypeMismatch { expected: rhs_ty.clone(), actual: lhs_ty.clone() },
+                        );
+                        // `rhs_ty` is returned so no further type mismatches are
+                        // reported because of this mismatch.
+                        rhs_ty
+                    }
                 };
                 self.write_expr_ty(lhs, ty.clone());
                 return ty;
