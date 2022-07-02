@@ -1010,7 +1010,7 @@ impl<'a> Iterator for Incoming<'a> {
     }
 }
 
-#[stable(feature = "tcp_listener_incoming_fused_iterator", since = "1.63.0")]
+#[stable(feature = "tcp_listener_incoming_fused_iterator", since = "1.64.0")]
 impl FusedIterator for Incoming<'_> {}
 
 #[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
