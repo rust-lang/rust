@@ -33,19 +33,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.close(result)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-            "stat" | "stat$INODE64" => {
+            "stat" | "stat64" | "stat$INODE64" => {
                 let [path, buf] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.macos_stat(path, buf)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-            "lstat" | "lstat$INODE64" => {
+            "lstat" | "lstat64" | "lstat$INODE64" => {
                 let [path, buf] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.macos_lstat(path, buf)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-            "fstat" | "fstat$INODE64" => {
+            "fstat" | "fstat64" | "fstat$INODE64" => {
                 let [fd, buf] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.macos_fstat(fd, buf)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
