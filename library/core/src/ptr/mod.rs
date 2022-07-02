@@ -898,6 +898,8 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         {
             attempt_swap_as_chunks!(usize);
             attempt_swap_as_chunks!(u8);
+            // Should not happen because anything must be splittable by u8.
+            unreachable!();
         }
     }
 

@@ -722,11 +722,20 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
     // copying those over multiple reads is difficult to support.
     #[cfg(not(any(target_arch = "spirv", miri)))]
     {
+        // For types with alignment bigger than `usize`,
+        // pointer swap doesn't do anything fancy so just skip them.
+        //
         // For types that are larger multiples of their alignment, the simple way
         // tends to copy the whole thing to stack rather than doing it one part
         // at a time, so instead treat them as one-element slices and piggy-back
         // the slice optimizations that will split up the swaps.
-        if size_of::<T>() / align_of::<T>() > 4 {
+        //
+        // Also, simple swaps of types bigger than 2 usizes cause unneccessary
+        // stack allocations too: https://godbolt.org/z/6r1Pfznjf
+        // See also commit message.
+        if align_of::<T>() <= align_of::<usize>()
+            && (size_of::<T>() / align_of::<T>() > 4 || size_of::<T>() > 2 * size_of::<usize>())
+        {
             // SAFETY: exclusive references always point to one non-overlapping
             // element and are non-null and properly aligned.
             return unsafe { ptr::swap_nonoverlapping(x, y, 1) };
