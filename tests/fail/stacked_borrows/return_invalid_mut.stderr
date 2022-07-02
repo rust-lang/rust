@@ -19,6 +19,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x8]
    |
 LL |     let _val = unsafe { *xraw }; // invalidate xref
    |                         ^^^^^
+   = note: backtrace:
    = note: inside `foo` at $DIR/return_invalid_mut.rs:LL:CC
 note: inside `main` at $DIR/return_invalid_mut.rs:LL:CC
   --> $DIR/return_invalid_mut.rs:LL:CC

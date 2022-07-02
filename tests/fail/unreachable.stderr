@@ -6,7 +6,7 @@ LL |     unsafe { intrinsics::unreachable() }
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-           
+   = note: backtrace:
    = note: inside `std::hint::unreachable_unchecked` at RUSTLIB/core/src/hint.rs:LL:CC
 note: inside `main` at $DIR/unreachable.rs:LL:CC
   --> $DIR/unreachable.rs:LL:CC

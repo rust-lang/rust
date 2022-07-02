@@ -19,6 +19,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x4]
    |
 LL |     let _val = unsafe { *xraw };
    |                         ^^^^^
+   = note: backtrace:
    = note: inside `main` at $DIR/illegal_read1.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

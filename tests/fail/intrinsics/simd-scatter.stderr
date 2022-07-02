@@ -6,7 +6,7 @@ LL |             intrinsics::simd_scatter(self, ptrs, enable.to_int())
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-           
+   = note: backtrace:
    = note: inside `std::simd::Simd::<i8, 4_usize>::scatter_select_unchecked` at RUSTLIB/core/src/../../portable-simd/crates/core_simd/src/vector.rs:LL:CC
 note: inside `main` at $DIR/simd-scatter.rs:LL:CC
   --> $DIR/simd-scatter.rs:LL:CC

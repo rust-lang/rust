@@ -6,7 +6,7 @@ LL |     Discriminant(intrinsics::discriminant_value(v))
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-           
+   = note: backtrace:
    = note: inside `std::mem::discriminant::<Foo>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
 note: inside `main` at $DIR/invalid_enum_tag.rs:LL:CC
   --> $DIR/invalid_enum_tag.rs:LL:CC

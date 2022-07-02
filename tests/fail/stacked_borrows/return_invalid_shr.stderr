@@ -19,6 +19,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x8]
    |
 LL |     unsafe { *xraw = (42, 23) }; // unfreeze
    |              ^^^^^^^^^^^^^^^^
+   = note: backtrace:
    = note: inside `foo` at $DIR/return_invalid_shr.rs:LL:CC
 note: inside `main` at $DIR/return_invalid_shr.rs:LL:CC
   --> $DIR/return_invalid_shr.rs:LL:CC

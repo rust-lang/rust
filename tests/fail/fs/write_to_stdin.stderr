@@ -5,7 +5,7 @@ LL |         libc::write(0, bytes.as_ptr() as *const libc::c_void, 5);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot write to stdin
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
-           
+   = note: backtrace:
    = note: inside `main` at $DIR/write_to_stdin.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

@@ -14,6 +14,7 @@ help: <TAG> was created by a retag at offsets [0x0..0x0]
    |
 LL |         assert_eq!(*s.get_unchecked(1), 2);
    |                     ^^^^^^^^^^^^^^^^^^
+   = note: backtrace:
    = note: inside `core::slice::<impl [i32]>::get_unchecked::<usize>` at RUSTLIB/core/src/slice/mod.rs:LL:CC
 note: inside `main` at $DIR/zst_slice.rs:LL:CC
   --> $DIR/zst_slice.rs:LL:CC

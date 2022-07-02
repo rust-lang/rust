@@ -14,6 +14,7 @@ help: <TAG> was created by a retag at offsets [0x0..0x1]
    |
 LL |     let ptr_to_first = &ARRAY[0] as *const u8;
    |                        ^^^^^^^^^
+   = note: backtrace:
    = note: inside `main` at $DIR/unescaped_static.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

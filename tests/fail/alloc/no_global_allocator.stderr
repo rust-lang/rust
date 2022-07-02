@@ -5,7 +5,7 @@ LL |         __rust_alloc(1, 1);
    |         ^^^^^^^^^^^^^^^^^^ can't call foreign function: __rust_alloc
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
-           
+   = note: backtrace:
    = note: inside `start` at $DIR/no_global_allocator.rs:LL:CC
 
 error: aborting due to previous error

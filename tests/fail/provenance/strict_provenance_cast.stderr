@@ -5,7 +5,7 @@ LL |     let _ptr = addr as *const i32;
    |                ^^^^^^^^^^^^^^^^^^ integer-to-pointer casts and `ptr::from_exposed_addr` are not supported with `-Zmiri-strict-provenance`
    |
    = help: use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead
-           
+   = note: backtrace:
    = note: inside `main` at $DIR/strict_provenance_cast.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

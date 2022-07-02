@@ -67,7 +67,7 @@ impl MachineStopType for TerminationInfo {}
 
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
-    CreatedPointerTag(NonZeroU64),
+    CreatedPointerTag(NonZeroU64, Option<(AllocId, AllocRange)>),
     /// This `Item` was popped from the borrow stack, either due to an access with the given tag or
     /// a deallocation when the second argument is `None`.
     PoppedPointerTag(Item, Option<(SbTagExtra, AccessKind)>),
@@ -318,7 +318,7 @@ fn report_msg<'mir, 'tcx>(
     diag_level: DiagLevel,
     title: &str,
     span_msg: Vec<String>,
-    mut helps: Vec<(Option<SpanData>, String)>,
+    helps: Vec<(Option<SpanData>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
 ) {
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
@@ -344,8 +344,6 @@ fn report_msg<'mir, 'tcx>(
 
     // Show help messages.
     if !helps.is_empty() {
-        // Add visual separator before backtrace.
-        helps.last_mut().unwrap().1.push('\n');
         for (span_data, help) in helps {
             if let Some(span_data) = span_data {
                 err.span_help(span_data.span(), &help);
@@ -353,6 +351,8 @@ fn report_msg<'mir, 'tcx>(
                 err.help(&help);
             }
         }
+        // Add visual separator before backtrace.
+        err.note("backtrace:");
     }
     // Add backtrace
     for (idx, frame_info) in stacktrace.iter().enumerate() {
@@ -448,7 +448,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             for e in diagnostics.drain(..) {
                 use NonHaltingDiagnostic::*;
                 let msg = match e {
-                    CreatedPointerTag(tag) => format!("created tag {:?}", tag),
+                    CreatedPointerTag(tag, None) => format!("created tag {tag:?}"),
+                    CreatedPointerTag(tag, Some((alloc_id, range))) =>
+                        format!("created tag {tag:?} at {alloc_id}{}", HexRange(range)),
                     PoppedPointerTag(item, tag) =>
                         match tag {
                             None =>

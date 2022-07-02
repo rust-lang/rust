@@ -19,6 +19,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x4]
    |
 LL |     *our = 5;
    |     ^^^^^^^^
+   = note: backtrace:
    = note: inside `unknown_code_2` at $DIR/mut_exclusive_violation1.rs:LL:CC
 note: inside `demo_mut_advanced_unique` at $DIR/mut_exclusive_violation1.rs:LL:CC
   --> $DIR/mut_exclusive_violation1.rs:LL:CC

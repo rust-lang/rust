@@ -222,11 +222,9 @@ impl GlobalStateInner {
         }
     }
 
+    /// Generates a new pointer tag. Remember to also check track_pointer_tags and log its creation!
     fn new_ptr(&mut self) -> SbTag {
         let id = self.next_ptr_tag;
-        if self.tracked_pointer_tags.contains(&id) {
-            register_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(id.0));
-        }
         self.next_ptr_tag = SbTag(NonZeroU64::new(id.0.get() + 1).unwrap());
         id
     }
@@ -253,6 +251,9 @@ impl GlobalStateInner {
     pub fn base_ptr_tag(&mut self, id: AllocId) -> SbTag {
         self.base_ptr_tags.get(&id).copied().unwrap_or_else(|| {
             let tag = self.new_ptr();
+            if self.tracked_pointer_tags.contains(&tag) {
+                register_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(tag.0, None));
+            }
             trace!("New allocation {:?} has base tag {:?}", id, tag);
             self.base_ptr_tags.try_insert(id, tag).unwrap();
             tag
@@ -802,16 +803,30 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let current_span = &mut this.machine.current_span();
 
+        // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriEvalContext<'mir, 'tcx>,
                             current_span: &mut CurrentSpan<'_, 'mir, 'tcx>,
-                            alloc_id,
-                            base_offset,
-                            orig_tag|
+                            loc: Option<(AllocId, Size, SbTagExtra)>| // alloc_id, base_offset, orig_tag
          -> InterpResult<'tcx> {
+            let global = this.machine.stacked_borrows.as_ref().unwrap().borrow();
+            if global.tracked_pointer_tags.contains(&new_tag) {
+                register_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
+                    new_tag.0,
+                    loc.map(|(alloc_id, base_offset, _)| (alloc_id, alloc_range(base_offset, size))),
+                ));
+            }
+            drop(global); // don't hold that reference any longer than we have to
+
+            let Some((alloc_id, base_offset, orig_tag)) = loc else {
+                return Ok(())
+            };
+
+            // The SB history tracking needs a parent tag, so skip if we come from a wildcard.
             let SbTagExtra::Concrete(orig_tag) = orig_tag else {
                 // FIXME: should we log this?
                 return Ok(())
             };
+
             let extra = this.get_alloc_extra(alloc_id)?;
             let mut stacked_borrows = extra
                 .stacked_borrows
@@ -846,14 +861,15 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Dangling slices are a common case here; it's valid to get their length but with raw
             // pointer tagging for example all calls to get_unchecked on them are invalid.
             if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr) {
-                log_creation(this, current_span, alloc_id, base_offset, orig_tag)?;
+                log_creation(this, current_span, Some((alloc_id, base_offset, orig_tag)))?;
                 return Ok(Some(alloc_id));
             }
             // This pointer doesn't come with an AllocId. :shrug:
+            log_creation(this, current_span, None)?;
             return Ok(None);
         }
         let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr)?;
-        log_creation(this, current_span, alloc_id, base_offset, orig_tag)?;
+        log_creation(this, current_span, Some((alloc_id, base_offset, orig_tag)))?;
 
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         let (alloc_size, _) = this.get_live_alloc_size_and_align(alloc_id)?;

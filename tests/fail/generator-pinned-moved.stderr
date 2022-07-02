@@ -6,7 +6,7 @@ LL |         *num += 1;
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-           
+   = note: backtrace:
    = note: inside closure at $DIR/generator-pinned-moved.rs:LL:CC
 note: inside `<GeneratorIteratorAdapter<[static generator@$DIR/generator-pinned-moved.rs:LL:CC]> as std::iter::Iterator>::next` at $DIR/generator-pinned-moved.rs:LL:CC
   --> $DIR/generator-pinned-moved.rs:LL:CC

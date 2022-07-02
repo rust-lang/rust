@@ -14,6 +14,7 @@ help: <TAG> was created by a retag at offsets [0x0..0x4]
    |
 LL |     let ptr = r#ref as *const _ as *mut _; // raw ptr, with raw tag
    |               ^^^^^
+   = note: backtrace:
    = note: inside `main` at $DIR/illegal_write3.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
