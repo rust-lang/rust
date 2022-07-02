@@ -3043,3 +3043,30 @@ fn main() {
         "#,
     );
 }
+
+#[test]
+fn destructuring_assignment_type_mismatch_on_identifier() {
+    check(
+        r#"
+struct S { v: i64 }
+struct TS(i64);
+fn main() {
+    let mut a: usize = 0;
+    (a,) = (0i64,);
+   //^expected i64, got usize
+
+    let mut a: usize = 0;
+    [a,] = [0i64,];
+   //^expected i64, got usize
+
+    let mut a: usize = 0;
+    S { v: a } = S { v: 0 };
+         //^expected i64, got usize
+
+    let mut a: usize = 0;
+    TS(a) = TS(0);
+     //^expected i64, got usize
+}
+        "#,
+    );
+}

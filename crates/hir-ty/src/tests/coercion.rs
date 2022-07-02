@@ -709,3 +709,47 @@ fn test() {
         "#,
     );
 }
+
+#[test]
+fn assign_coerce_struct_fields() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized
+struct S;
+trait Tr {}
+impl Tr for S {}
+struct V<T> { t: T }
+
+fn main() {
+    let a: V<&dyn Tr>;
+    a = V { t: &S };
+
+    let mut a: V<&dyn Tr> = V { t: &S };
+    a = V { t: &S };
+}
+        "#,
+    );
+}
+
+#[test]
+fn destructuring_assign_coerce_struct_fields() {
+    check(
+        r#"
+//- minicore: coerce_unsized
+struct S;
+trait Tr {}
+impl Tr for S {}
+struct V<T> { t: T }
+
+fn main() {
+    let a: V<&dyn Tr>;
+    (a,) = V { t: &S };
+  //^^^^expected V<&S>, got (V<&dyn Tr>,)
+
+    let mut a: V<&dyn Tr> = V { t: &S };
+    (a,) = V { t: &S };
+  //^^^^expected V<&S>, got (V<&dyn Tr>,)
+}
+        "#,
+    );
+}
