@@ -930,7 +930,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         let timing = frame.extra.timing.take();
-        let res = ecx.handle_stack_pop(frame.extra, unwinding);
+        if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
+            stacked_borrows.borrow_mut().end_call(frame.extra.call_id);
+        }
+        let res = ecx.handle_stack_pop_unwind(frame.extra, unwinding);
         if let Some(profiler) = ecx.machine.profiler.as_ref() {
             profiler.finish_recording_interval_event(timing.unwrap());
         }
