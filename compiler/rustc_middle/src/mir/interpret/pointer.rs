@@ -144,7 +144,7 @@ impl Provenance for AllocId {
         }
         // Print offset only if it is non-zero.
         if ptr.offset.bytes() > 0 {
-            write!(f, "+0x{:x}", ptr.offset.bytes())?;
+            write!(f, "+{:#x}", ptr.offset.bytes())?;
         }
         Ok(())
     }
@@ -181,7 +181,7 @@ impl<Tag: Provenance> fmt::Debug for Pointer<Option<Tag>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.provenance {
             Some(tag) => Provenance::fmt(&Pointer::new(tag, self.offset), f),
-            None => write!(f, "0x{:x}", self.offset.bytes()),
+            None => write!(f, "{:#x}", self.offset.bytes()),
         }
     }
 }

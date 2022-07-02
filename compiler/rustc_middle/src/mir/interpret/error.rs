@@ -334,36 +334,30 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 p,
             ),
             PointerUseAfterFree(a) => {
-                write!(f, "pointer to {} was dereferenced after this allocation got freed", a)
+                write!(f, "pointer to {a:?} was dereferenced after this allocation got freed")
             }
             PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, ptr_size: Size::ZERO, msg } => {
                 write!(
                     f,
-                    "{}{alloc_id} has size {alloc_size}, so pointer at offset {ptr_offset} is out-of-bounds",
-                    msg,
-                    alloc_id = alloc_id,
+                    "{msg}{alloc_id:?} has size {alloc_size}, so pointer at offset {ptr_offset} is out-of-bounds",
                     alloc_size = alloc_size.bytes(),
-                    ptr_offset = ptr_offset,
                 )
             }
             PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, ptr_size, msg } => write!(
                 f,
-                "{}{alloc_id} has size {alloc_size}, so pointer to {ptr_size} byte{ptr_size_p} starting at offset {ptr_offset} is out-of-bounds",
-                msg,
-                alloc_id = alloc_id,
+                "{msg}{alloc_id:?} has size {alloc_size}, so pointer to {ptr_size} byte{ptr_size_p} starting at offset {ptr_offset} is out-of-bounds",
                 alloc_size = alloc_size.bytes(),
                 ptr_size = ptr_size.bytes(),
                 ptr_size_p = pluralize!(ptr_size.bytes()),
-                ptr_offset = ptr_offset,
             ),
             DanglingIntPointer(0, CheckInAllocMsg::InboundsTest) => {
                 write!(f, "null pointer is not a valid pointer for this operation")
             }
             DanglingIntPointer(0, msg) => {
-                write!(f, "{}null pointer is not a valid pointer", msg)
+                write!(f, "{msg}null pointer is not a valid pointer")
             }
             DanglingIntPointer(i, msg) => {
-                write!(f, "{}0x{:x} is not a valid pointer", msg, i)
+                write!(f, "{msg}{:#x} is not a valid pointer", i)
             }
             AlignmentCheckFailed { required, has } => write!(
                 f,
@@ -371,8 +365,8 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 has.bytes(),
                 required.bytes()
             ),
-            WriteToReadOnly(a) => write!(f, "writing to {} which is read-only", a),
-            DerefFunctionPointer(a) => write!(f, "accessing {} which contains a function", a),
+            WriteToReadOnly(a) => write!(f, "writing to {a:?} which is read-only"),
+            DerefFunctionPointer(a) => write!(f, "accessing {a:?} which contains a function"),
             ValidationFailure { path: None, msg } => {
                 write!(f, "constructing invalid value: {}", msg)
             }

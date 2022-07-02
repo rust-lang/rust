@@ -276,7 +276,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx> {
         let (alloc_id, offset, tag) = self.ptr_get_alloc_id(ptr)?;
-        trace!("deallocating: {}", alloc_id);
+        trace!("deallocating: {alloc_id:?}");
 
         if offset.bytes() != 0 {
             throw_ub_format!(
@@ -289,10 +289,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Deallocating global memory -- always an error
             return Err(match self.tcx.get_global_alloc(alloc_id) {
                 Some(GlobalAlloc::Function(..)) => {
-                    err_ub_format!("deallocating {}, which is a function", alloc_id)
+                    err_ub_format!("deallocating {alloc_id:?}, which is a function")
                 }
                 Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
-                    err_ub_format!("deallocating {}, which is static memory", alloc_id)
+                    err_ub_format!("deallocating {alloc_id:?}, which is static memory")
                 }
                 None => err_ub!(PointerUseAfterFree(alloc_id)),
             }
@@ -302,12 +302,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         debug!(?alloc);
 
         if alloc.mutability == Mutability::Not {
-            throw_ub_format!("deallocating immutable allocation {}", alloc_id);
+            throw_ub_format!("deallocating immutable allocation {alloc_id:?}");
         }
         if alloc_kind != kind {
             throw_ub_format!(
-                "deallocating {}, which is {} memory, using {} deallocation operation",
-                alloc_id,
+                "deallocating {alloc_id:?}, which is {} memory, using {} deallocation operation",
                 alloc_kind,
                 kind
             );
@@ -315,8 +314,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Some((size, align)) = old_size_and_align {
             if size != alloc.size() || align != alloc.align {
                 throw_ub_format!(
-                    "incorrect layout on deallocation: {} has size {} and alignment {}, but gave size {} and alignment {}",
-                    alloc_id,
+                    "incorrect layout on deallocation: {alloc_id:?} has size {} and alignment {}, but gave size {} and alignment {}",
                     alloc.size().bytes(),
                     alloc.align.bytes(),
                     size.bytes(),
@@ -815,7 +813,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
                 continue;
             }
 
-            write!(fmt, "{}", id)?;
+            write!(fmt, "{id:?}")?;
             match self.ecx.memory.alloc_map.get(id) {
                 Some(&(kind, ref alloc)) => {
                     // normal alloc
@@ -865,13 +863,7 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
         val: ScalarMaybeUninit<Tag>,
     ) -> InterpResult<'tcx> {
         let range = self.range.subrange(range);
-        debug!(
-            "write_scalar in {} at {:#x}, size {}: {:?}",
-            self.alloc_id,
-            range.start.bytes(),
-            range.size.bytes(),
-            val
-        );
+        debug!("write_scalar at {:?}{range:?}: {val:?}", self.alloc_id);
         Ok(self
             .alloc
             .write_scalar(&self.tcx, range, val)
@@ -906,13 +898,7 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
             .alloc
             .read_scalar(&self.tcx, range, read_provenance)
             .map_err(|e| e.to_interp_error(self.alloc_id))?;
-        debug!(
-            "read_scalar in {} at {:#x}, size {}: {:?}",
-            self.alloc_id,
-            range.start.bytes(),
-            range.size.bytes(),
-            res
-        );
+        debug!("read_scalar at {:?}{range:?}: {res:?}", self.alloc_id);
         Ok(res)
     }
 
