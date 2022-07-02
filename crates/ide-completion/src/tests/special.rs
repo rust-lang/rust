@@ -519,6 +519,7 @@ fn foo() {
 
 #[test]
 fn completes_variant_through_self() {
+    cov_mark::check!(completes_variant_through_self);
     check(
         r#"
 enum Foo {

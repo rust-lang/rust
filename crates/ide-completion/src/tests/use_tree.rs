@@ -165,29 +165,14 @@ fn enum_plain_qualified_use_tree() {
         r#"
 use Foo::$0
 
-enum Foo { Variant }
-impl Foo {
-    const CONST: () = ()
-    fn func() {}
-}
-"#,
-        expect![[r#"
-            ev Variant Variant
-        "#]],
-    );
-}
-
-#[test]
-fn enum_no_parens_in_qualified_use_tree() {
-    cov_mark::check!(enum_plain_qualified_use_tree);
-    check(
-        r#"
-use Foo::$0
-
 enum Foo {
     UnitVariant,
     TupleVariant(),
     RecordVariant {},
+}
+impl Foo {
+    const CONST: () = ()
+    fn func() {}
 }
 "#,
         expect![[r#"

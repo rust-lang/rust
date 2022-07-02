@@ -139,8 +139,8 @@ fn foo2($0) {}
 "#,
         expect![[r#"
             st Bar
-            bn Bar              Bar { bar$1 }: Bar$0
             bn Bar { bar }: Bar
+            bn Bar {…}          Bar { bar$1 }: Bar$0
             kw mut
             kw ref
         "#]],

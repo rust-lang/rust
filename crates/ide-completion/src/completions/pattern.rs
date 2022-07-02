@@ -151,7 +151,6 @@ pub(crate) fn complete_pattern_path(
                     };
 
                     if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
-                        cov_mark::hit!(enum_plain_qualified_use_tree);
                         acc.add_enum_variants(ctx, path_ctx, e);
                     }
 
