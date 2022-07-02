@@ -1560,7 +1560,7 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustdoc"));
         let lib_dir = bin_root.join("lib");
-        for lib in t!(fs::read_dir(lib_dir)) {
+        for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
             let lib = t!(lib);
             if lib.path().extension() == Some(OsStr::new("so")) {
                 builder.fix_bin_or_dylib(&lib.path());
@@ -1636,6 +1636,7 @@ fn download_component(
         }
         Some(sha256)
     } else if tarball.exists() {
+        builder.unpack(&tarball, &bin_root, prefix);
         return;
     } else {
         None

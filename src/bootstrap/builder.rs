@@ -945,6 +945,7 @@ impl<'a> Builder<'a> {
     }
 
     pub(crate) fn download_component(&self, url: &str, dest_path: &Path, help_on_error: &str) {
+        self.verbose(&format!("download {url}"));
         // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
         let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
         // While bootstrap itself only supports http and https downloads, downstream forks might
