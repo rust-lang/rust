@@ -23,7 +23,7 @@ use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::same_type_modulo_infer;
-use rustc_infer::traits::TraitEngine;
+use rustc_infer::traits::{AmbiguousSelection, TraitEngine};
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::error::ExpectedFound;
@@ -1404,7 +1404,7 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
     fn annotate_source_of_ambiguity(
         &self,
         err: &mut Diagnostic,
-        impls: &[DefId],
+        impls: &[AmbiguousSelection],
         predicate: ty::Predicate<'tcx>,
     );
 
@@ -2020,6 +2020,14 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 );
                 match selcx.select_from_obligation(&obligation) {
                     Err(SelectionError::Ambiguous(impls)) if impls.len() > 1 => {
+                        if self.is_tainted_by_errors() && subst.is_none() {
+                            // If `subst.is_none()`, then this is probably two param-env
+                            // candidates or impl candidates that are equal modulo lifetimes.
+                            // Therefore, if we've already emitted an error, just skip this
+                            // one, since it's not particularly actionable.
+                            err.cancel();
+                            return;
+                        }
                         self.annotate_source_of_ambiguity(&mut err, &impls, predicate);
                     }
                     _ => {
@@ -2170,24 +2178,35 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
     fn annotate_source_of_ambiguity(
         &self,
         err: &mut Diagnostic,
-        impls: &[DefId],
+        impls: &[AmbiguousSelection],
         predicate: ty::Predicate<'tcx>,
     ) {
         let mut spans = vec![];
         let mut crates = vec![];
         let mut post = vec![];
-        for def_id in impls {
-            match self.tcx.span_of_impl(*def_id) {
-                Ok(span) => spans.push(span),
-                Err(name) => {
-                    crates.push(name);
-                    if let Some(header) = to_pretty_impl_header(self.tcx, *def_id) {
-                        post.push(header);
+        let mut or_where_clause = false;
+        for ambig in impls {
+            match ambig {
+                AmbiguousSelection::Impl(def_id) => match self.tcx.span_of_impl(*def_id) {
+                    Ok(span) => spans.push(span),
+                    Err(name) => {
+                        crates.push(name);
+                        if let Some(header) = to_pretty_impl_header(self.tcx, *def_id) {
+                            post.push(header);
+                        }
                     }
+                },
+                AmbiguousSelection::ParamEnv(span) => {
+                    or_where_clause = true;
+                    spans.push(*span);
                 }
             }
         }
-        let msg = format!("multiple `impl`s satisfying `{}` found", predicate);
+        let msg = format!(
+            "multiple `impl`s{} satisfying `{}` found",
+            if or_where_clause { " or `where` clauses" } else { "" },
+            predicate
+        );
         let mut crate_names: Vec<_> = crates.iter().map(|n| format!("`{}`", n)).collect();
         crate_names.sort();
         crate_names.dedup();
