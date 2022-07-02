@@ -442,6 +442,14 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
                     Self::add_extern_static(this, name, place.ptr);
                 }
             }
+            "freebsd" => {
+                // "environ"
+                Self::add_extern_static(
+                    this,
+                    "environ",
+                    this.machine.env_vars.environ.unwrap().ptr,
+                );
+            }
             "windows" => {
                 // "_tls_used"
                 // This is some obscure hack that is part of the Windows TLS story. It's a `u8`.
