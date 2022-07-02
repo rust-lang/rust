@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use rustc_middle::mir::interpret::{InterpResult, Pointer, PointerArithmetic};
+use rustc_middle::mir::interpret::{alloc_range, InterpResult, Pointer, PointerArithmetic};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, COMMON_VTABLE_ENTRIES_ALIGN, COMMON_VTABLE_ENTRIES_DROPINPLACE,
     COMMON_VTABLE_ENTRIES_SIZE,
@@ -102,18 +102,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )?
             .expect("cannot be a ZST");
         let size = vtable
-            .read_integer(
+            .read_integer(alloc_range(
                 pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_SIZE).unwrap(),
                 pointer_size,
-            )?
+            ))?
             .check_init()?;
         let size = size.to_machine_usize(self)?;
         let size = Size::from_bytes(size);
         let align = vtable
-            .read_integer(
+            .read_integer(alloc_range(
                 pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_ALIGN).unwrap(),
                 pointer_size,
-            )?
+            ))?
             .check_init()?;
         let align = align.to_machine_usize(self)?;
         let align = Align::from_bytes(align).map_err(|e| err_ub!(InvalidVtableAlignment(e)))?;
