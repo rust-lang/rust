@@ -326,7 +326,7 @@ pub(super) struct PatCtxt<'a, 'p> {
     /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
     /// subpattern.
     pub(super) is_top_level: bool,
-    /// Wether the current pattern is from a `non_exhaustive` enum.
+    /// Whether the current pattern is from a `non_exhaustive` enum.
     pub(super) is_non_exhaustive: bool,
 }
 
