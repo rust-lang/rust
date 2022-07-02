@@ -180,16 +180,20 @@ impl<'tcx> Inliner<'tcx> {
             return Err("failed to normalize return type");
         }
         if callsite.fn_sig.abi() == Abi::RustCall {
-            let mut args = args.into_iter();
-            let _ = args.next(); // Skip `self` argument.
-            let arg_tuple_ty = args.next().unwrap().ty(&caller_body.local_decls, self.tcx);
-            assert!(args.next().is_none());
+            let (arg_tuple, skipped_args) = match &args[..] {
+                [arg_tuple] => (arg_tuple, 0),
+                [_, arg_tuple] => (arg_tuple, 1),
+                _ => bug!("Expected `rust-call` to have 1 or 2 args"),
+            };
 
+            let arg_tuple_ty = arg_tuple.ty(&caller_body.local_decls, self.tcx);
             let ty::Tuple(arg_tuple_tys) = arg_tuple_ty.kind() else {
                 bug!("Closure arguments are not passed as a tuple");
             };
 
-            for (arg_ty, input) in arg_tuple_tys.iter().zip(callee_body.args_iter().skip(1)) {
+            for (arg_ty, input) in
+                arg_tuple_tys.iter().zip(callee_body.args_iter().skip(skipped_args))
+            {
                 let input_type = callee_body.local_decls[input].ty;
                 if !equal_up_to_regions(self.tcx, self.param_env, arg_ty, input_type) {
                     trace!(?arg_ty, ?input_type);
