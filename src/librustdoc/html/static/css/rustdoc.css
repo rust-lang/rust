@@ -299,6 +299,7 @@ main {
 }
 
 .source main {
+	width: 100%;
 	padding: 15px;
 }
 
@@ -308,7 +309,7 @@ main {
 }
 
 .source .width-limiter {
-	max-width: unset;
+	max-width: none;
 }
 
 details:not(.rustdoc-toggle) summary {
@@ -571,6 +572,7 @@ h2.location a {
 }
 
 .line-numbers {
+	display: inline-block;
 	text-align: right;
 }
 .rustdoc:not(.source) .example-wrap > pre:not(.line-number) {
@@ -1346,6 +1348,7 @@ pre.rust.rust-example-rendered {
 }
 
 pre.rust {
+	display: inline-block;
 	tab-size: 4;
 	-moz-tab-size: 4;
 }
