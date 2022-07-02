@@ -54,15 +54,18 @@ pub struct FrameData<'tcx> {
     /// for the start of this frame. When we finish executing this frame,
     /// we use this to register a completed event with `measureme`.
     pub timing: Option<measureme::DetachedTiming>,
+
+    pub protected_tags: Vec<SbTag>,
 }
 
 impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameData { call_id, catch_unwind, timing: _ } = self;
+        let FrameData { call_id, catch_unwind, timing: _, protected_tags } = self;
         f.debug_struct("FrameData")
             .field("call_id", call_id)
             .field("catch_unwind", catch_unwind)
+            .field("protected_tags", protected_tags)
             .finish()
     }
 }
@@ -788,6 +791,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
                 machine.current_span(),
+                &machine.threads,
             )?;
         }
         if let Some(weak_memory) = &alloc_extra.weak_memory {
@@ -819,6 +823,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
                 machine.current_span(),
+                &machine.threads,
             )?;
         }
         if let Some(weak_memory) = &alloc_extra.weak_memory {
@@ -852,6 +857,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 tag,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
+                &machine.threads,
             )
         } else {
             Ok(())
@@ -892,7 +898,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             stacked_borrows.borrow_mut().new_call()
         });
 
-        let extra = FrameData { call_id, catch_unwind: None, timing };
+        let extra = FrameData { call_id, catch_unwind: None, timing, protected_tags: Vec::new() };
         Ok(frame.with_extra(extra))
     }
 
@@ -936,7 +942,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     ) -> InterpResult<'tcx, StackPopJump> {
         let timing = frame.extra.timing.take();
         if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
-            stacked_borrows.borrow_mut().end_call(frame.extra.call_id);
+            stacked_borrows.borrow_mut().end_call(&frame.extra);
         }
         let res = ecx.handle_stack_pop_unwind(frame.extra, unwinding);
         if let Some(profiler) = ecx.machine.profiler.as_ref() {

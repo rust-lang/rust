@@ -1,8 +1,8 @@
-error: Undefined Behavior: not granting access to tag <TAG> because incompatible item is protected: [SharedReadOnly for <TAG> (call ID)]
+error: Undefined Behavior: not granting access to tag <TAG> because incompatible item is protected: [SharedReadOnly for <TAG>] (call ID)
   --> $DIR/aliasing_mut2.rs:LL:CC
    |
 LL | pub fn safe(_x: &i32, _y: &mut i32) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not granting access to tag <TAG> because incompatible item is protected: [SharedReadOnly for <TAG> (call ID)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not granting access to tag <TAG> because incompatible item is protected: [SharedReadOnly for <TAG>] (call ID)
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
