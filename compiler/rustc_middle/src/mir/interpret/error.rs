@@ -357,7 +357,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 write!(f, "{msg}null pointer is not a valid pointer")
             }
             DanglingIntPointer(i, msg) => {
-                write!(f, "{msg}{:#x} is not a valid pointer", i)
+                write!(f, "{msg}{i:#x} is not a valid pointer")
             }
             AlignmentCheckFailed { required, has } => write!(
                 f,

@@ -306,9 +306,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         if alloc_kind != kind {
             throw_ub_format!(
-                "deallocating {alloc_id:?}, which is {} memory, using {} deallocation operation",
-                alloc_kind,
-                kind
+                "deallocating {alloc_id:?}, which is {alloc_kind} memory, using {kind} deallocation operation"
             );
         }
         if let Some((size, align)) = old_size_and_align {

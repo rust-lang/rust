@@ -466,7 +466,7 @@ impl<'tcx> TyCtxt<'tcx> {
             return alloc_id;
         }
         let id = alloc_map.reserve();
-        debug!("creating alloc {:?} with id {:?}", alloc, id);
+        debug!("creating alloc {alloc:?} with id {id:?}");
         alloc_map.alloc_map.insert(id, alloc.clone());
         alloc_map.dedup.insert(alloc, id);
         id
