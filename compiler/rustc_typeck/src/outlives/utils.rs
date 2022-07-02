@@ -7,12 +7,12 @@ use std::collections::BTreeMap;
 
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
 /// must be added to the struct header.
-pub type RequiredPredicates<'tcx> =
+pub(crate) type RequiredPredicates<'tcx> =
     BTreeMap<ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>, Span>;
 
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
 /// outlives_component and add it to `required_predicates`
-pub fn insert_outlives_predicate<'tcx>(
+pub(crate) fn insert_outlives_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: GenericArg<'tcx>,
     outlived_region: Region<'tcx>,
