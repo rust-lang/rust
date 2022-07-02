@@ -81,7 +81,8 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
     let anchor = if self_param.is_some() { Anchor::Method } else { Anchor::Freestanding };
     let insert_after = node_to_insert_after(&body, anchor)?;
-    let module = ctx.sema.scope(&insert_after)?.module();
+    let semantics_scope = ctx.sema.scope(&insert_after)?;
+    let module = semantics_scope.module();
 
     let ret_ty = body.return_ty(ctx)?;
     let control_flow = body.external_control_flow(ctx, &container_info)?;
@@ -105,8 +106,10 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
             let params =
                 body.extracted_function_params(ctx, &container_info, locals_used.iter().copied());
 
+            let name = make_function_name(&semantics_scope);
+
             let fun = Function {
-                name: make::name_ref("fun_name"),
+                name,
                 self_param,
                 params,
                 control_flow,
@@ -153,6 +156,21 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
             };
         },
     )
+}
+
+fn make_function_name(semantics_scope: &hir::SemanticsScope) -> ast::NameRef {
+    let mut names_in_scope = vec![];
+    semantics_scope.process_all_names(&mut |name, _| names_in_scope.push(name.to_string()));
+
+    let default_name = "fun_name";
+
+    let mut name = default_name.to_string();
+    let mut counter = 0;
+    while names_in_scope.contains(&name) {
+        counter += 1;
+        name = format!("{}{}", &default_name, counter)
+    }
+    make::name_ref(&name)
 }
 
 /// Try to guess what user wants to extract
@@ -4707,6 +4725,56 @@ fn func() {
 
 fn $0fun_name() {
     /* a comment */
+    let x = 0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn it_should_not_generate_duplicate_function_names() {
+        check_assist(
+            extract_function,
+            r#"
+fn fun_name() {
+    $0let x = 0;$0
+}
+"#,
+            r#"
+fn fun_name() {
+    fun_name1();
+}
+
+fn $0fun_name1() {
+    let x = 0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn should_increment_suffix_until_it_finds_space() {
+        check_assist(
+            extract_function,
+            r#"
+fn fun_name1() {
+    let y = 0;
+}
+
+fn fun_name() {
+    $0let x = 0;$0
+}
+"#,
+            r#"
+fn fun_name1() {
+    let y = 0;
+}
+
+fn fun_name() {
+    fun_name2();
+}
+
+fn $0fun_name2() {
     let x = 0;
 }
 "#,
