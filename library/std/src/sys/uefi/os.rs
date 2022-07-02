@@ -6,10 +6,9 @@ use crate::io;
 use crate::marker::PhantomData;
 use crate::os::uefi;
 use crate::path::{self, PathBuf};
-use r_efi::efi;
 
 pub fn errno() -> i32 {
-    efi::Status::ABORTED.as_usize() as i32
+    uefi::raw::Status::ABORTED.as_usize() as i32
 }
 
 pub fn error_string(_errno: i32) -> String {
@@ -99,13 +98,13 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    if let (Ok(st), Ok(handle)) =
-        (unsafe { uefi::env::get_system_table() }, unsafe { uefi::env::get_system_handle() })
+    if let (Some(boot_services), Some(handle)) =
+        (uefi::env::get_boot_services(), uefi::env::get_system_handle())
     {
         let _ = unsafe {
-            ((*(*st).boot_services).exit)(
-                handle,
-                efi::Status::from_usize(code as usize),
+            ((*boot_services.as_ptr()).exit)(
+                handle.as_ptr(),
+                uefi::raw::Status::from_usize(code as usize),
                 0,
                 [0].as_mut_ptr(),
             )

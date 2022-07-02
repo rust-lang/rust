@@ -26,7 +26,6 @@ pub mod fs;
 pub mod io;
 #[path = "../unsupported/locks/mod.rs"]
 pub mod locks;
-#[path = "../unsupported/net.rs"]
 pub mod net;
 pub mod os;
 pub mod os_str;
@@ -49,7 +48,7 @@ mod tests;
 
 use crate::io as std_io;
 use crate::os::uefi;
-use r_efi::efi;
+use crate::ptr::NonNull;
 
 pub mod memchr {
     pub use core::slice::memchr::{memchr, memrchr};
@@ -91,9 +90,9 @@ extern "C" {
 
 #[no_mangle]
 pub unsafe extern "efiapi" fn efi_main(
-    handle: efi::Handle,
-    st: *mut efi::SystemTable,
-) -> efi::Status {
+    handle: uefi::raw::Handle,
+    st: *mut uefi::raw::SystemTable,
+) -> uefi::raw::Status {
     unsafe {
         let mut msg = [
             0x0048u16, 0x0065u16, 0x006cu16, 0x006cu16, 0x006fu16, 0x000du16, 0x000au16, 0x0000u16,
@@ -101,10 +100,14 @@ pub unsafe extern "efiapi" fn efi_main(
         ((*(*st).std_err).output_string)((*st).std_err, msg.as_mut_ptr());
     }
 
-    unsafe { uefi::env::init_globals(handle, st).unwrap() };
+    if let (Some(system_table), Some(system_handle)) = (NonNull::new(st), NonNull::new(handle)) {
+        uefi::env::init_globals(system_handle, system_table);
 
-    match unsafe { main(0, crate::ptr::null()) } {
-        0 => efi::Status::SUCCESS,
-        _ => efi::Status::ABORTED, // Or some other status code
+        match unsafe { main(0, crate::ptr::null()) } {
+            0 => uefi::raw::Status::SUCCESS,
+            _ => uefi::raw::Status::ABORTED, // Or some other status code
+        }
+    } else {
+        uefi::raw::Status::ABORTED
     }
 }

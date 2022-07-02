@@ -11,33 +11,27 @@ unsafe impl GlobalAlloc for System {
         let align = layout.align();
         let size = layout.size();
 
+        // Return NULL pointer if `layout.size == 0`
         if size == 0 {
             return core::ptr::null_mut();
         }
 
-        let st = unsafe {
-            match uefi::env::get_system_table() {
-                Ok(x) => x,
-                Err(_) => return core::ptr::null_mut(),
-            }
+        // Return NULL pointer if boot_services pointer cannot be obtained. The only time this
+        // should happen is if SystemTable has not been initialized
+        let boot_services = match uefi::env::get_boot_services() {
+            Some(x) => x,
+            None => return core::ptr::null_mut(),
         };
 
-        let boot_services = unsafe {
-            match get_boot_services(st) {
-                Ok(x) => x,
-                Err(_) => return core::ptr::null_mut(),
-            }
-        };
+        let allocate_pool_ptr = unsafe { (*boot_services.as_ptr()).allocate_pool };
 
-        let allocate_pool_ptr = unsafe { (*boot_services).allocate_pool };
-
-        let mut ptr: *mut core::ffi::c_void = core::ptr::null_mut();
+        let mut ptr: *mut crate::ffi::c_void = crate::ptr::null_mut();
         let aligned_size = align_size(size, align);
 
         let r = (allocate_pool_ptr)(MEMORY_TYPE, aligned_size, &mut ptr);
 
         if r.is_error() || ptr.is_null() {
-            return core::ptr::null_mut();
+            return crate::ptr::null_mut();
         }
 
         unsafe { align_ptr(ptr.cast(), align) }
@@ -45,21 +39,12 @@ unsafe impl GlobalAlloc for System {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         if layout.size() != 0 {
-            let st = unsafe {
-                match uefi::env::get_system_table() {
-                    Ok(x) => x,
-                    Err(_) => return,
-                }
+            let boot_services = match uefi::env::get_boot_services() {
+                Some(x) => x,
+                None => return,
             };
 
-            let boot_services = unsafe {
-                match get_boot_services(st) {
-                    Ok(x) => x,
-                    Err(_) => return,
-                }
-            };
-
-            let free_pool_ptr = unsafe { (*boot_services).free_pool };
+            let free_pool_ptr = unsafe { (*boot_services.as_ptr()).free_pool };
 
             let ptr = unsafe { unalign_ptr(ptr, layout.align()) };
             let r = (free_pool_ptr)(ptr.cast());
@@ -113,13 +98,4 @@ unsafe fn unalign_ptr(ptr: *mut u8, align: usize) -> *mut u8 {
     } else {
         ptr
     }
-}
-
-/// Returns error if `BootServices` pointer is null.
-/// SAFETY: `st` pointer must not be null.
-#[inline]
-unsafe fn get_boot_services(st: *mut efi::SystemTable) -> Result<*mut efi::BootServices, ()> {
-    let boot_services = unsafe { (*st).boot_services };
-
-    if boot_services.is_null() { Err(()) } else { Ok(boot_services) }
 }
