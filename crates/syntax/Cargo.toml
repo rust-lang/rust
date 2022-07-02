@@ -29,7 +29,7 @@ profile = { path = "../profile", version = "0.0.0" }
 rayon = "1.5.3"
 expect-test = "1.3.0"
 proc-macro2 = "1.0.39"
-quote = "1.0.18"
+quote = "1.0.20"
 ungrammar = "1.16.1"
 
 test-utils = { path = "../test-utils" }
