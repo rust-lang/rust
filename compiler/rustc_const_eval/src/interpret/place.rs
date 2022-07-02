@@ -183,6 +183,18 @@ impl<Tag: Provenance> MemPlace<Tag> {
     }
 }
 
+impl<Tag: Provenance> Place<Tag> {
+    /// Asserts that this points to some local variable.
+    /// Returns the frame idx and the variable idx.
+    #[inline]
+    pub fn assert_local(&self) -> (usize, mir::Local) {
+        match self {
+            Place::Local { frame, local } => (*frame, *local),
+            _ => bug!("assert_local: expected Place::Local, got {:?}", self),
+        }
+    }
+}
+
 impl<'tcx, Tag: Provenance> MPlaceTy<'tcx, Tag> {
     /// Produces a MemPlace that works for ZST but nothing else
     #[inline]
@@ -286,7 +298,7 @@ impl<'tcx, Tag: Provenance> PlaceTy<'tcx, Tag> {
     }
 
     #[inline]
-    pub fn assert_mem_place(self) -> MPlaceTy<'tcx, Tag> {
+    pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Tag> {
         self.try_as_mplace().unwrap()
     }
 }
@@ -899,16 +911,16 @@ where
         trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
         let dest = self.force_allocation(dest)?;
-        assert!(!(src.layout.is_unsized() || dest.layout.is_unsized()), "cannot copy unsized data");
-        assert_eq!(src.layout.size, dest.layout.size, "Cannot copy differently-sized data");
+        let Some((dest_size, _)) = self.size_and_align_of_mplace(&dest)? else {
+            span_bug!(self.cur_span(), "copy_op needs (dynamically) sized values")
+        };
+        if cfg!(debug_assertions) {
+            let src_size = self.size_and_align_of_mplace(&src)?.unwrap().0;
+            assert_eq!(src_size, dest_size, "Cannot copy differently-sized data");
+        }
 
         self.mem_copy(
-            src.ptr,
-            src.align,
-            dest.ptr,
-            dest.align,
-            dest.layout.size,
-            /*nonoverlapping*/ false,
+            src.ptr, src.align, dest.ptr, dest.align, dest_size, /*nonoverlapping*/ false,
         )
     }
 
