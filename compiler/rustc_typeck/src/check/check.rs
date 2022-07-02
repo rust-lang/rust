@@ -14,7 +14,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemKind, Node, PathSegment};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_lint::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::hir::nested_filter;
@@ -731,52 +731,52 @@ fn check_opaque_meets_bounds<'tcx>(
     };
     let param_env = tcx.param_env(defining_use_anchor);
 
-    tcx.infer_ctxt().with_opaque_type_inference(defining_use_anchor).enter(move |infcx| {
-        let ocx = ObligationCtxt::new(&infcx);
-        let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
+    tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(defining_use_anchor)).enter(
+        move |infcx| {
+            let ocx = ObligationCtxt::new(&infcx);
+            let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
 
-        let misc_cause = traits::ObligationCause::misc(span, hir_id);
+            let misc_cause = traits::ObligationCause::misc(span, hir_id);
 
-        match infcx.at(&misc_cause, param_env).eq(opaque_ty, hidden_type) {
-            Ok(infer_ok) => ocx.register_infer_ok_obligations(infer_ok),
-            Err(ty_err) => {
-                tcx.sess.delay_span_bug(
-                    span,
-                    &format!("could not unify `{hidden_type}` with revealed type:\n{ty_err}"),
-                );
+            match infcx.at(&misc_cause, param_env).eq(opaque_ty, hidden_type) {
+                Ok(infer_ok) => ocx.register_infer_ok_obligations(infer_ok),
+                Err(ty_err) => {
+                    tcx.sess.delay_span_bug(
+                        span,
+                        &format!("could not unify `{hidden_type}` with revealed type:\n{ty_err}"),
+                    );
+                }
             }
-        }
 
-        // Additionally require the hidden type to be well-formed with only the generics of the opaque type.
-        // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
-        // hidden type is well formed even without those bounds.
-        let predicate =
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_type.into())).to_predicate(tcx);
-        ocx.register_obligation(Obligation::new(misc_cause, param_env, predicate));
+            // Additionally require the hidden type to be well-formed with only the generics of the opaque type.
+            // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
+            // hidden type is well formed even without those bounds.
+            let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_type.into()))
+                .to_predicate(tcx);
+            ocx.register_obligation(Obligation::new(misc_cause, param_env, predicate));
 
-        // Check that all obligations are satisfied by the implementation's
-        // version.
-        let errors = ocx.select_all_or_error();
-        if !errors.is_empty() {
-            infcx.report_fulfillment_errors(&errors, None, false);
-        }
-
-        match origin {
-            // Checked when type checking the function containing them.
-            hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {}
-            // Can have different predicates to their defining use
-            hir::OpaqueTyOrigin::TyAlias => {
-                let outlives_environment = OutlivesEnvironment::new(param_env);
-                infcx.check_region_obligations_and_report_errors(
-                    defining_use_anchor,
-                    &outlives_environment,
-                );
+            // Check that all obligations are satisfied by the implementation's
+            // version.
+            let errors = ocx.select_all_or_error();
+            if !errors.is_empty() {
+                infcx.report_fulfillment_errors(&errors, None, false);
             }
-        }
-
-        // Clean up after ourselves
-        let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
-    });
+            match origin {
+                // Checked when type checking the function containing them.
+                hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {}
+                // Can have different predicates to their defining use
+                hir::OpaqueTyOrigin::TyAlias => {
+                    let outlives_environment = OutlivesEnvironment::new(param_env);
+                    infcx.check_region_obligations_and_report_errors(
+                        defining_use_anchor,
+                        &outlives_environment,
+                    );
+                }
+            }
+            // Clean up after ourselves
+            let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+        },
+    );
 }
 
 fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
