@@ -175,10 +175,37 @@ fn compile_fn<'tcx>(
         );
     });
 
+    #[cfg(any())] // This is never true
+    let _clif_guard = {
+        use std::fmt::Write;
+
+        let func_clone = context.func.clone();
+        let clif_comments_clone = clif_comments.clone();
+        let mut clif = String::new();
+        for flag in module.isa().flags().iter() {
+            writeln!(clif, "set {}", flag).unwrap();
+        }
+        write!(clif, "target {}", module.isa().triple().architecture.to_string()).unwrap();
+        for isa_flag in module.isa().isa_flags().iter() {
+            write!(clif, " {}", isa_flag).unwrap();
+        }
+        writeln!(clif, "\n").unwrap();
+        crate::PrintOnPanic(move || {
+            let mut clif = clif.clone();
+            ::cranelift_codegen::write::decorate_function(
+                &mut &clif_comments_clone,
+                &mut clif,
+                &func_clone,
+            )
+            .unwrap();
+            clif
+        })
+    };
+
     // Define function
     tcx.sess.time("define function", || {
         context.want_disasm = crate::pretty_clif::should_write_ir(tcx);
-        module.define_function(func_id, context).unwrap()
+        module.define_function(func_id, context).unwrap();
     });
 
     // Write optimized function to file for debugging
