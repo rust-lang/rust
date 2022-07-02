@@ -734,14 +734,23 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
     // a backend can choose to implement using the block optimization, or not.
     #[cfg(not(any(target_arch = "spirv")))]
     {
+        // Types with alignment bigger than usize are almost always used for
+        // hand-tuned SIMD optimizations so we don't get into way.
+        //
         // For types that are larger multiples of their alignment, the simple way
         // tends to copy the whole thing to stack rather than doing it one part
-        // at a time, so instead treat them as one-element slices and piggy-back
-        // the slice optimizations that will split up the swaps.
-        if size_of::<T>() / align_of::<T>() > 4 {
-            // SAFETY: exclusive references always point to one non-overlapping
-            // element and are non-null and properly aligned.
-            return unsafe { ptr::swap_nonoverlapping(x, y, 1) };
+        // at a time, so instead try to split them into chunks that fit into registers
+        // and swap chunks.
+        if const {
+            let size = size_of::<T>();
+            let align = align_of::<T>();
+            // It is weird that LLVM sometimes optimizes `4*align` fine while failing `3*align`.
+            // Proof: https://godbolt.org/z/MhnqvjjPz
+            (align < align_of::<usize>() && (size == 3 * align || size > 4 * align))
+                // And usize fails even for `4*align`.
+                || (align == align_of::<usize>() && size > 2 * align)
+        } {
+            return swap_chunked(x, y);
         }
     }
 
@@ -781,6 +790,236 @@ pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
         let b = ptr::read(y);
         ptr::write(x, b);
         ptr::write(y, a);
+    }
+}
+
+// This version swaps 2 values by chunks of usize and smaller
+// using unaligned reads and writes because they are cheap
+// on modern x86_64 processors for at least 10 years now (at 2022-07-04).
+// https://lemire.me/blog/2012/05/31/data-alignment-for-speed-myth-or-reality/
+// It generates less instructions and memory accesses as well: https://godbolt.org/z/Mr4rWfoad
+// Feel free to add another targets as well if they have fast unaligned accesses.
+//
+// This should be done by backend optimizer but it currently fails to do so.
+#[cfg(target_arch = "x86_64")]
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[inline]
+const fn swap_chunked<T: Sized>(x: &mut T, y: &mut T) {
+    // Algorithm:
+    // 1. Swap first `n*ZMM_BYTES` using `u64`, which reliably autovectorized by LLVM.
+    // 2. Force backend to generate use SIMD registers YMM or XMM using `force_swap_simd`.
+    // 3. Swap remaining bytes using integers each of them twice smaller than previous.
+
+    // Note: Current version of this function optimized for x86_64.
+    // If you allow use of it for another architecture, check generated code first.
+    const XMM_BYTES: usize = 128 / 8;
+    const YMM_BYTES: usize = 256 / 8;
+    const ZMM_BYTES: usize = 512 / 8;
+
+    /// This function successfully autovectorizes if `size_bytes` is divisible
+    /// by biggest available SIMD register size. If it is not, it would generate
+    /// SIMD operations for first divisible bytes, then would emit just integer reads and writes.
+    /// # Safety
+    /// 1. Must not overlap. 2. Must have at least `size_bytes` valid bytes.
+    /// 3. `size_bytes` must be exactly divisible by `size_of::<u64>`.
+    #[inline]
+    const unsafe fn swap_simple_u64_chunks(
+        size_bytes: usize,
+        x: *mut MaybeUninit<u8>,
+        y: *mut MaybeUninit<u8>,
+    ) {
+        let mut byte_offset = 0;
+        while byte_offset < size_bytes {
+            // SAFETY:
+            // Caller must ensure pointers validity and range.
+            // We use unaligned reads/writes.
+            unsafe {
+                let x = x.add(byte_offset).cast();
+                let y = y.add(byte_offset).cast();
+                // Same rationale for 2 reads and 2 writes
+                // as in `swap_simple`.
+                let tmp_x: MaybeUninit<u64> = ptr::read_unaligned(x);
+                let tmp_y: MaybeUninit<u64> = ptr::read_unaligned(y);
+                ptr::write_unaligned(x, tmp_y);
+                ptr::write_unaligned(y, tmp_x);
+            }
+            byte_offset += const { size_of::<u64>() };
+        }
+    }
+
+    /// This function would generate swap of next `SIZE_BYTES` using SIMD registers.
+    /// It has drawback: it would generate swap using `SIZE_BYTES` only.
+    /// E.g. if type has ZMM_BYTES size, but swap implemented using only `force_swap_simd<XMM_BYTES>`,
+    /// it would use only XMM registers.
+    /// So this function should be used only once because if it called twice,
+    /// it is better to use bigger register.
+    ///
+    /// It is OK to call it with YMM_BYTES even if only SSE enabled because
+    /// It would just use 4 XMM registers.
+    /// # Safety
+    /// 1. Must not overlap. 2. Must have at least `SIZE_BYTES` valid bytes.
+    #[inline]
+    const unsafe fn force_swap_simd<const SIZE_BYTES: usize>(
+        x: *mut MaybeUninit<u8>,
+        y: *mut MaybeUninit<u8>,
+    ) {
+        const {
+            assert!(
+                SIZE_BYTES == XMM_BYTES || SIZE_BYTES == YMM_BYTES,
+                "Must have valid SIMD register size",
+            );
+        }
+        // SAFETY: We require valid non-overlapping pointers with SIZE_BYTES.
+        // We checked that they SIMD register sized.
+        unsafe {
+            // Don't use an array for temporary here because it ends up being on a stack.
+            // E.g. it would copy from memory to register,
+            // from register to stack, from stack to register
+            // and from register to destination.
+
+            const {
+                assert!(XMM_BYTES == size_of::<u64>() * 2, "Check number of temporaries below.");
+                assert!(YMM_BYTES == size_of::<u64>() * 4, "Check number of temporaries below.");
+            }
+            let x: *mut MaybeUninit<u64> = x.cast();
+            let y: *mut MaybeUninit<u64> = y.cast();
+            // Use separate variables instead.
+            // They are successfully folded into YMM register when compiled with AVX,
+            // or pair of XMM registers in `swap_simd::<YMM_BYTES>` without AVX,
+            // or single XMM register in `swap_simd::<XMM_BYTES>`.
+            let x0: MaybeUninit<u64> = ptr::read_unaligned(x);
+            let x1: MaybeUninit<u64> = ptr::read_unaligned(x.add(1));
+            let x2: MaybeUninit<u64>;
+            let x3: MaybeUninit<u64>;
+            if const { SIZE_BYTES == YMM_BYTES } {
+                x2 = ptr::read_unaligned(x.add(2));
+                x3 = ptr::read_unaligned(x.add(3));
+            } else {
+                x2 = MaybeUninit::uninit();
+                x3 = MaybeUninit::uninit();
+            }
+
+            // Unlike simple swap, we need to use direct move here
+            // instead of using temporary value for `y` like in `swap_simple`
+            // because it causes temporaries for `x` to be copied to stack.
+
+            // Cast to `MaybeUninit<u8>` because `copy_nonoverlapping` requires correct alignment.
+            ptr::copy_nonoverlapping::<MaybeUninit<u8>>(y.cast(), x.cast(), SIZE_BYTES);
+
+            ptr::write_unaligned(y, x0);
+            ptr::write_unaligned(y.add(1), x1);
+            if const { SIZE_BYTES == YMM_BYTES } {
+                ptr::write_unaligned(y.add(2), x2);
+                ptr::write_unaligned(y.add(3), x3);
+            }
+        }
+    }
+
+    /// Would swap first `size_of::<ChunkTy>` bytes of tail.
+    /// SAFETY:
+    /// `x` and `y` must not overlap.
+    /// `x` and `y` must have at least `size_of::<ChunkTy>` bytes.
+    #[inline]
+    const unsafe fn swap_tail<ChunkTy: Copy>(x: *mut MaybeUninit<u8>, y: *mut MaybeUninit<u8>) {
+        // SAFETY: Caller must ensure pointers validity.
+        // We use unaligned reads/writes.
+        unsafe {
+            // Same rationale for 2 reads and 2 writes
+            // as in `swap_simple`.
+            let tmp_x: MaybeUninit<ChunkTy> = ptr::read_unaligned(x.cast());
+            let tmp_y: MaybeUninit<ChunkTy> = ptr::read_unaligned(y.cast());
+            ptr::write_unaligned(x.cast(), tmp_y);
+            ptr::write_unaligned(y.cast(), tmp_x);
+        }
+    }
+
+    const {
+        assert!(size_of::<T>() <= usize::MAX / 4, "We assume that overflows cannot happen.");
+    }
+
+    let x: *mut MaybeUninit<u8> = (x as *mut T).cast();
+    let y: *mut MaybeUninit<u8> = (y as *mut T).cast();
+
+    // I would like to add detection for available SIMD here
+    // but since standard library is distributed precompiled,
+    // `cfg!(target_feature="xxx")` evaluates to false here
+    // even if final binary is built with those features.
+
+    let size = const { size_of::<T>() };
+    let mut byte_offset = 0;
+
+    // This part would autovectorize to use biggest SIMD register available.
+    // SAFETY: pointers are valid because they are from references,
+    // `limit` <= `size`, we removed remainder.
+    // Whole function doesn't contain places which can panic
+    // so function wouldn't interrepted before swapping ends.
+    unsafe {
+        let exactly_divisible = const {
+            let size = size_of::<T>();
+            size - size % ZMM_BYTES
+        };
+        swap_simple_u64_chunks(exactly_divisible, x, y);
+        byte_offset += exactly_divisible;
+    }
+    if byte_offset + YMM_BYTES <= size {
+        // SAFETY: Pointers don't overlap because mutable references don't overlap.
+        // We just checked range.
+        // Whole function doesn't contain places which can panic
+        // so function wouldn't interrepted before swapping ends.
+        unsafe {
+            // We need to do this only once because tail after ZMM_BYTES chunks cannot contain more than 1.
+            // It is OK to do this even if AVX not enabled because it would just use 4 XMM registers.
+            force_swap_simd::<YMM_BYTES>(x.add(byte_offset), y.add(byte_offset));
+            byte_offset += YMM_BYTES;
+        }
+    }
+    if byte_offset + XMM_BYTES <= size {
+        // SAFETY: Pointers don't overlap because mutable references don't overlap.
+        // We just checked range.
+        // Whole function doesn't contain places which can panic
+        // so function wouldn't interrepted before swapping ends.
+        unsafe {
+            // We need to do this only once because tail after YMM_BYTES chunks cannot contain more than 1.
+            force_swap_simd::<XMM_BYTES>(x.add(byte_offset), y.add(byte_offset));
+            byte_offset += XMM_BYTES;
+        }
+    }
+
+    macro_rules! swap_tail_by {
+        ($t:ty) => {
+            // SAFETY: Pointers don't overlap because mutable references don't overlap.
+            // We never access pointers in a way that require alignment,
+            // and whole function doesn't contain places which can panic
+            // so it is drop safe.
+            // We swapped first `size_of::<T>() / 16 * 16` bytes already.
+            // We try `swap_tail` functions in order from bigger to smaller.
+            unsafe {
+                if byte_offset + const { size_of::<$t>() } <= size {
+                    swap_tail::<$t>(x.add(byte_offset), y.add(byte_offset));
+                    byte_offset += const { size_of::<$t>() };
+                }
+            }
+        };
+    }
+    swap_tail_by!(u64);
+    swap_tail_by!(u32);
+    swap_tail_by!(u16);
+    // Swapping by `u8` is guaranteed to finish all bytes
+    // because it has `size_of == 1`.
+    swap_tail_by!(u8);
+    let _ = byte_offset;
+}
+
+// For platforms wit slow unaligned accesses
+// we can just delegate to pointer swaps.
+#[cfg(not(target_arch = "x86_64"))]
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[inline]
+pub(crate) const fn swap_chunked<T: Sized>(x: &mut T, y: &mut T) {
+    // SAFETY: exclusive references always point to one non-overlapping
+    // element and are non-null and properly aligned.
+    unsafe {
+        ptr::swap_nonoverlapping(x, y, 1);
     }
 }
 
