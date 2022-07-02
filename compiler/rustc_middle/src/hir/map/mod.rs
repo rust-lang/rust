@@ -302,7 +302,6 @@ impl<'hir> Map<'hir> {
             | Node::Infer(_)
             | Node::TraitRef(_)
             | Node::Pat(_)
-            | Node::Binding(_)
             | Node::Local(_)
             | Node::Param(_)
             | Node::Arm(_)
@@ -901,7 +900,7 @@ impl<'hir> Map<'hir> {
     #[inline]
     fn opt_ident(self, id: HirId) -> Option<Ident> {
         match self.get(id) {
-            Node::Binding(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
+            Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
             // A `Ctor` doesn't have an identifier itself, but its parent
             // struct/variant does. Compare with `hir::Map::opt_span`.
             Node::Ctor(..) => match self.find(self.get_parent_node(id))? {
@@ -1046,7 +1045,6 @@ impl<'hir> Map<'hir> {
             Node::Ty(ty) => ty.span,
             Node::TypeBinding(tb) => tb.span,
             Node::TraitRef(tr) => tr.path.span,
-            Node::Binding(pat) => pat.span,
             Node::Pat(pat) => pat.span,
             Node::Arm(arm) => arm.span,
             Node::Block(block) => block.span,
@@ -1263,7 +1261,6 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Some(Node::Ty(_)) => node_str("type"),
         Some(Node::TypeBinding(_)) => node_str("type binding"),
         Some(Node::TraitRef(_)) => node_str("trait ref"),
-        Some(Node::Binding(_)) => node_str("local"),
         Some(Node::Pat(_)) => node_str("pat"),
         Some(Node::Param(_)) => node_str("param"),
         Some(Node::Arm(_)) => node_str("arm"),

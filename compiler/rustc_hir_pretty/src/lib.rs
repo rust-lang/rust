@@ -87,7 +87,7 @@ impl<'a> State<'a> {
             Node::Ty(a) => self.print_type(&a),
             Node::TypeBinding(a) => self.print_type_binding(&a),
             Node::TraitRef(a) => self.print_trait_ref(&a),
-            Node::Binding(a) | Node::Pat(a) => self.print_pat(&a),
+            Node::Pat(a) => self.print_pat(&a),
             Node::Arm(a) => self.print_arm(&a),
             Node::Infer(_) => self.word("_"),
             Node::Block(a) => {
