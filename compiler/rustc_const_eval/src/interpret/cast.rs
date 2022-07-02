@@ -153,7 +153,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert_eq!(dest_layout.size, self.pointer_size());
                 assert!(src.layout.ty.is_unsafe_ptr());
                 return match **src {
-                    Immediate::ScalarPair(data, _) => Ok(data.into()),
+                    Immediate::ScalarPair(data, _) => Ok(data.check_init()?.into()),
                     Immediate::Scalar(..) => span_bug!(
                         self.cur_span(),
                         "{:?} input to a fat-to-thin cast ({:?} -> {:?})",
@@ -161,6 +161,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         src.layout.ty,
                         cast_ty
                     ),
+                    Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
                 };
             }
         }

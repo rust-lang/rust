@@ -112,6 +112,8 @@ pub struct Frame<'mir, 'tcx, Tag: Provenance = AllocId, Extra = ()> {
     /// The locals are stored as `Option<Value>`s.
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
+    ///
+    /// Do *not* access this directly; always go through the machine hook!
     pub locals: IndexVec<mir::Local, LocalState<'tcx, Tag>>,
 
     /// The span of the `tracing` crate is stored here.
@@ -179,10 +181,6 @@ pub struct LocalState<'tcx, Tag: Provenance = AllocId> {
 pub enum LocalValue<Tag: Provenance = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
-    /// This local is alive but not yet allocated. It cannot be read from or have its address taken,
-    /// and will be allocated on the first write. This is to support unsized locals, where we cannot
-    /// know their size in advance.
-    Unallocated,
     /// A normal, live local.
     /// Mostly for convenience, we re-use the `Operand` type here.
     /// This is an optimization over just always having a pointer here;
@@ -196,12 +194,10 @@ impl<'tcx, Tag: Provenance + 'static> LocalState<'tcx, Tag> {
     ///
     /// Note: This may only be invoked from the `Machine::access_local` hook and not from
     /// anywhere else. You may be invalidating machine invariants if you do!
-    pub fn access(&self) -> InterpResult<'tcx, Operand<Tag>> {
-        match self.value {
-            LocalValue::Dead => throw_ub!(DeadLocal),
-            LocalValue::Unallocated => {
-                bug!("The type checker should prevent reading from a never-written local")
-            }
+    #[inline]
+    pub fn access(&self) -> InterpResult<'tcx, &Operand<Tag>> {
+        match &self.value {
+            LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
             LocalValue::Live(val) => Ok(val),
         }
     }
@@ -211,15 +207,11 @@ impl<'tcx, Tag: Provenance + 'static> LocalState<'tcx, Tag> {
     ///
     /// Note: This may only be invoked from the `Machine::access_local_mut` hook and not from
     /// anywhere else. You may be invalidating machine invariants if you do!
-    pub fn access_mut(
-        &mut self,
-    ) -> InterpResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
-        match self.value {
-            LocalValue::Dead => throw_ub!(DeadLocal),
-            LocalValue::Live(Operand::Indirect(mplace)) => Ok(Err(mplace)),
-            ref mut local @ (LocalValue::Live(Operand::Immediate(_)) | LocalValue::Unallocated) => {
-                Ok(Ok(local))
-            }
+    #[inline]
+    pub fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Tag>> {
+        match &mut self.value {
+            LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
+            LocalValue::Live(val) => Ok(val),
         }
     }
 }
@@ -710,16 +702,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             })?;
         }
 
-        // Locals are initially unallocated.
-        let dummy = LocalState { value: LocalValue::Unallocated, layout: Cell::new(None) };
+        // Most locals are initially dead.
+        let dummy = LocalState { value: LocalValue::Dead, layout: Cell::new(None) };
         let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
 
-        // Now mark those locals as dead that we do not want to initialize
-        // Mark locals that use `Storage*` annotations as dead on function entry.
+        // Now mark those locals as live that have no `Storage*` annotations.
         let always_live = always_live_locals(self.body());
         for local in locals.indices() {
-            if !always_live.contains(local) {
-                locals[local].value = LocalValue::Dead;
+            if always_live.contains(local) {
+                locals[local].value = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
             }
         }
         // done
@@ -791,7 +782,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             if unwinding { "during unwinding" } else { "returning from function" }
         );
 
-        // Sanity check `unwinding`.
+        // Check `unwinding`.
         assert_eq!(
             unwinding,
             match self.frame().loc {
@@ -799,51 +790,61 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Err(_) => true,
             }
         );
-
         if unwinding && self.frame_idx() == 0 {
             throw_ub_format!("unwinding past the topmost frame of the stack");
         }
 
-        let frame =
-            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
+        // Copy return value. Must of course happen *before* we deallocate the locals.
+        let copy_ret_result = if !unwinding {
+            let op = self
+                .local_to_op(self.frame(), mir::RETURN_PLACE, None)
+                .expect("return place should always be live");
+            let dest = self.frame().return_place;
+            let err = self.copy_op_transmute(&op, &dest);
+            trace!("return value: {:?}", self.dump_place(*dest));
+            // We delay actually short-circuiting on this error until *after* the stack frame is
+            // popped, since we want this error to be attributed to the caller, whose type defines
+            // this transmute.
+            err
+        } else {
+            Ok(())
+        };
 
-        if !unwinding {
-            let op = self.local_to_op(&frame, mir::RETURN_PLACE, None)?;
-            self.copy_op_transmute(&op, &frame.return_place)?;
-            trace!("{:?}", self.dump_place(*frame.return_place));
-        }
-
-        let return_to_block = frame.return_to_block;
-
-        // Now where do we jump next?
-
+        // Cleanup: deallocate locals.
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
-        // In that case, we return early. We also avoid validation in that case,
-        // because this is CTFE and the final value will be thoroughly validated anyway.
+        // We do this while the frame is still on the stack, so errors point to the callee.
+        let return_to_block = self.frame().return_to_block;
         let cleanup = match return_to_block {
             StackPopCleanup::Goto { .. } => true,
             StackPopCleanup::Root { cleanup, .. } => cleanup,
         };
+        if cleanup {
+            // We need to take the locals out, since we need to mutate while iterating.
+            let locals = mem::take(&mut self.frame_mut().locals);
+            for local in &locals {
+                self.deallocate_local(local.value)?;
+            }
+        }
 
+        // All right, now it is time to actually pop the frame.
+        // Note that its locals are gone already, but that's fine.
+        let frame =
+            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
+        // Report error from return value copy, if any.
+        copy_ret_result?;
+
+        // If we are not doing cleanup, also skip everything else.
         if !cleanup {
             assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
             assert!(!unwinding, "tried to skip cleanup during unwinding");
-            // Leak the locals, skip validation, skip machine hook.
+            // Skip machine hook.
             return Ok(());
         }
-
-        trace!("locals: {:#?}", frame.locals);
-
-        // Cleanup: deallocate all locals that are backed by an allocation.
-        for local in &frame.locals {
-            self.deallocate_local(local.value)?;
-        }
-
         if M::after_stack_pop(self, frame, unwinding)? == StackPopJump::NoJump {
             // The hook already did everything.
-            // We want to skip the `info!` below, hence early return.
             return Ok(());
         }
+
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
@@ -874,7 +875,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
-        let local_val = LocalValue::Unallocated;
+        let local_val = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
         // StorageLive expects the local to be dead, and marks it live.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
         if !matches!(old, LocalValue::Dead) {
@@ -977,7 +978,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
 
                 match self.ecx.stack()[frame].locals[local].value {
                     LocalValue::Dead => write!(fmt, " is dead")?,
-                    LocalValue::Unallocated => write!(fmt, " is unallocated")?,
+                    LocalValue::Live(Operand::Immediate(Immediate::Uninit)) => {
+                        write!(fmt, " is uninitialized")?
+                    }
                     LocalValue::Live(Operand::Indirect(mplace)) => {
                         write!(
                             fmt,

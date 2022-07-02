@@ -14,7 +14,7 @@ use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
-    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, GlobalId,
+    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, GlobalId,
     InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer,
     PointerArithmetic, Provenance, Scalar, ScalarMaybeUninit,
 };
@@ -28,8 +28,15 @@ use super::{
 /// defined on `Immediate`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, PartialEq, Eq, HashStable, Hash, Debug)]
 pub enum Immediate<Tag: Provenance = AllocId> {
+    /// A single scalar value (must have *initialized* `Scalar` ABI).
+    /// FIXME: we also currently often use this for ZST.
+    /// `ScalarMaybeUninit` should reject ZST, and we should use `Uninit` for them instead.
     Scalar(ScalarMaybeUninit<Tag>),
+    /// A pair of two scalar value (must have `ScalarPair` ABI where both fields are
+    /// `Scalar::Initialized`).
     ScalarPair(ScalarMaybeUninit<Tag>, ScalarMaybeUninit<Tag>),
+    /// A value of fully uninitialized memory. Can have and size and layout.
+    Uninit,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
@@ -75,6 +82,7 @@ impl<'tcx, Tag: Provenance> Immediate<Tag> {
         match self {
             Immediate::Scalar(val) => val,
             Immediate::ScalarPair(..) => bug!("Got a scalar pair where a scalar was expected"),
+            Immediate::Uninit => ScalarMaybeUninit::Uninit,
         }
     }
 
@@ -88,6 +96,7 @@ impl<'tcx, Tag: Provenance> Immediate<Tag> {
         match self {
             Immediate::ScalarPair(val1, val2) => (val1, val2),
             Immediate::Scalar(..) => bug!("Got a scalar where a scalar pair was expected"),
+            Immediate::Uninit => (ScalarMaybeUninit::Uninit, ScalarMaybeUninit::Uninit),
         }
     }
 
@@ -149,7 +158,10 @@ impl<Tag: Provenance> std::fmt::Display for ImmTy<'_, Tag> {
                 }
                 Immediate::ScalarPair(a, b) => {
                     // FIXME(oli-obk): at least print tuples and slices nicely
-                    write!(f, "({:x}, {:x}): {}", a, b, self.layout.ty,)
+                    write!(f, "({:x}, {:x}): {}", a, b, self.layout.ty)
+                }
+                Immediate::Uninit => {
+                    write!(f, "uninit: {}", self.layout.ty)
                 }
             }
         })
@@ -397,7 +409,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.scalar_to_ptr(self.read_scalar(op)?.check_init()?)
     }
 
-    // Turn the wide MPlace into a string (must already be dereferenced!)
+    /// Turn the wide MPlace into a string (must already be dereferenced!)
     pub fn read_str(&self, mplace: &MPlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.read_bytes_ptr(mplace.ptr, Size::from_bytes(len))?;
@@ -528,10 +540,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Will not access memory, instead an indirect `Operand` is returned.
     ///
     /// This is public because it is used by [priroda](https://github.com/oli-obk/priroda) to get an
-    /// OpTy from a local
+    /// OpTy from a local.
     pub fn local_to_op(
         &self,
-        frame: &super::Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
+        frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
@@ -540,7 +552,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Do not read from ZST, they might not be initialized
             Operand::Immediate(Scalar::ZST.into())
         } else {
-            M::access_local(&self, frame, local)?
+            *M::access_local(frame, local)?
         };
         Ok(OpTy { op, layout, align: Some(layout.align.abi) })
     }

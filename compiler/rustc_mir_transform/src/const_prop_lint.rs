@@ -31,8 +31,8 @@ use crate::MirLint;
 use rustc_const_eval::const_eval::ConstEvalErr;
 use rustc_const_eval::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
-    LocalState, LocalValue, MemPlace, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer,
-    Scalar, ScalarMaybeUninit, StackPopCleanup, StackPopUnwind,
+    LocalState, LocalValue, MemoryKind, OpTy, PlaceTy, Pointer, Scalar, ScalarMaybeUninit,
+    StackPopCleanup, StackPopUnwind,
 };
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
@@ -229,15 +229,19 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         throw_machine_stop_str!("pointer arithmetic or comparisons aren't supported in ConstProp")
     }
 
-    fn access_local(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
-        frame: &Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
+    fn access_local<'a>(
+        frame: &'a Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
         local: Local,
-    ) -> InterpResult<'tcx, InterpOperand<Self::PointerTag>> {
+    ) -> InterpResult<'tcx, &'a interpret::Operand<Self::PointerTag>> {
         let l = &frame.locals[local];
 
-        if l.value == LocalValue::Unallocated {
-            throw_machine_stop_str!("tried to access an uninitialized local")
+        if matches!(
+            l.value,
+            LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit))
+        ) {
+            // For us "uninit" means "we don't know its value, might be initiailized or not".
+            // So stop here.
+            throw_machine_stop_str!("tried to access a local with unknown value")
         }
 
         l.access()
@@ -247,8 +251,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
         frame: usize,
         local: Local,
-    ) -> InterpResult<'tcx, Result<&'a mut LocalValue<Self::PointerTag>, MemPlace<Self::PointerTag>>>
-    {
+    ) -> InterpResult<'tcx, &'a mut interpret::Operand<Self::PointerTag>> {
         if ecx.machine.can_const_prop[local] == ConstPropMode::NoPropagation {
             throw_machine_stop_str!("tried to write to a local that is marked as not propagatable")
         }
@@ -430,8 +433,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// Remove `local` from the pool of `Locals`. Allows writing to them,
     /// but not reading from them anymore.
     fn remove_const(ecx: &mut InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>, local: Local) {
-        ecx.frame_mut().locals[local] =
-            LocalState { value: LocalValue::Unallocated, layout: Cell::new(None) };
+        ecx.frame_mut().locals[local] = LocalState {
+            value: LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit)),
+            layout: Cell::new(None),
+        };
     }
 
     fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
@@ -915,7 +920,9 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     let frame = self.ecx.frame_mut();
                     frame.locals[local].value =
                         if let StatementKind::StorageLive(_) = statement.kind {
-                            LocalValue::Unallocated
+                            LocalValue::Live(interpret::Operand::Immediate(
+                                interpret::Immediate::Uninit,
+                            ))
                         } else {
                             LocalValue::Dead
                         };

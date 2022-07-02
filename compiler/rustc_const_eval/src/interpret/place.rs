@@ -15,8 +15,8 @@ use rustc_target::abi::{HasDataLayout, Size, VariantIdx, Variants};
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
-    ConstAlloc, ImmTy, Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy,
-    Operand, Pointer, Provenance, Scalar, ScalarMaybeUninit,
+    ConstAlloc, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, OpTy, Operand,
+    Pointer, Provenance, Scalar, ScalarMaybeUninit,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable, Debug)]
@@ -314,6 +314,7 @@ where
         let (ptr, meta) = match **val {
             Immediate::Scalar(ptr) => (ptr, MemPlaceMeta::None),
             Immediate::ScalarPair(ptr, meta) => (ptr, MemPlaceMeta::Meta(meta.check_init()?)),
+            Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
         };
 
         let mplace = MemPlace { ptr: self.scalar_to_ptr(ptr.check_init()?)?, meta };
@@ -746,14 +747,14 @@ where
         let mplace = match dest.place {
             Place::Local { frame, local } => {
                 match M::access_local_mut(self, frame, local)? {
-                    Ok(local) => {
+                    Operand::Immediate(local) => {
                         // Local can be updated in-place.
-                        *local = LocalValue::Live(Operand::Immediate(src));
+                        *local = src;
                         return Ok(());
                     }
-                    Err(mplace) => {
+                    Operand::Indirect(mplace) => {
                         // The local is in memory, go on below.
-                        mplace
+                        *mplace
                     }
                 }
             }
@@ -817,6 +818,7 @@ where
                 alloc.write_scalar(alloc_range(Size::ZERO, a_size), a_val)?;
                 alloc.write_scalar(alloc_range(b_offset, b_size), b_val)
             }
+            Immediate::Uninit => alloc.write_uninit(),
         }
     }
 
@@ -825,25 +827,13 @@ where
             Ok(mplace) => mplace,
             Err((frame, local)) => {
                 match M::access_local_mut(self, frame, local)? {
-                    Ok(local) => match dest.layout.abi {
-                        Abi::Scalar(_) => {
-                            *local = LocalValue::Live(Operand::Immediate(Immediate::Scalar(
-                                ScalarMaybeUninit::Uninit,
-                            )));
-                            return Ok(());
-                        }
-                        Abi::ScalarPair(..) => {
-                            *local = LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(
-                                ScalarMaybeUninit::Uninit,
-                                ScalarMaybeUninit::Uninit,
-                            )));
-                            return Ok(());
-                        }
-                        _ => self.force_allocation(dest)?,
-                    },
-                    Err(mplace) => {
+                    Operand::Immediate(local) => {
+                        *local = Immediate::Uninit;
+                        return Ok(());
+                    }
+                    Operand::Indirect(mplace) => {
                         // The local is in memory, go on below.
-                        MPlaceTy { mplace, layout: dest.layout, align: dest.align }
+                        MPlaceTy { mplace: *mplace, layout: dest.layout, align: dest.align }
                     }
                 }
             }
@@ -908,19 +898,18 @@ where
         // Slow path, this does not fit into an immediate. Just memcpy.
         trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
-        // This interprets `src.meta` with the `dest` local's layout, if an unsized local
-        // is being initialized!
-        let (dest, size) = self.force_allocation_maybe_sized(dest, src.meta)?;
-        let size = size.unwrap_or_else(|| {
-            assert!(
-                !dest.layout.is_unsized(),
-                "Cannot copy into already initialized unsized place"
-            );
-            dest.layout.size
-        });
-        assert_eq!(src.meta, dest.meta, "Can only copy between equally-sized instances");
+        let dest = self.force_allocation(dest)?;
+        assert!(!(src.layout.is_unsized() || dest.layout.is_unsized()), "cannot copy unsized data");
+        assert_eq!(src.layout.size, dest.layout.size, "Cannot copy differently-sized data");
 
-        self.mem_copy(src.ptr, src.align, dest.ptr, dest.align, size, /*nonoverlapping*/ false)
+        self.mem_copy(
+            src.ptr,
+            src.align,
+            dest.ptr,
+            dest.align,
+            dest.layout.size,
+            /*nonoverlapping*/ false,
+        )
     }
 
     /// Copies the data from an operand to a place. The layouts may disagree, but they must
@@ -931,9 +920,16 @@ where
         dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         if mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout) {
-            // Fast path: Just use normal `copy_op`
+            // Fast path: Just use normal `copy_op`. This is faster because it tries
+            // `read_immediate_raw` first before doing `force_allocation`.
             return self.copy_op(src, dest);
         }
+        // Unsized copies rely on interpreting `src.meta` with `dest.layout`, we want
+        // to avoid that here.
+        assert!(
+            !src.layout.is_unsized() && !dest.layout.is_unsized(),
+            "Cannot transmute unsized data"
+        );
         // We still require the sizes to match.
         if src.layout.size != dest.layout.size {
             span_bug!(
@@ -943,12 +939,6 @@ where
                 dest
             );
         }
-        // Unsized copies rely on interpreting `src.meta` with `dest.layout`, we want
-        // to avoid that here.
-        assert!(
-            !src.layout.is_unsized() && !dest.layout.is_unsized(),
-            "Cannot transmute unsized data"
-        );
 
         // The hard case is `ScalarPair`.  `src` is already read from memory in this case,
         // using `src.layout` to figure out which bytes to use for the 1st and 2nd field.
@@ -976,20 +966,15 @@ where
     /// If the place currently refers to a local that doesn't yet have a matching allocation,
     /// create such an allocation.
     /// This is essentially `force_to_memplace`.
-    ///
-    /// This supports unsized types and returns the computed size to avoid some
-    /// redundant computation when copying; use `force_allocation` for a simpler, sized-only
-    /// version.
     #[instrument(skip(self), level = "debug")]
-    pub fn force_allocation_maybe_sized(
+    pub fn force_allocation(
         &mut self,
         place: &PlaceTy<'tcx, M::PointerTag>,
-        meta: MemPlaceMeta<M::PointerTag>,
-    ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, Option<Size>)> {
-        let (mplace, size) = match place.place {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        let mplace = match place.place {
             Place::Local { frame, local } => {
                 match M::access_local_mut(self, frame, local)? {
-                    Ok(&mut local_val) => {
+                    &mut Operand::Immediate(local_val) => {
                         // We need to make an allocation.
 
                         // We need the layout of the local.  We can NOT use the layout we got,
@@ -997,44 +982,29 @@ where
                         // that has different alignment than the outer field.
                         let local_layout =
                             self.layout_of_local(&self.stack()[frame], local, None)?;
-                        // We also need to support unsized types, and hence cannot use `allocate`.
-                        let (size, align) = self
-                            .size_and_align_of(&meta, &local_layout)?
-                            .expect("Cannot allocate for non-dyn-sized type");
-                        let ptr = self.allocate_ptr(size, align, MemoryKind::Stack)?;
-                        let mplace = MemPlace { ptr: ptr.into(), meta };
-                        if let LocalValue::Live(Operand::Immediate(value)) = local_val {
-                            // Preserve old value.
+                        if local_layout.is_unsized() {
+                            throw_unsup_format!("unsized locals are not supported");
+                        }
+                        let mplace = self.allocate(local_layout, MemoryKind::Stack)?;
+                        if !matches!(local_val, Immediate::Uninit) {
+                            // Preserve old value. (As an optimization, we can skip this if it was uninit.)
                             // We don't have to validate as we can assume the local
                             // was already valid for its type.
-                            let mplace = MPlaceTy {
-                                mplace,
-                                layout: local_layout,
-                                align: local_layout.align.abi,
-                            };
-                            self.write_immediate_to_mplace_no_validate(value, &mplace)?;
+                            self.write_immediate_to_mplace_no_validate(local_val, &mplace)?;
                         }
                         // Now we can call `access_mut` again, asserting it goes well,
                         // and actually overwrite things.
-                        *M::access_local_mut(self, frame, local).unwrap().unwrap() =
-                            LocalValue::Live(Operand::Indirect(mplace));
-                        (mplace, Some(size))
+                        *M::access_local_mut(self, frame, local).unwrap() =
+                            Operand::Indirect(*mplace);
+                        *mplace
                     }
-                    Err(mplace) => (mplace, None), // this already was an indirect local
+                    &mut Operand::Indirect(mplace) => mplace, // this already was an indirect local
                 }
             }
-            Place::Ptr(mplace) => (mplace, None),
+            Place::Ptr(mplace) => mplace,
         };
         // Return with the original layout, so that the caller can go on
-        Ok((MPlaceTy { mplace, layout: place.layout, align: place.align }, size))
-    }
-
-    #[inline(always)]
-    pub fn force_allocation(
-        &mut self,
-        place: &PlaceTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        Ok(self.force_allocation_maybe_sized(place, MemPlaceMeta::None)?.0)
+        Ok(MPlaceTy { mplace, layout: place.layout, align: place.align })
     }
 
     pub fn allocate(
@@ -1042,6 +1012,7 @@ where
         layout: TyAndLayout<'tcx>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        assert!(!layout.is_unsized());
         let ptr = self.allocate_ptr(layout.size, layout.align.abi, kind)?;
         Ok(MPlaceTy::from_aligned_ptr(ptr.into(), layout))
     }
