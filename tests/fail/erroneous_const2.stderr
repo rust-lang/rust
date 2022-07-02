@@ -2,9 +2,7 @@ error: any use of this value will cause an error
   --> $DIR/erroneous_const2.rs:LL:CC
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
-   | ------------------^^^^^---------------------------
-   |                   |
-   |                   attempt to compute `5_u32 - 6_u32`, which would overflow
+   | --------------    ^^^^^ attempt to compute `5_u32 - 6_u32`, which would overflow
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
