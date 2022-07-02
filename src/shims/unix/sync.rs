@@ -68,7 +68,7 @@ fn mutex_get_kind<'mir, 'tcx: 'mir>(
         mutex_op,
         offset,
         ecx.machine.layouts.i32,
-        AtomicReadOp::Relaxed,
+        AtomicReadOrd::Relaxed,
     )
 }
 
@@ -83,7 +83,7 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
         offset,
         kind,
         layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.i32),
-        AtomicWriteOp::Relaxed,
+        AtomicWriteOrd::Relaxed,
     )
 }
 
@@ -91,7 +91,7 @@ fn mutex_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    ecx.read_scalar_at_offset_atomic(mutex_op, 4, ecx.machine.layouts.u32, AtomicReadOp::Relaxed)
+    ecx.read_scalar_at_offset_atomic(mutex_op, 4, ecx.machine.layouts.u32, AtomicReadOrd::Relaxed)
 }
 
 fn mutex_set_id<'mir, 'tcx: 'mir>(
@@ -104,7 +104,7 @@ fn mutex_set_id<'mir, 'tcx: 'mir>(
         4,
         id,
         layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.u32),
-        AtomicWriteOp::Relaxed,
+        AtomicWriteOrd::Relaxed,
     )
 }
 
@@ -120,8 +120,8 @@ fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
                 &value_place,
                 &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
                 next_id.to_u32_scalar().into(),
-                AtomicRwOp::Relaxed,
-                AtomicReadOp::Relaxed,
+                AtomicRwOrd::Relaxed,
+                AtomicReadOrd::Relaxed,
                 false,
             )?
             .to_scalar_pair()
@@ -147,7 +147,7 @@ fn rwlock_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     rwlock_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    ecx.read_scalar_at_offset_atomic(rwlock_op, 4, ecx.machine.layouts.u32, AtomicReadOp::Relaxed)
+    ecx.read_scalar_at_offset_atomic(rwlock_op, 4, ecx.machine.layouts.u32, AtomicReadOrd::Relaxed)
 }
 
 fn rwlock_set_id<'mir, 'tcx: 'mir>(
@@ -160,7 +160,7 @@ fn rwlock_set_id<'mir, 'tcx: 'mir>(
         4,
         id,
         layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.u32),
-        AtomicWriteOp::Relaxed,
+        AtomicWriteOrd::Relaxed,
     )
 }
 
@@ -176,8 +176,8 @@ fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
                 &value_place,
                 &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
                 next_id.to_u32_scalar().into(),
-                AtomicRwOp::Relaxed,
-                AtomicReadOp::Relaxed,
+                AtomicRwOrd::Relaxed,
+                AtomicReadOrd::Relaxed,
                 false,
             )?
             .to_scalar_pair()
@@ -231,7 +231,7 @@ fn cond_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    ecx.read_scalar_at_offset_atomic(cond_op, 4, ecx.machine.layouts.u32, AtomicReadOp::Relaxed)
+    ecx.read_scalar_at_offset_atomic(cond_op, 4, ecx.machine.layouts.u32, AtomicReadOrd::Relaxed)
 }
 
 fn cond_set_id<'mir, 'tcx: 'mir>(
@@ -244,7 +244,7 @@ fn cond_set_id<'mir, 'tcx: 'mir>(
         4,
         id,
         layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.u32),
-        AtomicWriteOp::Relaxed,
+        AtomicWriteOrd::Relaxed,
     )
 }
 
@@ -260,8 +260,8 @@ fn cond_get_or_create_id<'mir, 'tcx: 'mir>(
                 &value_place,
                 &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
                 next_id.to_u32_scalar().into(),
-                AtomicRwOp::Relaxed,
-                AtomicReadOp::Relaxed,
+                AtomicRwOrd::Relaxed,
+                AtomicReadOrd::Relaxed,
                 false,
             )?
             .to_scalar_pair()

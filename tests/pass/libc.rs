@@ -218,7 +218,8 @@ fn test_prctl_thread_name() {
             libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long),
             0,
         );
-        assert_eq!(b"<unnamed>\0", &buf);
+        // Rust runtime might set thread name, so we allow two options here.
+        assert!(&buf[..10] == b"<unnamed>\0" || &buf[..5] == b"main\0");
         let thread_name = CString::new("hello").expect("CString::new failed");
         assert_eq!(
             libc::prctl(

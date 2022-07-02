@@ -27,7 +27,7 @@ pub fn main() {
         });
 
         let j2 = spawn(move || {
-            // Also an error of the form: Data race detected between Read on Thread(id = 2) and Deallocate on Thread(id = 1)
+            // Also an error of the form: Data race detected between Read on thread `<unnamed>` and Deallocate on thread `<unnamed>`
             // but the invalid allocation is detected first.
             *ptr.0 //~ ERROR dereferenced after this allocation got freed
         });

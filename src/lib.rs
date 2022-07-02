@@ -70,7 +70,7 @@ pub use crate::shims::tls::{EvalContextExt as _, TlsData};
 pub use crate::shims::EvalContextExt as _;
 
 pub use crate::concurrency::data_race::{
-    AtomicFenceOp, AtomicReadOp, AtomicRwOp, AtomicWriteOp,
+    AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd,
     EvalContextExt as DataRaceEvalContextExt,
 };
 pub use crate::diagnostics::{

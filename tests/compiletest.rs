@@ -94,8 +94,6 @@ regexes! {
     "([0-9]+: ) +0x[0-9a-f]+ - (.*)" => "$1$2",
     // erase long hexadecimals
     r"0x[0-9a-fA-F]+[0-9a-fA-F]{2,2}" => "$$HEX",
-    // erase clocks
-    r"VClock\(\[[^\]]+\]\)"      => "VClock",
     // erase specific alignments
     "alignment [0-9]+"               => "alignment ALIGN",
     // erase thread caller ids

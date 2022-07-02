@@ -33,6 +33,6 @@ fn main() {
     spawn(|| ()).join().unwrap();
 
     unsafe {
-        *c.0 = 64; //~ ERROR Data race detected between Write on Thread(id = 0, name = "main") and Write on Thread(id = 1)
+        *c.0 = 64; //~ ERROR Data race detected between Write on thread `main` and Write on thread `<unnamed>`
     }
 }

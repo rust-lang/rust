@@ -21,5 +21,5 @@ fn main() {
     // The fence is useless, since it did not happen-after the `store` in the other thread.
     // Hence this is a data race.
     // Also see https://github.com/rust-lang/miri/issues/2192.
-    unsafe { V = 2 } //~ERROR Data race detected
+    unsafe { V = 2 } //~ERROR Data race detected between Write on thread `main` and Write on thread `<unnamed>`
 }
