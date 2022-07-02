@@ -1,6 +1,9 @@
+use rustc_apfloat::Float;
 use rustc_ast as ast;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::{self, ParamEnv, ScalarInt, TyCtxt};
+
+use crate::build::parse_float_into;
 
 pub(crate) fn lit_to_const<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -41,6 +44,11 @@ pub(crate) fn lit_to_const<'tcx>(
             let scalar_int =
                 trunc(if neg { (*n as i128).overflowing_neg().0 as u128 } else { *n })?;
             ty::ValTree::from_scalar_int(scalar_int)
+        }
+        (ast::LitKind::Float(n, _), ty::Float(fty)) => {
+            let bytes = parse_float_into(*n, *fty, neg, |f| f.to_bits(), |f| f.to_bits())
+                .ok_or_else(|| LitToConstError::Reported)?;
+            ty::ValTree::from_scalar_int(trunc(bytes)?)
         }
         (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int((*b).into()),
         (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int((*c).into()),

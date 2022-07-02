@@ -1104,6 +1104,16 @@ pub(crate) fn parse_float_into_scalar(
     float_ty: ty::FloatTy,
     neg: bool,
 ) -> Option<Scalar> {
+    parse_float_into(num, float_ty, neg, |f| Scalar::from_f32(f), |f| Scalar::from_f64(f))
+}
+
+pub(crate) fn parse_float_into<T>(
+    num: Symbol,
+    float_ty: ty::FloatTy,
+    neg: bool,
+    on_f32: impl FnOnce(Single) -> T,
+    on_f64: impl FnOnce(Double) -> T,
+) -> Option<T> {
     let num = num.as_str();
     match float_ty {
         ty::FloatTy::F32 => {
@@ -1127,7 +1137,7 @@ pub(crate) fn parse_float_into_scalar(
                 f = -f;
             }
 
-            Some(Scalar::from_f32(f))
+            Some(on_f32(f))
         }
         ty::FloatTy::F64 => {
             let Ok(rust_f) = num.parse::<f64>() else { return None };
@@ -1150,7 +1160,7 @@ pub(crate) fn parse_float_into_scalar(
                 f = -f;
             }
 
-            Some(Scalar::from_f64(f))
+            Some(on_f64(f))
         }
     }
 }
