@@ -8,7 +8,8 @@ extern crate libc;
 
 use std::ffi::CString;
 use std::fs::{
-    create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename, File, OpenOptions,
+    create_dir, read_dir, read_link, remove_dir, remove_dir_all, remove_file, rename, File,
+    OpenOptions,
 };
 use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -317,10 +318,12 @@ fn test_symlink() {
         assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
     }
 
-    // Test that metadata of a symbolic link is correct.
+    // Test that metadata of a symbolic link (i.e., the file it points to) is correct.
     check_metadata(bytes, &symlink_path).unwrap();
     // Test that the metadata of a symbolic link is correct when not following it.
     assert!(symlink_path.symlink_metadata().unwrap().file_type().is_symlink());
+    // Check that we can follow the link.
+    assert_eq!(read_link(&symlink_path).unwrap(), path);
     // Removing symbolic link should succeed.
     remove_file(&symlink_path).unwrap();
 
