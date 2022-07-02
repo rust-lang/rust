@@ -868,7 +868,7 @@ impl<'a> InferenceContext<'a> {
                 match rhs_ty.kind(Interner) {
                     TyKind::Array(_, _) => rhs_ty.clone(),
                     // Even when `rhs_ty` is not an array type, this assignee
-                    // expression is infered to be an array (of unknown element
+                    // expression is inferred to be an array (of unknown element
                     // type and length). This should not be just an error type,
                     // because we are to compute the unifiability of this type and
                     // `rhs_ty` in the end of this function to issue type mismatches.
