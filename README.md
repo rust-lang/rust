@@ -65,9 +65,9 @@ in your program, and cannot run all programs:
   not support networking. System API support varies between targets; if you run
   on Windows it is a good idea to use `--target x86_64-unknown-linux-gnu` to get
   better support.
-* Weak memory emulation may produce weak behaivours unobservable by compiled
-  programs running on real hardware when `SeqCst` fences are used, and it cannot
-  produce all behaviors possibly observable on real hardware.
+* Weak memory emulation may [produce weak behaivours](https://github.com/rust-lang/miri/issues/2301)
+  unobservable by compiled programs running on real hardware when `SeqCst` fences are used, and it
+  cannot produce all behaviors possibly observable on real hardware.
 
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
@@ -192,8 +192,9 @@ randomness that is used to determine allocation base addresses. The following
 snippet calls Miri in a loop with different values for the seed:
 
 ```
-for seed in $({ echo obase=16; seq 0 255; } | bc); do
-  MIRIFLAGS=-Zmiri-seed=$seed cargo miri test || { echo "Last seed: $seed"; break; };
+for SEED in $({ echo obase=16; seq 0 255; } | bc); do
+  echo "Trying seed: $SEED"
+  MIRIFLAGS=-Zmiri-seed=$SEED cargo miri test || { echo "Failing seed: $SEED"; break; };
 done
 ```
 
