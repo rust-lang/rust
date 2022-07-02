@@ -19,7 +19,7 @@ path = "src/bin/main.rs"
 
 [dependencies]
 anyhow = "1.0.57"
-crossbeam-channel = "0.5.4"
+crossbeam-channel = "0.5.5"
 dissimilar = "1.0.4"
 itertools = "0.10.3"
 lsp-types = { version = "0.93.0", features = ["proposed"] }

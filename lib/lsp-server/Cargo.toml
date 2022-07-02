@@ -10,7 +10,7 @@ edition = "2021"
 log = "0.4.17"
 serde_json = "1.0.81"
 serde = { version = "1.0.137", features = ["derive"] }
-crossbeam-channel = "0.5.4"
+crossbeam-channel = "0.5.5"
 
 [dev-dependencies]
 lsp-types = "0.93.0"

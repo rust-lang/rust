@@ -10,7 +10,7 @@ rust-version = "1.57"
 doctest = false
 
 [dependencies]
-crossbeam-channel = "0.5.4"
+crossbeam-channel = "0.5.5"
 tracing = "0.1.35"
 cargo_metadata = "0.14.2"
 serde = { version = "1.0.137", features = ["derive"] }
