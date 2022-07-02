@@ -153,6 +153,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.readlink(pathname, buf, bufsize)?;
                 this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
             }
+            "posix_fadvise" => {
+                let [fd, offset, len, advice] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.read_scalar(fd)?.to_i32()?;
+                this.read_scalar(offset)?.to_machine_isize(this)?;
+                this.read_scalar(len)?.to_machine_isize(this)?;
+                this.read_scalar(advice)?.to_i32()?;
+                // fadvise is only informational, we can ignore it.
+                this.write_null(dest)?;
+            }
 
             // Time related shims
             "gettimeofday" => {
