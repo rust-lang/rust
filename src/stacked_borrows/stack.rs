@@ -51,6 +51,13 @@ struct StackCache {
 
 #[cfg(feature = "stack-cache")]
 impl StackCache {
+    /// When a tag is used, we call this function to add or refresh it in the cache.
+    ///
+    /// We use position in the cache to represent how recently a tag was used; the first position
+    /// is the most recently used tag. So an add shifts every element towards the end, and inserts
+    /// the new element at the start. We lose the last element.
+    /// This strategy is effective at keeping the most-accessed tags in the cache, but it costs a
+    /// linear shift across the entire cache when we add a new tag.
     fn add(&mut self, idx: usize, tag: SbTag) {
         self.tags.copy_within(0..CACHE_LEN - 1, 1);
         self.tags[0] = tag;
@@ -172,9 +179,12 @@ impl<'tcx> Stack {
         // If we found the tag, look up its position in the stack to see if it grants
         // the required permission
         if self.borrows[stack_idx].perm.grants(access) {
-            // If it does, and it's already in the most-recently-used position, move it
-            // there.
-            if cache_idx != 0 {
+            // If it does, and it's not already in the most-recently-used position, move it there.
+            // Except if the tag is in position 1, this is equivalent to just a swap, so do that.
+            if cache_idx == 1 {
+                self.cache.tags.swap(0, 1);
+                self.cache.idx.swap(0, 1);
+            } else if cache_idx > 1 {
                 self.cache.add(stack_idx, tag);
             }
             Some(stack_idx)
@@ -208,9 +218,13 @@ impl<'tcx> Stack {
 
         // The above insert changes the meaning of every index in the cache >= new_idx, so now
         // we need to find every one of those indexes and increment it.
-        for idx in &mut self.cache.idx {
-            if *idx >= new_idx {
-                *idx += 1;
+        // But if the insert is at the end (equivalent to a push), we can skip this step because
+        // it didn't change the position of any other tags.
+        if new_idx != self.borrows.len() - 1 {
+            for idx in &mut self.cache.idx {
+                if *idx >= new_idx {
+                    *idx += 1;
+                }
             }
         }
 
