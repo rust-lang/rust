@@ -1,14 +1,15 @@
 //! Inlining pass for MIR functions
 use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
+use rustc_const_eval::transform::validate::equal_up_to_regions;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
+use rustc_session::config::OptLevel;
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
 use rustc_target::spec::abi::Abi;
 
@@ -43,7 +44,15 @@ impl<'tcx> MirPass<'tcx> for Inline {
             return enabled;
         }
 
-        sess.opts.mir_opt_level() >= 3
+        match sess.mir_opt_level() {
+            0 | 1 => false,
+            2 => {
+                (sess.opts.optimize == OptLevel::Default
+                    || sess.opts.optimize == OptLevel::Aggressive)
+                    && sess.opts.incremental == None
+            }
+            _ => true,
+        }
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -76,13 +85,6 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     }
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let param_env = rustc_trait_selection::traits::normalize_param_env_or_error(
-        tcx,
-        def_id.to_def_id(),
-        param_env,
-        ObligationCause::misc(body.span, hir_id),
-    );
 
     let mut this = Inliner {
         tcx,
@@ -165,6 +167,45 @@ impl<'tcx> Inliner<'tcx> {
         ) else {
             return Err("failed to normalize callee body");
         };
+
+        // Check call signature compatibility.
+        // Normally, this shouldn't be required, but trait normalization failure can create a
+        // validation ICE.
+        let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
+        let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
+        let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
+        let output_type = callee_body.return_ty();
+        if !equal_up_to_regions(self.tcx, self.param_env, output_type, destination_ty) {
+            trace!(?output_type, ?destination_ty);
+            return Err("failed to normalize return type");
+        }
+        if callsite.fn_sig.abi() == Abi::RustCall {
+            let mut args = args.into_iter();
+            let _ = args.next(); // Skip `self` argument.
+            let arg_tuple_ty = args.next().unwrap().ty(&caller_body.local_decls, self.tcx);
+            assert!(args.next().is_none());
+
+            let ty::Tuple(arg_tuple_tys) = arg_tuple_ty.kind() else {
+                bug!("Closure arguments are not passed as a tuple");
+            };
+
+            for (arg_ty, input) in arg_tuple_tys.iter().zip(callee_body.args_iter().skip(1)) {
+                let input_type = callee_body.local_decls[input].ty;
+                if !equal_up_to_regions(self.tcx, self.param_env, arg_ty, input_type) {
+                    trace!(?arg_ty, ?input_type);
+                    return Err("failed to normalize tuple argument type");
+                }
+            }
+        } else {
+            for (arg, input) in args.iter().zip(callee_body.args_iter()) {
+                let input_type = callee_body.local_decls[input].ty;
+                let arg_ty = arg.ty(&caller_body.local_decls, self.tcx);
+                if !equal_up_to_regions(self.tcx, self.param_env, arg_ty, input_type) {
+                    trace!(?arg_ty, ?input_type);
+                    return Err("failed to normalize argument type");
+                }
+            }
+        }
 
         let old_blocks = caller_body.basic_blocks().next_index();
         self.inline_call(caller_body, &callsite, callee_body);
@@ -263,6 +304,10 @@ impl<'tcx> Inliner<'tcx> {
                     return None;
                 }
 
+                if self.history.contains(&callee) {
+                    return None;
+                }
+
                 let fn_sig = self.tcx.bound_fn_sig(def_id).subst(self.tcx, substs);
 
                 return Some(CallSite {
@@ -285,8 +330,14 @@ impl<'tcx> Inliner<'tcx> {
         callsite: &CallSite<'tcx>,
         callee_attrs: &CodegenFnAttrs,
     ) -> Result<(), &'static str> {
-        if let InlineAttr::Never = callee_attrs.inline {
-            return Err("never inline hint");
+        match callee_attrs.inline {
+            InlineAttr::Never => return Err("never inline hint"),
+            InlineAttr::Always | InlineAttr::Hint => {}
+            InlineAttr::None => {
+                if self.tcx.sess.mir_opt_level() <= 2 {
+                    return Err("at mir-opt-level=2, only #[inline] is inlined");
+                }
+            }
         }
 
         // Only inline local functions if they would be eligible for cross-crate
@@ -407,22 +458,9 @@ impl<'tcx> Inliner<'tcx> {
                 }
 
                 TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
-                    if let ty::FnDef(def_id, substs) =
+                    if let ty::FnDef(def_id, _) =
                         *callsite.callee.subst_mir(self.tcx, &f.literal.ty()).kind()
                     {
-                        if let Ok(substs) =
-                            self.tcx.try_normalize_erasing_regions(self.param_env, substs)
-                        {
-                            if let Ok(Some(instance)) =
-                                Instance::resolve(self.tcx, self.param_env, def_id, substs)
-                            {
-                                if callsite.callee.def_id() == instance.def_id() {
-                                    return Err("self-recursion");
-                                } else if self.history.contains(&instance) {
-                                    return Err("already inlined");
-                                }
-                            }
-                        }
                         // Don't give intrinsics the extra penalty for calls
                         if tcx.is_intrinsic(def_id) {
                             cost += INSTR_COST;
@@ -482,14 +520,12 @@ impl<'tcx> Inliner<'tcx> {
         if let InlineAttr::Always = callee_attrs.inline {
             debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
             Ok(())
+        } else if cost <= threshold {
+            debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
+            Ok(())
         } else {
-            if cost <= threshold {
-                debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
-                Ok(())
-            } else {
-                debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
-                Err("cost above threshold")
-            }
+            debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
+            Err("cost above threshold")
         }
     }
 

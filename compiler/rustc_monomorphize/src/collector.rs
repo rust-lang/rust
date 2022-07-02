@@ -730,7 +730,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                             def_id,
                             substs,
                             ty::ClosureKind::FnOnce,
-                        );
+                        )
+                        .expect("failed to normalize and resolve closure during codegen");
                         if should_codegen_locally(self.tcx, &instance) {
                             self.output.push(create_fn_mono_item(self.tcx, instance, span));
                         }
