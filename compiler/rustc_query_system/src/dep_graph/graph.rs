@@ -731,8 +731,7 @@ impl<K: DepKind> DepGraph<K> {
         debug_assert_eq!(data.previous.index_to_node(prev_dep_node_index), *dep_node);
 
         let prev_deps = data.previous.edge_targets_from(prev_dep_node_index);
-
-        for &dep_dep_node_index in prev_deps {
+        for dep_dep_node_index in prev_deps {
             self.try_mark_parent_green(tcx, data, dep_dep_node_index, dep_node)?
         }
 

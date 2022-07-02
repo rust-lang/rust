@@ -128,16 +128,13 @@ impl<K: DepKind> SerializedDepGraph<K> {
     }
 
     #[inline]
-    pub fn edge_targets_from(&self, source: SerializedDepNodeIndex) -> &[SerializedDepNodeIndex] {
+    pub fn edge_targets_from(&self, source: SerializedDepNodeIndex) -> Vec<SerializedDepNodeIndex> {
         // The encoder has checked that there is no padding there.
-        if let Some(decoder) = self.decoder_at(source) {
-            let position = std::mem::size_of::<Fingerprint>();
-            let &length = unsafe { decoder.mmap_at::<u32>(position) };
-            unsafe {
-                decoder.mmap_slice_at::<SerializedDepNodeIndex>(position + 4, length as usize)
-            }
+        if let Some(ref mut decoder) = self.decoder_at(source) {
+            decoder.set_position(std::mem::size_of::<Fingerprint>());
+            Decodable::decode(decoder)
         } else {
-            &[]
+            Vec::new()
         }
     }
 
@@ -196,10 +193,9 @@ impl<K: DepKind> EncoderState<K> {
     fn try_encode_node(&mut self, node: &NodeInfo<K>) -> usize {
         let encoder = &mut self.encoder;
         let start_pos = encoder.write_mmap(&node.fingerprint);
-        let _pos = encoder.write_mmap::<u32>(&node.edges.len().try_into().unwrap());
+        let _pos = encoder.position();
         debug_assert_eq!(_pos, start_pos + std::mem::size_of::<Fingerprint>());
-        let _pos = encoder.write_mmap_slice::<DepNodeIndex>(&node.edges[..]);
-        debug_assert_eq!(_pos, start_pos + std::mem::size_of::<Fingerprint>() + 4);
+        node.edges.encode(encoder);
         start_pos
     }
 
