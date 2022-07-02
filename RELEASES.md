@@ -78,6 +78,8 @@ Compatibility Notes
 - [rustdoc: doctests are now run on unexported `macro_rules!` macros, matching other private items][96630]
 - [rustdoc: Remove .woff font files][96279]
 - [Enforce Copy bounds for repeat elements while considering lifetimes][95819]
+- [Windows: Fix potentinal unsoundness by aborting if `File` reads or writes cannot
+  complete synchronously][95469].
 
 Internal Changes
 ----------------
@@ -99,6 +101,7 @@ and related tools.
 [95372]: https://github.com/rust-lang/rust/pull/95372/
 [95380]: https://github.com/rust-lang/rust/pull/95380/
 [95431]: https://github.com/rust-lang/rust/pull/95431/
+[95469]: https://github.com/rust-lang/rust/pull/95469/
 [95705]: https://github.com/rust-lang/rust/pull/95705/
 [95801]: https://github.com/rust-lang/rust/pull/95801/
 [95819]: https://github.com/rust-lang/rust/pull/95819/
