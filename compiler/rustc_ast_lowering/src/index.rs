@@ -192,9 +192,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_pat(&mut self, pat: &'hir Pat<'hir>) {
-        let node =
-            if let PatKind::Binding(..) = pat.kind { Node::Binding(pat) } else { Node::Pat(pat) };
-        self.insert(pat.span, pat.hir_id, node);
+        self.insert(pat.span, pat.hir_id, Node::Pat(pat));
 
         self.with_parent(pat.hir_id, |this| {
             intravisit::walk_pat(this, pat);

@@ -462,14 +462,14 @@ impl LocalUseCounter {
 }
 
 impl Visitor<'_> for LocalUseCounter {
-    fn visit_local(&mut self, local: &Local, context: PlaceContext, _location: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _location: Location) {
         if context.is_storage_marker()
             || context == PlaceContext::NonUse(NonUseContext::VarDebugInfo)
         {
             return;
         }
 
-        self.local_uses[*local] += 1;
+        self.local_uses[local] += 1;
     }
 }
 

@@ -202,7 +202,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let ptr = self.scalar_to_ptr(scalar)?;
         match ptr.into_pointer_or_addr() {
             Ok(ptr) => M::expose_ptr(self, ptr)?,
-            Err(_) => {} // do nothing, exposing an invalid pointer has no meaning
+            Err(_) => {} // Do nothing, exposing an invalid pointer (`None` provenance) is a NOP.
         };
         Ok(self.cast_from_int_like(scalar, src.layout, cast_ty)?.into())
     }

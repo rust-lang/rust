@@ -244,7 +244,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         // for a generator).
                         let var_hir_id = captured_place.get_root_variable();
                         let node = self.ecx.tcx.hir().get(var_hir_id);
-                        if let hir::Node::Binding(pat) = node {
+                        if let hir::Node::Pat(pat) = node {
                             if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                                 name = Some(ident.name);
                             }

@@ -80,7 +80,7 @@ impl<'tcx> Cx<'tcx> {
     #[tracing::instrument(level = "debug", skip(self))]
     pub(crate) fn pattern_from_hir(&mut self, p: &hir::Pat<'_>) -> Pat<'tcx> {
         let p = match self.tcx.hir().get(p.hir_id) {
-            Node::Pat(p) | Node::Binding(p) => p,
+            Node::Pat(p) => p,
             node => bug!("pattern became {:?}", node),
         };
         pat_from_hir(self.tcx, self.param_env, self.typeck_results(), p)

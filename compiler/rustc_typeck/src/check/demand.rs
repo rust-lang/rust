@@ -223,7 +223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None,
                         hir::Path { res: hir::def::Res::Local(hir_id), .. },
                     )) => {
-                        if let Some(hir::Node::Binding(pat)) = self.tcx.hir().find(*hir_id) {
+                        if let Some(hir::Node::Pat(pat)) = self.tcx.hir().find(*hir_id) {
                             let parent = self.tcx.hir().get_parent_node(pat.hir_id);
                             primary_span = pat.span;
                             secondary_span = pat.span;

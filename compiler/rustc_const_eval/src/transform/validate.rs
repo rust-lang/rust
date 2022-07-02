@@ -196,8 +196,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
-    fn visit_local(&mut self, local: &Local, context: PlaceContext, location: Location) {
-        if self.body.local_decls.get(*local).is_none() {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
+        if self.body.local_decls.get(local).is_none() {
             self.fail(
                 location,
                 format!("local {:?} has no corresponding declaration in `body.local_decls`", local),
@@ -208,7 +208,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             // Uses of locals must occur while the local's storage is allocated.
             self.storage_liveness.seek_after_primary_effect(location);
             let locals_with_storage = self.storage_liveness.get();
-            if !locals_with_storage.contains(*local) {
+            if !locals_with_storage.contains(local) {
                 self.fail(location, format!("use of local {:?}, which has no storage here", local));
             }
         }
@@ -823,8 +823,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         self.super_terminator(terminator, location);
     }
 
-    fn visit_source_scope(&mut self, scope: &SourceScope) {
-        if self.body.source_scopes.get(*scope).is_none() {
+    fn visit_source_scope(&mut self, scope: SourceScope) {
+        if self.body.source_scopes.get(scope).is_none() {
             self.tcx.sess.diagnostic().delay_span_bug(
                 self.body.span,
                 &format!(
