@@ -244,4 +244,37 @@ impl Tr for Result<i32, i32> {
     }
 }
 
+mod issue9084 {
+    fn wildcard_if() {
+        let some_bool = true;
+        let e = Some(1);
+
+        // should lint
+        let _ = match e {
+            _ if some_bool => e,
+            _ => e,
+        };
+
+        // should lint
+        let _ = match e {
+            Some(i) => Some(i),
+            _ if some_bool => e,
+            _ => e,
+        };
+
+        // should not lint
+        let _ = match e {
+            _ if some_bool => e,
+            _ => Some(2),
+        };
+
+        // should not lint
+        let _ = match e {
+            Some(i) => Some(i + 1),
+            _ if some_bool => e,
+            _ => e,
+        };
+    }
+}
+
 fn main() {}

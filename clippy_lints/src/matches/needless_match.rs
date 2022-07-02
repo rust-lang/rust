@@ -66,7 +66,9 @@ fn check_all_arms(cx: &LateContext<'_>, match_expr: &Expr<'_>, arms: &[Arm<'_>])
     for arm in arms {
         let arm_expr = peel_blocks_with_stmt(arm.body);
         if let PatKind::Wild = arm.pat.kind {
-            return eq_expr_value(cx, match_expr, strip_return(arm_expr));
+            if !eq_expr_value(cx, match_expr, strip_return(arm_expr)) {
+                return false;
+            }
         } else if !pat_same_as_expr(arm.pat, arm_expr) {
             return false;
         }
