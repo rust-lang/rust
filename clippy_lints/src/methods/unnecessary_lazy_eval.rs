@@ -20,8 +20,9 @@ pub(super) fn check<'tcx>(
 ) {
     let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option);
     let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
+    let is_bool = cx.typeck_results().expr_ty(recv).is_bool();
 
-    if is_option || is_result {
+    if is_option || is_result || is_bool {
         if let hir::ExprKind::Closure { body, .. } = arg.kind {
             let body = cx.tcx.hir().body(body);
             let body_expr = &body.value;
@@ -33,8 +34,10 @@ pub(super) fn check<'tcx>(
             if eager_or_lazy::switch_to_eager_eval(cx, body_expr) {
                 let msg = if is_option {
                     "unnecessary closure used to substitute value for `Option::None`"
-                } else {
+                } else if is_result {
                     "unnecessary closure used to substitute value for `Result::Err`"
+                } else {
+                    "unnecessary closure used with `bool::then`"
                 };
                 let applicability = if body
                     .params

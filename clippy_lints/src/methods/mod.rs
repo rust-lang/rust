@@ -2737,6 +2737,7 @@ impl Methods {
                     }
                 },
                 ("take", []) => needless_option_take::check(cx, expr, recv),
+                ("then", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some"),
                 ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
                     implicit_clone::check(cx, name, expr, recv);
                 },
