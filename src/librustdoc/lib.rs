@@ -76,7 +76,7 @@ use std::env::{self, VarError};
 use std::io;
 use std::process;
 
-use rustc_driver::{abort_on_err, describe_lints};
+use rustc_driver::abort_on_err;
 use rustc_errors::ErrorGuaranteed;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
@@ -771,15 +771,24 @@ fn main_options(options: config::Options) -> MainResult {
     let config = core::create_config(options);
 
     interface::create_compiler_and_run(config, |compiler| {
+        let sess = compiler.session();
+
+        if sess.opts.describe_lints {
+            let mut lint_store = rustc_lint::new_lint_store(
+                sess.opts.debugging_opts.no_interleave_lints,
+                sess.unstable_options(),
+            );
+            let registered_lints = if let Some(register_lints) = compiler.register_lints() {
+                register_lints(sess, &mut lint_store);
+                true
+            } else {
+                false
+            };
+            rustc_driver::describe_lints(sess, &lint_store, registered_lints);
+            return Ok(());
+        }
+
         compiler.enter(|queries| {
-            let sess = compiler.session();
-
-            if sess.opts.describe_lints {
-                let (_, lint_store) = &*queries.register_plugins()?.peek();
-                describe_lints(sess, lint_store, true);
-                return Ok(());
-            }
-
             // We need to hold on to the complete resolver, so we cause everything to be
             // cloned for the analysis passes to use. Suboptimal, but necessary in the
             // current architecture.
