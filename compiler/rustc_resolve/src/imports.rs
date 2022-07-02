@@ -1090,31 +1090,31 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         // Since import resolution is finished, globs will not define any more names.
         *module.globs.borrow_mut() = Vec::new();
 
-        let mut reexports = Vec::new();
+        if let Some(def_id) = module.opt_def_id() {
+            let mut reexports = Vec::new();
 
-        module.for_each_child(self.r, |_, ident, _, binding| {
-            // FIXME: Consider changing the binding inserted by `#[macro_export] macro_rules`
-            // into the crate root to actual `NameBindingKind::Import`.
-            if binding.is_import()
-                || matches!(binding.kind, NameBindingKind::Res(_, _is_macro_export @ true))
-            {
-                let res = binding.res().expect_non_local();
-                // Ambiguous imports are treated as errors at this point and are
-                // not exposed to other crates (see #36837 for more details).
-                if res != def::Res::Err && !binding.is_ambiguity() {
-                    reexports.push(ModChild {
-                        ident,
-                        res,
-                        vis: binding.vis,
-                        span: binding.span,
-                        macro_rules: false,
-                    });
+            module.for_each_child(self.r, |_, ident, _, binding| {
+                // FIXME: Consider changing the binding inserted by `#[macro_export] macro_rules`
+                // into the crate root to actual `NameBindingKind::Import`.
+                if binding.is_import()
+                    || matches!(binding.kind, NameBindingKind::Res(_, _is_macro_export @ true))
+                {
+                    let res = binding.res().expect_non_local();
+                    // Ambiguous imports are treated as errors at this point and are
+                    // not exposed to other crates (see #36837 for more details).
+                    if res != def::Res::Err && !binding.is_ambiguity() {
+                        reexports.push(ModChild {
+                            ident,
+                            res,
+                            vis: binding.vis,
+                            span: binding.span,
+                            macro_rules: false,
+                        });
+                    }
                 }
-            }
-        });
+            });
 
-        if !reexports.is_empty() {
-            if let Some(def_id) = module.opt_def_id() {
+            if !reexports.is_empty() {
                 // Call to `expect_local` should be fine because current
                 // code is only called for local modules.
                 self.r.reexport_map.insert(def_id.expect_local(), reexports);
