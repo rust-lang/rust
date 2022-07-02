@@ -6,7 +6,7 @@ LL |     assert_eq!(42, **unsafe { &*Weak::as_ptr(&weak) });
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-           
+   = note: backtrace:
    = note: inside `main` at RUSTLIB/core/src/macros/mod.rs:LL:CC
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 

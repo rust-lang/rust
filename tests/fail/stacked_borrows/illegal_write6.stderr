@@ -26,6 +26,7 @@ LL | |     unsafe { *y = 2 };
 LL | |     return *a;
 LL | | }
    | |_^
+   = note: backtrace:
    = note: inside `foo` at $DIR/illegal_write6.rs:LL:CC
 note: inside `main` at $DIR/illegal_write6.rs:LL:CC
   --> $DIR/illegal_write6.rs:LL:CC

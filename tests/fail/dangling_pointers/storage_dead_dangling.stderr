@@ -6,7 +6,7 @@ LL |     unsafe { &mut *(LEAK as *mut i32) };
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-           
+   = note: backtrace:
    = note: inside `evil` at $DIR/storage_dead_dangling.rs:LL:CC
 note: inside `main` at $DIR/storage_dead_dangling.rs:LL:CC
   --> $DIR/storage_dead_dangling.rs:LL:CC

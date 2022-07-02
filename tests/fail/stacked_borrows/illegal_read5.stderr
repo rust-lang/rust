@@ -19,6 +19,7 @@ help: <TAG> was later invalidated at offsets [$HEX..$HEX]
    |
 LL |     mem::forget(unsafe { ptr::read(xshr) }); // but after reading through the shared ref
    |                          ^^^^^^^^^^^^^^^
+   = note: backtrace:
    = note: inside `main` at $DIR/illegal_read5.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

@@ -6,7 +6,7 @@ LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-           
+   = note: backtrace:
    = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `<std::alloc::Global as std::alloc::Allocator>::deallocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `alloc::alloc::box_free::<i32, std::alloc::Global>` at RUSTLIB/alloc/src/alloc.rs:LL:CC

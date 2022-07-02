@@ -12,6 +12,7 @@ LL | |
 LL | |     unreachable!()
 LL | | }
    | |_^
+   = note: backtrace:
    = note: inside `main` at $DIR/exported_symbol_shim_clashing.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

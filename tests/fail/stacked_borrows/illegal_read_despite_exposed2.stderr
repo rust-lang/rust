@@ -9,7 +9,7 @@ LL |         let _val = *root2;
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-           
+   = note: backtrace:
    = note: inside `main` at $DIR/illegal_read_despite_exposed2.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

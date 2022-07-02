@@ -5,7 +5,7 @@ LL |     let _val = unsafe { std::ptr::addr_of!(FOO) };
    |                                            ^^^ `extern` static `FOO` from crate `extern_static` is not supported by Miri
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
-           
+   = note: backtrace:
    = note: inside `main` at $DIR/extern_static.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

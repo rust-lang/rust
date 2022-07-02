@@ -19,6 +19,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x1]
    |
 LL |     let res = helper(val, ptr);
    |                      ^^^
+   = note: backtrace:
    = note: inside `helper` at $DIR/box-cell-alias.rs:LL:CC
 note: inside `main` at $DIR/box-cell-alias.rs:LL:CC
   --> $DIR/box-cell-alias.rs:LL:CC

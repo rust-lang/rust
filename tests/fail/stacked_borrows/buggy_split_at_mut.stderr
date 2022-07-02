@@ -19,6 +19,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x10]
    |
 LL |                 from_raw_parts_mut(ptr.offset(mid as isize), len - mid),
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: backtrace:
    = note: inside `main` at $DIR/buggy_split_at_mut.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

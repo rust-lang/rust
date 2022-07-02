@@ -6,7 +6,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-           
+   = note: backtrace:
    = note: inside `std::ptr::const_ptr::<impl *const i8>::offset` at RUSTLIB/core/src/ptr/const_ptr.rs:LL:CC
 note: inside `main` at $DIR/out_of_bounds_ptr_2.rs:LL:CC
   --> $DIR/out_of_bounds_ptr_2.rs:LL:CC

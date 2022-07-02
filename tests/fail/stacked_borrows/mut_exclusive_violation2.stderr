@@ -19,6 +19,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x4]
    |
 LL |         let _raw2 = ptr2.as_mut();
    |                     ^^^^^^^^^^^^^
+   = note: backtrace:
    = note: inside `main` at $DIR/mut_exclusive_violation2.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

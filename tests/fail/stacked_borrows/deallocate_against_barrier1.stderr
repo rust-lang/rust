@@ -6,7 +6,7 @@ LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-           
+   = note: backtrace:
    = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `<std::alloc::Global as std::alloc::Allocator>::deallocate` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `alloc::alloc::box_free::<i32, std::alloc::Global>` at RUSTLIB/alloc/src/alloc.rs:LL:CC

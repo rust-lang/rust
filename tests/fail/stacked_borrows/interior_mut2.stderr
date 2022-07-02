@@ -19,6 +19,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x4]
    |
 LL |         *c.get() = UnsafeCell::new(0); // now inner_shr gets invalidated
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: backtrace:
    = note: inside `main` at $DIR/interior_mut2.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

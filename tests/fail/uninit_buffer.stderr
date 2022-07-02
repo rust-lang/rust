@@ -6,7 +6,7 @@ LL |         let mut order = unsafe { memcmp(left.as_ptr(), right.as_ptr(), len)
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-           
+   = note: backtrace:
    = note: inside `<u8 as core::slice::cmp::SliceOrd>::compare` at RUSTLIB/core/src/slice/cmp.rs:LL:CC
    = note: inside `core::slice::cmp::<impl std::cmp::Ord for [u8]>::cmp` at RUSTLIB/core/src/slice/cmp.rs:LL:CC
 note: inside `main` at $DIR/uninit_buffer.rs:LL:CC

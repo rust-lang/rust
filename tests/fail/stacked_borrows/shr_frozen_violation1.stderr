@@ -14,6 +14,7 @@ help: <TAG> was created by a retag at offsets [0x0..0x4]
    |
 LL |         *(x as *const i32 as *mut i32) = 7;
    |           ^
+   = note: backtrace:
    = note: inside `unknown_code` at $DIR/shr_frozen_violation1.rs:LL:CC
 note: inside `foo` at $DIR/shr_frozen_violation1.rs:LL:CC
   --> $DIR/shr_frozen_violation1.rs:LL:CC

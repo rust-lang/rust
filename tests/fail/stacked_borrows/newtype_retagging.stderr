@@ -23,6 +23,7 @@ LL | / fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
 LL | |     dealloc();
 LL | | }
    | |_^
+   = note: backtrace:
    = note: inside `std::boxed::Box::<i32>::from_raw_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
    = note: inside `std::boxed::Box::<i32>::from_raw` at RUSTLIB/alloc/src/boxed.rs:LL:CC
 note: inside closure at $DIR/newtype_retagging.rs:LL:CC

@@ -6,7 +6,7 @@ LL |     unsafe { PtrRepr { components: PtrComponents { data_address, metadata }
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-           
+   = note: backtrace:
    = note: inside `std::ptr::from_raw_parts::<dyn Foo>` at RUSTLIB/core/src/ptr/metadata.rs:LL:CC
 note: inside `uwu` at $DIR/vtable.rs:LL:CC
   --> $DIR/vtable.rs:LL:CC

@@ -5,7 +5,7 @@ LL |     let _val = X;
    |                ^ `extern` static `E` from crate `extern_static_in_const` is not supported by Miri
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
-           
+   = note: backtrace:
    = note: inside `main` at $DIR/extern_static_in_const.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

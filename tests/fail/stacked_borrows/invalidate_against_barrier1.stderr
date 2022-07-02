@@ -26,6 +26,7 @@ LL | |     // unique for the duration of this call.
 LL | |     let _val = unsafe { *x };
 LL | | }
    | |_^
+   = note: backtrace:
    = note: inside `inner` at $DIR/invalidate_against_barrier1.rs:LL:CC
 note: inside `main` at $DIR/invalidate_against_barrier1.rs:LL:CC
   --> $DIR/invalidate_against_barrier1.rs:LL:CC

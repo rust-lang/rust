@@ -5,7 +5,7 @@ LL |         let _x = *d_alias;
    |                  ^^^^^^^^ unable to turn pointer into raw bytes
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
-           
+   = note: backtrace:
    = note: inside `main` at $DIR/reading_half_a_pointer.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

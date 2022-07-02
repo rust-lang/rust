@@ -21,6 +21,7 @@ help: this protector is live for this call
    |
 LL | pub fn safe(_x: &i32, _y: &mut Cell<i32>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: backtrace:
    = note: inside `safe` at $DIR/aliasing_mut4.rs:LL:CC
 note: inside `main` at $DIR/aliasing_mut4.rs:LL:CC
   --> $DIR/aliasing_mut4.rs:LL:CC

@@ -12,7 +12,7 @@ LL | |         );
    | |_________^ can't create threads on Windows
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
-           
+   = note: backtrace:
    = note: inside `std::sys::PLATFORM::thread::Thread::new` at RUSTLIB/std/src/sys/PLATFORM/thread.rs:LL:CC
    = note: inside `std::thread::Builder::spawn_unchecked_::<[closure@$DIR/thread-spawn.rs:LL:CC], ()>` at RUSTLIB/std/src/thread/mod.rs:LL:CC
    = note: inside `std::thread::Builder::spawn_unchecked::<[closure@$DIR/thread-spawn.rs:LL:CC], ()>` at RUSTLIB/std/src/thread/mod.rs:LL:CC

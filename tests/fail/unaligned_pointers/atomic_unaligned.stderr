@@ -6,7 +6,7 @@ LL |         ::std::intrinsics::atomic_load_seqcst(zptr);
    |
    = help: this usually indicates that your program performed an invalid operation and caused Undefined Behavior
    = help: but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives
-           
+   = note: backtrace:
    = note: inside `main` at $DIR/atomic_unaligned.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

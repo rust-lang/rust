@@ -6,7 +6,7 @@ LL | implement! { f32 }
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-           
+   = note: backtrace:
    = note: inside `core::core_simd::round::<impl std::simd::Simd<f32, 2_usize>>::to_int_unchecked::<i32>` at RUSTLIB/core/src/../../portable-simd/crates/core_simd/src/round.rs:LL:CC
 note: inside `main` at $DIR/simd-float-to-int.rs:LL:CC
   --> $DIR/simd-float-to-int.rs:LL:CC

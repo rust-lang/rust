@@ -26,6 +26,7 @@ LL | |     // immutable for the duration of this call.
 LL | |     unsafe { *x = 0 };
 LL | | }
    | |_^
+   = note: backtrace:
    = note: inside `inner` at $DIR/invalidate_against_barrier2.rs:LL:CC
 note: inside `main` at $DIR/invalidate_against_barrier2.rs:LL:CC
   --> $DIR/invalidate_against_barrier2.rs:LL:CC
