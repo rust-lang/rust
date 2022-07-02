@@ -19,6 +19,11 @@ input:focus + .slider {
 h1.fqn {
 	border-bottom-color: #DDDDDD;
 }
+
+h1.fqn a {
+    color: #000;
+}
+
 h2, h3, h4 {
 	border-bottom-color: #DDDDDD;
 }
@@ -30,6 +35,11 @@ h2, h3, h4 {
 .docblock code, .docblock-short code {
 	background-color: #F5F5F5;
 }
+
+.docblock pre > code, pre > code, .docblock code, span code, .code-header {
+	color: #000;
+}
+
 pre, .rustdoc.source .example-wrap {
 	background-color: #F5F5F5;
 }
@@ -239,7 +249,7 @@ pre.rust .question-mark {
 }
 
 a.test-arrow {
-	background-color: rgb(78, 139, 202, 0.2);
+	background-color: rgba(78, 139, 202, 0.2);
 }
 
 a.test-arrow:hover{

@@ -139,6 +139,7 @@ h1, h2, h3, h4 {
 	margin: 15px 0 5px 0;
 }
 h1.fqn {
+	display: inline-block;
 	margin: 0;
 	padding: 0;
 }
@@ -291,6 +292,7 @@ button {
 
 main {
 	position: relative;
+	display: inline-block;
 	flex-grow: 1;
 	padding: 10px 15px 40px 45px;
 	min-width: 0;
@@ -386,6 +388,7 @@ nav.sub {
 	height: 100vh;
 	top: 0;
 	left: 0;
+	display: inline-block;
 }
 
 .sidebar-elems,
@@ -479,6 +482,8 @@ nav.sub {
 .logo-container > img {
 	height: 100px;
 	width: 100px;
+	display: block;
+	margin: auto;
 }
 
 .location:empty {
