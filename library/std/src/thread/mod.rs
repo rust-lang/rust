@@ -166,7 +166,7 @@ use crate::num::NonZeroUsize;
 use crate::panic;
 use crate::panicking;
 use crate::pin::Pin;
-use crate::ptr::addr_of_mut;
+use crate::ptr::{addr_of_mut, NonNull};
 use crate::str;
 use crate::sync::Arc;
 use crate::sys::thread as imp;
@@ -463,7 +463,7 @@ impl Builder {
     unsafe fn spawn_unchecked_<'a, 'scope, F, T>(
         self,
         f: F,
-        scope_data: Option<Arc<scoped::ScopeData>>,
+        scope_data: Option<Pin<&'scope scoped::ScopeData>>,
     ) -> io::Result<JoinInner<'scope, T>>
     where
         F: FnOnce() -> T,
@@ -481,7 +481,7 @@ impl Builder {
         let their_thread = my_thread.clone();
 
         let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
-            scope: scope_data,
+            scope: scope_data.map(|data| NonNull::from(data.get_ref())),
             result: UnsafeCell::new(None),
             _marker: PhantomData,
         });
@@ -511,8 +511,8 @@ impl Builder {
             unsafe { *their_packet.result.get() = Some(try_result) };
         };
 
-        if let Some(scope_data) = &my_packet.scope {
-            scope_data.increment_num_running_threads();
+        if let Some(scope_data) = my_packet.scope {
+            unsafe { scope_data.as_ref().increment_num_running_threads() };
         }
 
         Ok(JoinInner {
@@ -1302,7 +1302,7 @@ pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 // An Arc to the packet is stored into a `JoinInner` which in turns is placed
 // in `JoinHandle`.
 struct Packet<'scope, T> {
-    scope: Option<Arc<scoped::ScopeData>>,
+    scope: Option<NonNull<scoped::ScopeData>>,
     result: UnsafeCell<Option<Result<T>>>,
     _marker: PhantomData<Option<&'scope scoped::ScopeData>>,
 }
@@ -1335,12 +1335,23 @@ impl<'scope, T> Drop for Packet<'scope, T> {
             rtabort!("thread result panicked on drop");
         }
         // Book-keeping so the scope knows when it's done.
-        if let Some(scope) = &self.scope {
+        if let Some(scope_data) = self.scope {
             // Now that there will be no more user code running on this thread
             // that can use 'scope, mark the thread as 'finished'.
             // It's important we only do this after the `result` has been dropped,
             // since dropping it might still use things it borrowed from 'scope.
-            scope.decrement_num_running_threads(unhandled_panic);
+            //
+            // A static method to decrement is used to keep `ScopeData` as a raw pointer.
+            // Using a reference risks the decrement function waking the `scope()` thread,
+            // invalidating our `ScopeData`, and leaving us with a dangling dereferenceable &ScopeData.
+            // This avoids issue #55005.
+            //
+            // SAFETY:
+            // Given the thread has been spawned,
+            // there was a matching call to `ScopeData::increment_num_running_threads()`.
+            unsafe {
+                scoped::ScopeData::decrement_num_running_threads(scope_data, unhandled_panic);
+            }
         }
     }
 }

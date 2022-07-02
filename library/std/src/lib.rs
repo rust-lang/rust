@@ -287,6 +287,7 @@
 #![feature(prelude_2024)]
 #![feature(ptr_as_uninit)]
 #![feature(raw_os_nonzero)]
+#![feature(cfg_sanitize)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(std_internals)]
