@@ -42,7 +42,7 @@ fn test_posix_fadvise() {
     assert_eq!(result, 0);
 }
 
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+#[cfg(any(target_os = "linux"))]
 fn test_sync_file_range() {
     use std::fs::{remove_file, File};
     use std::io::Write;
@@ -208,7 +208,7 @@ fn test_rwlock_libc_static_initializer() {
 /// Test whether the `prctl` shim correctly sets the thread name.
 ///
 /// Note: `prctl` exists only on Linux.
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+#[cfg(any(target_os = "linux"))]
 fn test_prctl_thread_name() {
     use libc::c_long;
     use std::ffi::CString;
@@ -259,9 +259,9 @@ fn test_prctl_thread_name() {
 
 /// Tests whether each thread has its own `__errno_location`.
 fn test_thread_local_errno() {
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "linux")]
     use libc::__errno_location;
-    #[cfg(target_os = "macos")]
+    #[cfg(any(target_os = "macos", target_os = "freebsd"))]
     use libc::__error as __errno_location;
 
     unsafe {
@@ -278,7 +278,7 @@ fn test_thread_local_errno() {
 }
 
 /// Tests whether clock support exists at all
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+#[cfg(any(target_os = "linux"))]
 fn test_clocks() {
     let mut tp = std::mem::MaybeUninit::<libc::timespec>::uninit();
     let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr()) };
@@ -317,7 +317,7 @@ fn main() {
 
     test_posix_gettimeofday();
 
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[cfg(any(target_os = "linux"))]
     test_sync_file_range();
 
     test_mutex_libc_init_recursive();
@@ -325,14 +325,14 @@ fn main() {
     test_mutex_libc_init_errorcheck();
     test_rwlock_libc_static_initializer();
 
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[cfg(any(target_os = "linux"))]
     test_mutex_libc_static_initializer_recursive();
 
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[cfg(any(target_os = "linux"))]
     test_prctl_thread_name();
 
     test_thread_local_errno();
 
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[cfg(any(target_os = "linux"))]
     test_clocks();
 }
