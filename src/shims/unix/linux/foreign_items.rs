@@ -30,28 +30,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // File related shims (but also see "syscall" below for statx)
-            // These symbols have different names on Linux and macOS, which is the only reason they are not
-            // in the `posix` module.
-            "close" => {
-                let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.close(fd)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-            "opendir" => {
-                let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.opendir(name)?;
-                this.write_scalar(result, dest)?;
-            }
             "readdir64" => {
                 let [dirp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.linux_readdir64(dirp)?;
                 this.write_scalar(result, dest)?;
-            }
-            "ftruncate64" => {
-                let [fd, length] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.ftruncate64(fd, length)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             // Linux-only
             "posix_fadvise" => {

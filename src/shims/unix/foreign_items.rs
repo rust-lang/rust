@@ -62,6 +62,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.open(args)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "close" => {
+                let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.close(fd)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
             "fcntl" => {
                 // `fcntl` is variadic. The argument count is checked based on the first argument
                 // in `this.fcntl()`, so we do not use `check_shim` here.
@@ -112,16 +117,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.rmdir(path)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "opendir" => {
+                let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.opendir(name)?;
+                this.write_scalar(result, dest)?;
+            }
             "closedir" => {
                 let [dirp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.closedir(dirp)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-            "lseek" | "lseek64" => {
+            "lseek64" => {
                 let [fd, offset, whence] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.lseek64(fd, offset, whence)?;
-                // "lseek" is only used on macOS which is 64bit-only, so `i64` always works.
                 this.write_scalar(Scalar::from_i64(result), dest)?;
+            }
+            "ftruncate64" => {
+                let [fd, length] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.ftruncate64(fd, length)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "fsync" => {
                 let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;

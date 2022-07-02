@@ -28,7 +28,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // File related shims
-            "close" | "close$NOCANCEL" => {
+            "close$NOCANCEL" => {
                 let [result] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.close(result)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
@@ -50,7 +50,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.macos_fstat(fd, buf)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
-            "opendir" | "opendir$INODE64" => {
+            "opendir$INODE64" => {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.opendir(name)?;
                 this.write_scalar(result, dest)?;
@@ -61,9 +61,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.macos_readdir_r(dirp, entry, result)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "lseek" => {
+                let [fd, offset, whence] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // macOS is 64bit-only, so this is lseek64
+                let result = this.lseek64(fd, offset, whence)?;
+                this.write_scalar(Scalar::from_i64(result), dest)?;
+            }
             "ftruncate" => {
                 let [fd, length] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // macOS is 64bit-only, so this is ftruncate64
                 let result = this.ftruncate64(fd, length)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
