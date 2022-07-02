@@ -5,7 +5,10 @@ use ide_db::imports::{
     insert_use::ImportScope,
 };
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxNode, T};
+use syntax::{
+    ast::{self},
+    AstNode, SyntaxNode, T,
+};
 
 use crate::{
     context::{
@@ -123,6 +126,7 @@ pub(crate) fn import_on_the_fly_path(
                 | PathKind::Type { .. }
                 | PathKind::Attr { .. }
                 | PathKind::Derive { .. }
+                | PathKind::Item { .. }
                 | PathKind::Pat { .. },
             qualified,
             ..
@@ -161,7 +165,7 @@ pub(crate) fn import_on_the_fly_pat(
     let potential_import_name = import_name(ctx);
     let import_assets = import_assets_for_path(ctx, &potential_import_name, None)?;
 
-    import_on_the_fly_pat2(
+    import_on_the_fly_pat_(
         acc,
         ctx,
         pattern_ctx,
@@ -227,7 +231,7 @@ fn import_on_the_fly(
                 | PathKind::Pat { .. },
                 ItemInNs::Macros(mac),
             ) => mac.is_fn_like(ctx.db),
-            (PathKind::Item { .. }, _) => true,
+            (PathKind::Item { .. }, ..) => false,
 
             (PathKind::Expr { .. }, ItemInNs::Types(_) | ItemInNs::Values(_)) => true,
 
@@ -279,7 +283,7 @@ fn import_on_the_fly(
     Some(())
 }
 
-fn import_on_the_fly_pat2(
+fn import_on_the_fly_pat_(
     acc: &mut Completions,
     ctx: &CompletionContext,
     pattern_ctx: &PatternContext,

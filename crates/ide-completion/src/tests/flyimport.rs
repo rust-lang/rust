@@ -1210,3 +1210,23 @@ fn f<T>() where T: Comp$0
         "#]],
     );
 }
+
+#[test]
+fn flyimport_source_file() {
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+def$0
+//- /lib.rs crate:dep
+#[macro_export]
+macro_rules! define_struct {
+    () => {
+        pub struct Foo;
+    };
+}
+"#,
+        expect![[r#"
+            ma define_struct!(…) (use dep::define_struct) macro_rules! define_struct
+        "#]],
+    );
+}
