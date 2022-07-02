@@ -168,8 +168,51 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
         mplace: &MPlaceTy<'tcx>,
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
-        // ZSTs cannot contain pointers, so we can skip them.
-        if mplace.layout.is_zst() {
+        // We want to walk the aggregate to look for references to intern. While doing that we
+        // also need to take special care of interior mutability.
+        //
+        // As an optimization, however, if the allocation does not contain any references: we don't
+        // need to do the walk. It can be costly for big arrays for example (e.g. issue #93215).
+        let is_walk_needed = |mplace: &MPlaceTy<'tcx>| -> InterpResult<'tcx, bool> {
+            // ZSTs cannot contain pointers, we can avoid the interning walk.
+            if mplace.layout.is_zst() {
+                return Ok(false);
+            }
+
+            // Now, check whether this allocation could contain references.
+            //
+            // Note, this check may sometimes not be cheap, so we only do it when the walk we'd like
+            // to avoid could be expensive: on the potentially larger types, arrays and slices,
+            // rather than on all aggregates unconditionally.
+            if matches!(mplace.layout.ty.kind(), ty::Array(..) | ty::Slice(..)) {
+                let Some((size, align)) = self.ecx.size_and_align_of_mplace(&mplace)? else {
+                    // We do the walk if we can't determine the size of the mplace: we may be
+                    // dealing with extern types here in the future.
+                    return Ok(true);
+                };
+
+                // If there are no relocations in this allocation, it does not contain references
+                // that point to another allocation, and we can avoid the interning walk.
+                if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, align)? {
+                    if !alloc.has_relocations() {
+                        return Ok(false);
+                    }
+                } else {
+                    // We're encountering a ZST here, and can avoid the walk as well.
+                    return Ok(false);
+                }
+            }
+
+            // In the general case, we do the walk.
+            Ok(true)
+        };
+
+        // If this allocation contains no references to intern, we avoid the potentially costly
+        // walk.
+        //
+        // We can do this before the checks for interior mutability below, because only references
+        // are relevant in that situation, and we're checking if there are any here.
+        if !is_walk_needed(mplace)? {
             return Ok(());
         }
 

@@ -942,6 +942,11 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {
             .check_bytes(&self.tcx, self.range.subrange(range), allow_uninit, allow_ptr)
             .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
+
+    /// Returns whether the allocation has relocations for the entire range of the `AllocRef`.
+    pub(crate) fn has_relocations(&self) -> bool {
+        self.alloc.has_relocations(&self.tcx, self.range)
+    }
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
