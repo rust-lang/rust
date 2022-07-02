@@ -115,17 +115,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
-    fn handle_stack_pop(
+    fn handle_stack_pop_unwind(
         &mut self,
         mut extra: FrameData<'tcx>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         let this = self.eval_context_mut();
-
-        trace!("handle_stack_pop(extra = {:?}, unwinding = {})", extra, unwinding);
-        if let Some(stacked_borrows) = &this.machine.stacked_borrows {
-            stacked_borrows.borrow_mut().end_call(extra.call_id);
-        }
+        trace!("handle_stack_pop_unwind(extra = {:?}, unwinding = {})", extra, unwinding);
 
         // We only care about `catch_panic` if we're unwinding - if we're doing a normal
         // return, then we don't need to do anything special.
