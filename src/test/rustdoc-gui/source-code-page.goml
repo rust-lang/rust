@@ -44,3 +44,6 @@ assert-property: ("#source-sidebar details:first-of-type", {"open": "true"})
 // And now we collapse it again.
 click: "#source-sidebar details:first-of-type > summary"
 assert-property: ("#source-sidebar details:first-of-type", {"open": "false"})
+
+// Check the spacing.
+assert-css: ("#source-sidebar > details.dir-entry", {"padding-left": "4px"})
