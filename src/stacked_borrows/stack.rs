@@ -53,7 +53,7 @@ struct StackCache {
 impl StackCache {
     /// When a tag is used, we call this function to add or refresh it in the cache.
     ///
-    /// We use position in the cache to represent how recently a tag was used; the first position
+    /// We use the position in the cache to represent how recently a tag was used; the first position
     /// is the most recently used tag. So an add shifts every element towards the end, and inserts
     /// the new element at the start. We lose the last element.
     /// This strategy is effective at keeping the most-accessed tags in the cache, but it costs a
@@ -104,7 +104,7 @@ impl<'tcx> Stack {
     /// index is given it means the match was *not* in the known part of the stack.
     /// `Ok(None)` indicates it matched the "unknown" part of the stack.
     /// `Err` indicates it was not found.
-    pub fn find_granting(
+    pub(super) fn find_granting(
         &mut self,
         access: AccessKind,
         tag: SbTagExtra,
@@ -167,9 +167,15 @@ impl<'tcx> Stack {
 
     #[cfg(feature = "stack-cache")]
     fn find_granting_cache(&mut self, access: AccessKind, tag: SbTag) -> Option<usize> {
-        // When the borrow stack is empty, there are no tags we could put into the cache that would
-        // be valid. Additionally, since lookups into the cache are a linear search it doesn't make
-        // sense to use the cache when it is no smaller than a search of the borrow stack itself.
+        // This looks like a common-sense optimization; we're going to do a linear search of the
+        // cache or the borrow stack to scan the shorter of the two. This optimization is miniscule
+        // and this check actually ensures we do not access an invalid cache.
+        // When a stack is created and when tags are removed from the top of the borrow stack, we
+        // need some valid value to populate the cache. In both cases, we try to use the bottom
+        // item. But when the stack is cleared in `set_unknown_bottom` there is nothing we could
+        // place in the cache that is correct. But due to the way we populate the cache in
+        // `StackCache::add`, we know that when the borrow stack has grown larger than the cache,
+        // every slot in the cache is valid.
         if self.borrows.len() <= CACHE_LEN {
             return None;
         }
@@ -261,6 +267,9 @@ impl<'tcx> Stack {
     }
 
     pub fn set_unknown_bottom(&mut self, tag: SbTag) {
+        // We clear the borrow stack but the lookup cache doesn't support clearing per se. Instead,
+        // there is a check explained in `find_granting_cache` which protects against accessing the
+        // cache when it has been cleared and not yet refilled.
         self.borrows.clear();
         self.unknown_bottom = Some(tag);
     }
