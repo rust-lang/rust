@@ -177,6 +177,8 @@ pub mod client;
 #[allow(unsafe_code)]
 mod closure;
 #[forbid(unsafe_code)]
+mod fxhash;
+#[forbid(unsafe_code)]
 mod handle;
 #[macro_use]
 #[forbid(unsafe_code)]
