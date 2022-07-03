@@ -12,7 +12,9 @@ use std::{
 };
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, fold::Fold, fold::Shift, interner::HasInterner, Mutability, Safety};
+use chalk_ir::{
+    cast::Cast, fold::Shift, fold::TypeFoldable, interner::HasInterner, Mutability, Safety,
+};
 
 use hir_def::{
     adt::StructKind,
@@ -1751,10 +1753,10 @@ pub(crate) fn const_or_path_to_chalk(
 
 /// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
 /// num_vars_to_keep) by `TyKind::Unknown`.
-fn fallback_bound_vars<T: Fold<Interner> + HasInterner<Interner = Interner>>(
+fn fallback_bound_vars<T: TypeFoldable<Interner> + HasInterner<Interner = Interner>>(
     s: T,
     num_vars_to_keep: usize,
-) -> T::Result {
+) -> T {
     crate::fold_free_vars(
         s,
         |bound, binders| {

@@ -3,8 +3,8 @@
 use std::{fmt, mem, sync::Arc};
 
 use chalk_ir::{
-    cast::Cast, fold::Fold, interner::HasInterner, zip::Zip, CanonicalVarKind, FloatTy, IntTy,
-    NoSolution, TyVariableKind, UniverseIndex,
+    cast::Cast, fold::TypeFoldable, interner::HasInterner, zip::Zip, CanonicalVarKind, FloatTy,
+    IntTy, NoSolution, TyVariableKind, UniverseIndex,
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
 use ena::unify::UnifyKey;
@@ -20,12 +20,12 @@ use crate::{
 };
 
 impl<'a> InferenceContext<'a> {
-    pub(super) fn canonicalize<T: Fold<Interner> + HasInterner<Interner = Interner>>(
+    pub(super) fn canonicalize<T: TypeFoldable<Interner> + HasInterner<Interner = Interner>>(
         &mut self,
         t: T,
-    ) -> Canonicalized<T::Result>
+    ) -> Canonicalized<T>
     where
-        T::Result: HasInterner<Interner = Interner>,
+        T: HasInterner<Interner = Interner>,
     {
         self.table.canonicalize(t)
     }
@@ -200,12 +200,12 @@ impl<'a> InferenceTable<'a> {
         .intern(Interner)
     }
 
-    pub(crate) fn canonicalize<T: Fold<Interner> + HasInterner<Interner = Interner>>(
+    pub(crate) fn canonicalize<T: TypeFoldable<Interner> + HasInterner<Interner = Interner>>(
         &mut self,
         t: T,
-    ) -> Canonicalized<T::Result>
+    ) -> Canonicalized<T>
     where
-        T::Result: HasInterner<Interner = Interner>,
+        T: HasInterner<Interner = Interner>,
     {
         // try to resolve obligations before canonicalizing, since this might
         // result in new knowledge about variables
@@ -292,9 +292,9 @@ impl<'a> InferenceTable<'a> {
         &mut self,
         t: T,
         fallback: &dyn Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
-    ) -> T::Result
+    ) -> T
     where
-        T: HasInterner<Interner = Interner> + Fold<Interner>,
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
     {
         self.resolve_with_fallback_inner(&mut Vec::new(), t, &fallback)
     }
@@ -310,9 +310,9 @@ impl<'a> InferenceTable<'a> {
         )
     }
 
-    pub(crate) fn instantiate_canonical<T>(&mut self, canonical: Canonical<T>) -> T::Result
+    pub(crate) fn instantiate_canonical<T>(&mut self, canonical: Canonical<T>) -> T
     where
-        T: HasInterner<Interner = Interner> + Fold<Interner> + std::fmt::Debug,
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + std::fmt::Debug,
     {
         let subst = self.fresh_subst(canonical.binders.as_slice(Interner));
         subst.apply(canonical.value, Interner)
@@ -323,9 +323,9 @@ impl<'a> InferenceTable<'a> {
         var_stack: &mut Vec<InferenceVar>,
         t: T,
         fallback: &dyn Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
-    ) -> T::Result
+    ) -> T
     where
-        T: HasInterner<Interner = Interner> + Fold<Interner>,
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
     {
         t.fold_with(
             &mut resolve::Resolver { table: self, var_stack, fallback },
@@ -334,9 +334,9 @@ impl<'a> InferenceTable<'a> {
         .expect("fold failed unexpectedly")
     }
 
-    pub(crate) fn resolve_completely<T>(&mut self, t: T) -> T::Result
+    pub(crate) fn resolve_completely<T>(&mut self, t: T) -> T
     where
-        T: HasInterner<Interner = Interner> + Fold<Interner>,
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
     {
         self.resolve_with_fallback(t, &|_, _, d, _| d)
     }
@@ -447,19 +447,19 @@ impl<'a> InferenceTable<'a> {
         }
     }
 
-    pub(crate) fn fudge_inference<T: Fold<Interner>>(
+    pub(crate) fn fudge_inference<T: TypeFoldable<Interner>>(
         &mut self,
         f: impl FnOnce(&mut Self) -> T,
-    ) -> T::Result {
-        use chalk_ir::fold::Folder;
+    ) -> T {
+        use chalk_ir::fold::TypeFolder;
         struct VarFudger<'a, 'b> {
             table: &'a mut InferenceTable<'b>,
             highest_known_var: InferenceVar,
         }
-        impl<'a, 'b> Folder<Interner> for VarFudger<'a, 'b> {
+        impl<'a, 'b> TypeFolder<Interner> for VarFudger<'a, 'b> {
             type Error = NoSolution;
 
-            fn as_dyn(&mut self) -> &mut dyn Folder<Interner, Error = Self::Error> {
+            fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
                 self
             }
 
@@ -635,7 +635,7 @@ mod resolve {
     };
     use chalk_ir::{
         cast::Cast,
-        fold::{Fold, Folder},
+        fold::{TypeFoldable, TypeFolder},
         Fallible, NoSolution,
     };
     use hir_def::type_ref::ConstScalar;
@@ -645,13 +645,13 @@ mod resolve {
         pub(super) var_stack: &'a mut Vec<InferenceVar>,
         pub(super) fallback: F,
     }
-    impl<'a, 'b, 'i, F> Folder<Interner> for Resolver<'a, 'b, F>
+    impl<'a, 'b, 'i, F> TypeFolder<Interner> for Resolver<'a, 'b, F>
     where
         F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg + 'i,
     {
         type Error = NoSolution;
 
-        fn as_dyn(&mut self) -> &mut dyn Folder<Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
             self
         }
 
