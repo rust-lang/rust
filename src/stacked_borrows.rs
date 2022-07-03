@@ -23,6 +23,9 @@ use crate::*;
 pub mod diagnostics;
 use diagnostics::{AllocHistory, TagHistory};
 
+pub mod stack;
+use stack::Stack;
+
 pub type CallId = NonZeroU64;
 
 // Even reading memory can have effects on the stack, so we need a `RefCell` here.
@@ -109,23 +112,6 @@ impl fmt::Debug for Item {
         write!(f, "]")?;
         Ok(())
     }
-}
-
-/// Extra per-location state.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Stack {
-    /// Used *mostly* as a stack; never empty.
-    /// Invariants:
-    /// * Above a `SharedReadOnly` there can only be more `SharedReadOnly`.
-    /// * No tag occurs in the stack more than once.
-    borrows: Vec<Item>,
-    /// If this is `Some(id)`, then the actual current stack is unknown. This can happen when
-    /// wildcard pointers are used to access this location. What we do know is that `borrows` are at
-    /// the top of the stack, and below it are arbitrarily many items whose `tag` is strictly less
-    /// than `id`.
-    /// When the bottom is unknown, `borrows` always has a `SharedReadOnly` or `Unique` at the bottom;
-    /// we never have the unknown-to-known boundary in an SRW group.
-    unknown_bottom: Option<SbTag>,
 }
 
 /// Extra per-allocation state.
@@ -298,65 +284,10 @@ impl Permission {
 
 /// Core per-location operations: access, dealloc, reborrow.
 impl<'tcx> Stack {
-    /// Find the item granting the given kind of access to the given tag, and return where
-    /// it is on the stack. For wildcard tags, the given index is approximate, but if *no*
-    /// index is given it means the match was *not* in the known part of the stack.
-    /// `Ok(None)` indicates it matched the "unknown" part of the stack.
-    /// `Err` indicates it was not found.
-    fn find_granting(
-        &self,
-        access: AccessKind,
-        tag: SbTagExtra,
-        exposed_tags: &FxHashSet<SbTag>,
-    ) -> Result<Option<usize>, ()> {
-        let SbTagExtra::Concrete(tag) = tag else {
-            // Handle the wildcard case.
-            // Go search the stack for an exposed tag.
-            if let Some(idx) =
-                self.borrows
-                    .iter()
-                    .enumerate() // we also need to know *where* in the stack
-                    .rev() // search top-to-bottom
-                    .find_map(|(idx, item)| {
-                        // If the item fits and *might* be this wildcard, use it.
-                        if item.perm.grants(access) && exposed_tags.contains(&item.tag) {
-                            Some(idx)
-                        } else {
-                            None
-                        }
-                    })
-            {
-                return Ok(Some(idx));
-            }
-            // If we couldn't find it in the stack, check the unknown bottom.
-            return if self.unknown_bottom.is_some() { Ok(None) } else { Err(()) };
-        };
-
-        if let Some(idx) =
-            self.borrows
-                .iter()
-                .enumerate() // we also need to know *where* in the stack
-                .rev() // search top-to-bottom
-                // Return permission of first item that grants access.
-                // We require a permission with the right tag, ensuring U3 and F3.
-                .find_map(|(idx, item)| {
-                    if tag == item.tag && item.perm.grants(access) { Some(idx) } else { None }
-                })
-        {
-            return Ok(Some(idx));
-        }
-
-        // Couldn't find it in the stack; but if there is an unknown bottom it might be there.
-        let found = self.unknown_bottom.is_some_and(|&unknown_limit| {
-            tag.0 < unknown_limit.0 // unknown_limit is an upper bound for what can be in the unknown bottom.
-        });
-        if found { Ok(None) } else { Err(()) }
-    }
-
     /// Find the first write-incompatible item above the given one --
     /// i.e, find the height to which the stack will be truncated when writing to `granting`.
     fn find_first_write_incompatible(&self, granting: usize) -> usize {
-        let perm = self.borrows[granting].perm;
+        let perm = self.get(granting).unwrap().perm;
         match perm {
             Permission::SharedReadOnly => bug!("Cannot use SharedReadOnly for writing"),
             Permission::Disabled => bug!("Cannot use Disabled for anything"),
@@ -367,7 +298,7 @@ impl<'tcx> Stack {
             Permission::SharedReadWrite => {
                 // The SharedReadWrite *just* above us are compatible, to skip those.
                 let mut idx = granting + 1;
-                while let Some(item) = self.borrows.get(idx) {
+                while let Some(item) = self.get(idx) {
                     if item.perm == Permission::SharedReadWrite {
                         // Go on.
                         idx += 1;
@@ -462,8 +393,7 @@ impl<'tcx> Stack {
                 // There is a SRW group boundary between the unknown and the known, so everything is incompatible.
                 0
             };
-            for item in self.borrows.drain(first_incompatible_idx..).rev() {
-                trace!("access: popping item {:?}", item);
+            self.pop_items_after(first_incompatible_idx, |item| {
                 Stack::item_popped(
                     &item,
                     Some((tag, alloc_range, offset, access)),
@@ -471,7 +401,8 @@ impl<'tcx> Stack {
                     alloc_history,
                 )?;
                 alloc_history.log_invalidation(item.tag, alloc_range, current_span);
-            }
+                Ok(())
+            })?;
         } else {
             // On a read, *disable* all `Unique` above the granting item.  This ensures U2 for read accesses.
             // The reason this is not following the stack discipline (by removing the first Unique and
@@ -488,21 +419,16 @@ impl<'tcx> Stack {
                 // We are reading from something in the unknown part. That means *all* `Unique` we know about are dead now.
                 0
             };
-            for idx in (first_incompatible_idx..self.borrows.len()).rev() {
-                let item = &mut self.borrows[idx];
-
-                if item.perm == Permission::Unique {
-                    trace!("access: disabling item {:?}", item);
-                    Stack::item_popped(
-                        item,
-                        Some((tag, alloc_range, offset, access)),
-                        global,
-                        alloc_history,
-                    )?;
-                    item.perm = Permission::Disabled;
-                    alloc_history.log_invalidation(item.tag, alloc_range, current_span);
-                }
-            }
+            self.disable_uniques_starting_at(first_incompatible_idx, |item| {
+                Stack::item_popped(
+                    &item,
+                    Some((tag, alloc_range, offset, access)),
+                    global,
+                    alloc_history,
+                )?;
+                alloc_history.log_invalidation(item.tag, alloc_range, current_span);
+                Ok(())
+            })?;
         }
 
         // If this was an approximate action, we now collapse everything into an unknown.
@@ -510,22 +436,22 @@ impl<'tcx> Stack {
             // Compute the upper bound of the items that remain.
             // (This is why we did all the work above: to reduce the items we have to consider here.)
             let mut max = NonZeroU64::new(1).unwrap();
-            for item in &self.borrows {
+            for i in 0..self.len() {
+                let item = self.get(i).unwrap();
                 // Skip disabled items, they cannot be matched anyway.
                 if !matches!(item.perm, Permission::Disabled) {
                     // We are looking for a strict upper bound, so add 1 to this tag.
                     max = cmp::max(item.tag.0.checked_add(1).unwrap(), max);
                 }
             }
-            if let Some(unk) = self.unknown_bottom {
+            if let Some(unk) = self.unknown_bottom() {
                 max = cmp::max(unk.0, max);
             }
             // Use `max` as new strict upper bound for everything.
             trace!(
                 "access: forgetting stack to upper bound {max} due to wildcard or unknown access"
             );
-            self.borrows.clear();
-            self.unknown_bottom = Some(SbTag(max));
+            self.set_unknown_bottom(SbTag(max));
         }
 
         // Done.
@@ -553,8 +479,9 @@ impl<'tcx> Stack {
             )
         })?;
 
-        // Step 2: Remove all items.  Also checks for protectors.
-        for item in self.borrows.drain(..).rev() {
+        // Step 2: Consider all items removed. This checks for protectors.
+        for idx in (0..self.len()).rev() {
+            let item = self.get(idx).unwrap();
             Stack::item_popped(&item, None, global, alloc_history)?;
         }
         Ok(())
@@ -602,8 +529,7 @@ impl<'tcx> Stack {
                 // The new thing is SRW anyway, so we cannot push it "on top of the unkown part"
                 // (for all we know, it might join an SRW group inside the unknown).
                 trace!("reborrow: forgetting stack entirely due to SharedReadWrite reborrow from wildcard or unknown");
-                self.borrows.clear();
-                self.unknown_bottom = Some(global.next_ptr_tag);
+                self.set_unknown_bottom(global.next_ptr_tag);
                 return Ok(());
             };
 
@@ -630,19 +556,18 @@ impl<'tcx> Stack {
             // on top of `derived_from`, and we want the new item at the top so that we
             // get the strongest possible guarantees.
             // This ensures U1 and F1.
-            self.borrows.len()
+            self.len()
         };
 
         // Put the new item there. As an optimization, deduplicate if it is equal to one of its new neighbors.
         // `new_idx` might be 0 if we just cleared the entire stack.
-        if self.borrows.get(new_idx) == Some(&new)
-            || (new_idx > 0 && self.borrows[new_idx - 1] == new)
+        if self.get(new_idx) == Some(new) || (new_idx > 0 && self.get(new_idx - 1).unwrap() == new)
         {
             // Optimization applies, done.
             trace!("reborrow: avoiding adding redundant item {:?}", new);
         } else {
             trace!("reborrow: adding item {:?}", new);
-            self.borrows.insert(new_idx, new);
+            self.insert(new_idx, new);
         }
         Ok(())
     }
@@ -654,7 +579,7 @@ impl<'tcx> Stacks {
     /// Creates new stack with initial tag.
     fn new(size: Size, perm: Permission, tag: SbTag) -> Self {
         let item = Item { perm, tag, protector: None };
-        let stack = Stack { borrows: vec![item], unknown_bottom: None };
+        let stack = Stack::new(item);
 
         Stacks {
             stacks: RangeMap::new(size, stack),
