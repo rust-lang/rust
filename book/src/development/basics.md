@@ -98,7 +98,7 @@ cargo dev setup intellij
 ```
 
 More about intellij command usage and reasons
-[here](../CONTRIBUTING.md#intellij-rust)
+[here](https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md#intellij-rust)
 
 ## lintcheck
 
