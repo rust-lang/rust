@@ -4,7 +4,7 @@ error[E0080]: could not evaluate static initializer
 LL |         &*ptr::slice_from_raw_parts(data, len)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         dereferencing pointer failed: null pointer is not a valid pointer
+   |         dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
    |         inside `std::slice::from_raw_parts::<u32>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
   ::: $DIR/forbidden_slices.rs:19:34
@@ -18,7 +18,7 @@ error[E0080]: could not evaluate static initializer
 LL |         &*ptr::slice_from_raw_parts(data, len)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         dereferencing pointer failed: null pointer is not a valid pointer
+   |         dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
    |         inside `std::slice::from_raw_parts::<()>` at $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
   ::: $DIR/forbidden_slices.rs:20:33
@@ -104,7 +104,7 @@ error[E0080]: could not evaluate static initializer
 LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  out-of-bounds offset_from: null pointer is not a valid pointer
+   |                  out-of-bounds offset_from: null pointer is a dangling pointer (it has no provenance)
    |                  inside `ptr::const_ptr::<impl *const u32>::sub_ptr` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $SRC_DIR/core/src/slice/raw.rs:LL:COL
@@ -144,7 +144,7 @@ error[E0080]: could not evaluate static initializer
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  pointer arithmetic failed: ALLOC_ID has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
+   |                  out-of-bounds pointer arithmetic: ALLOC_ID has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
    |                  inside `ptr::const_ptr::<impl *const u32>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 ...
 LL |         unsafe { self.offset(count as isize) }
@@ -205,7 +205,7 @@ error[E0080]: could not evaluate static initializer
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  pointer arithmetic failed: ALLOC_ID has size 8, so pointer to 8 bytes starting at offset 1 is out-of-bounds
+   |                  out-of-bounds pointer arithmetic: ALLOC_ID has size 8, so pointer to 8 bytes starting at offset 1 is out-of-bounds
    |                  inside `ptr::const_ptr::<impl *const u64>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 ...
 LL |         unsafe { self.offset(count as isize) }
