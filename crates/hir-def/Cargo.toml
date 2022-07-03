@@ -17,7 +17,7 @@ cov-mark = "2.0.0-pre.1"
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=5.3.4", features = ["raw-api"] }
 drop_bomb = "0.1.5"
-either = "1.6.1"
+either = "1.7.0"
 fst = { version = "0.4.7", default-features = false }
 hashbrown = { version = "0.12.1", default-features = false }
 indexmap = "1.8.2"

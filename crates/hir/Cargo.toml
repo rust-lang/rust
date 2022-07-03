@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 rustc-hash = "1.1.0"
-either = "1.6.1"
+either = "1.7.0"
 arrayvec = "0.7.2"
 itertools = "0.10.3"
 smallvec = "1.8.0"
