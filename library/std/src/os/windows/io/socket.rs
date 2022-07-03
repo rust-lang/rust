@@ -193,7 +193,7 @@ impl IntoRawSocket for OwnedSocket {
 impl FromRawSocket for OwnedSocket {
     #[inline]
     unsafe fn from_raw_socket(socket: RawSocket) -> Self {
-        debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
+        assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
         Self { socket }
     }
 }

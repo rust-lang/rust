@@ -19,7 +19,7 @@ impl Thread {
 
     pub fn yield_now() {
         let ret = unsafe { wasi::sched_yield() };
-        debug_assert_eq!(ret, Ok(()));
+        assert_eq!(ret, Ok(()), "unexpected error wasi::sched_yield: {:?}", ret);
     }
 
     pub fn set_name(_name: &CStr) {

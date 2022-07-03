@@ -636,7 +636,7 @@ impl Iterator for ReadDir {
 impl Drop for Dir {
     fn drop(&mut self) {
         let r = unsafe { libc::closedir(self.0) };
-        assert_eq!(r, 0, "unexpected error during closedir: {:?}", r);
+        assert!(r == 0 || r == libc::EINTR, "unexpected error during closedir: {:?}", r);
     }
 }
 

@@ -95,7 +95,11 @@ impl RwLock {
 
         // It's impossible for a reader to be waiting on a read-locked RwLock,
         // except if there is also a writer waiting.
-        debug_assert!(!has_readers_waiting(state) || has_writers_waiting(state));
+        assert!(
+            !has_readers_waiting(state) || has_writers_waiting(state),
+            "invalid read state: {:?}",
+            state
+        );
 
         // Wake up a writer if we were the last reader and there's a writer waiting.
         if is_unlocked(state) && has_writers_waiting(state) {
@@ -161,7 +165,7 @@ impl RwLock {
     pub unsafe fn write_unlock(&self) {
         let state = self.state.fetch_sub(WRITE_LOCKED, Release) - WRITE_LOCKED;
 
-        debug_assert!(is_unlocked(state));
+        assert!(is_unlocked(state), "trying to write while the state is invalid: {:?}", state);
 
         if has_writers_waiting(state) || has_readers_waiting(state) {
             self.wake_writer_or_readers(state);

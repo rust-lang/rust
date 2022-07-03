@@ -145,7 +145,7 @@ impl Repr {
         let p = Box::into_raw(b).cast::<u8>();
         // Should only be possible if an allocator handed out a pointer with
         // wrong alignment.
-        debug_assert_eq!(p.addr() & TAG_MASK, 0);
+        assert_eq!(p.addr() & TAG_MASK, 0);
         // Note: We know `TAG_CUSTOM <= size_of::<Custom>()` (static_assert at
         // end of file), and both the start and end of the expression must be
         // valid without address space wraparound due to `Box`'s semantics.
@@ -167,7 +167,7 @@ impl Repr {
         let res = Self(unsafe { NonNull::new_unchecked(tagged) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
-        debug_assert!(matches!(res.data(), ErrorData::Custom(_)), "repr(custom) encoding failed");
+        assert!(matches!(res.data(), ErrorData::Custom(_)), "repr(custom) encoding failed");
         res
     }
 
@@ -178,7 +178,7 @@ impl Repr {
         let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
-        debug_assert!(
+        assert!(
             matches!(res.data(), ErrorData::Os(c) if c == code),
             "repr(os) encoding failed for {code}"
         );
@@ -192,7 +192,7 @@ impl Repr {
         let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
-        debug_assert!(
+        assert!(
             matches!(res.data(), ErrorData::Simple(k) if k == kind),
             "repr(simple) encoding failed {:?}",
             kind,
@@ -256,7 +256,7 @@ where
         TAG_SIMPLE => {
             let kind_bits = (bits >> 32) as u32;
             let kind = kind_from_prim(kind_bits).unwrap_or_else(|| {
-                debug_assert!(false, "Invalid io::error::Repr bits: `Repr({:#018x})`", bits);
+                assert!(false, "Invalid io::error::Repr bits: `Repr({:#018x})`", bits);
                 // This means the `ptr` passed in was not valid, which violates
                 // the unsafe contract of `decode_repr`.
                 //

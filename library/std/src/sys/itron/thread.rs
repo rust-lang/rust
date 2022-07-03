@@ -202,9 +202,21 @@ impl Thread {
         // Get the current task ID. Panicking here would cause a resource leak,
         // so just abort on failure.
         let current_task = task::current_task_id_aborting();
-        debug_assert!(usize::try_from(current_task).is_ok());
-        debug_assert_ne!(current_task as usize, LIFECYCLE_INIT);
-        debug_assert_ne!(current_task as usize, LIFECYCLE_DETACHED);
+        assert!(
+            usize::try_from(current_task).is_ok(),
+            "fails to convert `current_task_id` to `usize`: {:?}",
+            current_task
+        );
+        assert_ne!(
+            current_task as usize, LIFECYCLE_INIT,
+            "`current_task` is not in a valid state: {:?}",
+            current_task
+        );
+        assert_ne!(
+            current_task as usize, LIFECYCLE_DETACHED,
+            "`current_task` is not in a valid state: {:?}",
+            current_task
+        );
 
         let current_task = current_task as usize;
 

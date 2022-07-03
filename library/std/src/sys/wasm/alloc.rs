@@ -79,7 +79,7 @@ mod lock {
             //             1,  //     expected value
             //             -1, //     timeout
             //         );
-            //         debug_assert!(r == 0 || r == 1);
+            //         assert!(r == 0 || r == 1);
             //     }
             //
             // Unfortunately though in doing so we would cause issues for the
@@ -144,7 +144,7 @@ mod lock {
     impl Drop for DropLock {
         fn drop(&mut self) {
             let r = LOCKED.swap(0, SeqCst);
-            debug_assert_eq!(r, 1);
+            assert_eq!(r, 1, "unexpected error during swap: {:?}", r);
 
             // Note that due to the above logic we don't actually need to wake
             // anyone up, but if we did it'd likely look something like this:

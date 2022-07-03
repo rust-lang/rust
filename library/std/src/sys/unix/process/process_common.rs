@@ -177,7 +177,7 @@ impl Command {
     pub fn set_arg_0(&mut self, arg: &OsStr) {
         // Set a new arg0
         let arg = os2c(arg, &mut self.saw_nul);
-        debug_assert!(self.argv.0.len() > 1);
+        assert!(self.argv.0.len() > 1, "invalid number of argument: {:?}", self.argv.0);
         self.argv.0[0] = arg.as_ptr();
         self.args[0] = arg;
     }

@@ -24,22 +24,22 @@ const NOTIFIED: usize = 2;
 
 unsafe fn lock(lock: *mut libc::pthread_mutex_t) {
     let r = libc::pthread_mutex_lock(lock);
-    debug_assert_eq!(r, 0);
+    assert_eq!(r, 0, "unexpected error during pthread_mutex_lock: {:?}", r);
 }
 
 unsafe fn unlock(lock: *mut libc::pthread_mutex_t) {
     let r = libc::pthread_mutex_unlock(lock);
-    debug_assert_eq!(r, 0);
+    assert_eq!(r, 0, "unexpected error during pthread_mutex_ulock: {:?}", r);
 }
 
 unsafe fn notify_one(cond: *mut libc::pthread_cond_t) {
     let r = libc::pthread_cond_signal(cond);
-    debug_assert_eq!(r, 0);
+    assert_eq!(r, 0, "unexpected error during pthread_cond_signal: {:?}", r);
 }
 
 unsafe fn wait(cond: *mut libc::pthread_cond_t, lock: *mut libc::pthread_mutex_t) {
     let r = libc::pthread_cond_wait(cond, lock);
-    debug_assert_eq!(r, 0);
+    assert_eq!(r, 0, "unexpected error during pthread_cond_wait: {:?}", r);
 }
 
 const TIMESPEC_MAX: libc::timespec =
@@ -83,7 +83,11 @@ unsafe fn wait_timeout(
     let timeout =
         now.checked_add_duration(&dur).and_then(|t| t.to_timespec()).unwrap_or(TIMESPEC_MAX);
     let r = libc::pthread_cond_timedwait(cond, lock, &timeout);
-    debug_assert!(r == libc::ETIMEDOUT || r == 0);
+    assert!(
+        r == libc::ETIMEDOUT || r == 0,
+        "unexpected error during pthread_cond_timedwait: {:?}",
+        ret
+    );
 }
 
 pub struct Parker {

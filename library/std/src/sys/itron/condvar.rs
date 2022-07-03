@@ -157,7 +157,7 @@ mod waiter_queue {
             // Zeroness of `Waiter::task` indicates whether the `Waiter` is
             // linked to a queue or not. This invariant is important for
             // the correctness.
-            debug_assert_ne!(task, 0);
+            assert_ne!(task, 0);
 
             Self { task, priority, prev: None, next: None }
         }
@@ -182,8 +182,8 @@ mod waiter_queue {
             unsafe {
                 let waiter = waiter_ptr.as_mut();
 
-                debug_assert!(waiter.prev.is_none());
-                debug_assert!(waiter.next.is_none());
+                assert!(waiter.prev.is_none());
+                assert!(waiter.next.is_none());
 
                 if let Some(head) = &mut self.head {
                     // Find the insertion position and insert `waiter`

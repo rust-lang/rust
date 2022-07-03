@@ -34,7 +34,7 @@ impl<T> SpinMutex<T> {
         let _guard;
         if unsafe { abi::sns_dsp() } == 0 {
             let er = unsafe { abi::dis_dsp() };
-            debug_assert!(er >= 0);
+            assert!(er >= 0, "unexpected error during abi::dis_dsp(): {:?}", ret);
 
             // Wait until the current processor acquires a lock.
             while self.locked.swap(true, Ordering::Acquire) {}
@@ -95,11 +95,11 @@ impl<T> SpinIdOnceCell<T> {
     /// Assign the content without checking if it's already initialized or
     /// being initialized.
     pub unsafe fn set_unchecked(&self, (id, extra): (abi::ID, T)) {
-        debug_assert!(self.get().is_none());
+        assert!(self.get().is_none());
 
         // Assumption: A positive `abi::ID` fits in `usize`.
-        debug_assert!(id >= 0);
-        debug_assert!(usize::try_from(id).is_ok());
+        assert!(id >= 0, "negative `abi::ID` received: {:?}", id);
+        assert!(usize::try_from(id).is_ok(), "fails to conver `abi::ID` to `usize`: {:?}", id);
         let id = id as usize;
 
         unsafe { *self.extra.get() = MaybeUninit::new(extra) };
@@ -124,7 +124,7 @@ impl<T> SpinIdOnceCell<T> {
 
         self.initialize(f)?;
 
-        debug_assert!(self.get().is_some());
+        assert!(self.get().is_some());
 
         // Safety: The inner value has been initialized
         Ok(unsafe { self.get_unchecked() })
@@ -139,8 +139,11 @@ impl<T> SpinIdOnceCell<T> {
                 let (initialized_id, initialized_extra) = f()?;
 
                 // Assumption: A positive `abi::ID` fits in `usize`.
-                debug_assert!(initialized_id >= 0);
-                debug_assert!(usize::try_from(initialized_id).is_ok());
+                assert!(initialized_id >= 0, "negative `abi::ID`");
+                assert!(
+                    usize::try_from(initialized_id).is_ok(),
+                    "fails to conver `abi::ID` to `usize`: {:?}"
+                );
                 let initialized_id = initialized_id as usize;
 
                 // Store the initialized contents. Use the release ordering to

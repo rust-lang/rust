@@ -112,8 +112,7 @@ impl Thread {
     }
 
     pub fn yield_now() {
-        let ret = unsafe { libc::sched_yield() };
-        assert_eq!(ret, 0, "unexpected error during sched_yield: {:?}", ret);
+        let _ = unsafe { libc::sched_yield() };
     }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]

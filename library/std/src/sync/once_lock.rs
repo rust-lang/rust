@@ -217,7 +217,7 @@ impl<T> OnceLock<T> {
         }
         self.initialize(f)?;
 
-        debug_assert!(self.is_initialized());
+        assert!(self.is_initialized(), "bad initialization");
 
         // SAFETY: The inner value has been initialized
         Ok(unsafe { self.get_unchecked() })
@@ -369,7 +369,7 @@ impl<T> OnceLock<T> {
     ///
     /// The value must be initialized
     unsafe fn get_unchecked(&self) -> &T {
-        debug_assert!(self.is_initialized());
+        assert!(self.is_initialized(), "value not initialized");
         (&*self.value.get()).assume_init_ref()
     }
 
@@ -377,7 +377,7 @@ impl<T> OnceLock<T> {
     ///
     /// The value must be initialized
     unsafe fn get_unchecked_mut(&mut self) -> &mut T {
-        debug_assert!(self.is_initialized());
+        assert!(self.is_initialized(), "value not initialized");
         (&mut *self.value.get()).assume_init_mut()
     }
 }

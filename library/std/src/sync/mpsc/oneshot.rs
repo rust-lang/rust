@@ -138,7 +138,7 @@ impl<T> Packet<T> {
                     }
                 } else {
                     wait_token.wait();
-                    debug_assert!(self.state.load(Ordering::SeqCst) != EMPTY);
+                    assert!(self.state.load(Ordering::SeqCst) != EMPTY, "packet state not empity");
                 }
             } else {
                 // drop the signal token, since we never blocked

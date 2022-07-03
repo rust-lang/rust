@@ -110,8 +110,6 @@ impl RwLock {
             }
             panic!("rwlock write lock would result in deadlock");
         } else {
-            // According to POSIX, for a properly initialized rwlock this can only
-            // return EDEADLK or 0. We rely on that.
             assert_eq!(r, 0, "unexpected error during pthread_rwlock_wrlock: {:?}", r);
         }
         *self.write_locked.get() = true;
@@ -145,7 +143,7 @@ impl RwLock {
     }
     #[inline]
     pub unsafe fn write_unlock(&self) {
-        debug_assert_eq!(self.num_readers.load(Ordering::Relaxed), 0);
+        assert_eq!(self.num_readers.load(Ordering::Relaxed), 0);
         assert!(*self.write_locked.get(), "trying to unlock a thread already unlocked");
         *self.write_locked.get() = false;
         self.raw_unlock();

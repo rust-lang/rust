@@ -186,7 +186,7 @@ impl Condvar {
         let r = libc::pthread_cond_timedwait(self.inner.get(), pthread_mutex::raw(mutex), &timeout);
         assert!(
             r == libc::ETIMEDOUT || r == 0,
-            "unexpected error during pthread_conf_timedwait: {:?}",
+            "unexpected error during pthread_cond_timedwait: {:?}",
             r
         );
 
