@@ -1546,6 +1546,16 @@ impl<T: Idx> GrowableBitSet<T> {
         let (word_index, mask) = word_index_and_mask(elem);
         self.bit_set.words.get(word_index).map_or(false, |word| (word & mask) != 0)
     }
+
+    #[inline]
+    pub fn iter(&self) -> BitIter<'_, T> {
+        self.bit_set.iter()
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.bit_set.count()
+    }
 }
 
 impl<T: Idx> From<BitSet<T>> for GrowableBitSet<T> {
