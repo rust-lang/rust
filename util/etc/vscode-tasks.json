@@ -24,13 +24,13 @@
             "command": "cargo uitest",
             "options": {
                 "env": {
-                    "RUST_BACKTRACE": "1"
                     // This task will usually execute all UI tests inside `tests/ui` you can
                     // optionally uncomment the line below and only run a specific test.
                     //
                     // See: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/adding_lints.md#testing
                     //
                     // "TESTNAME": "<TODO>",
+                    "RUST_BACKTRACE": "1"
                 }
             },
             "problemMatcher": [],
