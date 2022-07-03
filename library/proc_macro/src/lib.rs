@@ -1004,6 +1004,13 @@ impl Punct {
     }
 }
 
+#[stable(feature = "proc_macro_lib2", since = "1.29.0")]
+impl ToString for Punct {
+    fn to_string(&self) -> String {
+        self.as_char().to_string()
+    }
+}
+
 /// Prints the punctuation character as a string that should be losslessly convertible
 /// back into the same character.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
