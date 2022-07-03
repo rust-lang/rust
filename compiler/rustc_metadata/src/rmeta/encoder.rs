@@ -1434,6 +1434,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.encode_info_for_assoc_item(def_id);
                 }
             }
+            if let DefKind::Impl { of_trait } = def_kind {
+                self.encode_info_for_impl(def_id, of_trait)
+            }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);
             }
@@ -1705,32 +1708,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias { .. }),
                 );
             }
-            hir::ItemKind::Impl(hir::Impl { defaultness, .. }) => {
-                self.tables.defaultness.set_some(def_id.index, *defaultness);
-                self.tables.impl_polarity.set_some(def_id.index, self.tcx.impl_polarity(def_id));
-
-                if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
-                    record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
-
-                    let trait_ref = trait_ref.skip_binder();
-                    let trait_def = self.tcx.trait_def(trait_ref.def_id);
-                    if let Ok(mut an) = trait_def.ancestors(self.tcx, def_id) {
-                        if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
-                            self.tables.impl_parent.set_some(def_id.index, parent.into());
-                        }
-                    }
-
-                    // if this is an impl of `CoerceUnsized`, create its
-                    // "unsized info", else just store None
-                    if Some(trait_ref.def_id) == self.tcx.lang_items().coerce_unsized_trait() {
-                        let coerce_unsized_info =
-                            self.tcx.at(item.span).coerce_unsized_info(def_id);
-                        record!(self.tables.coerce_unsized_info[def_id] <- coerce_unsized_info);
-                    }
-                }
-            }
             hir::ItemKind::ExternCrate(_)
             | hir::ItemKind::Use(..)
+            | hir::ItemKind::Impl(..)
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..)
             | hir::ItemKind::Static(..)
@@ -1742,6 +1722,33 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::Fn(..)
             | hir::ItemKind::TyAlias(..) => {}
+        }
+    }
+
+    #[tracing::instrument(level = "debug", skip(self))]
+    fn encode_info_for_impl(&mut self, def_id: DefId, of_trait: bool) {
+        let tcx = self.tcx;
+
+        self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
+        self.tables.impl_polarity.set_some(def_id.index, tcx.impl_polarity(def_id));
+
+        if of_trait && let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
+            record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
+
+            let trait_def_id = trait_ref.skip_binder().def_id;
+            let trait_def = tcx.trait_def(trait_def_id);
+            if let Some(mut an) = trait_def.ancestors(tcx, def_id).ok() {
+                if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
+                    self.tables.impl_parent.set_some(def_id.index, parent.into());
+                }
+            }
+
+            // if this is an impl of `CoerceUnsized`, create its
+            // "unsized info", else just store None
+            if Some(trait_def_id) == tcx.lang_items().coerce_unsized_trait() {
+                let coerce_unsized_info = tcx.coerce_unsized_info(def_id);
+                record!(self.tables.coerce_unsized_info[def_id] <- coerce_unsized_info);
+            }
         }
     }
 
