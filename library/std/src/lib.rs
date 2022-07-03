@@ -251,7 +251,6 @@
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![cfg_attr(bootstrap, feature(nll))]
 #![feature(platform_intrinsics)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]
@@ -587,7 +586,7 @@ mod backtrace_rs;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
-    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, r#try, todo,
+    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, todo, r#try,
     unimplemented, unreachable, write, writeln,
 };
 

@@ -3017,7 +3017,7 @@ impl<T, const N: usize> From<[T; N]> for Vec<T> {
     #[cfg(not(test))]
     fn from(s: [T; N]) -> Vec<T> {
         <[T]>::into_vec(
-            #[cfg_attr(not(bootstrap), rustc_box)]
+            #[rustc_box]
             Box::new(s),
         )
     }

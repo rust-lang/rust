@@ -1102,49 +1102,6 @@ impl CrateCheckConfig {
             .extend(atomic_values);
 
         // Target specific values
-        #[cfg(bootstrap)]
-        {
-            for target in TARGETS
-                .iter()
-                .map(|target| Target::expect_builtin(&TargetTriple::from_triple(target)))
-            {
-                self.values_valid
-                    .entry(sym::target_os)
-                    .or_default()
-                    .insert(Symbol::intern(&target.options.os));
-                self.values_valid
-                    .entry(sym::target_family)
-                    .or_default()
-                    .extend(target.options.families.iter().map(|family| Symbol::intern(family)));
-                self.values_valid
-                    .entry(sym::target_arch)
-                    .or_default()
-                    .insert(Symbol::intern(&target.arch));
-                self.values_valid
-                    .entry(sym::target_endian)
-                    .or_default()
-                    .insert(Symbol::intern(&target.options.endian.as_str()));
-                self.values_valid
-                    .entry(sym::target_env)
-                    .or_default()
-                    .insert(Symbol::intern(&target.options.env));
-                self.values_valid
-                    .entry(sym::target_abi)
-                    .or_default()
-                    .insert(Symbol::intern(&target.options.abi));
-                self.values_valid
-                    .entry(sym::target_vendor)
-                    .or_default()
-                    .insert(Symbol::intern(&target.options.vendor));
-                self.values_valid
-                    .entry(sym::target_pointer_width)
-                    .or_default()
-                    .insert(sym::integer(target.pointer_width));
-            }
-        }
-
-        // Target specific values
-        #[cfg(not(bootstrap))]
         {
             const VALUES: [&Symbol; 8] = [
                 &sym::target_os,

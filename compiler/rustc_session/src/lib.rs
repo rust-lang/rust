@@ -6,7 +6,7 @@
 #![feature(once_cell)]
 #![feature(option_get_or_insert_default)]
 #![feature(rustc_attrs)]
-#![cfg_attr(not(bootstrap), feature(map_many_mut))]
+#![feature(map_many_mut)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
