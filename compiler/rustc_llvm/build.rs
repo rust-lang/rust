@@ -4,6 +4,29 @@ use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+const OPTIONAL_COMPONENTS: &[&str] = &[
+    "x86",
+    "arm",
+    "aarch64",
+    "amdgpu",
+    "avr",
+    "m68k",
+    "mips",
+    "powerpc",
+    "systemz",
+    "jsbackend",
+    "webassembly",
+    "msp430",
+    "sparc",
+    "nvptx",
+    "hexagon",
+    "riscv",
+    "bpf",
+];
+
+const REQUIRED_COMPONENTS: &[&str] =
+    &["ipo", "bitreader", "bitwriter", "linker", "asmparser", "lto", "coverage", "instrumentation"];
+
 fn detect_llvm_link() -> (&'static str, &'static str) {
     // Force the link mode we want, preferring static by default, but
     // possibly overridden by `configure --enable-llvm-link-shared`.
@@ -76,6 +99,10 @@ fn output(cmd: &mut Command) -> String {
 }
 
 fn main() {
+    for component in REQUIRED_COMPONENTS.iter().chain(OPTIONAL_COMPONENTS.iter()) {
+        println!("cargo:rustc-check-cfg=values(llvm_component,\"{}\")", component);
+    }
+
     if tracked_env_var_os("RUST_CHECK").is_some() {
         // If we're just running `check`, there's no need for LLVM to be built.
         return;
@@ -131,42 +158,11 @@ fn main() {
     let host = env::var("HOST").expect("HOST was not set");
     let is_crossed = target != host;
 
-    let optional_components = &[
-        "x86",
-        "arm",
-        "aarch64",
-        "amdgpu",
-        "avr",
-        "m68k",
-        "mips",
-        "powerpc",
-        "systemz",
-        "jsbackend",
-        "webassembly",
-        "msp430",
-        "sparc",
-        "nvptx",
-        "hexagon",
-        "riscv",
-        "bpf",
-    ];
-
-    let required_components = &[
-        "ipo",
-        "bitreader",
-        "bitwriter",
-        "linker",
-        "asmparser",
-        "lto",
-        "coverage",
-        "instrumentation",
-    ];
-
     let components = output(Command::new(&llvm_config).arg("--components"));
     let mut components = components.split_whitespace().collect::<Vec<_>>();
-    components.retain(|c| optional_components.contains(c) || required_components.contains(c));
+    components.retain(|c| OPTIONAL_COMPONENTS.contains(c) || REQUIRED_COMPONENTS.contains(c));
 
-    for component in required_components {
+    for component in REQUIRED_COMPONENTS {
         if !components.contains(component) {
             panic!("require llvm component {} but wasn't found", component);
         }
