@@ -51,7 +51,7 @@ macro_rules! fixed_size_enum {
                 }
                 match b[0] - 1 {
                     $(${index()} => Some($($pat)*),)*
-                    _ => panic!("Unexpected ImplPolarity code: {:?}", b[0]),
+                    _ => panic!("Unexpected {} code: {:?}", stringify!($ty), b[0]),
                 }
             }
 
