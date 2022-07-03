@@ -10,7 +10,7 @@ use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
 use rustc_middle::ty::{ConstInt, DelaySpanBugEmitted, Ty};
 use rustc_middle::{mir, ty};
-use rustc_target::abi::{self, Abi, HasDataLayout, Size, TagEncoding};
+use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
@@ -177,10 +177,17 @@ pub enum Operand<Tag: Provenance = AllocId> {
 pub struct OpTy<'tcx, Tag: Provenance = AllocId> {
     op: Operand<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
+    /// rustc does not have a proper way to represent the type of a field of a `repr(packed)` struct:
+    /// it needs to have a different alignment than the field type would usually have.
+    /// So we represent this here with a separate field that "overwrites" `layout.align`.
+    /// This means `layout.align` should never be used for an `OpTy`!
+    /// `None` means "alignment does not matter since this is a by-value operand"
+    /// (`Operand::Immediate`).
+    pub align: Option<Align>,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(OpTy<'_>, 80);
+rustc_data_structures::static_assert_size!(OpTy<'_>, 88);
 
 impl<'tcx, Tag: Provenance> std::ops::Deref for OpTy<'tcx, Tag> {
     type Target = Operand<Tag>;
@@ -193,28 +200,28 @@ impl<'tcx, Tag: Provenance> std::ops::Deref for OpTy<'tcx, Tag> {
 impl<'tcx, Tag: Provenance> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
-        OpTy { op: Operand::Indirect(*mplace), layout: mplace.layout }
+        OpTy { op: Operand::Indirect(*mplace), layout: mplace.layout, align: Some(mplace.align) }
     }
 }
 
 impl<'tcx, Tag: Provenance> From<&'_ MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: &MPlaceTy<'tcx, Tag>) -> Self {
-        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout }
+        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout, align: Some(mplace.align) }
     }
 }
 
 impl<'tcx, Tag: Provenance> From<&'_ mut MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: &mut MPlaceTy<'tcx, Tag>) -> Self {
-        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout }
+        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout, align: Some(mplace.align) }
     }
 }
 
 impl<'tcx, Tag: Provenance> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(val: ImmTy<'tcx, Tag>) -> Self {
-        OpTy { op: Operand::Immediate(val.imm), layout: val.layout }
+        OpTy { op: Operand::Immediate(val.imm), layout: val.layout, align: None }
     }
 }
 
@@ -450,7 +457,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ),
         };
 
-        Ok(OpTy { op: Operand::Immediate(field_val), layout: field_layout })
+        Ok(OpTy { op: Operand::Immediate(field_val), layout: field_layout, align: None })
     }
 
     pub fn operand_index(
@@ -522,7 +529,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ///
     /// This is public because it is used by [priroda](https://github.com/oli-obk/priroda) to get an
     /// OpTy from a local
-    pub fn access_local(
+    pub fn local_to_op(
         &self,
         frame: &super::Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
@@ -535,7 +542,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             M::access_local(&self, frame, local)?
         };
-        Ok(OpTy { op, layout })
+        Ok(OpTy { op, layout, align: Some(layout.align.abi) })
     }
 
     /// Every place can be read from, so we can turn them into an operand.
@@ -549,10 +556,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let op = match **place {
             Place::Ptr(mplace) => Operand::Indirect(mplace),
             Place::Local { frame, local } => {
-                *self.access_local(&self.stack()[frame], local, None)?
+                *self.local_to_op(&self.stack()[frame], local, None)?
             }
         };
-        Ok(OpTy { op, layout: place.layout })
+        Ok(OpTy { op, layout: place.layout, align: Some(place.align) })
     }
 
     /// Evaluate a place with the goal of reading from it.  This lets us sometimes
@@ -566,7 +573,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // here is not the entire place.
         let layout = if place.projection.is_empty() { layout } else { None };
 
-        let base_op = self.access_local(self.frame(), place.local, layout)?;
+        let base_op = self.local_to_op(self.frame(), place.local, layout)?;
 
         let op = place
             .projection
@@ -603,11 +610,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Constant(ref constant) => {
                 let val =
                     self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal)?;
+
                 // This can still fail:
                 // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
-
                 self.mir_const_to_op(&val, layout)?
             }
         };
@@ -683,7 +690,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
                 let ptr = self.global_base_pointer(Pointer::new(id, offset))?;
-                Operand::Indirect(MemPlace::from_ptr(ptr.into(), layout.align.abi))
+                Operand::Indirect(MemPlace::from_ptr(ptr.into()))
             }
             ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x)?.into()),
             ConstValue::Slice { data, start, end } => {
@@ -700,7 +707,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ))
             }
         };
-        Ok(OpTy { op, layout })
+        Ok(OpTy { op, layout, align: Some(layout.align.abi) })
     }
 
     /// Read discriminant, return the runtime value as well as the variant index.
