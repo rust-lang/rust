@@ -31,7 +31,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
+use rustc_middle::ty::{self, AssocItemContainer, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::common::to_readable_str;
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::{CrateType, OptLevel};
@@ -1416,6 +1416,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Generator = def_kind {
                 self.encode_info_for_generator(local_id);
             }
+            if let DefKind::Trait | DefKind::Impl { .. } = def_kind {
+                let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
+                record_array!(self.tables.associated_item_or_field_def_ids[def_id] <-
+                    associated_item_def_ids.iter().map(|&def_id| {
+                        assert!(def_id.is_local());
+                        def_id.index
+                    })
+                );
+                for &def_id in associated_item_def_ids {
+                    self.encode_info_for_assoc_item(def_id);
+                }
+            }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);
             }
@@ -1523,41 +1535,28 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
     }
 
-    fn encode_info_for_trait_item(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_info_for_trait_item({:?})", def_id);
+    #[tracing::instrument(level = "debug", skip(self))]
+    fn encode_info_for_assoc_item(&mut self, def_id: DefId) {
         let tcx = self.tcx;
+        let item = tcx.associated_item(def_id);
 
-        let defaultness = tcx.defaultness(def_id.expect_local());
-        self.tables.defaultness.set_some(def_id.index, defaultness);
-        let trait_item = tcx.associated_item(def_id);
-        self.tables.assoc_container.set_some(def_id.index, trait_item.container);
+        self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
+        self.tables.assoc_container.set_some(def_id.index, item.container);
 
-        match trait_item.kind {
-            ty::AssocKind::Const | ty::AssocKind::Fn => {}
-            ty::AssocKind::Type => {
-                self.encode_explicit_item_bounds(def_id);
+        match item.container {
+            AssocItemContainer::TraitContainer => {
+                if let ty::AssocKind::Type = item.kind {
+                    self.encode_explicit_item_bounds(def_id);
+                }
+            }
+            AssocItemContainer::ImplContainer => {
+                if let Some(trait_item_def_id) = item.trait_item_def_id {
+                    self.tables.trait_item_def_id.set_some(def_id.index, trait_item_def_id.into());
+                }
             }
         }
-        if let Some(rpitit_info) = trait_item.opt_rpitit_info {
-            let rpitit_info = self.lazy(rpitit_info);
-            self.tables.opt_rpitit_info.set_some(def_id.index, rpitit_info);
-        }
-    }
-
-    fn encode_info_for_impl_item(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_info_for_impl_item({:?})", def_id);
-
-        let defaultness = self.tcx.defaultness(def_id.expect_local());
-        self.tables.defaultness.set_some(def_id.index, defaultness);
-        let impl_item = self.tcx.associated_item(def_id);
-        self.tables.assoc_container.set_some(def_id.index, impl_item.container);
-
-        if let Some(trait_item_def_id) = impl_item.trait_item_def_id {
-            self.tables.trait_item_def_id.set_some(def_id.index, trait_item_def_id.into());
-        }
-        if let Some(rpitit_info) = impl_item.opt_rpitit_info {
-            let rpitit_info = self.lazy(rpitit_info);
-            self.tables.opt_rpitit_info.set_some(def_id.index, rpitit_info);
+        if let Some(rpitit_info) = item.opt_rpitit_info {
+            record!(self.tables.opt_rpitit_info[def_id] <- rpitit_info);
         }
     }
 
@@ -1685,13 +1684,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let def_id = item.owner_id.to_def_id();
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
 
-        let record_associated_item_def_ids = |this: &mut Self, def_ids: &[DefId]| {
-            record_array!(this.tables.associated_item_or_field_def_ids[def_id] <- def_ids.iter().map(|&def_id| {
-                assert!(def_id.is_local());
-                def_id.index
-            }))
-        };
-
         match item.kind {
             hir::ItemKind::Macro(ref macro_def, _) => {
                 self.tables.is_macro_rules.set(def_id.index, macro_def.macro_rules);
@@ -1730,12 +1722,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         record!(self.tables.coerce_unsized_info[def_id] <- coerce_unsized_info);
                     }
                 }
-
-                let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
-                record_associated_item_def_ids(self, associated_item_def_ids);
-                for &trait_item_def_id in associated_item_def_ids {
-                    self.encode_info_for_impl_item(trait_item_def_id);
-                }
             }
             hir::ItemKind::Trait(..) => {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
@@ -1743,12 +1729,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let module_children = self.tcx.module_children_local(item.owner_id.def_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
                     module_children.iter().map(|child| child.res.def_id().index));
-
-                let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
-                record_associated_item_def_ids(self, associated_item_def_ids);
-                for &item_def_id in associated_item_def_ids {
-                    self.encode_info_for_trait_item(item_def_id);
-                }
             }
             hir::ItemKind::TraitAlias(..) => {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
