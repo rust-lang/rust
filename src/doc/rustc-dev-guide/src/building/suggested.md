@@ -46,6 +46,10 @@ you can write: <!-- date: 2022-04 --><!-- the date comment is for the edition be
         "--message-format=json"
     ],
     "rust-analyzer.rustc.source": "./Cargo.toml",
+    "rust-analyzer.linkedProjects": [
+        "Cargo.toml",
+        "src/bootstrap/Cargo.toml"
+    ]
 }
 ```
 
