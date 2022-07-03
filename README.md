@@ -418,9 +418,9 @@ Moreover, Miri recognizes some environment variables:
   sysroot to use. Only set this if you do not want to use the automatically
   created sysroot. (The `miri` driver sysroot is controlled via the `--sysroot`
   flag instead.)
-* `MIRI_TEST_TARGET` (recognized by the test suite) indicates which target
-  architecture to test against.  `miri` and `cargo miri` accept the `--target`
-  flag for the same purpose.
+* `MIRI_TEST_TARGET` (recognized by the test suite and the `./miri` script) indicates which target
+  architecture to test against.  `miri` and `cargo miri` accept the `--target` flag for the same
+  purpose.
 * `MIRI_NO_STD` (recognized by `cargo miri` and the test suite) makes sure that the target's
   sysroot is built without libstd. This allows testing and running no_std programs.
 * `MIRI_BLESS` (recognized by the test suite) overwrite all `stderr` and `stdout` files
@@ -581,6 +581,7 @@ Definite bugs found:
 * [`integer-encoding` dereferencing a misaligned pointer](https://github.com/dermesser/integer-encoding-rs/pull/23)
 * [`rkyv` constructing a `Box<[u8]>` from an overaligned allocation](https://github.com/rkyv/rkyv/commit/a9417193a34757e12e24263178be8b2eebb72456)
 * [Data race in `thread::scope`](https://github.com/rust-lang/rust/issues/98498)
+* [`regex` incorrectly handling unaligned `Vec<u8>` buffers](https://www.reddit.com/r/rust/comments/vq3mmu/comment/ienc7t0?context=3)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
