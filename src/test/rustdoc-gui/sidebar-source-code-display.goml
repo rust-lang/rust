@@ -27,29 +27,43 @@ reload:
 // Waiting for the sidebar to be displayed...
 wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
 assert-css: (
-    "#source-sidebar .expand + .children a.selected",
+    "#source-sidebar details[open] > .files a.selected",
     {"color": "rgb(0, 0, 0)", "background-color": "rgb(255, 255, 255)"},
 )
 // Without hover.
 assert-css: (
-    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    "#source-sidebar details[open] > .files a:not(.selected)",
     {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .files a:not(.selected)"
+wait-for-css: (
+    "#source-sidebar details[open] > .files a:not(.selected)",
+    {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
+)
+focus: ".search-input"
 // With hover.
-move-cursor-to: "#source-sidebar .expand + .children > .files a:not(.selected)"
+move-cursor-to: "#source-sidebar details[open] > .files a:not(.selected)"
 assert-css: (
-    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    "#source-sidebar details[open] > .files a:not(.selected)",
     {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
 )
 // Without hover.
 assert-css: (
-    "#source-sidebar .expand + .children .folders .name",
+    "#source-sidebar details[open] > .folders > details > summary",
     {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .folders > details > summary"
+wait-for-css: (
+    "#source-sidebar details[open] > .folders > details > summary",
+    {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
+)
+focus: ".search-input"
 // With hover.
-move-cursor-to: "#source-sidebar .expand + .children .folders .name"
+move-cursor-to: "#source-sidebar details[open] > .folders > details > summary"
 assert-css: (
-    "#source-sidebar .expand + .children .folders .name",
+    "#source-sidebar details[open] > .folders > details > summary",
     {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
 )
 
@@ -59,29 +73,43 @@ reload:
 // Waiting for the sidebar to be displayed...
 wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
 assert-css: (
-    "#source-sidebar .expand + .children a.selected",
+    "#source-sidebar details[open] > .files > a.selected",
     {"color": "rgb(221, 221, 221)", "background-color": "rgb(51, 51, 51)"},
 )
 // Without hover.
 assert-css: (
-    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    "#source-sidebar details[open] > .files > a:not(.selected)",
     {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .files a:not(.selected)"
+wait-for-css: (
+    "#source-sidebar details[open] > .files a:not(.selected)",
+    {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
+)
+focus: ".search-input"
 // With hover.
-move-cursor-to: "#source-sidebar .expand + .children > .files a:not(.selected)"
+move-cursor-to: "#source-sidebar details[open] > .files a:not(.selected)"
 assert-css: (
-    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    "#source-sidebar details[open] > .files a:not(.selected)",
     {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
 )
 // Without hover.
 assert-css: (
-    "#source-sidebar .expand + .children .folders .name",
+    "#source-sidebar details[open] > .folders > details > summary",
     {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .folders > details > summary"
+wait-for-css: (
+    "#source-sidebar details[open] > .folders > details > summary",
+    {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
+)
+focus: ".search-input"
 // With hover.
-move-cursor-to: "#source-sidebar .expand + .children .folders .name"
+move-cursor-to: "#source-sidebar details[open] > .folders > details > summary"
 assert-css: (
-    "#source-sidebar .expand + .children .folders .name",
+    "#source-sidebar details[open] > .folders > details > summary",
     {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
 )
 
@@ -91,29 +119,43 @@ reload:
 // Waiting for the sidebar to be displayed...
 wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
 assert-css: (
-    "#source-sidebar .expand + .children a.selected",
+    "#source-sidebar details[open] > .files a.selected",
     {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
 )
 // Without hover.
 assert-css: (
-    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    "#source-sidebar details[open] > .files a:not(.selected)",
     {"color": "rgb(197, 197, 197)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .files a:not(.selected)"
+wait-for-css: (
+    "#source-sidebar details[open] > .files a:not(.selected)",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
+)
+focus: ".search-input"
 // With hover.
-move-cursor-to: "#source-sidebar .expand + .children > .files a:not(.selected)"
+move-cursor-to: "#source-sidebar details[open] > .files a:not(.selected)"
 assert-css: (
-    "#source-sidebar .expand + .children > .files a:not(.selected)",
+    "#source-sidebar details[open] > .files a:not(.selected)",
     {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
 )
 // Without hover.
 assert-css: (
-    "#source-sidebar .expand + .children .folders .name",
+    "#source-sidebar details[open] > .folders > details > summary",
     {"color": "rgb(197, 197, 197)", "background-color": "rgba(0, 0, 0, 0)"},
 )
+// With focus.
+focus: "#source-sidebar details[open] > .folders > details > summary"
+wait-for-css: (
+    "#source-sidebar details[open] > .folders > details > summary",
+    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
+)
+focus: ".search-input"
 // With hover.
-move-cursor-to: "#source-sidebar .expand + .children .folders .name"
+move-cursor-to: "#source-sidebar details[open] > .folders > details > summary"
 assert-css: (
-    "#source-sidebar .expand + .children .folders .name",
+    "#source-sidebar details[open] > .folders > details > summary",
     {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
 )
 
