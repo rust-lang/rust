@@ -1462,45 +1462,39 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
-        // FIXME(Urgau): This a hack as it shouldn't be gated on stage 0 but until `rustc_llvm`
-        // is made to work with `--check-cfg` which is currently not easly possible until cargo
-        // get some support for setting `--check-cfg` within build script, it's the least invasive
-        // hack that still let's us have cfg checking for the vast majority of the codebase.
-        if stage != 0 {
-            // Enable cfg checking of cargo features for everything but std and also enable cfg
-            // checking of names and values.
-            //
-            // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
-            // backtrace, core_simd, std_float, ...), those dependencies have their own
-            // features but cargo isn't involved in the #[path] process and so cannot pass the
-            // complete list of features, so for that reason we don't enable checking of
-            // features for std crates.
-            cargo.arg(if mode != Mode::Std {
-                "-Zcheck-cfg=names,values,features"
-            } else {
-                "-Zcheck-cfg=names,values"
-            });
+        // Enable cfg checking of cargo features for everything but std and also enable cfg
+        // checking of names and values.
+        //
+        // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
+        // backtrace, core_simd, std_float, ...), those dependencies have their own
+        // features but cargo isn't involved in the #[path] process and so cannot pass the
+        // complete list of features, so for that reason we don't enable checking of
+        // features for std crates.
+        cargo.arg(if mode != Mode::Std {
+            "-Zcheck-cfg=names,values,output,features"
+        } else {
+            "-Zcheck-cfg=names,values,output"
+        });
 
-            // Add extra cfg not defined in/by rustc
-            //
-            // Note: Altrough it would seems that "-Zunstable-options" to `rustflags` is useless as
-            // cargo would implicitly add it, it was discover that sometimes bootstrap only use
-            // `rustflags` without `cargo` making it required.
-            rustflags.arg("-Zunstable-options");
-            for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
-                if *restricted_mode == None || *restricted_mode == Some(mode) {
-                    // Creating a string of the values by concatenating each value:
-                    // ',"tvos","watchos"' or '' (nothing) when there are no values
-                    let values = match values {
-                        Some(values) => values
-                            .iter()
-                            .map(|val| [",", "\"", val, "\""])
-                            .flatten()
-                            .collect::<String>(),
-                        None => String::new(),
-                    };
-                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
-                }
+        // Add extra cfg not defined in/by rustc
+        //
+        // Note: Altrough it would seems that "-Zunstable-options" to `rustflags` is useless as
+        // cargo would implicitly add it, it was discover that sometimes bootstrap only use
+        // `rustflags` without `cargo` making it required.
+        rustflags.arg("-Zunstable-options");
+        for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
+            if *restricted_mode == None || *restricted_mode == Some(mode) {
+                // Creating a string of the values by concatenating each value:
+                // ',"tvos","watchos"' or '' (nothing) when there are no values
+                let values = match values {
+                    Some(values) => values
+                        .iter()
+                        .map(|val| [",", "\"", val, "\""])
+                        .flatten()
+                        .collect::<String>(),
+                    None => String::new(),
+                };
+                rustflags.arg(&format!("--check-cfg=values({name}{values})"));
             }
         }
 
