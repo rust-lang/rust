@@ -352,15 +352,15 @@ fn save_unreachable_coverage(
     }
 
     let start_block = &mut basic_blocks[START_BLOCK];
-    for (source_info, code_region) in dropped_coverage {
-        start_block.statements.push(Statement {
+    start_block.statements.extend(dropped_coverage.into_iter().map(
+        |(source_info, code_region)| Statement {
             source_info,
             kind: StatementKind::Coverage(Box::new(Coverage {
                 kind: CoverageKind::Unreachable,
                 code_region: Some(code_region),
             })),
-        })
-    }
+        },
+    ));
 }
 
 pub struct SimplifyLocals;
