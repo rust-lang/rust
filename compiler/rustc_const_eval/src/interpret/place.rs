@@ -183,7 +183,7 @@ impl<'tcx, Tag: Provenance> MPlaceTy<'tcx, Tag> {
     #[inline]
     pub fn dangling(layout: TyAndLayout<'tcx>) -> Self {
         let align = layout.align.abi;
-        let ptr = Pointer::new(None, Size::from_bytes(align.bytes())); // no provenance, absolute address
+        let ptr = Pointer::from_addr(align.bytes()); // no provenance, absolute address
         // `Poison` this to make sure that the pointer value `ptr` is never observable by the program.
         MPlaceTy { mplace: MemPlace { ptr, align, meta: MemPlaceMeta::Poison }, layout }
     }
