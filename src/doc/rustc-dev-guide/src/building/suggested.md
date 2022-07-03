@@ -117,7 +117,7 @@ rustup override set nightly
 
 after [installing a nightly toolchain] with `rustup`. Don't forget to do this for all
 directories you have [setup a worktree for]. You may need to use the pinned
-nightly version from `src/stage0.txt`, but often the normal `nightly` channel
+nightly version from `src/stage0.json`, but often the normal `nightly` channel
 will work.
 
 **Note** see [the section on vscode] for how to configure it with this real rustfmt `x.py` uses,
