@@ -713,6 +713,7 @@ fn codegen_stmt<'tcx>(
                                 substs,
                                 ty::ClosureKind::FnOnce,
                             )
+                            .expect("failed to normalize and resolve closure during codegen")
                             .polymorphize(fx.tcx);
                             let func_ref = fx.get_function_ref(instance);
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
