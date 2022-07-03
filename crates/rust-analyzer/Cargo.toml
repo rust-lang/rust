@@ -35,7 +35,7 @@ num_cpus = "1.13.1"
 mimalloc = { version = "0.1.29", default-features = false, optional = true }
 lsp-server = { version = "0.6.0", path = "../../lib/lsp-server" }
 tracing = "0.1.35"
-tracing-subscriber = { version = "0.3.11", default-features = false, features = [
+tracing-subscriber = { version = "0.3.14", default-features = false, features = [
     "env-filter",
     "registry",
     "fmt",
