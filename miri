@@ -167,17 +167,21 @@ test|test-debug|bless|bless-debug)
     $CARGO test $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/ui_test/Cargo.toml "$@"
     ;;
 run|run-debug)
-    # Scan for "--target" to set the "MIRI_TEST_TARGET" env var so
+    # Scan for "--target" to overwrite the "MIRI_TEST_TARGET" env var so
     # that we set the MIRI_SYSROOT up the right way.
-    if [ -z "$MIRI_TEST_TARGET" ]; then
-        for ARG in "$@"; do
-            if [ "$LAST_ARG" = "--target" ]; then
-                # Found it!
-                export MIRI_TEST_TARGET="$ARG"
-                break
-            fi
-            LAST_ARG="$ARG"
-        done
+    FOUND_TARGET_OPT=0
+    for ARG in "$@"; do
+        if [ "$LAST_ARG" = "--target" ]; then
+            # Found it!
+            export MIRI_TEST_TARGET="$ARG"
+            FOUND_TARGET_OPT=1
+            break
+        fi
+        LAST_ARG="$ARG"
+    done
+    if [ "$FOUND_TARGET_OPT" = "0" ] && [ -n "$MIRI_TEST_TARGET" ]; then
+        # Make sure Miri actually uses this target.
+        MIRIFLAGS="$MIRIFLAGS --target $MIRI_TEST_TARGET"
     fi
     # First build and get a sysroot.
     $CARGO build $CARGO_BUILD_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml

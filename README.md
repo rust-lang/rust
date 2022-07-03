@@ -418,9 +418,9 @@ Moreover, Miri recognizes some environment variables:
   sysroot to use. Only set this if you do not want to use the automatically
   created sysroot. (The `miri` driver sysroot is controlled via the `--sysroot`
   flag instead.)
-* `MIRI_TEST_TARGET` (recognized by the test suite) indicates which target
-  architecture to test against.  `miri` and `cargo miri` accept the `--target`
-  flag for the same purpose.
+* `MIRI_TEST_TARGET` (recognized by the test suite and the `./miri` script) indicates which target
+  architecture to test against.  `miri` and `cargo miri` accept the `--target` flag for the same
+  purpose.
 * `MIRI_NO_STD` (recognized by `cargo miri` and the test suite) makes sure that the target's
   sysroot is built without libstd. This allows testing and running no_std programs.
 * `MIRI_BLESS` (recognized by the test suite) overwrite all `stderr` and `stdout` files
