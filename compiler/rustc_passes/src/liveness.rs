@@ -140,7 +140,7 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
 }
 
 fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().deep_visit_item_likes_in_module(module_def_id, &mut IrMaps::new(tcx));
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut IrMaps::new(tcx));
 }
 
 pub fn provide(providers: &mut Providers) {
