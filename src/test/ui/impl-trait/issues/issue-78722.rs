@@ -7,7 +7,7 @@ type F = impl core::future::Future<Output = u8>;
 struct Bug {
     V1: [(); {
         fn concrete_use() -> F {
-            //~^ ERROR type mismatch
+            //~^ ERROR expected `impl Future<Output = ()>` to be a future that yields `u8`, but it actually yields `()`
             async {}
         }
         let f: F = async { 1 };

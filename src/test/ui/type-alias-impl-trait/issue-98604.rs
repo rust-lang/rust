@@ -9,5 +9,5 @@ async fn test() {}
 #[allow(unused_must_use)]
 fn main() {
     Box::new(test) as AsyncFnPtr;
-    //~^ ERROR type mismatch
+    //~^ ERROR expected `fn() -> impl Future<Output = ()> {test}` to be a fn item that returns `Pin<Box<(dyn Future<Output = ()> + 'static)>>`, but it actually returns `impl Future<Output = ()>`
 }

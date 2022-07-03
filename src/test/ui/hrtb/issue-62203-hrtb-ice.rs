@@ -38,7 +38,7 @@ fn main() {
     let v = Unit2.m(
         //~^ ERROR type mismatch
         L {
-        //~^ ERROR type mismatch
+        //~^ ERROR to be a closure that returns `Unit3`, but it actually returns `Unit4`
             f : |x| { drop(x); Unit4 }
         });
 }

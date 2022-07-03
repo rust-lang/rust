@@ -8,7 +8,7 @@ pub fn get_tok(it: &mut IntoIter<u8>) {
         false
     })
         .cloned()
-        //~^ ERROR type mismatch resolving
+        //~^ ERROR to be an iterator of `&_`, but it actually returns items of `u8`
         .collect(); //~ ERROR the method
 }
 

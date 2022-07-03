@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]> as Iterator>::Item == &_`
+error[E0271]: expected `TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]>` to be an iterator of `&_`, but it actually returns items of `u8`
   --> $DIR/issue-31173.rs:10:10
    |
 LL |         .cloned()

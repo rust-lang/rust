@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<std::vec::IntoIter<i32> as Iterator>::Item == u32`
+error[E0271]: expected `std::vec::IntoIter<i32>` to be an iterator of `u32`, but it actually returns items of `i32`
   --> $DIR/assoc-type-in-superbad.rs:12:16
    |
 LL |     type Key = u32;
