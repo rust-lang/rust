@@ -38,7 +38,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{
     self, DebuggerVisualizerFile, ExternalSource, FileName, SourceFile, Span, SyntaxContext,
 };
-use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
@@ -1189,8 +1188,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.super_predicates_of[def_id] <- self.tcx.super_predicates_of(def_id));
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
-                let params_in_repr = self.tcx.params_in_repr(def_id);
-                record!(self.tables.params_in_repr[def_id] <- params_in_repr);
+                self.encode_info_for_adt(def_id);
             }
             if should_encode_trait_impl_trait_tys(tcx, def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
@@ -1213,9 +1211,38 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_enum_variant_info(&mut self, def: ty::AdtDef<'tcx>, index: VariantIdx) {
+    #[instrument(level = "trace", skip(self))]
+    fn encode_info_for_adt(&mut self, def_id: DefId) {
         let tcx = self.tcx;
-        let variant = &def.variant(index);
+        let adt_def = tcx.adt_def(def_id);
+        record!(self.tables.repr_options[def_id] <- adt_def.repr());
+
+        let params_in_repr = self.tcx.params_in_repr(def_id);
+        record!(self.tables.params_in_repr[def_id] <- params_in_repr);
+
+        if adt_def.is_enum() {
+            record_array!(self.tables.children[def_id] <- iter::from_generator(||
+                for variant in tcx.adt_def(def_id).variants() {
+                    yield variant.def_id.index;
+                    // Encode constructors which take a separate slot in value namespace.
+                    if let Some(ctor_def_id) = variant.ctor_def_id() {
+                        yield ctor_def_id.index;
+                    }
+                }
+            ));
+        }
+
+        // In some cases, along with the item itself, we also
+        // encode some sub-items. Usually we want some info from the item
+        // so it's easier to do that here then to wait until we would encounter
+        // normally in the visitor walk.
+        for variant in adt_def.variants().iter() {
+            self.encode_enum_variant_info(variant);
+        }
+    }
+
+    fn encode_enum_variant_info(&mut self, variant: &ty::VariantDef) {
+        let tcx = self.tcx;
         let def_id = variant.def_id;
         debug!("EncodeContext::encode_enum_variant_info({:?})", def_id);
 
@@ -1232,27 +1259,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             f.did.index
         }));
         if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
-            // FIXME(eddyb) encode signature only in `encode_enum_variant_ctor`.
-            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(ctor_def_id));
-        }
-    }
+            debug!("EncodeContext::encode_enum_variant_ctor({:?})", ctor_def_id);
 
-    fn encode_enum_variant_ctor(&mut self, def: ty::AdtDef<'tcx>, index: VariantIdx) {
-        let variant = &def.variant(index);
-        let Some((ctor_kind, def_id)) = variant.ctor else { return };
-        debug!("EncodeContext::encode_enum_variant_ctor({:?})", def_id);
+            self.tables.constness.set(ctor_def_id.index, hir::Constness::Const);
 
-        // FIXME(eddyb) encode only the `CtorKind` for constructors.
-        let data = VariantData {
-            discr: variant.discr,
-            ctor: Some((ctor_kind, def_id.index)),
-            is_non_exhaustive: variant.is_field_list_non_exhaustive(),
-        };
-
-        record!(self.tables.variant_data[def_id] <- data);
-        self.tables.constness.set(def_id.index, hir::Constness::Const);
-        if ctor_kind == CtorKind::Fn {
-            record!(self.tables.fn_sig[def_id] <- self.tcx.fn_sig(def_id));
+            let fn_sig = tcx.fn_sig(ctor_def_id);
+            record!(self.tables.fn_sig[ctor_def_id] <- fn_sig);
+            // FIXME(eddyb) encode signature only for `ctor_def_id`.
+            record!(self.tables.fn_sig[def_id] <- fn_sig);
         }
     }
 
@@ -1302,25 +1316,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 assert!(!reexports.is_empty());
                 record_array!(self.tables.module_reexports[def_id] <- reexports);
             }
-        }
-    }
-
-    fn encode_struct_ctor(&mut self, adt_def: ty::AdtDef<'tcx>) {
-        let variant = adt_def.non_enum_variant();
-        let Some((ctor_kind, def_id)) = variant.ctor else { return };
-        debug!("EncodeContext::encode_struct_ctor({:?})", def_id);
-
-        let data = VariantData {
-            discr: variant.discr,
-            ctor: Some((ctor_kind, def_id.index)),
-            is_non_exhaustive: variant.is_field_list_non_exhaustive(),
-        };
-
-        record!(self.tables.repr_options[def_id] <- adt_def.repr());
-        record!(self.tables.variant_data[def_id] <- data);
-        self.tables.constness.set(def_id.index, hir::Constness::Const);
-        if ctor_kind == CtorKind::Fn {
-            record!(self.tables.fn_sig[def_id] <- self.tcx.fn_sig(def_id));
         }
     }
 
@@ -1532,33 +1527,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     self.tables.is_type_alias_impl_trait.set_nullable(def_id.index, true);
                 }
             }
-            hir::ItemKind::Enum(..) => {
-                let adt_def = self.tcx.adt_def(def_id);
-                record!(self.tables.repr_options[def_id] <- adt_def.repr());
-            }
-            hir::ItemKind::Struct(..) => {
-                let adt_def = self.tcx.adt_def(def_id);
-                record!(self.tables.repr_options[def_id] <- adt_def.repr());
-                self.tables.constness.set(def_id.index, hir::Constness::Const);
-
-                let variant = adt_def.non_enum_variant();
-                record!(self.tables.variant_data[def_id] <- VariantData {
-                    discr: variant.discr,
-                    ctor: variant.ctor.map(|(kind, def_id)| (kind, def_id.index)),
-                    is_non_exhaustive: variant.is_field_list_non_exhaustive(),
-                });
-            }
-            hir::ItemKind::Union(..) => {
-                let adt_def = self.tcx.adt_def(def_id);
-                record!(self.tables.repr_options[def_id] <- adt_def.repr());
-
-                let variant = adt_def.non_enum_variant();
-                record!(self.tables.variant_data[def_id] <- VariantData {
-                    discr: variant.discr,
-                    ctor: variant.ctor.map(|(kind, def_id)| (kind, def_id.index)),
-                    is_non_exhaustive: variant.is_field_list_non_exhaustive(),
-                });
-            }
             hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
                 self.tables.impl_defaultness.set(def_id.index, *defaultness);
                 self.tables.constness.set(def_id.index, *constness);
@@ -1597,31 +1565,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::Static(..)
             | hir::ItemKind::Const(..)
+            | hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::TyAlias(..) => {}
         };
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
-            hir::ItemKind::Enum(..) => {
-                record_array!(self.tables.children[def_id] <- iter::from_generator(||
-                    for variant in tcx.adt_def(def_id).variants() {
-                        yield variant.def_id.index;
-                        // Encode constructors which take a separate slot in value namespace.
-                        if let Some(ctor_def_id) = variant.ctor_def_id() {
-                            yield ctor_def_id.index;
-                        }
-                    }
-                ))
-            }
-            hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
-                record_array!(self.tables.children[def_id] <-
-                    self.tcx.adt_def(def_id).non_enum_variant().fields.iter().map(|f| {
-                        assert!(f.did.is_local());
-                        f.did.index
-                    })
-                )
-            }
             hir::ItemKind::Impl { .. } | hir::ItemKind::Trait(..) => {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);
                 record_array!(self.tables.children[def_id] <-
@@ -1649,17 +1601,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // so it's easier to do that here then to wait until we would encounter
         // normally in the visitor walk.
         match item.kind {
-            hir::ItemKind::Enum(..) => {
-                let def = self.tcx.adt_def(item.owner_id.to_def_id());
-                for (i, _) in def.variants().iter_enumerated() {
-                    self.encode_enum_variant_info(def, i);
-                    self.encode_enum_variant_ctor(def, i);
-                }
-            }
-            hir::ItemKind::Struct(..) => {
-                let def = self.tcx.adt_def(item.owner_id.to_def_id());
-                self.encode_struct_ctor(def);
-            }
             hir::ItemKind::Impl { .. } => {
                 for &trait_item_def_id in
                     self.tcx.associated_item_def_ids(item.owner_id.to_def_id()).iter()
