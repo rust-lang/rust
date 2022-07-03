@@ -1,3 +1,4 @@
+use crate::sys_common::ucs2;
 use crate::{io, os::uefi, ptr::NonNull};
 use r_efi::efi;
 use r_efi::protocols::{simple_text_input, simple_text_output};
@@ -59,16 +60,16 @@ impl Stdin {
     // FIXME Improve Errors
     fn write_character(
         con_out: NonNull<simple_text_output::Protocol>,
-        character: u16,
+        character: ucs2::Ucs2Char,
     ) -> io::Result<()> {
-        let mut buf: [u16; 2] = [character, 0];
+        let mut buf: [u16; 2] = [character.into(), 0];
         let r = unsafe { ((*con_out.as_ptr()).output_string)(con_out.as_ptr(), buf.as_mut_ptr()) };
 
         if r.is_error() {
             Err(io::Error::new(io::ErrorKind::InvalidInput, "Device Error"))
-        } else if character == u16::from(b'\r') {
-            // Handle enter
-            Self::write_character(con_out, u16::from(b'\n'))
+        } else if character == ucs2::Ucs2Char::CR {
+            // Handle enter key
+            Self::write_character(con_out, ucs2::Ucs2Char::LF)
         } else {
             Ok(())
         }
@@ -90,14 +91,24 @@ impl io::Read for Stdin {
             return Err(io::Error::new(io::ErrorKind::InvalidInput, "Buffer too small"));
         }
 
-        let bytes_read = {
+        let ch = {
             Stdin::reset_weak(con_in)?;
             Stdin::fire_wait_event(con_in, wait_for_event)?;
-            let ch = Stdin::read_key_stroke(con_in)?;
-            Stdin::write_character(con_out, ch)?;
-
-            utf16_to_utf8_char(ch, buf)
+            Stdin::read_key_stroke(con_in)?
         };
+
+        let ch = ucs2::Ucs2Char::from_u16(ch);
+        Stdin::write_character(con_out, ch)?;
+
+        let ch = char::from(ch);
+        let bytes_read = ch.len_utf8();
+
+        // Replace CR with LF
+        if ch == '\r' {
+            '\n'.encode_utf8(buf);
+        } else {
+            ch.encode_utf8(buf);
+        }
 
         Ok(bytes_read)
     }
@@ -149,100 +160,34 @@ pub fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())
 }
 
-fn utf8_to_utf16(utf8_buf: &[u8], utf16_buf: &mut [u16]) -> io::Result<usize> {
-    let utf8_buf_len = utf8_buf.len();
-    let utf16_buf_len = utf16_buf.len();
-    let mut utf8_buf_count = 0;
-    let mut utf16_buf_count = 0;
+fn utf8_to_ucs2(buf: &[u8], output: &mut [u16]) -> io::Result<usize> {
+    let iter = ucs2::EncodeUcs2::from_bytes(buf)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid Output buffer"))?;
+    let mut count = 0;
+    let mut bytes_read = 0;
 
-    // Since it is possible for the bytes written to be <= the utf8_buf, we just stop writing if
-    // the utf16_buf fills up
-    // Also leave space for null termination in utf16_buf
-    while utf8_buf_count < utf8_buf_len && utf16_buf_count + 1 < utf16_buf_len {
-        match utf8_buf[utf8_buf_count] {
-            0b0000_0000..0b0111_1111 => {
-                // 1-byte
+    for ch in iter {
+        // Convert LF to CRLF
+        if ch == ucs2::Ucs2Char::LF {
+            output[count] = u16::from(ucs2::Ucs2Char::CR);
+            count += 1;
 
-                // Convert LF to CRLF
-                if utf8_buf[utf8_buf_count] == b'\n' {
-                    utf16_buf[utf16_buf_count] = u16::from(b'\r');
-                    utf16_buf_count += 1;
-                }
-
-                utf16_buf[utf16_buf_count] = u16::from(utf8_buf[utf8_buf_count]);
-
-                utf8_buf_count += 1;
-            }
-            0b1100_0000..0b1101_1111 => {
-                // 2-byte
-                if utf16_buf_count + 1 >= utf8_buf_len {
-                    return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid UTF-8"));
-                }
-                let a = u16::from(utf8_buf[utf8_buf_count] & 0b0001_1111);
-                let b = u16::from(utf8_buf[utf8_buf_count + 1] & 0b0011_1111);
-                utf16_buf[utf16_buf_count] = a << 6 | b;
-
-                utf8_buf_count += 2;
-            }
-            0b1110_0000..0b1110_1111 => {
-                // 3-byte
-                if utf16_buf_count + 2 >= utf8_buf_len {
-                    return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid UTF-8"));
-                }
-                let a = u16::from(utf8_buf[utf8_buf_count] & 0b0000_1111);
-                let b = u16::from(utf8_buf[utf8_buf_count + 1] & 0b0011_1111);
-                let c = u16::from(utf8_buf[utf8_buf_count + 2] & 0b0011_1111);
-                utf16_buf[utf16_buf_count] = a << 12 | b << 6 | c;
-                utf8_buf_count += 3;
-            }
-            0b1111_0000..0b1111_0111 => {
-                // 4-byte
-                // We just print a restricted Character
-                utf16_buf[utf16_buf_count] = 0xfffdu16;
-                utf8_buf_count += 4;
-            }
-            _ => {
-                // Invalid Data
-                return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid UTF-8"));
+            if count + 1 >= output.len() {
+                break;
             }
         }
 
-        utf16_buf_count += 1;
-    }
+        bytes_read += ch.len_utf8();
+        output[count] = u16::from(ch);
+        count += 1;
 
-    utf16_buf[utf16_buf_count] = 0;
-
-    Ok(utf8_buf_count)
-}
-
-fn utf16_to_utf8_char(ch: u16, buf: &mut [u8]) -> usize {
-    match ch {
-        0b0000_0000_0000_0000..0b0000_0000_0111_1111 => {
-            // 1-byte
-
-            // Convert CR to LF
-            buf[0] = if ch == u16::from(b'\r') { b'\n' } else { ch as u8 };
-            1
-        }
-        0b0000_0000_0111_1111..0b0000_0111_1111_1111 => {
-            // 2-byte
-            let a = ((ch & 0b0000_0111_1100_0000) >> 6) as u8;
-            let b = (ch & 0b0000_0000_0011_1111) as u8;
-            buf[0] = a | 0b1100_0000;
-            buf[1] = b | 0b1000_0000;
-            2
-        }
-        _ => {
-            // 3-byte
-            let a = ((ch & 0b1111_0000_0000_0000) >> 12) as u8;
-            let b = ((ch & 0b0000_1111_1100_0000) >> 6) as u8;
-            let c = (ch & 0b0000_0000_0011_1111) as u8;
-            buf[0] = a | 0b1110_0000;
-            buf[1] = b | 0b1000_0000;
-            buf[2] = c | 0b1000_0000;
-            3
+        if count + 1 >= output.len() {
+            break;
         }
     }
+
+    output[count] = 0;
+    Ok(bytes_read)
 }
 
 fn simple_text_output_write(
@@ -252,7 +197,7 @@ fn simple_text_output_write(
     let output_string_ptr = unsafe { (*protocol.as_ptr()).output_string };
 
     let mut output = [0u16; MAX_BUFFER_SIZE / 2];
-    let count = utf8_to_utf16(buf, &mut output)?;
+    let count = utf8_to_ucs2(buf, &mut output)?;
 
     let r = (output_string_ptr)(protocol.as_ptr(), output.as_mut_ptr());
 
