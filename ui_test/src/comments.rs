@@ -75,7 +75,7 @@ impl Comments {
     pub(crate) fn parse(path: &Path, content: &str) -> Self {
         let mut this = Self::default();
         let error_pattern_regex =
-            Regex::new(r"//(\[(?P<revision>[^\]]+)\])?~(?P<offset>\||[\^]+)?\s*(?P<level>ERROR|HELP|WARN|NOTE)?:?(?P<text>.*)")
+            Regex::new(r"//(\[(?P<revision>[^\]]+)\])?~(?P<offset>\||[\^]+)? *(?P<level>ERROR|HELP|WARN|NOTE)?:?(?P<text>.*)")
                 .unwrap();
 
         // The line that a `|` will refer to
