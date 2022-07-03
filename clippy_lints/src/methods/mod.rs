@@ -369,7 +369,7 @@ declare_clippy_lint! {
     /// let x: Result<u32, &str> = Ok(10);
     /// x.expect_err("Testing expect_err");
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub ERR_EXPECT,
     style,
     r#"using `.err().expect("")` when `.expect_err("")` can be used"#
@@ -2215,7 +2215,7 @@ declare_clippy_lint! {
     /// c.is_ascii_digit();
     /// c.is_ascii_hexdigit();
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub IS_DIGIT_ASCII_RADIX,
     style,
     "use of `char::is_digit(..)` with literal radix of 10 or 16"
@@ -2235,7 +2235,7 @@ declare_clippy_lint! {
     /// let x = Some(3);
     /// x.as_ref();
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub NEEDLESS_OPTION_TAKE,
     complexity,
     "using `.as_ref().take()` on a temporary value"

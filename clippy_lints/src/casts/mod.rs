@@ -500,7 +500,7 @@ declare_clippy_lint! {
     /// let x: i32 = -42;
     /// let y: u32 = x.unsigned_abs();
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub CAST_ABS_TO_UNSIGNED,
     suspicious,
     "casting the result of `abs()` to an unsigned integer can panic"
