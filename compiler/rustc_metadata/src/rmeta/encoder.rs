@@ -1162,15 +1162,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if should_encode_type(tcx, local_id, def_kind) {
                 record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
             }
-            if should_encode_const(def_kind) && tcx.is_mir_available(def_id) {
-                let qualifs = tcx.at(def_span).mir_const_qualif(def_id);
-                record!(self.tables.mir_const_qualif[def_id] <- qualifs);
-                let body_id = tcx.hir().maybe_body_owned_by(local_id);
-                if let Some(body_id) = body_id {
-                    let const_data = self.encode_rendered_const_for_body(body_id);
-                    record!(self.tables.rendered_const[def_id] <- const_data);
-                }
-            }
             if let DefKind::TyParam | DefKind::ConstParam = def_kind {
                 if let Some(default) = self.tcx.object_lifetime_default(def_id) {
                     record!(self.tables.object_lifetime_default[def_id] <- default);
@@ -1385,12 +1376,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             return;
         }
 
-        let keys_and_jobs = self
-            .tcx
+        let tcx = self.tcx;
+
+        let keys_and_jobs = tcx
             .mir_keys(())
             .iter()
             .filter_map(|&def_id| {
-                let (encode_const, encode_opt) = should_encode_mir(self.tcx, def_id);
+                let (encode_const, encode_opt) = should_encode_mir(tcx, def_id);
                 if encode_const || encode_opt {
                     Some((def_id, encode_const, encode_opt))
                 } else {
@@ -1403,22 +1395,32 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             debug!("EntryBuilder::encode_mir({:?})", def_id);
             if encode_opt {
-                record!(self.tables.optimized_mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
+                record!(self.tables.optimized_mir[def_id.to_def_id()] <- tcx.optimized_mir(def_id));
             }
             if encode_const {
-                record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- self.tcx.mir_for_ctfe(def_id));
+                record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- tcx.mir_for_ctfe(def_id));
 
                 // FIXME(generic_const_exprs): this feels wrong to have in `encode_mir`
-                let abstract_const = self.tcx.thir_abstract_const(def_id);
+                let abstract_const = tcx.thir_abstract_const(def_id);
                 if let Ok(Some(abstract_const)) = abstract_const {
                     record!(self.tables.thir_abstract_const[def_id.to_def_id()] <- abstract_const);
                 }
+
+                if should_encode_const(tcx.def_kind(def_id)) {
+                    let qualifs = tcx.mir_const_qualif(def_id);
+                    record!(self.tables.mir_const_qualif[def_id.to_def_id()] <- qualifs);
+                    let body_id = tcx.hir().maybe_body_owned_by(def_id);
+                    if let Some(body_id) = body_id {
+                        let const_data = self.encode_rendered_const_for_body(body_id);
+                        record!(self.tables.rendered_const[def_id.to_def_id()] <- const_data);
+                    }
+                }
             }
-            record!(self.tables.promoted_mir[def_id.to_def_id()] <- self.tcx.promoted_mir(def_id));
+            record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
 
             let instance =
                 ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id()));
-            let unused = self.tcx.unused_generic_params(instance);
+            let unused = tcx.unused_generic_params(instance);
             if !unused.is_empty() {
                 record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
             }
