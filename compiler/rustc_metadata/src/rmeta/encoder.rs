@@ -1223,36 +1223,26 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // so it's easier to do that here then to wait until we would encounter
         // normally in the visitor walk.
         for variant in adt_def.variants().iter() {
-            self.encode_enum_variant_info(variant);
-        }
-    }
+            let data = VariantData {
+                discr: variant.discr,
+                ctor: variant.ctor.map(|(kind, def_id)| (kind, def_id.index)),
+                is_non_exhaustive: variant.is_field_list_non_exhaustive(),
+            };
+            record!(self.tables.variant_data[variant.def_id] <- data);
 
-    fn encode_enum_variant_info(&mut self, variant: &ty::VariantDef) {
-        let tcx = self.tcx;
-        let def_id = variant.def_id;
-        debug!("EncodeContext::encode_enum_variant_info({:?})", def_id);
+            self.tables.constness.set(variant.def_id.index, hir::Constness::Const);
+            record_array!(self.tables.children[variant.def_id] <- variant.fields.iter().map(|f| {
+                assert!(f.did.is_local());
+                f.did.index
+            }));
 
-        let data = VariantData {
-            discr: variant.discr,
-            ctor: variant.ctor.map(|(kind, def_id)| (kind, def_id.index)),
-            is_non_exhaustive: variant.is_field_list_non_exhaustive(),
-        };
-
-        record!(self.tables.variant_data[def_id] <- data);
-        self.tables.constness.set(def_id.index, hir::Constness::Const);
-        record_array!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
-            assert!(f.did.is_local());
-            f.did.index
-        }));
-        if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
-            debug!("EncodeContext::encode_enum_variant_ctor({:?})", ctor_def_id);
-
-            self.tables.constness.set(ctor_def_id.index, hir::Constness::Const);
-
-            let fn_sig = tcx.fn_sig(ctor_def_id);
-            record!(self.tables.fn_sig[ctor_def_id] <- fn_sig);
-            // FIXME(eddyb) encode signature only for `ctor_def_id`.
-            record!(self.tables.fn_sig[def_id] <- fn_sig);
+            if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
+                self.tables.constness.set(ctor_def_id.index, hir::Constness::Const);
+                let fn_sig = tcx.fn_sig(ctor_def_id);
+                record!(self.tables.fn_sig[ctor_def_id] <- fn_sig);
+                // FIXME only encode signature for ctor_def_id
+                record!(self.tables.fn_sig[variant.def_id] <- fn_sig);
+            }
         }
     }
 
