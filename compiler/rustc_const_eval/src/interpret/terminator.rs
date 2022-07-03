@@ -321,7 +321,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
         // specifically.)
-        self.copy_op_transmute(&caller_arg, callee_arg)
+        self.copy_op(&caller_arg, callee_arg, /*allow_transmute*/ true)
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.

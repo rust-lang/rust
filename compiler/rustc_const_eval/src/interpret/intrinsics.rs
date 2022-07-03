@@ -174,7 +174,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val =
                     self.tcx.const_eval_global_id(self.param_env, gid, Some(self.tcx.span))?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
-                self.copy_op(&val, dest)?;
+                self.copy_op(&val, dest, /*allow_transmute*/ false)?;
             }
 
             sym::ctpop
@@ -394,7 +394,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             sym::transmute => {
-                self.copy_op_transmute(&args[0], dest)?;
+                self.copy_op(&args[0], dest, /*allow_transmute*/ true)?;
             }
             sym::assert_inhabited | sym::assert_zero_valid | sym::assert_uninit_valid => {
                 let ty = instance.substs.type_at(0);
@@ -461,7 +461,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let place = self.mplace_index(&dest, i)?;
                     let value =
                         if i == index { *elem } else { self.mplace_index(&input, i)?.into() };
-                    self.copy_op(&value, &place.into())?;
+                    self.copy_op(&value, &place.into(), /*allow_transmute*/ false)?;
                 }
             }
             sym::simd_extract => {
@@ -473,11 +473,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     index,
                     input_len
                 );
-                self.copy_op(&self.mplace_index(&input, index)?.into(), dest)?;
+                self.copy_op(
+                    &self.mplace_index(&input, index)?.into(),
+                    dest,
+                    /*allow_transmute*/ false,
+                )?;
             }
             sym::likely | sym::unlikely | sym::black_box => {
                 // These just return their argument
-                self.copy_op(&args[0], dest)?;
+                self.copy_op(&args[0], dest, /*allow_transmute*/ false)?;
             }
             sym::assume => {
                 let cond = self.read_scalar(&args[0])?.check_init()?.to_bool()?;

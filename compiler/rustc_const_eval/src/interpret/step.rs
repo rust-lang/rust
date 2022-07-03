@@ -169,7 +169,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Use(ref operand) => {
                 // Avoid recomputing the layout
                 let op = self.eval_operand(operand, Some(dest.layout))?;
-                self.copy_op(&op, &dest)?;
+                self.copy_op(&op, &dest, /*allow_transmute*/ false)?;
             }
 
             BinaryOp(bin_op, box (ref left, ref right)) => {
@@ -204,7 +204,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 for (field_index, operand) in operands.iter().enumerate() {
                     let op = self.eval_operand(operand, None)?;
                     let field_dest = self.place_field(&dest, field_index)?;
-                    self.copy_op(&op, &field_dest)?;
+                    self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
                 }
             }
 
@@ -220,7 +220,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     // Write the src to the first element.
                     let first = self.mplace_field(&dest, 0)?;
-                    self.copy_op(&src, &first.into())?;
+                    self.copy_op(&src, &first.into(), /*allow_transmute*/ false)?;
 
                     // This is performance-sensitive code for big static/const arrays! So we
                     // avoid writing each operand individually and instead just make many copies

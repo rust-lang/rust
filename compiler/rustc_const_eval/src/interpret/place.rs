@@ -10,8 +10,9 @@ use rustc_macros::HashStable;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{Abi, Align, FieldsShape, TagEncoding};
-use rustc_target::abi::{HasDataLayout, Size, VariantIdx, Variants};
+use rustc_target::abi::{
+    Abi, Align, FieldsShape, HasDataLayout, Size, TagEncoding, VariantIdx, Variants,
+};
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
@@ -772,19 +773,20 @@ where
             }
             Place::Ptr(mplace) => mplace, // already referring to memory
         };
-        let dest = MPlaceTy { mplace, layout: dest.layout, align: dest.align };
 
         // This is already in memory, write there.
-        self.write_immediate_to_mplace_no_validate(src, &dest)
+        self.write_immediate_to_mplace_no_validate(src, dest.layout, dest.align, mplace)
     }
 
     /// Write an immediate to memory.
     /// If you use this you are responsible for validating that things got copied at the
-    /// right type.
+    /// right layout.
     fn write_immediate_to_mplace_no_validate(
         &mut self,
         value: Immediate<M::PointerTag>,
-        dest: &MPlaceTy<'tcx, M::PointerTag>,
+        layout: TyAndLayout<'tcx>,
+        align: Align,
+        dest: MemPlace<M::PointerTag>,
     ) -> InterpResult<'tcx> {
         // Note that it is really important that the type here is the right one, and matches the
         // type things are read at. In case `value` is a `ScalarPair`, we don't do any magic here
@@ -792,31 +794,30 @@ where
         // wrong type.
 
         let tcx = *self.tcx;
-        let Some(mut alloc) = self.get_place_alloc_mut(dest)? else {
+        let Some(mut alloc) = self.get_place_alloc_mut(&MPlaceTy { mplace: dest, layout, align })? else {
             // zero-sized access
             return Ok(());
         };
 
         match value {
             Immediate::Scalar(scalar) => {
-                let Abi::Scalar(s) = dest.layout.abi else { span_bug!(
+                let Abi::Scalar(s) = layout.abi else { span_bug!(
                         self.cur_span(),
-                        "write_immediate_to_mplace: invalid Scalar layout: {:#?}",
-                        dest.layout
+                        "write_immediate_to_mplace: invalid Scalar layout: {layout:#?}",
                     )
                 };
                 let size = s.size(&tcx);
-                assert_eq!(size, dest.layout.size, "abi::Scalar size does not match layout size");
+                assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
                 alloc.write_scalar(alloc_range(Size::ZERO, size), scalar)
             }
             Immediate::ScalarPair(a_val, b_val) => {
                 // We checked `ptr_align` above, so all fields will have the alignment they need.
                 // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
-                let Abi::ScalarPair(a, b) = dest.layout.abi else { span_bug!(
+                let Abi::ScalarPair(a, b) = layout.abi else { span_bug!(
                         self.cur_span(),
                         "write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
-                        dest.layout
+                        layout
                     )
                 };
                 let (a_size, b_size) = (a.size(&tcx), b.size(&tcx));
@@ -858,16 +859,17 @@ where
         Ok(())
     }
 
-    /// Copies the data from an operand to a place. This does not support transmuting!
-    /// Use `copy_op_transmute` if the layouts could disagree.
+    /// Copies the data from an operand to a place.
+    /// `allow_transmute` indicates whether the layouts may disagree.
     #[inline(always)]
     #[instrument(skip(self), level = "debug")]
     pub fn copy_op(
         &mut self,
         src: &OpTy<'tcx, M::PointerTag>,
         dest: &PlaceTy<'tcx, M::PointerTag>,
+        allow_transmute: bool,
     ) -> InterpResult<'tcx> {
-        self.copy_op_no_validate(src, dest)?;
+        self.copy_op_no_validate(src, dest, allow_transmute)?;
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
@@ -877,8 +879,8 @@ where
         Ok(())
     }
 
-    /// Copies the data from an operand to a place. This does not support transmuting!
-    /// Use `copy_op_transmute` if the layouts could disagree.
+    /// Copies the data from an operand to a place.
+    /// `allow_transmute` indicates whether the layouts may disagree.
     /// Also, if you use this you are responsible for validating that things get copied at the
     /// right type.
     #[instrument(skip(self), level = "debug")]
@@ -886,10 +888,13 @@ where
         &mut self,
         src: &OpTy<'tcx, M::PointerTag>,
         dest: &PlaceTy<'tcx, M::PointerTag>,
+        allow_transmute: bool,
     ) -> InterpResult<'tcx> {
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
-        if !mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout) {
+        let layout_compat =
+            mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout);
+        if !allow_transmute && !layout_compat {
             span_bug!(
                 self.cur_span(),
                 "type mismatch when copying!\nsrc: {:?},\ndest: {:?}",
@@ -898,80 +903,53 @@ where
             );
         }
 
-        // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
+        // Let us see if the layout is simple so we take a shortcut,
+        // avoid force_allocation.
         let src = match self.read_immediate_raw(src, /*force*/ false)? {
             Ok(src_val) => {
                 assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
+                assert!(
+                    !dest.layout.is_unsized(),
+                    "the src is sized, so the dest must also be sized"
+                );
+                assert_eq!(src.layout.size, dest.layout.size);
                 // Yay, we got a value that we can write directly.
-                return self.write_immediate_no_validate(*src_val, dest);
+                return if layout_compat {
+                    self.write_immediate_no_validate(*src_val, dest)
+                } else {
+                    // This is tricky. The problematic case is `ScalarPair`: the `src_val` was
+                    // loaded using the offsets defined by `src.layout`. When we put this back into
+                    // the destination, we have to use the same offsets! So (a) we make sure we
+                    // write back to memory, and (b) we use `dest` *with the source layout*.
+                    let dest_mem = self.force_allocation(dest)?;
+                    self.write_immediate_to_mplace_no_validate(
+                        *src_val,
+                        src.layout,
+                        dest_mem.align,
+                        *dest_mem,
+                    )
+                };
             }
             Err(mplace) => mplace,
         };
         // Slow path, this does not fit into an immediate. Just memcpy.
         trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
-        let dest = self.force_allocation(dest)?;
+        let dest = self.force_allocation(&dest)?;
         let Some((dest_size, _)) = self.size_and_align_of_mplace(&dest)? else {
             span_bug!(self.cur_span(), "copy_op needs (dynamically) sized values")
         };
         if cfg!(debug_assertions) {
             let src_size = self.size_and_align_of_mplace(&src)?.unwrap().0;
             assert_eq!(src_size, dest_size, "Cannot copy differently-sized data");
+        } else {
+            // As a cheap approximation, we compare the fixed parts of the size.
+            assert_eq!(src.layout.size, dest.layout.size);
         }
 
         self.mem_copy(
             src.ptr, src.align, dest.ptr, dest.align, dest_size, /*nonoverlapping*/ false,
         )
-    }
-
-    /// Copies the data from an operand to a place. The layouts may disagree, but they must
-    /// have the same size.
-    pub fn copy_op_transmute(
-        &mut self,
-        src: &OpTy<'tcx, M::PointerTag>,
-        dest: &PlaceTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx> {
-        if mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout) {
-            // Fast path: Just use normal `copy_op`. This is faster because it tries
-            // `read_immediate_raw` first before doing `force_allocation`.
-            return self.copy_op(src, dest);
-        }
-        // Unsized copies rely on interpreting `src.meta` with `dest.layout`, we want
-        // to avoid that here.
-        assert!(
-            !src.layout.is_unsized() && !dest.layout.is_unsized(),
-            "Cannot transmute unsized data"
-        );
-        // We still require the sizes to match.
-        if src.layout.size != dest.layout.size {
-            span_bug!(
-                self.cur_span(),
-                "size-changing transmute, should have been caught by transmute checking: {:#?}\ndest: {:#?}",
-                src,
-                dest
-            );
-        }
-
-        // The hard case is `ScalarPair`.  `src` is already read from memory in this case,
-        // using `src.layout` to figure out which bytes to use for the 1st and 2nd field.
-        // We have to write them to `dest` at the offsets they were *read at*, which is
-        // not necessarily the same as the offsets in `dest.layout`!
-        // Hence we do the copy with the source layout on both sides.  We also make sure to write
-        // into memory, because if `dest` is a local we would not even have a way to write
-        // at the `src` offsets; the fact that we came from a different layout would
-        // just be lost.
-        let dest = self.force_allocation(dest)?;
-        self.copy_op_no_validate(
-            src,
-            &PlaceTy::from(MPlaceTy { mplace: *dest, layout: src.layout, align: dest.align }),
-        )?;
-
-        if M::enforce_validity(self) {
-            // Data got changed, better make sure it matches the type!
-            self.validate_operand(&dest.into())?;
-        }
-
-        Ok(())
     }
 
     /// Ensures that a place is in memory, and returns where it is.
@@ -997,18 +975,23 @@ where
                         if local_layout.is_unsized() {
                             throw_unsup_format!("unsized locals are not supported");
                         }
-                        let mplace = self.allocate(local_layout, MemoryKind::Stack)?;
+                        let mplace = *self.allocate(local_layout, MemoryKind::Stack)?;
                         if !matches!(local_val, Immediate::Uninit) {
                             // Preserve old value. (As an optimization, we can skip this if it was uninit.)
                             // We don't have to validate as we can assume the local
                             // was already valid for its type.
-                            self.write_immediate_to_mplace_no_validate(local_val, &mplace)?;
+                            self.write_immediate_to_mplace_no_validate(
+                                local_val,
+                                local_layout,
+                                local_layout.align.abi,
+                                mplace,
+                            )?;
                         }
                         // Now we can call `access_mut` again, asserting it goes well,
                         // and actually overwrite things.
                         *M::access_local_mut(self, frame, local).unwrap() =
-                            Operand::Indirect(*mplace);
-                        *mplace
+                            Operand::Indirect(mplace);
+                        mplace
                     }
                     &mut Operand::Indirect(mplace) => mplace, // this already was an indirect local
                 }
