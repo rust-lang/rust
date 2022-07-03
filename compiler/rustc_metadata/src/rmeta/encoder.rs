@@ -39,6 +39,7 @@ use rustc_span::{
 };
 use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
+use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::io::{Read, Seek, Write};
 use std::iter;
@@ -75,6 +76,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     required_source_files: Option<GrowableBitSet<usize>>,
     is_proc_macro: bool,
     hygiene_ctxt: &'a HygieneEncodeContext,
+    symbol_table: FxHashMap<Symbol, usize>,
 }
 
 /// If the current crate is a proc-macro, returns early with `Lazy:empty()`.
@@ -303,6 +305,24 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
             // while calling `cnum.encode(s)`
             let cnum = s.source_file_cache.0.cnum;
             cnum.encode(s);
+        }
+    }
+}
+
+impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Symbol {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
+        match s.symbol_table.entry(*self) {
+            Entry::Vacant(o) => {
+                s.opaque.emit_u8(SYMBOL_STR);
+                let pos = s.opaque.position();
+                o.insert(pos);
+                s.emit_str(self.as_str());
+            }
+            Entry::Occupied(o) => {
+                let x = o.get().clone();
+                s.emit_u8(SYMBOL_OFFSET);
+                s.emit_usize(x);
+            }
         }
     }
 }
@@ -2259,6 +2279,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
         required_source_files,
         is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
+        symbol_table: Default::default(),
     };
 
     // Encode the rustc version string in a predictable location.
