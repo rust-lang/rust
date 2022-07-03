@@ -397,6 +397,8 @@ define_tables! {
     assoc_container: Table<DefIndex, ty::AssocItemContainer>,
     macro_definition: Table<DefIndex, LazyValue<ast::MacroDef>>,
     proc_macro: Table<DefIndex, MacroKind>,
+    // Slot is full when there is a self parameter.
+    fn_has_self_parameter: Table<DefIndex, ()>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
@@ -426,7 +428,7 @@ enum EntryKind {
     Generator,
     Trait,
     Impl,
-    AssocFn { has_self: bool },
+    AssocFn,
     AssocType,
     AssocConst,
     TraitAlias,
