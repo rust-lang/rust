@@ -1,6 +1,3 @@
-#![feature(unsized_locals, unsized_fn_params)]
-#![allow(incomplete_features)]
-
 fn ref_box_dyn() {
     struct Struct(i32);
 
@@ -75,6 +72,9 @@ fn box_box_trait() {
     assert!(unsafe { DROPPED });
 }
 
+// Disabled for now: unsized locals are not supported,
+// their current MIR encoding is just not great.
+/*
 fn unsized_dyn() {
     pub trait Foo {
         fn foo(self) -> String;
@@ -95,7 +95,6 @@ fn unsized_dyn() {
     let x = Box::new(A) as Box<dyn Foo>;
     assert_eq!(x.foo(), format!("hello"));
 }
-
 fn unsized_dyn_autoderef() {
     pub trait Foo {
         fn foo(self) -> String;
@@ -140,12 +139,9 @@ fn unsized_dyn_autoderef() {
     let x = Box::new(|| "hello".to_owned()) as Box<dyn FnMut() -> String>;
     assert_eq!(&x.foo() as &str, "hello");
 }
+*/
 
 fn main() {
     ref_box_dyn();
     box_box_trait();
-
-    // "exotic" receivers
-    unsized_dyn();
-    unsized_dyn_autoderef();
 }
