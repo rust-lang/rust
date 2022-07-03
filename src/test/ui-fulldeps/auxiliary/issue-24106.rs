@@ -1,6 +1,9 @@
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
-enum E { E0 = 0, E1 = 1 }
+enum E {
+    E0 = 0,
+    E1 = 1,
+}
 const E0_U8: u8 = E::E0 as u8;
 const E1_U8: u8 = E::E1 as u8;
 

@@ -1,3 +1,5 @@
 // run-pass
 
-pub fn foo() -> isize { 10 }
+pub fn foo() -> isize {
+    10
+}

@@ -22,37 +22,37 @@ mod missing_absolute {
     use super::fluent_messages;
 
     fluent_messages! {
-        missing_absolute => "/definitely_does_not_exist.ftl",
-//~^ ERROR could not open Fluent resource
-    }
+            missing_absolute => "/definitely_does_not_exist.ftl",
+    //~^ ERROR could not open Fluent resource
+        }
 }
 
 mod missing_relative {
     use super::fluent_messages;
 
     fluent_messages! {
-        missing_relative => "../definitely_does_not_exist.ftl",
-//~^ ERROR could not open Fluent resource
-    }
+            missing_relative => "../definitely_does_not_exist.ftl",
+    //~^ ERROR could not open Fluent resource
+        }
 }
 
 mod missing_message {
     use super::fluent_messages;
 
     fluent_messages! {
-        missing_message => "./missing-message.ftl",
-//~^ ERROR could not parse Fluent resource
-    }
+            missing_message => "./missing-message.ftl",
+    //~^ ERROR could not parse Fluent resource
+        }
 }
 
 mod duplicate {
     use super::fluent_messages;
 
     fluent_messages! {
-        a => "./duplicate-a.ftl",
-        b => "./duplicate-b.ftl",
-//~^ ERROR overrides existing message: `key`
-    }
+            a => "./duplicate-a.ftl",
+            b => "./duplicate-b.ftl",
+    //~^ ERROR overrides existing message: `key`
+        }
 }
 
 mod valid {
@@ -62,5 +62,5 @@ mod valid {
         valid => "./valid.ftl",
     }
 
-    use self::fluent_generated::{DEFAULT_LOCALE_RESOURCES, valid::valid};
+    use self::fluent_generated::{valid::valid, DEFAULT_LOCALE_RESOURCES};
 }

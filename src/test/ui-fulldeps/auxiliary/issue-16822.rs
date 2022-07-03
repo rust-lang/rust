@@ -1,12 +1,12 @@
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 use std::cell::RefCell;
 
-pub struct Window<Data>{
-    pub data: RefCell<Data>
+pub struct Window<Data> {
+    pub data: RefCell<Data>,
 }
 
-impl<Data:  Update> Window<Data> {
+impl<Data: Update> Window<Data> {
     pub fn update(&self, e: i32) {
         match e {
             1 => self.data.borrow_mut().update(),

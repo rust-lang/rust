@@ -7,8 +7,8 @@
 use std::fmt;
 use std::io::prelude::*;
 use std::io::Cursor;
-use std::slice;
 use std::marker::PhantomData;
+use std::slice;
 
 trait Encoder {
     type Error;
@@ -44,7 +44,6 @@ struct OpaqueEncoder(Vec<u8>);
 impl Encoder for OpaqueEncoder {
     type Error = ();
 }
-
 
 struct Foo {
     baz: bool,

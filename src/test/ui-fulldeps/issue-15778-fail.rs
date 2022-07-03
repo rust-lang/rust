@@ -6,4 +6,4 @@
 #![plugin(lint_for_crate)]
 //~^ WARN use of deprecated attribute `plugin`
 
-pub fn main() { }
+pub fn main() {}

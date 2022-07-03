@@ -27,4 +27,6 @@ fn rename_directory() {
     assert!(new_path.join("newdir/temp.txt").exists());
 }
 
-pub fn main() { rename_directory() }
+pub fn main() {
+    rename_directory()
+}

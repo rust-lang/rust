@@ -5,15 +5,11 @@ use std::env;
 use std::fs::File;
 use std::io;
 use std::io::{Read, Write};
-use std::process::{Command, Stdio};
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
 
 fn main() {
-    if env::args().len() > 1 {
-        child().unwrap()
-    } else {
-        parent().unwrap()
-    }
+    if env::args().len() > 1 { child().unwrap() } else { parent().unwrap() }
 }
 
 fn parent() -> io::Result<()> {

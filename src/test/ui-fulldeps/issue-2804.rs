@@ -26,29 +26,21 @@ enum object {
     int_value(i64),
 }
 
-fn lookup(table: Object, key: String, default: String) -> String
-{
+fn lookup(table: Object, key: String, default: String) -> String {
     match table.get(&key) {
-        option::Option::Some(&Json::String(ref s)) => {
-            s.to_string()
-        }
+        option::Option::Some(&Json::String(ref s)) => s.to_string(),
         option::Option::Some(value) => {
             println!("{} was expected to be a string but is a {:?}", key, value);
             default
         }
-        option::Option::None => {
-            default
-        }
+        option::Option::None => default,
     }
 }
 
-fn add_interface(_store: isize, managed_ip: String, data: Json) -> (String, object)
-{
+fn add_interface(_store: isize, managed_ip: String, data: Json) -> (String, object) {
     match &data {
         &Json::Object(ref interface) => {
-            let name = lookup(interface.clone(),
-                              "ifDescr".to_string(),
-                              "".to_string());
+            let name = lookup(interface.clone(), "ifDescr".to_string(), "".to_string());
             let label = format!("{}-{}", managed_ip, name);
 
             (label, object::bool_value(false))
@@ -60,19 +52,21 @@ fn add_interface(_store: isize, managed_ip: String, data: Json) -> (String, obje
     }
 }
 
-fn add_interfaces(store: isize, managed_ip: String, device: HashMap<String, Json>)
--> Vec<(String, object)> {
+fn add_interfaces(
+    store: isize,
+    managed_ip: String,
+    device: HashMap<String, Json>,
+) -> Vec<(String, object)> {
     match device["interfaces"] {
-        Json::Array(ref interfaces) =>
-        {
-          interfaces.iter().map(|interface| {
-                add_interface(store, managed_ip.clone(), (*interface).clone())
-          }).collect()
-        }
-        _ =>
-        {
-            println!("Expected list for {} interfaces, found {:?}", managed_ip,
-                     device["interfaces"]);
+        Json::Array(ref interfaces) => interfaces
+            .iter()
+            .map(|interface| add_interface(store, managed_ip.clone(), (*interface).clone()))
+            .collect(),
+        _ => {
+            println!(
+                "Expected list for {} interfaces, found {:?}",
+                managed_ip, device["interfaces"]
+            );
             Vec::new()
         }
     }

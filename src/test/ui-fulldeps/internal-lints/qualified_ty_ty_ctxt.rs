@@ -29,7 +29,6 @@ fn ty_qualified(
 ) {
 }
 
-
 fn main() {
     qualified_macro!(a);
 }

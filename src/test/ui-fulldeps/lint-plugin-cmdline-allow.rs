@@ -6,7 +6,6 @@
 #![feature(plugin)]
 #![plugin(lint_plugin_test)] //~ WARNING compiler plugins are deprecated
 
-fn lintme() { }
+fn lintme() {}
 
-pub fn main() {
-}
+pub fn main() {}

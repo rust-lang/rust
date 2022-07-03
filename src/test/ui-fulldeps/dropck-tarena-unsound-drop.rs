@@ -15,24 +15,34 @@ extern crate rustc_arena;
 
 use rustc_arena::TypedArena;
 
-trait HasId { fn count(&self) -> usize; }
+trait HasId {
+    fn count(&self) -> usize;
+}
 
-struct CheckId<T:HasId> { v: T }
+struct CheckId<T: HasId> {
+    v: T,
+}
 
 // In the code below, the impl of HasId for `&'a usize` does not
 // actually access the borrowed data, but the point is that the
 // interface to CheckId does not (and cannot) know that, and therefore
 // when encountering a value V of type CheckId<S>, we must
 // conservatively force the type S to strictly outlive V.
-impl<T:HasId> Drop for CheckId<T> {
+impl<T: HasId> Drop for CheckId<T> {
     fn drop(&mut self) {
         assert!(self.v.count() > 0);
     }
 }
 
-struct C<'a> { v: CheckId<&'a usize>, }
+struct C<'a> {
+    v: CheckId<&'a usize>,
+}
 
-impl<'a> HasId for &'a usize { fn count(&self) -> usize { 1 } }
+impl<'a> HasId for &'a usize {
+    fn count(&self) -> usize {
+        1
+    }
+}
 
 fn f<'a>(_arena: &'a TypedArena<C<'a>>) {}
 

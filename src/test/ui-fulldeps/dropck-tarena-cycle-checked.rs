@@ -10,9 +10,9 @@
 
 extern crate rustc_arena;
 
+use id::Id;
 use rustc_arena::TypedArena;
 use std::cell::Cell;
-use id::Id;
 
 mod s {
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -57,14 +57,16 @@ trait HasId {
 }
 
 #[derive(Debug)]
-struct CheckId<T:HasId> {
-    v: T
+struct CheckId<T: HasId> {
+    v: T,
 }
 
 #[allow(non_snake_case)]
-fn CheckId<T:HasId>(t: T) -> CheckId<T> { CheckId{ v: t } }
+fn CheckId<T: HasId>(t: T) -> CheckId<T> {
+    CheckId { v: t }
+}
 
-impl<T:HasId> Drop for CheckId<T> {
+impl<T: HasId> Drop for CheckId<T> {
     fn drop(&mut self) {
         assert!(self.v.count() > 0);
     }

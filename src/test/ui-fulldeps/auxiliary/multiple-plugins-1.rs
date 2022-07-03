@@ -1,8 +1,8 @@
 #![crate_type = "dylib"]
 #![feature(rustc_private)]
 
-extern crate rustc_middle;
 extern crate rustc_driver;
+extern crate rustc_middle;
 
 use rustc_driver::plugin::Registry;
 

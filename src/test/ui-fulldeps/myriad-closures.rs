@@ -17,7 +17,9 @@ macro_rules! go_bacterial {
 }
 
 macro_rules! mk_closure {
-    () => ((move || {})())
+    () => {
+        (move || {})()
+    };
 }
 
 macro_rules! mk_fn {

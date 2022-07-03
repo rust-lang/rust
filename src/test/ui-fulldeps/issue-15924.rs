@@ -27,9 +27,7 @@ impl Encoder for JsonEncoder<'_> {
     type Error = ();
 }
 
-fn encode_json<T: for<'r> Encodable<JsonEncoder<'r>>>(
-    object: &T,
-) -> Result<String, ()> {
+fn encode_json<T: for<'r> Encodable<JsonEncoder<'r>>>(object: &T) -> Result<String, ()> {
     let s = String::new();
     {
         let mut encoder = JsonEncoder(PhantomData);

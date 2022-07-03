@@ -11,13 +11,13 @@
 #![crate_type = "lib"]
 
 extern crate rustc_errors;
+extern crate rustc_macros;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_macros;
 
 use rustc_errors::Applicability;
-use rustc_span::Span;
 use rustc_macros::SessionSubdiagnostic;
+use rustc_span::Span;
 
 #[derive(SessionSubdiagnostic)]
 #[label(parser::add_paren)]
@@ -40,7 +40,7 @@ enum B {
         #[primary_span]
         span: Span,
         var: String,
-    }
+    },
 }
 
 #[derive(SessionSubdiagnostic)]
@@ -161,66 +161,66 @@ enum P {
         #[primary_span]
         span: Span,
         var: String,
-    }
+    },
 }
 
 #[derive(SessionSubdiagnostic)]
 enum Q {
     #[bar]
-//~^ ERROR `#[bar]` is not a valid attribute
-//~^^ ERROR cannot find attribute `bar` in this scope
+    //~^ ERROR `#[bar]` is not a valid attribute
+    //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
         span: Span,
         var: String,
-    }
+    },
 }
 
 #[derive(SessionSubdiagnostic)]
 enum R {
     #[bar = "..."]
-//~^ ERROR `#[bar = ...]` is not a valid attribute
-//~^^ ERROR cannot find attribute `bar` in this scope
+    //~^ ERROR `#[bar = ...]` is not a valid attribute
+    //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
         span: Span,
         var: String,
-    }
+    },
 }
 
 #[derive(SessionSubdiagnostic)]
 enum S {
     #[bar = 4]
-//~^ ERROR `#[bar = ...]` is not a valid attribute
-//~^^ ERROR cannot find attribute `bar` in this scope
+    //~^ ERROR `#[bar = ...]` is not a valid attribute
+    //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
         span: Span,
         var: String,
-    }
+    },
 }
 
 #[derive(SessionSubdiagnostic)]
 enum T {
     #[bar("...")]
-//~^ ERROR `#[bar("...")]` is not a valid attribute
-//~^^ ERROR cannot find attribute `bar` in this scope
+    //~^ ERROR `#[bar("...")]` is not a valid attribute
+    //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
         span: Span,
         var: String,
-    }
+    },
 }
 
 #[derive(SessionSubdiagnostic)]
 enum U {
     #[label(code = "...")]
-//~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
+    //~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
     A {
         #[primary_span]
         span: Span,
         var: String,
-    }
+    },
 }
 
 #[derive(SessionSubdiagnostic)]
@@ -232,11 +232,11 @@ enum V {
         var: String,
     },
     B {
-//~^ ERROR subdiagnostic kind not specified
+        //~^ ERROR subdiagnostic kind not specified
         #[primary_span]
         span: Span,
         var: String,
-    }
+    },
 }
 
 #[derive(SessionSubdiagnostic)]
@@ -297,14 +297,14 @@ struct AB {
     #[primary_span]
     span: Span,
     #[skip_arg]
-    z: Z
+    z: Z,
 }
 
 #[derive(SessionSubdiagnostic)]
 union AC {
-//~^ ERROR unexpected unsupported untagged union
+    //~^ ERROR unexpected unsupported untagged union
     span: u32,
-    b: u64
+    b: u64,
 }
 
 #[derive(SessionSubdiagnostic)]
@@ -331,16 +331,16 @@ struct AE {
 #[label(parser::add_paren)]
 struct AF {
     #[primary_span]
-//~^ NOTE previously specified here
+    //~^ NOTE previously specified here
     span_a: Span,
     #[primary_span]
-//~^ ERROR specified multiple times
+    //~^ ERROR specified multiple times
     span_b: Span,
 }
 
 #[derive(SessionSubdiagnostic)]
 struct AG {
-//~^ ERROR subdiagnostic kind not specified
+    //~^ ERROR subdiagnostic kind not specified
     #[primary_span]
     span: Span,
 }
@@ -372,7 +372,7 @@ enum AI {
         #[applicability]
         applicability: Applicability,
         var: String,
-    }
+    },
 }
 
 #[derive(SessionSubdiagnostic)]
@@ -392,10 +392,10 @@ struct AK {
     #[primary_span]
     span: Span,
     #[applicability]
-//~^ NOTE previously specified here
+    //~^ NOTE previously specified here
     applicability_a: Applicability,
     #[applicability]
-//~^ ERROR specified multiple times
+    //~^ ERROR specified multiple times
     applicability_b: Applicability,
 }
 
@@ -406,7 +406,7 @@ struct AL {
     #[primary_span]
     span: Span,
     #[applicability]
-//~^ ERROR the `#[applicability]` attribute can only be applied to fields of type `Applicability`
+    //~^ ERROR the `#[applicability]` attribute can only be applied to fields of type `Applicability`
     applicability: Span,
 }
 
@@ -429,7 +429,7 @@ struct AN {
 }
 
 #[derive(SessionSubdiagnostic)]
-#[suggestion(parser::add_paren, code ="...", applicability = "foo")]
+#[suggestion(parser::add_paren, code = "...", applicability = "foo")]
 //~^ ERROR invalid applicability
 struct AO {
     #[primary_span]
@@ -439,7 +439,7 @@ struct AO {
 #[derive(SessionSubdiagnostic)]
 #[help(parser::add_paren)]
 struct AP {
-    var: String
+    var: String,
 }
 
 #[derive(SessionSubdiagnostic)]
@@ -455,7 +455,7 @@ struct AR {
 }
 
 #[derive(SessionSubdiagnostic)]
-#[suggestion(parser::add_paren, code ="...", applicability = "machine-applicable")]
+#[suggestion(parser::add_paren, code = "...", applicability = "machine-applicable")]
 struct AS {
     #[primary_span]
     span: Span,
@@ -470,11 +470,11 @@ enum AT {
         #[primary_span]
         span: Span,
         var: String,
-    }
+    },
 }
 
 #[derive(SessionSubdiagnostic)]
-#[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
+#[suggestion(parser::add_paren, code = "{var}", applicability = "machine-applicable")]
 struct AU {
     #[primary_span]
     span: Span,
@@ -482,7 +482,7 @@ struct AU {
 }
 
 #[derive(SessionSubdiagnostic)]
-#[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
+#[suggestion(parser::add_paren, code = "{var}", applicability = "machine-applicable")]
 //~^ ERROR `var` doesn't refer to a field on this type
 struct AV {
     #[primary_span]
@@ -491,20 +491,20 @@ struct AV {
 
 #[derive(SessionSubdiagnostic)]
 enum AW {
-    #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
+    #[suggestion(parser::add_paren, code = "{var}", applicability = "machine-applicable")]
     A {
         #[primary_span]
         span: Span,
         var: String,
-    }
+    },
 }
 
 #[derive(SessionSubdiagnostic)]
 enum AX {
-    #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
-//~^ ERROR `var` doesn't refer to a field on this type
+    #[suggestion(parser::add_paren, code = "{var}", applicability = "machine-applicable")]
+    //~^ ERROR `var` doesn't refer to a field on this type
     A {
         #[primary_span]
         span: Span,
-    }
+    },
 }

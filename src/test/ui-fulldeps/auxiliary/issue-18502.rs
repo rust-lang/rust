@@ -1,4 +1,4 @@
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 struct Foo;
 // This is the ICE trigger
@@ -12,7 +12,7 @@ impl Show for Foo {
     fn fmt(&self) {}
 }
 
-fn bar<T>(f: extern "Rust" fn(&T), t: &T) { }
+fn bar<T>(f: fn(&T), t: &T) {}
 
 // ICE requirement: this has to be marked as inline
 #[inline]

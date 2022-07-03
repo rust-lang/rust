@@ -6,7 +6,7 @@
 //~^ WARN use of deprecated attribute `plugin`
 #![deny(test_lint)]
 
-fn lintme() { } //~ ERROR item is named 'lintme'
+fn lintme() {} //~ ERROR item is named 'lintme'
 
 pub fn main() {
     lintme();

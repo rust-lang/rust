@@ -1,5 +1,5 @@
 error[E0597]: `arena` does not live long enough
-  --> $DIR/dropck-tarena-cycle-checked.rs:116:7
+  --> $DIR/dropck-tarena-cycle-checked.rs:118:7
    |
 LL |     f(&arena);
    |       ^^^^^^ borrowed value does not live long enough

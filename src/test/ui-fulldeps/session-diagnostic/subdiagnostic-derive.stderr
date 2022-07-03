@@ -170,7 +170,7 @@ error: unexpected unsupported untagged union
 LL | / union AC {
 LL | |
 LL | |     span: u32,
-LL | |     b: u64
+LL | |     b: u64,
 LL | | }
    | |_^
 
@@ -290,10 +290,10 @@ LL | | }
    | |_^
 
 error: invalid applicability
-  --> $DIR/subdiagnostic-derive.rs:432:46
+  --> $DIR/subdiagnostic-derive.rs:432:47
    |
-LL | #[suggestion(parser::add_paren, code ="...", applicability = "foo")]
-   |                                              ^^^^^^^^^^^^^^^^^^^^^
+LL | #[suggestion(parser::add_paren, code = "...", applicability = "foo")]
+   |                                               ^^^^^^^^^^^^^^^^^^^^^
 
 error: suggestion without `applicability`
   --> $DIR/subdiagnostic-derive.rs:450:1
@@ -324,16 +324,16 @@ LL | #[label]
    | ^^^^^^^^
 
 error: `var` doesn't refer to a field on this type
-  --> $DIR/subdiagnostic-derive.rs:485:39
+  --> $DIR/subdiagnostic-derive.rs:485:40
    |
-LL | #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
-   |                                       ^^^^^^^
+LL | #[suggestion(parser::add_paren, code = "{var}", applicability = "machine-applicable")]
+   |                                        ^^^^^^^
 
 error: `var` doesn't refer to a field on this type
-  --> $DIR/subdiagnostic-derive.rs:504:43
+  --> $DIR/subdiagnostic-derive.rs:504:44
    |
-LL |     #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
-   |                                           ^^^^^^^
+LL |     #[suggestion(parser::add_paren, code = "{var}", applicability = "machine-applicable")]
+   |                                            ^^^^^^^
 
 error: cannot find attribute `foo` in this scope
   --> $DIR/subdiagnostic-derive.rs:63:3

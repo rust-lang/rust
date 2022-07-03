@@ -1,5 +1,5 @@
 error[E0597]: `arena` does not live long enough
-  --> $DIR/dropck-tarena-unsound-drop.rs:41:7
+  --> $DIR/dropck-tarena-unsound-drop.rs:51:7
    |
 LL |     f(&arena);
    |       ^^^^^^ borrowed value does not live long enough

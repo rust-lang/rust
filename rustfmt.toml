@@ -14,6 +14,9 @@ ignore = [
     # tests for now are not formatted, as they are sometimes pretty-printing constrained
     # (and generally rustfmt can move around comments in UI-testing incompatible ways)
     "src/test",
+    # format ui-fulldeps as they aren't so susceptible to pretty-printing and
+    # UI-testing comments are used sparingly (and then mostly only error annotations).
+    "!src/test/ui-fulldeps",
 
     # do not format submodules
     "library/backtrace",

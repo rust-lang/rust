@@ -2,23 +2,21 @@
 
 #![allow(dead_code)]
 #![allow(unused_imports)]
-
 // Test a sample usage pattern for regions. Makes use of the
 // following features:
 //
 // - Multiple lifetime parameters
 // - Arenas
-
 #![feature(rustc_private, libc)]
 
-extern crate rustc_arena;
 extern crate libc;
+extern crate rustc_arena;
 
-use TypeStructure::{TypeInt, TypeFunction};
-use AstKind::{ExprInt, ExprVar, ExprLambda};
 use rustc_arena::TypedArena;
 use std::collections::HashMap;
 use std::mem;
+use AstKind::{ExprInt, ExprLambda, ExprVar};
+use TypeStructure::{TypeFunction, TypeInt};
 
 type Type<'tcx> = &'tcx TypeStructure<'tcx>;
 
@@ -33,7 +31,7 @@ impl<'tcx> PartialEq for TypeStructure<'tcx> {
         match (*self, *other) {
             (TypeInt, TypeInt) => true,
             (TypeFunction(s_a, s_b), TypeFunction(o_a, o_b)) => *s_a == *o_a && *s_b == *o_b,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -45,22 +43,26 @@ type AstArena<'ast> = TypedArena<AstStructure<'ast>>;
 
 struct TypeContext<'tcx, 'ast> {
     ty_arena: &'tcx TyArena<'tcx>,
-    types: Vec<Type<'tcx>> ,
+    types: Vec<Type<'tcx>>,
     type_table: HashMap<NodeId, Type<'tcx>>,
 
     ast_arena: &'ast AstArena<'ast>,
     ast_counter: usize,
 }
 
-impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
-    fn new(ty_arena: &'tcx TyArena<'tcx>, ast_arena: &'ast AstArena<'ast>)
-           -> TypeContext<'tcx, 'ast> {
-        TypeContext { ty_arena: ty_arena,
-                      types: Vec::new(),
-                      type_table: HashMap::new(),
+impl<'tcx, 'ast> TypeContext<'tcx, 'ast> {
+    fn new(
+        ty_arena: &'tcx TyArena<'tcx>,
+        ast_arena: &'ast AstArena<'ast>,
+    ) -> TypeContext<'tcx, 'ast> {
+        TypeContext {
+            ty_arena: ty_arena,
+            types: Vec::new(),
+            type_table: HashMap::new(),
 
-                      ast_arena: ast_arena,
-                      ast_counter: 0 }
+            ast_arena: ast_arena,
+            ast_counter: 0,
+        }
     }
 
     fn add_type(&mut self, s: TypeStructure<'tcx>) -> Type<'tcx> {
@@ -83,13 +85,13 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
     fn ast(&mut self, a: AstKind<'ast>) -> Ast<'ast> {
         let id = self.ast_counter;
         self.ast_counter += 1;
-        self.ast_arena.alloc(AstStructure { id: NodeId {id:id}, kind: a })
+        self.ast_arena.alloc(AstStructure { id: NodeId { id: id }, kind: a })
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 struct NodeId {
-    id: usize
+    id: usize,
 }
 
 type Ast<'ast> = &'ast AstStructure<'ast>;
@@ -97,7 +99,7 @@ type Ast<'ast> = &'ast AstStructure<'ast>;
 #[derive(Copy, Clone)]
 struct AstStructure<'ast> {
     id: NodeId,
-    kind: AstKind<'ast>
+    kind: AstKind<'ast>,
 }
 
 #[derive(Copy, Clone)]
@@ -107,9 +109,7 @@ enum AstKind<'ast> {
     ExprLambda(Ast<'ast>),
 }
 
-fn compute_types<'tcx,'ast>(tcx: &mut TypeContext<'tcx,'ast>,
-                            ast: Ast<'ast>) -> Type<'tcx>
-{
+fn compute_types<'tcx, 'ast>(tcx: &mut TypeContext<'tcx, 'ast>, ast: Ast<'ast>) -> Type<'tcx> {
     match ast.kind {
         ExprInt | ExprVar(_) => {
             let ty = tcx.add_type(TypeInt);

@@ -1,11 +1,11 @@
 error: Found non-existing keyword `tadam` used in `#[doc(keyword = "...")]`
-  --> $DIR/existing_doc_keyword.rs:10:1
+  --> $DIR/existing_doc_keyword.rs:8:1
    |
 LL | #[doc(keyword = "tadam")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/existing_doc_keyword.rs:8:9
+  --> $DIR/existing_doc_keyword.rs:6:9
    |
 LL | #![deny(rustc::existing_doc_keyword)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^

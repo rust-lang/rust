@@ -13,7 +13,7 @@ extern crate rustc_interface;
 use rustc_interface::interface;
 
 struct TestCalls<'a> {
-    count: &'a mut u32
+    count: &'a mut u32,
 }
 
 impl rustc_driver::Callbacks for TestCalls<'_> {

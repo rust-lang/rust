@@ -5,9 +5,9 @@
 
 #![feature(plugin)]
 
-fn lintme() { } //~ WARNING item is named 'lintme'
+fn lintme() {} //~ WARNING item is named 'lintme'
 
 #[allow(test_lint)]
 pub fn main() {
-    fn lintme() { }
+    fn lintme() {}
 }

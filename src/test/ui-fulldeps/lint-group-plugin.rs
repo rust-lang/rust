@@ -6,12 +6,12 @@
 #![plugin(lint_group_plugin_test)] //~ WARNING use of deprecated attribute
 #![allow(dead_code)]
 
-fn lintme() { } //~ WARNING item is named 'lintme'
-fn pleaselintme() { } //~ WARNING item is named 'pleaselintme'
+fn lintme() {} //~ WARNING item is named 'lintme'
+fn pleaselintme() {} //~ WARNING item is named 'pleaselintme'
 
 #[allow(lint_me)]
 pub fn main() {
-    fn lintme() { }
+    fn lintme() {}
 
-    fn pleaselintme() { }
+    fn pleaselintme() {}
 }

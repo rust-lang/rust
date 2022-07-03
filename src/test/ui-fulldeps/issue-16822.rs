@@ -6,7 +6,7 @@ extern crate issue_16822 as lib;
 use std::cell::RefCell;
 
 struct App {
-    i: isize
+    i: isize,
 }
 
 impl lib::Update for App {
@@ -15,7 +15,7 @@ impl lib::Update for App {
     }
 }
 
-fn main(){
+fn main() {
     let app = App { i: 5 };
     let window = lib::Window { data: RefCell::new(app) };
     window.update(1);
