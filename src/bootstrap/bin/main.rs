@@ -7,11 +7,27 @@
 
 use std::env;
 
-use bootstrap::{Build, Config, Subcommand, VERSION};
+use bootstrap::{t, Build, Config, Subcommand, VERSION};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
     let config = Config::parse(&args);
+
+    let mut build_lock;
+    let _build_lock_guard;
+    if cfg!(any(unix, windows)) {
+        build_lock = fd_lock::RwLock::new(t!(std::fs::File::create(config.out.join("lock"))));
+        _build_lock_guard = match build_lock.try_write() {
+            Ok(lock) => lock,
+            err => {
+                println!("warning: build directory locked, waiting for lock");
+                drop(err);
+                t!(build_lock.write())
+            }
+        };
+    } else {
+        println!("warning: file locking not supported for target, not locking build directory");
+    }
 
     // check_version warnings are not printed during setup
     let changelog_suggestion =

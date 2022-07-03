@@ -22,6 +22,7 @@ use crate::config::{Config, TargetSelection};
 ///
 /// This is currently used judiciously throughout the build system rather than
 /// using a `Result` with `try!`, but this may change one day...
+#[macro_export]
 macro_rules! t {
     ($e:expr) => {
         match $e {
@@ -37,7 +38,7 @@ macro_rules! t {
         }
     };
 }
-pub(crate) use t;
+pub use t;
 
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
