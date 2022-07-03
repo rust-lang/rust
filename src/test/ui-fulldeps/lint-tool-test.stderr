@@ -67,8 +67,8 @@ LL | #![deny(clippy_group)]
 error: item is named 'lintme'
   --> $DIR/lint-tool-test.rs:20:1
    |
-LL | fn lintme() { }
-   | ^^^^^^^^^^^^^^^
+LL | fn lintme() {}
+   | ^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/lint-tool-test.rs:14:9
@@ -80,8 +80,8 @@ LL | #![deny(clippy_group)]
 error: item is named 'lintmetoo'
   --> $DIR/lint-tool-test.rs:28:5
    |
-LL |     fn lintmetoo() { }
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     fn lintmetoo() {}
+   |     ^^^^^^^^^^^^^^^^^
    |
    = note: `#[deny(clippy::test_group)]` implied by `#[deny(clippy::group)]`
 
