@@ -59,6 +59,7 @@
 #![feature(drain_filter)]
 #![feature(intra_doc_pointers)]
 #![feature(yeet_expr)]
+#![feature(const_option)]
 #![recursion_limit = "512"]
 #![allow(rustc::potential_query_instability)]
 

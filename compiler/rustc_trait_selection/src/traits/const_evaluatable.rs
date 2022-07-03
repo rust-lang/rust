@@ -451,6 +451,10 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let val = ty::ValTree::from_scalar_int(lit);
                 self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node.ty)))
             }
+            &ExprKind::ZstLiteral { user_ty: _ } => {
+                let val = ty::ValTree::zst();
+                self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node.ty)))
+            }
             &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
                 let uneval = ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);
 

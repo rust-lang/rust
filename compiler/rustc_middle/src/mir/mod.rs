@@ -1816,7 +1816,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
-            literal: ConstantKind::Val(ConstValue::zst(), ty),
+            literal: ConstantKind::Val(ConstValue::ZST, ty),
         }))
     }
 
@@ -2301,7 +2301,7 @@ impl<'tcx> ConstantKind<'tcx> {
 
     #[inline]
     pub fn zero_sized(ty: Ty<'tcx>) -> Self {
-        let cv = ConstValue::Scalar(Scalar::ZST);
+        let cv = ConstValue::ZST;
         Self::Val(cv, ty)
     }
 
