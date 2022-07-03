@@ -66,11 +66,13 @@ rm src/test/ui/intrinsics/intrinsic-nearby.rs # unimplemented nearbyintf32 and n
 rm src/test/ui/target-feature/missing-plusminus.rs # error not implemented
 rm src/test/ui/fn/dyn-fn-alignment.rs # wants a 256 byte alignment
 rm -r src/test/run-make/emit-named-files # requires full --emit support
+rm src/test/ui/abi/stack-probes.rs # stack probes not yet implemented
 
 # optimization tests
 # ==================
 rm src/test/ui/codegen/issue-28950.rs # depends on stack size optimizations
 rm src/test/ui/codegen/init-large-type.rs # same
+rm src/test/ui/issues/issue-40883.rs # same
 rm -r src/test/run-make/fmt-write-bloat/ # tests an optimization
 
 # backend specific tests
@@ -90,6 +92,8 @@ rm src/test/ui/consts/issue-33537.rs # same
 rm -r src/test/run-make/emit-shared-files # requires the rustdoc executable in build/bin/
 rm -r src/test/run-make/unstable-flag-required # same
 rm -r src/test/run-make/rustdoc-* # same
+rm -r src/test/run-make/issue-88756-default-output # same
+rm -r src/test/run-make/issue-88756-opt-help # same
 rm -r src/test/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 
 # genuine bugs
