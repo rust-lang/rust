@@ -118,7 +118,7 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
     if !config.llvm_from_ci {
         return;
     }
-    let mut rev_list = Command::new("git");
+    let mut rev_list = config.git();
     rev_list.args(&[
         PathBuf::from("rev-list"),
         format!("--author={}", builder.config.stage0_metadata.config.git_merge_commit_email).into(),
