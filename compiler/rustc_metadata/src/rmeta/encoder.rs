@@ -17,9 +17,8 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE,
 };
 use rustc_hir::definitions::DefPathData;
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::intravisit;
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
@@ -450,18 +449,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         LazyArray::from_position_and_num_elems(pos, len)
     }
 
-    fn encode_info_for_items(&mut self) {
-        self.encode_info_for_mod(CRATE_DEF_ID);
-
-        // Proc-macro crates only export proc-macro items, which are looked
-        // up using `proc_macro_data`
-        if self.is_proc_macro {
-            return;
-        }
-
-        self.tcx.hir().visit_all_item_likes_in_crate(self);
-    }
-
     fn encode_def_path_table(&mut self) {
         let table = self.tcx.def_path_table();
         if self.is_proc_macro {
@@ -606,8 +593,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         _ = stat!("mir", || self.encode_mir());
 
         _ = stat!("def-ids", || self.encode_def_ids());
-
-        _ = stat!("items", || self.encode_info_for_items());
 
         let interpret_alloc_index = stat!("interpret-alloc-index", || {
             let mut interpret_alloc_index = Vec::new();
@@ -1341,10 +1326,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_ids(&mut self) {
+        self.encode_info_for_mod(CRATE_DEF_ID);
+
+        // Proc-macro crates only export proc-macro items, which are looked
+        // up using `proc_macro_data`
         if self.is_proc_macro {
             return;
         }
+
         let tcx = self.tcx;
+
         for local_id in tcx.iter_local_def_id() {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.opt_def_kind(local_id);
@@ -1390,6 +1381,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
                 record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives);
+
+                for param in &g.params {
+                    if let ty::GenericParamDefKind::Const { has_default: true, .. } = param.kind {
+                        let default = self.tcx.const_param_default(param.def_id);
+                        record!(self.tables.const_param_default[param.def_id] <- default);
+                    }
+                }
             }
             if should_encode_type(tcx, local_id, def_kind) {
                 record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
@@ -1439,6 +1437,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);
+            }
+            if let DefKind::Mod = def_kind {
+                self.encode_info_for_mod(local_id);
+            }
+            if let DefKind::Macro(_) = def_kind {
+                self.encode_info_for_macro(local_id);
+            }
+            if let DefKind::OpaqueTy = def_kind {
+                self.encode_explicit_item_bounds(def_id);
+                self.tables
+                    .is_type_alias_impl_trait
+                    .set(def_id.index, self.tcx.is_type_alias_impl_trait(def_id));
             }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
@@ -1513,10 +1523,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn encode_info_for_mod(&mut self, local_def_id: LocalDefId) {
         let tcx = self.tcx;
         let def_id = local_def_id.to_def_id();
-        debug!("EncodeContext::encode_info_for_mod({:?})", def_id);
 
         // If we are encoding a proc-macro crates, `encode_info_for_mod` will
         // only ever get called for the crate root. We still want to encode
@@ -1689,40 +1699,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         })
     }
 
-    fn encode_info_for_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        let def_id = item.owner_id.to_def_id();
-        debug!("EncodeContext::encode_info_for_item({:?})", def_id);
+    #[tracing::instrument(level = "debug", skip(self))]
+    fn encode_info_for_macro(&mut self, def_id: LocalDefId) {
+        let tcx = self.tcx;
 
-        match item.kind {
-            hir::ItemKind::Macro(ref macro_def, _) => {
-                self.tables.is_macro_rules.set(def_id.index, macro_def.macro_rules);
-                record!(self.tables.macro_definition[def_id] <- &*macro_def.body);
-            }
-            hir::ItemKind::Mod(..) => {
-                self.encode_info_for_mod(item.owner_id.def_id);
-            }
-            hir::ItemKind::OpaqueTy(ref opaque) => {
-                self.encode_explicit_item_bounds(def_id);
-                self.tables.is_type_alias_impl_trait.set(
-                    def_id.index,
-                    matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias { .. }),
-                );
-            }
-            hir::ItemKind::ExternCrate(_)
-            | hir::ItemKind::Use(..)
-            | hir::ItemKind::Impl(..)
-            | hir::ItemKind::Trait(..)
-            | hir::ItemKind::TraitAlias(..)
-            | hir::ItemKind::Static(..)
-            | hir::ItemKind::Const(..)
-            | hir::ItemKind::Enum(..)
-            | hir::ItemKind::Struct(..)
-            | hir::ItemKind::Union(..)
-            | hir::ItemKind::ForeignMod { .. }
-            | hir::ItemKind::GlobalAsm(..)
-            | hir::ItemKind::Fn(..)
-            | hir::ItemKind::TyAlias(..) => {}
-        }
+        let hir::ItemKind::Macro(ref macro_def, _) = tcx.hir().expect_item(def_id).kind else { bug!() };
+        self.tables.is_macro_rules.set(def_id.local_def_index, macro_def.macro_rules);
+        record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
@@ -2097,39 +2080,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }));
         }
         LazyArray::default()
-    }
-}
-
-// FIXME(eddyb) make metadata encoding walk over all definitions, instead of HIR.
-impl<'a, 'tcx> Visitor<'tcx> for EncodeContext<'a, 'tcx> {
-    type NestedFilter = nested_filter::OnlyBodies;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        intravisit::walk_item(self, item);
-        self.encode_info_for_item(item);
-    }
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
-        intravisit::walk_generics(self, generics);
-        self.encode_info_for_generics(generics);
-    }
-}
-
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    fn encode_info_for_generics(&mut self, generics: &hir::Generics<'tcx>) {
-        for param in generics.params {
-            match param.kind {
-                hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. } => {}
-                hir::GenericParamKind::Const { ref default, .. } => {
-                    let def_id = param.def_id.to_def_id();
-                    if default.is_some() {
-                        record!(self.tables.const_param_default[def_id] <- self.tcx.const_param_default(def_id))
-                    }
-                }
-            }
-        }
     }
 }
 
