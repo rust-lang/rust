@@ -169,7 +169,7 @@ impl Provenance for Tag {
                 write!(f, "{:?}", sb)?;
             }
             Tag::Wildcard => {
-                write!(f, "[Wildcard]")?;
+                write!(f, "[wildcard]")?;
             }
         }
 
