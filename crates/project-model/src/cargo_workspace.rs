@@ -318,10 +318,15 @@ impl CargoWorkspace {
                 ..
             } = meta_pkg;
             let meta = from_value::<PackageMetadata>(metadata.clone()).unwrap_or_default();
-            let edition = edition.parse::<Edition>().unwrap_or_else(|err| {
-                tracing::error!("Failed to parse edition {}", err);
-                Edition::CURRENT
-            });
+            let edition = match edition {
+                cargo_metadata::Edition::E2015 => Edition::Edition2015,
+                cargo_metadata::Edition::E2018 => Edition::Edition2018,
+                cargo_metadata::Edition::E2021 => Edition::Edition2021,
+                _ => {
+                    tracing::error!("Unsupported edition `{:?}`", edition);
+                    Edition::CURRENT
+                }
+            };
             // We treat packages without source as "local" packages. That includes all members of
             // the current workspace, as well as any path dependency outside the workspace.
             let is_local = meta_pkg.source.is_none();

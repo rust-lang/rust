@@ -17,7 +17,7 @@ rowan = "0.15.5"
 rustc_lexer = { version = "725.0.0", package = "rustc-ap-rustc_lexer" }
 rustc-hash = "1.1.0"
 once_cell = "1.12.0"
-indexmap = "1.8.2"
+indexmap = "1.9.1"
 smol_str = "0.1.23"
 
 stdx = { path = "../stdx", version = "0.0.0" }
@@ -29,7 +29,7 @@ profile = { path = "../profile", version = "0.0.0" }
 rayon = "1.5.3"
 expect-test = "1.3.0"
 proc-macro2 = "1.0.39"
-quote = "1.0.18"
+quote = "1.0.20"
 ungrammar = "1.16.1"
 
 test-utils = { path = "../test-utils" }

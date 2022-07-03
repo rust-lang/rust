@@ -4,7 +4,7 @@ use std::iter;
 
 use chalk_ir::{
     cast::{Cast, CastTo, Caster},
-    fold::Fold,
+    fold::TypeFoldable,
     interner::HasInterner,
     AdtId, BoundVar, DebruijnIndex, Scalar,
 };
@@ -276,7 +276,7 @@ impl TyBuilder<TypeAliasId> {
     }
 }
 
-impl<T: HasInterner<Interner = Interner> + Fold<Interner>> TyBuilder<Binders<T>> {
+impl<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>> TyBuilder<Binders<T>> {
     fn subst_binders(b: Binders<T>) -> Self {
         let param_kinds = b
             .binders
@@ -290,7 +290,7 @@ impl<T: HasInterner<Interner = Interner> + Fold<Interner>> TyBuilder<Binders<T>>
         TyBuilder::new(b, param_kinds)
     }
 
-    pub fn build(self) -> <T as Fold<Interner>>::Result {
+    pub fn build(self) -> T {
         let (b, subst) = self.build_internal();
         b.substitute(Interner, &subst)
     }

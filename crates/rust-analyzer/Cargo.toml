@@ -19,7 +19,7 @@ path = "src/bin/main.rs"
 
 [dependencies]
 anyhow = "1.0.57"
-crossbeam-channel = "0.5.4"
+crossbeam-channel = "0.5.5"
 dissimilar = "1.0.4"
 itertools = "0.10.3"
 lsp-types = { version = "0.93.0", features = ["proposed"] }
@@ -35,7 +35,7 @@ num_cpus = "1.13.1"
 mimalloc = { version = "0.1.29", default-features = false, optional = true }
 lsp-server = { version = "0.6.0", path = "../../lib/lsp-server" }
 tracing = "0.1.35"
-tracing-subscriber = { version = "0.3.11", default-features = false, features = [
+tracing-subscriber = { version = "0.3.14", default-features = false, features = [
     "env-filter",
     "registry",
     "fmt",
