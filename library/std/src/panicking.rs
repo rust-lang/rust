@@ -296,10 +296,17 @@ fn default_hook(info: &PanicInfo<'_>) {
             }
             Some(BacktraceStyle::Off) => {
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {
-                    let _ = writeln!(
-                        err,
-                        "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
-                    );
+                    let _ = if let Ok(_) = crate::env::var("PSModulePath") {
+                        writeln!(
+                            err,
+                            "note: run with `$env:RUST_BACKTRACE=1` environment variable to display a backtrace."
+                        )
+                    } else {
+                        writeln!(
+                            err,
+                            "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace."
+                        )
+                    };
                 }
             }
             // If backtraces aren't supported, do nothing.
