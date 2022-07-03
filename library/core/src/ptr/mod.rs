@@ -797,19 +797,59 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
-    // Give ourselves some scratch space to work with.
-    // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
-    let mut tmp = MaybeUninit::<T>::uninit();
+    trait ShouldTrySwapWoTemporary {
+        const VALUE: bool;
+    }
 
-    // Perform the swap
-    // SAFETY: the caller must guarantee that `x` and `y` are
-    // valid for writes and properly aligned. `tmp` cannot be
-    // overlapping either `x` or `y` because `tmp` was just allocated
-    // on the stack as a separate allocated object.
-    unsafe {
-        copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
-        copy(y, x, 1); // `x` and `y` may overlap
-        copy_nonoverlapping(tmp.as_ptr(), y, 1);
+    impl<T> ShouldTrySwapWoTemporary for T
+    where
+        T: Sized,
+    {
+        const VALUE: bool =
+            // Types with large alignment is often SIMD optimized.
+            mem::align_of::<T>() <= mem::align_of::<usize>()
+            // Obviously, there is no use to do that on ZST
+            && mem::size_of::<T>() > 0
+            // This multiplier is chosen with this considerations:
+            // 1. LLVM manages to remove stack usage if size <= 2*alignment
+            // 2. If we use mult 2 here, we would get same amount of memory
+            // reads and writes as when using stack temporary but with extra
+            // branch on pointer comparison which is ineffective.
+            // 3. Large types which can cause stack overflows would have very big multiplier here.
+            // See https://godbolt.org/z/hsoM3TWY8
+            && mem::size_of::<T>() > 3 * mem::align_of::<T>();
+    }
+
+    // We should try to avoid usage of stack for 2 reasons:
+    // 1. it prevents stack overflows when swapping large values from heap
+    // e.g. `struct A([u32; 500_000])`
+    // 2. It generates less memory accesses.
+    if <T as ShouldTrySwapWoTemporary>::VALUE {
+        // Well, we expect most users to swap only different locations
+        // because swapping with self is useless.
+        // For example, in most sorting algorithms we swap only differing locations.
+        if crate::intrinsics::likely(x != y) {
+            // We use `swap_nonoverlapping` here because it has optimizations
+            // to avoid stack usage.
+            unsafe { swap_nonoverlapping(x, y, 1) }
+        } else {
+            return;
+        }
+    } else {
+        // Give ourselves some scratch space to work with.
+        // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
+        let mut tmp = MaybeUninit::<T>::uninit();
+
+        // Perform the swap
+        // SAFETY: the caller must guarantee that `x` and `y` are
+        // valid for writes and properly aligned. `tmp` cannot be
+        // overlapping either `x` or `y` because `tmp` was just allocated
+        // on the stack as a separate allocated object.
+        unsafe {
+            copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
+            copy(y, x, 1); // `x` and `y` may overlap
+            copy_nonoverlapping(tmp.as_ptr(), y, 1);
+        }
     }
 }
 

@@ -388,8 +388,9 @@ impl<T> Cell<T> {
         // is `!Sync` so this won't happen. This also won't invalidate any
         // pointers since `Cell` makes sure nothing else will be pointing into
         // either of these `Cell`s.
+        // We checked above that we don't point to same location.
         unsafe {
-            ptr::swap(self.value.get(), other.value.get());
+            ptr::swap_nonoverlapping(self.value.get(), other.value.get(), 1);
         }
     }
 
