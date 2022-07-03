@@ -1523,7 +1523,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn encode_info_for_mod(&mut self, local_def_id: LocalDefId) {
         let tcx = self.tcx;
         let def_id = local_def_id.to_def_id();
@@ -1554,7 +1554,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn encode_info_for_assoc_item(&mut self, def_id: DefId) {
         let tcx = self.tcx;
         let item = tcx.associated_item(def_id);
@@ -1648,9 +1648,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn encode_stability(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_stability({:?})", def_id);
-
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
         if self.feat.staged_api || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
@@ -1660,9 +1659,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn encode_const_stability(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_const_stability({:?})", def_id);
-
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
         if self.feat.staged_api || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
@@ -1672,9 +1670,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn encode_default_body_stability(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_default_body_stability({:?})", def_id);
-
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
         if self.feat.staged_api || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
@@ -1684,8 +1681,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn encode_deprecation(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_deprecation({:?})", def_id);
         if let Some(depr) = self.tcx.lookup_deprecation(def_id) {
             record!(self.tables.lookup_deprecation_entry[def_id] <- depr);
         }
@@ -1699,7 +1696,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         })
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn encode_info_for_macro(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
 
@@ -1708,7 +1705,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn encode_info_for_impl(&mut self, def_id: DefId, of_trait: bool) {
         let tcx = self.tcx;
 
@@ -1962,8 +1959,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.
+    #[instrument(level = "debug", skip(self))]
     fn encode_impls(&mut self) -> LazyArray<TraitImpls> {
-        debug!("EncodeContext::encode_traits_and_impls()");
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let mut fx_hash_map: FxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
@@ -2011,8 +2008,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(&all_impls)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn encode_incoherent_impls(&mut self) -> LazyArray<IncoherentImpls> {
-        debug!("EncodeContext::encode_traits_and_impls()");
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let mut all_impls: Vec<_> = tcx.crate_inherent_impls(()).incoherent_impls.iter().collect();
