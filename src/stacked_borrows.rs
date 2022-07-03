@@ -1039,6 +1039,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let val = self.ecx.read_immediate(&place.into())?;
                     let val = self.ecx.retag_reference(&val, mutbl, protector)?;
                     self.ecx.write_immediate(*val, &place.into())?;
+                } else if matches!(place.layout.ty.kind(), ty::RawPtr(..)) {
+                    // Wide raw pointers *do* have fields and their types are strange.
+                    // vtables have a type like `&[*const (); 3]` or so!
+                    // Do *not* recurse into them.
+                    // (No need to worry about wide references or boxes, those always "qualify".)
                 } else {
                     // Maybe we need to go deeper.
                     self.walk_value(place)?;

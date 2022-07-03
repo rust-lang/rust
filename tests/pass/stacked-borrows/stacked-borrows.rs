@@ -1,4 +1,5 @@
 // compile-flags: -Zmiri-retag-fields
+#![feature(allocator_api)]
 use std::ptr;
 
 // Test various stacked-borrows-related things.
@@ -17,6 +18,7 @@ fn main() {
     raw_ref_to_part();
     array_casts();
     mut_below_shr();
+    wide_raw_ptr_in_tuple();
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -204,4 +206,16 @@ fn mut_below_shr() {
     let p = unsafe { core::mem::transmute::<&&i32, &&mut i32>(&y) };
     let r = &**p;
     let _val = *r;
+}
+
+fn wide_raw_ptr_in_tuple() {
+    let mut x: Box<dyn std::any::Any> = Box::new("ouch");
+    let r = &mut *x as *mut dyn std::any::Any;
+    // This triggers the visitor-based recursive retagging. It is *not* supposed to retag raw
+    // pointers, but then the visitor might recurse into the "fields" of a wide raw pointer and
+    // finds a reference (to a vtable) there that it wants to retag... and that would be Wrong.
+    let pair = (r, &0);
+    let r = unsafe { &mut *pair.0 };
+    // Make sure the fn ptr part of the vtable is still fine.
+    r.type_id();
 }
