@@ -45,7 +45,6 @@ pub struct Stack {
 /// It may seem like maintaining this cache is a waste for small stacks, but
 /// (a) iterating over small fixed-size arrays is super fast, and (b) empirically this helps *a lot*,
 /// probably because runtime is dominated by large stacks.
-/// arrays is super fast
 #[cfg(feature = "stack-cache")]
 #[derive(Clone, Debug)]
 struct StackCache {
