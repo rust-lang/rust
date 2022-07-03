@@ -8,15 +8,15 @@
             "problemMatcher": [],
             "group": {
                 "kind": "build",
-                "isDefault": true,
-            },
+                "isDefault": true
+            }
         },
         {
             "label": "cargo dev fmt",
             "type": "shell",
             "command": "cargo dev fmt",
             "problemMatcher": [],
-            "group": "none",
+            "group": "none"
         },
         {
             "label": "cargo uitest",
@@ -24,19 +24,19 @@
             "command": "cargo uitest",
             "options": {
                 "env": {
-                    "RUST_BACKTRACE": "1",
                     // This task will usually execute all UI tests inside `tests/ui` you can
                     // optionally uncomment the line below and only run a specific test.
                     //
                     // See: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/adding_lints.md#testing
                     //
                     // "TESTNAME": "<TODO>",
-                },
+                    "RUST_BACKTRACE": "1"
+                }
             },
             "problemMatcher": [],
             "group": {
                 "kind": "test",
-                "isDefault": true,
+                "isDefault": true
             }
         },
         {
@@ -44,14 +44,14 @@
             "type": "shell",
             "command": "cargo test",
             "problemMatcher": [],
-            "group": "test",
+            "group": "test"
         },
         {
             "label": "cargo dev bless",
             "type": "shell",
             "command": "cargo dev bless",
             "problemMatcher": [],
-            "group": "none",
-        },
-    ],
+            "group": "none"
+        }
+    ]
 }
