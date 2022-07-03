@@ -785,24 +785,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.opt_item_ident(item_index, sess).expect("no encoded ident for item")
     }
 
-    fn maybe_kind(self, item_id: DefIndex) -> Option<EntryKind> {
-        self.root.tables.kind.get(self, item_id).map(|k| k.decode(self))
-    }
-
     #[inline]
     pub(super) fn map_encoded_cnum_to_current(self, cnum: CrateNum) -> CrateNum {
         if cnum == LOCAL_CRATE { self.cnum } else { self.cnum_map[cnum] }
-    }
-
-    fn kind(self, item_id: DefIndex) -> EntryKind {
-        self.maybe_kind(item_id).unwrap_or_else(|| {
-            bug!(
-                "CrateMetadata::kind({:?}): id not found, in crate {:?} with number {}",
-                item_id,
-                self.root.name,
-                self.cnum,
-            )
-        })
     }
 
     fn def_kind(self, item_id: DefIndex) -> DefKind {
@@ -856,11 +841,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_variant(self, kind: &EntryKind, index: DefIndex, parent_did: DefId) -> ty::VariantDef {
+    fn get_variant(self, kind: &DefKind, index: DefIndex, parent_did: DefId) -> ty::VariantDef {
         let adt_kind = match kind {
-            EntryKind::Variant => ty::AdtKind::Enum,
-            EntryKind::Struct => ty::AdtKind::Struct,
-            EntryKind::Union => ty::AdtKind::Union,
+            DefKind::Variant => ty::AdtKind::Enum,
+            DefKind::Struct => ty::AdtKind::Struct,
+            DefKind::Union => ty::AdtKind::Union,
             _ => bug!(),
         };
 
@@ -896,13 +881,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_adt_def(self, item_id: DefIndex, tcx: TyCtxt<'tcx>) -> ty::AdtDef<'tcx> {
-        let kind = self.kind(item_id);
+        let kind = self.def_kind(item_id);
         let did = self.local_def_id(item_id);
 
         let adt_kind = match kind {
-            EntryKind::Enum => ty::AdtKind::Enum,
-            EntryKind::Struct => ty::AdtKind::Struct,
-            EntryKind::Union => ty::AdtKind::Union,
+            DefKind::Enum => ty::AdtKind::Enum,
+            DefKind::Struct => ty::AdtKind::Struct,
+            DefKind::Union => ty::AdtKind::Union,
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
         let repr = self.root.tables.repr_options.get(self, item_id).unwrap().decode(self);
@@ -914,7 +899,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .get(self, item_id)
                 .unwrap_or_else(LazyArray::empty)
                 .decode(self)
-                .map(|index| self.get_variant(&self.kind(index), index, did))
+                .map(|index| self.get_variant(&self.def_kind(index), index, did))
                 .collect()
         } else {
             std::iter::once(self.get_variant(&kind, item_id, did)).collect()
@@ -1129,10 +1114,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn get_associated_item(self, id: DefIndex) -> ty::AssocItem {
         let name = self.item_name(id);
 
-        let kind = match self.kind(id) {
-            EntryKind::AssocConst => ty::AssocKind::Const,
-            EntryKind::AssocFn => ty::AssocKind::Fn,
-            EntryKind::AssocType => ty::AssocKind::Type,
+        let kind = match self.def_kind(id) {
+            DefKind::AssocConst => ty::AssocKind::Const,
+            DefKind::AssocFn => ty::AssocKind::Fn,
+            DefKind::AssocTy => ty::AssocKind::Type,
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
         let has_self = self.get_fn_has_self_parameter(id);
@@ -1149,8 +1134,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_ctor_def_id_and_kind(self, node_id: DefIndex) -> Option<(DefId, CtorKind)> {
-        match self.kind(node_id) {
-            EntryKind::Struct | EntryKind::Variant => {
+        match self.def_kind(node_id) {
+            DefKind::Struct | DefKind::Variant => {
                 let vdata = self.root.tables.variant_data.get(self, node_id).unwrap().decode(self);
                 vdata.ctor.map(|index| (self.local_def_id(index), vdata.ctor_kind))
             }
@@ -1339,8 +1324,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_macro(self, id: DefIndex, sess: &Session) -> ast::MacroDef {
-        match self.kind(id) {
-            EntryKind::MacroDef => {
+        match self.def_kind(id) {
+            DefKind::Macro(_) => {
                 self.root.tables.macro_definition.get(self, id).unwrap().decode((self, sess))
             }
             _ => bug!(),
@@ -1348,9 +1333,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn is_foreign_item(self, id: DefIndex) -> bool {
-        match self.kind(id) {
-            EntryKind::ForeignStatic | EntryKind::ForeignFn => true,
-            _ => false,
+        if let Some(parent) = self.def_key(id).parent {
+            matches!(self.def_kind(parent), DefKind::ForeignMod)
+        } else {
+            false
         }
     }
 

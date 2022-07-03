@@ -334,7 +334,6 @@ macro_rules! define_tables {
 }
 
 define_tables! {
-    kind: Table<DefIndex, LazyValue<EntryKind>>,
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
     children: Table<DefIndex, LazyArray<DefIndex>>,
 
@@ -402,39 +401,6 @@ define_tables! {
     module_reexports: Table<DefIndex, LazyArray<ModChild>>,
 }
 
-#[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
-enum EntryKind {
-    AnonConst,
-    Const,
-    Static,
-    ForeignStatic,
-    ForeignMod,
-    ForeignType,
-    GlobalAsm,
-    Type,
-    TypeParam,
-    ConstParam,
-    OpaqueTy,
-    Enum,
-    Field,
-    Variant,
-    Struct,
-    Union,
-    Fn,
-    ForeignFn,
-    Mod,
-    MacroDef,
-    ProcMacro,
-    Closure,
-    Generator,
-    Trait,
-    Impl,
-    AssocFn,
-    AssocType,
-    AssocConst,
-    TraitAlias,
-}
-
 #[derive(TyEncodable, TyDecodable)]
 struct VariantData {
     ctor_kind: CtorKind,
@@ -466,7 +432,6 @@ pub fn provide(providers: &mut Providers) {
 
 trivially_parameterized_over_tcx! {
     VariantData,
-    EntryKind,
     RawDefId,
     TraitImpls,
     IncoherentImpls,
