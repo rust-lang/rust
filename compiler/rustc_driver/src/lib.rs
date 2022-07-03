@@ -849,10 +849,10 @@ Available lint options:
     };
 
     println!("Lint checks provided by rustc:\n");
-    println!("    {}  {:7.7}  {}", padded("name"), "default", "meaning");
-    println!("    {}  {:7.7}  {}", padded("----"), "-------", "-------");
 
     let print_lints = |lints: Vec<&Lint>| {
+        println!("    {}  {:7.7}  {}", padded("name"), "default", "meaning");
+        println!("    {}  {:7.7}  {}", padded("----"), "-------", "-------");
         for lint in lints {
             let name = lint.name_lower().replace('_', "-");
             println!(
@@ -884,11 +884,15 @@ Available lint options:
     };
 
     println!("Lint groups provided by rustc:\n");
-    println!("    {}  sub-lints", padded("name"));
-    println!("    {}  ---------", padded("----"));
-    println!("    {}  all lints that are set to issue warnings", padded("warnings"));
 
-    let print_lint_groups = |lints: Vec<(&'static str, Vec<LintId>)>| {
+    let print_lint_groups = |lints: Vec<(&'static str, Vec<LintId>)>, all_warnings| {
+        println!("    {}  sub-lints", padded("name"));
+        println!("    {}  ---------", padded("----"));
+
+        if all_warnings {
+            println!("    {}  all lints that are set to issue warnings", padded("warnings"));
+        }
+
         for (name, to) in lints {
             let name = name.to_lowercase().replace('_', "-");
             let desc = to
@@ -901,7 +905,7 @@ Available lint options:
         println!("\n");
     };
 
-    print_lint_groups(builtin_groups);
+    print_lint_groups(builtin_groups, true);
 
     match (loaded_plugins, plugin.len(), plugin_groups.len()) {
         (false, 0, _) | (false, _, 0) => {
@@ -916,7 +920,7 @@ Available lint options:
             }
             if g > 0 {
                 println!("Lint groups provided by plugins loaded by this crate:\n");
-                print_lint_groups(plugin_groups);
+                print_lint_groups(plugin_groups, false);
             }
         }
     }

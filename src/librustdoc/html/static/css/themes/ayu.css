@@ -575,11 +575,12 @@ kbd {
 	color: #fff;
 	border-bottom-color: #5c6773;
 }
-#source-sidebar div.files > a:hover, div.name:hover {
+#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
+#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
 	background-color: #14191f;
 	color: #ffb44c;
 }
-#source-sidebar div.files > .selected {
+#source-sidebar div.files > a.selected {
 	background-color: #14191f;
 	color: #ffb44c;
 }
