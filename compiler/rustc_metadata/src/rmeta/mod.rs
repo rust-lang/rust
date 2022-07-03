@@ -399,6 +399,7 @@ define_tables! {
     proc_macro: Table<DefIndex, MacroKind>,
     // Slot is full when there is a self parameter.
     fn_has_self_parameter: Table<DefIndex, ()>,
+    module_reexports: Table<DefIndex, LazyArray<ModChild>>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
@@ -421,7 +422,7 @@ enum EntryKind {
     Union,
     Fn,
     ForeignFn,
-    Mod(LazyArray<ModChild>),
+    Mod,
     MacroDef,
     ProcMacro,
     Closure,

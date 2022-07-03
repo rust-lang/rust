@@ -1254,15 +1254,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // code uses it). However, we skip encoding anything relating to child
         // items - we encode information about proc-macros later on.
         let reexports = if !self.is_proc_macro {
-            match tcx.module_reexports(local_def_id) {
-                Some(exports) => self.lazy_array(exports),
-                _ => LazyArray::empty(),
-            }
+            tcx.module_reexports(local_def_id).unwrap_or(&[])
         } else {
-            LazyArray::empty()
+            &[]
         };
 
-        record!(self.tables.kind[def_id] <- EntryKind::Mod(reexports));
+        record_array!(self.tables.module_reexports[def_id] <- reexports);
+        record!(self.tables.kind[def_id] <- EntryKind::Mod);
         if self.is_proc_macro {
             // Encode this here because we don't do it in encode_def_ids.
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id));

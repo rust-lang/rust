@@ -1086,14 +1086,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         }
 
-        match self.kind(id) {
-            EntryKind::Mod(exports) => {
-                for exp in exports.decode((self, sess)) {
-                    callback(exp);
-                }
+        if let Some(exports) = self.root.tables.module_reexports.get(self, id) {
+            for exp in exports.decode((self, sess)) {
+                callback(exp);
             }
-            EntryKind::Enum | EntryKind::Trait => {}
-            _ => bug!("`for_each_module_child` is called on a non-module: {:?}", self.def_kind(id)),
         }
     }
 
@@ -1106,10 +1102,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn module_expansion(self, id: DefIndex, sess: &Session) -> ExpnId {
-        match self.kind(id) {
-            EntryKind::Mod(_) | EntryKind::Enum | EntryKind::Trait => {
-                self.get_expn_that_defined(id, sess)
-            }
+        match self.def_kind(id) {
+            DefKind::Mod | DefKind::Enum | DefKind::Trait => self.get_expn_that_defined(id, sess),
             _ => panic!("Expected module, found {:?}", self.local_def_id(id)),
         }
     }
