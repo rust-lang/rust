@@ -387,7 +387,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             .layout_of(EarlyBinder(body.return_ty()).subst(tcx, substs))
             .ok()
             // Don't bother allocating memory for large values.
-            .filter(|ret_layout| ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT))
+            // I don't know how return types can seem to be unsized but this happens in the
+            // `type/type-unsatisfiable.rs` test.
+            .filter(|ret_layout| {
+                !ret_layout.is_unsized() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
+            })
             .unwrap_or_else(|| ecx.layout_of(tcx.types.unit).unwrap());
 
         let ret = ecx
