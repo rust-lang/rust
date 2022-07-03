@@ -3245,7 +3245,8 @@ impl<'test> TestCx<'test> {
 
             if !self.props.error_patterns.is_empty() {
                 // "// error-pattern" comments
-                self.check_error_patterns(&proc_res.stderr, &proc_res, pm);
+                let output_to_check = self.get_output(&proc_res);
+                self.check_error_patterns(&output_to_check, &proc_res, pm);
             }
         }
 
@@ -3266,7 +3267,8 @@ impl<'test> TestCx<'test> {
 
             if check_patterns {
                 // "// error-pattern" comments
-                self.check_error_patterns(&proc_res.stderr, &proc_res, pm);
+                let output_to_check = self.get_output(&proc_res);
+                self.check_error_patterns(&output_to_check, &proc_res, pm);
             }
 
             if check_annotations {

@@ -353,11 +353,7 @@ impl Options {
             print_flag_list("-C", config::CG_OPTIONS);
             return Err(0);
         }
-        let w_flags = matches.opt_strs("W");
-        if w_flags.iter().any(|x| *x == "help") {
-            print_flag_list("-W", config::DB_OPTIONS);
-            return Err(0);
-        }
+
         if matches.opt_strs("passes") == ["list"] {
             println!("Available passes for running rustdoc:");
             for pass in passes::PASSES {
@@ -439,15 +435,19 @@ impl Options {
             return Err(0);
         }
 
-        if matches.free.is_empty() {
+        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
+
+        let input = PathBuf::from(if describe_lints {
+            "" // dummy, this won't be used
+        } else if matches.free.is_empty() {
             diag.struct_err("missing file operand").emit();
             return Err(1);
-        }
-        if matches.free.len() > 1 {
+        } else if matches.free.len() > 1 {
             diag.struct_err("too many file operands").emit();
             return Err(1);
-        }
-        let input = PathBuf::from(&matches.free[0]);
+        } else {
+            &matches.free[0]
+        });
 
         let libs = matches
             .opt_strs("L")
@@ -697,8 +697,6 @@ impl Options {
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, &diag)?;
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, &diag)?;
-
-        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
         Ok(Options {
             input,
