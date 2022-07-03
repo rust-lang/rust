@@ -196,6 +196,7 @@ store.register_lints(&[
     inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
     int_plus_one::INT_PLUS_ONE,
     invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS,
+    invalid_utf8_in_unchecked::INVALID_UTF8_IN_UNCHECKED,
     items_after_statements::ITEMS_AFTER_STATEMENTS,
     iter_not_returning_iterator::ITER_NOT_RETURNING_ITERATOR,
     large_const_arrays::LARGE_CONST_ARRAYS,
