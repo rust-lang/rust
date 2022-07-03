@@ -533,9 +533,6 @@ impl Span {
         self.data().with_hi(hi)
     }
     #[inline]
-    pub fn ctxt(self) -> SyntaxContext {
-        self.data_untracked().ctxt
-    }
     pub fn eq_ctxt(self, other: Span) -> bool {
         self.data_untracked().ctxt == other.data_untracked().ctxt
     }
