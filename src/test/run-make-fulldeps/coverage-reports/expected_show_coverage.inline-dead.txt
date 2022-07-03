@@ -1,0 +1,21 @@
+    1|       |// Regression test for issue #98833.
+    2|       |// compile-flags: -Zinline-mir
+    3|       |
+    4|      1|fn main() {
+    5|      1|    println!("{}", live::<false>());
+    6|      1|}
+    7|       |
+    8|       |#[inline]
+    9|      1|fn live<const B: bool>() -> u32 {
+   10|      1|    if B {
+   11|      0|        dead()
+   12|       |    } else {
+   13|      1|        0
+   14|       |    }
+   15|      1|}
+   16|       |
+   17|       |#[inline]
+   18|      0|fn dead() -> u32 {
+   19|      0|    42
+   20|      0|}
+
