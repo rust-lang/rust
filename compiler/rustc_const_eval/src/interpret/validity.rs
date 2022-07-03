@@ -594,13 +594,35 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 Ok(true)
             }
             ty::Adt(def, ..) if def.is_box() => {
-                let unique = self.ecx.operand_field(value, 0)?;
-                let nonnull = self.ecx.operand_field(&unique, 0)?;
-                let ptr = self.ecx.operand_field(&nonnull, 0)?;
-                self.check_safe_pointer(&ptr, "box")?;
+                // Box is special, very special. We carefully assert all the assumptions we make
+                // here; if this needs to be adjusted, remember to also adjust all the other
+                // visitors -- in particular the Stacked Borrows retagging visitor in Miri.
+                // Did I mention that this is a gross hack? Anyway...
 
-                // Check other fields of Box
-                self.walk_value(value)?;
+                // `Box` has two fields: the pointer we care about, and the allocator.
+                assert_eq!(value.layout.fields.count(), 2, "`Box` must have exactly 2 fields");
+                let (unique_ptr, alloc) =
+                    (self.ecx.operand_field(value, 0)?, self.ecx.operand_field(value, 1)?);
+                // Unfortunately there is some type junk in the way here: `unique_ptr` is a `Unique`...
+                // (which means another 2 fields, the second of which is a `PhantomData`)
+                assert_eq!(unique_ptr.layout.fields.count(), 2);
+                let (nonnull_ptr, phantom) = (
+                    self.ecx.operand_field(&unique_ptr, 0)?,
+                    self.ecx.operand_field(&unique_ptr, 1)?,
+                );
+                assert!(
+                    phantom.layout.ty.ty_adt_def().is_some_and(|adt| adt.is_phantom_data()),
+                    "2nd field of `Unique` should be PhantomData but is {:?}",
+                    phantom.layout.ty,
+                );
+                // ... that contains a `NonNull`... (gladly, only a single field here)
+                assert_eq!(nonnull_ptr.layout.fields.count(), 1);
+                let raw_ptr = self.ecx.operand_field(&nonnull_ptr, 0)?; // the actual raw ptr
+                // ... whose only field finally is a raw ptr we can dereference.
+                self.check_safe_pointer(&raw_ptr, "box")?;
+                // The second `Box` field is the allocator, which we recursively check for validity
+                // like in regular structs.
+                self.walk_value(&alloc)?;
                 Ok(true)
             }
             ty::FnPtr(_sig) => {
