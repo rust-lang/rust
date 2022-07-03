@@ -175,7 +175,6 @@ define_handles! {
     'owned:
     FreeFunctions,
     TokenStream,
-    Literal,
     SourceFile,
     MultiSpan,
     Diagnostic,
@@ -193,25 +192,6 @@ define_handles! {
 impl Clone for TokenStream {
     fn clone(&self) -> Self {
         self.clone()
-    }
-}
-
-impl Clone for Literal {
-    fn clone(&self) -> Self {
-        self.clone()
-    }
-}
-
-impl fmt::Debug for Literal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Literal")
-            // format the kind without quotes, as in `kind: Float`
-            .field("kind", &format_args!("{}", &self.debug_kind()))
-            .field("symbol", &self.symbol())
-            // format `Some("...")` on one line even in {:#?} mode
-            .field("suffix", &format_args!("{:?}", &self.suffix()))
-            .field("span", &self.span())
-            .finish()
     }
 }
 

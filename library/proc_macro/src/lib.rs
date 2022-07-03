@@ -215,12 +215,7 @@ pub use quote::{quote, quote_span};
 
 fn tree_to_bridge_tree(
     tree: TokenTree,
-) -> bridge::TokenTree<
-    bridge::client::TokenStream,
-    bridge::client::Span,
-    bridge::client::Symbol,
-    bridge::client::Literal,
-> {
+) -> bridge::TokenTree<bridge::client::TokenStream, bridge::client::Span, bridge::client::Symbol> {
     match tree {
         TokenTree::Group(tt) => bridge::TokenTree::Group(tt.0),
         TokenTree::Punct(tt) => bridge::TokenTree::Punct(tt.0),
@@ -245,7 +240,6 @@ struct ConcatTreesHelper {
             bridge::client::TokenStream,
             bridge::client::Span,
             bridge::client::Symbol,
-            bridge::client::Literal,
         >,
     >,
 }
@@ -372,7 +366,6 @@ pub mod token_stream {
                 bridge::client::TokenStream,
                 bridge::client::Span,
                 bridge::client::Symbol,
-                bridge::client::Literal,
             >,
         >,
     );
@@ -1147,7 +1140,7 @@ impl fmt::Debug for Ident {
 /// Boolean literals like `true` and `false` do not belong here, they are `Ident`s.
 #[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-pub struct Literal(bridge::client::Literal);
+pub struct Literal(bridge::Literal<bridge::client::Span, bridge::client::Symbol>);
 
 macro_rules! suffixed_int_literals {
     ($($name:ident => $kind:ident,)*) => ($(
@@ -1164,7 +1157,12 @@ macro_rules! suffixed_int_literals {
         /// below.
         #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
         pub fn $name(n: $kind) -> Literal {
-            Literal(bridge::client::Literal::typed_integer(&n.to_string(), stringify!($kind)))
+            Literal(bridge::Literal {
+                kind: bridge::LitKind::Integer,
+                symbol: bridge::client::Symbol::new(&n.to_string()),
+                suffix: Some(bridge::client::Symbol::new(stringify!($kind))),
+                span: Span::call_site().0,
+            })
         }
     )*)
 }
@@ -1186,12 +1184,26 @@ macro_rules! unsuffixed_int_literals {
         /// below.
         #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
         pub fn $name(n: $kind) -> Literal {
-            Literal(bridge::client::Literal::integer(&n.to_string()))
+            Literal(bridge::Literal {
+                kind: bridge::LitKind::Integer,
+                symbol: bridge::client::Symbol::new(&n.to_string()),
+                suffix: None,
+                span: Span::call_site().0,
+            })
         }
     )*)
 }
 
 impl Literal {
+    fn new(kind: bridge::LitKind, value: &str, suffix: Option<&str>) -> Self {
+        Literal(bridge::Literal {
+            kind,
+            symbol: bridge::client::Symbol::new(value),
+            suffix: suffix.map(bridge::client::Symbol::new),
+            span: Span::call_site().0,
+        })
+    }
+
     suffixed_int_literals! {
         u8_suffixed => u8,
         u16_suffixed => u16,
@@ -1243,7 +1255,7 @@ impl Literal {
         if !repr.contains('.') {
             repr.push_str(".0");
         }
-        Literal(bridge::client::Literal::float(&repr))
+        Literal::new(bridge::LitKind::Float, &repr, None)
     }
 
     /// Creates a new suffixed floating-point literal.
@@ -1264,7 +1276,7 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {n}");
         }
-        Literal(bridge::client::Literal::f32(&n.to_string()))
+        Literal::new(bridge::LitKind::Float, &n.to_string(), Some("f32"))
     }
 
     /// Creates a new unsuffixed floating-point literal.
@@ -1288,7 +1300,7 @@ impl Literal {
         if !repr.contains('.') {
             repr.push_str(".0");
         }
-        Literal(bridge::client::Literal::float(&repr))
+        Literal::new(bridge::LitKind::Float, &repr, None)
     }
 
     /// Creates a new suffixed floating-point literal.
@@ -1309,37 +1321,49 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {n}");
         }
-        Literal(bridge::client::Literal::f64(&n.to_string()))
+        Literal::new(bridge::LitKind::Float, &n.to_string(), Some("f64"))
     }
 
     /// String literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn string(string: &str) -> Literal {
-        Literal(bridge::client::Literal::string(string))
+        let quoted = format!("{:?}", string);
+        assert!(quoted.starts_with('"') && quoted.ends_with('"'));
+        let symbol = &quoted[1..quoted.len() - 1];
+        Literal::new(bridge::LitKind::Str, symbol, None)
     }
 
     /// Character literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn character(ch: char) -> Literal {
-        Literal(bridge::client::Literal::character(ch))
+        let quoted = format!("{:?}", ch);
+        assert!(quoted.starts_with('\'') && quoted.ends_with('\''));
+        let symbol = &quoted[1..quoted.len() - 1];
+        Literal::new(bridge::LitKind::Char, symbol, None)
     }
 
     /// Byte string literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn byte_string(bytes: &[u8]) -> Literal {
-        Literal(bridge::client::Literal::byte_string(bytes))
+        let string = bytes
+            .iter()
+            .cloned()
+            .flat_map(std::ascii::escape_default)
+            .map(Into::<char>::into)
+            .collect::<String>();
+        Literal::new(bridge::LitKind::ByteStr, &string, None)
     }
 
     /// Returns the span encompassing this literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
-        Span(self.0.span())
+        Span(self.0.span)
     }
 
     /// Configures the span associated for this literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.0.set_span(span.0);
+        self.0.span = span.0;
     }
 
     /// Returns a `Span` that is a subset of `self.span()` containing only the
@@ -1355,7 +1379,55 @@ impl Literal {
     // was 'c' or whether it was '\u{63}'.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
-        self.0.subspan(range.start_bound().cloned(), range.end_bound().cloned()).map(Span)
+        bridge::client::FreeFunctions::literal_subspan(
+            self.0.clone(),
+            range.start_bound().cloned(),
+            range.end_bound().cloned(),
+        )
+        .map(Span)
+    }
+
+    fn with_symbol_and_suffix<R>(&self, f: impl FnOnce(&str, &str) -> R) -> R {
+        self.0.symbol.with(|symbol| match self.0.suffix {
+            Some(suffix) => suffix.with(|suffix| f(symbol, suffix)),
+            None => f(symbol, ""),
+        })
+    }
+
+    /// Invokes the callback with a `&[&str]` consisting of each part of the
+    /// literal's representation. This is done to allow the `ToString` and
+    /// `Display` implementations to borrow references to symbol values, and
+    /// both be optimized to reduce overhead.
+    fn with_stringify_parts<R>(&self, f: impl FnOnce(&[&str]) -> R) -> R {
+        /// Returns a string containing exactly `num` '#' characters.
+        /// Uses a 256-character source string literal which is always safe to
+        /// index with a `u8` index.
+        fn get_hashes_str(num: u8) -> &'static str {
+            const HASHES: &str = "\
+            ################################################################\
+            ################################################################\
+            ################################################################\
+            ################################################################\
+            ";
+            const _: () = assert!(HASHES.len() == 256);
+            &HASHES[..num as usize]
+        }
+
+        self.with_symbol_and_suffix(|symbol, suffix| match self.0.kind {
+            bridge::LitKind::Byte => f(&["b'", symbol, "'", suffix]),
+            bridge::LitKind::Char => f(&["'", symbol, "'", suffix]),
+            bridge::LitKind::Str => f(&["\"", symbol, "\"", suffix]),
+            bridge::LitKind::StrRaw(n) => {
+                let hashes = get_hashes_str(n);
+                f(&["r", hashes, "\"", symbol, "\"", hashes, suffix])
+            }
+            bridge::LitKind::ByteStr => f(&["b\"", symbol, "\"", suffix]),
+            bridge::LitKind::ByteStrRaw(n) => {
+                let hashes = get_hashes_str(n);
+                f(&["br", hashes, "\"", symbol, "\"", hashes, suffix])
+            }
+            _ => f(&[symbol, suffix]),
+        })
     }
 }
 
@@ -1374,19 +1446,17 @@ impl FromStr for Literal {
     type Err = LexError;
 
     fn from_str(src: &str) -> Result<Self, LexError> {
-        match bridge::client::Literal::from_str(src) {
+        match bridge::client::FreeFunctions::literal_from_str(src) {
             Ok(literal) => Ok(Literal(literal)),
             Err(()) => Err(LexError),
         }
     }
 }
 
-// N.B., the bridge only provides `to_string`, implement `fmt::Display`
-// based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
+#[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl ToString for Literal {
     fn to_string(&self) -> String {
-        self.0.to_string()
+        self.with_stringify_parts(|parts| parts.concat())
     }
 }
 
@@ -1395,14 +1465,26 @@ impl ToString for Literal {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.to_string())
+        self.with_stringify_parts(|parts| {
+            for part in parts {
+                fmt::Display::fmt(part, f)?;
+            }
+            Ok(())
+        })
     }
 }
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
+        f.debug_struct("Literal")
+            // format the kind on one line even in {:#?} mode
+            .field("kind", &format_args!("{:?}", &self.0.kind))
+            .field("symbol", &self.0.symbol)
+            // format `Some("...")` on one line even in {:#?} mode
+            .field("suffix", &format_args!("{:?}", &self.0.suffix))
+            .field("span", &self.0.span)
+            .finish()
     }
 }
 
