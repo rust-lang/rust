@@ -429,9 +429,9 @@ function initSearch(rawSearchIndex) {
             }
             const posBefore = parserState.pos;
             getNextElem(query, parserState, elems, endChar === ">");
-            // This case can be encountered if `getNextElem` encounted a "stop character" right from
-            // the start. For example if you have `,,` or `<>`. In this case, we simply move up the
-            // current position to continue the parsing.
+            // This case can be encountered if `getNextElem` encountered a "stop character" right
+            // from the start. For example if you have `,,` or `<>`. In this case, we simply move up
+            // the current position to continue the parsing.
             if (posBefore === parserState.pos) {
                 parserState.pos += 1;
             }
@@ -581,7 +581,7 @@ function initSearch(rawSearchIndex) {
         const elem = document.getElementById("crate-search");
 
         if (elem &&
-            elem.value !== "All crates" &&
+            elem.value !== "all crates" &&
             hasOwnPropertyRustdoc(rawSearchIndex, elem.value)
         ) {
             return elem.value;
@@ -1551,12 +1551,6 @@ function initSearch(rawSearchIndex) {
         return [displayPath, href];
     }
 
-    function escape(content) {
-        const h1 = document.createElement("h1");
-        h1.textContent = content;
-        return h1.innerHTML;
-    }
-
     function pathSplitter(path) {
         const tmp = "<span>" + path.replace(/::/g, "::</span><span>");
         if (tmp.endsWith("<span>")) {
@@ -1710,22 +1704,15 @@ function initSearch(rawSearchIndex) {
         let crates = "";
         const crates_list = Object.keys(rawSearchIndex);
         if (crates_list.length > 1) {
-            crates = " in <select id=\"crate-search\"><option value=\"All crates\">" +
-                "All crates</option>";
+            crates = " in&nbsp;<div id=\"crate-search-div\"><select id=\"crate-search\">" +
+                "<option value=\"all crates\">all crates</option>";
             for (const c of crates_list) {
                 crates += `<option value="${c}" ${c === filterCrates && "selected"}>${c}</option>`;
             }
-            crates += "</select>";
+            crates += "</select></div>";
         }
 
-        let typeFilter = "";
-        if (results.query.typeFilter !== NO_TYPE_FILTER) {
-            typeFilter = " (type: " + escape(itemTypes[results.query.typeFilter]) + ")";
-        }
-
-        let output = "<div id=\"search-settings\">" +
-            `<h1 class="search-results-title">Results for ${escape(results.query.userQuery)}` +
-            `${typeFilter}</h1>${crates}</div>`;
+        let output = `<h1 class="search-results-title">Results${crates}</h1>`;
         if (results.query.error !== null) {
             output += `<h3>Query parser error: "${results.query.error}".</h3>`;
             output += "<div id=\"titles\">" +
@@ -2245,7 +2232,7 @@ function initSearch(rawSearchIndex) {
     }
 
     function updateCrate(ev) {
-        if (ev.target.value === "All crates") {
+        if (ev.target.value === "all crates") {
             // If we don't remove it from the URL, it'll be picked up again by the search.
             const params = searchState.getQueryStringParams();
             const query = searchState.input.value.trim();

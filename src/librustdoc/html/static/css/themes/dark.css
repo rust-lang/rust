@@ -196,11 +196,26 @@ details.undocumented > summary::before {
 	filter: invert(100%);
 }
 
-#crate-search, .search-input {
+.search-input {
 	color: #111;
 	background-color: #f0f0f0;
+	border-color: #f0f0f0;
+}
+#crate-search {
+	background-color: #353535;
 	/* Without the `!important`, the border-color is ignored for `<select>`... */
-	border-color: #f0f0f0 !important;
+	border-color: #d2d2d2;
+}
+#crate-search-div::after {
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	filter: invert(94%) sepia(0%) saturate(721%) hue-rotate(255deg) brightness(90%) contrast(90%);
+}
+#crate-search:hover, #crate-search:focus {
+	border-color: #2196f3 !important;
+	border-color: #008dfd !important;
+}
+#crate-search-div:hover::after, #crate-search-div:focus-within::after {
+	filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg) brightness(100%) contrast(91%);
 }
 
 .search-input {
