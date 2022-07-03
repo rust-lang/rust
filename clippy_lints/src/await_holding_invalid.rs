@@ -161,7 +161,7 @@ declare_clippy_lint! {
     ///   baz().await; // Lint violation
     /// }
     /// ```
-    #[clippy::version = "1.49.0"]
+    #[clippy::version = "1.62.0"]
     pub AWAIT_HOLDING_INVALID_TYPE,
     suspicious,
     "holding a type across an await point which is not allowed to be held as per the configuration"
