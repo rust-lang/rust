@@ -418,7 +418,7 @@ nav.sub {
 	background-color: var(--sidebar-background-color);
 }
 
-#sidebar-toggle > button:hover:hover, #sidebar-toggle > button:focus {
+#sidebar-toggle > button:hover, #sidebar-toggle > button:focus {
 	background-color: var(--sidebar-background-color-hover);
 }
 
