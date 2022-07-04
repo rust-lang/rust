@@ -30,7 +30,7 @@ pub fn expand_deriving_hash(
             name: sym::hash,
             generics: Bounds { bounds: vec![(typaram, vec![path_std!(hash::Hasher)])] },
             explicit_self: true,
-            args: vec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
+            nonself_args: vec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
             ret_ty: Unit,
             attributes: vec![],
             unify_fieldless_variants: true,
@@ -49,7 +49,7 @@ fn hash_substructure(
     trait_span: Span,
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
-    let [state_expr] = substr.nonself_args else {
+    let [state_expr] = substr.nonselflike_args else {
         cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };
     let call_hash = |span, thing_expr| {

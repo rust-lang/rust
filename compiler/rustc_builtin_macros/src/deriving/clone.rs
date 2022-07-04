@@ -80,7 +80,7 @@ pub fn expand_deriving_clone(
             name: sym::clone,
             generics: Bounds::empty(),
             explicit_self: true,
-            args: Vec::new(),
+            nonself_args: Vec::new(),
             ret_ty: Self_,
             attributes: attrs,
             unify_fieldless_variants: false,

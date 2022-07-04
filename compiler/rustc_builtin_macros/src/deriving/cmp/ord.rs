@@ -28,7 +28,7 @@ pub fn expand_deriving_ord(
             name: sym::cmp,
             generics: Bounds::empty(),
             explicit_self: true,
-            args: vec![(self_ref(), sym::other)],
+            nonself_args: vec![(self_ref(), sym::other)],
             ret_ty: Path(path_std!(cmp::Ordering)),
             attributes: attrs,
             unify_fieldless_variants: true,

@@ -120,7 +120,10 @@ pub fn expand_deriving_rustc_encodable(
                 )],
             },
             explicit_self: true,
-            args: vec![(Ref(Box::new(Path(Path::new_local(typaram))), Mutability::Mut), sym::s)],
+            nonself_args: vec![(
+                Ref(Box::new(Path(Path::new_local(typaram))), Mutability::Mut),
+                sym::s,
+            )],
             ret_ty: Path(Path::new_(
                 pathvec_std!(result::Result),
                 vec![
@@ -147,7 +150,7 @@ fn encodable_substructure(
     substr: &Substructure<'_>,
     krate: Symbol,
 ) -> BlockOrExpr {
-    let encoder = substr.nonself_args[0].clone();
+    let encoder = substr.nonselflike_args[0].clone();
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = Ident::new(sym::_e, trait_span);
     let blkencoder = cx.expr_ident(trait_span, blkarg);

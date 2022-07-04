@@ -69,7 +69,7 @@ pub fn expand_deriving_partial_eq(
                 name: $name,
                 generics: Bounds::empty(),
                 explicit_self: true,
-                args: vec![(self_ref(), sym::other)],
+                nonself_args: vec![(self_ref(), sym::other)],
                 ret_ty: Path(path_local!(bool)),
                 attributes: attrs,
                 unify_fieldless_variants: true,

@@ -26,7 +26,7 @@ pub fn expand_deriving_partial_ord(
         name: sym::partial_cmp,
         generics: Bounds::empty(),
         explicit_self: true,
-        args: vec![(self_ref(), sym::other)],
+        nonself_args: vec![(self_ref(), sym::other)],
         ret_ty,
         attributes: attrs,
         unify_fieldless_variants: true,

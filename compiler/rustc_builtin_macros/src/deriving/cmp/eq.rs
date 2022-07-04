@@ -32,7 +32,7 @@ pub fn expand_deriving_eq(
             name: sym::assert_receiver_is_total_eq,
             generics: Bounds::empty(),
             explicit_self: true,
-            args: vec![],
+            nonself_args: vec![],
             ret_ty: Unit,
             attributes: attrs,
             unify_fieldless_variants: true,

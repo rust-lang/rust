@@ -28,7 +28,7 @@ pub fn expand_deriving_debug(
             name: sym::fmt,
             generics: Bounds::empty(),
             explicit_self: true,
-            args: vec![(fmtr, sym::f)],
+            nonself_args: vec![(fmtr, sym::f)],
             ret_ty: Path(path_std!(fmt::Result)),
             attributes: Vec::new(),
             unify_fieldless_variants: false,
@@ -53,7 +53,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     // We want to make sure we have the ctxt set so that we can use unstable methods
     let span = cx.with_def_site_ctxt(span);
     let name = cx.expr_lit(span, ast::LitKind::Str(ident.name, ast::StrStyle::Cooked));
-    let fmt = substr.nonself_args[0].clone();
+    let fmt = substr.nonselflike_args[0].clone();
 
     // Struct and tuples are similar enough that we use the same code for both,
     // with some extra pieces for structs due to the field names.

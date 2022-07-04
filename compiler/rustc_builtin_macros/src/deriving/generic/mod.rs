@@ -227,8 +227,8 @@ pub struct MethodDef<'a> {
     /// Is there is a `&self` argument? If not, it is a static function.
     pub explicit_self: bool,
 
-    /// Arguments other than the self argument
-    pub args: Vec<(Ty, Symbol)>,
+    /// Arguments other than the self argument.
+    pub nonself_args: Vec<(Ty, Symbol)>,
 
     /// Returns type
     pub ret_ty: Ty,
@@ -245,8 +245,8 @@ pub struct MethodDef<'a> {
 pub struct Substructure<'a> {
     /// ident of self
     pub type_ident: Ident,
-    /// verbatim access to any non-self arguments
-    pub nonself_args: &'a [P<Expr>],
+    /// verbatim access to any non-selflike arguments
+    pub nonselflike_args: &'a [P<Expr>],
     pub fields: &'a SubstructureFields<'a>,
 }
 
@@ -782,8 +782,8 @@ impl<'a> TraitDef<'a> {
             .methods
             .iter()
             .map(|method_def| {
-                let (explicit_self, self_args, nonself_args, tys) =
-                    method_def.split_self_nonself_args(cx, self, type_ident, generics);
+                let (explicit_self, selflike_args, nonselflike_args, nonself_arg_tys) =
+                    method_def.extract_arg_details(cx, self, type_ident, generics);
 
                 let body = if from_scratch || method_def.is_static() {
                     method_def.expand_static_struct_method_body(
@@ -791,7 +791,7 @@ impl<'a> TraitDef<'a> {
                         self,
                         struct_def,
                         type_ident,
-                        &nonself_args,
+                        &nonselflike_args,
                     )
                 } else {
                     method_def.expand_struct_method_body(
@@ -799,14 +799,22 @@ impl<'a> TraitDef<'a> {
                         self,
                         struct_def,
                         type_ident,
-                        &self_args,
-                        &nonself_args,
+                        &selflike_args,
+                        &nonselflike_args,
                         use_temporaries,
                         is_packed,
                     )
                 };
 
-                method_def.create_method(cx, self, type_ident, generics, explicit_self, tys, body)
+                method_def.create_method(
+                    cx,
+                    self,
+                    type_ident,
+                    generics,
+                    explicit_self,
+                    nonself_arg_tys,
+                    body,
+                )
             })
             .collect();
 
@@ -831,8 +839,8 @@ impl<'a> TraitDef<'a> {
             .methods
             .iter()
             .map(|method_def| {
-                let (explicit_self, self_args, nonself_args, tys) =
-                    method_def.split_self_nonself_args(cx, self, type_ident, generics);
+                let (explicit_self, selflike_args, nonselflike_args, nonself_arg_tys) =
+                    method_def.extract_arg_details(cx, self, type_ident, generics);
 
                 let body = if from_scratch || method_def.is_static() {
                     method_def.expand_static_enum_method_body(
@@ -840,7 +848,7 @@ impl<'a> TraitDef<'a> {
                         self,
                         enum_def,
                         type_ident,
-                        &nonself_args,
+                        &nonselflike_args,
                     )
                 } else {
                     method_def.expand_enum_method_body(
@@ -848,12 +856,20 @@ impl<'a> TraitDef<'a> {
                         self,
                         enum_def,
                         type_ident,
-                        self_args,
-                        &nonself_args,
+                        selflike_args,
+                        &nonselflike_args,
                     )
                 };
 
-                method_def.create_method(cx, self, type_ident, generics, explicit_self, tys, body)
+                method_def.create_method(
+                    cx,
+                    self,
+                    type_ident,
+                    generics,
+                    explicit_self,
+                    nonself_arg_tys,
+                    body,
+                )
             })
             .collect();
 
@@ -867,11 +883,11 @@ impl<'a> MethodDef<'a> {
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
-        nonself_args: &[P<Expr>],
+        nonselflike_args: &[P<Expr>],
         fields: &SubstructureFields<'_>,
     ) -> BlockOrExpr {
         let span = trait_.span;
-        let substructure = Substructure { type_ident, nonself_args, fields };
+        let substructure = Substructure { type_ident, nonselflike_args, fields };
         let mut f = self.combine_substructure.borrow_mut();
         let f: &mut CombineSubstructureFunc<'_> = &mut *f;
         f(cx, span, &substructure)
@@ -891,49 +907,52 @@ impl<'a> MethodDef<'a> {
         !self.explicit_self
     }
 
-    fn split_self_nonself_args(
+    // The return value includes:
+    // - explicit_self: The `&self` arg, if present.
+    // - selflike_args: Expressions for `&self` (if present) and also any other
+    //   args with the same type (e.g. the `other` arg in `PartialEq::eq`).
+    // - nonselflike_args: Expressions for all the remaining args.
+    // - nonself_arg_tys: Additional information about all the args other than
+    //   `&self`.
+    fn extract_arg_details(
         &self,
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
     ) -> (Option<ast::ExplicitSelf>, Vec<P<Expr>>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
-        let mut self_args = Vec::new();
-        let mut nonself_args = Vec::new();
-        let mut arg_tys = Vec::new();
+        let mut selflike_args = Vec::new();
+        let mut nonselflike_args = Vec::new();
+        let mut nonself_arg_tys = Vec::new();
         let span = trait_.span;
 
-        let ast_explicit_self = if self.explicit_self {
+        let explicit_self = if self.explicit_self {
             let (self_expr, explicit_self) = ty::get_explicit_self(cx, span);
-            self_args.push(self_expr);
+            selflike_args.push(self_expr);
             Some(explicit_self)
         } else {
             None
         };
 
-        for (ty, name) in self.args.iter() {
+        for (ty, name) in self.nonself_args.iter() {
             let ast_ty = ty.to_ty(cx, span, type_ident, generics);
             let ident = Ident::new(*name, span);
-            arg_tys.push((ident, ast_ty));
+            nonself_arg_tys.push((ident, ast_ty));
 
             let arg_expr = cx.expr_ident(span, ident);
 
             match *ty {
                 // for static methods, just treat any Self
                 // arguments as a normal arg
-                Self_ if !self.is_static() => {
-                    self_args.push(arg_expr);
-                }
                 Ref(ref ty, _) if matches!(**ty, Self_) && !self.is_static() => {
-                    self_args.push(cx.expr_deref(span, arg_expr))
+                    selflike_args.push(cx.expr_deref(span, arg_expr))
                 }
-                _ => {
-                    nonself_args.push(arg_expr);
-                }
+                Self_ => cx.span_bug(span, "`Self` in non-return position"),
+                _ => nonselflike_args.push(arg_expr),
             }
         }
 
-        (ast_explicit_self, self_args, nonself_args, arg_tys)
+        (explicit_self, selflike_args, nonselflike_args, nonself_arg_tys)
     }
 
     fn create_method(
@@ -943,7 +962,7 @@ impl<'a> MethodDef<'a> {
         type_ident: Ident,
         generics: &Generics,
         explicit_self: Option<ast::ExplicitSelf>,
-        arg_types: Vec<(Ident, P<ast::Ty>)>,
+        nonself_arg_tys: Vec<(Ident, P<ast::Ty>)>,
         body: BlockOrExpr,
     ) -> P<ast::AssocItem> {
         let span = trait_.span;
@@ -951,12 +970,13 @@ impl<'a> MethodDef<'a> {
         let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
 
         let args = {
-            let self_args = explicit_self.map(|explicit_self| {
+            let self_arg = explicit_self.map(|explicit_self| {
                 let ident = Ident::with_dummy_span(kw::SelfLower).with_span_pos(span);
                 ast::Param::from_self(ast::AttrVec::default(), explicit_self, ident)
             });
-            let nonself_args = arg_types.into_iter().map(|(name, ty)| cx.param(span, name, ty));
-            self_args.into_iter().chain(nonself_args).collect()
+            let nonself_args =
+                nonself_arg_tys.into_iter().map(|(name, ty)| cx.param(span, name, ty));
+            self_arg.into_iter().chain(nonself_args).collect()
         };
 
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
@@ -1024,8 +1044,8 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'b>,
         struct_def: &'b VariantData,
         type_ident: Ident,
-        self_args: &[P<Expr>],
-        nonself_args: &[P<Expr>],
+        selflike_args: &[P<Expr>],
+        nonselflike_args: &[P<Expr>],
         use_temporaries: bool,
         is_packed: bool,
     ) -> BlockOrExpr {
@@ -1033,9 +1053,9 @@ impl<'a> MethodDef<'a> {
         let span = trait_.span;
         let mut patterns = Vec::new();
 
-        for (i, self_arg) in self_args.iter().enumerate() {
+        for (i, selflike_arg) in selflike_args.iter().enumerate() {
             let ident_exprs = if !is_packed {
-                trait_.create_struct_field_accesses(cx, self_arg, struct_def)
+                trait_.create_struct_field_accesses(cx, selflike_arg, struct_def)
             } else {
                 // Get the pattern for the let-destructuring.
                 //
@@ -1084,7 +1104,7 @@ impl<'a> MethodDef<'a> {
             cx,
             trait_,
             type_ident,
-            nonself_args,
+            nonselflike_args,
             &Struct(struct_def, fields),
         );
 
@@ -1092,8 +1112,10 @@ impl<'a> MethodDef<'a> {
             body
         } else {
             // Do the let-destructuring.
-            let mut stmts: Vec<_> = iter::zip(self_args, patterns)
-                .map(|(arg_expr, pat)| cx.stmt_let_pat(span, pat, arg_expr.clone()))
+            let mut stmts: Vec<_> = iter::zip(selflike_args, patterns)
+                .map(|(selflike_arg_expr, pat)| {
+                    cx.stmt_let_pat(span, pat, selflike_arg_expr.clone())
+                })
                 .collect();
             stmts.extend(std::mem::take(&mut body.0));
             BlockOrExpr(stmts, body.1)
@@ -1106,7 +1128,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         struct_def: &VariantData,
         type_ident: Ident,
-        nonself_args: &[P<Expr>],
+        nonselflike_args: &[P<Expr>],
     ) -> BlockOrExpr {
         let summary = trait_.summarise_struct(cx, struct_def);
 
@@ -1114,7 +1136,7 @@ impl<'a> MethodDef<'a> {
             cx,
             trait_,
             type_ident,
-            nonself_args,
+            nonselflike_args,
             &StaticStruct(struct_def, summary),
         )
     }
@@ -1148,7 +1170,7 @@ impl<'a> MethodDef<'a> {
     ///     }
     /// }
     /// ```
-    /// Creates a match for a tuple of all `self_args`, where either all
+    /// Creates a match for a tuple of all `selflike_args`, where either all
     /// variants match, or it falls into a catch-all for when one variant
     /// does not match.
     ///
@@ -1161,33 +1183,33 @@ impl<'a> MethodDef<'a> {
     /// a simple equality check (for PartialEq).
     ///
     /// The catch-all handler is provided access the variant index values
-    /// for each of the self-args, carried in precomputed variables.
+    /// for each of the selflike_args, carried in precomputed variables.
     fn expand_enum_method_body<'b>(
         &self,
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
         type_ident: Ident,
-        mut self_args: Vec<P<Expr>>,
-        nonself_args: &[P<Expr>],
+        mut selflike_args: Vec<P<Expr>>,
+        nonselflike_args: &[P<Expr>],
     ) -> BlockOrExpr {
         let span = trait_.span;
         let variants = &enum_def.variants;
 
-        let self_arg_names = iter::once("__self".to_string())
+        let selflike_arg_names = iter::once("__self".to_string())
             .chain(
-                self_args
+                selflike_args
                     .iter()
                     .enumerate()
                     .skip(1)
-                    .map(|(arg_count, _self_arg)| format!("__arg_{}", arg_count)),
+                    .map(|(arg_count, _selflike_arg)| format!("__arg_{}", arg_count)),
             )
             .collect::<Vec<String>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
-        // a series of let statements mapping each self_arg to an int
+        // a series of let statements mapping each selflike_arg to an int
         // value corresponding to its discriminant.
-        let vi_idents = self_arg_names
+        let vi_idents = selflike_arg_names
             .iter()
             .map(|name| {
                 let vi_suffix = format!("{}_vi", name);
@@ -1206,18 +1228,18 @@ impl<'a> MethodDef<'a> {
         // (Variant1, Variant1, ...) => Body1
         // (Variant2, Variant2, ...) => Body2
         // ...
-        // where each tuple has length = self_args.len()
+        // where each tuple has length = selflike_args.len()
         let mut match_arms: Vec<ast::Arm> = variants
             .iter()
             .enumerate()
             .filter(|&(_, v)| !(self.unify_fieldless_variants && v.data.fields().is_empty()))
             .map(|(index, variant)| {
-                let mk_self_pat = |cx: &mut ExtCtxt<'_>, self_arg_name: &str| {
+                let mk_selflike_pat = |cx: &mut ExtCtxt<'_>, selflike_arg_name: &str| {
                     let (p, idents) = trait_.create_enum_variant_pattern(
                         cx,
                         type_ident,
                         variant,
-                        self_arg_name,
+                        selflike_arg_name,
                         ast::Mutability::Not,
                     );
                     (cx.pat(span, PatKind::Ref(p, ast::Mutability::Not)), idents)
@@ -1225,17 +1247,17 @@ impl<'a> MethodDef<'a> {
 
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
                 // (see "Final wrinkle" note below for why.)
-                let mut subpats = Vec::with_capacity(self_arg_names.len());
-                let mut self_pats_idents = Vec::with_capacity(self_arg_names.len() - 1);
-                let first_self_pat_idents = {
-                    let (p, idents) = mk_self_pat(cx, &self_arg_names[0]);
+                let mut subpats = Vec::with_capacity(selflike_arg_names.len());
+                let mut selflike_pats_idents = Vec::with_capacity(selflike_arg_names.len() - 1);
+                let first_selflike_pat_idents = {
+                    let (p, idents) = mk_selflike_pat(cx, &selflike_arg_names[0]);
                     subpats.push(p);
                     idents
                 };
-                for self_arg_name in &self_arg_names[1..] {
-                    let (p, idents) = mk_self_pat(cx, &self_arg_name);
+                for selflike_arg_name in &selflike_arg_names[1..] {
+                    let (p, idents) = mk_selflike_pat(cx, &selflike_arg_name);
                     subpats.push(p);
-                    self_pats_idents.push(idents);
+                    selflike_pats_idents.push(idents);
                 }
 
                 // Here is the pat = `(&VariantK, &VariantK, ...)`
@@ -1250,24 +1272,24 @@ impl<'a> MethodDef<'a> {
                 // we are in.
 
                 // All of the Self args have the same variant in these
-                // cases.  So we transpose the info in self_pats_idents
+                // cases. So we transpose the info in selflike_pats_idents
                 // to gather the getter expressions together, in the
                 // form that EnumMatching expects.
 
                 // The transposition is driven by walking across the
-                // arg fields of the variant for the first self pat.
-                let field_tuples = first_self_pat_idents
+                // arg fields of the variant for the first selflike pat.
+                let field_tuples = first_selflike_pat_idents
                     .into_iter()
                     .enumerate()
                     // For each arg field of self, pull out its getter expr ...
                     .map(|(field_index, (span, opt_ident, self_getter_expr, attrs))| {
                         // ... but FieldInfo also wants getter expr
                         // for matching other arguments of Self type;
-                        // so walk across the *other* self_pats_idents
+                        // so walk across the *other* selflike_pats_idents
                         // and pull out getter for same field in each
                         // of them (using `field_index` tracked above).
                         // That is the heart of the transposition.
-                        let others = self_pats_idents
+                        let others = selflike_pats_idents
                             .iter()
                             .map(|fields| {
                                 let (_, _opt_ident, ref other_getter_expr, _) = fields[field_index];
@@ -1298,7 +1320,13 @@ impl<'a> MethodDef<'a> {
                 // Build up code associated with such a case.
                 let substructure = EnumMatching(index, variants.len(), variant, field_tuples);
                 let arm_expr = self
-                    .call_substructure_method(cx, trait_, type_ident, nonself_args, &substructure)
+                    .call_substructure_method(
+                        cx,
+                        trait_,
+                        type_ident,
+                        nonselflike_args,
+                        &substructure,
+                    )
                     .into_expr(cx, span);
 
                 cx.arm(span, single_pat, arm_expr)
@@ -1316,13 +1344,13 @@ impl<'a> MethodDef<'a> {
                         cx,
                         trait_,
                         type_ident,
-                        nonself_args,
+                        nonselflike_args,
                         &substructure,
                     )
                     .into_expr(cx, span),
                 )
             }
-            _ if variants.len() > 1 && self_args.len() > 1 => {
+            _ if variants.len() > 1 && selflike_args.len() > 1 => {
                 // Since we know that all the arguments will match if we reach
                 // the match expression we add the unreachable intrinsics as the
                 // result of the catch all which should help llvm in optimizing it
@@ -1349,8 +1377,8 @@ impl<'a> MethodDef<'a> {
         //   catch-all `_` match, it would trigger the
         //   unreachable-pattern error.
         //
-        if variants.len() > 1 && self_args.len() > 1 {
-            // Build a series of let statements mapping each self_arg
+        if variants.len() > 1 && selflike_args.len() > 1 {
+            // Build a series of let statements mapping each selflike_arg
             // to its discriminant value.
             //
             // i.e., for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
@@ -1365,10 +1393,14 @@ impl<'a> MethodDef<'a> {
             // We also build an expression which checks whether all discriminants are equal:
             // `__self_vi == __arg_1_vi && __self_vi == __arg_2_vi && ...`
             let mut discriminant_test = cx.expr_bool(span, true);
-            for (i, (&ident, self_arg)) in iter::zip(&vi_idents, &self_args).enumerate() {
-                let self_addr = cx.expr_addr_of(span, self_arg.clone());
-                let variant_value =
-                    deriving::call_intrinsic(cx, span, sym::discriminant_value, vec![self_addr]);
+            for (i, (&ident, selflike_arg)) in iter::zip(&vi_idents, &selflike_args).enumerate() {
+                let selflike_addr = cx.expr_addr_of(span, selflike_arg.clone());
+                let variant_value = deriving::call_intrinsic(
+                    cx,
+                    span,
+                    sym::discriminant_value,
+                    vec![selflike_addr],
+                );
                 let let_stmt = cx.stmt_let(span, false, ident, variant_value);
                 index_let_stmts.push(let_stmt);
 
@@ -1389,18 +1421,18 @@ impl<'a> MethodDef<'a> {
                     cx,
                     trait_,
                     type_ident,
-                    nonself_args,
+                    nonselflike_args,
                     &catch_all_substructure,
                 )
                 .into_expr(cx, span);
 
-            // Final wrinkle: the self_args are expressions that deref
+            // Final wrinkle: the selflike_args are expressions that deref
             // down to desired places, but we cannot actually deref
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            self_args.map_in_place(|self_arg| cx.expr_addr_of(span, self_arg));
-            let match_arg = cx.expr(span, ast::ExprKind::Tup(self_args));
+            selflike_args.map_in_place(|selflike_arg| cx.expr_addr_of(span, selflike_arg));
+            let match_arg = cx.expr(span, ast::ExprKind::Tup(selflike_args));
 
             // Lastly we create an expression which branches on all discriminants being equal
             //  if discriminant_test {
@@ -1469,16 +1501,16 @@ impl<'a> MethodDef<'a> {
 
             BlockOrExpr(vec![], Some(deriving::call_unreachable(cx, span)))
         } else {
-            // Final wrinkle: the self_args are expressions that deref
+            // Final wrinkle: the selflike_args are expressions that deref
             // down to desired places, but we cannot actually deref
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            self_args.map_in_place(|self_arg| cx.expr_addr_of(span, self_arg));
-            let match_arg = if self_args.len() == 1 {
-                self_args.pop().unwrap()
+            selflike_args.map_in_place(|selflike_arg| cx.expr_addr_of(span, selflike_arg));
+            let match_arg = if selflike_args.len() == 1 {
+                selflike_args.pop().unwrap()
             } else {
-                cx.expr(span, ast::ExprKind::Tup(self_args))
+                cx.expr(span, ast::ExprKind::Tup(selflike_args))
             };
             BlockOrExpr(vec![], Some(cx.expr_match(span, match_arg, match_arms)))
         }
@@ -1490,7 +1522,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         enum_def: &EnumDef,
         type_ident: Ident,
-        nonself_args: &[P<Expr>],
+        nonselflike_args: &[P<Expr>],
     ) -> BlockOrExpr {
         let summary = enum_def
             .variants
@@ -1505,7 +1537,7 @@ impl<'a> MethodDef<'a> {
             cx,
             trait_,
             type_ident,
-            nonself_args,
+            nonselflike_args,
             &StaticEnum(enum_def, summary),
         )
     }
@@ -1609,7 +1641,7 @@ impl<'a> TraitDef<'a> {
     fn create_struct_field_accesses(
         &self,
         cx: &mut ExtCtxt<'_>,
-        mut self_arg: &P<Expr>,
+        mut selflike_arg: &P<Expr>,
         struct_def: &'a VariantData,
     ) -> Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])> {
         let mut ident_exprs = Vec::new();
@@ -1617,8 +1649,8 @@ impl<'a> TraitDef<'a> {
             let sp = struct_field.span.with_ctxt(self.span.ctxt());
 
             // We don't the need the deref, if there is one.
-            if let ast::ExprKind::Unary(ast::UnOp::Deref, inner) = &self_arg.kind {
-                self_arg = inner;
+            if let ast::ExprKind::Unary(ast::UnOp::Deref, inner) = &selflike_arg.kind {
+                selflike_arg = inner;
             }
 
             // Note: we must use `struct_field.span` rather than `span` in the
@@ -1628,7 +1660,7 @@ impl<'a> TraitDef<'a> {
             let val = cx.expr(
                 sp,
                 ast::ExprKind::Field(
-                    self_arg.clone(),
+                    selflike_arg.clone(),
                     struct_field.ident.unwrap_or_else(|| {
                         Ident::from_str_and_span(&i.to_string(), struct_field.span)
                     }),
