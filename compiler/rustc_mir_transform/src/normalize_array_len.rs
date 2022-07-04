@@ -32,7 +32,9 @@ impl<'tcx> MirPass<'tcx> for NormalizeArrayLen {
 }
 
 pub fn normalize_array_len_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
+    // We don't ever touch terminators, so no need to invalidate the CFG cache
+    let (basic_blocks, local_decls, _) =
+        body.basic_blocks_local_decls_mut_and_var_debug_info_no_invalidate();
 
     // do a preliminary analysis to see if we ever have locals of type `[T;N]` or `&[T;N]`
     let mut interesting_locals = BitSet::new_empty(local_decls.len());

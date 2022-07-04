@@ -11,7 +11,8 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
+        let (basic_blocks, local_decls, _) =
+            body.basic_blocks_local_decls_mut_and_var_debug_info_no_invalidate();
         let local_decls = &*local_decls;
         for bb in basic_blocks {
             bb.expand_statements(|stmt| {
