@@ -91,12 +91,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Now we make a function call, and pass `data` as first and only argument.
         let f_instance = this.get_ptr_fn(try_fn)?.as_instance()?;
         trace!("try_fn: {:?}", f_instance);
-        let ret_place = MPlaceTy::dangling(this.machine.layouts.unit).into();
         this.call_function(
             f_instance,
             Abi::Rust,
             &[data.into()],
-            &ret_place,
+            None,
             // Directly return to caller.
             StackPopCleanup::Goto { ret: Some(ret), unwind: StackPopUnwind::Skip },
         )?;
@@ -144,12 +143,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let f_instance =
                 this.get_ptr_fn(this.scalar_to_ptr(catch_unwind.catch_fn)?)?.as_instance()?;
             trace!("catch_fn: {:?}", f_instance);
-            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit).into();
             this.call_function(
                 f_instance,
                 Abi::Rust,
                 &[catch_unwind.data.into(), payload.into()],
-                &ret_place,
+                None,
                 // Directly return to caller of `try`.
                 StackPopCleanup::Goto { ret: Some(catch_unwind.ret), unwind: StackPopUnwind::Skip },
             )?;
@@ -175,7 +173,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             panic,
             Abi::Rust,
             &[msg.to_ref(this)],
-            &MPlaceTy::dangling(this.machine.layouts.unit).into(),
+            None,
             StackPopCleanup::Goto { ret: None, unwind },
         )
     }
@@ -204,7 +202,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     panic_bounds_check,
                     Abi::Rust,
                     &[index.into(), len.into()],
-                    &MPlaceTy::dangling(this.machine.layouts.unit).into(),
+                    None,
                     StackPopCleanup::Goto {
                         ret: None,
                         unwind: match unwind {

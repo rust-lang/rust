@@ -47,7 +47,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             instance,
             Abi::C { unwind: false },
             &[*func_arg],
-            &ret_place.into(),
+            Some(&ret_place.into()),
             StackPopCleanup::Root { cleanup: true },
         )?;
 

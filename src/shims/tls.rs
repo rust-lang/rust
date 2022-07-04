@@ -253,12 +253,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
         let reason = this.eval_path_scalar(&["std", "sys", "windows", "c", "DLL_THREAD_DETACH"])?;
-        let ret_place = MPlaceTy::dangling(this.machine.layouts.unit).into();
         this.call_function(
             thread_callback,
             Abi::System { unwind: false },
             &[Scalar::null_ptr(this).into(), reason.into(), Scalar::null_ptr(this).into()],
-            &ret_place,
+            None,
             StackPopCleanup::Root { cleanup: true },
         )?;
 
@@ -276,12 +275,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some((instance, data)) = this.machine.tls.macos_thread_dtors.remove(&thread_id) {
             trace!("Running macos dtor {:?} on {:?} at {:?}", instance, data, thread_id);
 
-            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit).into();
             this.call_function(
                 instance,
                 Abi::C { unwind: false },
                 &[data.into()],
-                &ret_place,
+                None,
                 StackPopCleanup::Root { cleanup: true },
             )?;
 
@@ -319,12 +317,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 "data can't be NULL when dtor is called!"
             );
 
-            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit).into();
             this.call_function(
                 instance,
                 Abi::C { unwind: false },
                 &[ptr.into()],
-                &ret_place,
+                None,
                 StackPopCleanup::Root { cleanup: true },
             )?;
 

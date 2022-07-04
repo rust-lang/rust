@@ -235,12 +235,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Call a function: Push the stack frame and pass the arguments.
     /// For now, arguments must be scalars (so that the caller does not have to know the layout).
+    ///
+    /// If you do not provie a return place, a dangling zero-sized place will be created
+    /// for your convenience.
     fn call_function(
         &mut self,
         f: ty::Instance<'tcx>,
         caller_abi: Abi,
         args: &[Immediate<Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        dest: Option<&PlaceTy<'tcx, Tag>>,
         stack_pop: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -256,7 +259,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Push frame.
         let mir = this.load_mir(f.def, None)?;
-        this.push_stack_frame(f, mir, dest, stack_pop)?;
+        let dest = match dest {
+            Some(dest) => *dest,
+            None => MPlaceTy::dangling(this.layout_of(mir.return_ty())?).into(),
+        };
+        this.push_stack_frame(f, mir, &dest, stack_pop)?;
 
         // Initialize arguments.
         let mut callee_args = this.frame().body.args_iter();
