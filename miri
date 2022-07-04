@@ -37,6 +37,10 @@ Runs <command> over and over again with different seeds for Miri. The MIRIFLAGS
 variable is set to its original value appended with ` -Zmiri-seed=$SEED` for
 many different seeds.
 
+./miri bench <benches>:
+Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
+<benches> can explicitly list the benchmarks to run; by default, all of them are run.
+
   ENVIRONMENT VARIABLES
 
 MIRI_SYSROOT:
@@ -46,6 +50,11 @@ CARGO_EXTRA_FLAGS:
 Pass extra flags to all cargo invocations.
 EOF
 )
+
+## Preparation
+# macOS does not have a useful readlink/realpath so we have to use Python instead...
+MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
+TOOLCHAIN=$(cd "$MIRIDIR"; rustup show active-toolchain | head -n 1 | cut -d ' ' -f 1)
 
 # Determine command.
 COMMAND="$1"
@@ -60,14 +69,23 @@ many-seeds)
     done
     exit 0
     ;;
+bench)
+    # Make sure we have an up-to-date Miri installed
+    "$0" install
+    # Run the requested benchmarks
+    if [ -z "$@" ]; then
+        BENCHES=( $(ls "$MIRIDIR/bench-cargo-miri" ) )
+    else
+        BENCHES=("$@")
+    fi
+    for BENCH in "${BENCHES[@]}"; do
+        hyperfine -w 1 -m 5 --shell=none "cargo +$TOOLCHAIN miri run --manifest-path bench-cargo-miri/$BENCH/Cargo.toml"
+    done
+    exit 0
+    ;;
 esac
 
-## Preparation
-# macOS does not have a useful readlink/realpath so we have to use Python instead...
-MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
-# Determine toolchain *in the Miri dir* and use that.
-TOOLCHAIN=$(cd "$MIRIDIR"; rustup show active-toolchain | head -n 1 | cut -d ' ' -f 1)
-
+## Prepare the environment
 # Determine some toolchain properties
 TARGET=$(rustc +$TOOLCHAIN --version --verbose | grep "^host:" | cut -d ' ' -f 2)
 SYSROOT=$(rustc +$TOOLCHAIN --print sysroot)
