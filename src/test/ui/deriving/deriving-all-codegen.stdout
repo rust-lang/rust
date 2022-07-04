@@ -554,8 +554,8 @@ enum Enum1 {
 impl ::core::clone::Clone for Enum1 {
     #[inline]
     fn clone(&self) -> Enum1 {
-        match (&*self,) {
-            (&Enum1::Single { x: ref __self_0 },) =>
+        match &*self {
+            &Enum1::Single { x: ref __self_0 } =>
                 Enum1::Single { x: ::core::clone::Clone::clone(&*__self_0) },
         }
     }
@@ -564,8 +564,8 @@ impl ::core::clone::Clone for Enum1 {
 #[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Enum1 {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match (&*self,) {
-            (&Enum1::Single { x: ref __self_0 },) =>
+        match &*self {
+            &Enum1::Single { x: ref __self_0 } =>
                 ::core::fmt::Formatter::debug_struct_field1_finish(f,
                     "Single", "x", &&*__self_0),
         }
@@ -575,8 +575,8 @@ impl ::core::fmt::Debug for Enum1 {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Enum1 {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        match (&*self,) {
-            (&Enum1::Single { x: ref __self_0 },) => {
+        match &*self {
+            &Enum1::Single { x: ref __self_0 } => {
                 ::core::hash::Hash::hash(&*__self_0, state)
             }
         }
@@ -669,10 +669,10 @@ impl ::core::marker::Copy for Fieldless { }
 #[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Fieldless {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match (&*self,) {
-            (&Fieldless::A,) => ::core::fmt::Formatter::write_str(f, "A"),
-            (&Fieldless::B,) => ::core::fmt::Formatter::write_str(f, "B"),
-            (&Fieldless::C,) => ::core::fmt::Formatter::write_str(f, "C"),
+        match &*self {
+            &Fieldless::A => ::core::fmt::Formatter::write_str(f, "A"),
+            &Fieldless::B => ::core::fmt::Formatter::write_str(f, "B"),
+            &Fieldless::C => ::core::fmt::Formatter::write_str(f, "C"),
         }
     }
 }
@@ -686,7 +686,7 @@ impl ::core::default::Default for Fieldless {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Fieldless {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        match (&*self,) {
+        match &*self {
             _ => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
                     state)
@@ -775,13 +775,13 @@ impl ::core::marker::Copy for Mixed { }
 #[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Mixed {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match (&*self,) {
-            (&Mixed::P,) => ::core::fmt::Formatter::write_str(f, "P"),
-            (&Mixed::Q,) => ::core::fmt::Formatter::write_str(f, "Q"),
-            (&Mixed::R(ref __self_0),) =>
+        match &*self {
+            &Mixed::P => ::core::fmt::Formatter::write_str(f, "P"),
+            &Mixed::Q => ::core::fmt::Formatter::write_str(f, "Q"),
+            &Mixed::R(ref __self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "R",
                     &&*__self_0),
-            (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },) =>
+            &Mixed::S { d1: ref __self_0, d2: ref __self_1 } =>
                 ::core::fmt::Formatter::debug_struct_field2_finish(f, "S",
                     "d1", &&*__self_0, "d2", &&*__self_1),
         }
@@ -797,13 +797,13 @@ impl ::core::default::Default for Mixed {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Mixed {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        match (&*self,) {
-            (&Mixed::R(ref __self_0),) => {
+        match &*self {
+            &Mixed::R(ref __self_0) => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
                     state);
                 ::core::hash::Hash::hash(&*__self_0, state)
             }
-            (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },) => {
+            &Mixed::S { d1: ref __self_0, d2: ref __self_1 } => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
                     state);
                 ::core::hash::Hash::hash(&*__self_0, state);
@@ -943,12 +943,12 @@ enum Fielded { X(u32), Y(bool), Z(Option<i32>), }
 impl ::core::clone::Clone for Fielded {
     #[inline]
     fn clone(&self) -> Fielded {
-        match (&*self,) {
-            (&Fielded::X(ref __self_0),) =>
+        match &*self {
+            &Fielded::X(ref __self_0) =>
                 Fielded::X(::core::clone::Clone::clone(&*__self_0)),
-            (&Fielded::Y(ref __self_0),) =>
+            &Fielded::Y(ref __self_0) =>
                 Fielded::Y(::core::clone::Clone::clone(&*__self_0)),
-            (&Fielded::Z(ref __self_0),) =>
+            &Fielded::Z(ref __self_0) =>
                 Fielded::Z(::core::clone::Clone::clone(&*__self_0)),
         }
     }
@@ -957,14 +957,14 @@ impl ::core::clone::Clone for Fielded {
 #[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Fielded {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match (&*self,) {
-            (&Fielded::X(ref __self_0),) =>
+        match &*self {
+            &Fielded::X(ref __self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "X",
                     &&*__self_0),
-            (&Fielded::Y(ref __self_0),) =>
+            &Fielded::Y(ref __self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Y",
                     &&*__self_0),
-            (&Fielded::Z(ref __self_0),) =>
+            &Fielded::Z(ref __self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Z",
                     &&*__self_0),
         }
@@ -974,18 +974,18 @@ impl ::core::fmt::Debug for Fielded {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Fielded {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        match (&*self,) {
-            (&Fielded::X(ref __self_0),) => {
+        match &*self {
+            &Fielded::X(ref __self_0) => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
                     state);
                 ::core::hash::Hash::hash(&*__self_0, state)
             }
-            (&Fielded::Y(ref __self_0),) => {
+            &Fielded::Y(ref __self_0) => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
                     state);
                 ::core::hash::Hash::hash(&*__self_0, state)
             }
-            (&Fielded::Z(ref __self_0),) => {
+            &Fielded::Z(ref __self_0) => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
                     state);
                 ::core::hash::Hash::hash(&*__self_0, state)

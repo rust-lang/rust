@@ -1239,7 +1239,11 @@ impl<'a> MethodDef<'a> {
                 }
 
                 // Here is the pat = `(&VariantK, &VariantK, ...)`
-                let single_pat = cx.pat_tuple(span, subpats);
+                let single_pat = if subpats.len() == 1 {
+                    subpats.pop().unwrap()
+                } else {
+                    cx.pat_tuple(span, subpats)
+                };
 
                 // For the BodyK, we need to delegate to our caller,
                 // passing it an EnumMatching to indicate which case
@@ -1471,7 +1475,11 @@ impl<'a> MethodDef<'a> {
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
             self_args.map_in_place(|self_arg| cx.expr_addr_of(span, self_arg));
-            let match_arg = cx.expr(span, ast::ExprKind::Tup(self_args));
+            let match_arg = if self_args.len() == 1 {
+                self_args.pop().unwrap()
+            } else {
+                cx.expr(span, ast::ExprKind::Tup(self_args))
+            };
             BlockOrExpr(vec![], Some(cx.expr_match(span, match_arg, match_arms)))
         }
     }
