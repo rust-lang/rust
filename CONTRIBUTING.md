@@ -154,19 +154,24 @@ to `.vscode/settings.json` in your local Miri clone:
 
 ```json
 {
+    "rust-analyzer.rustc.source": "discover",
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+        "./cargo-miri/Cargo.toml"
+    ],
     "rust-analyzer.checkOnSave.overrideCommand": [
         "./miri",
         "check",
         "--message-format=json"
     ],
+    "rust-analyzer.buildScripts.overrideCommand": [
+        "./miri",
+        "check",
+        "--message-format=json",
+    ],
     "rust-analyzer.rustfmt.extraArgs": [
         "+nightly"
     ],
-    "rust-analyzer.rustcSource": "discover",
-    "rust-analyzer.linkedProjects": [
-        "./Cargo.toml",
-        "./cargo-miri/Cargo.toml"
-    ]
 }
 ```
 
