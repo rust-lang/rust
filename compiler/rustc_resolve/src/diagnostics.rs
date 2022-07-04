@@ -1495,6 +1495,15 @@ impl<'a> Resolver<'a> {
             err.help("have you added the `#[macro_use]` on the module/import?");
             return;
         }
+        if ident.name == kw::Default
+            && let ModuleKind::Def(DefKind::Enum, def_id, _) = parent_scope.module.kind
+            && let Some(span) = self.opt_span(def_id)
+        {
+            err.span_help(
+                self.session.source_map().guess_head_span(span),
+                "consider adding `#[derive(Default)]` to this enum",
+            );
+        }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
             if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
                 ident,
