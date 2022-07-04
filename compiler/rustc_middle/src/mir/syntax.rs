@@ -311,6 +311,7 @@ pub enum StatementKind<'tcx> {
 
 /// Describes what kind of retag is to be performed.
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, Hash, HashStable)]
+#[rustc_pass_by_value]
 pub enum RetagKind {
     /// The initial retag when entering a function.
     FnEntry,
