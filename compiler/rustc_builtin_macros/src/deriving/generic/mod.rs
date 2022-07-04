@@ -258,10 +258,10 @@ pub struct FieldInfo<'a> {
     pub name: Option<Ident>,
     /// The expression corresponding to this field of `self`
     /// (specifically, a reference to it).
-    pub self_: P<Expr>,
+    pub self_expr: P<Expr>,
     /// The expressions corresponding to references to this field in
-    /// the other `Self` arguments.
-    pub other: Vec<P<Expr>>,
+    /// the other selflike arguments.
+    pub other_selflike_exprs: Vec<P<Expr>>,
     /// The attributes on the field
     pub attrs: &'a [ast::Attribute],
 }
@@ -1080,13 +1080,13 @@ impl<'a> MethodDef<'a> {
         let fields = if !raw_fields.is_empty() {
             let mut raw_fields = raw_fields.into_iter().map(|v| v.into_iter());
             let first_field = raw_fields.next().unwrap();
-            let mut other_fields: Vec<vec::IntoIter<_>> = raw_fields.collect();
+            let mut nonself_fields: Vec<vec::IntoIter<_>> = raw_fields.collect();
             first_field
-                .map(|(span, opt_id, field, attrs)| FieldInfo {
+                .map(|(span, opt_id, expr, attrs)| FieldInfo {
                     span: span.with_ctxt(trait_.span.ctxt()),
                     name: opt_id,
-                    self_: field,
-                    other: other_fields
+                    self_expr: expr,
+                    other_selflike_exprs: nonself_fields
                         .iter_mut()
                         .map(|l| {
                             let (.., ex, _) = l.next().unwrap();
@@ -1289,7 +1289,7 @@ impl<'a> MethodDef<'a> {
                         // and pull out getter for same field in each
                         // of them (using `field_index` tracked above).
                         // That is the heart of the transposition.
-                        let others = selflike_pats_idents
+                        let other_selflike_exprs = selflike_pats_idents
                             .iter()
                             .map(|fields| {
                                 let (_, _opt_ident, ref other_getter_expr, _) = fields[field_index];
@@ -1307,8 +1307,8 @@ impl<'a> MethodDef<'a> {
                         FieldInfo {
                             span,
                             name: opt_ident,
-                            self_: self_getter_expr,
-                            other: others,
+                            self_expr: self_getter_expr,
+                            other_selflike_exprs,
                             attrs,
                         }
                     })
@@ -1712,12 +1712,13 @@ where
             let (base, rest) = match (all_fields.is_empty(), use_foldl) {
                 (false, true) => {
                     let (first, rest) = all_fields.split_first().unwrap();
-                    let args = (first.span, first.self_.clone(), &first.other[..]);
+                    let args =
+                        (first.span, first.self_expr.clone(), &first.other_selflike_exprs[..]);
                     (b(cx, Some(args)), rest)
                 }
                 (false, false) => {
                     let (last, rest) = all_fields.split_last().unwrap();
-                    let args = (last.span, last.self_.clone(), &last.other[..]);
+                    let args = (last.span, last.self_expr.clone(), &last.other_selflike_exprs[..]);
                     (b(cx, Some(args)), rest)
                 }
                 (true, _) => (b(cx, None), &all_fields[..]),
@@ -1725,11 +1726,11 @@ where
 
             if use_foldl {
                 rest.iter().fold(base, |old, field| {
-                    f(cx, field.span, old, field.self_.clone(), &field.other)
+                    f(cx, field.span, old, field.self_expr.clone(), &field.other_selflike_exprs)
                 })
             } else {
                 rest.iter().rev().fold(base, |old, field| {
-                    f(cx, field.span, old, field.self_.clone(), &field.other)
+                    f(cx, field.span, old, field.self_expr.clone(), &field.other_selflike_exprs)
                 })
             }
         }

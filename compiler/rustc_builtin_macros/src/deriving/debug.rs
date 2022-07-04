@@ -96,7 +96,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 args.push(name);
             }
             // Use double indirection to make sure this works for unsized types
-            let field = cx.expr_addr_of(field.span, field.self_.clone());
+            let field = cx.expr_addr_of(field.span, field.self_expr.clone());
             let field = cx.expr_addr_of(field.span, field);
             args.push(field);
         }
@@ -116,7 +116,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
             }
 
             // Use double indirection to make sure this works for unsized types
-            let value_ref = cx.expr_addr_of(field.span, field.self_.clone());
+            let value_ref = cx.expr_addr_of(field.span, field.self_expr.clone());
             value_exprs.push(cx.expr_addr_of(field.span, value_ref));
         }
 

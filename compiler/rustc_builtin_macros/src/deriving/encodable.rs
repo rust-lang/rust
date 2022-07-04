@@ -168,12 +168,12 @@ fn encodable_substructure(
             let fn_emit_struct_field_path =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_struct_field]);
             let mut stmts = Vec::new();
-            for (i, &FieldInfo { name, ref self_, span, .. }) in fields.iter().enumerate() {
+            for (i, &FieldInfo { name, ref self_expr, span, .. }) in fields.iter().enumerate() {
                 let name = match name {
                     Some(id) => id.name,
                     None => Symbol::intern(&format!("_field{}", i)),
                 };
-                let self_ref = cx.expr_addr_of(span, self_.clone());
+                let self_ref = cx.expr_addr_of(span, self_expr.clone());
                 let enc = cx.expr_call(span, fn_path.clone(), vec![self_ref, blkencoder.clone()]);
                 let lambda = cx.lambda1(span, enc, blkarg);
                 let call = cx.expr_call_global(
@@ -237,8 +237,8 @@ fn encodable_substructure(
             let mut stmts = Vec::new();
             if !fields.is_empty() {
                 let last = fields.len() - 1;
-                for (i, &FieldInfo { ref self_, span, .. }) in fields.iter().enumerate() {
-                    let self_ref = cx.expr_addr_of(span, self_.clone());
+                for (i, &FieldInfo { ref self_expr, span, .. }) in fields.iter().enumerate() {
+                    let self_ref = cx.expr_addr_of(span, self_expr.clone());
                     let enc =
                         cx.expr_call(span, fn_path.clone(), vec![self_ref, blkencoder.clone()]);
                     let lambda = cx.lambda1(span, enc, blkarg);

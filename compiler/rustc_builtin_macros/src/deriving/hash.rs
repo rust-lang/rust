@@ -82,7 +82,9 @@ fn hash_substructure(
     };
 
     stmts.extend(
-        fields.iter().map(|FieldInfo { ref self_, span, .. }| call_hash(*span, self_.clone())),
+        fields
+            .iter()
+            .map(|FieldInfo { ref self_expr, span, .. }| call_hash(*span, self_expr.clone())),
     );
     BlockOrExpr::new_stmts(stmts)
 }

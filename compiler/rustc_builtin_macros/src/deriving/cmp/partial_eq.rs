@@ -23,25 +23,28 @@ pub fn expand_deriving_partial_eq(
         combiner: BinOpKind,
         base: bool,
     ) -> BlockOrExpr {
-        let op = |cx: &mut ExtCtxt<'_>, span: Span, self_f: P<Expr>, other_fs: &[P<Expr>]| {
-            let [other_f] = other_fs else {
+        let op = |cx: &mut ExtCtxt<'_>,
+                  span: Span,
+                  self_expr: P<Expr>,
+                  other_selflike_exprs: &[P<Expr>]| {
+            let [other_expr] = other_selflike_exprs else {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`");
             };
 
-            cx.expr_binary(span, op, self_f, other_f.clone())
+            cx.expr_binary(span, op, self_expr, other_expr.clone())
         };
 
         let expr = cs_fold(
             true, // use foldl
-            |cx, span, subexpr, self_f, other_fs| {
-                let eq = op(cx, span, self_f, other_fs);
+            |cx, span, subexpr, self_expr, other_selflike_exprs| {
+                let eq = op(cx, span, self_expr, other_selflike_exprs);
                 cx.expr_binary(span, combiner, subexpr, eq)
             },
             |cx, args| {
                 match args {
-                    Some((span, self_f, other_fs)) => {
+                    Some((span, self_expr, other_selflike_exprs)) => {
                         // Special-case the base case to generate cleaner code.
-                        op(cx, span, self_f, other_fs)
+                        op(cx, span, self_expr, other_selflike_exprs)
                     }
                     None => cx.expr_bool(span, base),
                 }

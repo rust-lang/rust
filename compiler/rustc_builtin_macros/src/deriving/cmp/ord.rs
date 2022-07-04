@@ -74,17 +74,19 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> Bl
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
-        |cx, span, old, self_f, other_fs| {
+        |cx, span, old, self_expr, other_selflike_exprs| {
             // match new {
             //     ::std::cmp::Ordering::Equal => old,
             //     cmp => cmp
             // }
             let new = {
-                let [other_f] = other_fs else {
+                let [other_expr] = other_selflike_exprs else {
                     cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`");
                 };
-                let args =
-                    vec![cx.expr_addr_of(span, self_f), cx.expr_addr_of(span, other_f.clone())];
+                let args = vec![
+                    cx.expr_addr_of(span, self_expr),
+                    cx.expr_addr_of(span, other_expr.clone()),
+                ];
                 cx.expr_call_global(span, cmp_path.clone(), args)
             };
 
@@ -94,13 +96,15 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> Bl
             cx.expr_match(span, new, vec![eq_arm, neq_arm])
         },
         |cx, args| match args {
-            Some((span, self_f, other_fs)) => {
+            Some((span, self_expr, other_selflike_exprs)) => {
                 let new = {
-                    let [other_f] = other_fs else {
+                    let [other_expr] = other_selflike_exprs else {
                             cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`");
                         };
-                    let args =
-                        vec![cx.expr_addr_of(span, self_f), cx.expr_addr_of(span, other_f.clone())];
+                    let args = vec![
+                        cx.expr_addr_of(span, self_expr),
+                        cx.expr_addr_of(span, other_expr.clone()),
+                    ];
                     cx.expr_call_global(span, cmp_path.clone(), args)
                 };
 
