@@ -2062,7 +2062,7 @@ pub enum ConstantKind<'tcx> {
     /// This constant came from the type system
     Ty(ty::Const<'tcx>),
 
-    /// An unevaluated constant that cannot go back into the type system.
+    /// An unevaluated mir constant which is not part of the type system.
     Unevaluated(ty::Unevaluated<'tcx, Option<Promoted>>, Ty<'tcx>),
 
     /// This constant cannot go back into the type system, as it represents

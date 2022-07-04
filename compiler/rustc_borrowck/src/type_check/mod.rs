@@ -1819,7 +1819,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     _ => None,
                 },
                 ConstantKind::Unevaluated(uv, _) => Some(uv),
-                _ => None,
+                ConstantKind::Val(..) => None,
             };
 
             if let Some(uv) = maybe_uneval {

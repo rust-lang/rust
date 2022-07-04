@@ -299,7 +299,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal {
-                        ConstantKind::Ty(_) => c.literal.needs_subst(),
+                        ConstantKind::Ty(ct) => ct.needs_subst(),
                         ConstantKind::Unevaluated(
                             ty::Unevaluated { def: _, substs: _, promoted: Some(_) },
                             _,
