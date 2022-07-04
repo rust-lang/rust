@@ -244,6 +244,7 @@ impl TestProps {
 
         // copy over select properties to the aux build:
         props.incremental_dir = self.incremental_dir.clone();
+        props.ignore_pass = true;
         props.load_from(testfile, cfg, config);
 
         props

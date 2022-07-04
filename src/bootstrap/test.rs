@@ -1363,13 +1363,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         if let Some(ref npm) = builder.config.npm {
             cmd.arg("--npm").arg(npm);
         }
-
-        let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
-        if !is_rustdoc {
-            if builder.config.rust_optimize_tests {
-                flags.push("-O".to_string());
-            }
+        if builder.config.rust_optimize_tests {
+            cmd.arg("--optimize-tests");
         }
+        let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
         flags.push(builder.config.cmd.rustc_args().join(" "));
 
