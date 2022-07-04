@@ -77,7 +77,30 @@ pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
 
 /// FIXME: Check if `exit()` should be used here
 pub fn abort_internal() -> ! {
+    if let (Some(boot_services), Some(handle)) =
+        (uefi::env::get_boot_services(), uefi::env::get_system_handle())
+    {
+        let _ = unsafe {
+            ((*boot_services.as_ptr()).exit)(
+                handle.as_ptr(),
+                uefi::raw::Status::ABORTED,
+                0,
+                [0].as_mut_ptr(),
+            )
+        };
+    }
+
+    // Should never be called ideally. Might remove in future.
     core::intrinsics::abort();
+}
+
+// This function is needed by the panic runtime. The symbol is named in
+// pre-link args for the target specification, so keep that in sync.
+#[cfg(not(test))]
+#[no_mangle]
+// NB. used by both libunwind and libpanic_abort
+pub extern "C" fn __rust_abort() {
+    abort_internal();
 }
 
 pub fn hashmap_random_keys() -> (u64, u64) {

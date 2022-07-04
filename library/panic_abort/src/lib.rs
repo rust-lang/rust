@@ -42,6 +42,7 @@ pub unsafe fn __rust_start_panic(_payload: *mut &mut dyn BoxMeUp) -> u32 {
                 libc::abort();
             }
         } else if #[cfg(any(target_os = "hermit",
+                            target_os = "uefi",
                             all(target_vendor = "fortanix", target_env = "sgx")
         ))] {
             unsafe fn abort() -> ! {
