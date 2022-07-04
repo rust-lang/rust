@@ -223,15 +223,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         if !def_id.is_local() {
             return None;
         }
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        match tcx.hir().find(hir_id) {
-            Some(Node::Item(hir::Item { span: item_span, .. })) => {
-                Some(tcx.sess.source_map().guess_head_span(*item_span))
-            }
-            _ => {
-                span_bug!(tcx.def_span(def_id), "main has a non-function type");
-            }
-        }
+        Some(tcx.def_span(def_id))
     }
 
     fn main_fn_return_type_span(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Span> {
@@ -416,7 +408,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         error = true;
                     }
                     if let hir::IsAsync::Async = sig.header.asyncness {
-                        let span = tcx.sess.source_map().guess_head_span(it.span);
+                        let span = tcx.def_span(it.def_id);
                         struct_span_err!(
                             tcx.sess,
                             span,

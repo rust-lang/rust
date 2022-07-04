@@ -47,7 +47,7 @@ fn do_orphan_check_impl<'tcx>(
     let hir::ItemKind::Impl(ref impl_) = item.kind else {
         bug!("{:?} is not an impl: {:?}", def_id, item);
     };
-    let sp = tcx.sess.source_map().guess_head_span(item.span);
+    let sp = tcx.def_span(def_id);
     let tr = impl_.of_trait.as_ref().unwrap();
 
     // Ensure no opaque types are present in this impl header. See issues #76202 and #86411 for examples,

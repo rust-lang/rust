@@ -795,7 +795,7 @@ fn foo(&self) -> Self::T { String::new() }
                         if item_def_id == proj_ty_item_def_id =>
                     {
                         Some((
-                            self.sess.source_map().guess_head_span(self.def_span(item.def_id)),
+                            self.def_span(item.def_id),
                             format!("consider calling `{}`", self.def_path_str(item.def_id)),
                         ))
                     }
