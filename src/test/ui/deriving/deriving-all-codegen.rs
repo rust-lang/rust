@@ -28,11 +28,16 @@ struct Point {
     y: u32,
 }
 
-// A long struct.
+// A large struct.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Big {
     b1: u32, b2: u32, b3: u32, b4: u32, b5: u32, b6: u32, b7: u32, b8:u32,
 }
+
+// A packed tuple struct.
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(packed)]
+struct Packed(u32);
 
 // A C-like, fieldless enum.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]

@@ -66,7 +66,7 @@
 //!
 //! # "`cs`" functions
 //!
-//! The `cs_...` functions ("combine substructure) are designed to
+//! The `cs_...` functions ("combine substructure") are designed to
 //! make life easier by providing some pre-made recipes for common
 //! threads; mostly calling the function being derived on all the
 //! arguments and then combining them back together in some way (or
@@ -429,6 +429,7 @@ impl<'a> TraitDef<'a> {
                         generics,
                         from_scratch,
                         use_temporaries,
+                        is_packed,
                     ),
                     ast::ItemKind::Enum(ref enum_def, ref generics) => {
                         // We ignore `use_temporaries` here, because
@@ -448,6 +449,7 @@ impl<'a> TraitDef<'a> {
                                 generics,
                                 from_scratch,
                                 use_temporaries,
+                                is_packed,
                             )
                         } else {
                             cx.span_err(mitem.span, "this trait cannot be derived for unions");
@@ -729,6 +731,7 @@ impl<'a> TraitDef<'a> {
         generics: &Generics,
         from_scratch: bool,
         use_temporaries: bool,
+        is_packed: bool,
     ) -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> =
             struct_def.fields().iter().map(|field| field.ty.clone()).collect();
@@ -757,6 +760,7 @@ impl<'a> TraitDef<'a> {
                         &self_args,
                         &nonself_args,
                         use_temporaries,
+                        is_packed,
                     )
                 };
 
@@ -945,6 +949,7 @@ impl<'a> MethodDef<'a> {
         })
     }
 
+    /// The normal case uses field access.
     /// ```
     /// #[derive(PartialEq)]
     /// # struct Dummy;
@@ -953,33 +958,21 @@ impl<'a> MethodDef<'a> {
     /// // equivalent to:
     /// impl PartialEq for A {
     ///     fn eq(&self, other: &A) -> bool {
-    ///         match *self {
-    ///             A {x: ref __self_0_0, y: ref __self_0_1} => {
-    ///                 match *other {
-    ///                     A {x: ref __self_1_0, y: ref __self_1_1} => {
-    ///                         __self_0_0.eq(__self_1_0) && __self_0_1.eq(__self_1_1)
-    ///                     }
-    ///                 }
-    ///             }
-    ///         }
+    ///         self.x == other.x && self.y == other.y
     ///     }
     /// }
     /// ```
-    /// or if A is repr(packed) - note fields are matched by-value
-    /// instead of by-reference.
+    /// But if the struct is `repr(packed)`, we can't use something like
+    /// `&self.x` on a packed type (as required for e.g. `Debug` and `Hash`)
+    /// because that might cause an unaligned ref. So we use let-destructuring
+    /// instead.
     /// ```
     /// # struct A { x: i32, y: i32 }
     /// impl PartialEq for A {
     ///     fn eq(&self, other: &A) -> bool {
-    ///         match *self {
-    ///             A {x: __self_0_0, y: __self_0_1} => {
-    ///                 match other {
-    ///                     A {x: __self_1_0, y: __self_1_1} => {
-    ///                         __self_0_0.eq(&__self_1_0) && __self_0_1.eq(&__self_1_1)
-    ///                     }
-    ///                 }
-    ///             }
-    ///         }
+    ///         let Self { x: ref __self_0_0, y: ref __self_0_1 } = *self;
+    ///         let Self { x: ref __self_1_0, y: ref __self_1_1 } = *other;
+    ///         *__self_0_0 == *__self_1_0 && *__self_0_1 == *__self_1_1
     ///     }
     /// }
     /// ```
@@ -992,24 +985,33 @@ impl<'a> MethodDef<'a> {
         self_args: &[P<Expr>],
         nonself_args: &[P<Expr>],
         use_temporaries: bool,
+        is_packed: bool,
     ) -> P<Expr> {
         let mut raw_fields = Vec::new(); // Vec<[fields of self], [fields of next Self arg], [etc]>
         let span = trait_.span;
         let mut patterns = Vec::new();
-        for i in 0..self_args.len() {
-            // We could use `type_ident` instead of `Self`, but in the case of a type parameter
-            // shadowing the struct name, that causes a second, unnecessary E0578 error. #97343
-            let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
-            let (pat, ident_expr) = trait_.create_struct_pattern(
-                cx,
-                struct_path,
-                struct_def,
-                &format!("__self_{}", i),
-                ast::Mutability::Not,
-                use_temporaries,
-            );
-            patterns.push(pat);
-            raw_fields.push(ident_expr);
+
+        for (i, self_arg) in self_args.iter().enumerate() {
+            let ident_exprs = if !is_packed {
+                trait_.create_struct_field_accesses(cx, self_arg, struct_def)
+            } else {
+                // Get the pattern for the let-destructuring.
+                //
+                // We could use `type_ident` instead of `Self`, but in the case of a type parameter
+                // shadowing the struct name, that causes a second, unnecessary E0578 error. #97343
+                let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
+                let (pat, ident_exprs) = trait_.create_struct_pattern(
+                    cx,
+                    struct_path,
+                    struct_def,
+                    &format!("__self_{}", i),
+                    ast::Mutability::Not,
+                    use_temporaries,
+                );
+                patterns.push(pat);
+                ident_exprs
+            };
+            raw_fields.push(ident_exprs);
         }
 
         // transpose raw_fields
@@ -1036,7 +1038,6 @@ impl<'a> MethodDef<'a> {
             cx.span_bug(span, "no `self` parameter for method in generic `derive`")
         };
 
-        // body of the inner most destructuring match
         let mut body = self.call_substructure_method(
             cx,
             trait_,
@@ -1045,14 +1046,18 @@ impl<'a> MethodDef<'a> {
             &Struct(struct_def, fields),
         );
 
-        // make a series of nested matches, to destructure the
-        // structs. This is actually right-to-left, but it shouldn't
-        // matter.
-        for (arg_expr, pat) in iter::zip(self_args, patterns) {
-            body = cx.expr_match(span, arg_expr.clone(), vec![cx.arm(span, pat.clone(), body)])
-        }
+        if !is_packed {
+            body.span = span;
+            body
+        } else {
+            // Do the let-destructuring.
+            let mut stmts: Vec<_> = iter::zip(self_args, patterns)
+                .map(|(arg_expr, pat)| cx.stmt_let_pat(span, pat, arg_expr.clone()))
+                .collect();
+            stmts.push(cx.stmt_expr(body));
 
-        body
+            cx.expr_block(cx.block(span, stmts))
+        }
     }
 
     fn expand_static_struct_method_body(
@@ -1522,8 +1527,6 @@ impl<'a> TraitDef<'a> {
             paths.push(ident.with_span_pos(sp));
             let val = cx.expr_path(cx.path_ident(sp, ident));
             let val = if use_temporaries { val } else { cx.expr_deref(sp, val) };
-            let val = cx.expr(sp, ast::ExprKind::Paren(val));
-
             ident_exprs.push((sp, struct_field.ident, val, &struct_field.attrs[..]));
         }
 
@@ -1553,6 +1556,39 @@ impl<'a> TraitDef<'a> {
         };
 
         (pattern, ident_exprs)
+    }
+
+    fn create_struct_field_accesses(
+        &self,
+        cx: &mut ExtCtxt<'_>,
+        mut self_arg: &P<Expr>,
+        struct_def: &'a VariantData,
+    ) -> Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])> {
+        let mut ident_exprs = Vec::new();
+        for (i, struct_field) in struct_def.fields().iter().enumerate() {
+            let sp = struct_field.span.with_ctxt(self.span.ctxt());
+
+            // We don't the need the deref, if there is one.
+            if let ast::ExprKind::Unary(ast::UnOp::Deref, inner) = &self_arg.kind {
+                self_arg = inner;
+            }
+
+            // Note: we must use `struct_field.span` rather than `span` in the
+            // `unwrap_or_else` case otherwise the hygiene is wrong and we get
+            // "field `0` of struct `Point` is private" errors on tuple
+            // structs.
+            let val = cx.expr(
+                sp,
+                ast::ExprKind::Field(
+                    self_arg.clone(),
+                    struct_field.ident.unwrap_or_else(|| {
+                        Ident::from_str_and_span(&i.to_string(), struct_field.span)
+                    }),
+                ),
+            );
+            ident_exprs.push((sp, struct_field.ident, val, &struct_field.attrs[..]));
+        }
+        ident_exprs
     }
 
     fn create_enum_variant_pattern(
@@ -1643,7 +1679,6 @@ where
 /// fields.
 /// When the `substructure` is an `EnumNonMatchingCollapsed`, the result of `enum_nonmatch_f`
 /// is returned. Statics may not be folded over.
-/// See `cs_op` in `partial_ord.rs` for a model example.
 pub fn cs_fold1<F, B>(
     use_foldl: bool,
     f: F,

@@ -152,6 +152,19 @@ impl<'a> ExtCtxt<'a> {
         ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(expr) }
     }
 
+    pub fn stmt_let_pat(&self, sp: Span, pat: P<ast::Pat>, ex: P<ast::Expr>) -> ast::Stmt {
+        let local = P(ast::Local {
+            pat,
+            ty: None,
+            id: ast::DUMMY_NODE_ID,
+            kind: LocalKind::Init(ex),
+            span: sp,
+            attrs: AttrVec::new(),
+            tokens: None,
+        });
+        self.stmt_local(local, sp)
+    }
+
     pub fn stmt_let(&self, sp: Span, mutbl: bool, ident: Ident, ex: P<ast::Expr>) -> ast::Stmt {
         self.stmt_let_ty(sp, mutbl, ident, None, ex)
     }
