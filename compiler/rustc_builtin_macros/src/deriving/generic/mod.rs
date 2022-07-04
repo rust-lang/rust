@@ -1378,55 +1378,9 @@ impl<'a> MethodDef<'a> {
             let arm_expr = cx.expr_if(span, discriminant_test, all_match, Some(arm_expr));
             BlockOrExpr(index_let_stmts, Some(arm_expr))
         } else if variants.is_empty() {
-            // As an additional wrinkle, For a zero-variant enum A,
-            // currently the compiler
-            // will accept `fn (a: &Self) { match   *a   { } }`
-            // but rejects `fn (a: &Self) { match (&*a,) { } }`
-            // as well as  `fn (a: &Self) { match ( *a,) { } }`
-            //
-            // This means that the strategy of building up a tuple of
-            // all Self arguments fails when Self is a zero variant
-            // enum: rustc rejects the expanded program, even though
-            // the actual code tends to be impossible to execute (at
-            // least safely), according to the type system.
-            //
-            // The most expedient fix for this is to just let the
-            // code fall through to the catch-all.  But even this is
-            // error-prone, since the catch-all as defined above would
-            // generate code like this:
-            //
-            //     _ => { let __self0 = match *self { };
-            //            let __self1 = match *__arg_0 { };
-            //            <catch-all-expr> }
-            //
-            // Which is yields bindings for variables which type
-            // inference cannot resolve to unique types.
-            //
-            // One option to the above might be to add explicit type
-            // annotations.  But the *only* reason to go down that path
-            // would be to try to make the expanded output consistent
-            // with the case when the number of enum variants >= 1.
-            //
-            // That just isn't worth it.  In fact, trying to generate
-            // sensible code for *any* deriving on a zero-variant enum
-            // does not make sense.  But at the same time, for now, we
-            // do not want to cause a compile failure just because the
-            // user happened to attach a deriving to their
-            // zero-variant enum.
-            //
-            // Instead, just generate a failing expression for the
-            // zero variant case, skipping matches and also skipping
-            // delegating back to the end user code entirely.
-            //
-            // (See also #4499 and #12609; note that some of the
-            // discussions there influence what choice we make here;
-            // e.g., if we feature-gate `match x { ... }` when x refers
-            // to an uninhabited type (e.g., a zero-variant enum or a
-            // type holding such an enum), but do not feature-gate
-            // zero-variant enums themselves, then attempting to
-            // derive Debug on such a type could here generate code
-            // that needs the feature gate enabled.)
-
+            // There is no sensible code to be generated for *any* deriving on
+            // a zero-variant enum. So we just generate a failing expression
+            // for the zero variant case.
             BlockOrExpr(vec![], Some(deriving::call_unreachable(cx, span)))
         } else {
             // Final wrinkle: the selflike_args are expressions that deref
