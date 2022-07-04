@@ -1,8 +1,8 @@
-error: cannot specialize on `Binder(ProjectionPredicate(ProjectionTy { substs: [V], item_def_id: DefId(0:6 ~ repeated_projection_type[54ea]::Id::This) }, Ty((I,))), [])`
-  --> $DIR/repeated_projection_type.rs:19:1
+error: cannot specialize on associated type `<V as Id>::This == (I,)`
+  --> $DIR/repeated_projection_type.rs:19:15
    |
 LL | impl<I, V: Id<This = (I,)>> X for V {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^
 
 error: aborting due to previous error
 
