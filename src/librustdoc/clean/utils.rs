@@ -340,17 +340,98 @@ pub(crate) fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
     false
 }
 
+/// Build a textual representation of an unevaluated constant expression.
+///
+/// If the const expression is too complex, an underscore `_` is returned.
+/// For const arguments, it's `{ _ }` to be precise.
+/// This means that the output is not necessarily valid Rust code.
+///
+/// Currently, only
+///
+/// * literals (optionally with a leading `-`)
+/// * unit `()`
+/// * blocks (`{ … }`) around simple expressions and
+/// * paths without arguments
+///
+/// are considered simple enough. Simple blocks are included since they are
+/// necessary to disambiguate unit from the unit type.
+/// This list might get extended in the future.
+///
+/// Without this censoring, in a lot of cases the output would get too large
+/// and verbose. Consider `match` expressions, blocks and deeply nested ADTs.
+/// Further, private and `doc(hidden)` fields of structs would get leaked
+/// since HIR datatypes like the `body` parameter do not contain enough
+/// semantic information for this function to be able to hide them –
+/// at least not without significant performance overhead.
+///
+/// Whenever possible, prefer to evaluate the constant first and try to
+/// use a different method for pretty-printing. Ideally this function
+/// should only ever be used as a fallback.
 pub(crate) fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
     let hir = tcx.hir();
     let value = &hir.body(body).value;
 
-    let snippet = if !value.span.from_expansion() {
-        tcx.sess.source_map().span_to_snippet(value.span).ok()
-    } else {
-        None
-    };
+    #[derive(PartialEq, Eq)]
+    enum Classification {
+        Literal,
+        Simple,
+        Complex,
+    }
 
-    snippet.unwrap_or_else(|| rustc_hir_pretty::id_to_string(&hir, body.hir_id))
+    use Classification::*;
+
+    fn classify(expr: &hir::Expr<'_>) -> Classification {
+        match &expr.kind {
+            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
+                if matches!(expr.kind, hir::ExprKind::Lit(_)) { Literal } else { Complex }
+            }
+            hir::ExprKind::Lit(_) => Literal,
+            hir::ExprKind::Tup([]) => Simple,
+            hir::ExprKind::Block(hir::Block { stmts: [], expr: Some(expr), .. }, _) => {
+                if classify(expr) == Complex { Complex } else { Simple }
+            }
+            // Paths with a self-type or arguments are too “complex” following our measure since
+            // they may leak private fields of structs (with feature `adt_const_params`).
+            // Consider: `<Self as Trait<{ Struct { private: () } }>>::CONSTANT`.
+            // Paths without arguments are definitely harmless though.
+            hir::ExprKind::Path(hir::QPath::Resolved(_, hir::Path { segments, .. })) => {
+                if segments.iter().all(|segment| segment.args.is_none()) { Simple } else { Complex }
+            }
+            // FIXME: Claiming that those kinds of QPaths are simple is probably not true if the Ty
+            //        contains const arguments. Is there a *concise* way to check for this?
+            hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => Simple,
+            // FIXME: Can they contain const arguments and thus leak private struct fields?
+            hir::ExprKind::Path(hir::QPath::LangItem(..)) => Simple,
+            _ => Complex,
+        }
+    }
+
+    let classification = classify(value);
+
+    if classification == Literal
+    && !value.span.from_expansion()
+    && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(value.span) {
+        // For literals, we avoid invoking the pretty-printer and use the source snippet instead to
+        // preserve certain stylistic choices the user likely made for the sake legibility like
+        //
+        // * hexadecimal notation
+        // * underscores
+        // * character escapes
+        //
+        // FIXME: This passes through `-/*spacer*/0` verbatim.
+        snippet
+    } else if classification == Simple {
+        // Otherwise we prefer pretty-printing to get rid of extraneous whitespace, comments and
+        // other formatting artifacts.
+        rustc_hir_pretty::id_to_string(&hir, body.hir_id)
+    } else if tcx.def_kind(hir.body_owner_def_id(body).to_def_id()) == DefKind::AnonConst {
+        // FIXME: Omit the curly braces if the enclosing expression is an array literal
+        //        with a repeated element (an `ExprKind::Repeat`) as in such case it
+        //        would not actually need any disambiguation.
+        "{ _ }".to_owned()
+    } else {
+        "_".to_owned()
+    }
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt

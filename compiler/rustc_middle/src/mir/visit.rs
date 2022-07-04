@@ -147,7 +147,7 @@ macro_rules! make_mir_visitor {
             fn visit_ascribe_user_ty(
                 &mut self,
                 place: & $($mutability)? Place<'tcx>,
-                variance: & $($mutability)? ty::Variance,
+                variance: $(& $mutability)? ty::Variance,
                 user_ty: & $($mutability)? UserTypeProjection,
                 location: Location,
             ) {
@@ -164,7 +164,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_retag(
                 &mut self,
-                kind: & $($mutability)? RetagKind,
+                kind: $(& $mutability)? RetagKind,
                 place: & $($mutability)? Place<'tcx>,
                 location: Location,
             ) {
@@ -425,7 +425,7 @@ macro_rules! make_mir_visitor {
                 self.visit_source_info(source_info);
                 match kind {
                     StatementKind::Assign(
-                        box(ref $($mutability)? place, ref $($mutability)? rvalue)
+                        box (place, rvalue)
                     ) => {
                         self.visit_assign(place, rvalue, location);
                     }
@@ -465,13 +465,13 @@ macro_rules! make_mir_visitor {
                         );
                     }
                     StatementKind::Retag(kind, place) => {
-                        self.visit_retag(kind, place, location);
+                        self.visit_retag($(& $mutability)? *kind, place, location);
                     }
                     StatementKind::AscribeUserType(
-                        box(ref $($mutability)? place, ref $($mutability)? user_ty),
+                        box (place, user_ty),
                         variance
                     ) => {
-                        self.visit_ascribe_user_ty(place, variance, user_ty, location);
+                        self.visit_ascribe_user_ty(place, $(& $mutability)? *variance, user_ty, location);
                     }
                     StatementKind::Coverage(coverage) => {
                         self.visit_coverage(
@@ -480,9 +480,9 @@ macro_rules! make_mir_visitor {
                         )
                     }
                     StatementKind::CopyNonOverlapping(box crate::mir::CopyNonOverlapping{
-                      ref $($mutability)? src,
-                      ref $($mutability)? dst,
-                      ref $($mutability)? count,
+                        src,
+                        dst,
+                        count,
                     }) => {
                       self.visit_operand(src, location);
                       self.visit_operand(dst, location);
@@ -517,8 +517,7 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::GeneratorDrop |
                     TerminatorKind::Unreachable |
                     TerminatorKind::FalseEdge { .. } |
-                    TerminatorKind::FalseUnwind { .. } => {
-                    }
+                    TerminatorKind::FalseUnwind { .. } => {}
 
                     TerminatorKind::Return => {
                         // `return` logically moves from the return place `_0`. Note that the place
@@ -830,7 +829,7 @@ macro_rules! make_mir_visitor {
 
             fn super_ascribe_user_ty(&mut self,
                                      place: & $($mutability)? Place<'tcx>,
-                                     _variance: & $($mutability)? ty::Variance,
+                                     _variance: $(& $mutability)? ty::Variance,
                                      user_ty: & $($mutability)? UserTypeProjection,
                                      location: Location) {
                 self.visit_place(
@@ -847,7 +846,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_retag(&mut self,
-                           _kind: & $($mutability)? RetagKind,
+                           _kind: $(& $mutability)? RetagKind,
                            place: & $($mutability)? Place<'tcx>,
                            location: Location) {
                 self.visit_place(

@@ -599,6 +599,7 @@ impl UnifyKey for FloatVid {
 }
 
 #[derive(Copy, Clone, PartialEq, Decodable, Encodable, Hash)]
+#[rustc_pass_by_value]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
