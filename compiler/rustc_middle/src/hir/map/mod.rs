@@ -1013,12 +1013,18 @@ impl<'hir> Map<'hir> {
                 ItemKind::Use(path, _) => path.span,
                 _ => named_span(item.span, item.ident, item.kind.generics()),
             },
+            Node::Variant(variant) => match variant.data {
+                VariantData::Struct(..) | VariantData::Unit(..) => {
+                    named_span(variant.span, variant.ident, None)
+                }
+                VariantData::Tuple(..) => variant.span,
+            },
             Node::ImplItem(item) => named_span(item.span, item.ident, Some(item.generics)),
             Node::ForeignItem(item) => match item.kind {
                 ForeignItemKind::Fn(decl, _, _) => until_within(item.span, decl.output.span()),
                 _ => named_span(item.span, item.ident, None),
             },
-            Node::Ctor(..) => return self.opt_span(self.get_parent_node(hir_id)),
+            Node::Ctor(_) => return self.opt_span(self.get_parent_node(hir_id)),
             _ => self.span_with_body(hir_id),
         };
         Some(span)
