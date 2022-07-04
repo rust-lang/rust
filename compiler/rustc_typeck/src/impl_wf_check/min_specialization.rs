@@ -279,11 +279,16 @@ fn check_predicates<'tcx>(
     span: Span,
 ) {
     let tcx = infcx.tcx;
-    let impl1_predicates: Vec<_> = traits::elaborate_predicates(
+    let instantiated = tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs);
+    let impl1_predicates: Vec<_> = traits::elaborate_predicates_with_span(
         tcx,
-        tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs).predicates.into_iter(),
+        std::iter::zip(
+            instantiated.predicates,
+            // Don't drop predicates (unsound!) because `spans` is too short
+            instantiated.spans.into_iter().chain(std::iter::repeat(span)),
+        ),
     )
-    .map(|obligation| obligation.predicate)
+    .map(|obligation| (obligation.predicate, obligation.cause.span))
     .collect();
 
     let mut impl2_predicates = if impl2_node.is_from_trait() {
@@ -321,7 +326,7 @@ fn check_predicates<'tcx>(
     // which is sound because we forbid impls like the following
     //
     // impl<D: Debug> AlwaysApplicable for D { }
-    let always_applicable_traits = impl1_predicates.iter().copied().filter(|&predicate| {
+    let always_applicable_traits = impl1_predicates.iter().copied().filter(|&(predicate, _)| {
         matches!(
             trait_predicate_kind(tcx, predicate),
             Some(TraitSpecializationKind::AlwaysApplicable)
@@ -345,11 +350,11 @@ fn check_predicates<'tcx>(
         }
     }
     impl2_predicates.extend(
-        traits::elaborate_predicates(tcx, always_applicable_traits)
+        traits::elaborate_predicates_with_span(tcx, always_applicable_traits)
             .map(|obligation| obligation.predicate),
     );
 
-    for predicate in impl1_predicates {
+    for (predicate, span) in impl1_predicates {
         if !impl2_predicates.contains(&predicate) {
             check_specialization_on(tcx, predicate, span)
         }
@@ -384,9 +389,17 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                     .emit();
             }
         }
+        ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
+            tcx.sess
+                .struct_span_err(
+                    span,
+                    &format!("cannot specialize on associated type `{projection_ty} == {term}`",),
+                )
+                .emit();
+        }
         _ => {
             tcx.sess
-                .struct_span_err(span, &format!("cannot specialize on `{:?}`", predicate))
+                .struct_span_err(span, &format!("cannot specialize on predicate `{}`", predicate))
                 .emit();
         }
     }
