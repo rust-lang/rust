@@ -593,16 +593,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 self.check_safe_pointer(value, "reference")?;
                 Ok(true)
             }
-            ty::Adt(def, ..) if def.is_box() => {
-                let unique = self.ecx.operand_field(value, 0)?;
-                let nonnull = self.ecx.operand_field(&unique, 0)?;
-                let ptr = self.ecx.operand_field(&nonnull, 0)?;
-                self.check_safe_pointer(&ptr, "box")?;
-
-                // Check other fields of Box
-                self.walk_value(value)?;
-                Ok(true)
-            }
             ty::FnPtr(_sig) => {
                 let value = try_validation!(
                     self.ecx.read_scalar(value).and_then(|v| v.check_init()),
@@ -814,6 +804,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     }
 
     #[inline]
+    fn visit_box(&mut self, op: &OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
+        self.check_safe_pointer(op, "box")?;
+        Ok(())
+    }
+
+    #[inline]
     fn visit_value(&mut self, op: &OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
         trace!("visit_value: {:?}, {:?}", *op, op.layout);
 
@@ -821,8 +817,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         if self.try_visit_primitive(op)? {
             return Ok(());
         }
-        // Sanity check: `builtin_deref` does not know any pointers that are not primitive.
-        assert!(op.layout.ty.builtin_deref(true).is_none());
 
         // Special check preventing `UnsafeCell` in the inner part of constants
         if let Some(def) = op.layout.ty.ty_adt_def() {
