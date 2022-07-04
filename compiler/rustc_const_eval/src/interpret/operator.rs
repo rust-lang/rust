@@ -32,6 +32,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let pair = Immediate::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
             self.write_immediate(pair, dest)?;
         } else {
+            assert!(self.tcx.sess.opts.debugging_opts.randomize_layout);
             // With randomized layout, `(int, bool)` might cease to be a `ScalarPair`, so we have to
             // do a component-wise write here. This code path is slower than the above because
             // `place_field` will have to `force_allocate` locals here.
