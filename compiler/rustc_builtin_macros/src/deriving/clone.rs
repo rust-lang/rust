@@ -160,7 +160,7 @@ fn cs_clone(
     let ctor_path;
     let all_fields;
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
-    let subcall = |cx: &mut ExtCtxt<'_>, field: &FieldInfo<'_>| {
+    let subcall = |cx: &mut ExtCtxt<'_>, field: &FieldInfo| {
         let args = vec![cx.expr_addr_of(field.span, field.self_expr.clone())];
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };

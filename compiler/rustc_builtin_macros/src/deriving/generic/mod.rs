@@ -251,7 +251,7 @@ pub struct Substructure<'a> {
 }
 
 /// Summary of the relevant parts of a struct/enum field.
-pub struct FieldInfo<'a> {
+pub struct FieldInfo {
     pub span: Span,
     /// None for tuple structs/normal enum variants, Some for normal
     /// structs/struct enum variants.
@@ -262,8 +262,6 @@ pub struct FieldInfo<'a> {
     /// The expressions corresponding to references to this field in
     /// the other selflike arguments.
     pub other_selflike_exprs: Vec<P<Expr>>,
-    /// The attributes on the field
-    pub attrs: &'a [ast::Attribute],
 }
 
 /// Fields for a static method
@@ -276,11 +274,11 @@ pub enum StaticFields {
 
 /// A summary of the possible sets of fields.
 pub enum SubstructureFields<'a> {
-    Struct(&'a ast::VariantData, Vec<FieldInfo<'a>>),
+    Struct(&'a ast::VariantData, Vec<FieldInfo>),
     /// Matching variants of the enum: variant index, variant count, ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
-    EnumMatching(usize, usize, &'a ast::Variant, Vec<FieldInfo<'a>>),
+    EnumMatching(usize, usize, &'a ast::Variant, Vec<FieldInfo>),
 
     /// Non-matching variants of the enum, but with all state hidden from the
     /// consequent code. The field is a list of `Ident`s bound to the variant
@@ -1082,18 +1080,17 @@ impl<'a> MethodDef<'a> {
             let first_field = raw_fields.next().unwrap();
             let mut nonself_fields: Vec<vec::IntoIter<_>> = raw_fields.collect();
             first_field
-                .map(|(span, opt_id, expr, attrs)| FieldInfo {
+                .map(|(span, opt_id, expr)| FieldInfo {
                     span: span.with_ctxt(trait_.span.ctxt()),
                     name: opt_id,
                     self_expr: expr,
                     other_selflike_exprs: nonself_fields
                         .iter_mut()
                         .map(|l| {
-                            let (.., ex, _) = l.next().unwrap();
+                            let (_, _, ex) = l.next().unwrap();
                             ex
                         })
                         .collect(),
-                    attrs,
                 })
                 .collect()
         } else {
@@ -1282,7 +1279,7 @@ impl<'a> MethodDef<'a> {
                     .into_iter()
                     .enumerate()
                     // For each arg field of self, pull out its getter expr ...
-                    .map(|(field_index, (span, opt_ident, self_getter_expr, attrs))| {
+                    .map(|(field_index, (span, opt_ident, self_getter_expr))| {
                         // ... but FieldInfo also wants getter expr
                         // for matching other arguments of Self type;
                         // so walk across the *other* selflike_pats_idents
@@ -1292,7 +1289,7 @@ impl<'a> MethodDef<'a> {
                         let other_selflike_exprs = selflike_pats_idents
                             .iter()
                             .map(|fields| {
-                                let (_, _opt_ident, ref other_getter_expr, _) = fields[field_index];
+                                let (_, _opt_ident, ref other_getter_expr) = fields[field_index];
 
                                 // All Self args have same variant, so
                                 // opt_idents are the same.  (Assert
@@ -1309,10 +1306,9 @@ impl<'a> MethodDef<'a> {
                             name: opt_ident,
                             self_expr: self_getter_expr,
                             other_selflike_exprs,
-                            attrs,
                         }
                     })
-                    .collect::<Vec<FieldInfo<'_>>>();
+                    .collect::<Vec<FieldInfo>>();
 
                 // Now, for some given VariantK, we have built up
                 // expressions for referencing every field of every
@@ -1598,7 +1594,7 @@ impl<'a> TraitDef<'a> {
         prefix: &str,
         mutbl: ast::Mutability,
         use_temporaries: bool,
-    ) -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
+    ) -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>)>) {
         let mut paths = Vec::new();
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
@@ -1607,7 +1603,7 @@ impl<'a> TraitDef<'a> {
             paths.push(ident.with_span_pos(sp));
             let val = cx.expr_path(cx.path_ident(sp, ident));
             let val = if use_temporaries { val } else { cx.expr_deref(sp, val) };
-            ident_exprs.push((sp, struct_field.ident, val, &struct_field.attrs[..]));
+            ident_exprs.push((sp, struct_field.ident, val));
         }
 
         let subpats = self.create_subpatterns(cx, paths, mutbl, use_temporaries);
@@ -1643,7 +1639,7 @@ impl<'a> TraitDef<'a> {
         cx: &mut ExtCtxt<'_>,
         mut selflike_arg: &P<Expr>,
         struct_def: &'a VariantData,
-    ) -> Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])> {
+    ) -> Vec<(Span, Option<Ident>, P<Expr>)> {
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
             let sp = struct_field.span.with_ctxt(self.span.ctxt());
@@ -1666,7 +1662,7 @@ impl<'a> TraitDef<'a> {
                     }),
                 ),
             );
-            ident_exprs.push((sp, struct_field.ident, val, &struct_field.attrs[..]));
+            ident_exprs.push((sp, struct_field.ident, val));
         }
         ident_exprs
     }
@@ -1678,7 +1674,7 @@ impl<'a> TraitDef<'a> {
         variant: &'a ast::Variant,
         prefix: &str,
         mutbl: ast::Mutability,
-    ) -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
+    ) -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>)>) {
         let sp = variant.span.with_ctxt(self.span.ctxt());
         let variant_path = cx.path(sp, vec![enum_ident, variant.ident]);
         let use_temporaries = false; // enums can't be repr(packed)
