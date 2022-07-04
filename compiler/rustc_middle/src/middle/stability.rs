@@ -126,14 +126,19 @@ pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
             return false;
         }
 
+        let since: Vec<u32> = parse_version(&since);
+        // We simply treat invalid `since` attributes as relating to a previous
+        // Rust version, thus always displaying the warning.
+        if since.len() != 3 {
+            return true;
+        }
+
+        if let Ok(cargo_rust_version) = std::env::var("CARGO_PKG_RUST_VERSION") && !cargo_rust_version.is_empty() {
+            let parsed = parse_version(&cargo_rust_version);
+            return since <= parsed;
+        }
         if let Some(rustc) = option_env!("CFG_RELEASE") {
-            let since: Vec<u32> = parse_version(&since);
             let rustc: Vec<u32> = parse_version(rustc);
-            // We simply treat invalid `since` attributes as relating to a previous
-            // Rust version, thus always displaying the warning.
-            if since.len() != 3 {
-                return true;
-            }
             return since <= rustc;
         }
     };
