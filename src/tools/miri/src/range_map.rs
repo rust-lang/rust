@@ -91,6 +91,10 @@ impl<T> RangeMap<T> {
         self.v.iter_mut().map(|elem| &mut elem.data)
     }
 
+    pub fn iter_all(&self) -> impl Iterator<Item = (ops::Range<u64>, &T)> {
+        self.v.iter().map(|elem| (elem.range.clone(), &elem.data))
+    }
+
     // Splits the element situated at the given `index`, such that the 2nd one starts at offset
     // `split_offset`. Do nothing if the element already starts there.
     // Returns whether a split was necessary.
