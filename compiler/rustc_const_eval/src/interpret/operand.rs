@@ -559,7 +559,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         match c.kind() {
-            ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
+            ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => throw_inval!(TooGeneric),
             ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => {
                 throw_inval!(AlreadyReported(reported))
             }
@@ -567,7 +567,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let instance = self.resolve(uv.def, uv.substs)?;
                 Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
             }
-            ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {
+            ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
                 span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", c)
             }
             ty::ConstKind::Value(valtree) => {
