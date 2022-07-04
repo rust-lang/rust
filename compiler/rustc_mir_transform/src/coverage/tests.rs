@@ -222,6 +222,7 @@ fn print_mir_graphviz(name: &str, mir_body: &Body<'_>) {
                         bb,
                         debug::term_type(&data.terminator().kind),
                         mir_body
+                            .basic_blocks
                             .successors(bb)
                             .map(|successor| { format!("    {:?} -> {:?};", bb, successor) })
                             .join("\n")

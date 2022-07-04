@@ -80,7 +80,7 @@ impl CoverageGraph {
         IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
         IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
     ) {
-        let num_basic_blocks = mir_body.num_nodes();
+        let num_basic_blocks = mir_body.basic_blocks.len();
         let mut bcbs = IndexVec::with_capacity(num_basic_blocks);
         let mut bb_to_bcb = IndexVec::from_elem_n(None, num_basic_blocks);
 

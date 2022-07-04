@@ -856,7 +856,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     literal: ConstantKind::from_const(_const, tcx),
                 }))
             };
-            let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
+            let blocks = self.source.basic_blocks.as_mut();
+            let local_decls = &mut self.source.local_decls;
             let loc = candidate.location;
             let statement = &mut blocks[loc.block].statements[loc.statement_index];
             match statement.kind {
@@ -865,7 +866,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     Rvalue::Ref(ref mut region, borrow_kind, ref mut place),
                 )) => {
                     // Use the underlying local for this (necessarily interior) borrow.
-                    let ty = local_decls.local_decls()[place.local].ty;
+                    let ty = local_decls[place.local].ty;
                     let span = statement.source_info.span;
 
                     let ref_ty = tcx.mk_ref(
