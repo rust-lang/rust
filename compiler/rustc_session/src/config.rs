@@ -2724,8 +2724,8 @@ pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
         InstrumentCoverage, LdImpl, LinkerPluginLto, LocationDetail, LtoCli, OomStrategy, OptLevel,
-        OutputType, OutputTypes, Passes, SourceFileHashAlgorithm, SwitchWithOptPath,
-        SymbolManglingVersion, TrimmedDefPaths,
+        OutputType, OutputTypes, Passes, SourceFileHashAlgorithm, SplitDwarfKind,
+        SwitchWithOptPath, SymbolManglingVersion, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2812,6 +2812,7 @@ pub(crate) mod dep_tracking {
         Edition,
         LinkerPluginLto,
         SplitDebuginfo,
+        SplitDwarfKind,
         StackProtector,
         SwitchWithOptPath,
         SymbolManglingVersion,
