@@ -2212,7 +2212,9 @@ fn add_local_native_libraries(
             NativeLibKind::Dylib { as_needed } => {
                 cmd.link_dylib(name, verbatim, as_needed.unwrap_or(true))
             }
-            NativeLibKind::Unspecified => cmd.link_dylib(name, verbatim, true),
+            NativeLibKind::RawDylib | NativeLibKind::Unspecified => {
+                cmd.link_dylib(name, verbatim, true)
+            }
             NativeLibKind::Framework { as_needed } => {
                 cmd.link_framework(name, as_needed.unwrap_or(true))
             }
@@ -2232,10 +2234,6 @@ fn add_local_native_libraries(
                 } else {
                     cmd.link_staticlib(name, verbatim)
                 }
-            }
-            NativeLibKind::RawDylib => {
-                // FIXME(#58713): Proper handling for raw dylibs.
-                bug!("raw_dylib feature not yet implemented");
             }
         }
     }
