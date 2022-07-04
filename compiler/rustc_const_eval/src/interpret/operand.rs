@@ -182,7 +182,8 @@ pub struct OpTy<'tcx, Tag: Provenance = AllocId> {
     /// So we represent this here with a separate field that "overwrites" `layout.align`.
     /// This means `layout.align` should never be used for an `OpTy`!
     /// `None` means "alignment does not matter since this is a by-value operand"
-    /// (`Operand::Immediate`).
+    /// (`Operand::Immediate`); this field is only relevant for `Operand::Indirect`.
+    /// Also CTFE ignores alignment anyway, so this is for Miri only.
     pub align: Option<Align>,
 }
 
