@@ -148,7 +148,7 @@ LL |     one!("hello", "world");
   ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
+   |     -- similarly named tuple variant `Ok` defined here
    |
    = note: this error originates in the macro `parent_source_spans` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -164,7 +164,7 @@ LL |     two!("yay", "rust");
   ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
+   |     -- similarly named tuple variant `Ok` defined here
    |
    = note: this error originates in the macro `parent_source_spans` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -180,7 +180,7 @@ LL |     three!("hip", "hop");
   ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
+   |     -- similarly named tuple variant `Ok` defined here
    |
    = note: this error originates in the macro `parent_source_spans` (in Nightly builds, run with -Z macro-backtrace for more info)
 

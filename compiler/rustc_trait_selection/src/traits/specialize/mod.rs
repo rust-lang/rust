@@ -341,7 +341,7 @@ fn report_negative_positive_conflict(
     positive_impl_def_id: DefId,
     sg: &mut specialization_graph::Graph,
 ) {
-    let impl_span = tcx.span_of_impl(local_impl_def_id.to_def_id()).unwrap();
+    let impl_span = tcx.def_span(local_impl_def_id);
 
     let mut err = struct_span_err!(
         tcx.sess,
