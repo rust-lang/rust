@@ -40,6 +40,13 @@ function run_tests {
   # any interactive questions.
   ${PYTHON} test-cargo-miri/run-test.py
   echo
+
+  # Ensure that our benchmarks all work, on the host at least.
+  if [ -z "${MIRI_TEST_TARGET+exists}" ]; then
+    for BENCH in $(ls "bench-cargo-miri"); do
+      cargo miri run --manifest-path bench-cargo-miri/$BENCH/Cargo.toml
+    done
+  fi
 }
 
 function run_tests_minimal {
