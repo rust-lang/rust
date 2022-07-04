@@ -212,3 +212,17 @@ impl DocHidden {
 }
 
 fn main() {}
+
+pub struct IgnoreConstGenericNew(usize);
+impl IgnoreConstGenericNew {
+    pub fn new<const N: usize>() -> Self {
+        Self(N)
+    }
+}
+
+pub struct IgnoreLifetimeNew;
+impl IgnoreLifetimeNew {
+    pub fn new<'a>() -> Self {
+        Self
+    }
+}
