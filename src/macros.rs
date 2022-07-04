@@ -35,8 +35,8 @@ use crate::shape::{Indent, Shape};
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
-    format_visibility, indent_next_line, is_empty_line, mk_sp, remove_trailing_white_spaces,
-    rewrite_ident, trim_left_preserve_layout, wrap_str, NodeIdExt,
+    filtered_str_fits, format_visibility, indent_next_line, is_empty_line, mk_sp,
+    remove_trailing_white_spaces, rewrite_ident, trim_left_preserve_layout, NodeIdExt,
 };
 use crate::visitor::FmtVisitor;
 
@@ -1241,15 +1241,14 @@ impl MacroBranch {
                 }
             }
         };
-        let new_body = wrap_str(
-            new_body_snippet.snippet.to_string(),
-            config.max_width(),
-            shape,
-        )?;
+
+        if !filtered_str_fits(&new_body_snippet.snippet, config.max_width(), shape) {
+            return None;
+        }
 
         // Indent the body since it is in a block.
         let indent_str = body_indent.to_string(&config);
-        let mut new_body = LineClasses::new(new_body.trim_end())
+        let mut new_body = LineClasses::new(new_body_snippet.snippet.trim_end())
             .enumerate()
             .fold(
                 (String::new(), true),

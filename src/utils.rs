@@ -384,14 +384,15 @@ macro_rules! skip_out_of_file_lines_range_visitor {
 // Wraps String in an Option. Returns Some when the string adheres to the
 // Rewrite constraints defined for the Rewrite trait and None otherwise.
 pub(crate) fn wrap_str(s: String, max_width: usize, shape: Shape) -> Option<String> {
-    if is_valid_str(&filter_normal_code(&s), max_width, shape) {
+    if filtered_str_fits(&s, max_width, shape) {
         Some(s)
     } else {
         None
     }
 }
 
-fn is_valid_str(snippet: &str, max_width: usize, shape: Shape) -> bool {
+pub(crate) fn filtered_str_fits(snippet: &str, max_width: usize, shape: Shape) -> bool {
+    let snippet = &filter_normal_code(snippet);
     if !snippet.is_empty() {
         // First line must fits with `shape.width`.
         if first_line_width(snippet) > shape.width {

@@ -29,9 +29,9 @@ use crate::spanned::Spanned;
 use crate::string::{rewrite_string, StringFormat};
 use crate::types::{rewrite_path, PathContext};
 use crate::utils::{
-    colon_spaces, contains_skip, count_newlines, first_line_ends_with, inner_attributes,
-    last_line_extendable, last_line_width, mk_sp, outer_attributes, semicolon_for_expr,
-    unicode_str_width, wrap_str,
+    colon_spaces, contains_skip, count_newlines, filtered_str_fits, first_line_ends_with,
+    inner_attributes, last_line_extendable, last_line_width, mk_sp, outer_attributes,
+    semicolon_for_expr, unicode_str_width, wrap_str,
 };
 use crate::vertical::rewrite_with_alignment;
 use crate::visitor::FmtVisitor;
@@ -2037,8 +2037,7 @@ fn choose_rhs<R: Rewrite>(
 
             match (orig_rhs, new_rhs) {
                 (Some(ref orig_rhs), Some(ref new_rhs))
-                    if wrap_str(new_rhs.clone(), context.config.max_width(), new_shape)
-                        .is_none() =>
+                    if !filtered_str_fits(&new_rhs, context.config.max_width(), new_shape) =>
                 {
                     Some(format!("{}{}", before_space_str, orig_rhs))
                 }

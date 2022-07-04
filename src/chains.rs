@@ -70,8 +70,8 @@ use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::utils::{
-    self, first_line_width, last_line_extendable, last_line_width, mk_sp, rewrite_ident,
-    trimmed_last_line_width, wrap_str,
+    self, filtered_str_fits, first_line_width, last_line_extendable, last_line_width, mk_sp,
+    rewrite_ident, trimmed_last_line_width, wrap_str,
 };
 
 pub(crate) fn rewrite_chain(
@@ -810,15 +810,14 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
                 .visual_indent(self.offset)
                 .sub_width(self.offset)?;
             let rewrite = item.rewrite(context, child_shape)?;
-            match wrap_str(rewrite, context.config.max_width(), shape) {
-                Some(rewrite) => root_rewrite.push_str(&rewrite),
-                None => {
-                    // We couldn't fit in at the visual indent, try the last
-                    // indent.
-                    let rewrite = item.rewrite(context, parent_shape)?;
-                    root_rewrite.push_str(&rewrite);
-                    self.offset = 0;
-                }
+            if filtered_str_fits(&rewrite, context.config.max_width(), shape) {
+                root_rewrite.push_str(&rewrite);
+            } else {
+                // We couldn't fit in at the visual indent, try the last
+                // indent.
+                let rewrite = item.rewrite(context, parent_shape)?;
+                root_rewrite.push_str(&rewrite);
+                self.offset = 0;
             }
 
             self.shared.children = &self.shared.children[1..];
