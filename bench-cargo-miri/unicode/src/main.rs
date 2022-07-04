@@ -14,7 +14,7 @@ fn all_valid_chars() -> impl Iterator<Item = char> {
 
 fn main() {
     // Take only the first few chars because we don't want to wait all day
-    for c in all_valid_chars().take(2_000) {
+    for c in all_valid_chars().take(1_500) {
         let _ = UnicodeXID::is_xid_continue(c);
     }
 }
