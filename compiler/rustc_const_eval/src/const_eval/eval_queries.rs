@@ -165,6 +165,7 @@ pub(super) fn op_to_const<'tcx>(
         Ok(ref mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
         Err(imm) => match *imm {
+            _ if imm.layout.is_zst() => ConstValue::ZeroSized,
             Immediate::Scalar(x) => match x {
                 ScalarMaybeUninit::Scalar(s) => ConstValue::Scalar(s),
                 ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place()),
