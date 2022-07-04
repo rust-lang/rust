@@ -15,25 +15,28 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         crate::hir_stats::print_hir_stats(tcx);
     }
 
-    let errors = Lock::new(Vec::new());
-    let hir_map = tcx.hir();
+    #[cfg(debug_assertions)]
+    {
+        let errors = Lock::new(Vec::new());
+        let hir_map = tcx.hir();
 
-    hir_map.par_for_each_module(|module_id| {
-        let mut v = HirIdValidator {
-            hir_map,
-            owner: None,
-            hir_ids_seen: Default::default(),
-            errors: &errors,
-        };
+        hir_map.par_for_each_module(|module_id| {
+            let mut v = HirIdValidator {
+                hir_map,
+                owner: None,
+                hir_ids_seen: Default::default(),
+                errors: &errors,
+            };
 
-        tcx.hir().deep_visit_item_likes_in_module(module_id, &mut v);
-    });
+            tcx.hir().deep_visit_item_likes_in_module(module_id, &mut v);
+        });
 
-    let errors = errors.into_inner();
+        let errors = errors.into_inner();
 
-    if !errors.is_empty() {
-        let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
-        tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
+        if !errors.is_empty() {
+            let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
+            tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
+        }
     }
 }
 
