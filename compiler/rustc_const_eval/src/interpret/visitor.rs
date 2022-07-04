@@ -151,6 +151,14 @@ macro_rules! make_value_visitor {
             {
                 Ok(())
             }
+            /// Visits the given value as the pointer of a `Box`. There is nothing to recurse into.
+            /// The type of `v` will be a raw pointer, but this is a field of `Box<T>` and the
+            /// pointee type is the actual `T`.
+            #[inline(always)]
+            fn visit_box(&mut self, _v: &Self::V) -> InterpResult<'tcx>
+            {
+                Ok(())
+            }
             /// Visits this value as an aggregate, you are getting an iterator yielding
             /// all the fields (still in an `InterpResult`, you have to do error handling yourself).
             /// Recurses into the fields.
@@ -221,6 +229,47 @@ macro_rules! make_value_visitor {
                     // Slices do not need special handling here: they have `Array` field
                     // placement with length 0, so we enter the `Array` case below which
                     // indirectly uses the metadata to determine the actual length.
+
+                    // However, `Box`... let's talk about `Box`.
+                    ty::Adt(def, ..) if def.is_box() => {
+                        // `Box` is a hybrid primitive-library-defined type that one the one hand is
+                        // a dereferenceable pointer, on the other hand has *basically arbitrary
+                        // user-defined layout* since the user controls the 'allocator' field. So it
+                        // cannot be treated like a normal pointer, since it does not fit into an
+                        // `Immediate`. Yeah, it is quite terrible. But many visitors want to do
+                        // something with "all boxed pointers", so we handle this mess for them.
+                        //
+                        // When we hit a `Box`, we do not do the usual `visit_aggregate`; instead,
+                        // we (a) call `visit_box` on the pointer value, and (b) recurse on the
+                        // allocator field. We also assert tons of things to ensure we do not miss
+                        // any other fields.
+
+                        // `Box` has two fields: the pointer we care about, and the allocator.
+                        assert_eq!(v.layout().fields.count(), 2, "`Box` must have exactly 2 fields");
+                        let (unique_ptr, alloc) =
+                            (v.project_field(self.ecx(), 0)?, v.project_field(self.ecx(), 1)?);
+                        // Unfortunately there is some type junk in the way here: `unique_ptr` is a `Unique`...
+                        // (which means another 2 fields, the second of which is a `PhantomData`)
+                        assert_eq!(unique_ptr.layout().fields.count(), 2);
+                        let (nonnull_ptr, phantom) = (
+                            unique_ptr.project_field(self.ecx(), 0)?,
+                            unique_ptr.project_field(self.ecx(), 1)?,
+                        );
+                        assert!(
+                            phantom.layout().ty.ty_adt_def().is_some_and(|adt| adt.is_phantom_data()),
+                            "2nd field of `Unique` should be PhantomData but is {:?}",
+                            phantom.layout().ty,
+                        );
+                        // ... that contains a `NonNull`... (gladly, only a single field here)
+                        assert_eq!(nonnull_ptr.layout().fields.count(), 1);
+                        let raw_ptr = nonnull_ptr.project_field(self.ecx(), 0)?; // the actual raw ptr
+                        // ... whose only field finally is a raw ptr we can dereference.
+                        self.visit_box(&raw_ptr)?;
+
+                        // The second `Box` field is the allocator, which we recursively check for validity
+                        // like in regular structs.
+                        self.visit_field(v, 1, &alloc)?;
+                    }
                     _ => {},
                 };
 
