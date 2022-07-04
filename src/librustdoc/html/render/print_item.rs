@@ -1360,6 +1360,15 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
                 typ = c.type_.print(cx),
             );
 
+            // FIXME: The code below now prints
+            //            ` = _; // 100i32`
+            //        if the expression is
+            //            `50 + 50`
+            //        which looks just wrong.
+            //        Should we print
+            //            ` = 100i32;`
+            //        instead?
+
             let value = c.value(cx.tcx());
             let is_literal = c.is_literal(cx.tcx());
             let expr = c.expr(cx.tcx());

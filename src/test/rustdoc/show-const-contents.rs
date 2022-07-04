@@ -21,7 +21,7 @@ pub const CONST_NEG_I32: i32 = -42;
 // @!has show_const_contents/constant.CONST_EQ_TO_VALUE_I32.html '// 42i32'
 pub const CONST_EQ_TO_VALUE_I32: i32 = 42i32;
 
-// @has show_const_contents/constant.CONST_CALC_I32.html '= 42 + 1; // 43i32'
+// @has show_const_contents/constant.CONST_CALC_I32.html '= _; // 43i32'
 pub const CONST_CALC_I32: i32 = 42 + 1;
 
 // @!has show_const_contents/constant.CONST_REF_I32.html '= &42;'
