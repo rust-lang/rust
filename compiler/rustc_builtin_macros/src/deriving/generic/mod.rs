@@ -1654,46 +1654,6 @@ impl<'a> TraitDef<'a> {
     }
 }
 
-// helpful premade recipes
-
-fn cs_fold_fields<'a, F>(
-    use_foldl: bool,
-    mut f: F,
-    base: P<Expr>,
-    cx: &mut ExtCtxt<'_>,
-    all_fields: &[FieldInfo<'a>],
-) -> P<Expr>
-where
-    F: FnMut(&mut ExtCtxt<'_>, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>,
-{
-    if use_foldl {
-        all_fields
-            .iter()
-            .fold(base, |old, field| f(cx, field.span, old, field.self_.clone(), &field.other))
-    } else {
-        all_fields
-            .iter()
-            .rev()
-            .fold(base, |old, field| f(cx, field.span, old, field.self_.clone(), &field.other))
-    }
-}
-
-fn cs_fold_enumnonmatch(
-    mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
-    cx: &mut ExtCtxt<'_>,
-    trait_span: Span,
-    substructure: &Substructure<'_>,
-) -> P<Expr> {
-    match *substructure.fields {
-        EnumNonMatchingCollapsed(tuple) => enum_nonmatch_f(cx, trait_span, tuple),
-        _ => cx.span_bug(trait_span, "cs_fold_enumnonmatch expected an EnumNonMatchingCollapsed"),
-    }
-}
-
-fn cs_fold_static(cx: &mut ExtCtxt<'_>, trait_span: Span) -> P<Expr> {
-    cx.span_bug(trait_span, "static function in `derive`")
-}
-
 /// Function to fold over fields, with three cases, to generate more efficient and concise code.
 /// When the `substructure` has grouped fields, there are two cases:
 /// Zero fields: call the base case function with `None` (like the usual base case of `cs_fold`).
@@ -1702,11 +1662,11 @@ fn cs_fold_static(cx: &mut ExtCtxt<'_>, trait_span: Span) -> P<Expr> {
 /// fields.
 /// When the `substructure` is an `EnumNonMatchingCollapsed`, the result of `enum_nonmatch_f`
 /// is returned. Statics may not be folded over.
-pub fn cs_fold1<F, B>(
+pub fn cs_fold<F, B>(
     use_foldl: bool,
-    f: F,
+    mut f: F,
     mut b: B,
-    enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
+    mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substructure: &Substructure<'_>,
@@ -1731,12 +1691,18 @@ where
                 (true, _) => (b(cx, None), &all_fields[..]),
             };
 
-            cs_fold_fields(use_foldl, f, base, cx, rest)
+            if use_foldl {
+                rest.iter().fold(base, |old, field| {
+                    f(cx, field.span, old, field.self_.clone(), &field.other)
+                })
+            } else {
+                rest.iter().rev().fold(base, |old, field| {
+                    f(cx, field.span, old, field.self_.clone(), &field.other)
+                })
+            }
         }
-        EnumNonMatchingCollapsed(..) => {
-            cs_fold_enumnonmatch(enum_nonmatch_f, cx, trait_span, substructure)
-        }
-        StaticEnum(..) | StaticStruct(..) => cs_fold_static(cx, trait_span),
+        EnumNonMatchingCollapsed(tuple) => enum_nonmatch_f(cx, trait_span, tuple),
+        StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span, "static function in `derive`"),
     }
 }
 

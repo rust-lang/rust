@@ -31,7 +31,7 @@ pub fn expand_deriving_partial_eq(
             cx.expr_binary(span, op, self_f, other_f.clone())
         };
 
-        let expr = cs_fold1(
+        let expr = cs_fold(
             true, // use foldl
             |cx, span, subexpr, self_f, other_fs| {
                 let eq = op(cx, span, self_f, other_fs);

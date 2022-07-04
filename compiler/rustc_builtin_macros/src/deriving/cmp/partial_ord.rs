@@ -68,7 +68,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
     // cmp => cmp
     // }
     //
-    let expr = cs_fold1(
+    let expr = cs_fold(
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
