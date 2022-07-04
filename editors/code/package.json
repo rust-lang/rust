@@ -375,6 +375,11 @@
                     "default": {},
                     "markdownDescription": "Optional settings passed to the debug engine. Example: `{ \"lldb\": { \"terminal\":\"external\"} }`"
                 },
+                "rust-analyzer.restartServerOnConfigChange": {
+                    "markdownDescription": "Whether to restart the server automatically when certain settings that require a restart are changed.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "$generated-start": {},
                 "rust-analyzer.assist.expressionFillDefault": {
                     "markdownDescription": "Placeholder expression to use for missing expressions in assists.",
