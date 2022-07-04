@@ -1,16 +1,15 @@
-error[E0282]: type annotations needed for `Result<(), QualifiedError<_>>`
-  --> $DIR/cannot-infer-partial-try-return.rs:18:13
+error[E0282]: type annotations needed
+  --> $DIR/cannot-infer-partial-try-return.rs:20:9
    |
-LL |     let x = || -> Result<_, QualifiedError<_>> {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
 LL |         infallible()?;
    |         ------------- type must be known at this point
+LL |         Ok(())
+   |         ^^ cannot infer type of the type parameter `E` declared on the enum `Result`
    |
-help: try giving this closure an explicit return type
+help: consider specifying the generic arguments
    |
-LL |     let x = || -> Result<(), QualifiedError<_>> {
-   |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |         Ok::<(), QualifiedError<_>>(())
+   |           +++++++++++++++++++++++++
 
 error: aborting due to previous error
 

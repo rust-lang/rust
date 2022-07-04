@@ -1,8 +1,13 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-23041.rs:6:22
+  --> $DIR/issue-23041.rs:6:7
    |
 LL |     b.downcast_ref::<fn(_)->_>();
-   |                      ^^^^^^^^ cannot infer type
+   |       ^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the associated function `downcast_ref`
+   |
+help: consider specifying the generic arguments
+   |
+LL |     b.downcast_ref::<fn(_) -> _>();
+   |                   ~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 
