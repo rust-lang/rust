@@ -976,27 +976,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Raw pointers need to be enabled.
                 ty::RawPtr(tym) if kind == RetagKind::Raw =>
                     Some((RefKind::Raw { mutable: tym.mutbl == Mutability::Mut }, false)),
-                // Boxes do not get a protector: protectors reflect that references outlive the call
-                // they were passed in to; that's just not the case for boxes.
-                ty::Adt(..) if ty.is_box() => Some((RefKind::Unique { two_phase: false }, false)),
+                // Boxes are handled separately due to that allocator situation.
                 _ => None,
             }
         }
 
         // We need a visitor to visit all references. However, that requires
-        // a `MPlaceTy` (or `OpTy), so we have a fast path for reference types that
+        // a `MPlaceTy` (or `OpTy`), so we have a fast path for reference types that
         // avoids allocating.
 
-        if let Some((mutbl, protector)) = qualify(place.layout.ty, kind) {
+        if let Some((ref_kind, protector)) = qualify(place.layout.ty, kind) {
             // Fast path.
             let val = this.read_immediate(&this.place_to_op(place)?)?;
-            let val = this.retag_reference(&val, mutbl, protector)?;
+            let val = this.retag_reference(&val, ref_kind, protector)?;
             this.write_immediate(*val, place)?;
             return Ok(());
         }
 
         // If we don't want to recurse, we are already done.
-        if !this.machine.stacked_borrows.as_mut().unwrap().get_mut().retag_fields {
+        // EXCEPT if this is a `Box`, then we have to recurse because allocators.
+        // (Yes this means we technically also recursively retag the allocator itself even if field
+        // retagging is not enabled. *shrug*)
+        if !this.machine.stacked_borrows.as_mut().unwrap().get_mut().retag_fields
+            && !place.layout.ty.ty_adt_def().is_some_and(|adt| adt.is_box())
+        {
             return Ok(());
         }
 
@@ -1034,10 +1037,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 self.ecx
             }
 
+            fn visit_box(&mut self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+                // Boxes do not get a protector: protectors reflect that references outlive the call
+                // they were passed in to; that's just not the case for boxes.
+                let (ref_kind, protector) = (RefKind::Unique { two_phase: false }, false);
+
+                let val = self.ecx.read_immediate(&place.into())?;
+                let val = self.ecx.retag_reference(&val, ref_kind, protector)?;
+                self.ecx.write_immediate(*val, &place.into())?;
+                Ok(())
+            }
+
             fn visit_value(&mut self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
-                if let Some((mutbl, protector)) = qualify(place.layout.ty, self.kind) {
+                if let Some((ref_kind, protector)) = qualify(place.layout.ty, self.kind) {
                     let val = self.ecx.read_immediate(&place.into())?;
-                    let val = self.ecx.retag_reference(&val, mutbl, protector)?;
+                    let val = self.ecx.retag_reference(&val, ref_kind, protector)?;
                     self.ecx.write_immediate(*val, &place.into())?;
                 } else if matches!(place.layout.ty.kind(), ty::RawPtr(..)) {
                     // Wide raw pointers *do* have fields and their types are strange.
