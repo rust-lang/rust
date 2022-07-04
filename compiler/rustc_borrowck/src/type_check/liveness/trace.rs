@@ -41,12 +41,13 @@ pub(super) fn trace<'mir, 'tcx>(
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
-    live_locals: Vec<Local>,
+    relevant_live_locals: Vec<Local>,
+    boring_locals: Vec<Local>,
     polonius_drop_used: Option<Vec<(Local, Location)>>,
 ) {
     debug!("trace()");
 
-    let local_use_map = &LocalUseMap::build(&live_locals, elements, body);
+    let local_use_map = &LocalUseMap::build(&relevant_live_locals, elements, body);
 
     let cx = LivenessContext {
         typeck,
@@ -61,10 +62,12 @@ pub(super) fn trace<'mir, 'tcx>(
     let mut results = LivenessResults::new(cx);
 
     if let Some(drop_used) = polonius_drop_used {
-        results.add_extra_drop_facts(drop_used, live_locals.iter().copied().collect())
+        results.add_extra_drop_facts(drop_used, relevant_live_locals.iter().copied().collect())
     }
 
-    results.compute_for_all_locals(live_locals);
+    results.compute_for_all_locals(relevant_live_locals);
+
+    results.dropck_boring_locals(boring_locals);
 }
 
 /// Contextual state for the type-liveness generator.
@@ -133,8 +136,8 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         }
     }
 
-    fn compute_for_all_locals(&mut self, live_locals: Vec<Local>) {
-        for local in live_locals {
+    fn compute_for_all_locals(&mut self, relevant_live_locals: Vec<Local>) {
+        for local in relevant_live_locals {
             self.reset_local_state();
             self.add_defs_for(local);
             self.compute_use_live_points_for(local);
@@ -157,6 +160,24 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         }
     }
 
+    // Runs dropck for locals whose liveness isn't relevant. This is
+    // necessary to eagerly detect unbound recursion during drop glue computation.
+    fn dropck_boring_locals(&mut self, boring_locals: Vec<Local>) {
+        for local in boring_locals {
+            let local_ty = self.cx.body.local_decls[local].ty;
+            let drop_data = self.cx.drop_data.entry(local_ty).or_insert_with({
+                let typeck = &mut self.cx.typeck;
+                move || LivenessContext::compute_drop_data(typeck, local_ty)
+            });
+
+            drop_data.dropck_result.report_overflows(
+                self.cx.typeck.infcx.tcx,
+                self.cx.body.local_decls[local].source_info.span,
+                local_ty,
+            );
+        }
+    }
+
     /// Add extra drop facts needed for Polonius.
     ///
     /// Add facts for all locals with free regions, since regions may outlive
@@ -164,12 +185,12 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
     fn add_extra_drop_facts(
         &mut self,
         drop_used: Vec<(Local, Location)>,
-        live_locals: FxHashSet<Local>,
+        relevant_live_locals: FxHashSet<Local>,
     ) {
         let locations = IntervalSet::new(self.cx.elements.num_points());
 
         for (local, location) in drop_used {
-            if !live_locals.contains(&local) {
+            if !relevant_live_locals.contains(&local) {
                 let local_ty = self.cx.body.local_decls[local].ty;
                 if local_ty.has_free_regions() {
                     self.cx.add_drop_live_facts_for(local, local_ty, &[location], &locations);

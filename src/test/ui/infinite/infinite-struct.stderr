@@ -11,16 +11,6 @@ help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Take` repre
 LL | struct Take(Box<Take>);
    |             ++++    +
 
-error[E0391]: cycle detected when computing drop-check constraints for `Take`
-  --> $DIR/infinite-struct.rs:1:1
-   |
-LL | struct Take(Take);
-   | ^^^^^^^^^^^
-   |
-   = note: ...which immediately requires computing drop-check constraints for `Take` again
-   = note: cycle used when computing dropck types for `Canonical { max_universe: U0, variables: [], value: ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: UserFacing, constness: NotConst }, value: Take } }`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0072, E0391.
-For more information about an error, try `rustc --explain E0072`.
+For more information about this error, try `rustc --explain E0072`.
