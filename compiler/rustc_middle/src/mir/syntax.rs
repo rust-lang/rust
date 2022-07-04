@@ -990,11 +990,19 @@ pub enum Rvalue<'tcx> {
     ///   matching types and return a value of that type.
     BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
-    /// Same as `BinaryOp`, but yields `(T, bool)` instead of `T`. In addition to performing the
-    /// same computation as the matching `BinaryOp`, checks if the infinite precison result would be
-    /// unequal to the actual result and sets the `bool` if this is the case.
+    /// Same as `BinaryOp`, but yields `(T, bool)` with a `bool` indicating an error condition.
     ///
-    /// This only supports addition, subtraction, multiplication, and shift operations on integers.
+    /// When overflow checking is disabled, the error condition is false. Otherwise, the error
+    /// condition is determined as described below.
+    ///
+    /// For addition, subtraction, and multiplication on integers the error condition is set when
+    /// the infinite precision result would be unequal to the actual result.
+    ///
+    /// For shift operations on integers the error condition is set when the value of right-hand
+    /// side is greater than or equal to the number of bits in the type of the left-hand side, or
+    /// when the value of right-hand side is negative.
+    ///
+    /// Other combinations of types and operators are unsupported.
     CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     /// Computes a value as described by the operation.
