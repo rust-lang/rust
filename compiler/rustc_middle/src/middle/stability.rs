@@ -369,7 +369,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let depr_attr = &depr_entry.attr;
                 if !skip || depr_attr.is_since_rustc_version {
                     // Calculating message for lint involves calling `self.def_path_str`.
-                    // Which by default to calculate visible path will invoke expensive `visible_parent_map` query.
+                    // Which by default to calculate visible path will invoke expensive `visible_parents_map` query.
                     // So we skip message calculation altogether, if lint is allowed.
                     let is_in_effect = deprecation_in_effect(depr_attr);
                     let lint = deprecation_lint(is_in_effect);

@@ -394,9 +394,10 @@ where
     }
 }
 
-impl<A, CTX> HashStable<CTX> for SmallVec<[A; 1]>
+impl<T, CTX, const N: usize> HashStable<CTX> for SmallVec<[T; N]>
 where
-    A: HashStable<CTX>,
+    [T; N]: smallvec::Array,
+    <[T; N] as smallvec::Array>::Item: HashStable<CTX>,
 {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {

@@ -1668,9 +1668,12 @@ rustc_queries! {
         desc { "calculating the missing lang items in a crate" }
         separate_provide_extern
     }
-    query visible_parent_map(_: ()) -> DefIdMap<DefId> {
+    query visible_parents_map(_: ()) -> DefIdMap<smallvec::SmallVec<[(DefId, Symbol); 4]>> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "calculating the visible parent map" }
+    }
+    query best_visible_parent(def_id: DefId) -> Option<DefId> {
+        desc { |tcx| "computing the best visible parent for `{}`", tcx.def_path_str(def_id) }
     }
     query trimmed_def_paths(_: ()) -> FxHashMap<DefId, Symbol> {
         storage(ArenaCacheSelector<'tcx>)

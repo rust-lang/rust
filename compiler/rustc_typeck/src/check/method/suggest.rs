@@ -1642,17 +1642,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn suggest_use_candidates(&self, err: &mut Diagnostic, msg: String, candidates: Vec<DefId>) {
-        let parent_map = self.tcx.visible_parent_map(());
-
         // Separate out candidates that must be imported with a glob, because they are named `_`
         // and cannot be referred with their identifier.
         let (candidates, globs): (Vec<_>, Vec<_>) = candidates.into_iter().partition(|trait_did| {
-            if let Some(parent_did) = parent_map.get(trait_did) {
+            if let Some(parent_did) = self.tcx.best_visible_parent(trait_did) {
                 // If the item is re-exported as `_`, we should suggest a glob-import instead.
-                if *parent_did != self.tcx.parent(*trait_did)
+                if parent_did != self.tcx.parent(*trait_did)
                     && self
                         .tcx
-                        .module_children(*parent_did)
+                        .module_children(parent_did)
                         .iter()
                         .filter(|child| child.res.opt_def_id() == Some(*trait_did))
                         .all(|child| child.ident.name == kw::Underscore)
@@ -1673,10 +1671,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
 
         let glob_path_strings = globs.iter().map(|trait_did| {
-            let parent_did = parent_map.get(trait_did).unwrap();
+            let parent_did = self.tcx.best_visible_parent(trait_did).unwrap();
             format!(
                 "use {}::*; // trait {}\n",
-                with_crate_prefix!(self.tcx.def_path_str(*parent_did)),
+                with_crate_prefix!(self.tcx.def_path_str(parent_did)),
                 self.tcx.item_name(*trait_did),
             )
         });

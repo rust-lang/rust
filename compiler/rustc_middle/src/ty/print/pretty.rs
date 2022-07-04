@@ -390,8 +390,6 @@ pub trait PrettyPrinter<'tcx>:
             return Ok((self, false));
         }
 
-        let visible_parent_map = self.tcx().visible_parent_map(());
-
         let mut cur_def_key = self.tcx().def_key(def_id);
         debug!("try_print_visible_def_path: cur_def_key={:?}", cur_def_key);
 
@@ -407,7 +405,7 @@ pub trait PrettyPrinter<'tcx>:
             cur_def_key = self.tcx().def_key(parent);
         }
 
-        let Some(visible_parent) = visible_parent_map.get(&def_id).cloned() else {
+        let Some(visible_parent) = self.tcx().best_visible_parent(def_id) else {
             return Ok((self, false));
         };
 
@@ -433,7 +431,7 @@ pub trait PrettyPrinter<'tcx>:
             // `std::os::unix` reexports the contents of `std::sys::unix::ext`. `std::sys` is
             // private so the "true" path to `CommandExt` isn't accessible.
             //
-            // In this case, the `visible_parent_map` will look something like this:
+            // In this case, the `visible_parents_map` will look something like this:
             //
             // (child) -> (parent)
             // `std::sys::unix::ext::process::CommandExt` -> `std::sys::unix::ext::process`
@@ -453,7 +451,7 @@ pub trait PrettyPrinter<'tcx>:
             // do this, we compare the parent of `std::sys::unix::ext` (`std::sys::unix`) with
             // the visible parent (`std::os`). If these do not match, then we iterate over
             // the children of the visible parent (as was done when computing
-            // `visible_parent_map`), looking for the specific child we currently have and then
+            // `visible_parents_map`), looking for the specific child we currently have and then
             // have access to the re-exported name.
             DefPathData::TypeNs(ref mut name) if Some(visible_parent) != actual_parent => {
                 // Item might be re-exported several times, but filter for the one

@@ -1,10 +1,11 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
 use crate::native_libs;
+use crate::rmeta::ty::util::is_doc_hidden;
 
 use rustc_ast as ast;
 use rustc_attr::Deprecation;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
@@ -367,15 +368,15 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         // external item that is visible from at least one local module) to a
         // sufficiently visible parent (considering modules that re-export the
         // external item to be parents).
-        visible_parent_map: |tcx, ()| {
-            use std::collections::hash_map::Entry;
-            use std::collections::vec_deque::VecDeque;
+        // Returns a map from a sufficiently visible external item (i.e., an
+        // external item that is visible from at least one local module) to a
+        // sufficiently visible parent (considering modules that re-export the
+        // external item to be parents).
+        visible_parents_map: |tcx, ()| {
+            use rustc_data_structures::fx::FxHashSet;
+            use std::collections::VecDeque;
 
-            let mut visible_parent_map: DefIdMap<DefId> = Default::default();
-            // This is a secondary visible_parent_map, storing the DefId of parents that re-export
-            // the child as `_`. Since we prefer parents that don't do this, merge this map at the
-            // end, only if we're missing any keys from the former.
-            let mut fallback_map: DefIdMap<DefId> = Default::default();
+            let mut visible_parents_map: DefIdMap<SmallVec<[_; 4]>> = DefIdMap::default();
 
             // Issue 46112: We want the map to prefer the shortest
             // paths when reporting the path to an item. Therefore we
@@ -387,62 +388,88 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             // only get paths that are locally minimal with respect to
             // whatever crate we happened to encounter first in this
             // traversal, but not globally minimal across all crates.
-            let bfs_queue = &mut VecDeque::new();
+            let mut bfs_queue = VecDeque::default();
 
-            for &cnum in tcx.crates(()) {
-                // Ignore crates without a corresponding local `extern crate` item.
-                if tcx.missing_extern_crate_item(cnum) {
-                    continue;
-                }
+            bfs_queue.extend(
+                tcx.crates(())
+                    .into_iter()
+                    // Ignore crates without a corresponding local `extern crate` item.
+                    .filter(|cnum| !tcx.missing_extern_crate_item(**cnum))
+                    .map(|cnum| DefId { krate: *cnum, index: super::CRATE_DEF_INDEX }),
+            );
 
-                bfs_queue.push_back(cnum.as_def_id());
-            }
-
-            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &ModChild, parent: DefId| {
-                if !child.vis.is_public() {
-                    return;
-                }
-
-                if let Some(def_id) = child.res.opt_def_id() {
-                    if child.ident.name == kw::Underscore {
-                        fallback_map.insert(def_id, parent);
-                        return;
-                    }
-
-                    match visible_parent_map.entry(def_id) {
-                        Entry::Occupied(mut entry) => {
-                            // If `child` is defined in crate `cnum`, ensure
-                            // that it is mapped to a parent in `cnum`.
-                            if def_id.is_local() && entry.get().is_local() {
-                                entry.insert(parent);
-                            }
-                        }
-                        Entry::Vacant(entry) => {
-                            entry.insert(parent);
-                            if matches!(
-                                child.res,
-                                Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, _)
-                            ) {
-                                bfs_queue.push_back(def_id);
-                            }
-                        }
+            // Iterate over graph using BFS.
+            // Filter out any non-public items.
+            while let Some(parent) = bfs_queue.pop_front() {
+                if matches!(tcx.def_kind(parent), DefKind::Mod | DefKind::Enum | DefKind::Trait) {
+                    for (child_def_id, child_name) in tcx
+                        .module_children(parent)
+                        .iter()
+                        .filter(|child| child.vis.is_public())
+                        .filter_map(|child| Some((child.res.opt_def_id()?, child.ident.name)))
+                    {
+                        visible_parents_map
+                            .entry(child_def_id)
+                            .or_insert_with(|| {
+                                // If we encounter node the first time
+                                // add it to queue for next iterations
+                                bfs_queue.push_back(child_def_id);
+                                Default::default()
+                            })
+                            .push((parent, child_name));
                     }
                 }
-            };
-
-            while let Some(def) = bfs_queue.pop_front() {
-                for child in tcx.module_children(def).iter() {
-                    add_child(bfs_queue, child, def);
-                }
             }
 
-            // Fill in any missing entries with the (less preferable) path ending in `::_`.
-            // We still use this path in a diagnostic that suggests importing `::*`.
-            for (child, parent) in fallback_map {
-                visible_parent_map.entry(child).or_insert(parent);
+            // Iterate over parents vector to remove duplicate elements
+            // while preserving order
+            let mut dedup_set = FxHashSet::default();
+            for (_, parents) in &mut visible_parents_map {
+                parents.retain(|parent| dedup_set.insert(*parent));
+
+                // Reuse hashset allocation.
+                dedup_set.clear();
             }
 
-            visible_parent_map
+            visible_parents_map
+        },
+        best_visible_parent: |tcx, child| {
+            // Use `min_by_key` because it returns
+            // first match in case keys are equal
+            tcx.visible_parents_map(())
+                .get(&child)?
+                .into_iter()
+                .min_by_key(|(parent, child_name)| {
+                    // If this is just regular export in another module, assign it a neutral score.
+                    let mut score = 0;
+
+                    // If child and parent are local, we prefer them
+                    if child.is_local() && parent.is_local() {
+                        score += 1;
+                    }
+
+                    // Even if child and parent are local, if parent is `#[doc(hidden)]`
+                    // We reduce their score to avoid showing items not popping in documentation.
+                    if is_doc_hidden(tcx, *parent) {
+                        score -= 2;
+                    }
+
+                    // If parent identifier is _ we prefer it only as last resort if other items are not available
+                    if let Some(name) = tcx.opt_item_name(*parent)
+                        && name == kw::Underscore
+                    {
+                        score -= 3;
+                    }
+
+                    // If the name of the child inside of the parent (i.e. its re-exported name),
+                    // then also don't prefer that...
+                    if *child_name == kw::Underscore {
+                        score -= 3;
+                    }
+
+                    -score
+                })
+                .map(|(parent, _)| *parent)
         },
 
         dependency_formats: |tcx, ()| Lrc::new(crate::dependency_format::calculate(tcx)),
