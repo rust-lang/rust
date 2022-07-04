@@ -495,13 +495,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn to_const(&self, ast_c: &hir::AnonConst) -> ty::Const<'tcx> {
         let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id);
+        let span = self.tcx.hir().span(ast_c.hir_id);
         let c = ty::Const::from_anon_const(self.tcx, const_def_id);
-        self.register_wf_obligation(
-            c.into(),
-            self.tcx.hir().span(ast_c.hir_id),
-            ObligationCauseCode::WellFormed(None),
-        );
-        c
+        self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
+        self.normalize_associated_types_in(span, c)
     }
 
     pub fn const_arg_to_const(

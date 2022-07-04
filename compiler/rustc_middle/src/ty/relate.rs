@@ -594,10 +594,6 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         );
     }
 
-    let eagerly_eval = |x: ty::Const<'tcx>| x.eval(tcx, relation.param_env());
-    let a = eagerly_eval(a);
-    let b = eagerly_eval(b);
-
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
     // to structural-match types.
