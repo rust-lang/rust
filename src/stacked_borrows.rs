@@ -316,11 +316,22 @@ impl<'tcx> Stack {
         alloc_history: &mut AllocHistory,
         threads: &ThreadManager<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
-        if global.tracked_pointer_tags.contains(&item.tag()) {
-            register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(
-                *item,
-                provoking_access.map(|(tag, _alloc_range, _size, access)| (tag, access)),
-            ));
+        if !global.tracked_pointer_tags.is_empty() {
+            check_tracked(item, &provoking_access, global);
+
+            #[inline(never)] // cold path
+            fn check_tracked(
+                item: &Item,
+                provoking_access: &Option<(SbTagExtra, AllocRange, Size, AccessKind)>,
+                global: &GlobalStateInner,
+            ) {
+                if global.tracked_pointer_tags.contains(&item.tag()) {
+                    register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(
+                        *item,
+                        provoking_access.map(|(tag, _alloc_range, _size, access)| (tag, access)),
+                    ));
+                }
+            }
         }
 
         if !item.protected() {
@@ -341,40 +352,52 @@ impl<'tcx> Stack {
         //    which ends up about linear in the number of protected tags in the program into a
         //    constant time check (and a slow linear, because the tags in the frames aren't contiguous).
         if global.protected_tags.contains(&item.tag()) {
-            // This path is cold because it is fatal to the program. So here it is fine to do the
-            // more expensive search to figure out which call is responsible for protecting this
-            // tag.
-            let call_id = threads
-                .all_stacks()
-                .flatten()
-                .map(|frame| {
-                    frame
-                        .extra
-                        .stacked_borrows
-                        .as_ref()
-                        .expect("we should have Stacked Borrows data")
-                })
-                .find(|frame| frame.protected_tags.contains(&item.tag()))
-                .map(|frame| frame.call_id)
-                .unwrap(); // FIXME: Surely we should find something, but a panic seems wrong here?
-            if let Some((tag, _alloc_range, _offset, _access)) = provoking_access {
-                Err(err_sb_ub(
-                    format!(
-                        "not granting access to tag {:?} because incompatible item {:?} is protected by call {:?}",
-                        tag, item, call_id
-                    ),
-                    None,
-                    tag.and_then(|tag| alloc_history.get_logs_relevant_to(tag, Some(item.tag()))),
-                ))?
-            } else {
-                Err(err_sb_ub(
-                    format!(
-                        "deallocating while item {:?} is protected by call {:?}",
-                        item, call_id
-                    ),
-                    None,
-                    None,
-                ))?
+            return Err(protector_error(item, &provoking_access, alloc_history, threads));
+
+            #[inline(never)] // cold path
+            fn protector_error<'tcx>(
+                item: &Item,
+                provoking_access: &Option<(SbTagExtra, AllocRange, Size, AccessKind)>,
+                alloc_history: &mut AllocHistory,
+                threads: &ThreadManager<'_, 'tcx>,
+            ) -> InterpErrorInfo<'tcx> {
+                // This path is cold because it is fatal to the program. So here it is fine to do the
+                // more expensive search to figure out which call is responsible for protecting this
+                // tag.
+                let call_id = threads
+                    .all_stacks()
+                    .flatten()
+                    .map(|frame| {
+                        frame
+                            .extra
+                            .stacked_borrows
+                            .as_ref()
+                            .expect("we should have Stacked Borrows data")
+                    })
+                    .find(|frame| frame.protected_tags.contains(&item.tag()))
+                    .map(|frame| frame.call_id)
+                    .unwrap(); // FIXME: Surely we should find something, but a panic seems wrong here?
+                if let Some((tag, _alloc_range, _offset, _access)) = provoking_access {
+                    err_sb_ub(
+                        format!(
+                            "not granting access to tag {:?} because incompatible item {:?} is protected by call {:?}",
+                            tag, item, call_id
+                        ),
+                        None,
+                        tag.and_then(|tag| {
+                            alloc_history.get_logs_relevant_to(tag, Some(item.tag()))
+                        }),
+                    )
+                } else {
+                    err_sb_ub(
+                        format!(
+                            "deallocating while item {:?} is protected by call {:?}",
+                            item, call_id
+                        ),
+                        None,
+                        None,
+                    )
+                }.into()
             }
         }
         Ok(())
