@@ -96,9 +96,25 @@ mod os_impl {
 
     #[cfg(unix)]
     pub fn check(path: &Path, bad: &mut bool) {
+        const ALLOWED: &[&str] = &["configure"];
+
         crate::walk_no_read(
             path,
-            &mut |path| crate::filter_dirs(path) || path.ends_with("src/etc"),
+            &mut |path| {
+                crate::filter_dirs(path)
+                    || path.ends_with("src/etc")
+                    // This is a list of directories that we almost certainly
+                    // don't need to walk. A future PR will likely want to
+                    // remove these in favor of crate::walk_no_read using git
+                    // ls-files to discover the paths we should check, which
+                    // would naturally ignore all of these directories. It's
+                    // also likely faster than walking the directory tree
+                    // directly (since git is just reading from a couple files
+                    // to produce the results).
+                    || path.ends_with("target")
+                    || path.ends_with("build")
+                    || path.ends_with(".git")
+            },
             &mut |entry| {
                 let file = entry.path();
                 let filename = file.file_name().unwrap().to_string_lossy();
@@ -110,6 +126,11 @@ mod os_impl {
                 if t!(is_executable(&file), file) {
                     let rel_path = file.strip_prefix(path).unwrap();
                     let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");
+
+                    if ALLOWED.contains(&git_friendly_path.as_str()) {
+                        return;
+                    }
+
                     let output = Command::new("git")
                         .arg("ls-files")
                         .arg(&git_friendly_path)
