@@ -69,7 +69,7 @@ config_data! {
         cargo_buildScripts_enable: bool  = "true",
         /// Override the command rust-analyzer uses to run build scripts and
         /// build procedural macros. The command is required to output json
-        /// and should therefor include `--message-format=json` or a similar
+        /// and should therefore include `--message-format=json` or a similar
         /// option.
         ///
         /// By default, a cargo invocation will be constructed for the configured
@@ -81,7 +81,7 @@ config_data! {
         /// .
         cargo_buildScripts_overrideCommand: Option<Vec<String>> = "null",
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
-        /// avoid compiling unnecessary things.
+        /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
         /// List of features to activate.
         ///
@@ -107,15 +107,18 @@ config_data! {
         /// List of features to activate. Defaults to
         /// `#rust-analyzer.cargo.features#`.
         ///
-        /// Set to `"all"` to pass `--all-features` to cargo.
+        /// Set to `"all"` to pass `--all-features` to Cargo.
         checkOnSave_features: Option<CargoFeatures>      = "null",
-        /// Whether to pass `--no-default-features` to cargo. Defaults to
+        /// Whether to pass `--no-default-features` to Cargo. Defaults to
         /// `#rust-analyzer.cargo.noDefaultFeatures#`.
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
-        /// Override the command rust-analyzer uses to  run build scripts and
-        /// build procedural macros. The command is required to output json
-        /// and should therefor include `--message-format=json` or a similar
-        /// option.
+        /// Override the command rust-analyzer uses instead of `cargo check` for
+        /// diagnostics on save. The command is required to output json and
+        /// should therefor include `--message-format=json` or a similar option.
+        ///
+        /// If you're changing this because you're using some tool wrapping
+        /// Cargo, you might also want to change
+        /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
         ///
         /// An example command would be:
         ///
