@@ -452,6 +452,10 @@ impl fmt::Debug for ScalarInt {
 impl fmt::LowerHex for ScalarInt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.check_data();
+        if f.alternate() {
+            // Like regular ints, alternate flag adds leading `0x`.
+            write!(f, "0x")?;
+        }
         // Format as hex number wide enough to fit any value of the given `size`.
         // So data=20, size=1 will be "0x14", but with size=4 it'll be "0x00000014".
         // Using a block `{self.data}` here to force a copy instead of using `self.data`
