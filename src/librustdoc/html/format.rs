@@ -1283,10 +1283,6 @@ impl clean::FnDecl {
         let mut args = Buffer::html();
         let mut args_plain = Buffer::new();
         for (i, input) in self.inputs.values.iter().enumerate() {
-            if i == 0 {
-                args.push_str("<br>");
-            }
-
             if let Some(selfty) = input.to_self() {
                 match selfty {
                     clean::SelfValue => {
@@ -1312,8 +1308,7 @@ impl clean::FnDecl {
                 }
             } else {
                 if i > 0 {
-                    args.push_str(" <br>");
-                    args_plain.push_str(" ");
+                    args.push_str("<br>");
                 }
                 if input.is_const {
                     args.push_str("const ");
@@ -1360,13 +1355,14 @@ impl clean::FnDecl {
             let full_pad = format!("<br>{}", "&nbsp;".repeat(indent + 4));
             let close_pad = format!("<br>{}", "&nbsp;".repeat(indent));
             format!(
-                "({args}{close}){arrow}",
+                "({pad}{args}{close}){arrow}",
+                pad = if self.inputs.values.is_empty() { "" } else { &full_pad },
                 args = args.replace("<br>", &full_pad),
                 close = close_pad,
                 arrow = arrow
             )
         } else {
-            format!("({args}){arrow}", args = args.replace("<br>", ""), arrow = arrow)
+            format!("({args}){arrow}", args = args.replace("<br>", " "), arrow = arrow)
         };
 
         if f.alternate() {
