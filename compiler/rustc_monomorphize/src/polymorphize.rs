@@ -9,7 +9,7 @@ use rustc_hir::{def::DefKind, def_id::DefId, ConstContext};
 use rustc_index::bit_set::FiniteBitSet;
 use rustc_middle::mir::{
     visit::{TyContext, Visitor},
-    ConstantKind, Local, LocalDecl, Location,
+    Constant, ConstantKind, Local, LocalDecl, Location,
 };
 use rustc_middle::ty::{
     self,
@@ -270,8 +270,15 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         self.super_local_decl(local, local_decl);
     }
 
-    fn visit_const(&mut self, c: Const<'tcx>, _: Location) {
-        c.visit_with(self);
+    fn visit_constant(&mut self, ct: &Constant<'tcx>, location: Location) {
+        match ct.literal {
+            ConstantKind::Ty(c) => {
+                c.visit_with(self);
+            }
+            ConstantKind::Val(_, ty) | ConstantKind::Unevaluated(_, ty) => {
+                Visitor::visit_ty(self, ty, TyContext::Location(location))
+            }
+        }
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {

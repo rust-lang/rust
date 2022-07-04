@@ -706,13 +706,12 @@ pub fn write_allocations<'tcx>(
     struct CollectAllocIds(BTreeSet<AllocId>);
 
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
-        fn visit_constant(&mut self, c: &Constant<'tcx>, loc: Location) {
+        fn visit_constant(&mut self, c: &Constant<'tcx>, _: Location) {
             match c.literal {
-                ConstantKind::Ty(c) => self.visit_const(c, loc),
+                ConstantKind::Ty(_) | ConstantKind::Unevaluated(..) => {}
                 ConstantKind::Val(val, _) => {
                     self.0.extend(alloc_ids_from_const_val(val));
                 }
-                ConstantKind::Unevaluated(..) => {}
             }
         }
     }

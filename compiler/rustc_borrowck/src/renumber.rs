@@ -106,8 +106,4 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
 
         debug!("constant: {:#?}", constant);
     }
-
-    fn visit_const(&mut self, _constant: &mut ty::Const<'tcx>, _location: Location) {
-        bug!("should never be called");
-    }
 }
