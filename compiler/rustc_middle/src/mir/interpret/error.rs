@@ -186,7 +186,7 @@ pub enum CheckInAllocMsg {
 
 impl fmt::Display for CheckInAllocMsg {
     /// When this is printed as an error the context looks like this:
-    /// "{msg}0x01 is not a valid pointer".
+    /// "{msg}{pointer} is a dangling pointer".
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -194,9 +194,9 @@ impl fmt::Display for CheckInAllocMsg {
             match *self {
                 CheckInAllocMsg::DerefTest => "dereferencing pointer failed: ",
                 CheckInAllocMsg::MemoryAccessTest => "memory access failed: ",
-                CheckInAllocMsg::PointerArithmeticTest => "pointer arithmetic failed: ",
+                CheckInAllocMsg::PointerArithmeticTest => "out-of-bounds pointer arithmetic: ",
                 CheckInAllocMsg::OffsetFromTest => "out-of-bounds offset_from: ",
-                CheckInAllocMsg::InboundsTest => "",
+                CheckInAllocMsg::InboundsTest => "out-of-bounds pointer use: ",
             }
         )
     }
@@ -356,14 +356,12 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 ptr_size_p = pluralize!(ptr_size.bytes()),
                 ptr_offset = ptr_offset,
             ),
-            DanglingIntPointer(0, CheckInAllocMsg::InboundsTest) => {
-                write!(f, "null pointer is not a valid pointer for this operation")
-            }
-            DanglingIntPointer(0, msg) => {
-                write!(f, "{}null pointer is not a valid pointer", msg)
-            }
             DanglingIntPointer(i, msg) => {
-                write!(f, "{}0x{:x} is not a valid pointer", msg, i)
+                write!(
+                    f,
+                    "{msg}{pointer} is a dangling pointer (it has no provenance)",
+                    pointer = Pointer::<Option<AllocId>>::from_addr(*i),
+                )
             }
             AlignmentCheckFailed { required, has } => write!(
                 f,

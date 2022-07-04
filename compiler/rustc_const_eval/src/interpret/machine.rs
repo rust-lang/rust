@@ -513,7 +513,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         _ecx: &InterpCx<$mir, $tcx, Self>,
         addr: u64,
     ) -> Pointer<Option<AllocId>> {
-        Pointer::new(None, Size::from_bytes(addr))
+        Pointer::from_addr(addr)
     }
 
     #[inline(always)]
@@ -523,7 +523,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     ) -> InterpResult<$tcx, Pointer<Option<AllocId>>> {
         // Allow these casts, but make the pointer not dereferenceable.
         // (I.e., they behave like transmutation.)
-        Ok(Pointer::new(None, Size::from_bytes(addr)))
+        Ok(Pointer::from_addr(addr))
     }
 
     #[inline(always)]
