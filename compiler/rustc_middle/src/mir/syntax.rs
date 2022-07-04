@@ -993,8 +993,9 @@ pub enum Rvalue<'tcx> {
 
     /// Same as `BinaryOp`, but yields `(T, bool)` with a `bool` indicating an error condition.
     ///
-    /// When overflow checking is disabled, the error condition is false. Otherwise, the error
-    /// condition is determined as described below.
+    /// When overflow checking is disabled and we are generating run-time code, the error condition
+    /// is false. Otherwise, and always during CTFE, the error condition is determined as described
+    /// below.
     ///
     /// For addition, subtraction, and multiplication on integers the error condition is set when
     /// the infinite precision result would be unequal to the actual result.
