@@ -375,6 +375,11 @@
                     "default": {},
                     "markdownDescription": "Optional settings passed to the debug engine. Example: `{ \"lldb\": { \"terminal\":\"external\"} }`"
                 },
+                "rust-analyzer.restartServerOnConfigChange": {
+                    "markdownDescription": "Whether to restart the server automatically when certain settings that require a restart are changed.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "$generated-start": {},
                 "rust-analyzer.assist.expressionFillDefault": {
                     "markdownDescription": "Placeholder expression to use for missing expressions in assists.",
@@ -412,7 +417,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.cargo.buildScripts.overrideCommand": {
-                    "markdownDescription": "Override the command rust-analyzer uses to run build scripts and\nbuild procedural macros. The command is required to output json\nand should therefor include `--message-format=json` or a similar\noption.\n\nBy default, a cargo invocation will be constructed for the configured\ntargets and features, with the following base command line:\n\n```bash\ncargo check --quiet --workspace --message-format=json --all-targets\n```\n.",
+                    "markdownDescription": "Override the command rust-analyzer uses to run build scripts and\nbuild procedural macros. The command is required to output json\nand should therefore include `--message-format=json` or a similar\noption.\n\nBy default, a cargo invocation will be constructed for the configured\ntargets and features, with the following base command line:\n\n```bash\ncargo check --quiet --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,
                     "type": [
                         "null",
@@ -423,7 +428,7 @@
                     }
                 },
                 "rust-analyzer.cargo.buildScripts.useRustcWrapper": {
-                    "markdownDescription": "Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to\navoid compiling unnecessary things.",
+                    "markdownDescription": "Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to\navoid checking unnecessary things.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -500,7 +505,7 @@
                     }
                 },
                 "rust-analyzer.checkOnSave.features": {
-                    "markdownDescription": "List of features to activate. Defaults to\n`#rust-analyzer.cargo.features#`.\n\nSet to `\"all\"` to pass `--all-features` to cargo.",
+                    "markdownDescription": "List of features to activate. Defaults to\n`#rust-analyzer.cargo.features#`.\n\nSet to `\"all\"` to pass `--all-features` to Cargo.",
                     "default": null,
                     "anyOf": [
                         {
@@ -524,7 +529,7 @@
                     ]
                 },
                 "rust-analyzer.checkOnSave.noDefaultFeatures": {
-                    "markdownDescription": "Whether to pass `--no-default-features` to cargo. Defaults to\n`#rust-analyzer.cargo.noDefaultFeatures#`.",
+                    "markdownDescription": "Whether to pass `--no-default-features` to Cargo. Defaults to\n`#rust-analyzer.cargo.noDefaultFeatures#`.",
                     "default": null,
                     "type": [
                         "null",
@@ -532,7 +537,7 @@
                     ]
                 },
                 "rust-analyzer.checkOnSave.overrideCommand": {
-                    "markdownDescription": "Override the command rust-analyzer uses to    run build scripts and\nbuild procedural macros. The command is required to output json\nand should therefor include `--message-format=json` or a similar\noption.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
+                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefor include `--message-format=json` or a similar option.\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,
                     "type": [
                         "null",
@@ -1115,11 +1120,6 @@
                         "Search in current workspace only.",
                         "Search in current workspace and dependencies."
                     ]
-                },
-                "rust-analyzer.restartServerOnConfigChange": {
-                    "markdownDescription": "Whether to restart the server automatically when certain settings that require a restart are changed.",
-                    "default": false,
-                    "type": "boolean"
                 },
                 "$generated-end": {}
             }
