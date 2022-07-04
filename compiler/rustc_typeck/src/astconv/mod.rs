@@ -1958,9 +1958,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         );
                     }
 
-                    if let Some(sp) = tcx.hir().span_if_local(adt_def.did()) {
-                        let sp = tcx.sess.source_map().guess_head_span(sp);
-                        err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
+                    if adt_def.did().is_local() {
+                        err.span_label(
+                            tcx.def_span(adt_def.did()),
+                            format!("variant `{assoc_ident}` not found for this enum"),
+                        );
                     }
 
                     err.emit()
@@ -2450,7 +2452,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                     let msg = format!("`Self` is of type `{ty}`");
                     if let (Ok(i_sp), Some(t_sp)) = (span_of_impl, span_of_ty) {
-                        let i_sp = tcx.sess.source_map().guess_head_span(i_sp);
                         let mut span: MultiSpan = vec![t_sp].into();
                         span.push_span_label(
                             i_sp,

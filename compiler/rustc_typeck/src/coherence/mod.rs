@@ -9,7 +9,6 @@ use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
-use rustc_span::Span;
 use rustc_trait_selection::traits;
 
 mod builtin;
@@ -17,11 +16,6 @@ mod inherent_impls;
 mod inherent_impls_overlap;
 mod orphan;
 mod unsafety;
-
-/// Obtains the span of just the impl header of `impl_def_id`.
-fn impl_header_span(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Span {
-    tcx.sess.source_map().guess_head_span(tcx.span_of_impl(impl_def_id.to_def_id()).unwrap())
-}
 
 fn check_impl(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, trait_ref: ty::TraitRef<'_>) {
     debug!(
@@ -47,56 +41,53 @@ fn enforce_trait_manually_implementable(
 ) {
     let did = Some(trait_def_id);
     let li = tcx.lang_items();
+    let impl_header_span = tcx.def_span(impl_def_id);
 
     // Disallow *all* explicit impls of `Pointee`, `DiscriminantKind`, `Sized` and `Unsize` for now.
     if did == li.pointee_trait() {
-        let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(
             tcx.sess,
-            span,
+            impl_header_span,
             E0322,
             "explicit impls for the `Pointee` trait are not permitted"
         )
-        .span_label(span, "impl of `Pointee` not allowed")
+        .span_label(impl_header_span, "impl of `Pointee` not allowed")
         .emit();
         return;
     }
 
     if did == li.discriminant_kind_trait() {
-        let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(
             tcx.sess,
-            span,
+            impl_header_span,
             E0322,
             "explicit impls for the `DiscriminantKind` trait are not permitted"
         )
-        .span_label(span, "impl of `DiscriminantKind` not allowed")
+        .span_label(impl_header_span, "impl of `DiscriminantKind` not allowed")
         .emit();
         return;
     }
 
     if did == li.sized_trait() {
-        let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(
             tcx.sess,
-            span,
+            impl_header_span,
             E0322,
             "explicit impls for the `Sized` trait are not permitted"
         )
-        .span_label(span, "impl of `Sized` not allowed")
+        .span_label(impl_header_span, "impl of `Sized` not allowed")
         .emit();
         return;
     }
 
     if did == li.unsize_trait() {
-        let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(
             tcx.sess,
-            span,
+            impl_header_span,
             E0328,
             "explicit impls for the `Unsize` trait are not permitted"
         )
-        .span_label(span, "impl of `Unsize` not allowed")
+        .span_label(impl_header_span, "impl of `Unsize` not allowed")
         .emit();
         return;
     }
@@ -110,10 +101,9 @@ fn enforce_trait_manually_implementable(
         tcx.trait_def(trait_def_id).specialization_kind
     {
         if !tcx.features().specialization && !tcx.features().min_specialization {
-            let span = impl_header_span(tcx, impl_def_id);
             tcx.sess
                 .struct_span_err(
-                    span,
+                    impl_header_span,
                     "implementing `rustc_specialization_trait` traits is unstable",
                 )
                 .help("add `#![feature(min_specialization)]` to the crate attributes to enable")
@@ -138,8 +128,13 @@ fn enforce_empty_impls_for_marker_traits(
         return;
     }
 
-    let span = impl_header_span(tcx, impl_def_id);
-    struct_span_err!(tcx.sess, span, E0715, "impls for marker traits cannot contain items").emit();
+    struct_span_err!(
+        tcx.sess,
+        tcx.def_span(impl_def_id),
+        E0715,
+        "impls for marker traits cannot contain items"
+    )
+    .emit();
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -217,7 +212,7 @@ fn check_object_overlap<'tcx>(
             } else {
                 let mut supertrait_def_ids = traits::supertrait_def_ids(tcx, component_def_id);
                 if supertrait_def_ids.any(|d| d == trait_def_id) {
-                    let span = impl_header_span(tcx, impl_def_id);
+                    let span = tcx.def_span(impl_def_id);
                     struct_span_err!(
                         tcx.sess,
                         span,
