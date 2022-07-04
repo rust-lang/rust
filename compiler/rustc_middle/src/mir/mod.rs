@@ -5,7 +5,6 @@
 use crate::mir::interpret::{
     AllocRange, ConstAllocation, ConstValue, GlobalAlloc, LitToConstInput, Scalar,
 };
-use crate::mir::traversal::PostorderCache;
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
@@ -28,7 +27,6 @@ use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
-use rustc_data_structures::graph::{self, GraphSuccessors};
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
@@ -43,11 +41,12 @@ use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{ControlFlow, Index, IndexMut};
 use std::{iter, mem};
 
-use self::graph_cyclic_cache::GraphIsCyclicCache;
-use self::predecessors::{PredecessorCache, Predecessors};
+use self::predecessors::Predecessors;
 pub use self::query::*;
-use self::switch_sources::{SwitchSourceCache, SwitchSources};
+use self::switch_sources::SwitchSources;
+pub use basic_blocks::BasicBlocks;
 
+mod basic_blocks;
 pub mod coverage;
 mod generic_graph;
 pub mod generic_graphviz;
@@ -189,7 +188,7 @@ pub struct GeneratorInfo<'tcx> {
 pub struct Body<'tcx> {
     /// A list of basic blocks. References to basic block use a newtyped index type [`BasicBlock`]
     /// that indexes into this vector.
-    basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    pub basic_blocks: BasicBlocks<'tcx>,
 
     /// Records how far through the "desugaring and optimization" process this particular
     /// MIR has traversed. This is particularly useful when inlining, since in that context
@@ -257,11 +256,6 @@ pub struct Body<'tcx> {
     /// potentially allow things like `[u8; std::mem::size_of::<T>() * 0]` due to this.
     pub is_polymorphic: bool,
 
-    predecessor_cache: PredecessorCache,
-    switch_source_cache: SwitchSourceCache,
-    is_cyclic: GraphIsCyclicCache,
-    postorder_cache: PostorderCache,
-
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
@@ -289,7 +283,7 @@ impl<'tcx> Body<'tcx> {
         let mut body = Body {
             phase: MirPhase::Built,
             source,
-            basic_blocks,
+            basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
             generator: generator_kind.map(|generator_kind| {
                 Box::new(GeneratorInfo {
@@ -307,10 +301,6 @@ impl<'tcx> Body<'tcx> {
             span,
             required_consts: Vec::new(),
             is_polymorphic: false,
-            predecessor_cache: PredecessorCache::new(),
-            switch_source_cache: SwitchSourceCache::new(),
-            is_cyclic: GraphIsCyclicCache::new(),
-            postorder_cache: PostorderCache::new(),
             tainted_by_errors,
         };
         body.is_polymorphic = body.has_param_types_or_consts();
@@ -326,7 +316,7 @@ impl<'tcx> Body<'tcx> {
         let mut body = Body {
             phase: MirPhase::Built,
             source: MirSource::item(CRATE_DEF_ID.to_def_id()),
-            basic_blocks,
+            basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes: IndexVec::new(),
             generator: None,
             local_decls: IndexVec::new(),
@@ -337,10 +327,6 @@ impl<'tcx> Body<'tcx> {
             required_consts: Vec::new(),
             var_debug_info: Vec::new(),
             is_polymorphic: false,
-            predecessor_cache: PredecessorCache::new(),
-            switch_source_cache: SwitchSourceCache::new(),
-            is_cyclic: GraphIsCyclicCache::new(),
-            postorder_cache: PostorderCache::new(),
             tainted_by_errors: None,
         };
         body.is_polymorphic = body.has_param_types_or_consts();
@@ -354,74 +340,13 @@ impl<'tcx> Body<'tcx> {
 
     #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
-        // Because the user could mutate basic block terminators via this reference, we need to
-        // invalidate the caches.
-        //
-        // FIXME: Use a finer-grained API for this, so only transformations that alter terminators
-        // invalidate the caches.
-        self.invalidate_cfg_cache();
-        &mut self.basic_blocks
-    }
-
-    #[inline]
-    pub fn basic_blocks_and_local_decls_mut(
-        &mut self,
-    ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
-        self.invalidate_cfg_cache();
-        (&mut self.basic_blocks, &mut self.local_decls)
-    }
-
-    #[inline]
-    pub fn basic_blocks_local_decls_mut_and_var_debug_info(
-        &mut self,
-    ) -> (
-        &mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-        &mut LocalDecls<'tcx>,
-        &mut Vec<VarDebugInfo<'tcx>>,
-    ) {
-        self.invalidate_cfg_cache();
-        (&mut self.basic_blocks, &mut self.local_decls, &mut self.var_debug_info)
-    }
-
-    /// Get mutable access to parts of the Body without invalidating the CFG cache.
-    ///
-    /// By calling this method instead of eg [`Body::basic_blocks_mut`], you promise not to change
-    /// the CFG. This means that
-    ///
-    ///  1) The number of basic blocks remains unchanged
-    ///  2) The set of successors of each terminator remains unchanged.
-    ///  3) For each `TerminatorKind::SwitchInt`, the `targets` remains the same and the terminator
-    ///     kind is not changed.
-    ///
-    /// If any of these conditions cannot be upheld, you should call [`Body::invalidate_cfg_cache`].
-    #[inline]
-    pub fn basic_blocks_local_decls_mut_and_var_debug_info_no_invalidate(
-        &mut self,
-    ) -> (
-        &mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-        &mut LocalDecls<'tcx>,
-        &mut Vec<VarDebugInfo<'tcx>>,
-    ) {
-        (&mut self.basic_blocks, &mut self.local_decls, &mut self.var_debug_info)
-    }
-
-    /// Invalidates cached information about the CFG.
-    ///
-    /// You will only ever need this if you have also called
-    /// [`Body::basic_blocks_local_decls_mut_and_var_debug_info_no_invalidate`]. All other methods
-    /// that allow you to mutate the body also call this method themselves, thereby avoiding any
-    /// risk of accidentaly cache invalidation.
-    pub fn invalidate_cfg_cache(&mut self) {
-        self.predecessor_cache.invalidate();
-        self.switch_source_cache.invalidate();
-        self.is_cyclic.invalidate();
-        self.postorder_cache.invalidate();
+        self.basic_blocks.as_mut()
     }
 
     /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
     /// `START_BLOCK`.
     pub fn is_cfg_cyclic(&self) -> bool {
-        self.is_cyclic.is_cyclic(self)
+        self.basic_blocks.is_cfg_cyclic()
     }
 
     #[inline]
@@ -495,14 +420,6 @@ impl<'tcx> Body<'tcx> {
         self.local_decls.drain(self.arg_count + 1..)
     }
 
-    /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
-    /// invalidating statement indices in `Location`s.
-    pub fn make_statement_nop(&mut self, location: Location) {
-        let block = &mut self.basic_blocks[location.block];
-        debug_assert!(location.statement_index < block.statements.len());
-        block.statements[location.statement_index].make_nop()
-    }
-
     /// Returns the source info associated with `location`.
     pub fn source_info(&self, location: Location) -> &SourceInfo {
         let block = &self[location.block];
@@ -540,19 +457,19 @@ impl<'tcx> Body<'tcx> {
 
     #[inline]
     pub fn predecessors(&self) -> &Predecessors {
-        self.predecessor_cache.compute(&self.basic_blocks)
+        self.basic_blocks.predecessors()
     }
 
     /// `body.switch_sources()[&(target, switch)]` returns a list of switch
     /// values that lead to a `target` block from a `switch` block.
     #[inline]
     pub fn switch_sources(&self) -> &SwitchSources {
-        self.switch_source_cache.compute(&self.basic_blocks)
+        self.basic_blocks.switch_sources()
     }
 
     #[inline]
     pub fn dominators(&self) -> Dominators<BasicBlock> {
-        dominators(self)
+        dominators(&self.basic_blocks)
     }
 
     #[inline]
@@ -599,7 +516,7 @@ impl<'tcx> Index<BasicBlock> for Body<'tcx> {
 impl<'tcx> IndexMut<BasicBlock> for Body<'tcx> {
     #[inline]
     fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
-        &mut self.basic_blocks_mut()[index]
+        &mut self.basic_blocks.as_mut()[index]
     }
 }
 
@@ -2888,48 +2805,6 @@ fn pretty_print_const_value<'tcx>(
         }
         Ok(())
     })
-}
-
-impl<'tcx> graph::DirectedGraph for Body<'tcx> {
-    type Node = BasicBlock;
-}
-
-impl<'tcx> graph::WithNumNodes for Body<'tcx> {
-    #[inline]
-    fn num_nodes(&self) -> usize {
-        self.basic_blocks.len()
-    }
-}
-
-impl<'tcx> graph::WithStartNode for Body<'tcx> {
-    #[inline]
-    fn start_node(&self) -> Self::Node {
-        START_BLOCK
-    }
-}
-
-impl<'tcx> graph::WithSuccessors for Body<'tcx> {
-    #[inline]
-    fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
-        self.basic_blocks[node].terminator().successors()
-    }
-}
-
-impl<'a, 'b> graph::GraphSuccessors<'b> for Body<'a> {
-    type Item = BasicBlock;
-    type Iter = Successors<'b>;
-}
-
-impl<'tcx, 'graph> graph::GraphPredecessors<'graph> for Body<'tcx> {
-    type Item = BasicBlock;
-    type Iter = std::iter::Copied<std::slice::Iter<'graph, BasicBlock>>;
-}
-
-impl<'tcx> graph::WithPredecessors for Body<'tcx> {
-    #[inline]
-    fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
-        self.predecessors()[node].iter().copied()
-    }
 }
 
 /// `Location` represents the position of the start of the statement; or, if
