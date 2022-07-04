@@ -57,7 +57,7 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 }
 
 function toggleSidebar() {
-    const child = this.children[0];
+    const child = this.parentNode.children[0];
     if (child.innerText === ">") {
         if (window.innerWidth < 701) {
             // This is to keep the scroll position on mobile.
@@ -86,15 +86,15 @@ function toggleSidebar() {
 function createSidebarToggle() {
     const sidebarToggle = document.createElement("div");
     sidebarToggle.id = "sidebar-toggle";
-    sidebarToggle.onclick = toggleSidebar;
 
-    const inner = document.createElement("div");
+    const inner = document.createElement("button");
 
     if (getCurrentValue("source-sidebar-show") === "true") {
         inner.innerText = "<";
     } else {
         inner.innerText = ">";
     }
+    inner.onclick = toggleSidebar;
 
     sidebarToggle.appendChild(inner);
     return sidebarToggle;

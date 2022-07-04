@@ -30,6 +30,15 @@ assert-css: (
     "#source-sidebar details[open] > .files a.selected",
     {"color": "rgb(0, 0, 0)", "background-color": "rgb(255, 255, 255)"},
 )
+// Without hover or focus.
+assert-css: ("#sidebar-toggle > button", {"background-color": "rgba(0, 0, 0, 0)"})
+// With focus.
+focus: "#sidebar-toggle > button"
+assert-css: ("#sidebar-toggle > button", {"background-color": "rgb(224, 224, 224)"})
+focus: ".search-input"
+// With hover.
+move-cursor-to: "#sidebar-toggle > button"
+assert-css: ("#sidebar-toggle > button", {"background-color": "rgb(224, 224, 224)"})
 // Without hover.
 assert-css: (
     "#source-sidebar details[open] > .files a:not(.selected)",
@@ -76,6 +85,15 @@ assert-css: (
     "#source-sidebar details[open] > .files > a.selected",
     {"color": "rgb(221, 221, 221)", "background-color": "rgb(51, 51, 51)"},
 )
+// Without hover or focus.
+assert-css: ("#sidebar-toggle > button", {"background-color": "rgba(0, 0, 0, 0)"})
+// With focus.
+focus: "#sidebar-toggle > button"
+assert-css: ("#sidebar-toggle > button", {"background-color": "rgb(103, 103, 103)"})
+focus: ".search-input"
+// With hover.
+move-cursor-to: "#sidebar-toggle > button"
+assert-css: ("#sidebar-toggle > button", {"background-color": "rgb(103, 103, 103)"})
 // Without hover.
 assert-css: (
     "#source-sidebar details[open] > .files > a:not(.selected)",
@@ -122,6 +140,15 @@ assert-css: (
     "#source-sidebar details[open] > .files a.selected",
     {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
 )
+// Without hover or focus.
+assert-css: ("#sidebar-toggle > button", {"background-color": "rgba(0, 0, 0, 0)"})
+// With focus.
+focus: "#sidebar-toggle > button"
+assert-css: ("#sidebar-toggle > button", {"background-color": "rgba(70, 70, 70, 0.33)"})
+focus: ".search-input"
+// With hover.
+move-cursor-to: "#sidebar-toggle > button"
+assert-css: ("#sidebar-toggle > button", {"background-color": "rgba(70, 70, 70, 0.33)"})
 // Without hover.
 assert-css: (
     "#source-sidebar details[open] > .files a:not(.selected)",
