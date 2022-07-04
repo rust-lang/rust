@@ -152,6 +152,10 @@ def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
     if verbose:
         print("running: " + ' '.join(args))
     sys.stdout.flush()
+    # Ensure that the .exe is used on Windoows just in case a Linux ELF has been
+    # compiled in the same directory.
+    if os.name == 'nt' and not args[0].endswith('.exe'):
+        args[0] += '.exe'
     # Use Popen here instead of call() as it apparently allows powershell on
     # Windows to not lock up waiting for input presumably.
     ret = subprocess.Popen(args, **kwargs)
