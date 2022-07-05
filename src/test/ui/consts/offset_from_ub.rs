@@ -34,14 +34,14 @@ pub const NOT_MULTIPLE_OF_SIZE: isize = {
 pub const OFFSET_FROM_NULL: isize = {
     let ptr = 0 as *const u8;
     unsafe { ptr_offset_from(ptr, ptr) } //~ERROR evaluation of constant value failed
-    //~| null pointer is not a valid pointer
+    //~| null pointer is a dangling pointer
 };
 
 pub const DIFFERENT_INT: isize = { // offset_from with two different integers: like DIFFERENT_ALLOC
     let ptr1 = 8 as *const u8;
     let ptr2 = 16 as *const u8;
     unsafe { ptr_offset_from(ptr2, ptr1) } //~ERROR evaluation of constant value failed
-    //~| 0x8 is not a valid pointer
+    //~| 0x8[noalloc] is a dangling pointer
 };
 
 const OUT_OF_BOUNDS_1: isize = {

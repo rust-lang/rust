@@ -181,7 +181,17 @@ impl<Tag: Provenance> fmt::Debug for Pointer<Option<Tag>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.provenance {
             Some(tag) => Provenance::fmt(&Pointer::new(tag, self.offset), f),
-            None => write!(f, "{:#x}", self.offset.bytes()),
+            None => write!(f, "{:#x}[noalloc]", self.offset.bytes()),
+        }
+    }
+}
+
+impl<Tag: Provenance> fmt::Display for Pointer<Option<Tag>> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.provenance.is_none() && self.offset.bytes() == 0 {
+            write!(f, "null pointer")
+        } else {
+            fmt::Debug::fmt(self, f)
         }
     }
 }
@@ -227,8 +237,13 @@ impl<Tag> Pointer<Option<Tag>> {
 
 impl<Tag> Pointer<Option<Tag>> {
     #[inline(always)]
+    pub fn from_addr(addr: u64) -> Self {
+        Pointer { provenance: None, offset: Size::from_bytes(addr) }
+    }
+
+    #[inline(always)]
     pub fn null() -> Self {
-        Pointer { provenance: None, offset: Size::ZERO }
+        Pointer::from_addr(0)
     }
 }
 
