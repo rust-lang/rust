@@ -62,6 +62,17 @@ struct ItemVars<'a> {
     src_href: Option<&'a str>,
 }
 
+/// Calls `print_where_clause` and returns `true` if a `where` clause was generated.
+fn print_where_clause_and_check<'a, 'tcx: 'a>(
+    buffer: &mut Buffer,
+    gens: &'a clean::Generics,
+    cx: &'a Context<'tcx>,
+) -> bool {
+    let len_before = buffer.len();
+    write!(buffer, "{}", print_where_clause(gens, cx, 0, true));
+    len_before != buffer.len()
+}
+
 pub(super) fn print_item(
     cx: &mut Context<'_>,
     item: &clean::Item,
@@ -1152,17 +1163,21 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             render_attributes_in_pre(w, it, "");
             write!(
                 w,
-                "{}enum {}{}{}",
+                "{}enum {}{}",
                 it.visibility.print_with_space(it.item_id, cx),
                 it.name.unwrap(),
                 e.generics.print(cx),
-                print_where_clause(&e.generics, cx, 0, true),
             );
+            if !print_where_clause_and_check(w, &e.generics, cx) {
+                // If there wasn't a `where` clause, we add a whitespace.
+                w.write_str(" ");
+            }
+
             let variants_stripped = e.has_stripped_entries();
             if count_variants == 0 && !variants_stripped {
-                w.write_str(" {}");
+                w.write_str("{}");
             } else {
-                w.write_str(" {\n");
+                w.write_str("{\n");
                 let toggle = should_hide_fields(count_variants);
                 if toggle {
                     toggle_open(w, format_args!("{} variants", count_variants));
@@ -1643,13 +1658,21 @@ fn render_union(
     tab: &str,
     cx: &Context<'_>,
 ) {
-    write!(w, "{}union {}", it.visibility.print_with_space(it.item_id, cx), it.name.unwrap());
-    if let Some(g) = g {
-        write!(w, "{}", g.print(cx));
-        write!(w, "{}", print_where_clause(g, cx, 0, true));
+    write!(w, "{}union {}", it.visibility.print_with_space(it.item_id, cx), it.name.unwrap(),);
+
+    let where_displayed = g
+        .map(|g| {
+            write!(w, "{}", g.print(cx));
+            print_where_clause_and_check(w, g, cx)
+        })
+        .unwrap_or(false);
+
+    // If there wasn't a `where` clause, we add a whitespace.
+    if !where_displayed {
+        w.write_str(" ");
     }
 
-    write!(w, " {{\n{}", tab);
+    write!(w, "{{\n{}", tab);
     let count_fields =
         fields.iter().filter(|f| matches!(*f.kind, clean::StructFieldItem(..))).count();
     let toggle = should_hide_fields(count_fields);
@@ -1701,10 +1724,14 @@ fn render_struct(
     }
     match ty {
         CtorKind::Fictive => {
-            if let Some(g) = g {
-                write!(w, "{}", print_where_clause(g, cx, 0, true),)
+            let where_diplayed = g.map(|g| print_where_clause_and_check(w, g, cx)).unwrap_or(false);
+
+            // If there wasn't a `where` clause, we add a whitespace.
+            if !where_diplayed {
+                w.write_str(" {");
+            } else {
+                w.write_str("{");
             }
-            w.write_str(" {");
             let count_fields =
                 fields.iter().filter(|f| matches!(*f.kind, clean::StructFieldItem(..))).count();
             let has_visible_fields = count_fields > 0;
@@ -1759,7 +1786,7 @@ fn render_struct(
             }
             w.write_str(")");
             if let Some(g) = g {
-                write!(w, "{}", print_where_clause(g, cx, 0, false),)
+                write!(w, "{}", print_where_clause(g, cx, 0, false));
             }
             // We only want a ";" when we are displaying a tuple struct, not a variant tuple struct.
             if structhead {
@@ -1769,7 +1796,7 @@ fn render_struct(
         CtorKind::Const => {
             // Needed for PhantomData.
             if let Some(g) = g {
-                write!(w, "{}", print_where_clause(g, cx, 0, false),)
+                write!(w, "{}", print_where_clause(g, cx, 0, false));
             }
             w.write_str(";");
         }
