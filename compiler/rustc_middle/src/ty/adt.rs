@@ -100,20 +100,6 @@ pub struct AdtDefData {
     repr: ReprOptions,
 }
 
-impl PartialOrd for AdtDefData {
-    fn partial_cmp(&self, other: &AdtDefData) -> Option<Ordering> {
-        Some(self.cmp(&other))
-    }
-}
-
-/// There should be only one AdtDef for each `did`, therefore
-/// it is fine to implement `Ord` only based on `did`.
-impl Ord for AdtDefData {
-    fn cmp(&self, other: &AdtDefData) -> Ordering {
-        self.did.cmp(&other.did)
-    }
-}
-
 /// There should be only one AdtDef for each `did`, therefore
 /// it is fine to implement `PartialEq` only based on `did`.
 impl PartialEq for AdtDefData {
