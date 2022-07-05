@@ -6,5 +6,5 @@ extern "rust-intrinsic" {
 }
 
 fn main() {
-    unsafe { write_bytes::<u8>(std::ptr::null_mut(), 0, 0) }; //~ ERROR memory access failed: null pointer is not a valid pointer
+    unsafe { write_bytes::<u8>(std::ptr::null_mut(), 0, 0) }; //~ ERROR memory access failed: null pointer is a dangling pointer
 }

@@ -1,6 +1,6 @@
 // Some optimizations remove ZST accesses, thus masking this UB.
 // compile-flags: -Zmir-opt-level=0
-// error-pattern: memory access failed: null pointer is not a valid pointer
+// error-pattern: memory access failed: null pointer is a dangling pointer
 
 #[allow(deref_nullptr)]
 fn main() {

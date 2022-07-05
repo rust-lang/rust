@@ -1,4 +1,4 @@
-// error-pattern: pointer arithmetic failed: null pointer is not a valid pointer
+// error-pattern: null pointer is a dangling pointer
 // compile-flags: -Zmiri-permissive-provenance
 
 fn main() {

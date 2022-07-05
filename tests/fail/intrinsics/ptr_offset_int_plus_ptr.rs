@@ -1,4 +1,4 @@
-// error-pattern: is not a valid pointer
+// error-pattern: is a dangling pointer
 // compile-flags: -Zmiri-permissive-provenance
 
 fn main() {
