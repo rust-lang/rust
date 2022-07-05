@@ -550,7 +550,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         id,
                         span,
                         |lint| {
-                            lint.build(&msg).emit();
+                            lint.build(msg).emit();
                         },
                     );
                 }

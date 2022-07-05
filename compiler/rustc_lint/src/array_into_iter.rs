@@ -1,5 +1,5 @@
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc_errors::Applicability;
+use rustc_errors::{fluent, Applicability};
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
@@ -120,31 +120,30 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                 _ => bug!("array type coerced to something other than array or slice"),
             };
             cx.struct_span_lint(ARRAY_INTO_ITER, call.ident.span, |lint| {
-                let mut diag = lint.build(&format!(
-                    "this method call resolves to `<&{} as IntoIterator>::into_iter` \
-                    (due to backwards compatibility), \
-                    but will resolve to <{} as IntoIterator>::into_iter in Rust 2021",
-                    target, target,
-                ));
+                let mut diag = lint.build(fluent::lint::array_into_iter);
+                diag.set_arg("target", target);
                 diag.span_suggestion(
                     call.ident.span,
-                    "use `.iter()` instead of `.into_iter()` to avoid ambiguity",
+                    fluent::lint::use_iter_suggestion,
                     "iter",
                     Applicability::MachineApplicable,
                 );
                 if self.for_expr_span == expr.span {
                     diag.span_suggestion(
                         receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
-                        "or remove `.into_iter()` to iterate by value",
+                        fluent::lint::remove_into_iter_suggestion,
                         "",
                         Applicability::MaybeIncorrect,
                     );
                 } else if receiver_ty.is_array() {
                     diag.multipart_suggestion(
-                        "or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value",
+                        fluent::lint::use_explicit_into_iter_suggestion,
                         vec![
                             (expr.span.shrink_to_lo(), "IntoIterator::into_iter(".into()),
-                            (receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()), ")".into()),
+                            (
+                                receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
+                                ")".into(),
+                            ),
                         ],
                         Applicability::MaybeIncorrect,
                     );

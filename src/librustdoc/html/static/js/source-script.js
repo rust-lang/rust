@@ -12,6 +12,12 @@
 const rootPath = document.getElementById("rustdoc-vars").attributes["data-root-path"].value;
 let oldScrollPosition = 0;
 
+function closeSidebarIfMobile() {
+    if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+        updateLocalStorage("source-sidebar-show", "false");
+    }
+}
+
 function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     const dirEntry = document.createElement("details");
     const summary = document.createElement("summary");
@@ -42,6 +48,7 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
             const file = document.createElement("a");
             file.innerText = file_text;
             file.href = rootPath + "src/" + fullPath + file_text + ".html";
+            file.addEventListener("click", closeSidebarIfMobile);
             const w = window.location.href.split("#")[0];
             if (!hasFoundFile && w === file.href) {
                 file.className = "selected";
@@ -59,7 +66,7 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 function toggleSidebar() {
     const child = this.parentNode.children[0];
     if (child.innerText === ">") {
-        if (window.innerWidth < 701) {
+        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
             // This is to keep the scroll position on mobile.
             oldScrollPosition = window.scrollY;
             document.body.style.position = "fixed";
@@ -69,7 +76,7 @@ function toggleSidebar() {
         child.innerText = "<";
         updateLocalStorage("source-sidebar-show", "true");
     } else {
-        if (window.innerWidth < 701) {
+        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
             // This is to keep the scroll position on mobile.
             document.body.style.position = "";
             document.body.style.top = "";

@@ -1,4 +1,5 @@
 use crate::{context::LintContext, LateContext, LateLintPass};
+use rustc_errors::fluent;
 use rustc_hir as hir;
 use rustc_middle::ty::{fold::TypeFoldable, Ty};
 use rustc_span::{symbol::sym, Span};
@@ -51,19 +52,9 @@ fn enforce_mem_discriminant(
     if is_non_enum(ty_param) {
         cx.struct_span_lint(ENUM_INTRINSICS_NON_ENUMS, expr_span, |builder| {
             builder
-                .build(
-                    "the return value of `mem::discriminant` is \
-                        unspecified when called with a non-enum type",
-                )
-                .span_note(
-                    args_span,
-                    &format!(
-                        "the argument to `discriminant` should be a \
-                            reference to an enum, but it was passed \
-                            a reference to a `{}`, which is not an enum.",
-                        ty_param,
-                    ),
-                )
+                .build(fluent::lint::enum_intrinsics_mem_discriminant)
+                .set_arg("ty_param", ty_param)
+                .span_note(args_span, fluent::lint::note)
                 .emit();
         });
     }
@@ -74,16 +65,9 @@ fn enforce_mem_variant_count(cx: &LateContext<'_>, func_expr: &hir::Expr<'_>, sp
     if is_non_enum(ty_param) {
         cx.struct_span_lint(ENUM_INTRINSICS_NON_ENUMS, span, |builder| {
             builder
-                .build(
-                    "the return value of `mem::variant_count` is \
-                        unspecified when called with a non-enum type",
-                )
-                .note(&format!(
-                    "the type parameter of `variant_count` should \
-                            be an enum, but it was instantiated with \
-                            the type `{}`, which is not an enum.",
-                    ty_param,
-                ))
+                .build(fluent::lint::enum_intrinsics_mem_variant)
+                .set_arg("ty_param", ty_param)
+                .note(fluent::lint::note)
                 .emit();
         });
     }

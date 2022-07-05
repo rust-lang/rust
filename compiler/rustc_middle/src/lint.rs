@@ -3,7 +3,8 @@ use std::cmp;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{
-    Diagnostic, DiagnosticBuilder, DiagnosticId, EmissionGuarantee, ErrorGuaranteed, MultiSpan,
+    Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, EmissionGuarantee,
+    ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
@@ -231,7 +232,7 @@ pub struct LintDiagnosticBuilder<'a, G: EmissionGuarantee>(DiagnosticBuilder<'a,
 
 impl<'a, G: EmissionGuarantee> LintDiagnosticBuilder<'a, G> {
     /// Return the inner `DiagnosticBuilder`, first setting the primary message to `msg`.
-    pub fn build(mut self, msg: &str) -> DiagnosticBuilder<'a, G> {
+    pub fn build(mut self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'a, G> {
         self.0.set_primary_message(msg);
         self.0.set_is_lint();
         self.0

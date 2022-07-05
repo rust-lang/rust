@@ -8,7 +8,7 @@ use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -39,9 +39,91 @@ pub trait IntoDiagnosticArg {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
 }
 
+impl IntoDiagnosticArg for bool {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        if self {
+            DiagnosticArgValue::Str(Cow::Borrowed("true"))
+        } else {
+            DiagnosticArgValue::Str(Cow::Borrowed("false"))
+        }
+    }
+}
+
+impl IntoDiagnosticArg for i8 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for u8 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for i16 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for u16 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for i32 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for u32 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for i64 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for u64 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for i128 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for u128 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
 impl IntoDiagnosticArg for String {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(self))
+    }
+}
+
+impl IntoDiagnosticArg for std::num::NonZeroU32 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for Edition {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
     }
 }
 
