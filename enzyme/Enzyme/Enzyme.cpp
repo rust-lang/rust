@@ -31,6 +31,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/SetVector.h"
+#include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Passes/PassBuilder.h"
 
@@ -101,11 +102,11 @@ handleCustomDerivative(llvm::Module &M, llvm::GlobalVariable &g,
                        SmallVectorImpl<GlobalVariable *> &globalsToErase) {
   if (g.hasInitializer()) {
     if (auto CA = dyn_cast<ConstantAggregate>(g.getInitializer())) {
-      if (CA->getNumOperands() != numargs) {
+      if (CA->getNumOperands() < numargs) {
         llvm::errs() << M << "\n";
         llvm::errs() << "Use of " << handlername
                      << " must be a "
-                        "constant of size "
+                        "constant of size at least "
                      << numargs << " " << g << "\n";
         llvm_unreachable(handlername);
       } else {
@@ -133,8 +134,140 @@ handleCustomDerivative(llvm::Module &M, llvm::GlobalVariable &g,
           }
         }
 
+        SmallSet<size_t, 1> byref;
+
         if (Mode == DerivativeMode::ReverseModeGradient) {
-          assert(numargs == 3);
+          assert(numargs >= 3);
+          for (size_t i = numargs; i < CA->getNumOperands(); i++) {
+            Value *V = CA->getOperand(i);
+            while (auto CE = dyn_cast<ConstantExpr>(V)) {
+              V = CE->getOperand(0);
+            }
+            if (auto CA = dyn_cast<ConstantAggregate>(V))
+              V = CA->getOperand(0);
+            while (auto CE = dyn_cast<ConstantExpr>(V)) {
+              V = CE->getOperand(0);
+            }
+            if (auto GV = dyn_cast<GlobalVariable>(V)) {
+              if (GV->isConstant())
+                if (auto C = GV->getInitializer())
+                  if (auto CA = dyn_cast<ConstantDataArray>(C))
+                    if (CA->getType()->getElementType()->isIntegerTy(8) &&
+                        CA->isCString()) {
+
+                      auto str = CA->getAsCString();
+                      bool legal = str.startswith("byref_");
+                      size_t argnum = 0;
+                      if (legal) {
+                        for (size_t i = str.size() - 1, len = strlen("byref_");
+                             i >= len; i--) {
+                          char c = str[i];
+                          if (c < '0' || c > '9') {
+                            legal = false;
+                            break;
+                          }
+                          argnum *= 10;
+                          argnum += c - '0';
+                        }
+                      }
+                      if (legal) {
+                        byref.insert(argnum);
+                        continue;
+                      }
+                    }
+            }
+            llvm::errs() << M << "\n";
+            llvm::errs() << "Use of " << handlername
+                         << " possible post args include 'byref_ret'"
+                         << "\n";
+            llvm_unreachable(handlername);
+          }
+
+          if (byref.size())
+            for (size_t fn = 1; fn <= 2; fn++) {
+              Function *F = Fs[fn];
+              bool need = false;
+              size_t nonSRetSize = 0;
+              for (size_t i = 0; i < F->arg_size(); i++)
+                if (!F->hasParamAttribute(i, Attribute::StructRet))
+                  nonSRetSize++;
+              for (auto r : byref)
+                if (r < nonSRetSize)
+                  need = true;
+              if (!need)
+                continue;
+
+              SmallVector<Type *, 3> args;
+              Type *sretTy = nullptr;
+              size_t realidx = 0;
+              size_t i = 0;
+              for (auto &arg : F->args()) {
+                if (!F->hasParamAttribute(i, Attribute::StructRet)) {
+                  if (!byref.count(realidx))
+                    args.push_back(arg.getType());
+                  else
+                    args.push_back(
+                        cast<PointerType>(arg.getType())->getElementType());
+                  realidx++;
+                } else {
+                  sretTy = cast<PointerType>(arg.getType())->getElementType();
+                }
+                i++;
+              }
+              Type *RT = F->getReturnType();
+              if (sretTy) {
+                assert(RT->isVoidTy());
+                RT = sretTy;
+              }
+              FunctionType *FTy =
+                  FunctionType::get(RT, args, F->getFunctionType()->isVarArg());
+              Function *NewF =
+                  Function::Create(FTy, Function::LinkageTypes::InternalLinkage,
+                                   "fixbyval_" + F->getName(), F->getParent());
+
+              AllocaInst *AI = nullptr;
+              BasicBlock *BB =
+                  BasicBlock::Create(NewF->getContext(), "entry", NewF);
+              IRBuilder<> bb(BB);
+              if (sretTy)
+                AI = bb.CreateAlloca(sretTy);
+              SmallVector<Value *, 3> argVs;
+              auto arg = NewF->arg_begin();
+              realidx = 0;
+              for (size_t i = 0; i < F->arg_size(); i++) {
+                if (!F->hasParamAttribute(i, Attribute::StructRet)) {
+                  arg->setName("arg" + std::to_string(realidx));
+                  if (!byref.count(realidx))
+                    argVs.push_back(arg);
+                  else {
+                    auto A = bb.CreateAlloca(arg->getType());
+                    bb.CreateStore(arg, A);
+                    argVs.push_back(A);
+                  }
+                  realidx++;
+                  ++arg;
+                } else {
+                  argVs.push_back(AI);
+                }
+              }
+              auto cal = bb.CreateCall(F, argVs);
+              cal->setCallingConv(F->getCallingConv());
+
+              if (sretTy) {
+#if LLVM_VERSION_MAJOR > 7
+                Value *res = bb.CreateLoad(sretTy, AI);
+#else
+                Value *res = bb.CreateLoad(AI);
+#endif
+                bb.CreateRet(res);
+              } else if (!RT->isVoidTy()) {
+                bb.CreateRet(cal);
+              } else
+                bb.CreateRetVoid();
+
+              Fs[fn] = NewF;
+            }
+
           Fs[0]->setMetadata(
               "enzyme_augment",
               llvm::MDTuple::get(Fs[0]->getContext(),
@@ -448,27 +581,6 @@ static bool replaceOriginalCall(CallInst *CI, Function *fn, Value *diffret,
         newStruct = Builder.CreateInsertValue(newStruct, elem, {i});
       }
       CI->replaceAllUsesWith(newStruct);
-    } else if (mode == DerivativeMode::ReverseModePrimal) {
-      auto &DL = fn->getParent()->getDataLayout();
-      if (DL.getTypeSizeInBits(CI->getType()) >=
-          DL.getTypeSizeInBits(diffret->getType())) {
-        IRBuilder<> EB(&CI->getParent()->getParent()->getEntryBlock().front());
-        auto AL = EB.CreateAlloca(CI->getType());
-        Builder.CreateStore(
-            diffret, Builder.CreatePointerCast(
-                         AL, PointerType::getUnqual(diffret->getType())));
-#if LLVM_VERSION_MAJOR > 7
-        Value *cload = Builder.CreateLoad(CI->getType(), AL);
-#else
-        Value *cload = Builder.CreateLoad(AL);
-#endif
-        CI->replaceAllUsesWith(cload);
-      } else {
-        EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
-                    "Cannot cast return type of gradient ", *diffret->getType(),
-                    *diffret, ", to desired type ", *CI->getType());
-        return false;
-      }
     } else if (CI->hasStructRetAttr()) {
       Value *sret = CI->getArgOperand(0);
       PointerType *stype = cast<PointerType>(sret->getType());
@@ -499,6 +611,27 @@ static bool replaceOriginalCall(CallInst *CI, Function *fn, Value *diffret,
             diffret, Builder.CreatePointerCast(
                          sret, PointerType::get(diffret->getType(),
                                                 stype->getAddressSpace())));
+      }
+    } else if (mode == DerivativeMode::ReverseModePrimal) {
+      auto &DL = fn->getParent()->getDataLayout();
+      if (DL.getTypeSizeInBits(CI->getType()) >=
+          DL.getTypeSizeInBits(diffret->getType())) {
+        IRBuilder<> EB(&CI->getParent()->getParent()->getEntryBlock().front());
+        auto AL = EB.CreateAlloca(CI->getType());
+        Builder.CreateStore(
+            diffret, Builder.CreatePointerCast(
+                         AL, PointerType::getUnqual(diffret->getType())));
+#if LLVM_VERSION_MAJOR > 7
+        Value *cload = Builder.CreateLoad(CI->getType(), AL);
+#else
+        Value *cload = Builder.CreateLoad(AL);
+#endif
+        CI->replaceAllUsesWith(cload);
+      } else {
+        EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
+                    "Cannot cast return type of gradient ", *diffret->getType(),
+                    *diffret, ", to desired type ", *CI->getType());
+        return false;
       }
     } else {
 
@@ -936,6 +1069,7 @@ public:
     llvm::Value *tape = nullptr;
     bool tapeIsPointer = false;
     int allocatedTapeSize = -1;
+    unsigned byRefSize = 0;
 
 #if LLVM_VERSION_MAJOR >= 14
     for (unsigned i = 1 + sret; i < CI->arg_size(); ++i)
@@ -944,51 +1078,27 @@ public:
 #endif
     {
       Value *res = CI->getArgOperand(i);
-      if (truei >= FT->getNumParams()) {
-        if (!isa<MetadataAsValue>(res) &&
-            (mode == DerivativeMode::ReverseModeGradient ||
-             mode == DerivativeMode::ForwardModeSplit)) {
-          if (differentialReturn && differet == nullptr) {
-            differet = res;
-            if (CI->paramHasAttr(i, Attribute::ByVal)) {
-#if LLVM_VERSION_MAJOR > 7
-              differet = Builder.CreateLoad(
-                  differet->getType()->getPointerElementType(), differet);
-#else
-              differet = Builder.CreateLoad(differet);
-#endif
-            }
-            assert(differet->getType() == fn->getReturnType());
-            continue;
-          } else if (tape == nullptr) {
-            tape = res;
-            if (CI->paramHasAttr(i, Attribute::ByVal)) {
-#if LLVM_VERSION_MAJOR > 7
-              tape = Builder.CreateLoad(
-                  tape->getType()->getPointerElementType(), tape);
-#else
-              tape = Builder.CreateLoad(tape);
-#endif
-            }
-            continue;
-          }
-        }
-        EmitFailure("TooManyArgs", CI->getDebugLoc(), CI,
-                    "Had too many arguments to __enzyme_autodiff", *CI,
-                    " - extra arg - ", *res);
-        return false;
-      }
-      assert(truei < FT->getNumParams());
-      auto PTy = FT->getParamType(truei);
-      DIFFE_TYPE ty = whatType(PTy, mode);
+      Optional<DIFFE_TYPE> opt_ty;
       Optional<StringRef> metaString = getMetadataName(res);
 
       // handle metadata
       if (metaString && metaString.getValue().startswith("enzyme_")) {
+        if (*metaString == "enzyme_byref") {
+          ++i;
+          if (!isa<ConstantInt>(CI->getArgOperand(i))) {
+            EmitFailure("IllegalAllocatedSize", CI->getDebugLoc(), CI,
+                        "illegal enzyme byref size ", *CI->getArgOperand(i),
+                        "in", *CI);
+            return false;
+          }
+          byRefSize = cast<ConstantInt>(CI->getArgOperand(i))->getZExtValue();
+          assert(byRefSize > 0);
+          continue;
+        }
         if (*metaString == "enzyme_dup") {
-          ty = DIFFE_TYPE::DUP_ARG;
+          opt_ty = DIFFE_TYPE::DUP_ARG;
         } else if (*metaString == "enzyme_dupv") {
-          ty = DIFFE_TYPE::DUP_ARG;
+          opt_ty = DIFFE_TYPE::DUP_ARG;
           ++i;
           Value *offset_arg = CI->getArgOperand(i);
           if (offset_arg->getType()->isIntegerTy()) {
@@ -1002,7 +1112,7 @@ public:
           }
           continue;
         } else if (*metaString == "enzyme_dupnoneedv") {
-          ty = DIFFE_TYPE::DUP_NONEED;
+          opt_ty = DIFFE_TYPE::DUP_NONEED;
           ++i;
           Value *offset_arg = CI->getArgOperand(i);
           if (offset_arg->getType()->isIntegerTy()) {
@@ -1016,9 +1126,9 @@ public:
           }
           continue;
         } else if (*metaString == "enzyme_dupnoneed") {
-          ty = DIFFE_TYPE::DUP_NONEED;
+          opt_ty = DIFFE_TYPE::DUP_NONEED;
         } else if (*metaString == "enzyme_dupnoneedv") {
-          ty = DIFFE_TYPE::DUP_NONEED;
+          opt_ty = DIFFE_TYPE::DUP_NONEED;
           ++i;
           Value *offset_arg = CI->getArgOperand(i);
           if (offset_arg->getType()->isIntegerTy()) {
@@ -1032,9 +1142,9 @@ public:
           }
           continue;
         } else if (*metaString == "enzyme_out") {
-          ty = DIFFE_TYPE::OUT_DIFF;
+          opt_ty = DIFFE_TYPE::OUT_DIFF;
         } else if (*metaString == "enzyme_const") {
-          ty = DIFFE_TYPE::CONSTANT;
+          opt_ty = DIFFE_TYPE::CONSTANT;
         } else if (*metaString == "enzyme_noret") {
           returnUsed = false;
           continue;
@@ -1070,12 +1180,94 @@ public:
           return false;
         }
         if (sizeOnly) {
-          constants.push_back(ty);
+          assert(opt_ty);
+          constants.push_back(*opt_ty);
           continue;
         }
         ++i;
         res = CI->getArgOperand(i);
       }
+
+      if (byRefSize) {
+        Type *subTy = cast<PointerType>(res->getType())->getElementType();
+        auto &DL = fn->getParent()->getDataLayout();
+        auto BitSize = DL.getTypeSizeInBits(subTy);
+        if (BitSize / 8 != byRefSize) {
+          EmitFailure("IllegalByRefSize", CI->getDebugLoc(), CI,
+                      "illegal enzyme pointer type size ", *res, " expected ",
+                      byRefSize, " (bytes) actual size ", BitSize,
+                      " (bits) in ", *CI);
+        }
+#if LLVM_VERSION_MAJOR > 7
+        res = Builder.CreateLoad(subTy, res);
+#else
+        res = Builder.CreateLoad(res);
+#endif
+        byRefSize = 0;
+      }
+
+      if (truei >= FT->getNumParams()) {
+        if (!isa<MetadataAsValue>(res) &&
+            (mode == DerivativeMode::ReverseModeGradient ||
+             mode == DerivativeMode::ForwardModeSplit)) {
+          if (differentialReturn && differet == nullptr) {
+            differet = res;
+            if (CI->paramHasAttr(i, Attribute::ByVal)) {
+#if LLVM_VERSION_MAJOR > 7
+              differet = Builder.CreateLoad(
+                  differet->getType()->getPointerElementType(), differet);
+#else
+              differet = Builder.CreateLoad(differet);
+#endif
+            }
+            if (differet->getType() != fn->getReturnType())
+              if (auto ST0 = dyn_cast<StructType>(differet->getType()))
+                if (auto ST1 = dyn_cast<StructType>(fn->getReturnType()))
+                  if (ST0->isLayoutIdentical(ST1)) {
+                    IRBuilder<> B(&Builder.GetInsertBlock()
+                                       ->getParent()
+                                       ->getEntryBlock()
+                                       .front());
+                    auto AI = B.CreateAlloca(ST1);
+                    Builder.CreateStore(differet,
+                                        Builder.CreatePointerCast(
+                                            AI, PointerType::getUnqual(ST0)));
+#if LLVM_VERSION_MAJOR > 7
+                    differet = Builder.CreateLoad(ST1, AI);
+#else
+                    differet = Builder.CreateLoad(AI);
+#endif
+                  }
+
+            if (differet->getType() != fn->getReturnType()) {
+              EmitFailure("BadDiffRet", CI->getDebugLoc(), CI,
+                          "Bad DiffRet type ", *differet, " expected ",
+                          *fn->getReturnType());
+              return false;
+            }
+            continue;
+          } else if (tape == nullptr) {
+            tape = res;
+            if (CI->paramHasAttr(i, Attribute::ByVal)) {
+#if LLVM_VERSION_MAJOR > 7
+              tape = Builder.CreateLoad(
+                  tape->getType()->getPointerElementType(), tape);
+#else
+              tape = Builder.CreateLoad(tape);
+#endif
+            }
+            continue;
+          }
+        }
+        EmitFailure("TooManyArgs", CI->getDebugLoc(), CI,
+                    "Had too many arguments to __enzyme_autodiff", *CI,
+                    " - extra arg - ", *res);
+        return false;
+      }
+      assert(truei < FT->getNumParams());
+
+      auto PTy = FT->getParamType(truei);
+      DIFFE_TYPE ty = opt_ty ? *opt_ty : whatType(PTy, mode);
 
       constants.push_back(ty);
 

@@ -11356,11 +11356,9 @@ public:
         auto ft =
             cast<FunctionType>(callval->getType()->getPointerElementType());
 
-        DIFFE_TYPE subretType = orig->getType()->isFPOrFPVectorTy()
-                                    ? DIFFE_TYPE::OUT_DIFF
-                                    : DIFFE_TYPE::DUP_ARG;
-        if (orig->getType()->isVoidTy() || orig->getType()->isEmptyTy())
-          subretType = DIFFE_TYPE::CONSTANT;
+        std::set<llvm::Type *> seen;
+        DIFFE_TYPE subretType = whatType(orig->getType(), Mode,
+                                         /*intAreConstant*/ false, seen);
         auto res = getDefaultFunctionTypeForAugmentation(
             ft, /*returnUsed*/ true, /*subretType*/ subretType);
         auto fptype = PointerType::getUnqual(FunctionType::get(
@@ -11775,11 +11773,6 @@ public:
 
       auto ft = cast<FunctionType>(callval->getType()->getPointerElementType());
 
-      DIFFE_TYPE subretType = orig->getType()->isFPOrFPVectorTy()
-                                  ? DIFFE_TYPE::OUT_DIFF
-                                  : DIFFE_TYPE::DUP_ARG;
-      if (orig->getType()->isVoidTy() || orig->getType()->isEmptyTy())
-        subretType = DIFFE_TYPE::CONSTANT;
       auto res =
           getDefaultFunctionTypeForGradient(ft, /*subretType*/ subretType);
       // TODO Note there is empty tape added here, replace with generic

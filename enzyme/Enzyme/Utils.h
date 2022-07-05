@@ -367,7 +367,8 @@ static inline std::string to_string(ReturnType t) {
 /// Attempt to automatically detect the differentiable
 /// classification based off of a given type
 static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode,
-                                  std::set<llvm::Type *> seen = {}) {
+                                  bool integersAreConstant,
+                                  std::set<llvm::Type *> &seen) {
   assert(arg);
   if (seen.find(arg) != seen.end())
     return DIFFE_TYPE::CONSTANT;
@@ -378,7 +379,8 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode,
   }
 
   if (arg->isPointerTy()) {
-    switch (whatType(arg->getPointerElementType(), mode, seen)) {
+    switch (whatType(arg->getPointerElementType(), mode, integersAreConstant,
+                     seen)) {
     case DIFFE_TYPE::OUT_DIFF:
       return DIFFE_TYPE::DUP_ARG;
     case DIFFE_TYPE::CONSTANT:
@@ -394,7 +396,7 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode,
     return DIFFE_TYPE::CONSTANT;
   } else if (arg->isArrayTy()) {
     return whatType(llvm::cast<llvm::ArrayType>(arg)->getElementType(), mode,
-                    seen);
+                    integersAreConstant, seen);
   } else if (arg->isStructTy()) {
     auto st = llvm::cast<llvm::StructType>(arg);
     if (st->getNumElements() == 0)
@@ -402,7 +404,8 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode,
 
     auto ty = DIFFE_TYPE::CONSTANT;
     for (unsigned i = 0; i < st->getNumElements(); ++i) {
-      auto midTy = whatType(st->getElementType(i), mode, seen);
+      auto midTy =
+          whatType(st->getElementType(i), mode, integersAreConstant, seen);
       switch (midTy) {
       case DIFFE_TYPE::OUT_DIFF:
         switch (ty) {
@@ -439,7 +442,7 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode,
     }
     return ty;
   } else if (arg->isIntOrIntVectorTy() || arg->isFunctionTy()) {
-    return DIFFE_TYPE::CONSTANT;
+    return integersAreConstant ? DIFFE_TYPE::CONSTANT : DIFFE_TYPE::DUP_ARG;
   } else if (arg->isFPOrFPVectorTy()) {
     return (mode == DerivativeMode::ForwardMode ||
             mode == DerivativeMode::ForwardModeSplit)
@@ -451,6 +454,11 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode,
     assert(0 && "Cannot handle type");
     return DIFFE_TYPE::CONSTANT;
   }
+}
+
+static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode) {
+  std::set<llvm::Type *> seen;
+  return whatType(arg, mode, /*intconst*/ true, seen);
 }
 
 /// Check whether this instruction is returned

@@ -35,11 +35,17 @@ if (APPLE)
 endif()
 message( LLVM_SHLIBEXT = ${LLVM_SHLIBEXT} )
 
+set(LLVM_MAIN_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+
 get_filename_component(LLVM_ABSOLUTE_DIR
     "${LLVM_DIR}"
     REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
 
 set(LLVM_DIR "${LLVM_ABSOLUTE_DIR}" CACHE FILEPATH "b" FORCE)
+
+message("CMAKE_PREFIX_PATH " ${CMAKE_PREFIX_PATH})
+
+find_package(LLVM REQUIRED CONFIG)
 
 if (NOT DEFINED LLVM_EXTERNAL_LIT)
   if(LLVM_DIR MATCHES ".*/cmake/llvm/?$")
@@ -62,7 +68,7 @@ get_filename_component(LLVM_ABSOLUTE_LIT
 message("found llvm lit " ${LLVM_EXTERNAL_LIT})
 
 list(INSERT CMAKE_PREFIX_PATH 0 "${LLVM_DIR}")
-set(LLVM_MAIN_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+message("LLVM dir ${LLVM_DIR}")
 if (ENZYME_CLANG)
 if (DEFINED Clang_DIR)
     get_filename_component(Clang_ABSOLUTE_DIR
@@ -82,6 +88,12 @@ else()
       set(Clang_DIR ${LLVM_DIR}/lib/cmake/clang)
      list(INSERT CMAKE_PREFIX_PATH 0 "${Clang_DIR}")
     endif()
+  elseif(LLVM_DIR MATCHES ".*/llvm-([0-9]+)/cmake/?$")
+      get_filename_component(LLDIR "${LLVM_DIR}" DIRECTORY)
+    if (EXISTS ${LLDIR}/lib/libclangBasic.a)
+      set(Clang_DIR ${LLDIR}/lib/cmake/clang)
+     list(INSERT CMAKE_PREFIX_PATH 0 "${Clang_DIR}")
+    endif()
   else()
     if (EXISTS ${LLVM_DIR}/lib/libclangBasic.a)
       set(Clang_DIR ${LLVM_DIR})
@@ -92,10 +104,6 @@ else()
 endif()
 else()
 endif()
-
-message("CMAKE_PREFIX_PATH " ${CMAKE_PREFIX_PATH})
-
-find_package(LLVM REQUIRED CONFIG)
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)

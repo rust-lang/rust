@@ -4,6 +4,10 @@
 
 set(Enzyme_TABLEGEN_EXE enzyme-tblgen)
 
+get_target_property(TBL_LINKED_LIBS LLVMSupport INTERFACE_LINK_LIBRARIES)
+list(REMOVE_ITEM TBL_LINKED_LIBS "ZLIB::ZLIB")
+set_property(TARGET LLVMSupport PROPERTY INTERFACE_LINK_LIBRARIES ${TBL_LINKED_LIBS})
+
 function(enzyme_tablegen ofn)
   if (${LLVM_VERSION_MAJOR} GREATER 11)
     if(${CMAKE_VERSION} VERSION_LESS "3.13.0")
@@ -15,7 +19,6 @@ function(enzyme_tablegen ofn)
   else()
     tablegen(Enzyme ${ARGV})
   endif()
-
 
   set(TABLEGEN_OUTPUT ${TABLEGEN_OUTPUT} ${CMAKE_CURRENT_BINARY_DIR}/${ofn}
       PARENT_SCOPE)
