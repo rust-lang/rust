@@ -298,7 +298,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.64.0"
+version = "0.65.0"
 dependencies = [
  "anyhow",
  "atty",
@@ -445,7 +445,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-util"
-version = "0.1.4"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "core-foundation",
@@ -2617,9 +2617,9 @@ checksum = "dd20eec3dbe4376829cb7d80ae6ac45e0a766831dca50202ff2d40db46a8a024"
 
 [[package]]
 name = "os_info"
-version = "3.0.7"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ac91020bfed8cc3f8aa450d4c3b5fa1d3373fc091c8a92009f3b27749d5a227"
+checksum = "0eca3ecae1481e12c3d9379ec541b238a16f0b75c9a409942daa8ec20dbfdb62"
 dependencies = [
  "log",
  "serde",
