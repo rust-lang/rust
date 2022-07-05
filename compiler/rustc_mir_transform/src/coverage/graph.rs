@@ -95,7 +95,7 @@ impl CoverageGraph {
         let mut basic_blocks = Vec::new();
         for (bb, data) in mir_cfg_without_unwind {
             if let Some(last) = basic_blocks.last() {
-                let predecessors = &mir_body.predecessors()[bb];
+                let predecessors = &mir_body.basic_blocks.predecessors()[bb];
                 if predecessors.len() > 1 || !predecessors.contains(last) {
                     // The `bb` has more than one _incoming_ edge, and should start its own
                     // `BasicCoverageBlockData`. (Note, the `basic_blocks` vector does not yet
