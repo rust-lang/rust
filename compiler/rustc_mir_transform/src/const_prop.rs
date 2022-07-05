@@ -61,7 +61,7 @@ pub struct ConstProp;
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+        sess.mir_opt_level() >= 1
     }
 
     #[instrument(skip(self, tcx), level = "debug")]
