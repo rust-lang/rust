@@ -296,11 +296,6 @@ pub enum SubstructureFields<'a> {
 pub type CombineSubstructureFunc<'a> =
     Box<dyn FnMut(&mut ExtCtxt<'_>, Span, &Substructure<'_>) -> BlockOrExpr + 'a>;
 
-/// Deal with non-matching enum variants. The slice is the identifiers holding
-/// the variant index value for each of the `Self` arguments.
-pub type EnumNonMatchCollapsedFunc<'a> =
-    Box<dyn FnMut(&mut ExtCtxt<'_>, Span, &[Ident]) -> P<Expr> + 'a>;
-
 pub fn combine_substructure(
     f: CombineSubstructureFunc<'_>,
 ) -> RefCell<CombineSubstructureFunc<'_>> {
@@ -1601,55 +1596,65 @@ impl<'a> TraitDef<'a> {
     }
 }
 
-/// Function to fold over fields, with three cases, to generate more efficient and concise code.
-/// When the `substructure` has grouped fields, there are two cases:
-/// Zero fields: call the base case function with `None` (like the usual base case of `cs_fold`).
-/// One or more fields: call the base case function on the first value (which depends on
-/// `use_fold`), and use that as the base case. Then perform `cs_fold` on the remainder of the
-/// fields.
-/// When the `substructure` is an `EnumNonMatchingCollapsed`, the result of `enum_nonmatch_f`
-/// is returned. Statics may not be folded over.
-pub fn cs_fold<F, B>(
+/// The function passed to `cs_fold` is called repeatedly with a value of this
+/// type. It describes one part of the code generation. The result is always an
+/// expression.
+pub enum CsFold<'a> {
+    /// The basic case: a field expression for one or more selflike args. E.g.
+    /// for `PartialEq::eq` this is something like `self.x == other.x`.
+    Single(&'a FieldInfo),
+
+    /// The combination of two field expressions. E.g. for `PartialEq::eq` this
+    /// is something like `<field1 equality> && <field2 equality>`.
+    Combine(Span, P<Expr>, P<Expr>),
+
+    // The fallback case for a struct or enum variant with no fields.
+    Fieldless,
+
+    /// The fallback case for non-matching enum variants. The slice is the
+    /// identifiers holding the variant index value for each of the `Self`
+    /// arguments.
+    EnumNonMatching(Span, &'a [Ident]),
+}
+
+/// Folds over fields, combining the expressions for each field in a sequence.
+/// Statics may not be folded over.
+pub fn cs_fold<F>(
     use_foldl: bool,
-    mut f: F,
-    mut b: B,
-    mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substructure: &Substructure<'_>,
+    mut f: F,
 ) -> P<Expr>
 where
-    F: FnMut(&mut ExtCtxt<'_>, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>,
-    B: FnMut(&mut ExtCtxt<'_>, Option<(Span, P<Expr>, &[P<Expr>])>) -> P<Expr>,
+    F: FnMut(&mut ExtCtxt<'_>, CsFold<'_>) -> P<Expr>,
 {
     match *substructure.fields {
         EnumMatching(.., ref all_fields) | Struct(_, ref all_fields) => {
-            let (base, rest) = match (all_fields.is_empty(), use_foldl) {
-                (false, true) => {
-                    let (first, rest) = all_fields.split_first().unwrap();
-                    let args =
-                        (first.span, first.self_expr.clone(), &first.other_selflike_exprs[..]);
-                    (b(cx, Some(args)), rest)
-                }
-                (false, false) => {
-                    let (last, rest) = all_fields.split_last().unwrap();
-                    let args = (last.span, last.self_expr.clone(), &last.other_selflike_exprs[..]);
-                    (b(cx, Some(args)), rest)
-                }
-                (true, _) => (b(cx, None), &all_fields[..]),
+            if all_fields.is_empty() {
+                return f(cx, CsFold::Fieldless);
+            }
+
+            let (base_field, rest) = if use_foldl {
+                all_fields.split_first().unwrap()
+            } else {
+                all_fields.split_last().unwrap()
+            };
+
+            let base_expr = f(cx, CsFold::Single(base_field));
+
+            let op = |old, field: &FieldInfo| {
+                let new = f(cx, CsFold::Single(field));
+                f(cx, CsFold::Combine(field.span, old, new))
             };
 
             if use_foldl {
-                rest.iter().fold(base, |old, field| {
-                    f(cx, field.span, old, field.self_expr.clone(), &field.other_selflike_exprs)
-                })
+                rest.iter().fold(base_expr, op)
             } else {
-                rest.iter().rev().fold(base, |old, field| {
-                    f(cx, field.span, old, field.self_expr.clone(), &field.other_selflike_exprs)
-                })
+                rest.iter().rfold(base_expr, op)
             }
         }
-        EnumNonMatchingCollapsed(tuple) => enum_nonmatch_f(cx, trait_span, tuple),
+        EnumNonMatchingCollapsed(tuple) => f(cx, CsFold::EnumNonMatching(trait_span, tuple)),
         StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span, "static function in `derive`"),
     }
 }

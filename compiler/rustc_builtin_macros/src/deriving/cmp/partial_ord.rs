@@ -63,61 +63,40 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
-        |cx, span, old, self_expr, other_selflike_exprs| {
-            // match new {
-            //     Some(::core::cmp::Ordering::Equal) => old,
-            //     cmp => cmp
-            // }
-            let new = {
-                let [other_expr] = other_selflike_exprs else {
-                    cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`");
-                };
-
-                let args = vec![
-                    cx.expr_addr_of(span, self_expr),
-                    cx.expr_addr_of(span, other_expr.clone()),
-                ];
-
-                cx.expr_call_global(span, partial_cmp_path.clone(), args)
-            };
-
-            let eq_arm =
-                cx.arm(span, cx.pat_some(span, cx.pat_path(span, equal_path.clone())), old);
-            let neq_arm = cx.arm(span, cx.pat_ident(span, test_id), cx.expr_ident(span, test_id));
-
-            cx.expr_match(span, new, vec![eq_arm, neq_arm])
-        },
-        |cx, args| match args {
-            Some((span, self_expr, other_selflike_exprs)) => {
-                let new = {
-                    let [other_expr] = other_selflike_exprs else {
-                            cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`");
-                        };
-                    let args = vec![
-                        cx.expr_addr_of(span, self_expr),
-                        cx.expr_addr_of(span, other_expr.clone()),
-                    ];
-                    cx.expr_call_global(span, partial_cmp_path.clone(), args)
-                };
-
-                new
-            }
-            None => cx.expr_some(span, cx.expr_path(equal_path.clone())),
-        },
-        Box::new(|cx, span, tag_tuple| {
-            if tag_tuple.len() != 2 {
-                cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
-            } else {
-                let lft = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[0]));
-                let rgt = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[1]));
-                let fn_partial_cmp_path =
-                    cx.std_path(&[sym::cmp, sym::PartialOrd, sym::partial_cmp]);
-                cx.expr_call_global(span, fn_partial_cmp_path, vec![lft, rgt])
-            }
-        }),
         cx,
         span,
         substr,
+        |cx, fold| match fold {
+            CsFold::Single(field) => {
+                let [other_expr] = &field.other_selflike_exprs[..] else {
+                        cx.span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
+                    };
+                let args = vec![
+                    cx.expr_addr_of(field.span, field.self_expr.clone()),
+                    cx.expr_addr_of(field.span, other_expr.clone()),
+                ];
+                cx.expr_call_global(field.span, partial_cmp_path.clone(), args)
+            }
+            CsFold::Combine(span, expr1, expr2) => {
+                let eq_arm =
+                    cx.arm(span, cx.pat_some(span, cx.pat_path(span, equal_path.clone())), expr1);
+                let neq_arm =
+                    cx.arm(span, cx.pat_ident(span, test_id), cx.expr_ident(span, test_id));
+                cx.expr_match(span, expr2, vec![eq_arm, neq_arm])
+            }
+            CsFold::Fieldless => cx.expr_some(span, cx.expr_path(equal_path.clone())),
+            CsFold::EnumNonMatching(span, tag_tuple) => {
+                if tag_tuple.len() != 2 {
+                    cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
+                } else {
+                    let lft = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[0]));
+                    let rgt = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[1]));
+                    let fn_partial_cmp_path =
+                        cx.std_path(&[sym::cmp, sym::PartialOrd, sym::partial_cmp]);
+                    cx.expr_call_global(span, fn_partial_cmp_path, vec![lft, rgt])
+                }
+            }
+        },
     );
     BlockOrExpr::new_expr(expr)
 }

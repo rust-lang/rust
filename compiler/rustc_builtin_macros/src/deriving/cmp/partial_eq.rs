@@ -2,8 +2,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::{path_local, path_std};
 
-use rustc_ast::ptr::P;
-use rustc_ast::{BinOpKind, Expr, MetaItem};
+use rustc_ast::{BinOpKind, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -23,34 +22,22 @@ pub fn expand_deriving_partial_eq(
         combiner: BinOpKind,
         base: bool,
     ) -> BlockOrExpr {
-        let op = |cx: &mut ExtCtxt<'_>,
-                  span: Span,
-                  self_expr: P<Expr>,
-                  other_selflike_exprs: &[P<Expr>]| {
-            let [other_expr] = other_selflike_exprs else {
-                cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`");
-            };
-
-            cx.expr_binary(span, op, self_expr, other_expr.clone())
-        };
-
         let expr = cs_fold(
             true, // use foldl
-            |cx, span, old, self_expr, other_selflike_exprs| {
-                let eq = op(cx, span, self_expr, other_selflike_exprs);
-                cx.expr_binary(span, combiner, old, eq)
-            },
-            |cx, args| match args {
-                Some((span, self_expr, other_selflike_exprs)) => {
-                    // Special-case the base case to generate cleaner code.
-                    op(cx, span, self_expr, other_selflike_exprs)
-                }
-                None => cx.expr_bool(span, base),
-            },
-            Box::new(|cx, span, _| cx.expr_bool(span, !base)),
             cx,
             span,
             substr,
+            |cx, fold| match fold {
+                CsFold::Single(field) => {
+                    let [other_expr] = &field.other_selflike_exprs[..] else {
+                        cx.span_bug(field.span, "not exactly 2 arguments in `derive(PartialEq)`");
+                    };
+                    cx.expr_binary(field.span, op, field.self_expr.clone(), other_expr.clone())
+                }
+                CsFold::Combine(span, expr1, expr2) => cx.expr_binary(span, combiner, expr1, expr2),
+                CsFold::Fieldless => cx.expr_bool(span, base),
+                CsFold::EnumNonMatching(span, _tag_tuple) => cx.expr_bool(span, !base),
+            },
         );
         BlockOrExpr::new_expr(expr)
     }
