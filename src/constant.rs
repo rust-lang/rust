@@ -505,7 +505,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                 return None;
             }
             let mut computed_const_val = None;
-            for bb_data in fx.mir.basic_blocks() {
+            for bb_data in fx.mir.basic_blocks.iter() {
                 for stmt in &bb_data.statements {
                     match &stmt.kind {
                         StatementKind::Assign(local_and_rvalue) if &local_and_rvalue.0 == place => {
