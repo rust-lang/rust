@@ -3362,11 +3362,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 match arg.layout.abi {
                     Abi::Aggregate { .. } => {
-                        // Pass and return structures up to 2 pointers in size by value,
-                        // matching `ScalarPair`. LLVM will usually pass these in 2 registers
-                        // which is more efficient than by-ref.
+                        // Pass and return structures up to 1 pointers in size by value.
                         let ptr_size = Pointer.size(self);
-                        let max_by_val_size = ptr_size * 2;
+                        let max_by_val_size = ptr_size;
                         let size = arg.layout.size;
 
                         if arg.layout.is_unsized() || size > max_by_val_size {
