@@ -42,7 +42,6 @@ use std::ops::{ControlFlow, Index, IndexMut};
 use std::{iter, mem};
 
 pub use self::query::*;
-use self::switch_sources::SwitchSources;
 pub use basic_blocks::BasicBlocks;
 
 mod basic_blocks;
@@ -446,13 +445,6 @@ impl<'tcx> Body<'tcx> {
             .get(statement_index)
             .map(Either::Left)
             .unwrap_or_else(|| Either::Right(block_data.terminator()))
-    }
-
-    /// `body.switch_sources()[&(target, switch)]` returns a list of switch
-    /// values that lead to a `target` block from a `switch` block.
-    #[inline]
-    pub fn switch_sources(&self) -> &SwitchSources {
-        self.basic_blocks.switch_sources()
     }
 
     #[inline]
