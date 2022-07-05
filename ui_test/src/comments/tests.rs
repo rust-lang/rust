@@ -20,3 +20,28 @@ fn main() {
         "encountered a dangling reference (address $HEX is unallocated)"
     );
 }
+
+#[test]
+fn parse_slash_slash_at() {
+    let s = r"
+//@  error-pattern:  foomp
+use std::mem;
+
+    ";
+    let comments = Comments::parse(Path::new("<dummy>"), s);
+    println!("parsed comments: {:#?}", comments);
+    assert_eq!(comments.error_pattern, Some(("foomp".to_string(), 2)));
+}
+
+#[test]
+#[should_panic]
+fn parse_slash_slash_at_fail() {
+    let s = r"
+//@  error-pattern  foomp
+use std::mem;
+
+    ";
+    let comments = Comments::parse(Path::new("<dummy>"), s);
+    println!("parsed comments: {:#?}", comments);
+    assert_eq!(comments.error_pattern, Some(("foomp".to_string(), 2)));
+}

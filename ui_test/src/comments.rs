@@ -64,6 +64,43 @@ impl Condition {
     }
 }
 
+macro_rules! checked {
+    ($path:expr, $l:expr) => {
+        let path = $path;
+        let l = $l;
+        #[allow(unused_macros)]
+        macro_rules! exit {
+            ($fmt:expr $$(,$args:expr)*) => {{
+                eprint!("{}:{l}: ", path.display());
+                eprintln!($fmt, $$($args,)*);
+                #[cfg(not(test))]
+                std::process::exit(1);
+                #[cfg(test)]
+                panic!();
+            }};
+        }
+        #[allow(unused_macros)]
+        macro_rules! check {
+            ($cond:expr, $fmt:expr $$(,$args:expr)*) => {{
+                if !$cond {
+                    exit!($fmt $$(,$args)*);
+                }
+            }};
+        }
+        #[allow(unused_macros)]
+        macro_rules! unwrap {
+            ($cond:expr, $fmt:expr $$(,$args:expr)*) => {{
+                match $cond {
+                    Some(val) => val,
+                    None => {
+                        exit!($fmt $$(,$args)*);
+                    }
+                }
+            }};
+        }
+    };
+}
+
 impl Comments {
     pub(crate) fn parse_file(path: &Path) -> Self {
         let content = std::fs::read_to_string(path).unwrap();
@@ -72,14 +109,45 @@ impl Comments {
 
     /// Parse comments in `content`.
     /// `path` is only used to emit diagnostics if parsing fails.
-    pub(crate) fn parse(path: &Path, content: &str) -> Self {
+    ///
+    /// This function will only parse `//@` and `//~` style comments
+    /// and ignore all others
+    fn parse_checked(path: &Path, content: &str) -> Self {
         let mut this = Self::default();
-        let error_pattern_regex =
-            Regex::new(r"//(\[(?P<revision>[^\]]+)\])?~(?P<offset>\||[\^]+)? *(?P<level>ERROR|HELP|WARN|NOTE)?:?(?P<text>.*)")
-                .unwrap();
 
         // The line that a `|` will refer to
         let mut fallthrough_to = None;
+        for (l, line) in content.lines().enumerate() {
+            let l = l + 1; // enumerate starts at 0, but line numbers start at 1
+            if let Some((_, command)) = line.split_once("//@") {
+                let command = command.trim();
+                if let Some((command, args)) = command.split_once(':') {
+                    this.parse_command_with_args(command, args, path, l);
+                } else if let Some((command, _comments)) = command.split_once(' ') {
+                    this.parse_command(command, path, l)
+                } else {
+                    this.parse_command(command, path, l)
+                }
+            } else if let Some((_, pattern)) = line.split_once("//~") {
+                this.parse_pattern(pattern, &mut fallthrough_to, path, l)
+            } else if let Some((_, pattern)) = line.split_once("//[") {
+                this.parse_revisioned_pattern(pattern, &mut fallthrough_to, path, l)
+            } else {
+                fallthrough_to = None;
+            }
+        }
+        this
+    }
+
+    /// Parse comments in `content`.
+    /// `path` is only used to emit diagnostics if parsing fails.
+    pub(crate) fn parse(path: &Path, content: &str) -> Self {
+        let mut this = Self::parse_checked(path, content);
+        if content.contains("//@") {
+            // Migration mode: if new syntax is used, ignore all old syntax
+            return this;
+        }
+
         for (l, line) in content.lines().enumerate() {
             let l = l + 1; // enumerate starts at 0, but line numbers start at 1
             if let Some(revisions) = line.strip_prefix("// revisions:") {
@@ -140,36 +208,146 @@ impl Comments {
                 );
                 this.error_pattern = Some((s.trim().to_string(), l));
             }
-            if let Some(captures) = error_pattern_regex.captures(line) {
-                // FIXME: check that the error happens on the marked line
-                let matched = captures["text"].trim().to_string();
-
-                let revision = captures.name("revision").map(|rev| rev.as_str().to_string());
-
-                let level = captures.name("level").map(|rev| rev.as_str().parse().unwrap());
-
-                let match_line = match captures.name("offset").map(|rev| rev.as_str()) {
-                    Some("|") => fallthrough_to.expect("`//~|` pattern without preceding line"),
-                    Some(pat) => {
-                        debug_assert!(pat.chars().all(|c| c == '^'));
-                        l - pat.len()
-                    }
-                    None => l,
-                };
-
-                fallthrough_to = Some(match_line);
-
-                this.error_matches.push(ErrorMatch {
-                    matched,
-                    revision,
-                    level,
-                    definition_line: l,
-                    line: match_line,
-                });
-            } else {
-                fallthrough_to = None;
-            }
         }
         this
+    }
+
+    fn parse_command_with_args(&mut self, command: &str, args: &str, path: &Path, l: usize) {
+        checked!(path, l);
+        match command {
+            "revisions" => {
+                check!(self.revisions.is_none(), "cannot specifiy revisions twice");
+                self.revisions = Some(args.split_whitespace().map(|s| s.to_string()).collect());
+            }
+            "compile-flags" => {
+                self.compile_flags.extend(args.split_whitespace().map(|s| s.to_string()));
+            }
+            "rustc-env" =>
+                for env in args.split_whitespace() {
+                    let (k, v) = unwrap!(
+                        env.split_once('='),
+                        "environment variables must be key/value pairs separated by a `=`"
+                    );
+                    self.env_vars.push((k.to_string(), v.to_string()));
+                },
+            "normalize-stderr-test" => {
+                let (from, to) =
+                    unwrap!(args.split_once("->"), "normalize-stderr-test needs a `->`");
+                let from = from.trim().trim_matches('"');
+                let to = to.trim().trim_matches('"');
+                let from = unwrap!(Regex::new(from).ok(), "invalid regex");
+                self.normalize_stderr.push((from, to.to_string()));
+            }
+            "error-pattern" => {
+                check!(
+                    self.error_pattern.is_none(),
+                    "cannot specifiy error_pattern twice, previous: {:?}",
+                    self.error_pattern
+                );
+                self.error_pattern = Some((args.trim().to_string(), l));
+            }
+            _ => exit!("unknown command {command} with args {args}"),
+        }
+    }
+
+    fn parse_command(&mut self, command: &str, path: &Path, l: usize) {
+        checked!(path, l);
+
+        if let Some(s) = command.strip_prefix("ignore-") {
+            self.ignore.push(Condition::parse(s));
+            return;
+        }
+
+        if let Some(s) = command.strip_prefix("only-") {
+            self.only.push(Condition::parse(s));
+            return;
+        }
+
+        if command.starts_with("stderr-per-bitwidth") {
+            check!(!self.stderr_per_bitwidth, "cannot specifiy stderr-per-bitwidth twice");
+            self.stderr_per_bitwidth = true;
+            return;
+        }
+
+        exit!("unknown command {command}");
+    }
+
+    fn parse_pattern(
+        &mut self,
+        pattern: &str,
+        fallthrough_to: &mut Option<usize>,
+        path: &Path,
+        l: usize,
+    ) {
+        self.parse_pattern_inner(pattern, fallthrough_to, None, path, l)
+    }
+
+    fn parse_revisioned_pattern(
+        &mut self,
+        pattern: &str,
+        fallthrough_to: &mut Option<usize>,
+        path: &Path,
+        l: usize,
+    ) {
+        checked!(path, l);
+        let (revision, pattern) =
+            unwrap!(pattern.split_once(']'), "`//[` without corresponding `]`");
+        if pattern.starts_with('~') {
+            self.parse_pattern_inner(
+                &pattern[1..],
+                fallthrough_to,
+                Some(revision.to_owned()),
+                path,
+                l,
+            )
+        } else {
+            exit!("revisioned pattern must have `~` following the `]`");
+        }
+    }
+
+    // parse something like (?P<offset>\||[\^]+)? *(?P<level>ERROR|HELP|WARN|NOTE)?:?(?P<text>.*)
+    fn parse_pattern_inner(
+        &mut self,
+        pattern: &str,
+        fallthrough_to: &mut Option<usize>,
+        revision: Option<String>,
+        path: &Path,
+        l: usize,
+    ) {
+        checked!(path, l);
+        // FIXME: check that the error happens on the marked line
+
+        let (match_line, pattern) = match unwrap!(pattern.chars().next(), "no pattern specified") {
+            '|' =>
+                (*unwrap!(fallthrough_to, "`//~|` pattern without preceding line"), &pattern[1..]),
+            '^' => {
+                let offset = pattern.chars().take_while(|&c| c == '^').count();
+                (l - offset, &pattern[offset..])
+            }
+            _ => (l, pattern),
+        };
+
+        let (level, pattern) = match pattern.trim_start().split_once(|c| matches!(c, ':' | ' ')) {
+            None => (None, pattern),
+            Some((level, pattern_without_level)) =>
+                match level.parse().ok() {
+                    Some(level) => (Some(level), pattern_without_level),
+                    None => (None, pattern),
+                },
+        };
+
+        let matched = pattern.trim().to_string();
+
+        check!(!matched.is_empty(), "no pattern specified");
+
+        *fallthrough_to = Some(match_line);
+
+        self.error_matches.push(ErrorMatch {
+            matched,
+            revision,
+            level,
+            definition_line: l,
+            line: match_line,
+        });
     }
 }
