@@ -1,3 +1,4 @@
+use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
@@ -5,6 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -78,10 +80,11 @@ fn compare_predicate_entailment<'tcx>(
     let trait_to_impl_substs = impl_trait_ref.substs;
 
     // This node-id should be used for the `body_id` field on each
-    // `ObligationCause` (and the `FnCtxt`). This is what
-    // `regionck_item` expects.
+    // `ObligationCause` (and the `FnCtxt`).
+    //
+    // FIXME(@lcnr): remove that after removing `cause.body_id` from
+    // obligations.
     let impl_m_hir_id = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
-
     // We sometimes modify the span further down.
     let mut cause = ObligationCause::new(
         impl_m_span,
@@ -208,8 +211,7 @@ fn compare_predicate_entailment<'tcx>(
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
-    let param_env =
-        traits::normalize_param_env_or_error(tcx, impl_m.def_id, param_env, normalize_cause);
+    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
 
     tcx.infer_ctxt().enter(|infcx| {
         let inh = Inherited::new(infcx, impl_m.def_id.expect_local());
@@ -399,8 +401,9 @@ fn compare_predicate_entailment<'tcx>(
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        let fcx = FnCtxt::new(&inh, param_env, impl_m_hir_id);
-        fcx.regionck_item(impl_m_hir_id, impl_m_span, wf_tys);
+        let mut outlives_environment = OutlivesEnvironment::new(param_env);
+        outlives_environment.add_implied_bounds(infcx, wf_tys, impl_m_hir_id);
+        infcx.check_region_obligations_and_report_errors(&outlives_environment);
 
         Ok(())
     })
@@ -1155,8 +1158,8 @@ pub(crate) fn compare_const_impl<'tcx>(
             return;
         }
 
-        let fcx = FnCtxt::new(&inh, param_env, impl_c_hir_id);
-        fcx.regionck_item(impl_c_hir_id, impl_c_span, FxHashSet::default());
+        let outlives_environment = OutlivesEnvironment::new(param_env);
+        infcx.resolve_regions_and_report_errors(&outlives_environment);
     });
 }
 
@@ -1247,12 +1250,7 @@ fn compare_type_predicate_entailment<'tcx>(
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
-    let param_env = traits::normalize_param_env_or_error(
-        tcx,
-        impl_ty.def_id,
-        param_env,
-        normalize_cause.clone(),
-    );
+    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause.clone());
     tcx.infer_ctxt().enter(|infcx| {
         let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
         let infcx = &inh.infcx;
@@ -1279,8 +1277,8 @@ fn compare_type_predicate_entailment<'tcx>(
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        let fcx = FnCtxt::new(&inh, param_env, impl_ty_hir_id);
-        fcx.regionck_item(impl_ty_hir_id, impl_ty_span, FxHashSet::default());
+        let outlives_environment = OutlivesEnvironment::new(param_env);
+        infcx.check_region_obligations_and_report_errors(&outlives_environment);
 
         Ok(())
     })
@@ -1504,12 +1502,16 @@ pub fn check_type_bounds<'tcx>(
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
+        //
+        // FIXME: Remove that `FnCtxt`.
         let fcx = FnCtxt::new(&inh, param_env, impl_ty_hir_id);
         let implied_bounds = match impl_ty.container {
             ty::TraitContainer(_) => FxHashSet::default(),
             ty::ImplContainer(def_id) => fcx.impl_implied_bounds(def_id, impl_ty_span),
         };
-        fcx.regionck_item(impl_ty_hir_id, impl_ty_span, implied_bounds);
+        let mut outlives_environment = OutlivesEnvironment::new(param_env);
+        outlives_environment.add_implied_bounds(infcx, implied_bounds, impl_ty_hir_id);
+        infcx.check_region_obligations_and_report_errors(&outlives_environment);
 
         Ok(())
     })

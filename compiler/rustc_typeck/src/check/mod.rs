@@ -368,7 +368,7 @@ fn typeck_with_fallback<'tcx>(
 
     let typeck_results = Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
-        let (fcx, wf_tys) = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
+        let fcx = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
                 <dyn AstConv<'_>>::ty_of_fn(&fcx, id, header.unsafety, header.abi, decl, None, None)
@@ -378,13 +378,7 @@ fn typeck_with_fallback<'tcx>(
 
             check_abi(tcx, id, span, fn_sig.abi());
 
-            // When normalizing the function signature, we assume all types are
-            // well-formed. So, we don't need to worry about the obligations
-            // from normalization. We could just discard these, but to align with
-            // compare_method and elsewhere, we just add implied bounds for
-            // these types.
-            let mut wf_tys = FxHashSet::default();
-            // Compute the fty from point of view of inside the fn.
+            // Compute the function signature from point of view of inside the fn.
             let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
             let fn_sig = inh.normalize_associated_types_in(
                 body.value.span,
@@ -392,10 +386,7 @@ fn typeck_with_fallback<'tcx>(
                 param_env,
                 fn_sig,
             );
-            wf_tys.extend(fn_sig.inputs_and_output.iter());
-
-            let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None, true).0;
-            (fcx, wf_tys)
+            check_fn(&inh, param_env, fn_sig, decl, id, body, None, true).0
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
             let expected_type = body_ty
@@ -458,7 +449,7 @@ fn typeck_with_fallback<'tcx>(
 
             fcx.write_ty(id, expected_type);
 
-            (fcx, FxHashSet::default())
+            fcx
         };
 
         let fallback_has_occurred = fcx.type_inference_fallback();
@@ -490,11 +481,7 @@ fn typeck_with_fallback<'tcx>(
 
         fcx.check_asms();
 
-        if fn_sig.is_some() {
-            fcx.regionck_fn(id, body, span, wf_tys);
-        } else {
-            fcx.regionck_expr(body);
-        }
+        fcx.infcx.skip_region_resolution();
 
         fcx.resolve_type_vars_in_body(body)
     });
