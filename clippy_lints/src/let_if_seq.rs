@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
         while let Some(stmt) = it.next() {
             if_chain! {
                 if let Some(expr) = it.peek();
-                if let hir::StmtKind::Local(local, _) = stmt.kind;
+                if let hir::StmtKind::Local(local) = stmt.kind;
                 if let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.kind;
                 if let hir::StmtKind::Expr(if_) = expr.kind;
                 if let hir::ExprKind::If(hir::Expr { kind: hir::ExprKind::DropTemps(cond), ..}, then, else_) = if_.kind;

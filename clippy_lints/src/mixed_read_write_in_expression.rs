@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
     }
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
-            StmtKind::Local(local, _) => {
+            StmtKind::Local(local) => {
                 if let Local { init: Some(e), .. } = local {
                     DivergenceVisitor { cx }.visit_expr(e);
                 }
@@ -273,7 +273,7 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt<'_>) -
         StmtKind::Expr(expr) | StmtKind::Semi(expr) => check_expr(vis, expr),
         // If the declaration is of a local variable, check its initializer
         // expression if it has one. Otherwise, keep going.
-        StmtKind::Local(local, _) => local
+        StmtKind::Local(local) => local
             .init
             .as_ref()
             .map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr)),

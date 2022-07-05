@@ -261,13 +261,13 @@ impl<'tcx> Visitor<'tcx> for SideEffectVisit<'tcx> {
         match s.kind {
             StmtKind::Local(Local {
                 pat, init: Some(init), ..
-            }, _) => {
+            }) => {
                 self.visit_pat_expr(pat, init, false);
             },
             StmtKind::Item(_) | StmtKind::Expr(_) | StmtKind::Semi(_) => {
                 walk_stmt(self, s);
             },
-            StmtKind::Local(_, _) => {},
+            StmtKind::Local(_) => {},
         }
         self.ret_vars.clear();
     }

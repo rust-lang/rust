@@ -104,7 +104,7 @@ fn never_loop_expr_seq<'a, T: Iterator<Item = &'a Expr<'a>>>(es: &mut T, main_lo
 fn stmt_to_expr<'tcx>(stmt: &Stmt<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match stmt.kind {
         StmtKind::Semi(e, ..) | StmtKind::Expr(e, ..) => Some(e),
-        StmtKind::Local(local, _) => local.init,
+        StmtKind::Local(local) => local.init,
         StmtKind::Item(..) => None,
     }
 }

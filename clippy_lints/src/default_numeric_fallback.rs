@@ -192,7 +192,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
-            StmtKind::Local(local, _) => {
+            StmtKind::Local(local) => {
                 if local.ty.is_some() {
                     self.ty_bounds.push(TyBound::Any);
                 } else {

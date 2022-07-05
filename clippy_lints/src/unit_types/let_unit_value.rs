@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, Ty, TypeVisitable, TypeSuperVisitable, TypeVisitor}
 use super::LET_UNIT_VALUE;
 
 pub(super) fn check(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
-    if let StmtKind::Local(local, _) = stmt.kind
+    if let StmtKind::Local(local) = stmt.kind
         && let Some(init) = local.init
         && !local.pat.span.from_expansion()
         && !in_external_macro(cx.sess(), stmt.span)

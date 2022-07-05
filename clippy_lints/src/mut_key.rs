@@ -101,12 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType {
         }
     }
 
-    fn check_local(
-        &mut self,
-        cx: &LateContext<'_>,
-        local: &hir::Local<'_>,
-        _: Option<&hir::Block<'_>>,
-    ) {
+    fn check_local(&mut self, cx: &LateContext<'_>, local: &hir::Local<'_>) {
         if let hir::PatKind::Wild = local.pat.kind {
             return;
         }

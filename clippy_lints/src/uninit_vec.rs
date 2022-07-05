@@ -155,7 +155,7 @@ impl<'tcx> VecLocation<'tcx> {
 /// or `self` expression for `Vec::reserve()`.
 fn extract_init_or_reserve_target<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) -> Option<TargetVec<'tcx>> {
     match stmt.kind {
-        StmtKind::Local(local, _) => {
+        StmtKind::Local(local) => {
             if_chain! {
                 if let Some(init_expr) = local.init;
                 if let PatKind::Binding(_, hir_id, _, None) = local.pat.kind;
