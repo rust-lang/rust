@@ -104,7 +104,7 @@ object.debug = 0
 # here
 rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
 compiler_builtins = { git = "https://github.com/Ayush1325/compiler-builtins", branch = "uefi-std" }
-r-efi = { git = "https://github.com/Ayush1325/r-efi", branch = "std-dep" }
+r-efi = { git = "https://github.com/r-efi/r-efi" }
 
 # See comments in `library/rustc-std-workspace-core/README.md` for what's going on
 # here

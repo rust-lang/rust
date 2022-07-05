@@ -1,9 +1,8 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::os::uefi;
-use r_efi::efi;
 
 const POOL_ALIGNMENT: usize = 8;
-const MEMORY_TYPE: u32 = efi::LOADER_DATA;
+const MEMORY_TYPE: u32 = uefi::raw::LOADER_DATA;
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 unsafe impl GlobalAlloc for System {

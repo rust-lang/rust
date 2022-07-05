@@ -40,7 +40,6 @@ pub mod stdio;
 pub mod thread;
 #[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
-#[path = "../unsupported/time.rs"]
 pub mod time;
 
 #[cfg(test)]
@@ -54,7 +53,7 @@ pub mod memchr {
     pub use core::slice::memchr::{memchr, memrchr};
 }
 
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
+pub fn init(_argc: isize, _argv: *const *const u8) {}
 
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
@@ -75,7 +74,6 @@ pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
     crate::io::ErrorKind::Uncategorized
 }
 
-/// FIXME: Check if `exit()` should be used here
 pub fn abort_internal() -> ! {
     if let (Some(boot_services), Some(handle)) =
         (uefi::env::get_boot_services(), uefi::env::get_system_handle())
@@ -98,11 +96,11 @@ pub fn abort_internal() -> ! {
 // pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]
 #[no_mangle]
-// NB. used by both libunwind and libpanic_abort
 pub extern "C" fn __rust_abort() {
     abort_internal();
 }
 
+// FIXME: Use EFI_RNG_PROTOCOL
 pub fn hashmap_random_keys() -> (u64, u64) {
     (1, 2)
 }
@@ -111,6 +109,7 @@ extern "C" {
     fn main(argc: isize, argv: *const *const u8) -> isize;
 }
 
+// FIXME: Do not generate this in case of `no_main`
 #[no_mangle]
 pub unsafe extern "efiapi" fn efi_main(
     handle: uefi::raw::Handle,

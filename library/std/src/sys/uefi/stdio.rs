@@ -1,8 +1,7 @@
+use crate::os::uefi::raw::protocols::{simple_text_input, simple_text_output};
+use crate::os::uefi::raw::system::BootWaitForEvent;
 use crate::sys_common::ucs2;
 use crate::{io, os::uefi, ptr::NonNull};
-use r_efi::efi;
-use r_efi::protocols::{simple_text_input, simple_text_output};
-use r_efi::signatures::system::boot_services::WaitForEventSignature;
 
 pub struct Stdin(());
 pub struct Stdout(());
@@ -20,7 +19,7 @@ impl Stdin {
     // FIXME: Improve Errors
     fn fire_wait_event(
         con_in: NonNull<simple_text_input::Protocol>,
-        wait_for_event: WaitForEventSignature,
+        wait_for_event: BootWaitForEvent,
     ) -> io::Result<()> {
         let r = unsafe {
             let mut x: usize = 0;
@@ -48,7 +47,7 @@ impl Stdin {
 
     // FIXME Improve Errors
     fn reset_weak(con_in: NonNull<simple_text_input::Protocol>) -> io::Result<()> {
-        let r = unsafe { ((*con_in.as_ptr()).reset)(con_in.as_ptr(), efi::Boolean::TRUE) };
+        let r = unsafe { ((*con_in.as_ptr()).reset)(con_in.as_ptr(), uefi::raw::Boolean::TRUE) };
 
         if r.is_error() {
             Err(io::Error::new(io::ErrorKind::InvalidInput, "Device Error"))
@@ -153,7 +152,7 @@ impl io::Write for Stderr {
 }
 
 pub fn is_ebadf(err: &io::Error) -> bool {
-    err.raw_os_error() == Some(efi::Status::DEVICE_ERROR.as_usize() as i32)
+    err.raw_os_error() == Some(uefi::raw::Status::DEVICE_ERROR.as_usize() as i32)
 }
 
 pub fn panic_output() -> Option<impl io::Write> {
@@ -216,7 +215,7 @@ fn get_con_in(
     NonNull::new(con_in).ok_or(io::Error::new(io::ErrorKind::NotFound, "ConIn"))
 }
 
-fn get_wait_for_event(st: NonNull<uefi::raw::SystemTable>) -> io::Result<WaitForEventSignature> {
+fn get_wait_for_event(st: NonNull<uefi::raw::SystemTable>) -> io::Result<BootWaitForEvent> {
     let boot_services = unsafe { (*st.as_ptr()).boot_services };
 
     if boot_services.is_null() {
