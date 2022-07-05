@@ -246,4 +246,25 @@ impl<'a> ReadBuf<'a> {
     pub fn initialized_len(&self) -> usize {
         self.initialized
     }
+
+    /// Returns the buffer
+    #[inline]
+    pub fn buf(&self) -> &[MaybeUninit<u8>] {
+        &*self.buf
+    }
+
+    /// Returns the buffer
+    ///
+    /// # Safety
+    /// You must not write unitialized bytes to positions less than `self.initialized_len()`
+    #[inline]
+    pub unsafe fn buf_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+        self.buf
+    }
+
+    /// Returns the buffer
+    #[inline]
+    pub fn into_buf(self) -> &'a mut [MaybeUninit<u8>] {
+        self.buf
+    }
 }
