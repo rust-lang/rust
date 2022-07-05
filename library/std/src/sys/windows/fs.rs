@@ -155,22 +155,7 @@ impl DirEntry {
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        Ok(FileAttr {
-            attributes: self.data.dwFileAttributes,
-            creation_time: self.data.ftCreationTime,
-            last_access_time: self.data.ftLastAccessTime,
-            last_write_time: self.data.ftLastWriteTime,
-            file_size: ((self.data.nFileSizeHigh as u64) << 32) | (self.data.nFileSizeLow as u64),
-            reparse_tag: if self.data.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-                // reserved unless this is a reparse point
-                self.data.dwReserved0
-            } else {
-                0
-            },
-            volume_serial_number: None,
-            number_of_links: None,
-            file_index: None,
-        })
+        Ok(self.data.into())
     }
 }
 
@@ -877,6 +862,26 @@ impl FileAttr {
 
     pub fn file_index(&self) -> Option<u64> {
         self.file_index
+    }
+}
+impl From<c::WIN32_FIND_DATAW> for FileAttr {
+    fn from(wfd: c::WIN32_FIND_DATAW) -> Self {
+        FileAttr {
+            attributes: wfd.dwFileAttributes,
+            creation_time: wfd.ftCreationTime,
+            last_access_time: wfd.ftLastAccessTime,
+            last_write_time: wfd.ftLastWriteTime,
+            file_size: ((wfd.nFileSizeHigh as u64) << 32) | (wfd.nFileSizeLow as u64),
+            reparse_tag: if wfd.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                // reserved unless this is a reparse point
+                wfd.dwReserved0
+            } else {
+                0
+            },
+            volume_serial_number: None,
+            number_of_links: None,
+            file_index: None,
+        }
     }
 }
 
