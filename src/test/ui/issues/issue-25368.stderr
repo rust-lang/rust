@@ -1,13 +1,13 @@
-error[E0282]: type annotations needed for `(Sender<Foo<T>>, std::sync::mpsc::Receiver<Foo<T>>)`
-  --> $DIR/issue-25368.rs:8:9
+error[E0282]: type annotations needed
+  --> $DIR/issue-25368.rs:11:27
    |
-LL |     let (tx, rx) =
-   |         ^^^^^^^^
+LL |         tx.send(Foo{ foo: PhantomData });
+   |                           ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `PhantomData`
    |
-help: consider giving this pattern a type, where the type for type parameter `T` is specified
+help: consider specifying the generic argument
    |
-LL |     let (tx, rx): (Sender<Foo<T>>, std::sync::mpsc::Receiver<Foo<T>>) =
-   |                 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL |         tx.send(Foo{ foo: PhantomData::<T> });
+   |                                      +++++
 
 error: aborting due to previous error
 
