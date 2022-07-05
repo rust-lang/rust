@@ -103,6 +103,15 @@ fn main() {
         let _val: i32 = mem::zeroed();
         let _val: i32 = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
+        let _val: f32 = mem::zeroed();
+        let _val: f32 = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
+        let _val: *const () = mem::zeroed();
+        let _val: *const () = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
+        let _val: *const [()] = mem::zeroed();
+        let _val: *const [()] = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
         // Transmute-from-0
         let _val: &'static i32 = mem::transmute(0usize); //~ ERROR: does not permit zero-initialization
         let _val: &'static [i32] = mem::transmute((0usize, 0usize)); //~ ERROR: does not permit zero-initialization
