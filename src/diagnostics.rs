@@ -8,7 +8,6 @@ use rustc_middle::ty;
 use rustc_span::{source_map::DUMMY_SP, Span, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 
-use crate::helpers::HexRange;
 use crate::stacked_borrows::{diagnostics::TagHistory, AccessKind};
 use crate::*;
 
@@ -184,14 +183,14 @@ pub fn report_error<'tcx, 'mir>(
                     ];
                     match history {
                         Some(TagHistory::Tagged {tag, created: (created_range, created_span), invalidated, protected }) => {
-                            let msg = format!("{:?} was created by a retag at offsets {}", tag, HexRange(*created_range));
+                            let msg = format!("{tag:?} was created by a retag at offsets {created_range:?}");
                             helps.push((Some(*created_span), msg));
                             if let Some((invalidated_range, invalidated_span)) = invalidated {
-                                let msg = format!("{:?} was later invalidated at offsets {}", tag, HexRange(*invalidated_range));
+                                let msg = format!("{tag:?} was later invalidated at offsets {invalidated_range:?}");
                                 helps.push((Some(*invalidated_span), msg));
                             }
                             if let Some((protecting_tag, protecting_tag_span, protection_span)) = protected {
-                                helps.push((Some(*protecting_tag_span), format!("{:?} was protected due to {:?} which was created here", tag, protecting_tag)));
+                                helps.push((Some(*protecting_tag_span), format!("{tag:?} was protected due to {protecting_tag:?} which was created here")));
                                 helps.push((Some(*protection_span), format!("this protector is live for this call")));
                             }
                         }
@@ -448,32 +447,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             for e in diagnostics.drain(..) {
                 use NonHaltingDiagnostic::*;
                 let msg = match e {
-                    CreatedPointerTag(tag, None) => format!("created tag {tag:?}"),
+                    CreatedPointerTag(tag, None) =>
+                        format!("created tag {tag:?}"),
                     CreatedPointerTag(tag, Some((alloc_id, range))) =>
-                        format!("created tag {tag:?} at {alloc_id:?}{}", HexRange(range)),
+                        format!("created tag {tag:?} at {alloc_id:?}{range:?}"),
                     PoppedPointerTag(item, tag) =>
                         match tag {
                             None =>
                                 format!(
-                                    "popped tracked tag for item {:?} due to deallocation",
-                                    item
+                                    "popped tracked tag for item {item:?} due to deallocation",
                                 ),
                             Some((tag, access)) => {
                                 format!(
-                                    "popped tracked tag for item {:?} due to {:?} access for {:?}",
-                                    item, access, tag
+                                    "popped tracked tag for item {item:?} due to {access:?} access for {tag:?}",
                                 )
                             }
                         },
-                    CreatedCallId(id) => format!("function call with id {id}"),
+                    CreatedCallId(id) =>
+                        format!("function call with id {id}"),
                     CreatedAlloc(AllocId(id), size, align, kind) =>
-                        format!("created {kind} allocation of {} bytes (alignment {} bytes) with id {id}", size.bytes(), align.bytes()),
-                    FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
+                        format!(
+                            "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",
+                            size = size.bytes(),
+                            align = align.bytes(),
+                        ),
+                    FreedAlloc(AllocId(id)) =>
+                        format!("freed allocation with id {id}"),
                     RejectedIsolatedOp(ref op) =>
                         format!("{op} was made to return an error due to isolation"),
                     ProgressReport =>
                         format!("progress report: current operation being executed is here"),
-                    Int2Ptr { .. } => format!("integer-to-pointer cast"),
+                    Int2Ptr { .. } =>
+                        format!("integer-to-pointer cast"),
                 };
 
                 let (title, diag_level) = match e {

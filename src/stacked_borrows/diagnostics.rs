@@ -4,7 +4,7 @@ use rustc_middle::mir::interpret::{AllocId, AllocRange};
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
-use crate::helpers::{CurrentSpan, HexRange};
+use crate::helpers::CurrentSpan;
 use crate::stacked_borrows::{err_sb_ub, AccessKind, Permission};
 use crate::Item;
 use crate::SbTag;
@@ -178,7 +178,7 @@ fn operation_summary(
     alloc_id: AllocId,
     alloc_range: AllocRange,
 ) -> String {
-    format!("this error occurs as part of {} at {:?}{}", operation, alloc_id, HexRange(alloc_range))
+    format!("this error occurs as part of {operation} at {alloc_id:?}{alloc_range:?}")
 }
 
 fn error_cause(stack: &Stack, tag: SbTagExtra) -> &'static str {
