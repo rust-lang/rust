@@ -17,7 +17,7 @@ impl<'tcx> MirPass<'tcx> for RemoveStorageMarkers {
         }
 
         trace!("Running RemoveStorageMarkers on {:?}", body.source);
-        for data in body.basic_blocks_mut() {
+        for data in body.basic_blocks_local_decls_mut_and_var_debug_info_no_invalidate().0 {
             data.statements.retain(|statement| match statement.kind {
                 StatementKind::StorageLive(..)
                 | StatementKind::StorageDead(..)

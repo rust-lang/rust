@@ -357,10 +357,7 @@ impl<'tcx> Body<'tcx> {
         //
         // FIXME: Use a finer-grained API for this, so only transformations that alter terminators
         // invalidate the caches.
-        self.predecessor_cache.invalidate();
-        self.switch_source_cache.invalidate();
-        self.is_cyclic.invalidate();
-        self.postorder_cache.invalidate();
+        self.invalidate_cfg_cache();
         &mut self.basic_blocks
     }
 
@@ -368,10 +365,7 @@ impl<'tcx> Body<'tcx> {
     pub fn basic_blocks_and_local_decls_mut(
         &mut self,
     ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
-        self.predecessor_cache.invalidate();
-        self.switch_source_cache.invalidate();
-        self.is_cyclic.invalidate();
-        self.postorder_cache.invalidate();
+        self.invalidate_cfg_cache();
         (&mut self.basic_blocks, &mut self.local_decls)
     }
 
@@ -383,11 +377,43 @@ impl<'tcx> Body<'tcx> {
         &mut LocalDecls<'tcx>,
         &mut Vec<VarDebugInfo<'tcx>>,
     ) {
+        self.invalidate_cfg_cache();
+        (&mut self.basic_blocks, &mut self.local_decls, &mut self.var_debug_info)
+    }
+
+    /// Get mutable access to parts of the Body without invalidating the CFG cache.
+    ///
+    /// By calling this method instead of eg [`Body::basic_blocks_mut`], you promise not to change
+    /// the CFG. This means that
+    ///
+    ///  1) The number of basic blocks remains unchanged
+    ///  2) The set of successors of each terminator remains unchanged.
+    ///  3) For each `TerminatorKind::SwitchInt`, the `targets` remains the same and the terminator
+    ///     kind is not changed.
+    ///
+    /// If any of these conditions cannot be upheld, you should call [`Body::invalidate_cfg_cache`].
+    #[inline]
+    pub fn basic_blocks_local_decls_mut_and_var_debug_info_no_invalidate(
+        &mut self,
+    ) -> (
+        &mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+        &mut LocalDecls<'tcx>,
+        &mut Vec<VarDebugInfo<'tcx>>,
+    ) {
+        (&mut self.basic_blocks, &mut self.local_decls, &mut self.var_debug_info)
+    }
+
+    /// Invalidates cached information about the CFG.
+    ///
+    /// You will only ever need this if you have also called
+    /// [`Body::basic_blocks_local_decls_mut_and_var_debug_info_no_invalidate`]. All other methods
+    /// that allow you to mutate the body also call this method themselves, thereby avoiding any
+    /// risk of accidentaly cache invalidation.
+    pub fn invalidate_cfg_cache(&mut self) {
         self.predecessor_cache.invalidate();
         self.switch_source_cache.invalidate();
         self.is_cyclic.invalidate();
         self.postorder_cache.invalidate();
-        (&mut self.basic_blocks, &mut self.local_decls, &mut self.var_debug_info)
     }
 
     /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
