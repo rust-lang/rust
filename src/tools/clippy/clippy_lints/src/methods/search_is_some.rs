@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::deref_closure_args;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{is_trait_method, strip_pat_refs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -105,7 +105,7 @@ pub(super) fn check<'tcx>(
     else if search_method == "find" {
         let is_string_or_str_slice = |e| {
             let self_ty = cx.typeck_results().expr_ty(e).peel_refs();
-            if is_type_diagnostic_item(cx, self_ty, sym::String) {
+            if is_type_lang_item(cx, self_ty, hir::LangItem::String) {
                 true
             } else {
                 *self_ty.kind() == ty::Str

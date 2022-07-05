@@ -91,10 +91,10 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
 fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
     let ty = qpath_generic_tys(qpath).next()?;
     let id = path_def_id(cx, ty)?;
-    let path = match cx.tcx.get_diagnostic_name(id)? {
-        sym::String => "str",
-        sym::OsString => "std::ffi::OsStr",
-        sym::PathBuf => "std::path::Path",
+    let path = match cx.tcx.get_diagnostic_name(id) {
+        Some(sym::OsString) => "std::ffi::OsStr",
+        Some(sym::PathBuf) => "std::path::Path",
+        _ if Some(id) == cx.tcx.lang_items().string() => "str",
         _ => return None,
     };
     Some(path)

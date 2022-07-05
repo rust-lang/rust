@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{get_parent_expr, is_lint_allowed, match_function_call, method_calls, paths};
 use clippy_utils::{peel_blocks, SpanlessEq};
 use if_chain::if_chain;
@@ -190,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
             },
             ExprKind::Index(target, _idx) => {
                 let e_ty = cx.typeck_results().expr_ty(target).peel_refs();
-                if matches!(e_ty.kind(), ty::Str) || is_type_diagnostic_item(cx, e_ty, sym::String) {
+                if matches!(e_ty.kind(), ty::Str) || is_type_lang_item(cx, e_ty, LangItem::String) {
                     span_lint(
                         cx,
                         STRING_SLICE,
@@ -205,7 +205,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
 }
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), sym::String)
+    is_type_lang_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), LangItem::String)
 }
 
 fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
@@ -446,7 +446,7 @@ impl<'tcx> LateLintPass<'tcx> for StringToString {
             if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind;
             if path.ident.name == sym::to_string;
             let ty = cx.typeck_results().expr_ty(self_arg);
-            if is_type_diagnostic_item(cx, ty, sym::String);
+            if is_type_lang_item(cx, ty, LangItem::String);
             then {
                 span_lint_and_help(
                     cx,

@@ -1,11 +1,10 @@
 use clippy_utils::consts::{constant_context, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::is_type_lang_item;
 use rustc_errors::Applicability;
-use rustc_hir::Expr;
+use rustc_hir::{Expr, LangItem};
 use rustc_lint::LateContext;
-use rustc_span::sym;
 
 use super::REPEAT_ONCE;
 
@@ -37,7 +36,7 @@ pub(super) fn check<'tcx>(
                 format!("{}.to_vec()", snippet(cx, recv.span, r#""...""#)),
                 Applicability::MachineApplicable,
             );
-        } else if is_type_diagnostic_item(cx, ty, sym::String) {
+        } else if is_type_lang_item(cx, ty, LangItem::String) {
             span_lint_and_sugg(
                 cx,
                 REPEAT_ONCE,

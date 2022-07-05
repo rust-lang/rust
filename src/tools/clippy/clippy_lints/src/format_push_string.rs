@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{match_def_path, paths, peel_hir_expr_refs};
-use rustc_hir::{BinOpKind, Expr, ExprKind};
+use rustc_hir::{BinOpKind, Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -41,7 +41,7 @@ declare_clippy_lint! {
 declare_lint_pass!(FormatPushString => [FORMAT_PUSH_STRING]);
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), sym::String)
+    is_type_lang_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), LangItem::String)
 }
 fn is_format(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     if let Some(macro_def_id) = e.span.ctxt().outer_expn_data().macro_def_id {

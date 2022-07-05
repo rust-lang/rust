@@ -464,7 +464,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ref_cnt += 1;
                 }
                 if let ty::Adt(adt, _) = peeled.kind()
-                    && self.tcx.is_diagnostic_item(sym::String, adt.did())
+                    && Some(adt.did()) == self.tcx.lang_items().string()
                 {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),

@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                 if format_args.format_string.parts == [kw::Empty];
                 if arg.format.is_default();
                 if match cx.typeck_results().expr_ty(value).peel_refs().kind() {
-                    ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(sym::String, adt.did()),
+                    ty::Adt(adt, _) => Some(adt.did()) == cx.tcx.lang_items().string(),
                     ty::Str => true,
                     _ => false,
                 };
