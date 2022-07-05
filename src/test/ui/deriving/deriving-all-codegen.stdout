@@ -367,6 +367,61 @@ impl ::core::cmp::Ord for Big {
     }
 }
 
+// A struct with an unsized field. Some derives are not usable in this case.
+struct Unsized([u32]);
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::fmt::Debug for Unsized {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Unsized",
+            &&self.0)
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::hash::Hash for Unsized {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        ::core::hash::Hash::hash(&self.0, state)
+    }
+}
+impl ::core::marker::StructuralPartialEq for Unsized {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialEq for Unsized {
+    #[inline]
+    fn eq(&self, other: &Unsized) -> bool { self.0 == other.0 }
+    #[inline]
+    fn ne(&self, other: &Unsized) -> bool { self.0 != other.0 }
+}
+impl ::core::marker::StructuralEq for Unsized {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Eq for Unsized {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<[u32]>;
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialOrd for Unsized {
+    #[inline]
+    fn partial_cmp(&self, other: &Unsized)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        ::core::cmp::PartialOrd::partial_cmp(&self.0, &other.0)
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Ord for Unsized {
+    #[inline]
+    fn cmp(&self, other: &Unsized) -> ::core::cmp::Ordering {
+        ::core::cmp::Ord::cmp(&self.0, &other.0)
+    }
+}
+
 // A packed tuple struct.
 #[repr(packed)]
 struct Packed(u32);

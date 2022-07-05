@@ -31,8 +31,12 @@ struct Point {
 // A large struct.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Big {
-    b1: u32, b2: u32, b3: u32, b4: u32, b5: u32, b6: u32, b7: u32, b8:u32,
+    b1: u32, b2: u32, b3: u32, b4: u32, b5: u32, b6: u32, b7: u32, b8: u32,
 }
+
+// A struct with an unsized field. Some derives are not usable in this case.
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+struct Unsized([u32]);
 
 // A packed tuple struct.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
