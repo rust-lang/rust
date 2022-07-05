@@ -1541,8 +1541,10 @@ fn read_large_dir() {
 #[test]
 #[cfg(windows)]
 fn hiberfil_sys() {
-    let hiberfil = r"C:\hiberfil.sys";
+    let hiberfil = Path::new(r"C:\hiberfil.sys");
 
-    fs::metadata(hiberfil).unwrap();
+    assert_eq!(true, hiberfil.try_exists().unwrap());
     fs::symlink_metadata(hiberfil).unwrap();
+    fs::metadata(hiberfil).unwrap();
+    assert_eq!(true, hiberfil.exists());
 }
