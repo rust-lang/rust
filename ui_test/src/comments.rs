@@ -246,7 +246,8 @@ impl Comments {
                 );
                 self.error_pattern = Some((args.trim().to_string(), l));
             }
-            _ => exit!("unknown command {command} with args {args}"),
+            // Maybe the user just left a comment explaining a command without arguments
+            _ => self.parse_command(command, path, l),
         }
     }
 
@@ -292,14 +293,8 @@ impl Comments {
         checked!(path, l);
         let (revision, pattern) =
             unwrap!(pattern.split_once(']'), "`//[` without corresponding `]`");
-        if pattern.starts_with('~') {
-            self.parse_pattern_inner(
-                &pattern[1..],
-                fallthrough_to,
-                Some(revision.to_owned()),
-                path,
-                l,
-            )
+        if let Some(pattern) = pattern.strip_prefix('~') {
+            self.parse_pattern_inner(pattern, fallthrough_to, Some(revision.to_owned()), path, l)
         } else {
             exit!("revisioned pattern must have `~` following the `]`");
         }

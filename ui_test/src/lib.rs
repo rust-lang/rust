@@ -377,7 +377,7 @@ fn check_annotations(
 ) {
     if let Some((ref error_pattern, definition_line)) = comments.error_pattern {
         // first check the diagnostics messages outside of our file. We check this first, so that
-        // you can mix in-file annotations with // error-pattern annotations, even if there is overlap
+        // you can mix in-file annotations with //@error-pattern annotations, even if there is overlap
         // in the messages.
         if let Some(i) = messages_from_unknown_file_or_line
             .iter()

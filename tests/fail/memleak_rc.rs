@@ -1,6 +1,6 @@
-// error-pattern: the evaluated program leaked memory
-// stderr-per-bitwidth
-// normalize-stderr-test: ".*│.*" -> "$$stripped$$"
+//@error-pattern: the evaluated program leaked memory
+//@stderr-per-bitwidth
+//@normalize-stderr-test: ".*│.*" -> "$$stripped$$"
 
 use std::cell::RefCell;
 use std::rc::Rc;

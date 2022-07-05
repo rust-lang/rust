@@ -1,4 +1,4 @@
-// error-pattern: pointer to 4 bytes starting at offset 0 is out-of-bounds
+//@error-pattern: pointer to 4 bytes starting at offset 0 is out-of-bounds
 
 fn main() {
     unsafe {

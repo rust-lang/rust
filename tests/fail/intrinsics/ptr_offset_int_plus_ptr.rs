@@ -1,5 +1,5 @@
-// error-pattern: is a dangling pointer
-// compile-flags: -Zmiri-permissive-provenance
+//@error-pattern: is a dangling pointer
+//@compile-flags: -Zmiri-permissive-provenance
 
 fn main() {
     let ptr = Box::into_raw(Box::new(0u32));

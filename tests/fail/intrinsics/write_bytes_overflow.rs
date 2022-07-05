@@ -1,4 +1,4 @@
-// error-pattern: overflow computing total size of `write_bytes`
+//@error-pattern: overflow computing total size of `write_bytes`
 use std::mem;
 
 fn main() {

@@ -1,4 +1,4 @@
-// error-pattern: pointer to 1 byte starting at offset 9 is out-of-bounds
+//@error-pattern: pointer to 1 byte starting at offset 9 is out-of-bounds
 #![feature(portable_simd)]
 use std::simd::*;
 

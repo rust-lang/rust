@@ -1,4 +1,4 @@
-// error-pattern: pointer to 1 byte starting at offset -1 is out-of-bounds
+//@error-pattern: pointer to 1 byte starting at offset -1 is out-of-bounds
 fn main() {
     let v = [0i8; 4];
     let x = &v as *const i8;

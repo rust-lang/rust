@@ -1,6 +1,6 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-ignore-leaks
-// error-pattern: unreachable
+//@ignore-windows: Concurrency on Windows is not supported yet.
+//@compile-flags: -Zmiri-ignore-leaks
+//@error-pattern: unreachable
 
 // https://plv.mpi-sws.org/scfix/paper.pdf
 // 2.2 Second Problem: SC Fences are Too Weak

@@ -7,14 +7,12 @@ A smaller version of compiletest-rs
 
 ## Supported magic comment annotations
 
-Note that the space after `//`, when it is present, is *not* optional -- it must be exactly one.
-
 * `// ignore-XXX` avoids running the test on targets whose triple contains `XXX`
     * `XXX` can also be one of `64bit`, `32bit` or `16bit`
 * `// only-XXX` avoids running the test on targets whose triple **does not** contain `XXX`
     * `XXX` can also be one of `64bit`, `32bit` or `16bit`
 * `// stderr-per-bitwidth` produces one stderr file per bitwidth, as they may differ significantly sometimes
-* `// error-pattern: XXX` make sure the stderr output contains `XXX`
+* `//@error-pattern: XXX` make sure the stderr output contains `XXX`
 * `//~ ERROR: XXX` make sure the stderr output contains `XXX` for an error in the line where this comment is written
     * Also supports `HELP`, `WARN` or `NOTE` for different kind of message
         * if one of those levels is specified explicitly, *all* diagnostics of this level or higher need an annotation. If you want to avoid this, just leave out the all caps level note entirely.
