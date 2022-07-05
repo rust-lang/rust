@@ -401,6 +401,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::Str(..), .. }) = lt.kind {
+            let tcx = self.tcx;
+            let expected = self.resolve_vars_if_possible(expected);
+            pat_ty = match expected.kind() {
+                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => expected,
+                ty::Str => tcx.mk_static_str(),
+                _ => pat_ty,
+            };
+        }
+
         // Somewhat surprising: in this case, the subtyping relation goes the
         // opposite way as the other cases. Actually what we really want is not
         // a subtyping relation at all but rather that there exists a LUB
