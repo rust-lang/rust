@@ -253,7 +253,7 @@ pub enum ObligationCauseCode<'tcx> {
     ObjectTypeBound(Ty<'tcx>, ty::Region<'tcx>),
 
     /// Obligation incurred due to an object cast.
-    ObjectCastObligation(/* Concrete type */ Ty<'tcx>, /* Object type */ Ty<'tcx>),
+    ObjectCastObligation(/* Object type */ Ty<'tcx>),
 
     /// Obligation incurred due to a coercion.
     Coercion {

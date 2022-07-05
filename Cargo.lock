@@ -333,7 +333,6 @@ dependencies = [
  "libgit2-sys",
  "log",
  "memchr",
- "num_cpus",
  "opener",
  "openssl",
  "os_info",
@@ -445,7 +444,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-util"
-version = "0.1.4"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "core-foundation",
@@ -2332,6 +2331,20 @@ dependencies = [
 
 [[package]]
 name = "measureme"
+version = "9.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78f7a41bc6f856a2cf0e95094ad5121f82500e2d9a0f3c0171d98f6566d8117d"
+dependencies = [
+ "log",
+ "memmap2",
+ "parking_lot 0.11.2",
+ "perf-event-open-sys",
+ "rustc-hash",
+ "smallvec",
+]
+
+[[package]]
+name = "measureme"
 version = "10.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd460fad6e55ca82fa0cd9dab0d315294188fd9ec6efbf4105e5635d4872ef9c"
@@ -2428,7 +2441,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
- "measureme",
+ "measureme 9.1.2",
  "rand 0.8.5",
  "regex",
  "rustc-workspace-hack",
@@ -3040,6 +3053,7 @@ name = "racer"
 version = "2.2.2"
 dependencies = [
  "bitflags",
+ "clap 2.34.0",
  "derive_more",
  "env_logger 0.7.1",
  "humantime 2.0.1",
@@ -3263,7 +3277,7 @@ dependencies = [
  "difference",
  "env_logger 0.9.0",
  "futures 0.3.19",
- "heck 0.4.0",
+ "heck 0.3.1",
  "home",
  "itertools",
  "jsonrpc-core",
@@ -3639,7 +3653,7 @@ dependencies = [
  "cstr",
  "libc",
  "libloading",
- "measureme",
+ "measureme 10.0.0",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3737,7 +3751,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc",
- "measureme",
+ "measureme 10.0.0",
  "memmap2",
  "parking_lot 0.11.2",
  "rustc-hash",
@@ -4294,7 +4308,7 @@ dependencies = [
 name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
- "measureme",
+ "measureme 10.0.0",
  "rustc-rayon-core",
  "rustc_ast",
  "rustc_data_structures",
