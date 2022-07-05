@@ -286,7 +286,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                         let newval = match (r_t_in, r_t_out) {
                             (CastTy::Int(i), CastTy::Int(_)) => {
-                                bx.intcast(llval, ll_t_out, matches!(i, IntTy::I))
+                                bx.intcast(llval, ll_t_out, i.is_signed())
                             }
                             (CastTy::Float, CastTy::Float) => {
                                 let srcsz = bx.cx().float_width(ll_t_in);
@@ -300,7 +300,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 }
                             }
                             (CastTy::Int(i), CastTy::Float) => {
-                                if matches!(i, IntTy::I) {
+                                if i.is_signed() {
                                     bx.sitofp(llval, ll_t_out)
                                 } else {
                                     bx.uitofp(llval, ll_t_out)
@@ -311,7 +311,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                             (CastTy::Int(i), CastTy::Ptr(_)) => {
                                 let usize_llval =
-                                    bx.intcast(llval, bx.cx().type_isize(), matches!(i, IntTy::I));
+                                    bx.intcast(llval, bx.cx().type_isize(), i.is_signed());
                                 bx.inttoptr(usize_llval, ll_t_out)
                             }
                             (CastTy::Float, CastTy::Int(IntTy::I)) => {

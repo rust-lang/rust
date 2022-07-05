@@ -15,6 +15,12 @@ pub enum IntTy {
     Char,
 }
 
+impl IntTy {
+    pub fn is_signed(self) -> bool {
+        matches!(self, Self::I)
+    }
+}
+
 // Valid types for the result of a non-coercion cast
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CastTy<'tcx> {
