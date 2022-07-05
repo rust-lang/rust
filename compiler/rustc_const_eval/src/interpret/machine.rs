@@ -144,6 +144,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
         true
     }
 
+    /// Whether CheckedBinOp MIR statements should actually check for overflow.
+    fn check_binop_checks_overflow(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+
     /// Entry point for obtaining the MIR of anything that should get evaluated.
     /// So not just functions and shims, but also const/static initializers, anonymous
     /// constants, ...
@@ -469,6 +472,11 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
+    fn check_binop_checks_overflow(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+        true
+    }
+
+    #[inline(always)]
     fn call_extra_fn(
         _ecx: &mut InterpCx<$mir, $tcx, Self>,
         fn_val: !,
@@ -513,7 +521,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         _ecx: &InterpCx<$mir, $tcx, Self>,
         addr: u64,
     ) -> Pointer<Option<AllocId>> {
-        Pointer::new(None, Size::from_bytes(addr))
+        Pointer::from_addr(addr)
     }
 
     #[inline(always)]
@@ -523,7 +531,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     ) -> InterpResult<$tcx, Pointer<Option<AllocId>>> {
         // Allow these casts, but make the pointer not dereferenceable.
         // (I.e., they behave like transmutation.)
-        Ok(Pointer::new(None, Size::from_bytes(addr)))
+        Ok(Pointer::from_addr(addr))
     }
 
     #[inline(always)]

@@ -28,13 +28,13 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:36:14
    |
 LL |     unsafe { ptr_offset_from(ptr, ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: null pointer is not a valid pointer
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: null pointer is a dangling pointer (it has no provenance)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:43:14
    |
 LL |     unsafe { ptr_offset_from(ptr2, ptr1) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: 0x8 is not a valid pointer
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: 0x8[noalloc] is a dangling pointer (it has no provenance)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:52:14
