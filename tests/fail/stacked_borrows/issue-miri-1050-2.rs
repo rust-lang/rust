@@ -1,4 +1,4 @@
-// error-pattern: is not a valid pointer
+// error-pattern: is a dangling pointer
 use std::ptr::NonNull;
 
 fn main() {

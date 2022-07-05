@@ -542,6 +542,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
+    fn check_binop_checks_overflow(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
+        ecx.tcx.sess.overflow_checks()
+    }
+
+    #[inline(always)]
     fn find_mir_or_eval_fn(
         ecx: &mut MiriEvalContext<'mir, 'tcx>,
         instance: ty::Instance<'tcx>,

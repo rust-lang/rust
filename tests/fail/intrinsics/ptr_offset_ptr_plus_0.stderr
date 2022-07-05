@@ -1,8 +1,8 @@
-error: Undefined Behavior: pointer arithmetic failed: ALLOC has size 4, so pointer at offset 32 is out-of-bounds
+error: Undefined Behavior: out-of-bounds pointer arithmetic: ALLOC has size 4, so pointer at offset 32 is out-of-bounds
   --> RUSTLIB/core/src/ptr/mut_ptr.rs:LL:CC
    |
 LL |         unsafe { intrinsics::offset(self, count) as *mut T }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pointer arithmetic failed: ALLOC has size 4, so pointer at offset 32 is out-of-bounds
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer arithmetic: ALLOC has size 4, so pointer at offset 32 is out-of-bounds
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
