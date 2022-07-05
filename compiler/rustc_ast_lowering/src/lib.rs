@@ -2741,6 +2741,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::MutTy { ty: self.lower_ty(&mt.ty, itctx), mutbl: mt.mutbl }
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn lower_param_bounds<'itctx>(
         &mut self,
         bounds: &'itctx [GenericBound],
@@ -2763,6 +2764,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds.iter().map(move |bound| self.lower_param_bound(bound, itctx.reborrow()))
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn lower_generic_and_bounds(
         &mut self,
         node_id: NodeId,
@@ -2801,6 +2803,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }),
         ));
 
+        debug!("lower_generic_and_bounds=(param={:?}, preds={:?}, ty={:?})", param, preds, ty);
         (param, preds, ty)
     }
 
