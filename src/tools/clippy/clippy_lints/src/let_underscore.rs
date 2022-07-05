@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{is_must_use_ty, match_type};
 use clippy_utils::{is_must_use_func_call, paths};
 use if_chain::if_chain;
-use rustc_hir::{Block, Local, PatKind};
+use rustc_hir::{Local, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
@@ -109,7 +109,7 @@ const SYNC_GUARD_PATHS: [&[&str]; 6] = [
 ];
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
-    fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>, _: Option<&Block<'_>>) {
+    fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>) {
         if in_external_macro(cx.tcx.sess, local.span) {
             return;
         }

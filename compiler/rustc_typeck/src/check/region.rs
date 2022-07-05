@@ -796,8 +796,8 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         resolve_expr(self, ex);
     }
-    fn visit_local(&mut self, l: &'tcx Local<'tcx>, e: Option<&'tcx Block<'tcx>>) {
-        resolve_local(self, Some(&l.pat), l.init, e)
+    fn visit_local(&mut self, l: &'tcx Local<'tcx>) {
+        resolve_local(self, Some(&l.pat), l.init, l.els)
     }
 }
 

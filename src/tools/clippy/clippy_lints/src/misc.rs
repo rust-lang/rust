@@ -161,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if_chain! {
             if !in_external_macro(cx.tcx.sess, stmt.span);
-            if let StmtKind::Local(local, _) = stmt.kind;
+            if let StmtKind::Local(local) = stmt.kind;
             if let PatKind::Binding(an, .., name, None) = local.pat.kind;
             if let Some(init) = local.init;
             if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut;

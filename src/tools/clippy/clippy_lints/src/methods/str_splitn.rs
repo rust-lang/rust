@@ -220,7 +220,7 @@ fn indirect_usage<'tcx>(
         init: Some(init_expr),
         hir_id: local_hir_id,
         ..
-    }, _) = stmt.kind
+    }) = stmt.kind
     {
         let mut path_to_binding = None;
         expr_visitor(cx, |expr| {

@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         if_chain! {
             if let Some(retexpr) = block.expr;
             if let Some(stmt) = block.stmts.iter().last();
-            if let StmtKind::Local(local, _) = &stmt.kind;
+            if let StmtKind::Local(local) = &stmt.kind;
             if local.ty.is_none();
             if cx.tcx.hir().attrs(local.hir_id).is_empty();
             if let Some(initexpr) = &local.init;

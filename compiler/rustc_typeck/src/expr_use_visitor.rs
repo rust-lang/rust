@@ -453,11 +453,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     fn walk_stmt(&mut self, stmt: &hir::Stmt<'_>) {
         match stmt.kind {
-            hir::StmtKind::Local(hir::Local { pat, init: Some(expr), .. }, els) => {
-                self.walk_local(expr, pat, els, |_| {})
+            hir::StmtKind::Local(hir::Local { pat, init: Some(expr), els, .. }) => {
+                self.walk_local(expr, pat, *els, |_| {})
             }
 
-            hir::StmtKind::Local(_, _) => {}
+            hir::StmtKind::Local(_) => {}
 
             hir::StmtKind::Item(_) => {
                 // We don't visit nested items in this visitor,

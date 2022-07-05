@@ -310,8 +310,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_foreign_item(&mut self, i: &'v ForeignItem<'v>) {
         walk_foreign_item(self, i)
     }
-    fn visit_local(&mut self, l: &'v Local<'v>, els: Option<&'v Block<'v>>) {
-        walk_local(self, l, els)
+    fn visit_local(&mut self, l: &'v Local<'v>) {
+        walk_local(self, l)
     }
     fn visit_block(&mut self, b: &'v Block<'v>) {
         walk_block(self, b)
@@ -466,17 +466,13 @@ pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &'v Body<'v>) {
     visitor.visit_expr(&body.value);
 }
 
-pub fn walk_local<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    local: &'v Local<'v>,
-    els: Option<&'v Block<'v>>,
-) {
+pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local<'v>) {
     // Intentionally visiting the expr first - the initialization expr
     // dominates the local's definition.
     walk_list!(visitor, visit_expr, &local.init);
     visitor.visit_id(local.hir_id);
     visitor.visit_pat(&local.pat);
-    if let Some(els) = els {
+    if let Some(els) = local.els {
         visitor.visit_block(els);
     }
     walk_list!(visitor, visit_ty, &local.ty);
@@ -1063,7 +1059,7 @@ pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block<'v>) {
 pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt<'v>) {
     visitor.visit_id(statement.hir_id);
     match &statement.kind {
-        StmtKind::Local(ref local, els) => visitor.visit_local(local, *els),
+        StmtKind::Local(ref local) => visitor.visit_local(local),
         StmtKind::Item(item) => visitor.visit_nested_item(*item),
         StmtKind::Expr(ref expression) | StmtKind::Semi(ref expression) => {
             visitor.visit_expr(expression)

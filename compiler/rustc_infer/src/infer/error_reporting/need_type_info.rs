@@ -1,6 +1,6 @@
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
-use hir::{Block, LocalSource};
+use hir::LocalSource;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -953,8 +953,8 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
         self.infcx.tcx.hir()
     }
 
-    fn visit_local(&mut self, local: &'tcx Local<'tcx>, els: Option<&'tcx Block<'tcx>>) {
-        intravisit::walk_local(self, local, els);
+    fn visit_local(&mut self, local: &'tcx Local<'tcx>) {
+        intravisit::walk_local(self, local);
 
         if let Some(ty) = self.opt_node_type(local.hir_id) {
             if self.generic_arg_contains_target(ty.into()) {

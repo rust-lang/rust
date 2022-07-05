@@ -2146,8 +2146,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug_assert!(!a.is_empty());
             self.attrs.insert(hir_id.local_id, a);
         }
-        let local = hir::Local { hir_id, init, pat, source, span: self.lower_span(span), ty: None };
-        self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local), None))
+        let local = hir::Local {
+            hir_id,
+            init,
+            pat,
+            els: None,
+            source,
+            span: self.lower_span(span),
+            ty: None,
+        };
+        self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
 
     fn block_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> &'hir hir::Block<'hir> {

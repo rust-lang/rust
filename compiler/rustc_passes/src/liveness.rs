@@ -366,12 +366,12 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         lsets.warn_about_unused_args(body, entry_ln);
     }
 
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>, els: Option<&'tcx hir::Block<'tcx>>) {
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
         self.add_from_pat(&local.pat);
-        if els.is_some() {
+        if local.els.is_some() {
             self.add_live_node_for_node(local.hir_id, ExprNode(local.span, local.hir_id));
         }
-        intravisit::walk_local(self, local, els);
+        intravisit::walk_local(self, local);
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
@@ -788,7 +788,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_stmt(&mut self, stmt: &hir::Stmt<'_>, succ: LiveNode) -> LiveNode {
         match stmt.kind {
-            hir::StmtKind::Local(ref local, els) => {
+            hir::StmtKind::Local(ref local) => {
                 // Note: we mark the variable as defined regardless of whether
                 // there is an initializer.  Initially I had thought to only mark
                 // the live variable as defined if it was initialized, and then we
@@ -803,7 +803,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // initialization, which is mildly more complex than checking
                 // once at the func header but otherwise equivalent.
 
-                if let Some(els) = els {
+                if let Some(els) = local.els {
                     // Eventually, `let pat: ty = init else { els };` is mostly equivalent to
                     // `let (bindings, ...) = match init { pat => (bindings, ...), _ => els };`
                     // except that extended lifetime applies at the `init` location.
@@ -1341,14 +1341,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 // Checking for error conditions
 
 impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>, els: Option<&'tcx hir::Block<'tcx>>) {
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
         self.check_unused_vars_in_pat(&local.pat, None, |spans, hir_id, ln, var| {
             if local.init.is_some() {
                 self.warn_about_dead_assign(spans, hir_id, ln, var);
             }
         });
 
-        intravisit::walk_local(self, local, els);
+        intravisit::walk_local(self, local);
     }
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {

@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
         for (idx, stmt) in block.stmts.iter().enumerate() {
             if !stmt.span.from_expansion()
                 // matches `let v = Vec::new();`
-                && let StmtKind::Local(local, _) = stmt.kind
+                && let StmtKind::Local(local) = stmt.kind
                 && let Local { pat, init: Some(init), .. } = local
                 && let PatKind::Binding(_, _, ident, _) = pat.kind
                 && let Some(vec_init_kind) = get_vec_init_kind(cx, init)

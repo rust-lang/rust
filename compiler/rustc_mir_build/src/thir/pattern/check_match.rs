@@ -75,10 +75,11 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
         }
     }
 
-    fn visit_local(&mut self, loc: &'tcx hir::Local<'tcx>, els: Option<&'tcx hir::Block<'tcx>>) {
-        intravisit::walk_local(self, loc, els);
-        if let Some(init) = &loc.init && els.is_some() {
-            self.check_let(&loc.pat, &init, loc.span);
+    fn visit_local(&mut self, loc: &'tcx hir::Local<'tcx>) {
+        intravisit::walk_local(self, loc);
+        let els = loc.els;
+        if let Some(init) = loc.init && els.is_some() {
+            self.check_let(&loc.pat, init, loc.span);
         }
 
         let (msg, sp) = match loc.source {
@@ -1135,7 +1136,7 @@ fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> L
 
     let parent_parent = hir.get_parent_node(parent);
     let parent_parent_node = hir.get(parent_parent);
-    if let hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_, Some(_)), span, .. }) =
+    if let hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_), span, .. }) =
         parent_parent_node
     {
         return LetSource::LetElse(*span);

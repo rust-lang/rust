@@ -1297,7 +1297,7 @@ pub struct Stmt<'hir> {
 pub enum StmtKind<'hir> {
     /// A local (`let`) binding.
     /// FIXME: bundle the last two components into another `struct`
-    Local(&'hir Local<'hir>, Option<&'hir Block<'hir>>),
+    Local(&'hir Local<'hir>),
 
     /// An item binding.
     Item(ItemId),
@@ -1317,6 +1317,8 @@ pub struct Local<'hir> {
     pub ty: Option<&'hir Ty<'hir>>,
     /// Initializer expression to set the value, if any.
     pub init: Option<&'hir Expr<'hir>>,
+    /// Else block for a `let...else` binding.
+    pub els: Option<&'hir Block<'hir>>,
     pub hir_id: HirId,
     pub span: Span,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop

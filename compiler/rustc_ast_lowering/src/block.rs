@@ -52,7 +52,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     };
                     let local = self.lower_local(local);
                     self.alias_attrs(hir_id, local.hir_id);
-                    let kind = hir::StmtKind::Local(local, els);
+                    let kind = hir::StmtKind::Local(local);
                     let span = self.lower_span(s.span);
                     stmts.push(hir::Stmt { hir_id, kind, span });
                 }
@@ -105,10 +105,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let init = l.kind.init().map(|init| self.lower_expr(init));
         let hir_id = self.lower_node_id(l.id);
         let pat = self.lower_pat(&l.pat);
+        let els = if let LocalKind::InitElse(_, els) = &l.kind {
+            if !self.sess.features_untracked().let_else {
+                feature_err(
+                    &self.sess.parse_sess,
+                    sym::let_else,
+                    l.span,
+                    "`let...else` statements are unstable",
+                )
+                .emit();
+            }
+            Some(self.lower_block(els, false))
+        } else {
+            None
+        };
         let span = self.lower_span(l.span);
         let source = hir::LocalSource::Normal;
         self.lower_attrs(hir_id, &l.attrs);
-        self.arena.alloc(hir::Local { hir_id, ty, pat, init, span, source })
+        self.arena.alloc(hir::Local { hir_id, ty, pat, init, els, span, source })
     }
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {

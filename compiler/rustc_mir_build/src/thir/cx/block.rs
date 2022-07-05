@@ -66,7 +66,7 @@ impl<'tcx> Cx<'tcx> {
                         // ignore for purposes of the MIR
                         None
                     }
-                    hir::StmtKind::Local(local, els) => {
+                    hir::StmtKind::Local(local) => {
                         let remainder_scope = region::Scope {
                             id: block_id,
                             data: region::ScopeData::Remainder(region::FirstStatementIndex::new(
@@ -74,7 +74,7 @@ impl<'tcx> Cx<'tcx> {
                             )),
                         };
 
-                        let else_block = els.map(|els| self.mirror_block(els));
+                        let else_block = local.els.map(|els| self.mirror_block(els));
 
                         let mut pattern = self.pattern_from_hir(local.pat);
                         debug!(?pattern);

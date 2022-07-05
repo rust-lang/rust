@@ -1414,14 +1414,14 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
         intravisit::walk_stmt(self, s)
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>, e: Option<&'tcx hir::Block<'tcx>>) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
         self.process_macro_use(l.span);
         self.process_var_decl(&l.pat);
 
         // Just walk the initializer, the else branch and type (don't want to walk the pattern again).
         walk_list!(self, visit_ty, &l.ty);
         walk_list!(self, visit_expr, &l.init);
-        walk_list!(self, visit_block, e);
+        walk_list!(self, visit_block, l.els);
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {

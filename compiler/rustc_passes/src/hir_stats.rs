@@ -131,9 +131,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_foreign_item(self, i)
     }
 
-    fn visit_local(&mut self, l: &'v hir::Local<'v>, e: Option<&'v hir::Block<'v>>) {
+    fn visit_local(&mut self, l: &'v hir::Local<'v>) {
         self.record("Local", Id::Node(l.hir_id), l);
-        hir_visit::walk_local(self, l, e)
+        hir_visit::walk_local(self, l)
     }
 
     fn visit_block(&mut self, b: &'v hir::Block<'v>) {

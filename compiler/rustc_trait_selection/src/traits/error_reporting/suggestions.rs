@@ -734,7 +734,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let hir_id = hir.local_def_id_to_hir_id(def_id.as_local()?);
         let parent_node = hir.get_parent_node(hir_id);
         match hir.find(parent_node) {
-            Some(hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(local, _), .. })) => {
+            Some(hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(local), .. })) => {
                 get_name(err, &local.pat.kind)
             }
             // Different to previous arm because one is `&hir::Local` and the other

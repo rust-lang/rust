@@ -144,7 +144,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.kind {
-                        hir::StmtKind::Local(local, _) => Some(local.span),
+                        hir::StmtKind::Local(local) => Some(local.span),
                         hir::StmtKind::Expr(e) => Some(e.span),
                         hir::StmtKind::Semi(..) => Some(inner_stmt.span),
                         hir::StmtKind::Item(..) => None,

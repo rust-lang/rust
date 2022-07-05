@@ -1218,13 +1218,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Type check a `let` statement.
-    pub fn check_decl_local(
-        &self,
-        local: &'tcx hir::Local<'tcx>,
-        els: Option<&'tcx hir::Block<'tcx>>,
-    ) {
+    pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
         self.check_decl(local.into());
-        if let Some(blk) = els {
+        if let Some(blk) = local.els {
             let previous_diverges = self.diverges.get();
             let else_ty = self.check_block_with_expected(blk, NoExpectation);
             let cause = self.cause(blk.span, ObligationCauseCode::LetElse);
@@ -1251,8 +1247,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let old_has_errors = self.has_errors.replace(false);
 
         match stmt.kind {
-            hir::StmtKind::Local(l, e) => {
-                self.check_decl_local(l, e);
+            hir::StmtKind::Local(l) => {
+                self.check_decl_local(l);
             }
             // Ignore for now.
             hir::StmtKind::Item(_) => {}
@@ -1411,7 +1407,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                             source:
                                                                 hir::LocalSource::AssignDesugar(_),
                                                             ..
-                                                        }, _),
+                                                        }),
                                                     ..
                                                 },
                                                 hir::Stmt {

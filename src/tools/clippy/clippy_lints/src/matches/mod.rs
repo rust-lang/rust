@@ -1,6 +1,6 @@
 use clippy_utils::source::{snippet_opt, span_starts_with, walk_span_to_context};
 use clippy_utils::{higher, in_constant, meets_msrv, msrvs};
-use rustc_hir::{Arm, Block, Expr, ExprKind, Local, MatchSource, Pat};
+use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -1040,14 +1040,9 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         }
     }
 
-    fn check_local(
-        &mut self,
-        cx: &LateContext<'tcx>,
-        local: &'tcx Local<'_>,
-        els: Option<&'tcx Block<'_>>,
-    ) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
         self.infallible_destructuring_match_linted |=
-            els.is_none() && infallible_destructuring_match::check(cx, local);
+            local.els.is_none() && infallible_destructuring_match::check(cx, local);
     }
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
