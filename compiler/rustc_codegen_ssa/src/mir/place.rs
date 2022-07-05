@@ -421,7 +421,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    #[instrument(level = "debug", skip(self, bx))]
+    #[instrument(level = "trace", skip(self, bx))]
     pub fn codegen_place(
         &mut self,
         bx: &mut Bx,

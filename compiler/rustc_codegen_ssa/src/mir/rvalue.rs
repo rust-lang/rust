@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    #[instrument(level = "debug", skip(self, bx))]
+    #[instrument(level = "trace", skip(self, bx))]
     pub fn codegen_rvalue(
         &mut self,
         mut bx: Bx,

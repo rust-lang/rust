@@ -32,14 +32,14 @@ impl<'tcx> Cx<'tcx> {
         exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect()
     }
 
-    #[instrument(level = "debug", skip(self, hir_expr))]
+    #[instrument(level = "trace", skip(self, hir_expr))]
     pub(super) fn mirror_expr_inner(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
         let temp_lifetime =
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, hir_expr.hir_id.local_id);
         let expr_scope =
             region::Scope { id: hir_expr.hir_id.local_id, data: region::ScopeData::Node };
 
-        debug!(?hir_expr.hir_id, ?hir_expr.span);
+        trace!(?hir_expr.hir_id, ?hir_expr.span);
 
         let mut expr = self.make_mirror_unadjusted(hir_expr);
 

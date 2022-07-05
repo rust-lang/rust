@@ -464,7 +464,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn load_operand(&mut self, place: PlaceRef<'tcx, &'ll Value>) -> OperandRef<'tcx, &'ll Value> {
         assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
 
