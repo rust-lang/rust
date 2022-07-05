@@ -1418,9 +1418,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 if layout_variants.iter().all(|v| v.abi.is_uninhabited()) {
                     abi = Abi::Uninhabited;
-                } else if tag.size(dl) == size || variants.iter().all(|layout| layout.is_empty()) {
-                    // Without latter check aligned enums with custom discriminant values
-                    // Would result in ICE see the issue #92464 for more info
+                } else if tag.size(dl) == size {
+                    // Make sure we only use scalar layout when the enum is entirely its
+                    // own tag (i.e. it has no padding nor any non-ZST variant fields).
                     abi = Abi::Scalar(tag);
                 } else {
                     // Try to use a ScalarPair for all tagged enums.

@@ -487,16 +487,14 @@ impl Step for Llvm {
             let version = output(cmd.arg("--version"));
             let major = version.split('.').next().unwrap();
             let lib_name = match llvm_version_suffix {
-                Some(s) => format!("lib/libLLVM-{}{}.dylib", major, s),
-                None => format!("lib/libLLVM-{}.dylib", major),
+                Some(s) => format!("libLLVM-{}{}.dylib", major, s),
+                None => format!("libLLVM-{}.dylib", major),
             };
 
-            // The reason why we build the library path from llvm-config is because
-            // the output of llvm-config depends on its location in the file system.
-            // Make sure we create the symlink exactly where it's needed.
-            let llvm_base = build_llvm_config.parent().unwrap().parent().unwrap();
-            let lib_llvm = llvm_base.join(lib_name);
-            t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
+            let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
+            if !lib_llvm.exists() {
+                t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
+            }
         }
 
         t!(stamp.write());

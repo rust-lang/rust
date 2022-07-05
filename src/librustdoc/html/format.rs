@@ -146,6 +146,10 @@ impl Buffer {
     pub(crate) fn reserve(&mut self, additional: usize) {
         self.buffer.reserve(additional)
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.buffer.len()
+    }
 }
 
 fn comma_sep<T: fmt::Display>(
