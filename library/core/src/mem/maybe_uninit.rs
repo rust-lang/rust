@@ -54,9 +54,6 @@ use crate::slice;
 /// // The equivalent code with `MaybeUninit<i32>`:
 /// let x: i32 = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior! ⚠️
 /// ```
-/// (Notice that the rules around uninitialized integers are not finalized yet, but
-/// until they are, it is advisable to avoid them.)
-///
 /// On top of that, remember that most types have additional invariants beyond merely
 /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
 /// is considered initialized (under the current implementation; this does not constitute
