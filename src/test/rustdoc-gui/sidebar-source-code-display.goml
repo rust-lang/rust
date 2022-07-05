@@ -18,6 +18,17 @@ click: "#sidebar-toggle"
 // Because of the transition CSS, we check by using `wait-for-css` instead of `assert-css`.
 wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
 
+// We now check that opening the sidebar and clicking a link will leave it open.
+// The behavior here on desktop is different than the behavior on mobile,
+// but since the sidebar doesn't fill the entire screen here, it makes sense to have the
+// sidebar stay resident.
+wait-for-css: (".sidebar", {"width": "300px"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
+click: ".sidebar a.selected"
+goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+wait-for-css: (".sidebar", {"width": "300px"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
+
 // Now we check the display of the sidebar items.
 show-text: true
 
@@ -221,3 +232,23 @@ click: "#sidebar-toggle"
 wait-for-css: (".sidebar", {"width": "0px"})
 // The "scrollTop" property should be the same.
 assert-window-property: {"pageYOffset": "2519"}
+
+// We now check that opening the sidebar and clicking a link will close it.
+// The behavior here on mobile is different than the behavior on desktop,
+// but common sense dictates that if you have a list of files that fills the entire screen, and
+// you click one of them, you probably want to actually see the file's contents, and not just
+// make it the current selection.
+click: "#sidebar-toggle"
+wait-for-css: ("#source-sidebar", {"visibility": "visible"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
+click: ".sidebar a.selected"
+goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "false"}
+// Resize back to desktop size, to check that the sidebar doesn't spontaneously open.
+size: (1000, 1000)
+wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "false"}
+click: "#sidebar-toggle"
+wait-for-css: ("#source-sidebar", {"visibility": "visible"})
+assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
