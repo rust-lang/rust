@@ -1,13 +1,12 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, ty::is_type_diagnostic_item};
+use clippy_utils::{diagnostics::span_lint_and_sugg, ty::is_type_lang_item};
 use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
+use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -61,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyStrings {
                         if let LitKind::Str(symbol, _) = spanned.node;
                         if symbol.is_empty();
                         let inner_expr_type = cx.typeck_results().expr_ty(inner_expr);
-                        if is_type_diagnostic_item(cx, inner_expr_type, sym::String);
+                        if is_type_lang_item(cx, inner_expr_type, LangItem::String);
                         then {
                             span_lint_and_sugg(
                                 cx,
