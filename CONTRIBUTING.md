@@ -147,6 +147,12 @@ does not automatically trigger a re-build of the standard library; you have to
 clear the Miri build cache manually (on Linux, `rm -rf ~/.cache/miri`;
 and on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri\cache"`).
 
+### Benchmarking
+
+Miri comes with a few benchmarks; you can run `./miri bench` to run them with the locally built
+Miri. Note: this will run `./miri install` as a side-effect. Also requires `hyperfine` to be
+installed (`cargo install hyperfine`).
+
 ## Configuring `rust-analyzer`
 
 To configure `rust-analyzer` and VS Code for working on Miri, save the following
