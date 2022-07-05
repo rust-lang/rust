@@ -1973,21 +1973,18 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 let mut ret = impls
                     .iter()
                     .filter_map(|it| {
-                        if let Some(ref i) = it.inner_impl().trait_ {
-                            let i_display = format!("{:#}", i.print(cx));
-                            let out = Escape(&i_display);
-                            let encoded =
-                                id_map.derive(small_url_encode(format!("impl-{:#}", i.print(cx))));
-                            let prefix = match it.inner_impl().polarity {
-                                ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
-                                ty::ImplPolarity::Negative => "!",
-                            };
-                            let generated =
-                                format!("<a href=\"#{}\">{}{}</a>", encoded, prefix, out);
-                            if links.insert(generated.clone()) { Some(generated) } else { None }
-                        } else {
-                            None
-                        }
+                        let trait_ = it.inner_impl().trait_.as_ref()?;
+                        let encoded =
+                            id_map.derive(get_id_for_impl(&it.inner_impl().for_, Some(trait_), cx));
+
+                        let i_display = format!("{:#}", trait_.print(cx));
+                        let out = Escape(&i_display);
+                        let prefix = match it.inner_impl().polarity {
+                            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+                            ty::ImplPolarity::Negative => "!",
+                        };
+                        let generated = format!("<a href=\"#{}\">{}{}</a>", encoded, prefix, out);
+                        if links.insert(generated.clone()) { Some(generated) } else { None }
                     })
                     .collect::<Vec<String>>();
                 ret.sort();
