@@ -85,6 +85,7 @@ macro_rules! arena_types {
             [] attribute: rustc_ast::Attribute,
             [] name_set: rustc_data_structures::fx::FxHashSet<rustc_span::symbol::Symbol>,
             [] hir_id_set: rustc_hir::HirIdSet,
+            [] late_bound_lifetimes: rustc_data_structures::fx::FxIndexSet<rustc_hir::def_id::LocalDefId>,
 
             // Interned types
             [] tys: rustc_data_structures::intern::WithStableHash<rustc_middle::ty::TyS<'tcx>>,
