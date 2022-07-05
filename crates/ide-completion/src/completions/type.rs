@@ -120,39 +120,64 @@ pub(crate) fn complete_type_path(
         }
         Qualified::Absolute => acc.add_crate_roots(ctx, path_ctx),
         Qualified::No => {
-            acc.add_nameref_keywords_with_colon(ctx);
-            if let TypeLocation::TypeBound = location {
-                ctx.process_all_names(&mut |name, res| {
-                    let add_resolution = match res {
-                        ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => mac.is_fn_like(ctx.db),
-                        ScopeDef::ModuleDef(
-                            hir::ModuleDef::Trait(_) | hir::ModuleDef::Module(_),
-                        ) => true,
-                        _ => false,
-                    };
-                    if add_resolution {
-                        acc.add_path_resolution(ctx, path_ctx, name, res);
-                    }
-                });
-                return;
-            }
-            if let TypeLocation::GenericArgList(Some(arg_list)) = location {
-                if let Some(path_seg) = arg_list.syntax().parent().and_then(ast::PathSegment::cast)
-                {
-                    if path_seg.syntax().ancestors().find_map(ast::TypeBound::cast).is_some() {
-                        if let Some(hir::PathResolution::Def(hir::ModuleDef::Trait(trait_))) =
-                            ctx.sema.resolve_path(&path_seg.parent_path())
-                        {
-                            trait_.items_with_supertraits(ctx.sema.db).into_iter().for_each(|it| {
-                                if let hir::AssocItem::TypeAlias(alias) = it {
-                                    cov_mark::hit!(complete_assoc_type_in_generics_list);
-                                    acc.add_type_alias_with_eq(ctx, alias)
+            match location {
+                TypeLocation::TypeBound => {
+                    acc.add_nameref_keywords_with_colon(ctx);
+                    ctx.process_all_names(&mut |name, res| {
+                        let add_resolution = match res {
+                            ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => {
+                                mac.is_fn_like(ctx.db)
+                            }
+                            ScopeDef::ModuleDef(
+                                hir::ModuleDef::Trait(_) | hir::ModuleDef::Module(_),
+                            ) => true,
+                            _ => false,
+                        };
+                        if add_resolution {
+                            acc.add_path_resolution(ctx, path_ctx, name, res);
+                        }
+                    });
+                    return;
+                }
+                TypeLocation::GenericArgList(Some(arg_list)) => {
+                    match arg_list.generic_args().next() {
+                        Some(ast::GenericArg::AssocTypeArg(_)) => {}
+                        _ => {
+                            if let Some(path_seg) =
+                                arg_list.syntax().parent().and_then(ast::PathSegment::cast)
+                            {
+                                if path_seg
+                                    .syntax()
+                                    .ancestors()
+                                    .find_map(ast::TypeBound::cast)
+                                    .is_some()
+                                {
+                                    if let Some(hir::PathResolution::Def(hir::ModuleDef::Trait(
+                                        trait_,
+                                    ))) = ctx.sema.resolve_path(&path_seg.parent_path())
+                                    {
+                                        trait_
+                                            .items_with_supertraits(ctx.sema.db)
+                                            .into_iter()
+                                            .for_each(|it| {
+                                                if let hir::AssocItem::TypeAlias(alias) = it {
+                                                    cov_mark::hit!(
+                                                        complete_assoc_type_in_generics_list
+                                                    );
+                                                    acc.add_type_alias_with_eq(ctx, alias);
+                                                }
+                                            });
+                                        return; // only AssocTypeArgs make sense
+                                    }
                                 }
-                            });
+                            }
                         }
                     }
                 }
-            }
+                _ => {}
+            };
+
+            acc.add_nameref_keywords_with_colon(ctx);
             ctx.process_all_names(&mut |name, def| {
                 if scope_def_applicable(def) {
                     acc.add_path_resolution(ctx, path_ctx, name, def);
