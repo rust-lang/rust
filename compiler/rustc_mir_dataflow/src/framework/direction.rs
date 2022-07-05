@@ -228,7 +228,7 @@ impl Direction for Backward {
     ) where
         A: Analysis<'tcx>,
     {
-        for pred in body.predecessors()[bb].iter().copied() {
+        for pred in body.basic_blocks.predecessors()[bb].iter().copied() {
             match body[pred].terminator().kind {
                 // Apply terminator-specific edge effects.
                 //

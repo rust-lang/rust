@@ -41,7 +41,6 @@ use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{ControlFlow, Index, IndexMut};
 use std::{iter, mem};
 
-use self::predecessors::Predecessors;
 pub use self::query::*;
 use self::switch_sources::SwitchSources;
 pub use basic_blocks::BasicBlocks;
@@ -447,11 +446,6 @@ impl<'tcx> Body<'tcx> {
             .get(statement_index)
             .map(Either::Left)
             .unwrap_or_else(|| Either::Right(block_data.terminator()))
-    }
-
-    #[inline]
-    pub fn predecessors(&self) -> &Predecessors {
-        self.basic_blocks.predecessors()
     }
 
     /// `body.switch_sources()[&(target, switch)]` returns a list of switch
@@ -2837,7 +2831,7 @@ impl Location {
             return true;
         }
 
-        let predecessors = body.predecessors();
+        let predecessors = body.basic_blocks.predecessors();
 
         // If we're in another block, then we want to check that block is a predecessor of `other`.
         let mut queue: Vec<BasicBlock> = predecessors[other.block].to_vec();
