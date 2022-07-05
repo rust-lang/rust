@@ -730,7 +730,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// Swaps the values at two mutable locations of the same type, without
 /// deinitializing either.
 ///
-/// But for the following two exceptions, this function is semantically
+/// But for the following exceptions, this function is semantically
 /// equivalent to [`mem::swap`]:
 ///
 /// * It operates on raw pointers instead of references. When references are
@@ -739,6 +739,9 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// * The two pointed-to values may overlap. If the values do overlap, then the
 ///   overlapping region of memory from `x` will be used. This is demonstrated
 ///   in the second example below.
+///
+/// * The operation is "untyped" in the sense that data may be uninitialized or otherwise violate
+///   the requirements of `T`. The initialization state is preserved exactly.
 ///
 /// # Safety
 ///
@@ -816,6 +819,9 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// Swaps `count * size_of::<T>()` bytes between the two regions of memory
 /// beginning at `x` and `y`. The two regions must *not* overlap.
 ///
+/// The operation is "untyped" in the sense that data may be uninitialized or otherwise violate the
+/// requirements of `T`. The initialization state is preserved exactly.
+///
 /// # Safety
 ///
 /// Behavior is undefined if any of the following conditions are violated:
@@ -861,15 +867,15 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
             if mem::align_of::<T>() >= mem::align_of::<$ChunkTy>()
                 && mem::size_of::<T>() % mem::size_of::<$ChunkTy>() == 0
             {
-                let x: *mut MaybeUninit<$ChunkTy> = x.cast();
-                let y: *mut MaybeUninit<$ChunkTy> = y.cast();
+                let x: *mut $ChunkTy = x.cast();
+                let y: *mut $ChunkTy = y.cast();
                 let count = count * (mem::size_of::<T>() / mem::size_of::<$ChunkTy>());
                 // SAFETY: these are the same bytes that the caller promised were
                 // ok, just typed as `MaybeUninit<ChunkTy>`s instead of as `T`s.
                 // The `if` condition above ensures that we're not violating
                 // alignment requirements, and that the division is exact so
                 // that we don't lose any bytes off the end.
-                return unsafe { swap_nonoverlapping_simple(x, y, count) };
+                return unsafe { swap_nonoverlapping_simple_untyped(x, y, count) };
             }
         };
     }
@@ -902,7 +908,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     }
 
     // SAFETY: Same preconditions as this function
-    unsafe { swap_nonoverlapping_simple(x, y, count) }
+    unsafe { swap_nonoverlapping_simple_untyped(x, y, count) }
 }
 
 /// Same behaviour and safety conditions as [`swap_nonoverlapping`]
@@ -911,17 +917,17 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 /// `swap_nonoverlapping` tries to use) so no need to manually SIMD it.
 #[inline]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
-const unsafe fn swap_nonoverlapping_simple<T>(x: *mut T, y: *mut T, count: usize) {
+const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, count: usize) {
+    let x = x.cast::<MaybeUninit<T>>();
+    let y = y.cast::<MaybeUninit<T>>();
     let mut i = 0;
     while i < count {
-        let x: &mut T =
-            // SAFETY: By precondition, `i` is in-bounds because it's below `n`
-            unsafe { &mut *x.add(i) };
-        let y: &mut T =
-            // SAFETY: By precondition, `i` is in-bounds because it's below `n`
-            // and it's distinct from `x` since the ranges are non-overlapping
-            unsafe { &mut *y.add(i) };
-        mem::swap_simple(x, y);
+        // SAFETY: By precondition, `i` is in-bounds because it's below `n`
+        let x = unsafe { &mut *x.add(i) };
+        // SAFETY: By precondition, `i` is in-bounds because it's below `n`
+        // and it's distinct from `x` since the ranges are non-overlapping
+        let y = unsafe { &mut *y.add(i) };
+        mem::swap_simple::<MaybeUninit<T>>(x, y);
 
         i += 1;
     }
