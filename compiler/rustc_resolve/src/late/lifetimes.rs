@@ -8,7 +8,7 @@
 
 use crate::late::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
 use rustc_ast::walk_list;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -540,7 +540,7 @@ fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
 fn is_late_bound_map<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> Option<(LocalDefId, &'tcx FxHashSet<LocalDefId>)> {
+) -> Option<(LocalDefId, &'tcx FxIndexSet<LocalDefId>)> {
     match tcx.def_kind(def_id) {
         DefKind::AnonConst | DefKind::InlineConst => {
             let mut def_id = tcx.local_parent(def_id);
