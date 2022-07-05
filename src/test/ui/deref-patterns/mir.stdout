@@ -1,0 +1,99 @@
+// WARNING: This output format is intended for human consumers only
+// and is subject to change without notice. Knock yourself out.
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/mir.rs:3:11: 3:11
+    let _1: std::option::Option<std::string::String>; // in scope 0 at $DIR/mir.rs:4:9: 4:10
+    let mut _2: std::string::String;     // in scope 0 at $DIR/mir.rs:4:18: 4:31
+    let mut _4: &std::string::String;    // in scope 0 at $DIR/mir.rs:7:14: 7:17
+    let mut _5: &str;                    // in scope 0 at $DIR/mir.rs:7:14: 7:17
+    let mut _6: bool;                    // in scope 0 at $DIR/mir.rs:7:14: 7:17
+    let mut _7: isize;                   // in scope 0 at $DIR/mir.rs:7:9: 7:18
+    let mut _9: bool;                    // in scope 0 at $DIR/mir.rs:10:1: 10:2
+    scope 1 {
+        debug s => _1;                   // in scope 1 at $DIR/mir.rs:4:9: 4:10
+        let _3: i32;                     // in scope 1 at $DIR/mir.rs:5:9: 5:10
+        scope 2 {
+            debug a => _3;               // in scope 2 at $DIR/mir.rs:5:9: 5:10
+            let _8: std::option::Option<std::string::String>; // in scope 2 at $DIR/mir.rs:8:9: 8:10
+            scope 3 {
+                debug s => _8;           // in scope 3 at $DIR/mir.rs:8:9: 8:10
+            }
+        }
+    }
+
+    bb0: {
+        _9 = const false;                // scope 0 at $DIR/mir.rs:4:9: 4:10
+        _2 = String::new() -> bb1;       // scope 0 at $DIR/mir.rs:4:18: 4:31
+                                         // mir::Constant
+                                         // + span: $DIR/mir.rs:4:18: 4:29
+                                         // + literal: Const { ty: fn() -> String {String::new}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        _9 = const true;                 // scope 0 at $DIR/mir.rs:4:13: 4:32
+        Deinit(_1);                      // scope 0 at $DIR/mir.rs:4:13: 4:32
+        ((_1 as Some).0: std::string::String) = move _2; // scope 0 at $DIR/mir.rs:4:13: 4:32
+        discriminant(_1) = 1;            // scope 0 at $DIR/mir.rs:4:13: 4:32
+        _7 = discriminant(_1);           // scope 2 at $DIR/mir.rs:6:11: 6:12
+        switchInt(move _7) -> [1_isize: bb3, otherwise: bb2]; // scope 2 at $DIR/mir.rs:6:5: 6:12
+    }
+
+    bb2: {
+        _9 = const false;                // scope 2 at $DIR/mir.rs:8:9: 8:10
+        _8 = move _1;                    // scope 2 at $DIR/mir.rs:8:9: 8:10
+        _3 = const 4321_i32;             // scope 3 at $DIR/mir.rs:8:14: 8:22
+        drop(_8) -> [return: bb7, unwind: bb12]; // scope 2 at $DIR/mir.rs:8:21: 8:22
+    }
+
+    bb3: {
+        _4 = &((_1 as Some).0: std::string::String); // scope 2 at $DIR/mir.rs:7:14: 7:17
+        _5 = <String as Deref>::deref(move _4) -> bb4; // scope 2 at $DIR/mir.rs:7:14: 7:17
+                                         // mir::Constant
+                                         // + span: $DIR/mir.rs:7:14: 7:17
+                                         // + literal: Const { ty: for<'r> fn(&'r String) -> &'r <String as Deref>::Target {<String as Deref>::deref}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb4: {
+        _6 = <str as PartialEq>::eq(_5, const "a") -> [return: bb5, unwind: bb12]; // scope 2 at $DIR/mir.rs:7:14: 7:17
+                                         // mir::Constant
+                                         // + span: $DIR/mir.rs:7:14: 7:17
+                                         // + literal: Const { ty: for<'r, 's> fn(&'r str, &'s str) -> bool {<str as PartialEq>::eq}, val: Value(Scalar(<ZST>)) }
+                                         // mir::Constant
+                                         // + span: $DIR/mir.rs:7:14: 7:17
+                                         // + literal: Const { ty: &str, val: Value(Slice(..)) }
+    }
+
+    bb5: {
+        switchInt(move _6) -> [false: bb2, otherwise: bb6]; // scope 2 at $DIR/mir.rs:7:14: 7:17
+    }
+
+    bb6: {
+        _3 = const 1234_i32;             // scope 2 at $DIR/mir.rs:7:22: 7:30
+        goto -> bb7;                     // scope 2 at $DIR/mir.rs:7:22: 7:30
+    }
+
+    bb7: {
+        switchInt(_9) -> [false: bb8, otherwise: bb10]; // scope 0 at $DIR/mir.rs:10:1: 10:2
+    }
+
+    bb8: {
+        _9 = const false;                // scope 0 at $DIR/mir.rs:10:1: 10:2
+        return;                          // scope 0 at $DIR/mir.rs:10:2: 10:2
+    }
+
+    bb9 (cleanup): {
+        resume;                          // scope 0 at $DIR/mir.rs:3:1: 10:2
+    }
+
+    bb10: {
+        drop(_1) -> bb8;                 // scope 0 at $DIR/mir.rs:10:1: 10:2
+    }
+
+    bb11 (cleanup): {
+        drop(_1) -> bb9;                 // scope 0 at $DIR/mir.rs:10:1: 10:2
+    }
+
+    bb12 (cleanup): {
+        switchInt(_9) -> [false: bb9, otherwise: bb11]; // scope 0 at $DIR/mir.rs:10:1: 10:2
+    }
+}
