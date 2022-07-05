@@ -1,4 +1,5 @@
 use hir::db::DefDatabase;
+use syntax::NodeOrToken;
 
 use crate::{Diagnostic, DiagnosticsContext, Severity};
 
@@ -18,9 +19,16 @@ pub(crate) fn unresolved_proc_macro(
     proc_attr_macros_enabled: bool,
 ) -> Diagnostic {
     // Use more accurate position if available.
-    let display_range = d
-        .precise_location
-        .unwrap_or_else(|| ctx.sema.diagnostics_display_range(d.node.clone()).range);
+    let display_range = (|| {
+        let precise_location = d.precise_location?;
+        let root = ctx.sema.parse_or_expand(d.node.file_id)?;
+        match root.covering_element(precise_location) {
+            NodeOrToken::Node(it) => Some(ctx.sema.original_range(&it)),
+            NodeOrToken::Token(it) => d.node.with_value(it).original_file_range_opt(ctx.sema.db),
+        }
+    })()
+    .unwrap_or_else(|| ctx.sema.diagnostics_display_range(d.node.clone()))
+    .range;
 
     let config_enabled = match d.kind {
         hir::MacroKind::Attr => proc_macros_enabled && proc_attr_macros_enabled,
