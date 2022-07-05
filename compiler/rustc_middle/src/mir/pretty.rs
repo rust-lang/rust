@@ -318,10 +318,10 @@ where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
     write_mir_intro(tcx, body, w)?;
-    for block in body.basic_blocks().indices() {
+    for block in body.basic_blocks.indices() {
         extra_data(PassWhere::BeforeBlock(block), w)?;
         write_basic_block(tcx, block, body, extra_data, w)?;
-        if block.index() + 1 != body.basic_blocks().len() {
+        if block.index() + 1 != body.basic_blocks.len() {
             writeln!(w)?;
         }
     }

@@ -31,7 +31,7 @@ pub(super) fn generate_constraints<'cx, 'tcx>(
         body,
     };
 
-    for (bb, data) in body.basic_blocks().iter_enumerated() {
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
         cg.visit_basic_block_data(bb, data);
     }
 }

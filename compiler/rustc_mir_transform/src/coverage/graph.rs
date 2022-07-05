@@ -713,7 +713,7 @@ impl<
 
         ShortCircuitPreorder {
             body,
-            visited: BitSet::new_empty(body.basic_blocks().len()),
+            visited: BitSet::new_empty(body.basic_blocks.len()),
             worklist,
             filtered_successors,
         }
@@ -747,7 +747,7 @@ impl<
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.body.basic_blocks().len() - self.visited.count();
+        let size = self.body.basic_blocks.len() - self.visited.count();
         (size, Some(size))
     }
 }

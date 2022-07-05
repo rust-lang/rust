@@ -25,7 +25,7 @@ impl RegionValueElements {
     pub(crate) fn new(body: &Body<'_>) -> Self {
         let mut num_points = 0;
         let statements_before_block: IndexVec<BasicBlock, usize> = body
-            .basic_blocks()
+            .basic_blocks
             .iter()
             .map(|block_data| {
                 let v = num_points;
@@ -37,7 +37,7 @@ impl RegionValueElements {
         debug!("RegionValueElements: num_points={:#?}", num_points);
 
         let mut basic_blocks = IndexVec::with_capacity(num_points);
-        for (bb, bb_data) in body.basic_blocks().iter_enumerated() {
+        for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
             basic_blocks.extend((0..=bb_data.statements.len()).map(|_| bb));
         }
 

@@ -151,7 +151,7 @@ struct OptimizationFinder<'a, 'tcx> {
 impl<'tcx> OptimizationFinder<'_, 'tcx> {
     fn find_optimizations(&self) -> Vec<OptimizationInfo<'tcx>> {
         self.body
-            .basic_blocks()
+            .basic_blocks
             .iter_enumerated()
             .filter_map(|(bb_idx, bb)| {
                 // find switch

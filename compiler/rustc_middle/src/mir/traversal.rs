@@ -37,7 +37,7 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
 
         Preorder {
             body,
-            visited: BitSet::new_empty(body.basic_blocks().len()),
+            visited: BitSet::new_empty(body.basic_blocks.len()),
             worklist,
             root_is_start_block: root == START_BLOCK,
         }
@@ -71,7 +71,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         // All the blocks, minus the number of blocks we've visited.
-        let upper = self.body.basic_blocks().len() - self.visited.count();
+        let upper = self.body.basic_blocks.len() - self.visited.count();
 
         let lower = if self.root_is_start_block {
             // We will visit all remaining blocks exactly once.

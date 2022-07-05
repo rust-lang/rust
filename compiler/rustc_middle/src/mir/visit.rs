@@ -951,7 +951,7 @@ macro_rules! basic_blocks {
         $body.basic_blocks.as_mut_preserves_cfg()
     };
     ($body:ident,) => {
-        $body.basic_blocks()
+        $body.basic_blocks
     };
 }
 

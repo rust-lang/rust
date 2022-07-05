@@ -150,7 +150,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             def_id,
             body.local_decls.len(),
             relevant,
-            body.basic_blocks().len()
+            body.basic_blocks.len()
         );
         if relevant > MAX_LOCALS {
             warn!(
@@ -159,11 +159,11 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             );
             return;
         }
-        if body.basic_blocks().len() > MAX_BLOCKS {
+        if body.basic_blocks.len() > MAX_BLOCKS {
             warn!(
                 "too many blocks in {:?} ({}, max is {}), not optimizing",
                 def_id,
-                body.basic_blocks().len(),
+                body.basic_blocks.len(),
                 MAX_BLOCKS
             );
             return;

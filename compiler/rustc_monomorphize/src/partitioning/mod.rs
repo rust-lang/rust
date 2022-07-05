@@ -481,7 +481,7 @@ fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx DefIdSe
                     continue;
                 }
                 let body = tcx.instance_mir(instance.def);
-                for block in body.basic_blocks() {
+                for block in body.basic_blocks.iter() {
                     for statement in &block.statements {
                         let mir::StatementKind::Coverage(_) = statement.kind else { continue };
                         let scope = statement.source_info.scope;

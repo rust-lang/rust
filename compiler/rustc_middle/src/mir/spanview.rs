@@ -105,7 +105,7 @@ where
     }
     let body_span = hir_body.unwrap().value.span;
     let mut span_viewables = Vec::new();
-    for (bb, data) in body.basic_blocks().iter_enumerated() {
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
         match spanview {
             MirSpanview::Statement => {
                 for (i, statement) in data.statements.iter().enumerate() {

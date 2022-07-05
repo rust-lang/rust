@@ -73,7 +73,7 @@ pub(crate) fn codegen_fn<'tcx>(
     // Predefine blocks
     let start_block = bcx.create_block();
     let block_map: IndexVec<BasicBlock, Block> =
-        (0..mir.basic_blocks().len()).map(|_| bcx.create_block()).collect();
+        (0..mir.basic_blocks.len()).map(|_| bcx.create_block()).collect();
 
     // Make FunctionCx
     let target_config = module.target_config();
@@ -271,7 +271,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
     }
     fx.tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(fx, start_block));
 
-    for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
+    for (bb, bb_data) in fx.mir.basic_blocks.iter_enumerated() {
         let block = fx.get_block(bb);
         fx.bcx.switch_to_block(block);
 

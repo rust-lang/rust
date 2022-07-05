@@ -21,10 +21,10 @@ impl<'tcx> MirPass<'tcx> for NormalizeArrayLen {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // early returns for edge cases of highly unrolled functions
-        if body.basic_blocks().len() > MAX_NUM_BLOCKS {
+        if body.basic_blocks.len() > MAX_NUM_BLOCKS {
             return;
         }
-        if body.local_decls().len() > MAX_NUM_LOCALS {
+        if body.local_decls.len() > MAX_NUM_LOCALS {
             return;
         }
         normalize_array_len_calls(tcx, body)

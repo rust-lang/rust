@@ -108,12 +108,12 @@ where
     type Edge = CfgEdge;
 
     fn nodes(&self) -> dot::Nodes<'_, Self::Node> {
-        self.body.basic_blocks().indices().collect::<Vec<_>>().into()
+        self.body.basic_blocks.indices().collect::<Vec<_>>().into()
     }
 
     fn edges(&self) -> dot::Edges<'_, Self::Edge> {
         self.body
-            .basic_blocks()
+            .basic_blocks
             .indices()
             .flat_map(|bb| dataflow_successors(self.body, bb))
             .collect::<Vec<_>>()

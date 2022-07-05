@@ -782,7 +782,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert_eq!(
             unwinding,
             match self.frame().loc {
-                Ok(loc) => self.body().basic_blocks()[loc.block].is_cleanup,
+                Ok(loc) => self.body().basic_blocks[loc.block].is_cleanup,
                 Err(_) => true,
             }
         );

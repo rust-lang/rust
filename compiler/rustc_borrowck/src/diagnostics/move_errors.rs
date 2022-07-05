@@ -88,7 +88,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(StatementKind::Assign(box (
                     place,
                     Rvalue::Use(Operand::Move(move_from)),
-                ))) = self.body.basic_blocks()[location.block]
+                ))) = self.body.basic_blocks[location.block]
                     .statements
                     .get(location.statement_index)
                     .map(|stmt| &stmt.kind)

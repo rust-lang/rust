@@ -176,7 +176,7 @@ fn debug_basic_blocks<'tcx>(mir_body: &Body<'tcx>) -> String {
     format!(
         "{:?}",
         mir_body
-            .basic_blocks()
+            .basic_blocks
             .iter_enumerated()
             .map(|(bb, data)| {
                 let term = &data.terminator();
@@ -213,7 +213,7 @@ fn print_mir_graphviz(name: &str, mir_body: &Body<'_>) {
             "digraph {} {{\n{}\n}}",
             name,
             mir_body
-                .basic_blocks()
+                .basic_blocks
                 .iter_enumerated()
                 .map(|(bb, data)| {
                     format!(
@@ -653,7 +653,7 @@ fn test_traverse_coverage_with_loops() {
 
 fn synthesize_body_span_from_terminators(mir_body: &Body<'_>) -> Span {
     let mut some_span: Option<Span> = None;
-    for (_, data) in mir_body.basic_blocks().iter_enumerated() {
+    for (_, data) in mir_body.basic_blocks.iter_enumerated() {
         let term_span = data.terminator().source_info.span;
         if let Some(span) = some_span.as_mut() {
             *span = span.to(term_span);

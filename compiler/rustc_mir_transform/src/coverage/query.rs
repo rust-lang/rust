@@ -84,7 +84,7 @@ impl CoverageVisitor {
     }
 
     fn visit_body(&mut self, body: &Body<'_>) {
-        for bb_data in body.basic_blocks().iter() {
+        for bb_data in body.basic_blocks.iter() {
             for statement in bb_data.statements.iter() {
                 if let StatementKind::Coverage(box ref coverage) = statement.kind {
                     if is_inlined(body, statement) {
@@ -138,7 +138,7 @@ fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) ->
 
 fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx CodeRegion> {
     let body = mir_body(tcx, def_id);
-    body.basic_blocks()
+    body.basic_blocks
         .iter()
         .flat_map(|data| {
             data.statements.iter().filter_map(|statement| match statement.kind {

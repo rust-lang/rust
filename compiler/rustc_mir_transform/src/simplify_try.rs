@@ -596,7 +596,7 @@ struct SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
 impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
     fn find(&self) -> Vec<SimplifyBranchSameOptimization> {
         self.body
-            .basic_blocks()
+            .basic_blocks
             .iter_enumerated()
             .filter_map(|(bb_idx, bb)| {
                 let (discr_switched_on, targets_and_values) = match &bb.terminator().kind {
@@ -632,7 +632,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
 
                 let mut iter_bbs_reachable = targets_and_values
                     .iter()
-                    .map(|target_and_value| (target_and_value, &self.body.basic_blocks()[target_and_value.target]))
+                    .map(|target_and_value| (target_and_value, &self.body.basic_blocks[target_and_value.target]))
                     .filter(|(_, bb)| {
                         // Reaching `unreachable` is UB so assume it doesn't happen.
                         bb.terminator().kind != TerminatorKind::Unreachable

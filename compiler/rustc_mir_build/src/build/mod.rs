@@ -272,7 +272,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
         // by borrow checking.
         debug_assert!(
             !(body.local_decls.has_free_regions()
-                || body.basic_blocks().has_free_regions()
+                || body.basic_blocks.has_free_regions()
                 || body.var_debug_info.has_free_regions()
                 || body.yield_ty().has_free_regions()),
             "Unexpected free regions in MIR: {:?}",

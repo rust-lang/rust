@@ -95,7 +95,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         history: Vec::new(),
         changed: false,
     };
-    let blocks = BasicBlock::new(0)..body.basic_blocks().next_index();
+    let blocks = BasicBlock::new(0)..body.basic_blocks.next_index();
     this.process_blocks(body, blocks);
     this.changed
 }
@@ -217,9 +217,9 @@ impl<'tcx> Inliner<'tcx> {
             }
         }
 
-        let old_blocks = caller_body.basic_blocks().next_index();
+        let old_blocks = caller_body.basic_blocks.next_index();
         self.inline_call(caller_body, &callsite, callee_body);
-        let new_blocks = old_blocks..caller_body.basic_blocks().next_index();
+        let new_blocks = old_blocks..caller_body.basic_blocks.next_index();
 
         Ok(new_blocks)
     }
@@ -409,14 +409,14 @@ impl<'tcx> Inliner<'tcx> {
         // Give a bonus functions with a small number of blocks,
         // We normally have two or three blocks for even
         // very small functions.
-        if callee_body.basic_blocks().len() <= 3 {
+        if callee_body.basic_blocks.len() <= 3 {
             threshold += threshold / 4;
         }
         debug!("    final inline threshold = {}", threshold);
 
         // FIXME: Give a bonus to functions with only a single caller
         let diverges = matches!(
-            callee_body.basic_blocks()[START_BLOCK].terminator().kind,
+            callee_body.basic_blocks[START_BLOCK].terminator().kind,
             TerminatorKind::Unreachable | TerminatorKind::Call { target: None, .. }
         );
         if diverges && !matches!(callee_attrs.inline, InlineAttr::Always) {
@@ -434,13 +434,13 @@ impl<'tcx> Inliner<'tcx> {
 
         // Traverse the MIR manually so we can account for the effects of inlining on the CFG.
         let mut work_list = vec![START_BLOCK];
-        let mut visited = BitSet::new_empty(callee_body.basic_blocks().len());
+        let mut visited = BitSet::new_empty(callee_body.basic_blocks.len());
         while let Some(bb) = work_list.pop() {
             if !visited.insert(bb.index()) {
                 continue;
             }
 
-            let blk = &callee_body.basic_blocks()[bb];
+            let blk = &callee_body.basic_blocks[bb];
             checker.visit_basic_block_data(bb, blk);
 
             let term = blk.terminator();
@@ -541,7 +541,7 @@ impl<'tcx> Inliner<'tcx> {
                     args: &args,
                     new_locals: Local::new(caller_body.local_decls.len())..,
                     new_scopes: SourceScope::new(caller_body.source_scopes.len())..,
-                    new_blocks: BasicBlock::new(caller_body.basic_blocks().len())..,
+                    new_blocks: BasicBlock::new(caller_body.basic_blocks.len())..,
                     destination: dest,
                     callsite_scope: caller_body.source_scopes[callsite.source_info.scope].clone(),
                     callsite,

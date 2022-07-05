@@ -135,7 +135,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         // qualifs for the return type.
         let return_block = ccx
             .body
-            .basic_blocks()
+            .basic_blocks
             .iter_enumerated()
             .find(|(_, block)| matches!(block.terminator().kind, TerminatorKind::Return))
             .map(|(bb, _)| bb);
