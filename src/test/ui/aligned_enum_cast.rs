@@ -12,7 +12,9 @@ fn main() {
     let aligned = Aligned::Zero;
     let fo = aligned as u8;
     println!("foo {}", fo);
+    assert_eq!(fo, 0);
     println!("{}", tou8(Aligned::Zero));
+    assert_eq!(tou8(Aligned::Zero), 0);
 }
 
 #[inline(never)]
