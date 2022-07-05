@@ -1534,3 +1534,14 @@ fn read_large_dir() {
         entry.unwrap();
     }
 }
+
+#[test]
+#[cfg(windows)]
+fn hiberfil_sys() {
+    // Get the system drive, which is usually `C:`.
+    let mut hiberfil = crate::env::var("SystemDrive").unwrap();
+    hiberfil.push_str(r"\hiberfil.sys");
+
+    fs::metadata(&hiberfil).unwrap();
+    fs::symlink_metadata(&hiberfil).unwrap();
+}

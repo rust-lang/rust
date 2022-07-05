@@ -1150,22 +1150,73 @@ pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
 }
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
-    let mut opts = OpenOptions::new();
-    // No read or write permissions are necessary
-    opts.access_mode(0);
-    // This flag is so we can open directories too
-    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
-    let file = File::open(path, &opts)?;
-    file.file_attr()
+    metadata(path, ReparsePoint::Follow)
 }
 
 pub fn lstat(path: &Path) -> io::Result<FileAttr> {
+    metadata(path, ReparsePoint::Open)
+}
+
+#[repr(u32)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ReparsePoint {
+    Follow = 0,
+    Open = c::FILE_FLAG_OPEN_REPARSE_POINT,
+}
+impl ReparsePoint {
+    fn as_flag(self) -> u32 {
+        self as u32
+    }
+}
+
+fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
     let mut opts = OpenOptions::new();
     // No read or write permissions are necessary
     opts.access_mode(0);
-    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_OPEN_REPARSE_POINT);
-    let file = File::open(path, &opts)?;
-    file.file_attr()
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | reparse.as_flag());
+
+    // Attempt to open the file normally.
+    // If that fails with `ERROR_SHARING_VIOLATION` then retry using `FindFirstFileW`.
+    // If the fallback fails for any reason we return the original error.
+    match File::open(path, &opts) {
+        Ok(file) => file.file_attr(),
+        Err(e) if e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as _) => {
+            // `ERROR_SHARING_VIOLATION` will almost never be returned.
+            // Usually if a file is locked you can still read some metadata.
+            // However, there are special system files, such as
+            // `C:\hiberfil.sys`, that are locked in a way that denies even that.
+            unsafe {
+                let path = maybe_verbatim(path)?;
+
+                // `FindFirstFileW` accepts wildcard file names.
+                // Fortunately wildcards are not valid file names and
+                // `ERROR_SHARING_VIOLATION` means the file exists (but is locked)
+                // therefore it's safe to assume the file name given does not
+                // include wildcards.
+                let mut wfd = mem::zeroed();
+                let handle = c::FindFirstFileW(path.as_ptr(), &mut wfd);
+
+                if handle == c::INVALID_HANDLE_VALUE {
+                    // This can fail if the user does not have read access to the
+                    // directory.
+                    Err(e)
+                } else {
+                    // We no longer need the find handle.
+                    c::FindClose(handle);
+
+                    // `FindFirstFileW` reads the cached file information from the
+                    // directory. The downside is that this metadata may be outdated.
+                    let attrs = FileAttr::from(wfd);
+                    if reparse == ReparsePoint::Follow && attrs.file_type().is_symlink() {
+                        Err(e)
+                    } else {
+                        Ok(attrs)
+                    }
+                }
+            }
+        }
+        Err(e) => Err(e),
+    }
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
