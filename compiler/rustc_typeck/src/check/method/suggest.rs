@@ -1526,7 +1526,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Option<ObligationCause<'tcx>>,
         )],
     ) {
-        let mut derives = Vec::<(String, Span, String)>::new();
+        let mut derives = Vec::<(String, Span, Span, String)>::new();
         let mut traits = Vec::<Span>::new();
         for (pred, _, _) in unsatisfied_predicates {
             let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder() else { continue };
@@ -1550,6 +1550,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if can_derive {
                     let self_name = trait_pred.self_ty().to_string();
                     let self_span = self.tcx.def_span(adt.did());
+                    let ident_span = self.tcx.def_ident_span(adt.did()).unwrap_or(self_span);
                     if let Some(poly_trait_ref) = pred.to_opt_poly_trait_pred() {
                         for super_trait in supertraits(self.tcx, poly_trait_ref.to_poly_trait_ref())
                         {
@@ -1559,12 +1560,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 derives.push((
                                     self_name.clone(),
                                     self_span,
+                                    ident_span,
                                     parent_diagnostic_name.to_string(),
                                 ));
                             }
                         }
                     }
-                    derives.push((self_name, self_span, diagnostic_name.to_string()));
+                    derives.push((self_name, self_span, ident_span, diagnostic_name.to_string()));
                 } else {
                     traits.push(self.tcx.def_span(trait_pred.def_id()));
                 }
@@ -1578,16 +1580,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         derives.sort();
         derives.dedup();
 
-        let mut derives_grouped = Vec::<(String, Span, String)>::new();
-        for (self_name, self_span, trait_name) in derives.into_iter() {
-            if let Some((last_self_name, _, ref mut last_trait_names)) = derives_grouped.last_mut()
+        let mut derives_grouped = Vec::<(String, Span, Span, String)>::new();
+        for (self_name, self_span, ident_span, trait_name) in derives.into_iter() {
+            if let Some((last_self_name, _, _, ref mut last_trait_names)) =
+                derives_grouped.last_mut()
             {
                 if last_self_name == &self_name {
                     last_trait_names.push_str(format!(", {}", trait_name).as_str());
                     continue;
                 }
             }
-            derives_grouped.push((self_name, self_span, trait_name));
+            derives_grouped.push((self_name, self_span, ident_span, trait_name));
         }
 
         let len = traits.len();
@@ -1599,11 +1602,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        for (self_name, self_span, traits) in &derives_grouped {
+        for (self_name, self_span, ident_span, traits) in &derives_grouped {
+            let mut span = self_span.shrink_to_lo();
+            let mut suggestion = format!("#[derive({})]\n", traits);
+            self.tcx.sess.parse_sess.derive_spans.with_lock(|derive_spans| {
+                if let Some(derives) = derive_spans.get(ident_span) {
+                    let mut derives: Vec<_> = derives.iter().collect();
+                    derives.sort();
+                    span = match derives[..] {
+                        [] => unreachable!(),
+                        [.., last] => last.shrink_to_hi(),
+                    };
+                    suggestion = format!(", {}", traits);
+                }
+            });
+
             err.span_suggestion_verbose(
-                self_span.shrink_to_lo(),
+                span,
                 &format!("consider annotating `{}` with `#[derive({})]`", self_name, traits),
-                format!("#[derive({})]\n", traits),
+                suggestion,
                 Applicability::MaybeIncorrect,
             );
         }

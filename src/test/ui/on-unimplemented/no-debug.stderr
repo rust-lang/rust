@@ -5,7 +5,6 @@ LL |     println!("{:?} {:?}", Foo, Bar);
    |                           ^^^ `Foo` cannot be formatted using `{:?}`
    |
    = help: the trait `Debug` is not implemented for `Foo`
-   = note: add `#[derive(Debug)]` to `Foo` or manually `impl Debug for Foo`
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Foo` with `#[derive(Debug)]`
    |

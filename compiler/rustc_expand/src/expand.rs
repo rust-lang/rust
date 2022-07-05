@@ -419,6 +419,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 continue;
             };
+            if let InvocationKind::Derive { path, item: Annotatable::Item(item) } = &invoc.kind {
+                tracing::info!(?path, ?item);
+                self.cx
+                    .sess
+                    .parse_sess
+                    .derive_spans
+                    .lock()
+                    .entry(item.ident.span)
+                    .or_default()
+                    .insert(path.span);
+            }
 
             let ext = match ext {
                 Some(ext) => ext,

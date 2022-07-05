@@ -164,6 +164,8 @@ pub struct ParseSess {
     pub file_depinfo: Lock<FxHashSet<Symbol>>,
     /// All the type ascriptions expressions that have had a suggestion for likely path typo.
     pub type_ascription_path_suggestions: Lock<FxHashSet<Span>>,
+    /// Track the `derive` annotations on all items, for more accurate suggestions.
+    pub derive_spans: Lock<FxHashMap<Span, FxHashSet<Span>>>,
     /// Whether cfg(version) should treat the current release as incomplete
     pub assume_incomplete_release: bool,
     /// Spans passed to `proc_macro::quote_span`. Each span has a numerical
@@ -200,6 +202,7 @@ impl ParseSess {
             buffered_lints: Lock::new(vec![]),
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
             gated_spans: GatedSpans::default(),
+            derive_spans: Lock::new(Default::default()),
             symbol_gallery: SymbolGallery::default(),
             reached_eof: Lock::new(false),
             env_depinfo: Default::default(),

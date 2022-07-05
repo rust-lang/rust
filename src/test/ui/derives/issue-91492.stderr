@@ -27,8 +27,8 @@ LL |     foo.extend_from_slice(bar);
            `SomeDerives: Clone`
 help: consider annotating `SomeDerives` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
-   |
+LL | #[derive(Default, PartialEq, Clone)]
+   |                            +++++++
 
 error[E0599]: the method `use_clone` exists for struct `Object<NoDerives, SomeDerives>`, but its trait bounds were not satisfied
   --> $DIR/issue-91492.rs:22:9

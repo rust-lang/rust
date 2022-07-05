@@ -644,11 +644,7 @@ impl Display for Arguments<'_> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
-    on(
-        crate_local,
-        label = "`{Self}` cannot be formatted using `{{:?}}`",
-        note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {Debug} for {Self}`"
-    ),
+    on(crate_local, label = "`{Self}` cannot be formatted using `{{:?}}`"),
     message = "`{Self}` doesn't implement `{Debug}`",
     label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{Debug}`"
 )]

@@ -2893,14 +2893,29 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 })
         };
         if can_derive {
+            let mut span = self.tcx.def_span(adt.did()).shrink_to_lo();
+            let mut sugg = format!("#[derive({})]\n", diagnostic_name);
+            self.tcx.sess.parse_sess.derive_spans.with_lock(|derive_spans| {
+                if let Some(derives) =
+                    self.tcx.def_ident_span(adt.did()).and_then(|did| derive_spans.get(&did))
+                {
+                    let mut derives: Vec<_> = derives.iter().collect();
+                    derives.sort();
+                    span = match derives[..] {
+                        [] => unreachable!(),
+                        [.., last] => last.shrink_to_hi(),
+                    };
+                    sugg = format!(", {}", diagnostic_name);
+                }
+            });
             err.span_suggestion_verbose(
-                self.tcx.def_span(adt.did()).shrink_to_lo(),
+                span,
                 &format!(
                     "consider annotating `{}` with `#[derive({})]`",
                     trait_pred.skip_binder().self_ty(),
                     diagnostic_name,
                 ),
-                format!("#[derive({})]\n", diagnostic_name),
+                sugg,
                 Applicability::MaybeIncorrect,
             );
         }

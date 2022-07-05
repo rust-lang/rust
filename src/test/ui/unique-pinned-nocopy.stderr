@@ -23,8 +23,8 @@ LL | | >(Unique<T>, A);
            candidate #1: `Clone`
 help: consider annotating `R` with `#[derive(Clone)]`
    |
-LL | #[derive(Clone)]
-   |
+LL | #[derive(Debug, Clone)]
+   |               +++++++
 
 error: aborting due to previous error
 

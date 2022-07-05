@@ -15,8 +15,8 @@ LL | pub struct AssertParamIsEq<T: Eq + ?Sized> {
    = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `PartialEqNotEq` with `#[derive(Eq)]`
    |
-LL | #[derive(Eq)]
-   |
+LL | #[derive(PartialEq, Copy, Clone, Eq)]
+   |                                ++++
 
 error: aborting due to previous error
 

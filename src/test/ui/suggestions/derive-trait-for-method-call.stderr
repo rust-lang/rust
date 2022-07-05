@@ -54,8 +54,8 @@ LL |     let y = x.test();
            `CloneStruct: Default`
 help: consider annotating `CloneStruct` with `#[derive(Default)]`
    |
-LL | #[derive(Default)]
-   |
+LL | #[derive(Clone, Default)]
+   |               +++++++++
 help: consider annotating `Struct` with `#[derive(Clone, Default)]`
    |
 LL | #[derive(Clone, Default)]
