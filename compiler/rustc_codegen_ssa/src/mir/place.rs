@@ -204,6 +204,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 
     /// Obtain the actual discriminant of a value.
+    #[instrument(level = "trace", skip(bx))]
     pub fn codegen_get_discr<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
         bx: &mut Bx,
@@ -420,12 +421,12 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    #[instrument(level = "trace", skip(self, bx))]
     pub fn codegen_place(
         &mut self,
         bx: &mut Bx,
         place_ref: mir::PlaceRef<'tcx>,
     ) -> PlaceRef<'tcx, Bx::Value> {
-        debug!("codegen_place(place_ref={:?})", place_ref);
         let cx = self.cx;
         let tcx = self.cx.tcx();
 

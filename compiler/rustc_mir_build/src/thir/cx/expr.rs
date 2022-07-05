@@ -32,13 +32,14 @@ impl<'tcx> Cx<'tcx> {
         exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect()
     }
 
+    #[instrument(level = "trace", skip(self, hir_expr))]
     pub(super) fn mirror_expr_inner(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
         let temp_lifetime =
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, hir_expr.hir_id.local_id);
         let expr_scope =
             region::Scope { id: hir_expr.hir_id.local_id, data: region::ScopeData::Node };
 
-        debug!("Expr::make_mirror(): id={}, span={:?}", hir_expr.hir_id, hir_expr.span);
+        trace!(?hir_expr.hir_id, ?hir_expr.span);
 
         let mut expr = self.make_mirror_unadjusted(hir_expr);
 
@@ -49,7 +50,7 @@ impl<'tcx> Cx<'tcx> {
 
         // Now apply adjustments, if any.
         for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
-            debug!("make_mirror: expr={:?} applying adjustment={:?}", expr, adjustment);
+            trace!(?expr, ?adjustment);
             let span = expr.span;
             expr =
                 self.apply_adjustment(hir_expr, expr, adjustment, adjustment_span.unwrap_or(span));

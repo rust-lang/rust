@@ -28,7 +28,7 @@ use std::ffi::CStr;
 use std::iter;
 use std::ops::Deref;
 use std::ptr;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 // All Builders must have an llfn associated with them
 #[must_use]
@@ -464,15 +464,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    #[instrument(level = "trace", skip(self))]
     fn load_operand(&mut self, place: PlaceRef<'tcx, &'ll Value>) -> OperandRef<'tcx, &'ll Value> {
-        debug!("PlaceRef::load: {:?}", place);
-
         assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
 
         if place.layout.is_zst() {
             return OperandRef::new_zst(self, place.layout);
         }
 
+        #[instrument(level = "trace", skip(bx))]
         fn scalar_load_metadata<'a, 'll, 'tcx>(
             bx: &mut Builder<'a, 'll, 'tcx>,
             load: &'ll Value,
