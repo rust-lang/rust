@@ -1,5 +1,5 @@
 error: `#[derive(SessionDiagnostic)]` can only be used on structs
-  --> $DIR/diagnostic-derive.rs:37:1
+  --> $DIR/diagnostic-derive.rs:39:1
    |
 LL | / #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
 LL | |
@@ -10,13 +10,13 @@ LL | | }
    | |_^
 
 error: `#[error = ...]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:46:1
+  --> $DIR/diagnostic-derive.rs:48:1
    |
 LL | #[error = "E0123"]
    | ^^^^^^^^^^^^^^^^^^
 
 error: `#[nonsense(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:51:1
+  --> $DIR/diagnostic-derive.rs:53:1
    |
 LL | #[nonsense(typeck::ambiguous_lifetime_bound, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL | #[nonsense(typeck::ambiguous_lifetime_bound, code = "E0123")]
    = help: only `error`, `warning`, `help` and `note` are valid attributes
 
 error: diagnostic kind not specified
-  --> $DIR/diagnostic-derive.rs:51:1
+  --> $DIR/diagnostic-derive.rs:53:1
    |
 LL | / #[nonsense(typeck::ambiguous_lifetime_bound, code = "E0123")]
 LL | |
@@ -36,7 +36,7 @@ LL | | struct InvalidStructAttr {}
    = help: use the `#[error(...)]` attribute to create an error
 
 error: `#[error("...")]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:58:9
+  --> $DIR/diagnostic-derive.rs:60:9
    |
 LL | #[error("E0123")]
    |         ^^^^^^^
@@ -44,7 +44,7 @@ LL | #[error("E0123")]
    = help: first argument of the attribute should be the diagnostic slug
 
 error: diagnostic slug not specified
-  --> $DIR/diagnostic-derive.rs:58:1
+  --> $DIR/diagnostic-derive.rs:60:1
    |
 LL | / #[error("E0123")]
 LL | |
@@ -55,7 +55,7 @@ LL | | struct InvalidLitNestedAttr {}
    = help: specify the slug as the first argument to the attribute, such as `#[error(typeck::example_error)]`
 
 error: `#[error(nonsense(...))]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:69:9
+  --> $DIR/diagnostic-derive.rs:71:9
    |
 LL | #[error(nonsense("foo"), code = "E0123", slug = "foo")]
    |         ^^^^^^^^^^^^^^^
@@ -63,7 +63,7 @@ LL | #[error(nonsense("foo"), code = "E0123", slug = "foo")]
    = help: first argument of the attribute should be the diagnostic slug
 
 error: diagnostic slug not specified
-  --> $DIR/diagnostic-derive.rs:69:1
+  --> $DIR/diagnostic-derive.rs:71:1
    |
 LL | / #[error(nonsense("foo"), code = "E0123", slug = "foo")]
 LL | |
@@ -74,7 +74,7 @@ LL | | struct InvalidNestedStructAttr1 {}
    = help: specify the slug as the first argument to the attribute, such as `#[error(typeck::example_error)]`
 
 error: `#[error(nonsense = ...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:75:9
+  --> $DIR/diagnostic-derive.rs:77:9
    |
 LL | #[error(nonsense = "...", code = "E0123", slug = "foo")]
    |         ^^^^^^^^^^^^^^^^
@@ -82,7 +82,7 @@ LL | #[error(nonsense = "...", code = "E0123", slug = "foo")]
    = help: first argument of the attribute should be the diagnostic slug
 
 error: diagnostic slug not specified
-  --> $DIR/diagnostic-derive.rs:75:1
+  --> $DIR/diagnostic-derive.rs:77:1
    |
 LL | / #[error(nonsense = "...", code = "E0123", slug = "foo")]
 LL | |
@@ -93,7 +93,7 @@ LL | | struct InvalidNestedStructAttr2 {}
    = help: specify the slug as the first argument to the attribute, such as `#[error(typeck::example_error)]`
 
 error: `#[error(nonsense = ...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:81:9
+  --> $DIR/diagnostic-derive.rs:83:9
    |
 LL | #[error(nonsense = 4, code = "E0123", slug = "foo")]
    |         ^^^^^^^^^^^^
@@ -101,7 +101,7 @@ LL | #[error(nonsense = 4, code = "E0123", slug = "foo")]
    = help: first argument of the attribute should be the diagnostic slug
 
 error: diagnostic slug not specified
-  --> $DIR/diagnostic-derive.rs:81:1
+  --> $DIR/diagnostic-derive.rs:83:1
    |
 LL | / #[error(nonsense = 4, code = "E0123", slug = "foo")]
 LL | |
@@ -112,7 +112,7 @@ LL | | struct InvalidNestedStructAttr3 {}
    = help: specify the slug as the first argument to the attribute, such as `#[error(typeck::example_error)]`
 
 error: `#[error(slug = ...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:87:59
+  --> $DIR/diagnostic-derive.rs:89:59
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0123", slug = "foo")]
    |                                                           ^^^^^^^^^^^^
@@ -120,103 +120,103 @@ LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0123", slug = "foo")]
    = help: only `code` is a valid nested attributes following the slug
 
 error: `#[suggestion = ...]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:94:5
+  --> $DIR/diagnostic-derive.rs:96:5
    |
 LL |     #[suggestion = "bar"]
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: specified multiple times
-  --> $DIR/diagnostic-derive.rs:101:1
+  --> $DIR/diagnostic-derive.rs:103:1
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0456")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:100:1
+  --> $DIR/diagnostic-derive.rs:102:1
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: specified multiple times
-  --> $DIR/diagnostic-derive.rs:101:1
+  --> $DIR/diagnostic-derive.rs:103:1
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0456")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:100:1
+  --> $DIR/diagnostic-derive.rs:102:1
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: specified multiple times
-  --> $DIR/diagnostic-derive.rs:101:50
+  --> $DIR/diagnostic-derive.rs:103:50
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0456")]
    |                                                  ^^^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:100:50
+  --> $DIR/diagnostic-derive.rs:102:50
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
    |                                                  ^^^^^^^
 
 error: specified multiple times
-  --> $DIR/diagnostic-derive.rs:109:1
+  --> $DIR/diagnostic-derive.rs:111:1
    |
 LL | #[warning(typeck::ambiguous_lifetime_bound, code = "E0293")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:108:1
+  --> $DIR/diagnostic-derive.rs:110:1
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: specified multiple times
-  --> $DIR/diagnostic-derive.rs:109:1
+  --> $DIR/diagnostic-derive.rs:111:1
    |
 LL | #[warning(typeck::ambiguous_lifetime_bound, code = "E0293")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:108:1
+  --> $DIR/diagnostic-derive.rs:110:1
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: specified multiple times
-  --> $DIR/diagnostic-derive.rs:109:52
+  --> $DIR/diagnostic-derive.rs:111:52
    |
 LL | #[warning(typeck::ambiguous_lifetime_bound, code = "E0293")]
    |                                                    ^^^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:108:50
+  --> $DIR/diagnostic-derive.rs:110:50
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
    |                                                  ^^^^^^^
 
 error: specified multiple times
-  --> $DIR/diagnostic-derive.rs:116:66
+  --> $DIR/diagnostic-derive.rs:118:66
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0456", code = "E0457")]
    |                                                                  ^^^^^^^
    |
 note: previously specified here
-  --> $DIR/diagnostic-derive.rs:116:50
+  --> $DIR/diagnostic-derive.rs:118:50
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0456", code = "E0457")]
    |                                                  ^^^^^^^
 
 error: `#[error(typeck::ambiguous_lifetime_bound)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:121:43
+  --> $DIR/diagnostic-derive.rs:123:43
    |
 LL | #[error(typeck::ambiguous_lifetime_bound, typeck::ambiguous_lifetime_bound, code = "E0456")]
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostic kind not specified
-  --> $DIR/diagnostic-derive.rs:126:1
+  --> $DIR/diagnostic-derive.rs:128:1
    |
 LL | struct KindNotProvided {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -224,7 +224,7 @@ LL | struct KindNotProvided {}
    = help: use the `#[error(...)]` attribute to create an error
 
 error: diagnostic slug not specified
-  --> $DIR/diagnostic-derive.rs:129:1
+  --> $DIR/diagnostic-derive.rs:131:1
    |
 LL | / #[error(code = "E0456")]
 LL | |
@@ -234,13 +234,13 @@ LL | | struct SlugNotProvided {}
    = help: specify the slug as the first argument to the attribute, such as `#[error(typeck::example_error)]`
 
 error: the `#[primary_span]` attribute can only be applied to fields of type `Span`
-  --> $DIR/diagnostic-derive.rs:140:5
+  --> $DIR/diagnostic-derive.rs:142:5
    |
 LL |     #[primary_span]
    |     ^^^^^^^^^^^^^^^
 
 error: `#[nonsense]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:148:5
+  --> $DIR/diagnostic-derive.rs:150:5
    |
 LL |     #[nonsense]
    |     ^^^^^^^^^^^
@@ -248,19 +248,19 @@ LL |     #[nonsense]
    = help: only `skip_arg`, `primary_span`, `label`, `note`, `help` and `subdiagnostic` are valid field attributes
 
 error: the `#[label(...)]` attribute can only be applied to fields of type `Span`
-  --> $DIR/diagnostic-derive.rs:165:5
+  --> $DIR/diagnostic-derive.rs:167:5
    |
 LL |     #[label(typeck::label)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `name` doesn't refer to a field on this type
-  --> $DIR/diagnostic-derive.rs:173:45
+  --> $DIR/diagnostic-derive.rs:175:45
    |
 LL |     #[suggestion(typeck::suggestion, code = "{name}")]
    |                                             ^^^^^^^^
 
 error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/diagnostic-derive.rs:178:16
+  --> $DIR/diagnostic-derive.rs:180:16
    |
 LL | #[derive(SessionDiagnostic)]
    |           -    ^ expected `'}'` in format string
@@ -271,7 +271,7 @@ LL | #[derive(SessionDiagnostic)]
    = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid format string: unmatched `}` found
-  --> $DIR/diagnostic-derive.rs:188:15
+  --> $DIR/diagnostic-derive.rs:190:15
    |
 LL | #[derive(SessionDiagnostic)]
    |               ^ unmatched `}` in format string
@@ -280,13 +280,13 @@ LL | #[derive(SessionDiagnostic)]
    = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the `#[label(...)]` attribute can only be applied to fields of type `Span`
-  --> $DIR/diagnostic-derive.rs:208:5
+  --> $DIR/diagnostic-derive.rs:210:5
    |
 LL |     #[label(typeck::label)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[suggestion(nonsense = ...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:233:18
+  --> $DIR/diagnostic-derive.rs:235:18
    |
 LL |     #[suggestion(nonsense = "bar")]
    |                  ^^^^^^^^^^^^^^^^
@@ -294,7 +294,7 @@ LL |     #[suggestion(nonsense = "bar")]
    = help: only `message`, `code` and `applicability` are valid field attributes
 
 error: `#[suggestion(msg = ...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:241:18
+  --> $DIR/diagnostic-derive.rs:243:18
    |
 LL |     #[suggestion(msg = "bar")]
    |                  ^^^^^^^^^^^
@@ -302,7 +302,7 @@ LL |     #[suggestion(msg = "bar")]
    = help: only `message`, `code` and `applicability` are valid field attributes
 
 error: wrong field type for suggestion
-  --> $DIR/diagnostic-derive.rs:263:5
+  --> $DIR/diagnostic-derive.rs:265:5
    |
 LL | /     #[suggestion(typeck::suggestion, code = "This is suggested code")]
 LL | |
@@ -312,7 +312,7 @@ LL | |     suggestion: Applicability,
    = help: `#[suggestion(...)]` should be applied to fields of type `Span` or `(Span, Applicability)`
 
 error: type of field annotated with `#[suggestion(...)]` contains more than one `Span`
-  --> $DIR/diagnostic-derive.rs:278:5
+  --> $DIR/diagnostic-derive.rs:280:5
    |
 LL | /     #[suggestion(typeck::suggestion, code = "This is suggested code")]
 LL | |
@@ -320,7 +320,7 @@ LL | |     suggestion: (Span, Span, Applicability),
    | |___________________________________________^
 
 error: type of field annotated with `#[suggestion(...)]` contains more than one Applicability
-  --> $DIR/diagnostic-derive.rs:286:5
+  --> $DIR/diagnostic-derive.rs:288:5
    |
 LL | /     #[suggestion(typeck::suggestion, code = "This is suggested code")]
 LL | |
@@ -328,72 +328,66 @@ LL | |     suggestion: (Applicability, Applicability, Span),
    | |____________________________________________________^
 
 error: `#[label = ...]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:294:5
+  --> $DIR/diagnostic-derive.rs:296:5
    |
 LL |     #[label = "bar"]
    |     ^^^^^^^^^^^^^^^^
 
 error: applicability cannot be set in both the field and attribute
-  --> $DIR/diagnostic-derive.rs:445:52
+  --> $DIR/diagnostic-derive.rs:447:52
    |
 LL |     #[suggestion(typeck::suggestion, code = "...", applicability = "maybe-incorrect")]
    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: invalid applicability
-  --> $DIR/diagnostic-derive.rs:453:52
+  --> $DIR/diagnostic-derive.rs:455:52
    |
 LL |     #[suggestion(typeck::suggestion, code = "...", applicability = "batman")]
    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[label(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:516:5
+  --> $DIR/diagnostic-derive.rs:518:5
    |
 LL |     #[label(typeck::label, foo)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[label(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:524:5
+  --> $DIR/diagnostic-derive.rs:526:5
    |
 LL |     #[label(typeck::label, foo = "...")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[label(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:532:5
+  --> $DIR/diagnostic-derive.rs:534:5
    |
 LL |     #[label(typeck::label, foo("..."))]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cannot find attribute `nonsense` in this scope
-  --> $DIR/diagnostic-derive.rs:51:3
+  --> $DIR/diagnostic-derive.rs:53:3
    |
 LL | #[nonsense(typeck::ambiguous_lifetime_bound, code = "E0123")]
    |   ^^^^^^^^
 
 error: cannot find attribute `nonsense` in this scope
-  --> $DIR/diagnostic-derive.rs:148:7
+  --> $DIR/diagnostic-derive.rs:150:7
    |
 LL |     #[nonsense]
    |       ^^^^^^^^
 
 error[E0425]: cannot find value `nonsense` in module `rustc_errors::fluent`
-  --> $DIR/diagnostic-derive.rs:64:9
+  --> $DIR/diagnostic-derive.rs:66:9
    |
 LL | #[error(nonsense, code = "E0123")]
    |         ^^^^^^^^ not found in `rustc_errors::fluent`
 
 error[E0277]: the trait bound `Hello: IntoDiagnosticArg` is not satisfied
-  --> $DIR/diagnostic-derive.rs:338:10
+  --> $DIR/diagnostic-derive.rs:340:10
    |
 LL | #[derive(SessionDiagnostic)]
    |          ^^^^^^^^^^^^^^^^^ the trait `IntoDiagnosticArg` is not implemented for `Hello`
    |
-   = help: the following other types implement trait `IntoDiagnosticArg`:
-             &'a str
-             Ident
-             String
-             Symbol
-             rustc_middle::ty::Ty<'tcx>
-             usize
+   = help: normalized in stderr
 note: required by a bound in `DiagnosticBuilder::<'a, G>::set_arg`
   --> $COMPILER_DIR/rustc_errors/src/diagnostic_builder.rs:538:19
    |

@@ -529,7 +529,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         applicability: Applicability,
     ) -> &mut Self);
 
-    forward!(pub fn set_primary_message(&mut self, msg: impl Into<String>) -> &mut Self);
+    forward!(pub fn set_primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
     forward!(pub fn set_span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
     forward!(pub fn set_arg(

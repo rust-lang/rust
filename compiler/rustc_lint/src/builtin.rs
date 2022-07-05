@@ -31,7 +31,9 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticStyledString, MultiSpan};
+use rustc_errors::{
+    fluent, Applicability, Diagnostic, DiagnosticMessage, DiagnosticStyledString, MultiSpan,
+};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -99,13 +101,12 @@ impl EarlyLintPass for WhileTrue {
             if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind {
                 if let ast::LitKind::Bool(true) = lit.kind {
                     if !lit.span.from_expansion() {
-                        let msg = "denote infinite loops with `loop { ... }`";
                         let condition_span = e.span.with_hi(cond.span.hi());
                         cx.struct_span_lint(WHILE_TRUE, condition_span, |lint| {
-                            lint.build(msg)
+                            lint.build(fluent::lint::builtin_while_true)
                                 .span_suggestion_short(
                                     condition_span,
-                                    "use `loop`",
+                                    fluent::lint::suggestion,
                                     format!(
                                         "{}loop",
                                         label.map_or_else(String::new, |label| format!(
@@ -156,7 +157,7 @@ impl BoxPointers {
             if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
                 if leaf_ty.is_box() {
                     cx.struct_span_lint(BOX_POINTERS, span, |lint| {
-                        lint.build(&format!("type uses owned (Box type) pointers: {}", ty)).emit();
+                        lint.build(fluent::lint::builtin_box_pointers).set_arg("ty", ty).emit();
                     });
                 }
             }
@@ -257,26 +258,26 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                         == Some(cx.tcx.field_index(fieldpat.hir_id, cx.typeck_results()))
                     {
                         cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span, |lint| {
-                            let mut err = lint
-                                .build(&format!("the `{}:` in this pattern is redundant", ident));
                             let binding = match binding_annot {
                                 hir::BindingAnnotation::Unannotated => None,
                                 hir::BindingAnnotation::Mutable => Some("mut"),
                                 hir::BindingAnnotation::Ref => Some("ref"),
                                 hir::BindingAnnotation::RefMut => Some("ref mut"),
                             };
-                            let ident = if let Some(binding) = binding {
+                            let suggested_ident = if let Some(binding) = binding {
                                 format!("{} {}", binding, ident)
                             } else {
                                 ident.to_string()
                             };
-                            err.span_suggestion(
-                                fieldpat.span,
-                                "use shorthand field pattern",
-                                ident,
-                                Applicability::MachineApplicable,
-                            );
-                            err.emit();
+                            lint.build(fluent::lint::builtin_non_shorthand_field_patterns)
+                                .set_arg("ident", ident.clone())
+                                .span_suggestion(
+                                    fieldpat.span,
+                                    fluent::lint::suggestion,
+                                    suggested_ident,
+                                    Applicability::MachineApplicable,
+                                )
+                                .emit();
                         });
                     }
                 }
@@ -327,26 +328,25 @@ impl UnsafeCode {
         cx.struct_span_lint(UNSAFE_CODE, span, decorate);
     }
 
-    fn report_overridden_symbol_name(&self, cx: &EarlyContext<'_>, span: Span, msg: &str) {
+    fn report_overridden_symbol_name(
+        &self,
+        cx: &EarlyContext<'_>,
+        span: Span,
+        msg: DiagnosticMessage,
+    ) {
         self.report_unsafe(cx, span, |lint| {
-            lint.build(msg)
-                .note(
-                    "the linker's behavior with multiple libraries exporting duplicate symbol \
-                    names is undefined and Rust cannot provide guarantees when you manually \
-                    override them",
-                )
-                .emit();
+            lint.build(msg).note(fluent::lint::builtin_overridden_symbol_name).emit();
         })
     }
 
-    fn report_overridden_symbol_section(&self, cx: &EarlyContext<'_>, span: Span, msg: &str) {
+    fn report_overridden_symbol_section(
+        &self,
+        cx: &EarlyContext<'_>,
+        span: Span,
+        msg: DiagnosticMessage,
+    ) {
         self.report_unsafe(cx, span, |lint| {
-            lint.build(msg)
-                .note(
-                    "the program's behavior with overridden link sections on items is unpredictable \
-                    and Rust cannot provide guarantees when you manually override them",
-                )
-                .emit();
+            lint.build(msg).note(fluent::lint::builtin_overridden_symbol_section).emit();
         })
     }
 }
@@ -355,12 +355,7 @@ impl EarlyLintPass for UnsafeCode {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         if attr.has_name(sym::allow_internal_unsafe) {
             self.report_unsafe(cx, attr.span, |lint| {
-                lint.build(
-                    "`allow_internal_unsafe` allows defining \
-                                               macros using unsafe without triggering \
-                                               the `unsafe_code` lint at their call site",
-                )
-                .emit();
+                lint.build(fluent::lint::builtin_allow_internal_unsafe).emit();
             });
         }
     }
@@ -370,7 +365,7 @@ impl EarlyLintPass for UnsafeCode {
             // Don't warn about generated blocks; that'll just pollute the output.
             if blk.rules == ast::BlockCheckMode::Unsafe(ast::UserProvided) {
                 self.report_unsafe(cx, blk.span, |lint| {
-                    lint.build("usage of an `unsafe` block").emit();
+                    lint.build(fluent::lint::builtin_unsafe_block).emit();
                 });
             }
         }
@@ -380,12 +375,12 @@ impl EarlyLintPass for UnsafeCode {
         match it.kind {
             ast::ItemKind::Trait(box ast::Trait { unsafety: ast::Unsafe::Yes(_), .. }) => self
                 .report_unsafe(cx, it.span, |lint| {
-                    lint.build("declaration of an `unsafe` trait").emit();
+                    lint.build(fluent::lint::builtin_unsafe_trait).emit();
                 }),
 
             ast::ItemKind::Impl(box ast::Impl { unsafety: ast::Unsafe::Yes(_), .. }) => self
                 .report_unsafe(cx, it.span, |lint| {
-                    lint.build("implementation of an `unsafe` trait").emit();
+                    lint.build(fluent::lint::builtin_unsafe_impl).emit();
                 }),
 
             ast::ItemKind::Fn(..) => {
@@ -393,7 +388,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
-                        "declaration of a `no_mangle` function",
+                        fluent::lint::builtin_no_mangle_fn,
                     );
                 }
 
@@ -401,7 +396,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
-                        "declaration of a function with `export_name`",
+                        fluent::lint::builtin_export_name_fn,
                     );
                 }
 
@@ -409,7 +404,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_section(
                         cx,
                         attr.span,
-                        "declaration of a function with `link_section`",
+                        fluent::lint::builtin_link_section_fn,
                     );
                 }
             }
@@ -419,7 +414,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
-                        "declaration of a `no_mangle` static",
+                        fluent::lint::builtin_no_mangle_static,
                     );
                 }
 
@@ -427,7 +422,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_name(
                         cx,
                         attr.span,
-                        "declaration of a static with `export_name`",
+                        fluent::lint::builtin_export_name_static,
                     );
                 }
 
@@ -435,7 +430,7 @@ impl EarlyLintPass for UnsafeCode {
                     self.report_overridden_symbol_section(
                         cx,
                         attr.span,
-                        "declaration of a static with `link_section`",
+                        fluent::lint::builtin_link_section_static,
                     );
                 }
             }
@@ -450,14 +445,14 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_overridden_symbol_name(
                     cx,
                     attr.span,
-                    "declaration of a `no_mangle` method",
+                    fluent::lint::builtin_no_mangle_method,
                 );
             }
             if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
                 self.report_overridden_symbol_name(
                     cx,
                     attr.span,
-                    "declaration of a method with `export_name`",
+                    fluent::lint::builtin_export_name_method,
                 );
             }
         }
@@ -475,9 +470,9 @@ impl EarlyLintPass for UnsafeCode {
         {
             let msg = match ctxt {
                 FnCtxt::Foreign => return,
-                FnCtxt::Free => "declaration of an `unsafe` function",
-                FnCtxt::Assoc(_) if body.is_none() => "declaration of an `unsafe` method",
-                FnCtxt::Assoc(_) => "implementation of an `unsafe` method",
+                FnCtxt::Free => fluent::lint::builtin_decl_unsafe_fn,
+                FnCtxt::Assoc(_) if body.is_none() => fluent::lint::builtin_decl_unsafe_method,
+                FnCtxt::Assoc(_) => fluent::lint::builtin_impl_unsafe_method,
             };
             self.report_unsafe(cx, span, |lint| {
                 lint.build(msg).emit();
@@ -587,7 +582,10 @@ impl MissingDoc {
                 MISSING_DOCS,
                 cx.tcx.sess.source_map().guess_head_span(sp),
                 |lint| {
-                    lint.build(&format!("missing documentation for {} {}", article, desc)).emit();
+                    lint.build(fluent::lint::builtin_missing_doc)
+                        .set_arg("article", article)
+                        .set_arg("desc", desc)
+                        .emit();
                 },
             );
         }
@@ -783,11 +781,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         .is_ok()
         {
             cx.struct_span_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, |lint| {
-                lint.build(
-                    "type could implement `Copy`; consider adding `impl \
-                          Copy`",
-                )
-                .emit();
+                lint.build(fluent::lint::builtin_missing_copy_impl).emit();
             })
         }
     }
@@ -863,12 +857,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
 
         if !self.impling_types.as_ref().unwrap().contains(&item.def_id) {
             cx.struct_span_lint(MISSING_DEBUG_IMPLEMENTATIONS, item.span, |lint| {
-                lint.build(&format!(
-                    "type does not implement `{}`; consider adding `#[derive(Debug)]` \
-                     or a manual implementation",
-                    cx.tcx.def_path_str(debug)
-                ))
-                .emit();
+                lint.build(fluent::lint::builtin_missing_debug_impl)
+                    .set_arg("debug", cx.tcx.def_path_str(debug))
+                    .emit();
             });
         }
     }
@@ -946,18 +937,14 @@ impl EarlyLintPass for AnonymousParameters {
                                 ("<type>", Applicability::HasPlaceholders)
                             };
 
-                            lint.build(
-                                "anonymous parameters are deprecated and will be \
-                                     removed in the next edition",
-                            )
-                            .span_suggestion(
-                                arg.pat.span,
-                                "try naming the parameter or explicitly \
-                                            ignoring it",
-                                format!("_: {}", ty_snip),
-                                appl,
-                            )
-                            .emit();
+                            lint.build(fluent::lint::builtin_anonymous_params)
+                                .span_suggestion(
+                                    arg.pat.span,
+                                    fluent::lint::suggestion,
+                                    format!("_: {}", ty_snip),
+                                    appl,
+                                )
+                                .emit();
                         })
                     }
                 }
@@ -982,24 +969,6 @@ impl DeprecatedAttr {
     }
 }
 
-fn lint_deprecated_attr(
-    cx: &EarlyContext<'_>,
-    attr: &ast::Attribute,
-    msg: &str,
-    suggestion: Option<&str>,
-) {
-    cx.struct_span_lint(DEPRECATED, attr.span, |lint| {
-        lint.build(msg)
-            .span_suggestion_short(
-                attr.span,
-                suggestion.unwrap_or("remove this attribute"),
-                "",
-                Applicability::MachineApplicable,
-            )
-            .emit();
-    })
-}
-
 impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         for BuiltinAttribute { name, gate, .. } in &self.depr_attrs {
@@ -1011,17 +980,38 @@ impl EarlyLintPass for DeprecatedAttr {
                     _,
                 ) = gate
                 {
-                    let msg =
-                        format!("use of deprecated attribute `{}`: {}. See {}", name, reason, link);
-                    lint_deprecated_attr(cx, attr, &msg, suggestion);
+                    cx.struct_span_lint(DEPRECATED, attr.span, |lint| {
+                        // FIXME(davidtwco) translatable deprecated attr
+                        lint.build(fluent::lint::builtin_deprecated_attr_link)
+                            .set_arg("name", name)
+                            .set_arg("reason", reason)
+                            .set_arg("link", link)
+                            .span_suggestion_short(
+                                attr.span,
+                                suggestion.map(|s| s.into()).unwrap_or(
+                                    fluent::lint::builtin_deprecated_attr_default_suggestion,
+                                ),
+                                "",
+                                Applicability::MachineApplicable,
+                            )
+                            .emit();
+                    });
                 }
                 return;
             }
         }
         if attr.has_name(sym::no_start) || attr.has_name(sym::crate_id) {
-            let path_str = pprust::path_to_string(&attr.get_normal_item().path);
-            let msg = format!("use of deprecated attribute `{}`: no longer used.", path_str);
-            lint_deprecated_attr(cx, attr, &msg, None);
+            cx.struct_span_lint(DEPRECATED, attr.span, |lint| {
+                lint.build(fluent::lint::builtin_deprecated_attr_used)
+                    .set_arg("name", pprust::path_to_string(&attr.get_normal_item().path))
+                    .span_suggestion_short(
+                        attr.span,
+                        fluent::lint::builtin_deprecated_attr_default_suggestion,
+                        "",
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+            });
         }
     }
 }
@@ -1049,17 +1039,15 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
 
         if is_doc_comment || attr.has_name(sym::doc) {
             cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, |lint| {
-                let mut err = lint.build("unused doc comment");
-                err.span_label(
-                    node_span,
-                    format!("rustdoc does not generate documentation for {}", node_kind),
-                );
+                let mut err = lint.build(fluent::lint::builtin_unused_doc_comment);
+                err.set_arg("kind", node_kind);
+                err.span_label(node_span, fluent::lint::label);
                 match attr.kind {
                     AttrKind::DocComment(CommentKind::Line, _) | AttrKind::Normal(..) => {
-                        err.help("use `//` for a plain comment");
+                        err.help(fluent::lint::plain_help);
                     }
                     AttrKind::DocComment(CommentKind::Block, _) => {
-                        err.help("use `/* */` for a plain comment");
+                        err.help(fluent::lint::block_help);
                     }
                 }
                 err.emit();
@@ -1178,10 +1166,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     GenericParamKind::Lifetime { .. } => {}
                     GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
                         cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS, span, |lint| {
-                            lint.build("functions generic over types or consts must be mangled")
+                            lint.build(fluent::lint::builtin_no_mangle_generic)
                                 .span_suggestion_short(
                                     no_mangle_attr.span,
-                                    "remove this attribute",
+                                    fluent::lint::suggestion,
                                     "",
                                     // Use of `#[no_mangle]` suggests FFI intent; correct
                                     // fix may be to monomorphize source by hand
@@ -1205,8 +1193,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
                     cx.struct_span_lint(NO_MANGLE_CONST_ITEMS, it.span, |lint| {
-                        let msg = "const items should never be `#[no_mangle]`";
-                        let mut err = lint.build(msg);
+                        let mut err = lint.build(fluent::lint::builtin_const_no_mangle);
 
                         // account for "pub const" (#45562)
                         let start = cx
@@ -1220,7 +1207,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                         let const_span = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
                         err.span_suggestion(
                             const_span,
-                            "try a static value",
+                            fluent::lint::suggestion,
                             "pub static",
                             Applicability::MachineApplicable,
                         );
@@ -1285,10 +1272,8 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
             if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
-                let msg = "transmuting &T to &mut T is undefined behavior, \
-                    even if the reference is unused, consider instead using an UnsafeCell";
                 cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| {
-                    lint.build(msg).emit();
+                    lint.build(fluent::lint::builtin_mutable_transmutes).emit();
                 });
             }
         }
@@ -1338,7 +1323,7 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
             if let Some(items) = attr.meta_item_list() {
                 for item in items {
                     cx.struct_span_lint(UNSTABLE_FEATURES, item.span(), |lint| {
-                        lint.build("unstable feature").emit();
+                        lint.build(fluent::lint::builtin_unstable_features).emit();
                     });
                 }
             }
@@ -1400,16 +1385,17 @@ impl UnreachablePub {
             }
             let def_span = cx.tcx.sess.source_map().guess_head_span(span);
             cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
-                let mut err = lint.build(&format!("unreachable `pub` {}", what));
+                let mut err = lint.build(fluent::lint::builtin_unreachable_pub);
+                err.set_arg("what", what);
 
                 err.span_suggestion(
                     vis_span,
-                    "consider restricting its visibility",
+                    fluent::lint::suggestion,
                     "pub(crate)",
                     applicability,
                 );
                 if exportable {
-                    err.help("or consider exporting it for use by other crates");
+                    err.help(fluent::lint::help);
                 }
                 err.emit();
             });
@@ -1513,11 +1499,7 @@ impl TypeAliasBounds {
         impl Visitor<'_> for WalkAssocTypes<'_> {
             fn visit_qpath(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
-                    self.err.span_help(
-                        span,
-                        "use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to \
-                         associated types in type aliases",
-                    );
+                    self.err.span_help(span, fluent::lint::builtin_type_alias_bounds_help);
                 }
                 intravisit::walk_qpath(self, qpath, id, span)
             }
@@ -1561,11 +1543,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         let mut suggested_changing_assoc_types = false;
         if !where_spans.is_empty() {
             cx.lint(TYPE_ALIAS_BOUNDS, |lint| {
-                let mut err = lint.build("where clauses are not enforced in type aliases");
+                let mut err = lint.build(fluent::lint::builtin_type_alias_where_clause);
                 err.set_span(where_spans);
                 err.span_suggestion(
                     type_alias_generics.where_clause_span,
-                    "the clause will not be checked when the type alias is used, and should be removed",
+                    fluent::lint::suggestion,
                     "",
                     Applicability::MachineApplicable,
                 );
@@ -1579,11 +1561,10 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
 
         if !inline_spans.is_empty() {
             cx.lint(TYPE_ALIAS_BOUNDS, |lint| {
-                let mut err =
-                    lint.build("bounds on generic parameters are not enforced in type aliases");
+                let mut err = lint.build(fluent::lint::builtin_type_alias_generic_bounds);
                 err.set_span(inline_spans);
                 err.multipart_suggestion(
-                    "the bound will not be checked when the type alias is used, and should be removed",
+                    fluent::lint::suggestion,
                     inline_sugg,
                     Applicability::MachineApplicable,
                 );
@@ -1690,12 +1671,10 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                 };
                 if predicate.is_global() {
                     cx.struct_span_lint(TRIVIAL_BOUNDS, span, |lint| {
-                        lint.build(&format!(
-                            "{} bound {} does not depend on any type \
-                                or lifetime parameters",
-                            predicate_kind_name, predicate
-                        ))
-                        .emit();
+                        lint.build(fluent::lint::builtin_trivial_bounds)
+                            .set_arg("predicate_kind_name", predicate_kind_name)
+                            .set_arg("predicate", predicate)
+                            .emit();
                     });
                 }
             }
@@ -1796,8 +1775,8 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
         };
 
         if let Some((start, end, join)) = endpoints {
-            let msg = "`...` range patterns are deprecated";
-            let suggestion = "use `..=` for an inclusive range";
+            let msg = fluent::lint::builtin_ellipsis_inclusive_range_patterns;
+            let suggestion = fluent::lint::suggestion;
             if parenthesise {
                 self.node_id = Some(pat.id);
                 let end = expr_to_string(&end);
@@ -1806,8 +1785,11 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                     None => format!("&(..={})", end),
                 };
                 if join.edition() >= Edition::Edition2021 {
-                    let mut err =
-                        rustc_errors::struct_span_err!(cx.sess(), pat.span, E0783, "{}", msg,);
+                    let mut err = cx.sess().struct_span_err_with_code(
+                        pat.span,
+                        msg,
+                        rustc_errors::error_code!(E0783),
+                    );
                     err.span_suggestion(
                         pat.span,
                         suggestion,
@@ -1830,8 +1812,11 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             } else {
                 let replace = "..=";
                 if join.edition() >= Edition::Edition2021 {
-                    let mut err =
-                        rustc_errors::struct_span_err!(cx.sess(), pat.span, E0783, "{}", msg,);
+                    let mut err = cx.sess().struct_span_err_with_code(
+                        pat.span,
+                        msg,
+                        rustc_errors::error_code!(E0783),
+                    );
                     err.span_suggestion_short(
                         join,
                         suggestion,
@@ -1930,7 +1915,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
         let attrs = cx.tcx.hir().attrs(it.hir_id());
         if let Some(attr) = cx.sess().find_by_name(attrs, sym::rustc_test_marker) {
             cx.struct_span_lint(UNNAMEABLE_TEST_ITEMS, attr.span, |lint| {
-                lint.build("cannot test inner items").emit();
+                lint.build(fluent::lint::builtin_unnameable_test_items).emit();
             });
         }
     }
@@ -2048,10 +2033,12 @@ impl KeywordIdents {
         }
 
         cx.struct_span_lint(KEYWORD_IDENTS, ident.span, |lint| {
-            lint.build(&format!("`{}` is a keyword in the {} edition", ident, next_edition))
+            lint.build(fluent::lint::builtin_keyword_idents)
+                .set_arg("kw", ident.clone())
+                .set_arg("next", next_edition)
                 .span_suggestion(
                     ident.span,
-                    "you can use a raw identifier to stay compatible",
+                    fluent::lint::suggestion,
                     format!("r#{}", ident),
                     Applicability::MachineApplicable,
                 )
@@ -2301,13 +2288,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 
             if !lint_spans.is_empty() {
                 cx.struct_span_lint(EXPLICIT_OUTLIVES_REQUIREMENTS, lint_spans.clone(), |lint| {
-                    lint.build("outlives requirements can be inferred")
+                    lint.build(fluent::lint::builtin_explicit_outlives)
+                        .set_arg("count", bound_count)
                         .multipart_suggestion(
-                            if bound_count == 1 {
-                                "remove this bound"
-                            } else {
-                                "remove these bounds"
-                            },
+                            fluent::lint::suggestion,
                             lint_spans
                                 .into_iter()
                                 .map(|span| (span, String::new()))
@@ -2363,23 +2347,14 @@ impl EarlyLintPass for IncompleteFeatures {
             .filter(|(&name, _)| features.incomplete(name))
             .for_each(|(&name, &span)| {
                 cx.struct_span_lint(INCOMPLETE_FEATURES, span, |lint| {
-                    let mut builder = lint.build(&format!(
-                        "the feature `{}` is incomplete and may not be safe to use \
-                         and/or cause compiler crashes",
-                        name,
-                    ));
+                    let mut builder = lint.build(fluent::lint::builtin_incomplete_features);
+                    builder.set_arg("name", name);
                     if let Some(n) = rustc_feature::find_feature_issue(name, GateIssue::Language) {
-                        builder.note(&format!(
-                            "see issue #{} <https://github.com/rust-lang/rust/issues/{}> \
-                             for more information",
-                            n, n,
-                        ));
+                        builder.set_arg("n", n);
+                        builder.note(fluent::lint::note);
                     }
                     if HAS_MIN_FEATURES.contains(&name) {
-                        builder.help(&format!(
-                            "consider using `min_{}` instead, which is more stable and complete",
-                            name,
-                        ));
+                        builder.help(fluent::lint::help);
                     }
                     builder.emit();
                 })
@@ -2620,6 +2595,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             if let Some((msg, span)) =
                 with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init))
             {
+                // FIXME(davidtwco): make translatable
                 cx.struct_span_lint(INVALID_VALUE, expr.span, |lint| {
                     let mut err = lint.build(&format!(
                         "the type `{}` does not permit {}",
@@ -2996,23 +2972,19 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
                             let mut found_str = DiagnosticStyledString::new();
                             found_str.push(this_decl_ty.fn_sig(tcx).to_string(), true);
 
-                            lint.build(&format!(
-                                "`{}` redeclare{} with a different signature",
-                                this_fi.ident.name,
-                                if orig.get_name() == this_fi.ident.name {
-                                    "d".to_string()
-                                } else {
-                                    format!("s `{}`", orig.get_name())
-                                }
-                            ))
+                            lint.build(if orig.get_name() == this_fi.ident.name {
+                                fluent::lint::builtin_clashing_extern_same_name
+                            } else {
+                                fluent::lint::builtin_clashing_extern_diff_name
+                            })
+                            .set_arg("this_fi", this_fi.ident.name)
+                            .set_arg("orig", orig.get_name())
                             .span_label(
                                 get_relevant_span(orig_fi),
-                                &format!("`{}` previously declared here", orig.get_name()),
+                                fluent::lint::previous_decl_label,
                             )
-                            .span_label(
-                                get_relevant_span(this_fi),
-                                "this signature doesn't match the previous declaration",
-                            )
+                            .span_label(get_relevant_span(this_fi), fluent::lint::mismatch_label)
+                            // FIXME(davidtwco): translatable expected/found
                             .note_expected_found(&"", expected_str, &"", found_str)
                             .emit();
                         },
@@ -3096,8 +3068,8 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
         if let rustc_hir::ExprKind::Unary(rustc_hir::UnOp::Deref, expr_deref) = expr.kind {
             if is_null_ptr(cx, expr_deref) {
                 cx.struct_span_lint(DEREF_NULLPTR, expr.span, |lint| {
-                    let mut err = lint.build("dereferencing a null pointer");
-                    err.span_label(expr.span, "this code causes undefined behavior when executed");
+                    let mut err = lint.build(fluent::lint::builtin_deref_nullptr);
+                    err.span_label(expr.span, fluent::lint::label);
                     err.emit();
                 });
             }
@@ -3210,9 +3182,7 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                             NAMED_ASM_LABELS,
                             Some(target_spans),
                             |diag| {
-                                let mut err =
-                                    diag.build("avoid using named labels in inline assembly");
-                                err.emit();
+                                diag.build(fluent::lint::builtin_asm_labels).emit();
                             },
                             BuiltinLintDiagnostics::NamedAsmLabel(
                                 "only local labels of the form `<number>:` should be used in inline asm"

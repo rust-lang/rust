@@ -521,7 +521,7 @@ impl<'s> LintLevelsBuilder<'s> {
                             src,
                             Some(sp.into()),
                             |lint| {
-                                let mut err = lint.build(&msg);
+                                let mut err = lint.build(msg);
                                 if let Some(new_name) = &renamed {
                                     err.span_suggestion(
                                         sp,
@@ -548,7 +548,7 @@ impl<'s> LintLevelsBuilder<'s> {
                             } else {
                                 name.to_string()
                             };
-                            let mut db = lint.build(&format!("unknown lint: `{}`", name));
+                            let mut db = lint.build(format!("unknown lint: `{}`", name));
                             if let Some(suggestion) = suggestion {
                                 db.span_suggestion(
                                     sp,
