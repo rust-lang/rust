@@ -1,15 +1,16 @@
 #!/bin/bash
 set -euo pipefail
+set -x
 
 # Determine configuration
 export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
-export CARGO_EXTRA_FLAGS="--all-features"
+export CARGO_EXTRA_FLAGS="--all-features" # in particular, expensive-debug-assertions
 
 # Prepare
 echo "Build and install miri"
-./miri build --all-targets --locked
-./miri install # implicitly locked
+CARGO_EXTRA_FLAGS="" ./miri install # implicitly locked -- and the *installed* Miri does *not* get the expensive-debug-assertions feature
+./miri build --all-targets --locked # the build that all the `./miri test` below will use
 echo
 
 # Test
