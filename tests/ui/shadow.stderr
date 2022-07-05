@@ -265,5 +265,17 @@ note: previous binding is here
 LL | pub async fn foo2(_a: i32, _b: i64) {
    |                            ^^
 
-error: aborting due to 22 previous errors
+error: `x` shadows a previous, unrelated binding
+  --> $DIR/shadow.rs:94:21
+   |
+LL |         if let Some(x) = Some(1) { x } else { 1 }
+   |                     ^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:93:13
+   |
+LL |         let x = 1;
+   |             ^
+
+error: aborting due to 23 previous errors
 
