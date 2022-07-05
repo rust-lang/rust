@@ -626,9 +626,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let item = f(self);
         debug_assert_eq!(def_id, item.def_id());
-        // `f` should have consumed all the elements in these vectors when constructing `item`.
-        debug_assert!(self.impl_trait_defs.is_empty());
-        debug_assert!(self.impl_trait_bounds.is_empty());
         let info = self.make_owner_info(item);
 
         self.attrs = current_attrs;
