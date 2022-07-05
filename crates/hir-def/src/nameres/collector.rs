@@ -1809,7 +1809,9 @@ impl ModCollector<'_, '_> {
         let res = modules.alloc(ModuleData::new(origin, vis));
         modules[res].parent = Some(self.module_id);
         for (name, mac) in modules[self.module_id].scope.collect_legacy_macros() {
-            modules[res].scope.define_legacy_macro(name, mac)
+            for &mac in &mac {
+                modules[res].scope.define_legacy_macro(name.clone(), mac);
+            }
         }
         modules[self.module_id].children.insert(name.clone(), res);
 
@@ -2027,7 +2029,8 @@ impl ModCollector<'_, '_> {
                             map[module]
                                 .scope
                                 .get_legacy_macro(name)
-                                .map(|it| macro_id_to_def_id(self.def_collector.db, it.into()))
+                                .and_then(|it| it.last())
+                                .map(|&it| macro_id_to_def_id(self.def_collector.db, it.into()))
                         },
                     )
                 })
@@ -2080,8 +2083,10 @@ impl ModCollector<'_, '_> {
 
     fn import_all_legacy_macros(&mut self, module_id: LocalModuleId) {
         let macros = self.def_collector.def_map[module_id].scope.collect_legacy_macros();
-        for (name, macro_) in macros {
-            self.def_collector.define_legacy_macro(self.module_id, name.clone(), macro_);
+        for (name, macs) in macros {
+            macs.last().map(|&mac| {
+                self.def_collector.define_legacy_macro(self.module_id, name.clone(), mac)
+            });
         }
     }
 

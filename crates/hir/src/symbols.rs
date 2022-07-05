@@ -176,11 +176,13 @@ impl<'a> SymbolCollector<'a> {
         }
 
         for (_, id) in scope.legacy_macros() {
-            if id.module(self.db.upcast()) == module_id {
-                match id {
-                    MacroId::Macro2Id(id) => self.push_decl(id, FileSymbolKind::Macro),
-                    MacroId::MacroRulesId(id) => self.push_decl(id, FileSymbolKind::Macro),
-                    MacroId::ProcMacroId(id) => self.push_decl(id, FileSymbolKind::Macro),
+            for &id in id {
+                if id.module(self.db.upcast()) == module_id {
+                    match id {
+                        MacroId::Macro2Id(id) => self.push_decl(id, FileSymbolKind::Macro),
+                        MacroId::MacroRulesId(id) => self.push_decl(id, FileSymbolKind::Macro),
+                        MacroId::ProcMacroId(id) => self.push_decl(id, FileSymbolKind::Macro),
+                    }
                 }
             }
         }

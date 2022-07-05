@@ -68,6 +68,13 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="brace">}</span>
 <span class="brace">}</span>
 
+<span class="comment documentation">/// textually shadow previous definition</span>
+<span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">noop</span> <span class="brace">{</span>
+    <span class="parenthesis">(</span><span class="punctuation">$</span>expr<span class="colon">:</span>expr<span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
+        <span class="punctuation">$</span>expr
+    <span class="brace">}</span>
+<span class="brace">}</span>
+
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">keyword_frag</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="punctuation">$</span>type<span class="colon">:</span>ty<span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="parenthesis">(</span><span class="punctuation">$</span>type<span class="parenthesis">)</span>
 <span class="brace">}</span>
