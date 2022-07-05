@@ -17,7 +17,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span, Symbol};
+use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 declare_clippy_lint! {
@@ -609,18 +609,21 @@ enum Position {
     Postfix,
     Deref,
     /// Any other location which will trigger auto-deref to a specific time.
-    DerefStable(i8),
+    /// Contains the precedence of the parent expression and whether the target type is sized.
+    DerefStable(i8, bool),
     /// Any other location which will trigger auto-reborrowing.
+    /// Contains the precedence of the parent expression.
     ReborrowStable(i8),
+    /// Contains the precedence of the parent expression.
     Other(i8),
 }
 impl Position {
     fn is_deref_stable(self) -> bool {
-        matches!(self, Self::DerefStable(_))
+        matches!(self, Self::DerefStable(..))
     }
 
     fn is_reborrow_stable(self) -> bool {
-        matches!(self, Self::DerefStable(_) | Self::ReborrowStable(_))
+        matches!(self, Self::DerefStable(..) | Self::ReborrowStable(_))
     }
 
     fn can_auto_borrow(self) -> bool {
@@ -628,7 +631,7 @@ impl Position {
     }
 
     fn lint_explicit_deref(self) -> bool {
-        matches!(self, Self::Other(_) | Self::DerefStable(_) | Self::ReborrowStable(_))
+        matches!(self, Self::Other(_) | Self::DerefStable(..) | Self::ReborrowStable(_))
     }
 
     fn precedence(self) -> i8 {
@@ -639,7 +642,7 @@ impl Position {
             | Self::FieldAccess(_)
             | Self::Postfix => PREC_POSTFIX,
             Self::Deref => PREC_PREFIX,
-            Self::DerefStable(p) | Self::ReborrowStable(p) | Self::Other(p) => p,
+            Self::DerefStable(p, _) | Self::ReborrowStable(p) | Self::Other(p) => p,
         }
     }
 }
@@ -659,7 +662,7 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
         }
         match parent {
             Node::Local(Local { ty: Some(ty), span, .. }) if span.ctxt() == ctxt => {
-                Some(binding_ty_auto_deref_stability(ty, precedence))
+                Some(binding_ty_auto_deref_stability(cx, ty, precedence))
             },
             Node::Item(&Item {
                 kind: ItemKind::Static(..) | ItemKind::Const(..),
@@ -680,8 +683,11 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                 ..
             }) if span.ctxt() == ctxt => {
                 let ty = cx.tcx.type_of(def_id);
-                Some(if ty.is_ref() {
-                    Position::DerefStable(precedence)
+                Some(if let ty::Ref(_, ty, _) = *ty.kind() {
+                    Position::DerefStable(
+                        precedence,
+                        ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+                    )
                 } else {
                     Position::Other(precedence)
                 })
@@ -705,13 +711,20 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                 span,
                 ..
             }) if span.ctxt() == ctxt => {
-                let output = cx.tcx.fn_sig(def_id.to_def_id()).skip_binder().output();
-                Some(if !output.is_ref() {
-                    Position::Other(precedence)
-                } else if output.has_placeholders() || output.has_opaque_types() {
-                    Position::ReborrowStable(precedence)
+                let output = cx
+                    .tcx
+                    .erase_late_bound_regions(cx.tcx.fn_sig(def_id.to_def_id()).output());
+                Some(if let ty::Ref(_, ty, _) = *output.kind() {
+                    if ty.has_placeholders() || ty.has_opaque_types() {
+                        Position::ReborrowStable(precedence)
+                    } else {
+                        Position::DerefStable(
+                            precedence,
+                            ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+                        )
+                    }
                 } else {
-                    Position::DerefStable(precedence)
+                    Position::Other(precedence)
                 })
             },
 
@@ -725,21 +738,24 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                         }) = cx.tcx.hir().get(owner_id)
                         {
                             match fn_decl.output {
-                                FnRetTy::Return(ty) => binding_ty_auto_deref_stability(ty, precedence),
+                                FnRetTy::Return(ty) => binding_ty_auto_deref_stability(cx, ty, precedence),
                                 FnRetTy::DefaultReturn(_) => Position::Other(precedence),
                             }
                         } else {
                             let output = cx
                                 .tcx
-                                .fn_sig(cx.tcx.hir().local_def_id(owner_id))
-                                .skip_binder()
-                                .output();
-                            if !output.is_ref() {
-                                Position::Other(precedence)
-                            } else if output.has_placeholders() || output.has_opaque_types() {
-                                Position::ReborrowStable(precedence)
+                                .erase_late_bound_regions(cx.tcx.fn_sig(cx.tcx.hir().local_def_id(owner_id)).output());
+                            if let ty::Ref(_, ty, _) = *output.kind() {
+                                if ty.has_placeholders() || ty.has_opaque_types() {
+                                    Position::ReborrowStable(precedence)
+                                } else {
+                                    Position::DerefStable(
+                                        precedence,
+                                        ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+                                    )
+                                }
                             } else {
-                                Position::DerefStable(precedence)
+                                Position::Other(precedence)
                             }
                         },
                     )
@@ -755,8 +771,8 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                     .map(|(hir_ty, ty)| match hir_ty {
                         // Type inference for closures can depend on how they're called. Only go by the explicit
                         // types here.
-                        Some(ty) => binding_ty_auto_deref_stability(ty, precedence),
-                        None => param_auto_deref_stability(ty.skip_binder(), precedence),
+                        Some(ty) => binding_ty_auto_deref_stability(cx, ty, precedence),
+                        None => param_auto_deref_stability(cx, cx.tcx.erase_late_bound_regions(ty), precedence),
                     }),
                 ExprKind::MethodCall(_, args, _) => {
                     let id = cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap();
@@ -797,7 +813,11 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                                 Position::MethodReceiver
                             }
                         } else {
-                            param_auto_deref_stability(cx.tcx.fn_sig(id).skip_binder().inputs()[i], precedence)
+                            param_auto_deref_stability(
+                                cx,
+                                cx.tcx.erase_late_bound_regions(cx.tcx.fn_sig(id).input(i)),
+                                precedence,
+                            )
                         }
                     })
                 },
@@ -808,7 +828,7 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                         .find(|f| f.expr.hir_id == child_id)
                         .zip(variant)
                         .and_then(|(field, variant)| variant.fields.iter().find(|f| f.name == field.ident.name))
-                        .map(|field| param_auto_deref_stability(cx.tcx.type_of(field.did), precedence))
+                        .map(|field| param_auto_deref_stability(cx, cx.tcx.type_of(field.did), precedence))
                 },
                 ExprKind::Field(child, name) if child.hir_id == e.hir_id => Some(Position::FieldAccess(name.name)),
                 ExprKind::Unary(UnOp::Deref, child) if child.hir_id == e.hir_id => Some(Position::Deref),
@@ -840,7 +860,7 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
 //
 // Here `y1` and `y2` would resolve to different types, so the type `&Box<_>` is not stable when
 // switching to auto-dereferencing.
-fn binding_ty_auto_deref_stability(ty: &hir::Ty<'_>, precedence: i8) -> Position {
+fn binding_ty_auto_deref_stability(cx: &LateContext<'_>, ty: &hir::Ty<'_>, precedence: i8) -> Position {
     let TyKind::Rptr(_, ty) = &ty.kind else {
         return Position::Other(precedence);
     };
@@ -870,7 +890,13 @@ fn binding_ty_auto_deref_stability(ty: &hir::Ty<'_>, precedence: i8) -> Position
                 {
                     Position::ReborrowStable(precedence)
                 } else {
-                    Position::DerefStable(precedence)
+                    Position::DerefStable(
+                        precedence,
+                        cx
+                            .typeck_results()
+                            .node_type(ty.ty.hir_id)
+                            .is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+                    )
                 }
             },
             TyKind::Slice(_)
@@ -880,7 +906,13 @@ fn binding_ty_auto_deref_stability(ty: &hir::Ty<'_>, precedence: i8) -> Position
             | TyKind::Tup(_)
             | TyKind::Ptr(_)
             | TyKind::TraitObject(..)
-            | TyKind::Path(_) => Position::DerefStable(precedence),
+            | TyKind::Path(_) => Position::DerefStable(
+                precedence,
+                cx
+                    .typeck_results()
+                    .node_type(ty.ty.hir_id)
+                    .is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+            ),
             TyKind::OpaqueDef(..)
             | TyKind::Infer
             | TyKind::Typeof(..)
@@ -921,7 +953,7 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
 }
 
 // Checks whether a type is stable when switching to auto dereferencing,
-fn param_auto_deref_stability(ty: Ty<'_>, precedence: i8) -> Position {
+fn param_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedence: i8) -> Position {
     let ty::Ref(_, mut ty, _) = *ty.kind() else {
         return Position::Other(precedence);
     };
@@ -960,7 +992,10 @@ fn param_auto_deref_stability(ty: Ty<'_>, precedence: i8) -> Position {
             | ty::GeneratorWitness(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Projection(_) => Position::DerefStable(precedence),
+            | ty::Projection(_) => Position::DerefStable(
+                precedence,
+                ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+            ),
         };
     }
 }
@@ -1040,6 +1075,19 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
             });
         },
         State::ExplicitDeref { deref_span_id } => {
+            if matches!(
+                expr.kind,
+                ExprKind::Block(..)
+                    | ExprKind::ConstBlock(_)
+                    | ExprKind::If(..)
+                    | ExprKind::Loop(..)
+                    | ExprKind::Match(..)
+            ) && matches!(data.position, Position::DerefStable(_, true))
+            {
+                // Rustc bug: auto deref doesn't work on block expression when targeting sized types.
+                return;
+            }
+
             let (span, hir_id, precedence) = if let Some((span, hir_id)) = deref_span_id
                 && !cx.typeck_results().expr_ty(expr).is_ref()
             {
@@ -1067,6 +1115,19 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
             );
         },
         State::ExplicitDerefField { .. } => {
+            if matches!(
+                expr.kind,
+                ExprKind::Block(..)
+                    | ExprKind::ConstBlock(_)
+                    | ExprKind::If(..)
+                    | ExprKind::Loop(..)
+                    | ExprKind::Match(..)
+            ) && matches!(data.position, Position::DerefStable(_, true))
+            {
+                // Rustc bug: auto deref doesn't work on block expression when targeting sized types.
+                return;
+            }
+
             span_lint_hir_and_then(
                 cx,
                 EXPLICIT_AUTO_DEREF,

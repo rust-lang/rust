@@ -67,6 +67,7 @@ fn main() {
     let s = String::new();
 
     let _: &str = &*s;
+    let _: &str = &*{ String::new() };
     let _ = &*s; // Don't lint. Inferred type would change.
     let _: &_ = &*s; // Don't lint. Inferred type would change.
 
@@ -215,4 +216,20 @@ fn main() {
     let s = &"str";
     let _ = || return *s;
     let _ = || -> &'static str { return *s };
+
+    struct X;
+    struct Y(X);
+    impl core::ops::Deref for Y {
+        type Target = X;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+    let _: &X = &*{ Y(X) };
+    let _: &X = &*match 0 {
+        #[rustfmt::skip]
+        0 => { Y(X) },
+        _ => panic!(),
+    };
+    let _: &X = &*if true { Y(X) } else { panic!() };
 }
