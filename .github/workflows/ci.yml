@@ -24,7 +24,8 @@ jobs:
           "--std-tests",
           "--test-libcore",
           "--extended-tests",
-          "--test-rustc",
+          "--test-successful-rustc",
+          "--test-failing-rustc",
         ]
 
     steps:
@@ -110,6 +111,10 @@ jobs:
       with:
         command: build
         args: --release
+
+    - name: Add more failing tests for GCC 12
+      if: ${{ matrix.libgccjit_version.gcc == 'libgccjit12.so' }}
+      run: cat failing-ui-tests12.txt >> failing-ui-tests.txt
 
     - name: Run tests
       run: |

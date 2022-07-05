@@ -42,7 +42,15 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         "--test-rustc")
-            funcs+=(test_rustc)
+            funcs=(test_rustc)
+            shift
+            ;;
+        "--test-successful-rustc")
+            funcs+=(test_successful_rustc)
+            shift
+            ;;
+        "--test-failing-rustc")
+            funcs+=(test_failing_rustc)
             shift
             ;;
 
@@ -276,8 +284,29 @@ EOF
 
     RUSTC_ARGS="-Zpanic-abort-tests -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
 
+    if [ $# -eq 0 ]; then
+        # No argument supplied to the function. Doing nothing.
+        echo "No argument provided. Keeping all UI tests"
+    elif [ $1 = "0" ]; then
+        # Removing the failing tests.
+        xargs -a ../failing-ui-tests.txt -d'\n' rm
+    else
+        # Removing all tests.
+        find src/test/ui -type f -name '*.rs' -exec rm {} \;
+        # Putting back only the failing ones.
+        xargs -a ../failing-ui-tests.txt -d'\n' git checkout --
+    fi
+
     echo "[TEST] rustc test suite"
     COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 src/test/ui/ --rustc-args "$RUSTC_ARGS"
+}
+
+function test_failing_rustc() {
+    test_rustc "1"
+}
+
+function test_successful_rustc() {
+    test_rustc "0"
 }
 
 function clean_ui_tests() {
