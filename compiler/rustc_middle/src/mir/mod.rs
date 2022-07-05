@@ -25,7 +25,7 @@ use rustc_target::abi::{Size, VariantIdx};
 use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::dominators::{dominators, Dominators};
+use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
@@ -443,11 +443,6 @@ impl<'tcx> Body<'tcx> {
             .get(statement_index)
             .map(Either::Left)
             .unwrap_or_else(|| Either::Right(block_data.terminator()))
-    }
-
-    #[inline]
-    pub fn dominators(&self) -> Dominators<BasicBlock> {
-        dominators(&self.basic_blocks)
     }
 
     #[inline]

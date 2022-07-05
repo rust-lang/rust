@@ -334,7 +334,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         };
     }
 
-    let dominators = body.dominators();
+    let dominators = body.basic_blocks.dominators();
 
     let mut mbcx = MirBorrowckCtxt {
         infcx,
