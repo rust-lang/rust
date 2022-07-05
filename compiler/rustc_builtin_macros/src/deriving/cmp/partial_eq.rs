@@ -36,18 +36,16 @@ pub fn expand_deriving_partial_eq(
 
         let expr = cs_fold(
             true, // use foldl
-            |cx, span, subexpr, self_expr, other_selflike_exprs| {
+            |cx, span, old, self_expr, other_selflike_exprs| {
                 let eq = op(cx, span, self_expr, other_selflike_exprs);
-                cx.expr_binary(span, combiner, subexpr, eq)
+                cx.expr_binary(span, combiner, old, eq)
             },
-            |cx, args| {
-                match args {
-                    Some((span, self_expr, other_selflike_exprs)) => {
-                        // Special-case the base case to generate cleaner code.
-                        op(cx, span, self_expr, other_selflike_exprs)
-                    }
-                    None => cx.expr_bool(span, base),
+            |cx, args| match args {
+                Some((span, self_expr, other_selflike_exprs)) => {
+                    // Special-case the base case to generate cleaner code.
+                    op(cx, span, self_expr, other_selflike_exprs)
                 }
+                None => cx.expr_bool(span, base),
             },
             Box::new(|cx, span, _| cx.expr_bool(span, !base)),
             cx,
