@@ -37,7 +37,7 @@ error[E0271]: type mismatch resolving `<impl Future<Output = u8> as Future>::Out
 LL |     let _: &dyn Future<Output = ()> = &block;
    |                                       ^^^^^^ expected `()`, found `u8`
    |
-   = note: required for the cast from `impl Future<Output = u8>` to the object type `dyn Future<Output = ()>`
+   = note: required for the cast to the object type `dyn Future<Output = ()>`
 
 error[E0308]: mismatched types
   --> $DIR/async-block-control-flow-static-semantics.rs:12:43
@@ -53,7 +53,7 @@ error[E0271]: type mismatch resolving `<impl Future<Output = u8> as Future>::Out
 LL |     let _: &dyn Future<Output = ()> = &block;
    |                                       ^^^^^^ expected `()`, found `u8`
    |
-   = note: required for the cast from `impl Future<Output = u8>` to the object type `dyn Future<Output = ()>`
+   = note: required for the cast to the object type `dyn Future<Output = ()>`
 
 error[E0308]: mismatched types
   --> $DIR/async-block-control-flow-static-semantics.rs:47:44

@@ -220,7 +220,7 @@ LL |     let _ = fat_v as *const dyn Foo;
    |             ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
-   = note: required for the cast from `[u8]` to the object type `dyn Foo`
+   = note: required for the cast to the object type `dyn Foo`
 help: consider borrowing the value, since `&[u8]` can be coerced into `dyn Foo`
    |
 LL |     let _ = &fat_v as *const dyn Foo;
@@ -233,7 +233,7 @@ LL |     let _ = a as *const dyn Foo;
    |             ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `str` to the object type `dyn Foo`
+   = note: required for the cast to the object type `dyn Foo`
 help: consider borrowing the value, since `&str` can be coerced into `dyn Foo`
    |
 LL |     let _ = &a as *const dyn Foo;

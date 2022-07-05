@@ -1,8 +1,15 @@
 error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/assoc-type-eq-with-dyn-atb-fail.rs:32:18
    |
+<<<<<<< HEAD
 LL |     fn func() -> Self::Out {
    |                  ^^^^^^^^^ the trait `Copy` is not implemented for `String`
+=======
+LL |         Box::new(AssocNoCopy)
+   |         ^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+   = note: required for the cast to the object type `dyn Bar<Assoc = <AssocNoCopy as Thing>::Out::{opaque#0}>`
+>>>>>>> parent of 862873d20bb (Note concrete type being coerced into object)
 
 error: aborting due to previous error
 

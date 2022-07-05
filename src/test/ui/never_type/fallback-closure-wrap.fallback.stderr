@@ -10,7 +10,7 @@ LL | |     }) as Box<dyn FnMut()>);
    |
    = note: expected unit type `()`
                    found type `!`
-   = note: required for the cast from `[closure@$DIR/fallback-closure-wrap.rs:18:40: 21:6]` to the object type `dyn FnMut()`
+   = note: required for the cast to the object type `dyn FnMut()`
 
 error: aborting due to previous error
 

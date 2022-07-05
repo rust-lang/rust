@@ -7,7 +7,7 @@ LL |     foo11("bar", &"baz");
    |     required by a bound introduced by this call
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `str` to the object type `dyn AsRef<Path>`
+   = note: required for the cast to the object type `dyn AsRef<Path>`
 help: consider borrowing the value, since `&str` can be coerced into `dyn AsRef<Path>`
    |
 LL |     foo11(&"bar", &"baz");
@@ -22,7 +22,7 @@ LL |     foo12(&"bar", "baz");
    |     required by a bound introduced by this call
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `str` to the object type `dyn AsRef<Path>`
+   = note: required for the cast to the object type `dyn AsRef<Path>`
 help: consider borrowing the value, since `&str` can be coerced into `dyn AsRef<Path>`
    |
 LL |     foo12(&"bar", &"baz");
@@ -37,7 +37,7 @@ LL |     foo21("bar", &"baz");
    |     required by a bound introduced by this call
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `str` to the object type `dyn AsRef<str>`
+   = note: required for the cast to the object type `dyn AsRef<str>`
 help: consider borrowing the value, since `&str` can be coerced into `dyn AsRef<str>`
    |
 LL |     foo21(&"bar", &"baz");
@@ -52,7 +52,7 @@ LL |     foo22(&"bar", "baz");
    |     required by a bound introduced by this call
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `str` to the object type `dyn AsRef<str>`
+   = note: required for the cast to the object type `dyn AsRef<str>`
 help: consider borrowing the value, since `&str` can be coerced into `dyn AsRef<str>`
    |
 LL |     foo22(&"bar", &"baz");

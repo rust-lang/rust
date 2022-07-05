@@ -6,7 +6,7 @@ LL |         &mut *(ptr as *mut dyn Fn())
    |
    = help: the trait `Fn<()>` is not implemented for `()`
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
-   = note: required for the cast from `()` to the object type `dyn Fn()`
+   = note: required for the cast to the object type `dyn Fn()`
 
 error: aborting due to previous error
 
