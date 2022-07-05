@@ -808,7 +808,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
 
         if !unwinding {
-            let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
+            let op = self.local_to_op(&frame, mir::RETURN_PLACE, None)?;
             self.copy_op_transmute(&op, &frame.return_place)?;
             trace!("{:?}", self.dump_place(*frame.return_place));
         }
@@ -981,8 +981,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                     LocalValue::Live(Operand::Indirect(mplace)) => {
                         write!(
                             fmt,
-                            " by align({}){} ref {:?}:",
-                            mplace.align.bytes(),
+                            " by {} ref {:?}:",
                             match mplace.meta {
                                 MemPlaceMeta::Meta(meta) => format!(" meta({:?})", meta),
                                 MemPlaceMeta::Poison | MemPlaceMeta::None => String::new(),
@@ -1011,13 +1010,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                 write!(fmt, ": {:?}", self.ecx.dump_allocs(allocs.into_iter().flatten().collect()))
             }
             Place::Ptr(mplace) => match mplace.ptr.provenance.and_then(Provenance::get_alloc_id) {
-                Some(alloc_id) => write!(
-                    fmt,
-                    "by align({}) ref {:?}: {:?}",
-                    mplace.align.bytes(),
-                    mplace.ptr,
-                    self.ecx.dump_alloc(alloc_id)
-                ),
+                Some(alloc_id) => {
+                    write!(fmt, "by ref {:?}: {:?}", mplace.ptr, self.ecx.dump_alloc(alloc_id))
+                }
                 ptr => write!(fmt, " integral by ref: {:?}", ptr),
             },
         }
