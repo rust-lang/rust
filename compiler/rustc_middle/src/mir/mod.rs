@@ -341,12 +341,6 @@ impl<'tcx> Body<'tcx> {
         self.basic_blocks.as_mut()
     }
 
-    /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
-    /// `START_BLOCK`.
-    pub fn is_cfg_cyclic(&self) -> bool {
-        self.basic_blocks.is_cfg_cyclic()
-    }
-
     #[inline]
     pub fn local_kind(&self, local: Local) -> LocalKind {
         let index = local.as_usize();
