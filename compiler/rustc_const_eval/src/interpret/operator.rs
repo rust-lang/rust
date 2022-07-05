@@ -33,7 +33,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // As per https://github.com/rust-lang/rust/pull/98738, we always return `false` in the 2nd
         // component when overflow checking is disabled.
         let overflowed =
-            overflowed && (force_overflow_checks || M::check_binop_checks_overflow(self));
+            overflowed && (force_overflow_checks || M::checked_binop_checks_overflow(self));
         // Write the result to `dest`.
         if let Abi::ScalarPair(..) = dest.layout.abi {
             // We can use the optimized path and avoid `place_field` (which might do
