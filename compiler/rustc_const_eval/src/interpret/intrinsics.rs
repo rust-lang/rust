@@ -217,7 +217,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::mul_with_overflow => BinOp::Mul,
                     _ => bug!(),
                 };
-                self.binop_with_overflow(bin_op, &lhs, &rhs, dest)?;
+                self.binop_with_overflow(
+                    bin_op, /*force_overflow_checks*/ true, &lhs, &rhs, dest,
+                )?;
             }
             sym::saturating_add | sym::saturating_sub => {
                 let l = self.read_immediate(&args[0])?;
