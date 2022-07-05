@@ -199,14 +199,16 @@ impl<T: JoinSemiLattice> MeetSemiLattice for Dual<T> {
 }
 
 /// Extends a type `T` with top and bottom elements to make it a partially ordered set in which no
-/// value of `T` is comparable with any other. A flat set has the following [Hasse diagram]:
+/// value of `T` is comparable with any other.
+///
+/// A flat set has the following [Hasse diagram]:
 ///
 /// ```text
-///         top
-///       / /  \ \
+///          top
+///  / ... / /  \ \ ... \
 /// all possible values of `T`
-///       \ \  / /
-///        bottom
+///  \ ... \ \  / / ... /
+///         bottom
 /// ```
 ///
 /// [Hasse diagram]: https://en.wikipedia.org/wiki/Hasse_diagram
