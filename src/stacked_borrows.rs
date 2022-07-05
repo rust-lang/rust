@@ -1097,7 +1097,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             AllocKind::LiveData => {
                 // This should have alloc_extra data.
                 let alloc_extra = this.get_alloc_extra(alloc_id).unwrap();
-                trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id}");
+                trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id:?}");
                 alloc_extra.stacked_borrows.as_ref().unwrap().borrow_mut().exposed_tags.insert(tag);
             }
             AllocKind::Function | AllocKind::Dead => {

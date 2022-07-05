@@ -699,7 +699,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
             let alloc = this.get_ptr_alloc(ptr.offset(len, this)?, size1, Align::ONE)?.unwrap(); // not a ZST, so we will get a result
-            let byte = alloc.read_integer(Size::ZERO, size1)?.to_u8()?;
+            let byte = alloc.read_integer(alloc_range(Size::ZERO, size1))?.to_u8()?;
             if byte == 0 {
                 break;
             } else {
@@ -721,7 +721,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
             let alloc = this.get_ptr_alloc(ptr, size2, align2)?.unwrap(); // not a ZST, so we will get a result
-            let wchar = alloc.read_integer(Size::ZERO, size2)?.to_u16()?;
+            let wchar = alloc.read_integer(alloc_range(Size::ZERO, size2))?.to_u16()?;
             if wchar == 0 {
                 break;
             } else {

@@ -450,7 +450,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let msg = match e {
                     CreatedPointerTag(tag, None) => format!("created tag {tag:?}"),
                     CreatedPointerTag(tag, Some((alloc_id, range))) =>
-                        format!("created tag {tag:?} at {alloc_id}{}", HexRange(range)),
+                        format!("created tag {tag:?} at {alloc_id:?}{}", HexRange(range)),
                     PoppedPointerTag(item, tag) =>
                         match tag {
                             None =>
