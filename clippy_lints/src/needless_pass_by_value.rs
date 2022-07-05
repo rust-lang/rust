@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::{snippet, snippet_opt};
-use clippy_utils::ty::{implements_trait, is_copy, is_type_diagnostic_item};
+use clippy_utils::ty::{implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
@@ -11,7 +11,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Mutability, Node, PatKind, QPath, TyKind,
 };
-use rustc_hir::{HirIdMap, HirIdSet};
+use rustc_hir::{HirIdMap, HirIdSet, LangItem};
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
@@ -249,7 +249,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             }
                         }
 
-                        if is_type_diagnostic_item(cx, ty, sym::String) {
+                        if is_type_lang_item(cx, ty, LangItem::String) {
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                                 diag.span_suggestion(
