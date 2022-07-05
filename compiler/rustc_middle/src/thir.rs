@@ -458,12 +458,6 @@ pub enum ExprKind<'tcx> {
     },
 }
 
-impl<'tcx> ExprKind<'tcx> {
-    pub fn zero_sized_literal(user_ty: Option<Canonical<'tcx, UserType<'tcx>>>) -> Self {
-        ExprKind::ZstLiteral { user_ty }
-    }
-}
-
 /// Represents the association of a field identifier and an expression.
 ///
 /// This is used in struct constructors.
