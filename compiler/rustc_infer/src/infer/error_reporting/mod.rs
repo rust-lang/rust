@@ -148,12 +148,10 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
     region: ty::Region<'tcx>,
 ) -> (String, Span) {
-    let sm = tcx.sess.source_map();
-
     let scope = region.free_region_binding_scope(tcx).expect_local();
     match *region {
         ty::ReEarlyBound(ref br) => {
-            let mut sp = sm.guess_head_span(tcx.def_span(scope));
+            let mut sp = tcx.def_span(scope);
             if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
             {
@@ -174,7 +172,7 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
             } else {
                 match fr.bound_region {
                     ty::BoundRegionKind::BrNamed(_, name) => {
-                        let mut sp = sm.guess_head_span(tcx.def_span(scope));
+                        let mut sp = tcx.def_span(scope);
                         if let Some(param) =
                             tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
                         {
@@ -193,7 +191,7 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
                     ),
                     _ => (
                         format!("the lifetime `{}` as defined here", region),
-                        sm.guess_head_span(tcx.def_span(scope)),
+                        tcx.def_span(scope),
                     ),
                 }
             }

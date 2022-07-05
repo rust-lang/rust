@@ -285,11 +285,9 @@ fn check_panic_info_fn(
         tcx.sess.span_err(decl.output.span(), "return type should be `!`");
     }
 
-    let span = tcx.def_span(fn_id);
     let inputs = fn_sig.inputs();
     if inputs.len() != 1 {
-        let span = tcx.sess.source_map().guess_head_span(span);
-        tcx.sess.span_err(span, "function should have one argument");
+        tcx.sess.span_err(tcx.def_span(fn_id), "function should have one argument");
         return;
     }
 
@@ -342,9 +340,7 @@ fn check_alloc_error_fn(
 
     let inputs = fn_sig.inputs();
     if inputs.len() != 1 {
-        let span = tcx.def_span(fn_id);
-        let span = tcx.sess.source_map().guess_head_span(span);
-        tcx.sess.span_err(span, "function should have one argument");
+        tcx.sess.span_err(tcx.def_span(fn_id), "function should have one argument");
         return;
     }
 
@@ -1033,7 +1029,6 @@ fn check_impl_items_against_trait<'tcx>(
                 compare_impl_method(
                     tcx,
                     &ty_impl_item,
-                    impl_item.span,
                     &ty_trait_item,
                     impl_trait_ref,
                     opt_trait_span,
@@ -1093,17 +1088,20 @@ fn check_impl_items_against_trait<'tcx>(
         }
 
         if !missing_items.is_empty() {
-            let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
-            missing_items_err(tcx, impl_span, &missing_items, full_impl_span);
+            missing_items_err(tcx, tcx.def_span(impl_id), &missing_items, full_impl_span);
         }
 
         if let Some(missing_items) = must_implement_one_of {
-            let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
             let attr_span = tcx
                 .get_attr(impl_trait_ref.def_id, sym::rustc_must_implement_one_of)
                 .map(|attr| attr.span);
 
-            missing_items_must_implement_one_of_err(tcx, impl_span, missing_items, attr_span);
+            missing_items_must_implement_one_of_err(
+                tcx,
+                tcx.def_span(impl_id),
+                missing_items,
+                attr_span,
+            );
         }
     }
 }

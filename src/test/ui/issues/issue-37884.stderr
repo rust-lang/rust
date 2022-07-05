@@ -1,13 +1,8 @@
 error[E0308]: method not compatible with trait
   --> $DIR/issue-37884.rs:6:5
    |
-LL | /     fn next(&'a mut self) -> Option<Self::Item>
-LL | |
-LL | |
-LL | |     {
-LL | |         Some(&mut self.0)
-LL | |     }
-   | |_____^ lifetime mismatch
+LL |     fn next(&'a mut self) -> Option<Self::Item>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected fn pointer `fn(&mut RepeatMut<'a, T>) -> Option<_>`
               found fn pointer `fn(&'a mut RepeatMut<'a, T>) -> Option<_>`

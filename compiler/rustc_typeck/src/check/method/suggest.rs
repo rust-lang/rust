@@ -121,11 +121,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }) else {
                             continue;
                         };
-                        let note_span = self
-                            .tcx
-                            .hir()
-                            .span_if_local(item.def_id)
-                            .or_else(|| self.tcx.hir().span_if_local(impl_did));
+
+                        let note_span = if item.def_id.is_local() {
+                            Some(self.tcx.def_span(item.def_id))
+                        } else if impl_did.is_local() {
+                            Some(self.tcx.def_span(impl_did))
+                        } else {
+                            None
+                        };
 
                         let impl_ty = self.tcx.at(span).type_of(impl_did);
 
@@ -158,10 +161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
                         if let Some(note_span) = note_span {
                             // We have a span pointing to the method. Show note with snippet.
-                            err.span_note(
-                                self.tcx.sess.source_map().guess_head_span(note_span),
-                                &note_str,
-                            );
+                            err.span_note(note_span, &note_str);
                         } else {
                             err.note(&note_str);
                         }
@@ -197,11 +197,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     CandidateSource::Trait(trait_did) => {
                         let Some(item) = self.associated_value(trait_did, item_name) else { continue };
-                        let item_span = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .guess_head_span(self.tcx.def_span(item.def_id));
+                        let item_span = self.tcx.def_span(item.def_id);
                         let idx = if sources.len() > 1 {
                             let msg = &format!(
                                 "candidate #{} is defined in the trait `{}`",
@@ -471,9 +467,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.note(&format!("`count` is defined on `{iterator_trait}`, which `{actual}` does not implement"));
                     }
                 } else if !unsatisfied_predicates.is_empty() {
-                    let def_span = |def_id| {
-                        self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id))
-                    };
                     let mut type_params = FxHashMap::default();
 
                     // Pick out the list of unimplemented traits on the receiver.
@@ -564,22 +557,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                         match &self_ty.kind() {
                             // Point at the type that couldn't satisfy the bound.
-                            ty::Adt(def, _) => bound_spans.push((def_span(def.did()), msg)),
+                            ty::Adt(def, _) => {
+                                bound_spans.push((self.tcx.def_span(def.did()), msg))
+                            }
                             // Point at the trait object that couldn't satisfy the bound.
                             ty::Dynamic(preds, _) => {
                                 for pred in preds.iter() {
                                     match pred.skip_binder() {
-                                        ty::ExistentialPredicate::Trait(tr) => {
-                                            bound_spans.push((def_span(tr.def_id), msg.clone()))
-                                        }
+                                        ty::ExistentialPredicate::Trait(tr) => bound_spans
+                                            .push((self.tcx.def_span(tr.def_id), msg.clone())),
                                         ty::ExistentialPredicate::Projection(_)
                                         | ty::ExistentialPredicate::AutoTrait(_) => {}
                                     }
                                 }
                             }
                             // Point at the closure that couldn't satisfy the bound.
-                            ty::Closure(def_id, _) => bound_spans
-                                .push((def_span(*def_id), format!("doesn't satisfy `{}`", quiet))),
+                            ty::Closure(def_id, _) => bound_spans.push((
+                                tcx.def_span(*def_id),
+                                format!("doesn't satisfy `{}`", quiet),
+                            )),
                             _ => {}
                         }
                     };
@@ -1469,21 +1465,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => None,
             })
             .collect::<FxHashSet<_>>();
-        let sm = self.tcx.sess.source_map();
         let mut spans: MultiSpan = def_ids
             .iter()
             .filter_map(|def_id| {
                 let span = self.tcx.def_span(*def_id);
-                if span.is_dummy() { None } else { Some(sm.guess_head_span(span)) }
+                if span.is_dummy() { None } else { Some(span) }
             })
             .collect::<Vec<_>>()
             .into();
 
         for pred in &preds {
             match pred.self_ty().kind() {
-                ty::Adt(def, _) => {
+                ty::Adt(def, _) if def.did().is_local() => {
                     spans.push_span_label(
-                        sm.guess_head_span(self.tcx.def_span(def.did())),
+                        self.tcx.def_span(def.did()),
                         format!("must implement `{}`", pred.trait_ref.print_only_trait_path()),
                     );
                 }
@@ -2090,9 +2085,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match &potential_candidates[..] {
                 [] => {}
                 [trait_info] if trait_info.def_id.is_local() => {
-                    let span = self.tcx.hir().span_if_local(trait_info.def_id).unwrap();
                     err.span_note(
-                        self.tcx.sess.source_map().guess_head_span(span),
+                        self.tcx.def_span(trait_info.def_id),
                         &format!(
                             "`{}` defines an item `{}`, perhaps you need to {} it",
                             self.tcx.def_path_str(trait_info.def_id),

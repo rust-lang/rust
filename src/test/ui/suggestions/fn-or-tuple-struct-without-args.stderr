@@ -130,7 +130,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:35:16
    |
 LL |     A(usize),
-   |     -------- fn(usize) -> E {E::A} defined here
+   |     - fn(usize) -> E {E::A} defined here
 ...
 LL |     let _: E = E::A;
    |            -   ^^^^ expected enum `E`, found fn item

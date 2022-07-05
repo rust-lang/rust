@@ -23,10 +23,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let mut err = struct_span_err!(self.tcx.sess, sp, E0276, "{}", msg);
 
-        if let Some(trait_item_span) = self.tcx.hir().span_if_local(trait_item_def_id) {
-            let span = self.tcx.sess.source_map().guess_head_span(trait_item_span);
+        if trait_item_def_id.is_local() {
             let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
-            err.span_label(span, format!("definition of `{}` from trait", item_name));
+            err.span_label(
+                self.tcx.def_span(trait_item_def_id),
+                format!("definition of `{}` from trait", item_name),
+            );
         }
 
         err.span_label(sp, format!("impl has extra requirement {}", requirement));

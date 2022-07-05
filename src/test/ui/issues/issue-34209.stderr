@@ -2,7 +2,7 @@ error[E0599]: no variant named `B` found for enum `S`
   --> $DIR/issue-34209.rs:7:12
    |
 LL | enum S {
-   | ------ variant `B` not found here
+   | ------ variant `B` not found for this enum
 ...
 LL |         S::B {} => {},
    |            ^ help: there is a variant with a similar name: `A`
