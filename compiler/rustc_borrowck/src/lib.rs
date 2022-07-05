@@ -236,7 +236,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
         regioncx,
-        opaque_type_values,
+        mut opaque_type_values,
         polonius_input,
         polonius_output,
         opt_closure_req,
@@ -436,6 +436,12 @@ fn do_mir_borrowck<'a, 'tcx>(
     }
 
     let tainted_by_errors = mbcx.emit_errors();
+
+    // Since `BorrowCheckResult` is a query result, let's make sure that its `concrete_opaque_types`
+    // field is in deterministic order.
+    // Note, that this is not the best solution. It would be better to use a collection type
+    // that does not expose its internal order at all once that's available (see #63713).
+    opaque_type_values.sort_deterministically(&infcx.tcx.create_stable_hashing_context());
 
     let result = BorrowCheckResult {
         concrete_opaque_types: opaque_type_values,

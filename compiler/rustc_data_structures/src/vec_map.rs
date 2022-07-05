@@ -4,7 +4,7 @@ use std::iter::FromIterator;
 use std::slice::Iter;
 use std::vec::IntoIter;
 
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 
 /// A map type implemented as a vector of pairs `K` (key) and `V` (value).
 /// It currently provides a subset of all the map operations, the rest could be added as needed.
@@ -187,6 +187,15 @@ where
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         self.0.hash_stable(hcx, hasher)
+    }
+}
+
+impl<K, V> VecMap<K, V> {
+    pub fn sort_deterministically<HCX>(&mut self, hcx: &HCX)
+    where
+        K: ToStableHashKey<HCX>,
+    {
+        self.0.sort_by_cached_key(|(k, _)| k.to_stable_hash_key(hcx));
     }
 }
 
