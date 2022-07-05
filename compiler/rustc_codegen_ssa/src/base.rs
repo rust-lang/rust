@@ -389,15 +389,14 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let main_llfn = cx.get_fn_addr(instance);
 
-    let use_start_lang_item = EntryFnType::Start != entry_type;
-    let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, use_start_lang_item);
+    let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, entry_type);
     return Some(entry_fn);
 
     fn create_entry_fn<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
         rust_main: Bx::Value,
         rust_main_def_id: DefId,
-        use_start_lang_item: bool,
+        entry_type: EntryFnType,
     ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
         // depending on whether the target needs `argc` and `argv` to be passed in.
@@ -442,7 +441,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let i8pp_ty = cx.type_ptr_to(cx.type_i8p());
         let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
 
-        let (start_fn, start_ty, args) = if use_start_lang_item {
+        let (start_fn, start_ty, args) = if let EntryFnType::Main { sigpipe } = entry_type {
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
             let start_fn = cx.get_fn_addr(
                 ty::Instance::resolve(
@@ -454,8 +453,13 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 .unwrap()
                 .unwrap(),
             );
-            let start_ty = cx.type_func(&[cx.val_ty(rust_main), isize_ty, i8pp_ty], isize_ty);
-            (start_fn, start_ty, vec![rust_main, arg_argc, arg_argv])
+
+            let i8_ty = cx.type_i8();
+            let arg_sigpipe = bx.const_u8(sigpipe);
+
+            let start_ty =
+                cx.type_func(&[cx.val_ty(rust_main), isize_ty, i8pp_ty, i8_ty], isize_ty);
+            (start_fn, start_ty, vec![rust_main, arg_argc, arg_argv, arg_sigpipe])
         } else {
             debug!("using user-defined start fn");
             let start_ty = cx.type_func(&[isize_ty, i8pp_ty], isize_ty);

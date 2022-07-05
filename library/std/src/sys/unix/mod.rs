@@ -44,12 +44,12 @@ pub mod thread_parker;
 pub mod time;
 
 #[cfg(target_os = "espidf")]
-pub fn init(argc: isize, argv: *const *const u8) {}
+pub fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {}
 
 #[cfg(not(target_os = "espidf"))]
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-pub unsafe fn init(argc: isize, argv: *const *const u8) {
+pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // The standard streams might be closed on application startup. To prevent
     // std::io::{stdin, stdout,stderr} objects from using other unrelated file
     // resources opened later, we reopen standards streams when they are closed.
@@ -61,8 +61,9 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     // want!
     //
     // Hence, we set SIGPIPE to ignore when the program starts up in order
-    // to prevent this problem.
-    reset_sigpipe();
+    // to prevent this problem. Add `#[unix_sigpipe = "..."]` above `fn main()` to
+    // alter this behavior.
+    reset_sigpipe(sigpipe);
 
     stack_overflow::init();
     args::init(argc, argv);
@@ -151,9 +152,25 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
         }
     }
 
-    unsafe fn reset_sigpipe() {
+    unsafe fn reset_sigpipe(#[allow(unused_variables)] sigpipe: u8) {
         #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia", target_os = "horizon")))]
-        rtassert!(signal(libc::SIGPIPE, libc::SIG_IGN) != libc::SIG_ERR);
+        {
+            // We don't want to add this as a public type to libstd, nor do we want to
+            // duplicate the code, so we choose to include this compiler file like this.
+            mod sigpipe {
+                include!("../../../../../compiler/rustc_session/src/config/sigpipe.rs");
+            }
+
+            let handler = match sigpipe {
+                sigpipe::INHERIT => None,
+                sigpipe::SIG_IGN => Some(libc::SIG_IGN),
+                sigpipe::SIG_DFL => Some(libc::SIG_DFL),
+                _ => unreachable!(),
+            };
+            if let Some(handler) = handler {
+                rtassert!(signal(libc::SIGPIPE, handler) != libc::SIG_ERR);
+            }
+        }
     }
 }
 

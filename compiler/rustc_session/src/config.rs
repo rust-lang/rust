@@ -36,6 +36,8 @@ use std::iter::{self, FromIterator};
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 
+pub mod sigpipe;
+
 /// The different settings that the `-C strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Strip {
@@ -798,7 +800,15 @@ impl UnstableOptions {
 // The type of entry function, so users can have their own entry functions
 #[derive(Copy, Clone, PartialEq, Hash, Debug, HashStable_Generic)]
 pub enum EntryFnType {
-    Main,
+    Main {
+        /// Specifies what to do with `SIGPIPE` before calling `fn main()`.
+        ///
+        /// What values that are valid and what they mean must be in sync
+        /// across rustc and libstd, but we don't want it public in libstd,
+        /// so we take a bit of an unusual approach with simple constants
+        /// and an `include!()`.
+        sigpipe: u8,
+    },
     Start,
 }
 
