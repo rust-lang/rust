@@ -629,6 +629,7 @@ fn clean_ty_generics<'tcx>(
         .params
         .iter()
         .filter_map(|param| match param.kind {
+            ty::GenericParamDefKind::Lifetime if param.name == kw::UnderscoreLifetime => None,
             ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
             ty::GenericParamDefKind::Type { synthetic, .. } => {
                 if param.name == kw::SelfUpper {

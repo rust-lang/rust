@@ -7,3 +7,11 @@ where
 {
     unimplemented!()
 }
+
+pub struct Extra;
+
+pub trait MyTrait<T> {
+    fn run() {}
+}
+
+impl MyTrait<&Extra> for Extra {}
