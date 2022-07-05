@@ -315,8 +315,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         body_id: Option<hir::BodyId>,
         failure_span: Span,
         arg: GenericArg<'tcx>,
-        // FIXME(#94483): Either use this or remove it.
-        _impl_candidates: Vec<ty::TraitRef<'tcx>>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
@@ -534,6 +532,23 @@ enum InferSourceKind<'tcx> {
     },
 }
 
+impl<'tcx> InferSource<'tcx> {
+    fn from_expansion(&self) -> bool {
+        let source_from_expansion = match self.kind {
+            InferSourceKind::LetBinding { insert_span, .. }
+            | InferSourceKind::ClosureArg { insert_span, .. }
+            | InferSourceKind::GenericArg { insert_span, .. } => insert_span.from_expansion(),
+            InferSourceKind::FullyQualifiedMethodCall { receiver, .. } => {
+                receiver.span.from_expansion()
+            }
+            InferSourceKind::ClosureReturn { data, should_wrap_expr, .. } => {
+                data.span().from_expansion() || should_wrap_expr.map_or(false, Span::from_expansion)
+            }
+        };
+        source_from_expansion || self.span.from_expansion()
+    }
+}
+
 impl<'tcx> InferSourceKind<'tcx> {
     fn ty_msg(&self, infcx: &InferCtxt<'_, 'tcx>) -> String {
         match *self {
@@ -604,43 +619,65 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     /// Sources with a small cost are prefer and should result
     /// in a clearer and idiomatic suggestion.
     fn source_cost(&self, source: &InferSource<'tcx>) -> usize {
-        let tcx = self.infcx.tcx;
-
-        fn arg_cost<'tcx>(arg: GenericArg<'tcx>) -> usize {
-            match arg.unpack() {
-                GenericArgKind::Lifetime(_) => 0, // erased
-                GenericArgKind::Type(ty) => ty_cost(ty),
-                GenericArgKind::Const(_) => 3, // some non-zero value
-            }
+        #[derive(Clone, Copy)]
+        struct CostCtxt<'tcx> {
+            tcx: TyCtxt<'tcx>,
         }
-        fn ty_cost<'tcx>(ty: Ty<'tcx>) -> usize {
-            match ty.kind() {
-                ty::Closure(..) => 100,
-                ty::FnDef(..) => 20,
-                ty::FnPtr(..) => 10,
-                ty::Infer(..) => 0,
-                _ => 1,
+        impl<'tcx> CostCtxt<'tcx> {
+            fn arg_cost(self, arg: GenericArg<'tcx>) -> usize {
+                match arg.unpack() {
+                    GenericArgKind::Lifetime(_) => 0, // erased
+                    GenericArgKind::Type(ty) => self.ty_cost(ty),
+                    GenericArgKind::Const(_) => 3, // some non-zero value
+                }
+            }
+            fn ty_cost(self, ty: Ty<'tcx>) -> usize {
+                match *ty.kind() {
+                    ty::Closure(..) => 1000,
+                    ty::FnDef(..) => 150,
+                    ty::FnPtr(..) => 30,
+                    ty::Adt(def, substs) => {
+                        5 + self
+                            .tcx
+                            .generics_of(def.did())
+                            .own_substs_no_defaults(self.tcx, substs)
+                            .iter()
+                            .map(|&arg| self.arg_cost(arg))
+                            .sum::<usize>()
+                    }
+                    ty::Tuple(args) => 5 + args.iter().map(|arg| self.ty_cost(arg)).sum::<usize>(),
+                    ty::Ref(_, ty, _) => 2 + self.ty_cost(ty),
+                    ty::Infer(..) => 0,
+                    _ => 1,
+                }
             }
         }
 
         // The sources are listed in order of preference here.
-        match source.kind {
-            InferSourceKind::LetBinding { ty, .. } => ty_cost(ty),
-            InferSourceKind::ClosureArg { ty, .. } => 5 + ty_cost(ty),
+        let tcx = self.infcx.tcx;
+        let ctx = CostCtxt { tcx };
+        let base_cost = match source.kind {
+            InferSourceKind::LetBinding { ty, .. } => ctx.ty_cost(ty),
+            InferSourceKind::ClosureArg { ty, .. } => ctx.ty_cost(ty),
             InferSourceKind::GenericArg { def_id, generic_args, .. } => {
                 let variant_cost = match tcx.def_kind(def_id) {
-                    DefKind::Variant | DefKind::Ctor(CtorOf::Variant, _) => 15, // `None::<u32>` and friends are ugly.
-                    _ => 12,
+                    // `None::<u32>` and friends are ugly.
+                    DefKind::Variant | DefKind::Ctor(CtorOf::Variant, _) => 15,
+                    _ => 10,
                 };
-                variant_cost + generic_args.iter().map(|&arg| arg_cost(arg)).sum::<usize>()
+                variant_cost + generic_args.iter().map(|&arg| ctx.arg_cost(arg)).sum::<usize>()
             }
             InferSourceKind::FullyQualifiedMethodCall { substs, .. } => {
-                20 + substs.iter().map(|arg| arg_cost(arg)).sum::<usize>()
+                20 + substs.iter().map(|arg| ctx.arg_cost(arg)).sum::<usize>()
             }
             InferSourceKind::ClosureReturn { ty, should_wrap_expr, .. } => {
-                30 + ty_cost(ty) + if should_wrap_expr.is_some() { 10 } else { 0 }
+                30 + ctx.ty_cost(ty) + if should_wrap_expr.is_some() { 10 } else { 0 }
             }
-        }
+        };
+
+        let suggestion_may_apply = if source.from_expansion() { 10000 } else { 0 };
+
+        base_cost + suggestion_may_apply
     }
 
     /// Uses `fn source_cost` to determine whether this inference source is preferable to
@@ -648,11 +685,17 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn update_infer_source(&mut self, new_source: InferSource<'tcx>) {
         let cost = self.source_cost(&new_source) + self.attempt;
+        debug!(?cost);
         self.attempt += 1;
         if cost < self.infer_source_cost {
             self.infer_source_cost = cost;
             self.infer_source = Some(new_source);
         }
+    }
+
+    fn node_substs_opt(&self, hir_id: HirId) -> Option<SubstsRef<'tcx>> {
+        let substs = self.typeck_results.node_substs_opt(hir_id);
+        self.infcx.resolve_vars_if_possible(substs)
     }
 
     fn opt_node_type(&self, hir_id: HirId) -> Option<Ty<'tcx>> {
@@ -737,7 +780,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         let tcx = self.infcx.tcx;
         match expr.kind {
             hir::ExprKind::Path(ref path) => {
-                if let Some(substs) = self.typeck_results.node_substs_opt(expr.hir_id) {
+                if let Some(substs) = self.node_substs_opt(expr.hir_id) {
                     return self.path_inferred_subst_iter(expr.hir_id, substs, path);
                 }
             }
@@ -765,7 +808,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                         if generics.has_impl_trait() {
                             None?
                         }
-                        let substs = self.typeck_results.node_substs_opt(expr.hir_id)?;
+                        let substs = self.node_substs_opt(expr.hir_id)?;
                         let span = tcx.hir().span(segment.hir_id?);
                         let insert_span = segment.ident.span.shrink_to_hi().with_hi(span.hi());
                         InsertableGenericArgs {
@@ -980,8 +1023,10 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             debug!(?args);
             let InsertableGenericArgs { insert_span, substs, generics_def_id, def_id } = args;
             let generics = tcx.generics_of(generics_def_id);
-            if let Some(argument_index) =
-                generics.own_substs(substs).iter().position(|&arg| self.generic_arg_is_target(arg))
+            if let Some(argument_index) = generics
+                .own_substs(substs)
+                .iter()
+                .position(|&arg| self.generic_arg_contains_target(arg))
             {
                 let substs = self.infcx.resolve_vars_if_possible(substs);
                 let generic_args = &generics.own_substs_no_defaults(tcx, substs)
@@ -1037,7 +1082,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             .any(|generics| generics.has_impl_trait())
         };
         if let ExprKind::MethodCall(path, args, span) = expr.kind
-            && let Some(substs) = self.typeck_results.node_substs_opt(expr.hir_id)
+            && let Some(substs) = self.node_substs_opt(expr.hir_id)
             && substs.iter().any(|arg| self.generic_arg_contains_target(arg))
             && let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id)
             && self.infcx.tcx.trait_of_item(def_id).is_some()

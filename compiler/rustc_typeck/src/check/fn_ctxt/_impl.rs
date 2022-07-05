@@ -1538,15 +1538,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty
         } else {
             if !self.is_tainted_by_errors() {
-                self.emit_inference_failure_err(
-                    (**self).body_id,
-                    sp,
-                    ty.into(),
-                    vec![],
-                    E0282,
-                    true,
-                )
-                .emit();
+                self.emit_inference_failure_err((**self).body_id, sp, ty.into(), E0282, true)
+                    .emit();
             }
             let err = self.tcx.ty_error();
             self.demand_suptype(sp, err, ty);

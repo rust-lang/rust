@@ -167,7 +167,7 @@ impl<Tag: Provenance> fmt::LowerHex for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr, _size) => write!(f, "pointer to {:?}", ptr),
-            Scalar::Int(int) => write!(f, "0x{:x}", int),
+            Scalar::Int(int) => write!(f, "{:#x}", int),
         }
     }
 }

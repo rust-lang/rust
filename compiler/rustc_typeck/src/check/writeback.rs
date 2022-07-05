@@ -692,7 +692,6 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     Some(self.body.id()),
                     self.span.to_span(self.tcx),
                     t.into(),
-                    vec![],
                     E0282,
                     false,
                 )
@@ -707,7 +706,6 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     Some(self.body.id()),
                     self.span.to_span(self.tcx),
                     c.into(),
-                    vec![],
                     E0282,
                     false,
                 )

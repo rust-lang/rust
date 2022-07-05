@@ -190,11 +190,7 @@ impl fmt::Debug for AllocId {
     }
 }
 
-impl fmt::Display for AllocId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
-}
+// No "Display" since AllocIds are not usually user-visible.
 
 #[derive(TyDecodable, TyEncodable)]
 enum AllocDiscriminant {
@@ -470,7 +466,7 @@ impl<'tcx> TyCtxt<'tcx> {
             return alloc_id;
         }
         let id = alloc_map.reserve();
-        debug!("creating alloc {:?} with id {}", alloc, id);
+        debug!("creating alloc {alloc:?} with id {id:?}");
         alloc_map.alloc_map.insert(id, alloc.clone());
         alloc_map.dedup.insert(alloc, id);
         id
@@ -538,7 +534,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn global_alloc(self, id: AllocId) -> GlobalAlloc<'tcx> {
         match self.get_global_alloc(id) {
             Some(alloc) => alloc,
-            None => bug!("could not find allocation for {}", id),
+            None => bug!("could not find allocation for {id:?}"),
         }
     }
 
@@ -546,7 +542,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
     pub fn set_alloc_id_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
         if let Some(old) = self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Memory(mem)) {
-            bug!("tried to set allocation ID {}, but it was already existing as {:#?}", id, old);
+            bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
         }
     }
 

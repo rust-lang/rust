@@ -1980,7 +1980,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                             body_id,
                             span,
                             trait_ref.self_ty().skip_binder().into(),
-                            vec![],
                             ErrorCode::E0282,
                             false,
                         )
@@ -2005,19 +2004,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 let subst = data.trait_ref.substs.iter().find(|s| s.has_infer_types_or_consts());
 
                 let mut err = if let Some(subst) = subst {
-                    let impl_candidates = self
-                        .find_similar_impl_candidates(trait_ref)
-                        .into_iter()
-                        .map(|candidate| candidate.trait_ref)
-                        .collect();
-                    self.emit_inference_failure_err(
-                        body_id,
-                        span,
-                        subst,
-                        impl_candidates,
-                        ErrorCode::E0283,
-                        true,
-                    )
+                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0283, true)
                 } else {
                     struct_span_err!(
                         self.tcx.sess,
@@ -2117,7 +2104,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                self.emit_inference_failure_err(body_id, span, arg, vec![], ErrorCode::E0282, false)
+                self.emit_inference_failure_err(body_id, span, arg, ErrorCode::E0282, false)
             }
 
             ty::PredicateKind::Subtype(data) => {
@@ -2131,14 +2118,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 let SubtypePredicate { a_is_expected: _, a, b } = data;
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
-                self.emit_inference_failure_err(
-                    body_id,
-                    span,
-                    a.into(),
-                    vec![],
-                    ErrorCode::E0282,
-                    true,
-                )
+                self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282, true)
             }
             ty::PredicateKind::Projection(data) => {
                 if predicate.references_error() || self.is_tainted_by_errors() {
@@ -2155,7 +2135,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         body_id,
                         span,
                         subst,
-                        vec![],
                         ErrorCode::E0284,
                         true,
                     );
