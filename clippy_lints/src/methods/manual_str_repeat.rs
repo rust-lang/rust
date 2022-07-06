@@ -43,7 +43,7 @@ fn parse_repeat_arg(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<RepeatKind> {
             Some(RepeatKind::String)
         } else {
             let ty = ty.peel_refs();
-            (ty.is_str() || is_type_diagnostic_item(cx, ty, sym::String)).then(|| RepeatKind::String)
+            (ty.is_str() || is_type_diagnostic_item(cx, ty, sym::String)).then_some(RepeatKind::String)
         }
     }
 }

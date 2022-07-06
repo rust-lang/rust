@@ -553,7 +553,7 @@ fn replace_ident_like(contents: &str, replacements: &[(&str, &str)]) -> Option<S
         pos = m.end();
     }
     result.push_str(&contents[pos..]);
-    edited.then(|| result)
+    edited.then_some(result)
 }
 
 fn round_to_fifty(count: usize) -> usize {

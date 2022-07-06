@@ -1061,7 +1061,7 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
     let start = scrutinee_span.hi();
     let mut arm_spans = arms.iter().map(|arm| {
         let data = arm.span.data();
-        (data.ctxt == SyntaxContext::root()).then(|| (data.lo, data.hi))
+        (data.ctxt == SyntaxContext::root()).then_some((data.lo, data.hi))
     });
     let end = e.span.hi();
 
@@ -1095,7 +1095,7 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
             parent: None,
         }
         .span();
-        (!span_contains_cfg(cx, span)).then(|| next_start).ok_or(())
+        (!span_contains_cfg(cx, span)).then_some(next_start).ok_or(())
     });
     match found {
         Ok(start) => {

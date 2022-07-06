@@ -744,7 +744,9 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                         },
                     )
                 },
-                ExprKind::Call(func, _) if func.hir_id == child_id => (child_id == e.hir_id).then(|| Position::Callee),
+                ExprKind::Call(func, _) if func.hir_id == child_id => {
+                    (child_id == e.hir_id).then_some(Position::Callee)
+                },
                 ExprKind::Call(func, args) => args
                     .iter()
                     .position(|arg| arg.hir_id == child_id)

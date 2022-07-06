@@ -650,7 +650,7 @@ fn find_insert_calls<'tcx>(
     let allow_insert_closure = s.allow_insert_closure;
     let is_single_insert = s.is_single_insert;
     let edits = s.edits;
-    s.can_use_entry.then(|| InsertSearchResults {
+    s.can_use_entry.then_some(InsertSearchResults {
         edits,
         allow_insert_closure,
         is_single_insert,

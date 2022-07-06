@@ -843,7 +843,7 @@ fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
 fn get_lint_level_from_group(lint_group: &str) -> Option<&'static str> {
     DEFAULT_LINT_LEVELS
         .iter()
-        .find_map(|(group_name, group_level)| (*group_name == lint_group).then(|| *group_level))
+        .find_map(|(group_name, group_level)| (*group_name == lint_group).then_some(*group_level))
 }
 
 pub(super) fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {

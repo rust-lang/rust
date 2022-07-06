@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
             normalized_pats[i + 1..]
                 .iter()
                 .enumerate()
-                .find_map(|(j, other)| pat.has_overlapping_values(other).then(|| i + 1 + j))
+                .find_map(|(j, other)| pat.has_overlapping_values(other).then_some(i + 1 + j))
                 .unwrap_or(normalized_pats.len())
         })
         .collect();
@@ -55,7 +55,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                 .zip(forwards_blocking_idxs[..i].iter().copied().rev())
                 .skip_while(|&(_, forward_block)| forward_block > i)
                 .find_map(|((j, other), forward_block)| {
-                    (forward_block == i || pat.has_overlapping_values(other)).then(|| j)
+                    (forward_block == i || pat.has_overlapping_values(other)).then_some(j)
                 })
                 .unwrap_or(0)
         })
