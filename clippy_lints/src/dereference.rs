@@ -772,9 +772,14 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                             } else if let Some(trait_id) = cx.tcx.trait_of_item(id)
                                 && let arg_ty = cx.tcx.erase_regions(cx.typeck_results().expr_ty_adjusted(e))
                                 && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
-                                && let subs = cx.typeck_results().node_substs_opt(child_id).unwrap_or_else(
-                                    || cx.tcx.mk_substs([].iter())
-                                ) && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
+                                && let subs = match cx
+                                    .typeck_results()
+                                    .node_substs_opt(parent.hir_id)
+                                    .and_then(|subs| subs.get(1..))
+                                {
+                                    Some(subs) => cx.tcx.mk_substs(subs.iter().copied()),
+                                    None => cx.tcx.mk_substs([].iter()),
+                                } && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
                                     // Trait methods taking `&self`
                                     sub_ty
                                 } else {
