@@ -183,7 +183,6 @@ use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, BinOpKind, EnumDef, Expr, Generics, PatKind};
 use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
-use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
@@ -455,7 +454,6 @@ impl<'a> TraitDef<'a> {
                 };
                 let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
                 let always_copy = has_no_type_params && cx.resolver.has_derive_copy(container_id);
-                let use_temporaries = is_packed && always_copy;
 
                 let newitem = match item.kind {
                     ast::ItemKind::Struct(ref struct_def, ref generics) => self.expand_struct_def(
@@ -464,11 +462,11 @@ impl<'a> TraitDef<'a> {
                         item.ident,
                         generics,
                         from_scratch,
-                        use_temporaries,
                         is_packed,
+                        always_copy,
                     ),
                     ast::ItemKind::Enum(ref enum_def, ref generics) => {
-                        // We ignore `use_temporaries` here, because
+                        // We ignore `is_packed`/`always_copy` here, because
                         // `repr(packed)` enums cause an error later on.
                         //
                         // This can only cause further compilation errors
@@ -484,8 +482,8 @@ impl<'a> TraitDef<'a> {
                                 item.ident,
                                 generics,
                                 from_scratch,
-                                use_temporaries,
                                 is_packed,
+                                always_copy,
                             )
                         } else {
                             cx.span_err(mitem.span, "this trait cannot be derived for unions");
@@ -766,8 +764,8 @@ impl<'a> TraitDef<'a> {
         type_ident: Ident,
         generics: &Generics,
         from_scratch: bool,
-        use_temporaries: bool,
         is_packed: bool,
+        always_copy: bool,
     ) -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> =
             struct_def.fields().iter().map(|field| field.ty.clone()).collect();
@@ -795,8 +793,8 @@ impl<'a> TraitDef<'a> {
                         type_ident,
                         &selflike_args,
                         &nonselflike_args,
-                        use_temporaries,
                         is_packed,
+                        always_copy,
                     )
                 };
 
@@ -937,9 +935,7 @@ impl<'a> MethodDef<'a> {
 
             match ty {
                 // Selflike (`&Self`) arguments only occur in non-static methods.
-                Ref(box Self_, _) if !self.is_static() => {
-                    selflike_args.push(cx.expr_deref(span, arg_expr))
-                }
+                Ref(box Self_, _) if !self.is_static() => selflike_args.push(arg_expr),
                 Self_ => cx.span_bug(span, "`Self` in non-return position"),
                 _ => nonselflike_args.push(arg_expr),
             }
@@ -1025,9 +1021,9 @@ impl<'a> MethodDef<'a> {
     /// # struct A { x: i32, y: i32 }
     /// impl PartialEq for A {
     ///     fn eq(&self, other: &A) -> bool {
-    ///         let Self { x: ref __self_0_0, y: ref __self_0_1 } = *self;
-    ///         let Self { x: ref __self_1_0, y: ref __self_1_1 } = *other;
-    ///         *__self_0_0 == *__self_1_0 && *__self_0_1 == *__self_1_1
+    ///         let Self { x: __self_0_0, y: __self_0_1 } = *self;
+    ///         let Self { x: __self_1_0, y: __self_1_1 } = *other;
+    ///         __self_0_0 == __self_1_0 && __self_0_1 == __self_1_1
     ///     }
     /// }
     /// ```
@@ -1039,8 +1035,8 @@ impl<'a> MethodDef<'a> {
         type_ident: Ident,
         selflike_args: &[P<Expr>],
         nonselflike_args: &[P<Expr>],
-        use_temporaries: bool,
         is_packed: bool,
+        always_copy: bool,
     ) -> BlockOrExpr {
         let span = trait_.span;
         assert!(selflike_args.len() == 1 || selflike_args.len() == 2);
@@ -1062,23 +1058,21 @@ impl<'a> MethodDef<'a> {
         } else {
             let prefixes: Vec<_> =
                 (0..selflike_args.len()).map(|i| format!("__self_{}", i)).collect();
+            let no_deref = always_copy;
             let selflike_fields =
-                trait_.create_struct_pattern_fields(cx, struct_def, &prefixes, use_temporaries);
+                trait_.create_struct_pattern_fields(cx, struct_def, &prefixes, no_deref);
             let mut body = mk_body(cx, selflike_fields);
 
             let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
-            let patterns = trait_.create_struct_patterns(
-                cx,
-                struct_path,
-                struct_def,
-                &prefixes,
-                use_temporaries,
-            );
+            let use_ref_pat = is_packed && !always_copy;
+            let patterns =
+                trait_.create_struct_patterns(cx, struct_path, struct_def, &prefixes, use_ref_pat);
 
             // Do the let-destructuring.
             let mut stmts: Vec<_> = iter::zip(selflike_args, patterns)
                 .map(|(selflike_arg_expr, pat)| {
-                    cx.stmt_let_pat(span, pat, selflike_arg_expr.clone())
+                    let selflike_arg_expr = cx.expr_deref(span, selflike_arg_expr.clone());
+                    cx.stmt_let_pat(span, pat, selflike_arg_expr)
                 })
                 .collect();
             stmts.extend(std::mem::take(&mut body.0));
@@ -1118,18 +1112,16 @@ impl<'a> MethodDef<'a> {
     /// impl ::core::cmp::PartialEq for A {
     ///     #[inline]
     ///     fn eq(&self, other: &A) -> bool {
-    ///         {
-    ///             let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-    ///             let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-    ///             if true && __self_vi == __arg_1_vi {
-    ///                 match (&*self, &*other) {
-    ///                     (&A::A2(ref __self_0), &A::A2(ref __arg_1_0)) =>
-    ///                         (*__self_0) == (*__arg_1_0),
-    ///                     _ => true,
-    ///                 }
-    ///             } else {
-    ///                 false // catch-all handler
+    ///         let __self_vi = ::core::intrinsics::discriminant_value(self);
+    ///         let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
+    ///         if __self_vi == __arg_1_vi {
+    ///             match (self, other) {
+    ///                 (A::A2(__self_0), A::A2(__arg_1_0)) =>
+    ///                     *__self_0 == *__arg_1_0,
+    ///                 _ => true,
     ///             }
+    ///         } else {
+    ///             false // catch-all handler
     ///         }
     ///     }
     /// }
@@ -1202,27 +1194,20 @@ impl<'a> MethodDef<'a> {
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
                 // (see "Final wrinkle" note below for why.)
 
-                let use_temporaries = false; // enums can't be repr(packed)
-                let fields = trait_.create_struct_pattern_fields(
-                    cx,
-                    &variant.data,
-                    &prefixes,
-                    use_temporaries,
-                );
+                let no_deref = false; // because enums can't be repr(packed)
+                let fields =
+                    trait_.create_struct_pattern_fields(cx, &variant.data, &prefixes, no_deref);
 
                 let sp = variant.span.with_ctxt(trait_.span.ctxt());
                 let variant_path = cx.path(sp, vec![type_ident, variant.ident]);
-                let mut subpats: Vec<_> = trait_
-                    .create_struct_patterns(
-                        cx,
-                        variant_path,
-                        &variant.data,
-                        &prefixes,
-                        use_temporaries,
-                    )
-                    .into_iter()
-                    .map(|p| cx.pat(span, PatKind::Ref(p, ast::Mutability::Not)))
-                    .collect();
+                let use_ref_pat = false; // because enums can't be repr(packed)
+                let mut subpats: Vec<_> = trait_.create_struct_patterns(
+                    cx,
+                    variant_path,
+                    &variant.data,
+                    &prefixes,
+                    use_ref_pat,
+                );
 
                 // Here is the pat = `(&VariantK, &VariantK, ...)`
                 let single_pat = if subpats.len() == 1 {
@@ -1302,25 +1287,23 @@ impl<'a> MethodDef<'a> {
             // Build a series of let statements mapping each selflike_arg
             // to its discriminant value.
             //
-            // i.e., for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
-            // with three Self args, builds three statements:
+            // i.e., for `enum E<T> { A, B(1), C(T, T) }` for `PartialEq::eq`,
+            // builds two statements:
             // ```
-            // let __self_vi = std::intrinsics::discriminant_value(&self);
-            // let __arg_1_vi = std::intrinsics::discriminant_value(&arg1);
-            // let __arg_2_vi = std::intrinsics::discriminant_value(&arg2);
+            // let __self_vi = ::core::intrinsics::discriminant_value(self);
+            // let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
             // ```
             let mut index_let_stmts: Vec<ast::Stmt> = Vec::with_capacity(vi_idents.len() + 1);
 
-            // We also build an expression which checks whether all discriminants are equal:
-            // `__self_vi == __arg_1_vi && __self_vi == __arg_2_vi && ...`
+            // We also build an expression which checks whether all discriminants are equal, e.g.
+            // `__self_vi == __arg_1_vi`.
             let mut discriminant_test = cx.expr_bool(span, true);
             for (i, (&ident, selflike_arg)) in iter::zip(&vi_idents, &selflike_args).enumerate() {
-                let selflike_addr = cx.expr_addr_of(span, selflike_arg.clone());
                 let variant_value = deriving::call_intrinsic(
                     cx,
                     span,
                     sym::discriminant_value,
-                    vec![selflike_addr],
+                    vec![selflike_arg.clone()],
                 );
                 let let_stmt = cx.stmt_let(span, false, ident, variant_value);
                 index_let_stmts.push(let_stmt);
@@ -1347,17 +1330,11 @@ impl<'a> MethodDef<'a> {
                 )
                 .into_expr(cx, span);
 
-            // Final wrinkle: the selflike_args are expressions that deref
-            // down to desired places, but we cannot actually deref
-            // them when they are fed as r-values into a tuple
-            // expression; here add a layer of borrowing, turning
-            // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            selflike_args.map_in_place(|selflike_arg| cx.expr_addr_of(span, selflike_arg));
             let match_arg = cx.expr(span, ast::ExprKind::Tup(selflike_args));
 
-            // Lastly we create an expression which branches on all discriminants being equal
-            //  if discriminant_test {
-            //      match (...) {
+            // Lastly we create an expression which branches on all discriminants being equal, e.g.
+            //  if __self_vi == _arg_1_vi {
+            //      match (self, other) {
             //          (Variant1, Variant1, ...) => Body1
             //          (Variant2, Variant2, ...) => Body2,
             //          ...
@@ -1376,12 +1353,6 @@ impl<'a> MethodDef<'a> {
             // for the zero variant case.
             BlockOrExpr(vec![], Some(deriving::call_unreachable(cx, span)))
         } else {
-            // Final wrinkle: the selflike_args are expressions that deref
-            // down to desired places, but we cannot actually deref
-            // them when they are fed as r-values into a tuple
-            // expression; here add a layer of borrowing, turning
-            // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            selflike_args.map_in_place(|selflike_arg| cx.expr_addr_of(span, selflike_arg));
             let match_arg = if selflike_args.len() == 1 {
                 selflike_args.pop().unwrap()
             } else {
@@ -1451,7 +1422,7 @@ impl<'a> TraitDef<'a> {
         struct_path: ast::Path,
         struct_def: &'a VariantData,
         prefixes: &[String],
-        use_temporaries: bool,
+        use_ref_pat: bool,
     ) -> Vec<P<ast::Pat>> {
         prefixes
             .iter()
@@ -1459,10 +1430,10 @@ impl<'a> TraitDef<'a> {
                 let pieces_iter =
                     struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
                         let sp = struct_field.span.with_ctxt(self.span.ctxt());
-                        let binding_mode = if use_temporaries {
-                            ast::BindingMode::ByValue(ast::Mutability::Not)
-                        } else {
+                        let binding_mode = if use_ref_pat {
                             ast::BindingMode::ByRef(ast::Mutability::Not)
+                        } else {
+                            ast::BindingMode::ByValue(ast::Mutability::Not)
                         };
                         let ident = self.mk_pattern_ident(prefix, i);
                         let path = ident.with_span_pos(sp);
@@ -1541,7 +1512,7 @@ impl<'a> TraitDef<'a> {
         cx: &mut ExtCtxt<'_>,
         struct_def: &'a VariantData,
         prefixes: &[String],
-        use_temporaries: bool,
+        no_deref: bool,
     ) -> Vec<FieldInfo> {
         self.create_fields(struct_def, |i, _struct_field, sp| {
             prefixes
@@ -1549,7 +1520,7 @@ impl<'a> TraitDef<'a> {
                 .map(|prefix| {
                     let ident = self.mk_pattern_ident(prefix, i);
                     let expr = cx.expr_path(cx.path_ident(sp, ident));
-                    if use_temporaries { expr } else { cx.expr_deref(sp, expr) }
+                    if no_deref { expr } else { cx.expr_deref(sp, expr) }
                 })
                 .collect()
         })
@@ -1564,11 +1535,7 @@ impl<'a> TraitDef<'a> {
         self.create_fields(struct_def, |i, struct_field, sp| {
             selflike_args
                 .iter()
-                .map(|mut selflike_arg| {
-                    // We don't the need the deref, if there is one.
-                    if let ast::ExprKind::Unary(ast::UnOp::Deref, inner) = &selflike_arg.kind {
-                        selflike_arg = inner;
-                    }
+                .map(|selflike_arg| {
                     // Note: we must use `struct_field.span` rather than `span` in the
                     // `unwrap_or_else` case otherwise the hygiene is wrong and we get
                     // "field `0` of struct `Point` is private" errors on tuple
