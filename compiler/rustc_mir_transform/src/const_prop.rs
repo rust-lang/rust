@@ -22,8 +22,8 @@ use rustc_middle::ty::{
     self, ConstKind, EarlyBinder, Instance, ParamEnv, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_span::{def_id::DefId, Span};
-use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
-use rustc_target::spec::abi::Abi;
+use rustc_target::abi::{self, HasDataLayout, Size, TargetDataLayout};
+use rustc_target::spec::abi::Abi as FnAbi;
 use rustc_trait_selection::traits;
 
 use crate::MirPass;
@@ -199,7 +199,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     fn find_mir_or_eval_fn(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
-        _abi: Abi,
+        _abi: FnAbi,
         _args: &[OpTy<'tcx>],
         _destination: &PlaceTy<'tcx>,
         _target: Option<BasicBlock>,
@@ -653,6 +653,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     (Err(e), Err(_)) => return Err(e),
                     (Ok(_), Ok(_)) => return this.ecx.eval_rvalue_into_place(rvalue, place),
                 };
+
+                if !matches!(const_arg.layout.abi, abi::Abi::Scalar(..)) {
+                    // We cannot handle Scalar Pair stuff.
+                    return this.ecx.eval_rvalue_into_place(rvalue, place);
+                }
 
                 let arg_value = const_arg.to_scalar()?.to_bits(const_arg.layout.size)?;
                 let dest = this.ecx.eval_place(place)?;
