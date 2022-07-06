@@ -4,6 +4,8 @@ use regex::Regex;
 
 use crate::rustc_stderr::Level;
 
+use color_eyre::eyre::Result;
+
 #[cfg(test)]
 mod tests;
 
@@ -102,8 +104,8 @@ macro_rules! checked {
 }
 
 impl Comments {
-    pub(crate) fn parse_file(path: &Path) -> Self {
-        let content = std::fs::read_to_string(path).unwrap();
+    pub(crate) fn parse_file(path: &Path) -> Result<Self> {
+        let content = std::fs::read_to_string(path)?;
         Self::parse(path, &content)
     }
 
@@ -112,7 +114,7 @@ impl Comments {
     ///
     /// This function will only parse `//@` and `//~` style comments
     /// and ignore all others
-    fn parse_checked(path: &Path, content: &str) -> Self {
+    fn parse_checked(path: &Path, content: &str) -> Result<Self> {
         let mut this = Self::default();
 
         // The line that a `|` will refer to
@@ -136,16 +138,16 @@ impl Comments {
                 fallthrough_to = None;
             }
         }
-        this
+        Ok(this)
     }
 
     /// Parse comments in `content`.
     /// `path` is only used to emit diagnostics if parsing fails.
-    pub(crate) fn parse(path: &Path, content: &str) -> Self {
-        let mut this = Self::parse_checked(path, content);
+    pub(crate) fn parse(path: &Path, content: &str) -> Result<Self> {
+        let mut this = Self::parse_checked(path, content)?;
         if content.contains("//@") {
             // Migration mode: if new syntax is used, ignore all old syntax
-            return this;
+            return Ok(this);
         }
 
         for (l, line) in content.lines().enumerate() {
@@ -209,7 +211,7 @@ impl Comments {
                 this.error_pattern = Some((s.trim().to_string(), l));
             }
         }
-        this
+        Ok(this)
     }
 
     fn parse_command_with_args(&mut self, command: &str, args: &str, path: &Path, l: usize) {

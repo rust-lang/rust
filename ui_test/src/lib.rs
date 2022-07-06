@@ -11,6 +11,8 @@ use colored::*;
 use comments::ErrorMatch;
 use regex::Regex;
 use rustc_stderr::{Level, Message};
+use color_eyre::eyre::Result;
+pub use color_eyre;
 
 use crate::comments::{Comments, Condition};
 
@@ -51,7 +53,7 @@ pub enum OutputConflictHandling {
 
 pub type Filter = Vec<(Regex, &'static str)>;
 
-pub fn run_tests(config: Config) {
+pub fn run_tests(config: Config) -> Result<()> {
     eprintln!("   Compiler flags: {:?}", config.args);
 
     // Get the triple with which to run the tests
@@ -94,7 +96,7 @@ pub fn run_tests(config: Config) {
 
         // Create N worker threads that receive files to test.
         for _ in 0..std::thread::available_parallelism().unwrap().get() {
-            s.spawn(|_| {
+            s.spawn(|_| -> Result<()> {
                 for path in &receive {
                     if !config.path_filter.is_empty() {
                         let path_display = path.display().to_string();
@@ -103,7 +105,7 @@ pub fn run_tests(config: Config) {
                             continue;
                         }
                     }
-                    let comments = Comments::parse_file(&path);
+                    let comments = Comments::parse_file(&path)?;
                     // Ignore file if only/ignore rules do (not) apply
                     if !test_file_conditions(&comments, &target) {
                         ignored.fetch_add(1, Ordering::Relaxed);
@@ -142,6 +144,7 @@ pub fn run_tests(config: Config) {
                         }
                     }
                 }
+                Ok(())
             });
         }
     })
@@ -246,6 +249,7 @@ pub fn run_tests(config: Config) {
         filtered.to_string().yellow(),
     );
     eprintln!();
+    Ok(())
 }
 
 #[derive(Debug)]
