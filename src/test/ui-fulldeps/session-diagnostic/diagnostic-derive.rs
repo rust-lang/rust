@@ -17,7 +17,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 extern crate rustc_macros;
-use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{SessionDiagnostic, LintDiagnostic, SessionSubdiagnostic};
 
 extern crate rustc_middle;
 use rustc_middle::ty::Ty;
@@ -534,4 +534,21 @@ struct LabelWithTrailingList {
     #[label(typeck::label, foo("..."))]
     //~^ ERROR `#[label(...)]` is not a valid attribute
     span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[lint(typeck::ambiguous_lifetime_bound)]
+//~^ ERROR only `#[error(..)]` and `#[warn(..)]` are supported
+struct LintsBad {
+}
+
+#[derive(LintDiagnostic)]
+#[lint(typeck::ambiguous_lifetime_bound)]
+struct LintsGood {
+}
+
+#[derive(LintDiagnostic)]
+#[error(typeck::ambiguous_lifetime_bound)]
+//~^ ERROR only `#[lint(..)]` is supported
+struct ErrorsBad {
 }

@@ -1,11 +1,11 @@
-use crate::diagnostics::error::{span_err, throw_span_err, SessionDiagnosticDeriveError};
+use crate::diagnostics::error::{span_err, throw_span_err, DiagnosticDeriveError};
 use proc_macro::Span;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::str::FromStr;
 use syn::{spanned::Spanned, Attribute, Meta, Type, TypeTuple};
-use synstructure::BindingInfo;
+use synstructure::{BindingInfo, Structure};
 
 /// Checks whether the type name of `ty` matches `name`.
 ///
@@ -34,7 +34,7 @@ pub(crate) fn type_is_unit(ty: &Type) -> bool {
 pub(crate) fn report_type_error(
     attr: &Attribute,
     ty_name: &str,
-) -> Result<!, SessionDiagnosticDeriveError> {
+) -> Result<!, DiagnosticDeriveError> {
     let name = attr.path.segments.last().unwrap().ident.to_string();
     let meta = attr.parse_meta()?;
 
@@ -59,7 +59,7 @@ fn report_error_if_not_applied_to_ty(
     info: &FieldInfo<'_>,
     path: &[&str],
     ty_name: &str,
-) -> Result<(), SessionDiagnosticDeriveError> {
+) -> Result<(), DiagnosticDeriveError> {
     if !type_matches_path(&info.ty, path) {
         report_type_error(attr, ty_name)?;
     }
@@ -71,7 +71,7 @@ fn report_error_if_not_applied_to_ty(
 pub(crate) fn report_error_if_not_applied_to_applicability(
     attr: &Attribute,
     info: &FieldInfo<'_>,
-) -> Result<(), SessionDiagnosticDeriveError> {
+) -> Result<(), DiagnosticDeriveError> {
     report_error_if_not_applied_to_ty(
         attr,
         info,
@@ -84,7 +84,7 @@ pub(crate) fn report_error_if_not_applied_to_applicability(
 pub(crate) fn report_error_if_not_applied_to_span(
     attr: &Attribute,
     info: &FieldInfo<'_>,
-) -> Result<(), SessionDiagnosticDeriveError> {
+) -> Result<(), DiagnosticDeriveError> {
     report_error_if_not_applied_to_ty(attr, info, &["rustc_span", "Span"], "`Span`")
 }
 
@@ -166,10 +166,12 @@ pub(crate) struct FieldInfo<'a> {
 /// Small helper trait for abstracting over `Option` fields that contain a value and a `Span`
 /// for error reporting if they are set more than once.
 pub(crate) trait SetOnce<T> {
-    fn set_once(&mut self, value: T);
+    fn set_once(&mut self, _: (T, Span));
+
+    fn value(self) -> Option<T>;
 }
 
-impl<T> SetOnce<(T, Span)> for Option<(T, Span)> {
+impl<T> SetOnce<T> for Option<(T, Span)> {
     fn set_once(&mut self, (value, span): (T, Span)) {
         match self {
             None => {
@@ -181,6 +183,10 @@ impl<T> SetOnce<(T, Span)> for Option<(T, Span)> {
                     .emit();
             }
         }
+    }
+
+    fn value(self) -> Option<T> {
+        self.map(|(v, _)| v)
     }
 }
 
@@ -324,4 +330,21 @@ impl quote::ToTokens for Applicability {
             }
         });
     }
+}
+
+/// Build the mapping of field names to fields. This allows attributes to peek values from
+/// other fields.
+pub(crate) fn build_field_mapping<'a>(structure: &Structure<'a>) -> HashMap<String, TokenStream> {
+    let mut fields_map = HashMap::new();
+
+    let ast = structure.ast();
+    if let syn::Data::Struct(syn::DataStruct { fields, .. }) = &ast.data {
+        for field in fields.iter() {
+            if let Some(ident) = &field.ident {
+                fields_map.insert(ident.to_string(), quote! { &self.#ident });
+            }
+        }
+    }
+
+    fields_map
 }

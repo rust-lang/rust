@@ -145,7 +145,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     }
 
     /// Whether CheckedBinOp MIR statements should actually check for overflow.
-    fn check_binop_checks_overflow(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    fn checked_binop_checks_overflow(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Entry point for obtaining the MIR of anything that should get evaluated.
     /// So not just functions and shims, but also const/static initializers, anonymous
@@ -472,7 +472,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn check_binop_checks_overflow(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+    fn checked_binop_checks_overflow(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
         true
     }
 

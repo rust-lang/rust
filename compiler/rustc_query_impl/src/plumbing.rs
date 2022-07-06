@@ -282,11 +282,14 @@ macro_rules! define_queries {
                 } else {
                     Some(key.default_span(*tcx))
                 };
-                // Use `tcx.hir().opt_def_kind()` to reduce the chance of
-                // accidentally triggering an infinite query loop.
-                let def_kind = key.key_as_def_id()
-                    .and_then(|def_id| def_id.as_local())
-                    .and_then(|def_id| tcx.hir().opt_def_kind(def_id));
+                let def_kind = if kind == dep_graph::DepKind::opt_def_kind {
+                    // Try to avoid infinite recursion.
+                    None
+                } else {
+                    key.key_as_def_id()
+                        .and_then(|def_id| def_id.as_local())
+                        .and_then(|def_id| tcx.opt_def_kind(def_id))
+                };
                 let hash = || {
                     let mut hcx = tcx.create_stable_hashing_context();
                     let mut hasher = StableHasher::new();

@@ -173,6 +173,7 @@ symbols! {
         DebugTuple,
         Decodable,
         Decoder,
+        DecorateLint,
         Default,
         Deref,
         DiagnosticMessage,
