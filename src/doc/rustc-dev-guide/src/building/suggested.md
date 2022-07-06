@@ -39,11 +39,10 @@ you can write: <!-- date: 2022-04 --><!-- the date comment is for the edition be
     "rust-analyzer.procMacro.enable": true,
     "rust-analyzer.cargo.buildScripts.enable": true,
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
-        "cargo",
+        "python3",
+        "x.py",
         "check",
-        "-p",
-        "rustc_driver",
-        "--message-format=json"
+        "--json-output"
     ],
     "rust-analyzer.rustc.source": "./Cargo.toml",
     "rust-analyzer.linkedProjects": [
