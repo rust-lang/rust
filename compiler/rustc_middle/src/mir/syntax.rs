@@ -396,6 +396,8 @@ pub struct CopyNonOverlapping<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Terminators
 
+/// The various kinds of terminators, representing ways of exiting from a basic block.
+///
 /// A note on unwinding: Panics may occur during the execution of some terminators. Depending on the
 /// `-C panic` flag, this may either cause the program to abort or the call stack to unwind. Such
 /// terminators have a `cleanup: Option<BasicBlock>` field on them. If stack unwinding occurs, then
