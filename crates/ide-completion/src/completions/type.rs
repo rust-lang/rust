@@ -1,6 +1,7 @@
 //! Completion of names from the current scope in type position.
 
 use hir::{HirDisplay, ScopeDef};
+use itertools::Itertools;
 use syntax::{ast, AstNode};
 
 use crate::{
@@ -140,6 +141,18 @@ pub(crate) fn complete_type_path(
                     return;
                 }
                 TypeLocation::GenericArgList(Some(arg_list)) => {
+                    // the current token is in which generic arg
+                    let arg_pos = if let Some((pos, _)) =
+                        arg_list.generic_args().find_position(|arg| {
+                            arg.syntax()
+                                .descendants_with_tokens()
+                                .any(|t| t.as_token() == Some(&ctx.original_token))
+                        }) {
+                        pos
+                    } else {
+                        0
+                    };
+
                     match arg_list.generic_args().next() {
                         Some(ast::GenericArg::AssocTypeArg(_)) => {}
                         _ => {
@@ -167,7 +180,10 @@ pub(crate) fn complete_type_path(
                                                     acc.add_type_alias_with_eq(ctx, alias);
                                                 }
                                             });
-                                        return; // only AssocTypeArgs make sense
+
+                                        if arg_pos >= trait_.type_parameters(ctx.sema.db).len() {
+                                            return; // only AssocTypeArgs make sense
+                                        }
                                     }
                                 }
                             }

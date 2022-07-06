@@ -386,6 +386,39 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
     );
     check(
         r#"
+trait Trait1 {
+    type Super;
+}
+trait Trait2<T>: Trait1 {
+    type Foo;
+}
+
+fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
+"#,
+        expect![[r#"
+            ct CONST
+            cp CONST_PARAM
+            en Enum
+            ma makro!(…)            macro_rules! makro
+            md module
+            st Record
+            st Tuple
+            st Unit
+            tt Trait
+            tt Trait1
+            tt Trait2
+            ta Foo =  (as Trait2)   type Foo
+            ta Super =  (as Trait1) type Super
+            tp T
+            un Union
+            bt u32
+            kw crate::
+            kw self::
+            kw super::
+        "#]],
+    );
+    check(
+        r#"
 trait Trait2 {
     type Foo;
 }
@@ -460,11 +493,11 @@ fn func(_: Enum::$0) {}
 fn completes_associated_type_only() {
     check(
         r#"
-trait MyTrait {
+trait MyTrait<T> {
     type Item;
 };
 
-fn f(t: impl MyTrait<I$0
+fn f(t: impl MyTrait<u8,I$0
 "#,
         expect![[r#"
             ta Item =  (as MyTrait) type Item
