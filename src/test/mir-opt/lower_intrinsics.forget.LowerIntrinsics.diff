@@ -12,7 +12,7 @@
 -         _0 = std::intrinsics::forget::<T>(move _2) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:24:5: 24:32
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:24:5: 24:29
--                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T) {std::intrinsics::forget::<T>}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T) {std::intrinsics::forget::<T>}, val: Value(<ZST>) }
 +         _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:24:5: 24:32
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:24:5: 24:32
       }

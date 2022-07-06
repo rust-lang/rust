@@ -448,8 +448,9 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 self.push(&format!("+ user_ty: {:?}", user_ty));
             }
 
+            // FIXME: this is a poor version of `pretty_print_const_value`.
             let fmt_val = |val: &ConstValue<'tcx>| match val {
-                ConstValue::Zst => format!("ZST"),
+                ConstValue::ZeroSized => format!("<ZST>"),
                 ConstValue::Scalar(s) => format!("Scalar({:?})", s),
                 ConstValue::Slice { .. } => format!("Slice(..)"),
                 ConstValue::ByRef { .. } => format!("ByRef(..)"),
@@ -680,7 +681,7 @@ pub fn write_allocations<'tcx>(
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => {
                 Either::Left(Either::Right(std::iter::empty()))
             }
-            ConstValue::Zst => Either::Left(Either::Right(std::iter::empty())),
+            ConstValue::ZeroSized => Either::Left(Either::Right(std::iter::empty())),
             ConstValue::ByRef { alloc, .. } | ConstValue::Slice { data: alloc, .. } => {
                 Either::Right(alloc_ids_from_alloc(alloc))
             }

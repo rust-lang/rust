@@ -1711,7 +1711,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
-            literal: ConstantKind::Val(ConstValue::Zst, ty),
+            literal: ConstantKind::Val(ConstValue::ZeroSized, ty),
         }))
     }
 
@@ -2196,7 +2196,7 @@ impl<'tcx> ConstantKind<'tcx> {
 
     #[inline]
     pub fn zero_sized(ty: Ty<'tcx>) -> Self {
-        let cv = ConstValue::Zst;
+        let cv = ConstValue::ZeroSized;
         Self::Val(cv, ty)
     }
 
@@ -2769,6 +2769,13 @@ fn pretty_print_const_value<'tcx>(
                 cx.print_alloc_ids = true;
                 let ty = tcx.lift(ty).unwrap();
                 cx = cx.pretty_print_const_scalar(scalar, ty, print_ty)?;
+                fmt.write_str(&cx.into_buffer())?;
+                return Ok(());
+            }
+            (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
+                let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
+                cx.print_alloc_ids = true;
+                let cx = cx.print_value_path(*d, s)?;
                 fmt.write_str(&cx.into_buffer())?;
                 return Ok(());
             }

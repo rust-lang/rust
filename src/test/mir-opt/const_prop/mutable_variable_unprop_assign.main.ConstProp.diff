@@ -26,7 +26,7 @@
           _1 = foo() -> bb1;               // scope 0 at $DIR/mutable_variable_unprop_assign.rs:5:13: 5:18
                                            // mir::Constant
                                            // + span: $DIR/mutable_variable_unprop_assign.rs:5:13: 5:16
-                                           // + literal: Const { ty: fn() -> i32 {foo}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() -> i32 {foo}, val: Value(<ZST>) }
       }
   
       bb1: {

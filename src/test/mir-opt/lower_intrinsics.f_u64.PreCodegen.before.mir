@@ -20,7 +20,7 @@ fn f_u64() -> () {
         _2 = f_non_zst::<u64>(move _3) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:48:9: 48:21
                                          // mir::Constant
                                          // + span: $DIR/lower_intrinsics.rs:48:9: 48:18
-                                         // + literal: Const { ty: fn(u64) {f_non_zst::<u64>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(u64) {f_non_zst::<u64>}, val: Value(<ZST>) }
     }
 
     bb1: {

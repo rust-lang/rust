@@ -34,7 +34,7 @@ fn test() -> Option<Box<u32>> {
         _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> bb1; // scope 1 at $DIR/issue-62289.rs:9:10: 9:21
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:10: 9:21
-                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(<ZST>) }
     }
 
     bb1: {
@@ -46,7 +46,7 @@ fn test() -> Option<Box<u32>> {
         _6 = <Option<u32> as Try>::branch(move _7) -> [return: bb2, unwind: bb12]; // scope 0 at $DIR/issue-62289.rs:9:15: 9:20
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:15: 9:20
-                                         // + literal: Const { ty: fn(Option<u32>) -> ControlFlow<<Option<u32> as Try>::Residual, <Option<u32> as Try>::Output> {<Option<u32> as Try>::branch}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(Option<u32>) -> ControlFlow<<Option<u32> as Try>::Residual, <Option<u32> as Try>::Output> {<Option<u32> as Try>::branch}, val: Value(<ZST>) }
     }
 
     bb2: {
@@ -76,7 +76,7 @@ fn test() -> Option<Box<u32>> {
         _0 = <Option<Box<u32>> as FromResidual<Option<Infallible>>>::from_residual(move _11) -> [return: bb6, unwind: bb12]; // scope 3 at $DIR/issue-62289.rs:9:15: 9:20
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:19: 9:20
-                                         // + literal: Const { ty: fn(Option<Infallible>) -> Option<Box<u32>> {<Option<Box<u32>> as FromResidual<Option<Infallible>>>::from_residual}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(Option<Infallible>) -> Option<Box<u32>> {<Option<Box<u32>> as FromResidual<Option<Infallible>>>::from_residual}, val: Value(<ZST>) }
     }
 
     bb6: {
