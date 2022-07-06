@@ -1,5 +1,8 @@
 #![unstable(issue = "none", feature = "windows_handle")]
 
+#[cfg(test)]
+mod tests;
+
 use crate::cmp;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf};
 use crate::mem;
