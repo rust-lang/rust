@@ -5,7 +5,6 @@
 use std::hash::Hash;
 
 use rustc_ast::Mutability;
-use rustc_macros::HashStable;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
@@ -17,7 +16,7 @@ use super::{
     Pointer, Provenance, Scalar, ScalarMaybeUninit,
 };
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable, Debug)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 /// Information required for the sound usage of a `MemPlace`.
 pub enum MemPlaceMeta<Tag: Provenance = AllocId> {
     /// The unsized payload (e.g. length for slices or vtable pointer for trait objects).
@@ -51,7 +50,7 @@ impl<Tag: Provenance> MemPlaceMeta<Tag> {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable, Debug)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub struct MemPlace<Tag: Provenance = AllocId> {
     /// The pointer can be a pure integer, with the `None` tag.
     pub ptr: Pointer<Option<Tag>>,
@@ -64,7 +63,7 @@ pub struct MemPlace<Tag: Provenance = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(MemPlace, 40);
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Place<Tag: Provenance = AllocId> {
     /// A place referring to a value allocated in the `Memory` system.
     Ptr(MemPlace<Tag>),

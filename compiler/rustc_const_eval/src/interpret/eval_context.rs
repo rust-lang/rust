@@ -2,10 +2,8 @@ use std::cell::Cell;
 use std::fmt;
 use std::mem;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
-use rustc_macros::HashStable;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpError, InvalidProgramInfo};
 use rustc_middle::ty::layout::{
@@ -16,7 +14,6 @@ use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_mir_dataflow::storage::always_storage_live_locals;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Limit;
 use rustc_span::{Pos, Span};
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
@@ -142,7 +139,7 @@ pub struct FrameInfo<'tcx> {
 }
 
 /// Unwind information.
-#[derive(Clone, Copy, Eq, PartialEq, Debug, HashStable)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum StackPopUnwind {
     /// The cleanup block.
     Cleanup(mir::BasicBlock),
@@ -152,7 +149,7 @@ pub enum StackPopUnwind {
     NotAllowed,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Debug, HashStable)] // Miri debug-prints these
+#[derive(Clone, Copy, Eq, PartialEq, Debug)] // Miri debug-prints these
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
@@ -168,16 +165,15 @@ pub enum StackPopCleanup {
 }
 
 /// State of a local variable including a memoized layout
-#[derive(Clone, Debug, PartialEq, Eq, HashStable)]
+#[derive(Clone, Debug)]
 pub struct LocalState<'tcx, Tag: Provenance = AllocId> {
     pub value: LocalValue<Tag>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
-    #[stable_hasher(ignore)]
     pub layout: Cell<Option<TyAndLayout<'tcx>>>,
 }
 
 /// Current value of a local variable
-#[derive(Copy, Clone, PartialEq, Eq, HashStable, Debug)] // Miri debug-prints these
+#[derive(Copy, Clone, Debug)] // Miri debug-prints these
 pub enum LocalValue<Tag: Provenance = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
@@ -1019,33 +1015,5 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                 ptr => write!(fmt, " integral by ref: {:?}", ptr),
             },
         }
-    }
-}
-
-impl<'ctx, 'mir, 'tcx, Tag: Provenance, Extra> HashStable<StableHashingContext<'ctx>>
-    for Frame<'mir, 'tcx, Tag, Extra>
-where
-    Extra: HashStable<StableHashingContext<'ctx>>,
-    Tag: HashStable<StableHashingContext<'ctx>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'ctx>, hasher: &mut StableHasher) {
-        // Exhaustive match on fields to make sure we forget no field.
-        let Frame {
-            body,
-            instance,
-            return_to_block,
-            return_place,
-            locals,
-            loc,
-            extra,
-            tracing_span: _,
-        } = self;
-        body.hash_stable(hcx, hasher);
-        instance.hash_stable(hcx, hasher);
-        return_to_block.hash_stable(hcx, hasher);
-        return_place.hash_stable(hcx, hasher);
-        locals.hash_stable(hcx, hasher);
-        loc.hash_stable(hcx, hasher);
-        extra.hash_stable(hcx, hasher);
     }
 }
