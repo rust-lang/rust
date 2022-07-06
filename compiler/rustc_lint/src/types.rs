@@ -125,45 +125,51 @@ fn lint_overflowing_range_endpoint<'tcx>(
     lit_val: u128,
     max: u128,
     expr: &'tcx hir::Expr<'tcx>,
-    parent_expr: &'tcx hir::Expr<'tcx>,
     ty: &str,
 ) -> bool {
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
+    let par_id = cx.tcx.hir().get_parent_node(expr.hir_id);
+    let Node::ExprField(field) = cx.tcx.hir().get(par_id) else { return false };
+    let field_par_id = cx.tcx.hir().get_parent_node(field.hir_id);
+    let Node::Expr(struct_expr) = cx.tcx.hir().get(field_par_id) else { return false };
+    if !is_range_literal(struct_expr) {
+        return false;
+    };
+    let ExprKind::Struct(_, eps, _) = &struct_expr.kind else { return false };
+    if eps.len() != 2 {
+        return false;
+    }
+
     let mut overwritten = false;
-    if let ExprKind::Struct(_, eps, _) = &parent_expr.kind {
-        if eps.len() != 2 {
-            return false;
-        }
-        // We can suggest using an inclusive range
-        // (`..=`) instead only if it is the `end` that is
-        // overflowing and only by 1.
-        if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
-            cx.struct_span_lint(OVERFLOWING_LITERALS, parent_expr.span, |lint| {
-                let mut err = lint.build(fluent::lint::range_endpoint_out_of_range);
-                err.set_arg("ty", ty);
-                if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
-                    use ast::{LitIntType, LitKind};
-                    // We need to preserve the literal's suffix,
-                    // as it may determine typing information.
-                    let suffix = match lit.node {
-                        LitKind::Int(_, LitIntType::Signed(s)) => s.name_str(),
-                        LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str(),
-                        LitKind::Int(_, LitIntType::Unsuffixed) => "",
-                        _ => bug!(),
-                    };
-                    let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
-                    err.span_suggestion(
-                        parent_expr.span,
-                        fluent::lint::suggestion,
-                        suggestion,
-                        Applicability::MachineApplicable,
-                    );
-                    err.emit();
-                    overwritten = true;
-                }
-            });
-        }
+    // We can suggest using an inclusive range
+    // (`..=`) instead only if it is the `end` that is
+    // overflowing and only by 1.
+    if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
+        cx.struct_span_lint(OVERFLOWING_LITERALS, struct_expr.span, |lint| {
+            let mut err = lint.build(fluent::lint::range_endpoint_out_of_range);
+            err.set_arg("ty", ty);
+            if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
+                use ast::{LitIntType, LitKind};
+                // We need to preserve the literal's suffix,
+                // as it may determine typing information.
+                let suffix = match lit.node {
+                    LitKind::Int(_, LitIntType::Signed(s)) => s.name_str(),
+                    LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str(),
+                    LitKind::Int(_, LitIntType::Unsuffixed) => "",
+                    _ => bug!(),
+                };
+                let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
+                err.span_suggestion(
+                    struct_expr.span,
+                    fluent::lint::suggestion,
+                    suggestion,
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+                overwritten = true;
+            }
+        });
     }
     overwritten
 }
@@ -339,16 +345,9 @@ fn lint_int_literal<'tcx>(
             return;
         }
 
-        let par_id = cx.tcx.hir().get_parent_node(e.hir_id);
-        if let Node::Expr(par_e) = cx.tcx.hir().get(par_id) {
-            if let hir::ExprKind::Struct(..) = par_e.kind {
-                if is_range_literal(par_e)
-                    && lint_overflowing_range_endpoint(cx, lit, v, max, e, par_e, t.name_str())
-                {
-                    // The overflowing literal lint was overridden.
-                    return;
-                }
-            }
+        if lint_overflowing_range_endpoint(cx, lit, v, max, e, t.name_str()) {
+            // The overflowing literal lint was overridden.
+            return;
         }
 
         cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
@@ -408,15 +407,12 @@ fn lint_uint_literal<'tcx>(
                         return;
                     }
                 }
-                hir::ExprKind::Struct(..) if is_range_literal(par_e) => {
-                    let t = t.name_str();
-                    if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, par_e, t) {
-                        // The overflowing literal lint was overridden.
-                        return;
-                    }
-                }
                 _ => {}
             }
+        }
+        if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, t.name_str()) {
+            // The overflowing literal lint was overridden.
+            return;
         }
         if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
             report_bin_hex_error(

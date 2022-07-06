@@ -142,35 +142,6 @@ note: the lint level is defined here
 LL |     #[deny(missing_docs)]
    |            ^^^^^^^^^^^^
 
-error: types that do not implement `Drop` can still have drop glue, consider instead using `std::mem::needs_drop` to detect whether a type is trivially dropped
-  --> $DIR/lint-attr-everywhere-late.rs:93:38
-   |
-LL |     fn denied_from_inner(_x: Box<dyn Drop>) {}
-   |                                      ^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:91:13
-   |
-LL |     #![deny(dyn_drop)]
-   |             ^^^^^^^^
-
-error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
-  --> $DIR/lint-attr-everywhere-late.rs:96:21
-   |
-LL |     fn assoc_fn() { discriminant::<i32>(&123); }
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:95:12
-   |
-LL |     #[deny(enum_intrinsics_non_enums)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
-  --> $DIR/lint-attr-everywhere-late.rs:96:41
-   |
-LL |     fn assoc_fn() { discriminant::<i32>(&123); }
-   |                                         ^^^^
-
 error: missing documentation for a variant
   --> $DIR/lint-attr-everywhere-late.rs:112:5
    |
@@ -217,6 +188,60 @@ LL |     #[deny(clashing_extern_declarations)]
    = note: expected `unsafe extern "C" fn()`
               found `unsafe extern "C" fn(i32)`
 
+error: types that do not implement `Drop` can still have drop glue, consider instead using `std::mem::needs_drop` to detect whether a type is trivially dropped
+  --> $DIR/lint-attr-everywhere-late.rs:93:38
+   |
+LL |     fn denied_from_inner(_x: Box<dyn Drop>) {}
+   |                                      ^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:91:13
+   |
+LL |     #![deny(dyn_drop)]
+   |             ^^^^^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:96:21
+   |
+LL |     fn assoc_fn() { discriminant::<i32>(&123); }
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:95:12
+   |
+LL |     #[deny(enum_intrinsics_non_enums)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:96:41
+   |
+LL |     fn assoc_fn() { discriminant::<i32>(&123); }
+   |                                         ^^^^
+
+error: literal out of range for `u8`
+  --> $DIR/lint-attr-everywhere-late.rs:98:59
+   |
+LL |     #[deny(overflowing_literals)] const ASSOC_CONST: u8 = 1000;
+   |                                                           ^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:98:12
+   |
+LL |     #[deny(overflowing_literals)] const ASSOC_CONST: u8 = 1000;
+   |            ^^^^^^^^^^^^^^^^^^^^
+   = note: the literal `1000` does not fit into the type `u8` whose range is `0..=255`
+
+error: variable `PARAM` should have a snake case name
+  --> $DIR/lint-attr-everywhere-late.rs:131:37
+   |
+LL | fn function(#[deny(non_snake_case)] PARAM: i32) {}
+   |                                     ^^^^^ help: convert the identifier to snake case: `param`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:131:20
+   |
+LL | fn function(#[deny(non_snake_case)] PARAM: i32) {}
+   |                    ^^^^^^^^^^^^^^
+
 error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
   --> $DIR/lint-attr-everywhere-late.rs:139:13
    |
@@ -233,6 +258,18 @@ note: the argument to `discriminant` should be a reference to an enum, but it wa
    |
 LL |     let _ = discriminant::<i32>(&123);
    |                                 ^^^^
+
+error: variable `PARAM` should have a snake case name
+  --> $DIR/lint-attr-everywhere-late.rs:145:44
+   |
+LL |     let closure = |#[deny(non_snake_case)] PARAM: i32| {};
+   |                                            ^^^^^ help: convert the identifier to snake case: `param`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:145:27
+   |
+LL |     let closure = |#[deny(non_snake_case)] PARAM: i32| {};
+   |                           ^^^^^^^^^^^^^^
 
 error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
   --> $DIR/lint-attr-everywhere-late.rs:155:13
@@ -386,43 +423,6 @@ note: the argument to `discriminant` should be a reference to an enum, but it wa
    |
 LL |     TupleStruct(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
    |                                                                        ^^^^
-
-error: literal out of range for `u8`
-  --> $DIR/lint-attr-everywhere-late.rs:98:59
-   |
-LL |     #[deny(overflowing_literals)] const ASSOC_CONST: u8 = 1000;
-   |                                                           ^^^^
-   |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:98:12
-   |
-LL |     #[deny(overflowing_literals)] const ASSOC_CONST: u8 = 1000;
-   |            ^^^^^^^^^^^^^^^^^^^^
-   = note: the literal `1000` does not fit into the type `u8` whose range is `0..=255`
-
-error: variable `PARAM` should have a snake case name
-  --> $DIR/lint-attr-everywhere-late.rs:131:37
-   |
-LL | fn function(#[deny(non_snake_case)] PARAM: i32) {}
-   |                                     ^^^^^ help: convert the identifier to snake case: `param`
-   |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:131:20
-   |
-LL | fn function(#[deny(non_snake_case)] PARAM: i32) {}
-   |                    ^^^^^^^^^^^^^^
-
-error: variable `PARAM` should have a snake case name
-  --> $DIR/lint-attr-everywhere-late.rs:145:44
-   |
-LL |     let closure = |#[deny(non_snake_case)] PARAM: i32| {};
-   |                                            ^^^^^ help: convert the identifier to snake case: `param`
-   |
-note: the lint level is defined here
-  --> $DIR/lint-attr-everywhere-late.rs:145:27
-   |
-LL |     let closure = |#[deny(non_snake_case)] PARAM: i32| {};
-   |                           ^^^^^^^^^^^^^^
 
 error: aborting due to 31 previous errors
 

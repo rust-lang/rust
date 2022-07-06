@@ -25,7 +25,7 @@ help: remove these parentheses
    |
 LL - type BareFnPtr = fn(#[deny(unused_parens)](i32));
 LL + type BareFnPtr = fn(#[deny(unused_parens)]i32);
-   | 
+   |
 
 error: type `ITEM_OUTER` should have an upper camel case name
   --> $DIR/lint-attr-everywhere-early.rs:30:8
@@ -198,7 +198,7 @@ help: remove these parentheses
    |
 LL -     type assoc_type = (i32);
 LL +     type assoc_type = i32;
-   | 
+   |
 
 error: unnecessary parentheses around type
   --> $DIR/lint-attr-everywhere-early.rs:87:31
@@ -215,7 +215,7 @@ help: remove these parentheses
    |
 LL -     #[deny(unused_parens)]f1: (i32),
 LL +     #[deny(unused_parens)]f1: i32,
-   | 
+   |
 
 error: unnecessary parentheses around type
   --> $DIR/lint-attr-everywhere-early.rs:89:42
@@ -232,7 +232,7 @@ help: remove these parentheses
    |
 LL - struct StructTuple(#[deny(unused_parens)](i32));
 LL + struct StructTuple(#[deny(unused_parens)]i32);
-   | 
+   |
 
 error: variant `VARIANT_CAMEL` should have an upper camel case name
   --> $DIR/lint-attr-everywhere-early.rs:93:5
@@ -261,7 +261,7 @@ help: remove these parentheses
    |
 LL -     fn foreign_denied_from_inner(x: (i32));
 LL +     fn foreign_denied_from_inner(x: i32);
-   | 
+   |
 
 error: unnecessary parentheses around type
   --> $DIR/lint-attr-everywhere-early.rs:104:37
@@ -278,7 +278,7 @@ help: remove these parentheses
    |
 LL -     fn foreign_denied_from_outer(x: (i32));
 LL +     fn foreign_denied_from_outer(x: i32);
-   | 
+   |
 
 error: unnecessary parentheses around type
   --> $DIR/lint-attr-everywhere-early.rs:107:43
@@ -295,7 +295,7 @@ help: remove these parentheses
    |
 LL - fn function(#[deny(unused_parens)] param: (i32)) {}
 LL + fn function(#[deny(unused_parens)] param: i32) {}
-   | 
+   |
 
 error: type parameter `foo` should have an upper camel case name
   --> $DIR/lint-attr-everywhere-early.rs:109:42
@@ -324,7 +324,7 @@ help: remove these parentheses
    |
 LL -     let x = (1);
 LL +     let x = 1;
-   | 
+   |
 
 error: unnecessary parentheses around type
   --> $DIR/lint-attr-everywhere-early.rs:121:50
@@ -341,7 +341,7 @@ help: remove these parentheses
    |
 LL -     let closure = |#[deny(unused_parens)] param: (i32)| {};
 LL +     let closure = |#[deny(unused_parens)] param: i32| {};
-   | 
+   |
 
 error: unnecessary parentheses around block return value
   --> $DIR/lint-attr-everywhere-early.rs:125:46
@@ -358,7 +358,7 @@ help: remove these parentheses
    |
 LL -     let f = Match{#[deny(unused_parens)]f1: {(123)}};
 LL +     let f = Match{#[deny(unused_parens)]f1: {123}};
-   | 
+   |
 
 error: usage of an `unsafe` block
   --> $DIR/lint-attr-everywhere-early.rs:132:13
