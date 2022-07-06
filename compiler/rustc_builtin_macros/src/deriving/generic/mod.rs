@@ -1072,7 +1072,6 @@ impl<'a> MethodDef<'a> {
                 struct_path,
                 struct_def,
                 &prefixes,
-                ast::Mutability::Not,
                 use_temporaries,
             );
 
@@ -1219,7 +1218,6 @@ impl<'a> MethodDef<'a> {
                         variant_path,
                         &variant.data,
                         &prefixes,
-                        ast::Mutability::Not,
                         use_temporaries,
                     )
                     .into_iter()
@@ -1453,7 +1451,6 @@ impl<'a> TraitDef<'a> {
         struct_path: ast::Path,
         struct_def: &'a VariantData,
         prefixes: &[String],
-        mutbl: ast::Mutability,
         use_temporaries: bool,
     ) -> Vec<P<ast::Pat>> {
         prefixes
@@ -1465,7 +1462,7 @@ impl<'a> TraitDef<'a> {
                         let binding_mode = if use_temporaries {
                             ast::BindingMode::ByValue(ast::Mutability::Not)
                         } else {
-                            ast::BindingMode::ByRef(mutbl)
+                            ast::BindingMode::ByRef(ast::Mutability::Not)
                         };
                         let ident = self.mk_pattern_ident(prefix, i);
                         let path = ident.with_span_pos(sp);
