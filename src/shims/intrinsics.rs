@@ -36,7 +36,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let intrinsic_name = this.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
         let ret = match ret {
-            None => throw_unsup_format!("unimplemented (diverging) intrinsic: {}", intrinsic_name),
+            None => throw_unsup_format!("unimplemented (diverging) intrinsic: `{intrinsic_name}`"),
             Some(p) => p,
         };
 
@@ -86,7 +86,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // `checked_mul` enforces a too small bound (the correct one would probably be machine_isize_max),
                 // but no actual allocation can be big enough for the difference to be noticeable.
                 let byte_count = ty_layout.size.checked_mul(count, this).ok_or_else(|| {
-                    err_ub_format!("overflow computing total size of `{}`", intrinsic_name)
+                    err_ub_format!("overflow computing total size of `{intrinsic_name}`")
                 })?;
                 this.write_bytes_ptr(
                     ptr,
@@ -200,24 +200,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         ty::Float(FloatTy::F32) => x.to_scalar()?.to_f32()?.is_finite(),
                         ty::Float(FloatTy::F64) => x.to_scalar()?.to_f64()?.is_finite(),
                         _ => bug!(
-                            "`{}` called with non-float input type {:?}",
-                            intrinsic_name,
-                            x.layout.ty
+                            "`{intrinsic_name}` called with non-float input type {ty:?}",
+                            ty = x.layout.ty,
                         ),
                     })
                 };
                 match (float_finite(a)?, float_finite(b)?) {
                     (false, false) => throw_ub_format!(
-                        "`{}` intrinsic called with non-finite value as both parameters",
-                        intrinsic_name,
+                        "`{intrinsic_name}` intrinsic called with non-finite value as both parameters",
                     ),
                     (false, _) => throw_ub_format!(
-                        "`{}` intrinsic called with non-finite value as first parameter",
-                        intrinsic_name,
+                        "`{intrinsic_name}` intrinsic called with non-finite value as first parameter",
                     ),
                     (_, false) => throw_ub_format!(
-                        "`{}` intrinsic called with non-finite value as second parameter",
-                        intrinsic_name,
+                        "`{intrinsic_name}` intrinsic called with non-finite value as second parameter",
                     ),
                     _ => {}
                 }
@@ -494,7 +490,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                 // See <https://github.com/rust-lang/rust/issues/91237>.
                                 if overflowed {
                                     let r_val = right.to_scalar()?.to_bits(right.layout.size)?;
-                                    throw_ub_format!("overflowing shift by {} in `{}` in SIMD lane {}", r_val, intrinsic_name, i);
+                                    throw_ub_format!("overflowing shift by {r_val} in `{intrinsic_name}` in SIMD lane {i}");
                                 }
                             }
                             if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
@@ -751,9 +747,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             this.float_to_int_unchecked(op.to_scalar()?.to_f64()?, dest.layout.ty)?.into(),
                         _ =>
                             throw_unsup_format!(
-                                "Unsupported SIMD cast from element type {} to {}",
-                                op.layout.ty,
-                                dest.layout.ty
+                                "Unsupported SIMD cast from element type {from_ty} to {to_ty}",
+                                from_ty = op.layout.ty,
+                                to_ty = dest.layout.ty,
                             ),
                     };
                     this.write_immediate(val, &dest.into())?;
@@ -1093,7 +1089,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 throw_machine_stop!(TerminationInfo::Abort("Trace/breakpoint trap".to_string()))
             }
 
-            name => throw_unsup_format!("unimplemented intrinsic: {}", name),
+            name => throw_unsup_format!("unimplemented intrinsic: `{name}`"),
         }
 
         trace!("{:?}", this.dump_place(**dest));
@@ -1340,9 +1336,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 } else {
                     // `f` was not representable in this integer type.
                     throw_ub_format!(
-                        "`float_to_int_unchecked` intrinsic called on {} which cannot be represented in target type `{:?}`",
-                        f,
-                        dest_ty,
+                        "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{dest_ty:?}`",
                     );
                 }
             }
@@ -1356,14 +1350,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 } else {
                     // `f` was not representable in this integer type.
                     throw_ub_format!(
-                        "`float_to_int_unchecked` intrinsic called on {} which cannot be represented in target type `{:?}`",
-                        f,
-                        dest_ty,
+                        "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{dest_ty:?}`",
                     );
                 }
             }
             // Nothing else
-            _ => bug!("`float_to_int_unchecked` called with non-int output type {:?}", dest_ty),
+            _ => bug!("`float_to_int_unchecked` called with non-int output type {dest_ty:?}"),
         })
     }
 }

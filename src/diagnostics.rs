@@ -40,24 +40,20 @@ impl fmt::Display for TerminationInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TerminationInfo::*;
         match self {
-            Exit(code) => write!(f, "the evaluated program completed with exit code {}", code),
-            Abort(msg) => write!(f, "{}", msg),
-            UnsupportedInIsolation(msg) => write!(f, "{}", msg),
+            Exit(code) => write!(f, "the evaluated program completed with exit code {code}"),
+            Abort(msg) => write!(f, "{msg}"),
+            UnsupportedInIsolation(msg) => write!(f, "{msg}"),
             Int2PtrWithStrictProvenance =>
                 write!(
                     f,
                     "integer-to-pointer casts and `ptr::from_exposed_addr` are not supported with `-Zmiri-strict-provenance`"
                 ),
-            StackedBorrowsUb { msg, .. } => write!(f, "{}", msg),
+            StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
             MultipleSymbolDefinitions { link_name, .. } =>
-                write!(f, "multiple definitions of symbol `{}`", link_name),
+                write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
-                write!(
-                    f,
-                    "found `{}` symbol definition that clashes with a built-in shim",
-                    link_name
-                ),
+                write!(f, "found `{link_name}` symbol definition that clashes with a built-in shim",),
         }
     }
 }
@@ -200,11 +196,11 @@ pub fn report_error<'tcx, 'mir>(
                 }
                 MultipleSymbolDefinitions { first, first_crate, second, second_crate, .. } =>
                     vec![
-                        (Some(*first), format!("it's first defined here, in crate `{}`", first_crate)),
-                        (Some(*second), format!("then it's defined here again, in crate `{}`", second_crate)),
+                        (Some(*first), format!("it's first defined here, in crate `{first_crate}`")),
+                        (Some(*second), format!("then it's defined here again, in crate `{second_crate}`")),
                     ],
                 SymbolShimClashing { link_name, span } =>
-                    vec![(Some(*span), format!("the `{}` symbol is defined here", link_name))],
+                    vec![(Some(*span), format!("the `{link_name}` symbol is defined here"))],
                 Int2PtrWithStrictProvenance =>
                     vec![(None, format!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"))],
                 _ => vec![],
@@ -227,7 +223,7 @@ pub fn report_error<'tcx, 'mir>(
                 ) =>
                     "post-monomorphization error",
                 kind =>
-                    bug!("This error should be impossible in Miri: {:?}", kind),
+                    bug!("This error should be impossible in Miri: {kind:?}"),
             };
             #[rustfmt::skip]
             let helps = match e.kind() {
@@ -235,7 +231,7 @@ pub fn report_error<'tcx, 'mir>(
                     UnsupportedOpInfo::ThreadLocalStatic(_) |
                     UnsupportedOpInfo::ReadExternStatic(_)
                 ) =>
-                    panic!("Error should never be raised by Miri: {:?}", e.kind()),
+                    panic!("Error should never be raised by Miri: {kind:?}", kind = e.kind()),
                 Unsupported(
                     UnsupportedOpInfo::Unsupported(_) |
                     UnsupportedOpInfo::PartialPointerOverwrite(_) |
@@ -295,9 +291,8 @@ pub fn report_error<'tcx, 'mir>(
     match e.kind() {
         UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(Some((alloc_id, access)))) => {
             eprintln!(
-                "Uninitialized read occurred at offsets 0x{:x}..0x{:x} into this allocation:",
-                access.uninit_offset.bytes(),
-                access.uninit_offset.bytes() + access.uninit_size.bytes(),
+                "Uninitialized read occurred at {alloc_id:?}{range:?}, in this allocation:",
+                range = alloc_range(access.uninit_offset, access.uninit_size),
             );
             eprintln!("{:?}", ecx.dump_alloc(*alloc_id));
         }
