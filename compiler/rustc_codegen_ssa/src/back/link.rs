@@ -653,6 +653,7 @@ fn link_dwarf_object<'a>(
             sess.struct_err("linking dwarf objects with thorin failed")
                 .note(&format!("{:?}", e))
                 .emit();
+            sess.abort_if_errors();
         }
     }
 }
