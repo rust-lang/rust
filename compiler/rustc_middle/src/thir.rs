@@ -191,18 +191,8 @@ pub enum StmtKind<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Expr<'_>, 104);
 
-#[derive(
-    Clone,
-    Debug,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-    HashStable,
-    TyEncodable,
-    TyDecodable,
-    TypeFoldable
-)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct LocalVarId(pub hir::HirId);
 
 /// A THIR expression.

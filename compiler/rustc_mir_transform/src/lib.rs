@@ -28,7 +28,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPass, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::{Span, Symbol};
 
 #[macro_use]

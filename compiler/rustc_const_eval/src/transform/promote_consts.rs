@@ -17,7 +17,7 @@ use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, List, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, List, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 
 use rustc_index::vec::{Idx, IndexVec};

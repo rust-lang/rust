@@ -6,6 +6,7 @@ use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use crate::ty::{
     self, DefIdTree, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitable,
 };
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;

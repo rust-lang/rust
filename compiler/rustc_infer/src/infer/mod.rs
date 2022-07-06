@@ -25,6 +25,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
+use rustc_middle::ty::visit::TypeVisitable;
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
@@ -318,7 +319,7 @@ pub struct InferCtxt<'a, 'tcx> {
 }
 
 /// See the `error_reporting` module for more details.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable)]
 pub enum ValuePairs<'tcx> {
     Regions(ExpectedFound<ty::Region<'tcx>>),
     Terms(ExpectedFound<ty::Term<'tcx>>),
@@ -1438,7 +1439,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// `resolve_vars_if_possible()`.
     pub fn unresolved_type_vars<T>(&self, value: &T) -> Option<(Ty<'tcx>, Option<Span>)>
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeVisitable<'tcx>,
     {
         value.visit_with(&mut resolve::UnresolvedTypeFinder::new(self)).break_value()
     }

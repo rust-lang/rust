@@ -2,10 +2,9 @@
 
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{
-    FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitor,
-};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
+use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_data_structures::intern::{Interned, WithStableHash};
@@ -205,7 +204,9 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
             GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
         }
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for GenericArg<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
@@ -449,7 +450,9 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_substs(v)),
         }
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for SubstsRef<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
@@ -485,7 +488,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_type_list(v)),
         }
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
@@ -722,7 +727,7 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
 /// Stores the user-given substs to reach some fully qualified path
 /// (e.g., `<T>::Item` or `<T as Trait>::Item`).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct UserSubsts<'tcx> {
     /// The substitutions for the item as given by the user.
     pub substs: SubstsRef<'tcx>,
@@ -749,7 +754,7 @@ pub struct UserSubsts<'tcx> {
 /// the self type, giving `Foo<?A>`. Finally, we unify that with
 /// the self type here, which contains `?A` to be `&'static u32`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct UserSelfTy<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,

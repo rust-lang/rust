@@ -68,7 +68,7 @@ use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, error::TypeError, Binder, List, Region, Subst, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable,
 };
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
@@ -1540,7 +1540,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
+        impl<'tcx> ty::visit::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if let Some((kind, def_id)) = TyCategory::from_ty(self.tcx, t) {
                     let span = self.tcx.def_span(def_id);

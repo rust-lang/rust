@@ -14,6 +14,7 @@ use rustc_infer::traits::Normalized;
 use rustc_middle::mir;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 
 use std::ops::ControlFlow;
@@ -108,7 +109,7 @@ struct MaxEscapingBoundVarVisitor {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
-    fn visit_binder<T: TypeFoldable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<'tcx>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {

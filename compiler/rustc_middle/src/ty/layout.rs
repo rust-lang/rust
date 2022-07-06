@@ -2,7 +2,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::subst::Subst;
-use crate::ty::{self, subst::SubstsRef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, subst::SubstsRef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeVisitable};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_hir as hir;

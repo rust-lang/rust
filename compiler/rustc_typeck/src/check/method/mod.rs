@@ -21,7 +21,7 @@ use rustc_infer::infer::{self, InferOk};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable};
+use rustc_middle::ty::{self, ToPredicate, Ty, TypeVisitable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;

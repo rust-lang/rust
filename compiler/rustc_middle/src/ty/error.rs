@@ -13,7 +13,7 @@ use rustc_target::spec::abi;
 use std::borrow::Cow;
 use std::fmt;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable)]
 pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T,
@@ -30,7 +30,7 @@ impl<T> ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub enum TypeError<'tcx> {
     Mismatch,
     ConstnessMismatch(ExpectedFound<ty::BoundConstness>),

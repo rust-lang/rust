@@ -8,9 +8,10 @@ use crate::mir::interpret::{
 use crate::mir::traversal::PostorderCache;
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable, TypeVisitor};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
+use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 
@@ -68,6 +69,7 @@ pub use terminator::*;
 
 pub mod traversal;
 mod type_foldable;
+mod type_visitable;
 pub mod visit;
 
 pub use self::generic_graph::graphviz_safe_def_name;
@@ -136,7 +138,7 @@ impl MirPhase {
 
 /// Where a specific `mir::Body` comes from.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable)]
+#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub struct MirSource<'tcx> {
     pub instance: InstanceDef<'tcx>,
 
@@ -166,7 +168,7 @@ impl<'tcx> MirSource<'tcx> {
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
+#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct GeneratorInfo<'tcx> {
     /// The yield type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
@@ -183,7 +185,7 @@ pub struct GeneratorInfo<'tcx> {
 }
 
 /// The lowered representation of a single function.
-#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
+#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Body<'tcx> {
     /// A list of basic blocks. References to basic block use a newtyped index type [`BasicBlock`]
     /// that indexes into this vector.
@@ -601,7 +603,7 @@ impl<'tcx> IndexMut<BasicBlock> for Body<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable, TypeFoldable)]
+#[derive(Copy, Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub enum ClearCrossCrate<T> {
     Clear,
     Set(T),
@@ -762,7 +764,7 @@ pub enum ImplicitSelfKind {
     None,
 }
 
-TrivialTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
+TrivialTypeTraversalAndLiftImpls! { BindingForm<'tcx>, }
 
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -807,7 +809,7 @@ pub struct BlockTailInfo {
 ///
 /// This can be a binding declared by the user, a temporary inserted by the compiler, a function
 /// argument, or the return place.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct LocalDecl<'tcx> {
     /// Whether this is a mutable binding (i.e., `let x` or `let mut x`).
     ///
@@ -942,7 +944,7 @@ static_assert_size!(LocalDecl<'_>, 56);
 ///
 /// Not used for non-StaticRef temporaries, the return place, or anonymous
 /// function parameters.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum LocalInfo<'tcx> {
     /// A user-defined local variable or function parameter
     ///
@@ -1081,7 +1083,7 @@ impl<'tcx> LocalDecl<'tcx> {
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum VarDebugInfoContents<'tcx> {
     /// NOTE(eddyb) There's an unenforced invariant that this `Place` is
     /// based on a `Local`, not a `Static`, and contains no indexing.
@@ -1099,7 +1101,7 @@ impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
 }
 
 /// Debug information pertaining to a user variable.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct VarDebugInfo<'tcx> {
     pub name: Symbol,
 
@@ -1155,7 +1157,7 @@ impl BasicBlock {
 // BasicBlockData
 
 /// See [`BasicBlock`] for documentation on what basic blocks are at a high level.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,
@@ -1392,7 +1394,7 @@ impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
 ///////////////////////////////////////////////////////////////////////////
 // Statements
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Statement<'tcx> {
     pub source_info: SourceInfo,
     pub kind: StatementKind<'tcx>,
@@ -1758,7 +1760,7 @@ impl SourceScope {
     }
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct SourceScopeData<'tcx> {
     pub span: Span,
     pub parent_scope: Option<SourceScope>,
@@ -2524,7 +2526,7 @@ impl<'tcx> ConstantKind<'tcx> {
 /// The first will lead to the constraint `w: &'1 str` (for some
 /// inferred region `'1`). The second will lead to the constraint `w:
 /// &'static str`.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UserTypeProjections {
     pub contents: Vec<(UserTypeProjection, Span)>,
 }
@@ -2641,7 +2643,7 @@ impl UserTypeProjection {
     }
 }
 
-TrivialTypeFoldableAndLiftImpls! { ProjectionKind, }
+TrivialTypeTraversalAndLiftImpls! { ProjectionKind, }
 
 impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
@@ -2650,7 +2652,9 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
             projs: self.projs.try_fold_with(folder)?,
         })
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for UserTypeProjection {
     fn visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<Vs::BreakTy> {
         self.base.visit_with(visitor)
         // Note: there's nothing in `self.proj` to visit.

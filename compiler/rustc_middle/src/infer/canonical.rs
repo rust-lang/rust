@@ -34,7 +34,7 @@ use std::ops::Index;
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct Canonical<'tcx, V> {
     pub max_universe: ty::UniverseIndex,
     pub variables: CanonicalVarInfos<'tcx>,
@@ -53,7 +53,7 @@ pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
 /// variables. You will need to supply it later to instantiate the
 /// canonicalized query response.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct CanonicalVarValues<'tcx> {
     pub var_values: IndexVec<BoundVar, GenericArg<'tcx>>,
 }
@@ -173,7 +173,7 @@ pub enum CanonicalTyVarKind {
 /// After we execute a query with a canonicalized key, we get back a
 /// `Canonical<QueryResponse<..>>`. You can use
 /// `instantiate_query_result` to access the data in this result.
-#[derive(Clone, Debug, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, Debug, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
     pub region_constraints: QueryRegionConstraints<'tcx>,
@@ -187,7 +187,7 @@ pub struct QueryResponse<'tcx, R> {
     pub value: R,
 }
 
-#[derive(Clone, Debug, Default, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, Debug, Default, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct QueryRegionConstraints<'tcx> {
     pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
     pub member_constraints: Vec<MemberConstraint<'tcx>>,
@@ -293,7 +293,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
 pub type QueryOutlivesConstraint<'tcx> =
     ty::Binder<'tcx, ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>;
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     for <'tcx> {
         crate::infer::canonical::Certainty,
         crate::infer::canonical::CanonicalVarInfo<'tcx>,
@@ -301,7 +301,7 @@ TrivialTypeFoldableAndLiftImpls! {
     }
 }
 
-TrivialTypeFoldableImpls! {
+TrivialTypeTraversalImpls! {
     for <'tcx> {
         crate::infer::canonical::CanonicalVarInfos<'tcx>,
     }

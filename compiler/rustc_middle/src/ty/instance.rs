@@ -1,7 +1,9 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{InternalSubsts, Subst};
-use crate::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
+use crate::ty::{
+    self, EarlyBinder, SubstsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable,
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -25,7 +27,7 @@ pub struct Instance<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum InstanceDef<'tcx> {
     /// A user-defined callable item.
     ///

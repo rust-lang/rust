@@ -18,6 +18,7 @@ mod query;
 mod serialize;
 mod symbols;
 mod type_foldable;
+mod type_visitable;
 
 #[proc_macro]
 pub fn rustc_queries(input: TokenStream) -> TokenStream {
@@ -121,6 +122,7 @@ decl_derive!([TyEncodable] => serialize::type_encodable_derive);
 decl_derive!([MetadataDecodable] => serialize::meta_decodable_derive);
 decl_derive!([MetadataEncodable] => serialize::meta_encodable_derive);
 decl_derive!([TypeFoldable, attributes(type_foldable)] => type_foldable::type_foldable_derive);
+decl_derive!([TypeVisitable, attributes(type_visitable)] => type_visitable::type_visitable_derive);
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
     [SessionDiagnostic, attributes(

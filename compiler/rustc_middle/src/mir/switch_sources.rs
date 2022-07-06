@@ -73,6 +73,6 @@ impl<CTX> HashStable<CTX> for SwitchSourceCache {
     }
 }
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     SwitchSourceCache,
 }

@@ -19,7 +19,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{
-    self, ConstKind, EarlyBinder, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable,
+    self, ConstKind, EarlyBinder, Instance, ParamEnv, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};

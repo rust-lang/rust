@@ -44,7 +44,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::TypeError::FieldMisMatch;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TypeFoldable};
+use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TypeVisitable};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;

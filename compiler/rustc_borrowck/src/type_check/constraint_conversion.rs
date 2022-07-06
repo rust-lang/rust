@@ -6,7 +6,7 @@ use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{Span, DUMMY_SP};
 

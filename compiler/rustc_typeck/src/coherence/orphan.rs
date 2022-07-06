@@ -10,7 +10,7 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{
-    self, ImplPolarity, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor,
+    self, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};

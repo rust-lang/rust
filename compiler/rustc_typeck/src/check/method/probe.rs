@@ -21,7 +21,9 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, EarlyBinder, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitable,
+};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::lev_distance::{

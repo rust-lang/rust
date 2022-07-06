@@ -390,7 +390,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
 /// Here, we would store the type `T`, the span of the value `x`, the "scope-span" for
 /// the scope that contains `x`, the expr `T` evaluated from, and the span of `foo.await`.
 #[derive(TyEncodable, TyDecodable, Clone, Debug, Eq, Hash, PartialEq, HashStable)]
-#[derive(TypeFoldable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct GeneratorInteriorTypeCause<'tcx> {
     /// Type of the captured binding.
     pub ty: Ty<'tcx>,
@@ -871,7 +871,7 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
     pub span: Span,
@@ -931,7 +931,7 @@ impl<'tcx> CanonicalUserType<'tcx> {
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 

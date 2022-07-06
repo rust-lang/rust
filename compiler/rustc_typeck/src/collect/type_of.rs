@@ -8,7 +8,7 @@ use rustc_hir::{HirId, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 

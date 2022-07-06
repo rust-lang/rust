@@ -179,7 +179,8 @@ pub enum BorrowKind {
 /// Not all of these are allowed at every [`MirPhase`]. Check the documentation there to see which
 /// ones you do not have to worry about. The MIR validator will generally enforce such restrictions,
 /// causing an ICE if they are violated.
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum StatementKind<'tcx> {
     /// Assign statements roughly correspond to an assignment in Rust proper (`x = ...`) except
     /// without the possibility of dropping the previous value (that must be done separately, if at
@@ -376,13 +377,15 @@ pub enum FakeReadCause {
     ForIndex,
 }
 
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct Coverage {
     pub kind: CoverageKind,
     pub code_region: Option<CodeRegion>,
 }
 
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct CopyNonOverlapping<'tcx> {
     pub src: Operand<'tcx>,
     pub dst: Operand<'tcx>,
@@ -672,7 +675,8 @@ pub enum AssertKind<O> {
     ResumedAfterPanic(GeneratorKind),
 }
 
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum InlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,

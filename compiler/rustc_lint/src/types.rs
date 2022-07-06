@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol, DUMMY_SP};
@@ -1182,7 +1182,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             cx: &'a LateContext<'tcx>,
         }
 
-        impl<'a, 'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
+        impl<'a, 'tcx> ty::visit::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
             type BreakTy = Ty<'tcx>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

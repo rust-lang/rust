@@ -9,7 +9,7 @@ use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeFoldable, UintTy,
+    self, EarlyBinder, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeVisitable, UintTy,
 };
 use rustc_span::symbol::kw;
 use rustc_target::abi::call::FnAbi;
@@ -240,7 +240,7 @@ impl<'tcx> SymbolMangler<'tcx> {
         print_value: impl FnOnce(&'a mut Self, &T) -> Result<&'a mut Self, !>,
     ) -> Result<&'a mut Self, !>
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeVisitable<'tcx>,
     {
         let regions = if value.has_late_bound_regions() {
             self.tcx.collect_referenced_late_bound_regions(value)

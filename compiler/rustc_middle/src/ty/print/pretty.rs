@@ -2,7 +2,7 @@ use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{
     self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
 };
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -2277,14 +2277,14 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
     fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<'tcx, T>)
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeVisitable<'tcx>,
     {
         struct LateBoundRegionNameCollector<'a, 'tcx> {
             used_region_names: &'a mut FxHashSet<Symbol>,
             type_collector: SsoHashSet<Ty<'tcx>>,
         }
 
-        impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_, 'tcx> {
+        impl<'tcx> ty::visit::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_, 'tcx> {
             type BreakTy = ();
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -2388,7 +2388,7 @@ macro_rules! define_print_and_forward_display {
 /// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
 /// the trait path. That is, it will print `Trait<U>` instead of
 /// `<T as Trait<U>>`.
-#[derive(Copy, Clone, TypeFoldable, Lift)]
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitRefPrintOnlyTraitPath<'tcx>(ty::TraitRef<'tcx>);
 
 impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
@@ -2400,7 +2400,7 @@ impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
 /// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
 /// the trait name. That is, it will print `Trait` instead of
 /// `<T as Trait<U>>`.
-#[derive(Copy, Clone, TypeFoldable, Lift)]
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitRefPrintOnlyTraitName<'tcx>(ty::TraitRef<'tcx>);
 
 impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitName<'tcx> {
@@ -2425,7 +2425,7 @@ impl<'tcx> ty::Binder<'tcx, ty::TraitRef<'tcx>> {
     }
 }
 
-#[derive(Copy, Clone, TypeFoldable, Lift)]
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitPredPrintModifiersAndPath<'tcx>(ty::TraitPredicate<'tcx>);
 
 impl<'tcx> fmt::Debug for TraitPredPrintModifiersAndPath<'tcx> {

@@ -3,11 +3,11 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
 use crate::infer::canonical::Canonical;
-use crate::ty::fold::ValidateBoundVars;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
+use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperFoldable,
+    self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable,
     TypeVisitor,
 };
 use crate::ty::{List, ParamEnv};
@@ -38,7 +38,7 @@ pub type TyKind<'tcx> = IrTyKind<TyCtxt<'tcx>>;
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: hir::Mutability,
@@ -201,7 +201,7 @@ static_assert_size!(TyKind<'_>, 32);
 /// * `GR`: The "return type", which is the type of value returned upon
 ///   completion of the generator.
 /// * `GW`: The "generator witness".
-#[derive(Copy, Clone, Debug, TypeFoldable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
     /// concatenated with a tuple containing the types of the upvars.
@@ -328,7 +328,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
 }
 
 /// Similar to `ClosureSubsts`; see the above documentation for more.
-#[derive(Copy, Clone, Debug, TypeFoldable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct GeneratorSubsts<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
@@ -608,7 +608,7 @@ impl<'tcx> UpvarSubsts<'tcx> {
 /// type of the constant. The reason that `R` is represented as an extra type parameter
 /// is the same reason that [`ClosureSubsts`] have `CS` and `U` as type parameters:
 /// inline const can reference lifetimes that are internal to the creating function.
-#[derive(Copy, Clone, Debug, TypeFoldable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct InlineConstSubsts<'tcx> {
     /// Generic parameters from the enclosing item,
     /// concatenated with the inferred type of the constant.
@@ -655,7 +655,7 @@ impl<'tcx> InlineConstSubsts<'tcx> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub enum ExistentialPredicate<'tcx> {
     /// E.g., `Iterator`.
     Trait(ExistentialTraitRef<'tcx>),
@@ -781,7 +781,7 @@ impl<'tcx> List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
 /// Trait references also appear in object types like `Foo<U>`, but in
 /// that case the `Self` parameter is absent from the substitutions.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -853,7 +853,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 /// The substitutions don't include the erased `Self`, only trait
 /// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct ExistentialTraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -986,7 +986,7 @@ pub struct Binder<'tcx, T>(T, &'tcx List<BoundVariableKind>);
 
 impl<'tcx, T> Binder<'tcx, T>
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeVisitable<'tcx>,
 {
     /// Wraps `value` in a binder, asserting that `value` does not
     /// contain any bound vars that would be bound by the
@@ -1050,14 +1050,14 @@ impl<'tcx, T> Binder<'tcx, T> {
         Binder(value, self.1)
     }
 
-    pub fn map_bound_ref<F, U: TypeFoldable<'tcx>>(&self, f: F) -> Binder<'tcx, U>
+    pub fn map_bound_ref<F, U: TypeVisitable<'tcx>>(&self, f: F) -> Binder<'tcx, U>
     where
         F: FnOnce(&T) -> U,
     {
         self.as_ref().map_bound(f)
     }
 
-    pub fn map_bound<F, U: TypeFoldable<'tcx>>(self, f: F) -> Binder<'tcx, U>
+    pub fn map_bound<F, U: TypeVisitable<'tcx>>(self, f: F) -> Binder<'tcx, U>
     where
         F: FnOnce(T) -> U,
     {
@@ -1069,7 +1069,7 @@ impl<'tcx, T> Binder<'tcx, T> {
         Binder(value, self.1)
     }
 
-    pub fn try_map_bound<F, U: TypeFoldable<'tcx>, E>(self, f: F) -> Result<Binder<'tcx, U>, E>
+    pub fn try_map_bound<F, U: TypeVisitable<'tcx>, E>(self, f: F) -> Result<Binder<'tcx, U>, E>
     where
         F: FnOnce(T) -> Result<U, E>,
     {
@@ -1092,7 +1092,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     /// in `bind`. This may be (debug) asserted in the future.
     pub fn rebind<U>(&self, value: U) -> Binder<'tcx, U>
     where
-        U: TypeFoldable<'tcx>,
+        U: TypeVisitable<'tcx>,
     {
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(self.bound_vars());
@@ -1113,7 +1113,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     /// would not be that useful.)
     pub fn no_bound_vars(self) -> Option<T>
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeVisitable<'tcx>,
     {
         if self.0.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
     }
@@ -1143,7 +1143,7 @@ impl<'tcx, T> Binder<'tcx, Option<T>> {
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct ProjectionTy<'tcx> {
     /// The parameters of the associated item.
     pub substs: SubstsRef<'tcx>,
@@ -1192,7 +1192,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct GenSig<'tcx> {
     pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
@@ -1208,7 +1208,7 @@ pub type PolyGenSig<'tcx> = Binder<'tcx, GenSig<'tcx>>;
 /// - `output`: is the return type.
 /// - `c_variadic`: indicates whether this is a C-variadic function.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct FnSig<'tcx> {
     pub inputs_and_output: &'tcx List<Ty<'tcx>>,
     pub c_variadic: bool,
@@ -1385,7 +1385,7 @@ impl From<BoundVar> for BoundTy {
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct ExistentialProjection<'tcx> {
     pub item_def_id: DefId,
     pub substs: SubstsRef<'tcx>,

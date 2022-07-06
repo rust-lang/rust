@@ -30,6 +30,7 @@ use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
+    TypeVisitable,
 };
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{ExpnKind, Span, DUMMY_SP};

@@ -1,5 +1,5 @@
 use crate::context::LintContext;
-use crate::rustc_middle::ty::TypeFoldable;
+use crate::rustc_middle::ty::TypeVisitable;
 use crate::LateContext;
 use crate::LateLintPass;
 use rustc_errors::fluent;

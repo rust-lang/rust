@@ -24,7 +24,7 @@ use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
