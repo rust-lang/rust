@@ -248,6 +248,13 @@ impl Handle {
             offset.map(|n| n as _).as_ref(),
             None,
         );
+
+        let status = if status == c::STATUS_PENDING {
+            c::WaitForSingleObject(self.as_raw_handle(), c::INFINITE);
+            io_status.status()
+        } else {
+            status
+        };
         match status {
             // If the operation has not completed then abort the process.
             // Doing otherwise means that the buffer and stack may be written to
@@ -290,6 +297,12 @@ impl Handle {
                 offset.map(|n| n as _).as_ref(),
                 None,
             )
+        };
+        let status = if status == c::STATUS_PENDING {
+            unsafe { c::WaitForSingleObject(self.as_raw_handle(), c::INFINITE) };
+            io_status.status()
+        } else {
+            status
         };
         match status {
             // If the operation has not completed then abort the process.
