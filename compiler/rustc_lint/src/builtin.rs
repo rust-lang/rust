@@ -577,16 +577,12 @@ impl MissingDoc {
         let attrs = cx.tcx.hir().attrs(cx.tcx.hir().local_def_id_to_hir_id(def_id));
         let has_doc = attrs.iter().any(has_doc);
         if !has_doc {
-            cx.struct_span_lint(
-                MISSING_DOCS,
-                cx.tcx.sess.source_map().guess_head_span(sp),
-                |lint| {
-                    lint.build(fluent::lint::builtin_missing_doc)
-                        .set_arg("article", article)
-                        .set_arg("desc", desc)
-                        .emit();
-                },
-            );
+            cx.struct_span_lint(MISSING_DOCS, cx.tcx.def_span(def_id), |lint| {
+                lint.build(fluent::lint::builtin_missing_doc)
+                    .set_arg("article", article)
+                    .set_arg("desc", desc)
+                    .emit();
+            });
         }
     }
 }
