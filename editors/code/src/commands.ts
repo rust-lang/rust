@@ -336,7 +336,7 @@ export function toggleInlayHints(_ctx: Ctx): Cmd {
 // The contents of the file come from the `TextDocumentContentProvider`
 export function syntaxTree(ctx: Ctx): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
-        readonly uri = vscode.Uri.parse("rust-analyzer://syntaxtree/tree.rast");
+        readonly uri = vscode.Uri.parse("rust-analyzer-syntax-tree://syntaxtree/tree.rast");
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
         constructor() {
             vscode.workspace.onDidChangeTextDocument(
@@ -388,7 +388,9 @@ export function syntaxTree(ctx: Ctx): Cmd {
 
     void new AstInspector(ctx);
 
-    ctx.pushCleanup(vscode.workspace.registerTextDocumentContentProvider("rust-analyzer", tdcp));
+    ctx.pushCleanup(
+        vscode.workspace.registerTextDocumentContentProvider("rust-analyzer-syntax-tree", tdcp)
+    );
     ctx.pushCleanup(
         vscode.languages.setLanguageConfiguration("ra_syntax_tree", {
             brackets: [["[", ")"]],
@@ -417,7 +419,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
 // The contents of the file come from the `TextDocumentContentProvider`
 export function viewHir(ctx: Ctx): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
-        readonly uri = vscode.Uri.parse("rust-analyzer://viewHir/hir.txt");
+        readonly uri = vscode.Uri.parse("rust-analyzer-hir://viewHir/hir.txt");
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
         constructor() {
             vscode.workspace.onDidChangeTextDocument(
@@ -467,7 +469,9 @@ export function viewHir(ctx: Ctx): Cmd {
         }
     })();
 
-    ctx.pushCleanup(vscode.workspace.registerTextDocumentContentProvider("rust-analyzer", tdcp));
+    ctx.pushCleanup(
+        vscode.workspace.registerTextDocumentContentProvider("rust-analyzer-hir", tdcp)
+    );
 
     return async () => {
         const document = await vscode.workspace.openTextDocument(tdcp.uri);
@@ -481,7 +485,7 @@ export function viewHir(ctx: Ctx): Cmd {
 
 export function viewFileText(ctx: Ctx): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
-        readonly uri = vscode.Uri.parse("rust-analyzer://viewFileText/file.rs");
+        readonly uri = vscode.Uri.parse("rust-analyzer-file-text://viewFileText/file.rs");
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
         constructor() {
             vscode.workspace.onDidChangeTextDocument(
@@ -528,7 +532,9 @@ export function viewFileText(ctx: Ctx): Cmd {
         }
     })();
 
-    ctx.pushCleanup(vscode.workspace.registerTextDocumentContentProvider("rust-analyzer", tdcp));
+    ctx.pushCleanup(
+        vscode.workspace.registerTextDocumentContentProvider("rust-analyzer-file-text", tdcp)
+    );
 
     return async () => {
         const document = await vscode.workspace.openTextDocument(tdcp.uri);
@@ -542,7 +548,7 @@ export function viewFileText(ctx: Ctx): Cmd {
 
 export function viewItemTree(ctx: Ctx): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
-        readonly uri = vscode.Uri.parse("rust-analyzer://viewItemTree/itemtree.rs");
+        readonly uri = vscode.Uri.parse("rust-analyzer-item-tree://viewItemTree/itemtree.rs");
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
         constructor() {
             vscode.workspace.onDidChangeTextDocument(
@@ -591,7 +597,9 @@ export function viewItemTree(ctx: Ctx): Cmd {
         }
     })();
 
-    ctx.pushCleanup(vscode.workspace.registerTextDocumentContentProvider("rust-analyzer", tdcp));
+    ctx.pushCleanup(
+        vscode.workspace.registerTextDocumentContentProvider("rust-analyzer-item-tree", tdcp)
+    );
 
     return async () => {
         const document = await vscode.workspace.openTextDocument(tdcp.uri);
@@ -688,7 +696,7 @@ export function expandMacro(ctx: Ctx): Cmd {
     }
 
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
-        uri = vscode.Uri.parse("rust-analyzer://expandMacro/[EXPANSION].rs");
+        uri = vscode.Uri.parse("rust-analyzer-expand-macro://expandMacro/[EXPANSION].rs");
         eventEmitter = new vscode.EventEmitter<vscode.Uri>();
         async provideTextDocumentContent(_uri: vscode.Uri): Promise<string> {
             const editor = vscode.window.activeTextEditor;
@@ -714,7 +722,9 @@ export function expandMacro(ctx: Ctx): Cmd {
         }
     })();
 
-    ctx.pushCleanup(vscode.workspace.registerTextDocumentContentProvider("rust-analyzer", tdcp));
+    ctx.pushCleanup(
+        vscode.workspace.registerTextDocumentContentProvider("rust-analyzer-expand-macro", tdcp)
+    );
 
     return async () => {
         const document = await vscode.workspace.openTextDocument(tdcp.uri);
