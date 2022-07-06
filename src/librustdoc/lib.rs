@@ -462,10 +462,10 @@ fn opts() -> Vec<RustcOptGroup> {
                 "human|json|short",
             )
         }),
-        unstable("output-width", |o| {
+        unstable("diagnostic-width", |o| {
             o.optopt(
                 "",
-                "output-width",
+                "diagnostic-width",
                 "Provide width of the output for truncated error messages",
                 "WIDTH",
             )
@@ -744,7 +744,7 @@ fn main_options(options: config::Options) -> MainResult {
     let diag = core::new_handler(
         options.error_format,
         None,
-        options.output_width,
+        options.diagnostic_width,
         &options.debugging_opts,
     );
 

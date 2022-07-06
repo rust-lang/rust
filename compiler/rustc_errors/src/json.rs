@@ -42,7 +42,7 @@ pub struct JsonEmitter {
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
-    output_width: Option<usize>,
+    diagnostic_width: Option<usize>,
     macro_backtrace: bool,
 }
 
@@ -54,7 +54,7 @@ impl JsonEmitter {
         fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        output_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
@@ -66,7 +66,7 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
-            output_width,
+            diagnostic_width,
             macro_backtrace,
         }
     }
@@ -76,7 +76,7 @@ impl JsonEmitter {
         json_rendered: HumanReadableErrorType,
         fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: LazyFallbackBundle,
-        output_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
@@ -87,7 +87,7 @@ impl JsonEmitter {
             fallback_bundle,
             pretty,
             json_rendered,
-            output_width,
+            diagnostic_width,
             macro_backtrace,
         )
     }
@@ -100,7 +100,7 @@ impl JsonEmitter {
         fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
-        output_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
@@ -112,7 +112,7 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
-            output_width,
+            diagnostic_width,
             macro_backtrace,
         }
     }
@@ -345,7 +345,7 @@ impl Diagnostic {
                 je.fluent_bundle.clone(),
                 je.fallback_bundle.clone(),
                 false,
-                je.output_width,
+                je.diagnostic_width,
                 je.macro_backtrace,
             )
             .ui_testing(je.ui_testing)

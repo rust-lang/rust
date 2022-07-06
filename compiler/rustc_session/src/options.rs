@@ -170,7 +170,7 @@ top_level_options!(
 
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],
-        output_width: Option<usize> [UNTRACKED],
+        diagnostic_width: Option<usize> [UNTRACKED],
 
         /// If `Some`, enable incremental compilation, using the given
         /// directory to store intermediate results.
@@ -1389,7 +1389,7 @@ options! {
         "panic strategy for out-of-memory handling"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
-    output_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
+    diagnostic_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "set the current output width for diagnostic truncation"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
         "support compiling tests with panic=abort (default: no)"),
