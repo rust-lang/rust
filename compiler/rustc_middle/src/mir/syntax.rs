@@ -913,7 +913,7 @@ pub enum Operand<'tcx> {
 static_assert_size!(Operand<'_>, 24);
 
 ///////////////////////////////////////////////////////////////////////////
-/// Rvalues
+// Rvalues
 
 /// The various kinds of rvalues that can appear in MIR.
 ///
