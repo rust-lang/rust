@@ -158,11 +158,11 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-ref-ptr.rs:62:1
    |
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered pointer to alloc43, but expected a function pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered pointer to alloc41, but expected a function pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾───────alloc43───────╼                         │ ╾──────╼
+               ╾───────alloc41───────╼                         │ ╾──────╼
            }
 
 error: aborting due to 16 previous errors

@@ -12,8 +12,8 @@ use rustc_target::abi::call::{ArgAbi, ArgAttribute, ArgAttributes, FnAbi, PassMo
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Scalar,
-    StackPopCleanup, StackPopUnwind,
+    FnVal, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine, MemoryKind, OpTy, Operand,
+    PlaceTy, Scalar, StackPopCleanup, StackPopUnwind,
 };
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -185,11 +185,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // No question
                 return true;
             }
+            if caller_abi.layout.is_unsized() || callee_abi.layout.is_unsized() {
+                // No, no, no. We require the types to *exactly* match for unsized arguments. If
+                // these are somehow unsized "in a different way" (say, `dyn Trait` vs `[i32]`),
+                // then who knows what happens.
+                return false;
+            }
             if caller_abi.layout.size != callee_abi.layout.size
                 || caller_abi.layout.align.abi != callee_abi.layout.align.abi
             {
                 // This cannot go well...
-                // FIXME: What about unsized types?
                 return false;
             }
             // The rest *should* be okay, but we are extra conservative.
@@ -287,11 +292,36 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 caller_arg.layout.ty
             )
         }
+        // Special handling for unsized parameters.
+        if caller_arg.layout.is_unsized() {
+            // `check_argument_compat` ensures that both have the same type, so we know they will use the metadata the same way.
+            assert_eq!(caller_arg.layout.ty, callee_arg.layout.ty);
+            // We have to properly pre-allocate the memory for the callee.
+            // So let's tear down some wrappers.
+            // This all has to be in memory, there are no immediate unsized values.
+            let src = caller_arg.assert_mem_place();
+            // The destination cannot be one of these "spread args".
+            let (dest_frame, dest_local) = callee_arg.assert_local();
+            // We are just initializing things, so there can't be anything here yet.
+            assert!(matches!(
+                *self.local_to_op(&self.stack()[dest_frame], dest_local, None)?,
+                Operand::Immediate(Immediate::Uninit)
+            ));
+            // Allocate enough memory to hold `src`.
+            let Some((size, align)) = self.size_and_align_of_mplace(&src)? else {
+                span_bug!(self.cur_span(), "unsized fn arg with `extern` type tail should not be allowed")
+            };
+            let ptr = self.allocate_ptr(size, align, MemoryKind::Stack)?;
+            let dest_place =
+                MPlaceTy::from_aligned_ptr_with_meta(ptr.into(), callee_arg.layout, src.meta);
+            // Update the local to be that new place.
+            *M::access_local_mut(self, dest_frame, dest_local)? = Operand::Indirect(*dest_place);
+        }
         // We allow some transmutes here.
         // FIXME: Depending on the PassMode, this should reset some padding to uninitialized. (This
         // is true for all `copy_op`, but there are a lot of special cases for argument passing
         // specifically.)
-        self.copy_op_transmute(&caller_arg, callee_arg)
+        self.copy_op(&caller_arg, callee_arg, /*allow_transmute*/ true)
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.

@@ -189,6 +189,7 @@ pub(super) fn op_to_const<'tcx>(
                 let len: usize = len.try_into().unwrap();
                 ConstValue::Slice { data, start, end: start + len }
             }
+            Immediate::Uninit => to_const_value(&op.assert_mem_place()),
         },
     }
 }
