@@ -183,24 +183,24 @@ enum State {
     },
     DerefedBorrow(DerefedBorrow),
     ExplicitDeref {
-        // Span and id of the top-level deref expression if the parent expression is a borrow.
-        deref_span_id: Option<(Span, HirId)>,
+        mutability: Option<Mutability>,
     },
     ExplicitDerefField {
         name: Symbol,
     },
     Reborrow {
-        deref_span: Span,
-        deref_hir_id: HirId,
+        mutability: Mutability,
     },
-    Borrow,
+    Borrow {
+        mutability: Mutability,
+    },
 }
 
 // A reference operation considered by this lint pass
 enum RefOp {
     Method(Mutability),
     Deref,
-    AddrOf,
+    AddrOf(Mutability),
 }
 
 struct RefPat {
@@ -263,7 +263,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             ));
                         } else if position.is_deref_stable() {
                             self.state = Some((
-                                State::ExplicitDeref { deref_span_id: None },
+                                State::ExplicitDeref { mutability: None },
                                 StateData { span: expr.span, hir_id: expr.hir_id, position },
                             ));
                         }
@@ -289,7 +289,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             },
                         ));
                     },
-                    RefOp::AddrOf => {
+                    RefOp::AddrOf(mutability) => {
                         // Find the number of times the borrow is auto-derefed.
                         let mut iter = adjustments.iter();
                         let mut deref_count = 0usize;
@@ -359,7 +359,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             ));
                         } else if position.is_deref_stable() {
                             self.state = Some((
-                                State::Borrow,
+                                State::Borrow { mutability },
                                 StateData {
                                     span: expr.span,
                                     hir_id: expr.hir_id,
@@ -395,7 +395,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                     data,
                 ));
             },
-            (Some((State::DerefedBorrow(state), data)), RefOp::AddrOf) if state.count != 0 => {
+            (Some((State::DerefedBorrow(state), data)), RefOp::AddrOf(_)) if state.count != 0 => {
                 self.state = Some((
                     State::DerefedBorrow(DerefedBorrow {
                         count: state.count - 1,
@@ -404,12 +404,12 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                     data,
                 ));
             },
-            (Some((State::DerefedBorrow(state), data)), RefOp::AddrOf) => {
+            (Some((State::DerefedBorrow(state), data)), RefOp::AddrOf(mutability)) => {
                 let position = data.position;
                 report(cx, expr, State::DerefedBorrow(state), data);
                 if position.is_deref_stable() {
                     self.state = Some((
-                        State::Borrow,
+                        State::Borrow { mutability },
                         StateData {
                             span: expr.span,
                             hir_id: expr.hir_id,
@@ -430,43 +430,28 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                     ));
                 } else if position.is_deref_stable() {
                     self.state = Some((
-                        State::ExplicitDeref { deref_span_id: None },
+                        State::ExplicitDeref { mutability: None },
                         StateData { span: expr.span, hir_id: expr.hir_id, position },
                     ));
                 }
             },
 
-            (Some((State::Borrow, data)), RefOp::Deref) => {
+            (Some((State::Borrow { mutability }, data)), RefOp::Deref) => {
                 if typeck.expr_ty(sub_expr).is_ref() {
-                    self.state = Some((
-                        State::Reborrow {
-                            deref_span: expr.span,
-                            deref_hir_id: expr.hir_id,
-                        },
-                        data,
-                    ));
+                    self.state = Some((State::Reborrow { mutability }, data));
                 } else {
                     self.state = Some((
                         State::ExplicitDeref {
-                            deref_span_id: Some((expr.span, expr.hir_id)),
+                            mutability: Some(mutability),
                         },
                         data,
                     ));
                 }
             },
-            (
-                Some((
-                    State::Reborrow {
-                        deref_span,
-                        deref_hir_id,
-                    },
-                    data,
-                )),
-                RefOp::Deref,
-            ) => {
+            (Some((State::Reborrow { mutability }, data)), RefOp::Deref) => {
                 self.state = Some((
                     State::ExplicitDeref {
-                        deref_span_id: Some((deref_span, deref_hir_id)),
+                        mutability: Some(mutability),
                     },
                     data,
                 ));
@@ -573,7 +558,7 @@ fn try_parse_ref_op<'tcx>(
         ExprKind::Unary(UnOp::Deref, sub_expr) if !typeck.expr_ty(sub_expr).is_unsafe_ptr() => {
             return Some((RefOp::Deref, sub_expr));
         },
-        ExprKind::AddrOf(BorrowKind::Ref, _, sub_expr) => return Some((RefOp::AddrOf, sub_expr)),
+        ExprKind::AddrOf(BorrowKind::Ref, mutability, sub_expr) => return Some((RefOp::AddrOf(mutability), sub_expr)),
         _ => return None,
     };
     if tcx.is_diagnostic_item(sym::deref_method, def_id) {
@@ -1074,7 +1059,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                 diag.span_suggestion(data.span, "change this to", sugg, app);
             });
         },
-        State::ExplicitDeref { deref_span_id } => {
+        State::ExplicitDeref { mutability } => {
             if matches!(
                 expr.kind,
                 ExprKind::Block(..)
@@ -1088,29 +1073,33 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                 return;
             }
 
-            let (span, hir_id, precedence) = if let Some((span, hir_id)) = deref_span_id
+            let (prefix, precedence) = if let Some(mutability) = mutability
                 && !cx.typeck_results().expr_ty(expr).is_ref()
             {
-                (span, hir_id, PREC_PREFIX)
+                let prefix = match mutability {
+                    Mutability::Not => "&",
+                    Mutability::Mut => "&mut ",
+                };
+                (prefix, 0)
             } else {
-                (data.span, data.hir_id, data.position.precedence())
+                ("", data.position.precedence())
             };
             span_lint_hir_and_then(
                 cx,
                 EXPLICIT_AUTO_DEREF,
-                hir_id,
-                span,
+                data.hir_id,
+                data.span,
                 "deref which would be done by auto-deref",
                 |diag| {
                     let mut app = Applicability::MachineApplicable;
-                    let (snip, snip_is_macro) = snippet_with_context(cx, expr.span, span.ctxt(), "..", &mut app);
+                    let (snip, snip_is_macro) = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app);
                     let sugg =
                         if !snip_is_macro && expr.precedence().order() < precedence && !has_enclosing_paren(&snip) {
-                            format!("({})", snip)
+                            format!("{}({})", prefix, snip)
                         } else {
-                            snip.into()
+                            format!("{}{}", prefix, snip)
                         };
-                    diag.span_suggestion(span, "try this", sugg, app);
+                    diag.span_suggestion(data.span, "try this", sugg, app);
                 },
             );
         },
@@ -1141,7 +1130,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                 },
             );
         },
-        State::Borrow | State::Reborrow { .. } => (),
+        State::Borrow { .. } | State::Reborrow { .. } => (),
     }
 }
 

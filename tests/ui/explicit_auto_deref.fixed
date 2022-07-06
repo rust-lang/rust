@@ -68,6 +68,7 @@ fn main() {
 
     let _: &str = &s;
     let _: &str = &{ String::new() };
+    let _: &str = &mut { String::new() };
     let _ = &*s; // Don't lint. Inferred type would change.
     let _: &_ = &*s; // Don't lint. Inferred type would change.
 
