@@ -180,7 +180,7 @@ mod sip;
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 /// [`HashSet`]: ../../std/collections/struct.HashSet.html
 /// [`hash`]: Hash::hash
-/// [impl]: ../../std/primitive.str.html#impl-Hash
+/// [impl]: ../../std/primitive.str.html#impl-Hash-for-str
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Hash"]
 pub trait Hash {
