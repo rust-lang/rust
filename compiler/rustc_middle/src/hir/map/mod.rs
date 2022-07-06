@@ -1211,20 +1211,12 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
 }
 
 pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> ModuleItems {
-    let mut collector = ModuleCollector {
-        tcx,
-        submodules: Vec::default(),
-        items: Vec::default(),
-        trait_items: Vec::default(),
-        impl_items: Vec::default(),
-        foreign_items: Vec::default(),
-        body_owners: Vec::default(),
-    };
+    let mut collector = ItemCollector::new(tcx, false);
 
     let (hir_mod, span, hir_id) = tcx.hir().get_module(module_id);
     collector.visit_mod(hir_mod, span, hir_id);
 
-    let ModuleCollector {
+    let ItemCollector {
         submodules,
         items,
         trait_items,
@@ -1241,172 +1233,120 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> Module
         foreign_items: foreign_items.into_boxed_slice(),
         body_owners: body_owners.into_boxed_slice(),
     };
+}
 
-    struct ModuleCollector<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        submodules: Vec<LocalDefId>,
-        items: Vec<ItemId>,
-        trait_items: Vec<TraitItemId>,
-        impl_items: Vec<ImplItemId>,
-        foreign_items: Vec<ForeignItemId>,
-        body_owners: Vec<LocalDefId>,
-    }
+pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
+    let mut collector = ItemCollector::new(tcx, true);
 
-    impl<'hir> Visitor<'hir> for ModuleCollector<'hir> {
-        type NestedFilter = nested_filter::All;
+    tcx.hir().walk_toplevel_module(&mut collector);
 
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.tcx.hir()
-        }
+    let ItemCollector {
+        submodules,
+        items,
+        trait_items,
+        impl_items,
+        foreign_items,
+        body_owners,
+        ..
+    } = collector;
 
-        fn visit_item(&mut self, item: &'hir Item<'hir>) {
-            if associated_body(Node::Item(item)).is_some() {
-                self.body_owners.push(item.def_id);
-            }
+    return ModuleItems {
+        submodules: submodules.into_boxed_slice(),
+        items: items.into_boxed_slice(),
+        trait_items: trait_items.into_boxed_slice(),
+        impl_items: impl_items.into_boxed_slice(),
+        foreign_items: foreign_items.into_boxed_slice(),
+        body_owners: body_owners.into_boxed_slice(),
+    };
+}
 
-            self.items.push(item.item_id());
+struct ItemCollector<'tcx> {
+    // When true, it collects all items in the create,
+    // otherwise it collects items in some module.
+    crate_collector: bool,
+    tcx: TyCtxt<'tcx>,
+    submodules: Vec<LocalDefId>,
+    items: Vec<ItemId>,
+    trait_items: Vec<TraitItemId>,
+    impl_items: Vec<ImplItemId>,
+    foreign_items: Vec<ForeignItemId>,
+    body_owners: Vec<LocalDefId>,
+}
 
-            if let ItemKind::Mod(..) = item.kind {
-                // If this declares another module, do not recurse inside it.
-                self.submodules.push(item.def_id);
-            } else {
-                intravisit::walk_item(self, item)
-            }
-        }
-
-        fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
-            if associated_body(Node::TraitItem(item)).is_some() {
-                self.body_owners.push(item.def_id);
-            }
-
-            self.trait_items.push(item.trait_item_id());
-            intravisit::walk_trait_item(self, item)
-        }
-
-        fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
-            if associated_body(Node::ImplItem(item)).is_some() {
-                self.body_owners.push(item.def_id);
-            }
-
-            self.impl_items.push(item.impl_item_id());
-            intravisit::walk_impl_item(self, item)
-        }
-
-        fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
-            self.foreign_items.push(item.foreign_item_id());
-            intravisit::walk_foreign_item(self, item)
-        }
-
-        fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {
-            if matches!(ex.kind, ExprKind::Closure { .. }) {
-                self.body_owners.push(self.tcx.hir().local_def_id(ex.hir_id));
-            }
-            intravisit::walk_expr(self, ex)
-        }
-
-        fn visit_anon_const(&mut self, c: &'hir AnonConst) {
-            self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
-            intravisit::walk_anon_const(self, c)
+impl<'tcx> ItemCollector<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, crate_collector: bool) -> ItemCollector<'tcx> {
+        ItemCollector {
+            crate_collector,
+            tcx,
+            submodules: Vec::default(),
+            items: Vec::default(),
+            trait_items: Vec::default(),
+            impl_items: Vec::default(),
+            foreign_items: Vec::default(),
+            body_owners: Vec::default(),
         }
     }
 }
 
-pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
-    let mut collector = CrateCollector {
-        tcx,
-        submodules: Vec::default(),
-        items: Vec::default(),
-        trait_items: Vec::default(),
-        impl_items: Vec::default(),
-        foreign_items: Vec::default(),
-        body_owners: Vec::default(),
-    };
+impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
+    type NestedFilter = nested_filter::All;
 
-    tcx.hir().walk_toplevel_module(&mut collector);
-
-    let CrateCollector {
-        submodules,
-        items,
-        trait_items,
-        impl_items,
-        foreign_items,
-        body_owners,
-        ..
-    } = collector;
-
-    return ModuleItems {
-        submodules: submodules.into_boxed_slice(),
-        items: items.into_boxed_slice(),
-        trait_items: trait_items.into_boxed_slice(),
-        impl_items: impl_items.into_boxed_slice(),
-        foreign_items: foreign_items.into_boxed_slice(),
-        body_owners: body_owners.into_boxed_slice(),
-    };
-
-    struct CrateCollector<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        submodules: Vec<LocalDefId>,
-        items: Vec<ItemId>,
-        trait_items: Vec<TraitItemId>,
-        impl_items: Vec<ImplItemId>,
-        foreign_items: Vec<ForeignItemId>,
-        body_owners: Vec<LocalDefId>,
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
-    impl<'hir> Visitor<'hir> for CrateCollector<'hir> {
-        type NestedFilter = nested_filter::All;
-
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.tcx.hir()
+    fn visit_item(&mut self, item: &'hir Item<'hir>) {
+        if associated_body(Node::Item(item)).is_some() {
+            self.body_owners.push(item.def_id);
         }
 
-        fn visit_item(&mut self, item: &'hir Item<'hir>) {
-            if associated_body(Node::Item(item)).is_some() {
-                self.body_owners.push(item.def_id);
-            }
+        self.items.push(item.item_id());
 
-            self.items.push(item.item_id());
+        if !self.crate_collector && let ItemKind::Mod(..) = item.kind {
+            // If this declares another module, do not recurse inside it.
+            self.submodules.push(item.def_id);
+        } else {
             intravisit::walk_item(self, item)
         }
+    }
 
-        fn visit_mod(&mut self, m: &'hir Mod<'hir>, _s: Span, n: HirId) {
-            self.submodules.push(n.owner);
-            intravisit::walk_mod(self, m, n);
+    fn visit_mod(&mut self, m: &'hir Mod<'hir>, _s: Span, n: HirId) {
+        self.submodules.push(n.owner);
+        intravisit::walk_mod(self, m, n);
+    }
+
+    fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
+        self.foreign_items.push(item.foreign_item_id());
+        intravisit::walk_foreign_item(self, item)
+    }
+
+    fn visit_anon_const(&mut self, c: &'hir AnonConst) {
+        self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
+        intravisit::walk_anon_const(self, c)
+    }
+
+    fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {
+        if matches!(ex.kind, ExprKind::Closure { .. }) {
+            self.body_owners.push(self.tcx.hir().local_def_id(ex.hir_id));
+        }
+        intravisit::walk_expr(self, ex)
+    }
+
+    fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
+        if associated_body(Node::TraitItem(item)).is_some() {
+            self.body_owners.push(item.def_id);
         }
 
-        fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
-            self.foreign_items.push(item.foreign_item_id());
-            intravisit::walk_foreign_item(self, item)
+        self.trait_items.push(item.trait_item_id());
+        intravisit::walk_trait_item(self, item)
+    }
+
+    fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
+        if associated_body(Node::ImplItem(item)).is_some() {
+            self.body_owners.push(item.def_id);
         }
 
-        fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
-            if associated_body(Node::TraitItem(item)).is_some() {
-                self.body_owners.push(item.def_id);
-            }
-
-            self.trait_items.push(item.trait_item_id());
-            intravisit::walk_trait_item(self, item)
-        }
-
-        fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
-            if associated_body(Node::ImplItem(item)).is_some() {
-                self.body_owners.push(item.def_id);
-            }
-
-            self.impl_items.push(item.impl_item_id());
-            intravisit::walk_impl_item(self, item)
-        }
-
-        fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {
-            if matches!(ex.kind, ExprKind::Closure { .. }) {
-                self.body_owners.push(self.tcx.hir().local_def_id(ex.hir_id));
-            }
-            intravisit::walk_expr(self, ex)
-        }
-
-        fn visit_anon_const(&mut self, c: &'hir AnonConst) {
-            self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
-            intravisit::walk_anon_const(self, c)
-        }
+        self.impl_items.push(item.impl_item_id());
+        intravisit::walk_impl_item(self, item)
     }
 }
