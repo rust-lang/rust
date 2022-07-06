@@ -19,6 +19,7 @@ itertools = "0.10.3"
 hashbrown = { version = "0.12.1", features = [
     "inline-more",
 ], default-features = false }
+smallvec = { version = "1.9.0", features = ["const_new"] }
 
 stdx = { path = "../stdx", version = "0.0.0" }
 base-db = { path = "../base-db", version = "0.0.0" }

@@ -12,12 +12,13 @@ use crate::{
 };
 use base_db::CrateId;
 use either::Either;
+use smallvec::SmallVec;
 use syntax::{ast, AstNode};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModPath {
     pub kind: PathKind,
-    segments: Vec<Name>,
+    segments: SmallVec<[Name; 1]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -41,13 +42,13 @@ impl ModPath {
     }
 
     pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
-        let segments = segments.into_iter().collect::<Vec<_>>();
+        let segments = segments.into_iter().collect();
         ModPath { kind, segments }
     }
 
     /// Creates a `ModPath` from a `PathKind`, with no extra path segments.
     pub const fn from_kind(kind: PathKind) -> ModPath {
-        ModPath { kind, segments: Vec::new() }
+        ModPath { kind, segments: SmallVec::new_const() }
     }
 
     pub fn segments(&self) -> &[Name] {
