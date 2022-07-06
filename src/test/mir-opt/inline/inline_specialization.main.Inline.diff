@@ -15,7 +15,7 @@
 -         _1 = <Vec<()> as Foo>::bar() -> bb1; // scope 0 at $DIR/inline-specialization.rs:5:13: 5:38
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-specialization.rs:5:13: 5:36
--                                          // + literal: Const { ty: fn() -> u32 {<Vec<()> as Foo>::bar}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: fn() -> u32 {<Vec<()> as Foo>::bar}, val: Value(<ZST>) }
 -     }
 - 
 -     bb1: {

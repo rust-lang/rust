@@ -61,7 +61,7 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6]
         _8 = callee() -> bb4;            // scope 1 at $DIR/generator-tiny.rs:23:13: 23:21
                                          // mir::Constant
                                          // + span: $DIR/generator-tiny.rs:23:13: 23:19
-                                         // + literal: Const { ty: fn() {callee}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn() {callee}, val: Value(<ZST>) }
     }
 
     bb4: {

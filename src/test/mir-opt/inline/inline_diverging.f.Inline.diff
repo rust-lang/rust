@@ -13,7 +13,7 @@
 -         _2 = sleep();                    // scope 0 at $DIR/inline-diverging.rs:8:5: 8:12
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-diverging.rs:8:5: 8:10
--                                          // + literal: Const { ty: fn() -> ! {sleep}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: fn() -> ! {sleep}, val: Value(<ZST>) }
 +         goto -> bb1;                     // scope 0 at $DIR/inline-diverging.rs:8:5: 8:12
 +     }
 + 

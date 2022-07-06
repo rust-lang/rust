@@ -28,7 +28,7 @@
           _5 = cond() -> bb2;              // scope 0 at $DIR/cycle.rs:12:11: 12:17
                                            // mir::Constant
                                            // + span: $DIR/cycle.rs:12:11: 12:15
-                                           // + literal: Const { ty: fn() -> bool {cond}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() -> bool {cond}, val: Value(<ZST>) }
       }
   
       bb2: {

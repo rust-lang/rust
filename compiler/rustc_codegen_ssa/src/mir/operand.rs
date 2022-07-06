@@ -84,7 +84,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
                 OperandValue::Immediate(llval)
             }
-            ConstValue::Zst => {
+            ConstValue::ZeroSized => {
                 let llval = bx.zst_to_backend(bx.immediate_backend_type(layout));
                 OperandValue::Immediate(llval)
             }

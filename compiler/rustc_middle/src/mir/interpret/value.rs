@@ -35,7 +35,7 @@ pub enum ConstValue<'tcx> {
     Scalar(Scalar),
 
     /// Only used for ZSTs.
-    Zst,
+    ZeroSized,
 
     /// Used only for `&[u8]` and `&str`
     Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
@@ -58,7 +58,7 @@ impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ConstValue<'tcx>> {
         Some(match self {
             ConstValue::Scalar(s) => ConstValue::Scalar(s),
-            ConstValue::Zst => ConstValue::Zst,
+            ConstValue::ZeroSized => ConstValue::ZeroSized,
             ConstValue::Slice { data, start, end } => {
                 ConstValue::Slice { data: tcx.lift(data)?, start, end }
             }
@@ -73,7 +73,7 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
         match *self {
-            ConstValue::ByRef { .. } | ConstValue::Slice { .. } | ConstValue::Zst => None,
+            ConstValue::ByRef { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
             ConstValue::Scalar(val) => Some(val),
         }
     }

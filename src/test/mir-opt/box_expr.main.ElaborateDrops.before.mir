@@ -22,7 +22,7 @@ fn main() -> () {
         _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> bb1; // scope 2 at $DIR/box_expr.rs:7:13: 7:25
                                          // mir::Constant
                                          // + span: $DIR/box_expr.rs:7:13: 7:25
-                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(<ZST>) }
     }
 
     bb1: {
@@ -31,7 +31,7 @@ fn main() -> () {
         (*_5) = S::new() -> [return: bb2, unwind: bb8]; // scope 0 at $DIR/box_expr.rs:7:17: 7:25
                                          // mir::Constant
                                          // + span: $DIR/box_expr.rs:7:17: 7:23
-                                         // + literal: Const { ty: fn() -> S {S::new}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn() -> S {S::new}, val: Value(<ZST>) }
     }
 
     bb2: {
@@ -47,7 +47,7 @@ fn main() -> () {
         _6 = std::mem::drop::<Box<S>>(move _7) -> [return: bb4, unwind: bb6]; // scope 1 at $DIR/box_expr.rs:8:5: 8:12
                                          // mir::Constant
                                          // + span: $DIR/box_expr.rs:8:5: 8:9
-                                         // + literal: Const { ty: fn(Box<S>) {std::mem::drop::<Box<S>>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(Box<S>) {std::mem::drop::<Box<S>>}, val: Value(<ZST>) }
     }
 
     bb4: {

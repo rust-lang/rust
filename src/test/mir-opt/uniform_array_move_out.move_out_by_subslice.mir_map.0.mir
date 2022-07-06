@@ -33,7 +33,7 @@ fn move_out_by_subslice() -> () {
         _5 = alloc::alloc::exchange_malloc(move _3, move _4) -> [return: bb1, unwind: bb12]; // scope 2 at $DIR/uniform_array_move_out.rs:11:14: 11:19
                                          // mir::Constant
                                          // + span: $DIR/uniform_array_move_out.rs:11:14: 11:19
-                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(<ZST>) }
     }
 
     bb1: {
@@ -52,7 +52,7 @@ fn move_out_by_subslice() -> () {
         _10 = alloc::alloc::exchange_malloc(move _8, move _9) -> [return: bb3, unwind: bb11]; // scope 3 at $DIR/uniform_array_move_out.rs:11:21: 11:26
                                          // mir::Constant
                                          // + span: $DIR/uniform_array_move_out.rs:11:21: 11:26
-                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(<ZST>) }
     }
 
     bb3: {

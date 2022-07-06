@@ -705,7 +705,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Operand::Indirect(MemPlace::from_ptr(ptr.into()))
             }
             ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x)?.into()),
-            ConstValue::Zst => Operand::Immediate(Immediate::Uninit),
+            ConstValue::ZeroSized => Operand::Immediate(Immediate::Uninit),
             ConstValue::Slice { data, start, end } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
