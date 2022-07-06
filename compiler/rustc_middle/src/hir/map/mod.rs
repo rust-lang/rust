@@ -225,7 +225,7 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions_untracked().iter_local_def_id()
     }
 
-    /// Do not call this function directly.  The query should be called.
+    /// Do not call this function directly. The query should be called.
     pub(super) fn opt_def_kind(self, local_def_id: LocalDefId) -> Option<DefKind> {
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
         let def_kind = match self.find(hir_id)? {
