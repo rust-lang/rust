@@ -108,7 +108,7 @@ LL |         XE::XEmpty4() => (),
 LL |     XEmpty4,
    |     ------- `XE::XEmpty4` defined here
 LL |     XEmpty5(),
-   |     --------- similarly named tuple variant `XEmpty5` defined here
+   |     ------- similarly named tuple variant `XEmpty5` defined here
    |
 help: use this syntax instead
    |
@@ -139,7 +139,7 @@ LL |         XE::XEmpty4(..) => (),
 LL |     XEmpty4,
    |     ------- `XE::XEmpty4` defined here
 LL |     XEmpty5(),
-   |     --------- similarly named tuple variant `XEmpty5` defined here
+   |     ------- similarly named tuple variant `XEmpty5` defined here
    |
 help: use this syntax instead
    |

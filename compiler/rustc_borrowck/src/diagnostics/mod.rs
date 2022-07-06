@@ -812,12 +812,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return FnSelfUse {
                 var_span: stmt.source_info.span,
                 fn_call_span: *fn_span,
-                fn_span: self
-                    .infcx
-                    .tcx
-                    .sess
-                    .source_map()
-                    .guess_head_span(self.infcx.tcx.def_span(method_did)),
+                fn_span: self.infcx.tcx.def_span(method_did),
                 kind,
             };
         }

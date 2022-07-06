@@ -155,8 +155,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     });
 
                     if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
-                        let span =
-                            tcx.sess.source_map().guess_head_span(tcx.def_span(data.impl_def_id));
+                        let span = tcx.def_span(data.impl_def_id);
                         err.span_note(span, "impl defined here, but it is not `const`");
                     }
                 }
@@ -205,7 +204,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 
                 match self_ty.kind() {
                     FnDef(def_id, ..) => {
-                        let span = tcx.sess.source_map().guess_head_span(tcx.def_span(*def_id));
+                        let span = tcx.def_span(*def_id);
                         if ccx.tcx.is_const_fn_raw(*def_id) {
                             span_bug!(span, "calling const FnDef errored when it shouldn't");
                         }
