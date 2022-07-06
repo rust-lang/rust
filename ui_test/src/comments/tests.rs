@@ -44,7 +44,7 @@ use std::mem;
 fn parse_slash_slash_at_fail() -> Result<()> {
     init();
     let s = r"
-//@  error-pattern  foomp
+//@  error-patttern  foomp
 use std::mem;
 
     ";

@@ -98,14 +98,7 @@ impl Comments {
         line: &str,
     ) -> Result<()> {
         if let Some((_, command)) = line.split_once("//@") {
-            let command = command.trim();
-            if let Some((command, args)) = command.split_once(':') {
-                self.parse_command_with_args(command, args, l)
-            } else if let Some((command, _comments)) = command.split_once(' ') {
-                self.parse_command(command)
-            } else {
-                self.parse_command(command)
-            }
+            self.parse_command(command.trim(), l)
         } else if let Some((_, pattern)) = line.split_once("//~") {
             self.parse_pattern(pattern, fallthrough_to, l)
         } else if let Some((_, pattern)) = line.split_once("//[") {
@@ -189,7 +182,22 @@ impl Comments {
         Ok(this)
     }
 
-    fn parse_command_with_args(&mut self, command: &str, args: &str, l: usize) -> Result<()> {
+    fn parse_command(&mut self, command: &str, l: usize) -> Result<()> {
+        // Commands are letters or dashes, grab everything until the first character that is neither of those.
+        let (command, args) = match command.chars().position(|c: char| !c.is_alphabetic() && c != '-') {
+            None => (command, ""),
+            Some(i) => {
+                let (command, args) = command.split_at(i);
+                let mut args = args.chars();
+                let next = args.next().expect("the `position` above guarantees that there is at least one char");
+                let args = match next {
+                    ':' | ' ' => args.as_str(),
+                    _ => bail!("expected space or `:`, got `{next}`"),
+                };
+                (command, args)
+            }
+        };
+
         match command {
             "revisions" => {
                 ensure!(self.revisions.is_none(), "cannot specifiy revisions twice");
@@ -222,30 +230,25 @@ impl Comments {
                 );
                 self.error_pattern = Some((args.trim().to_string(), l));
             }
-            // Maybe the user just left a comment explaining a command without arguments
-            _ => self.parse_command(command)?,
+            "stderr-per-bitwidth" => {
+                ensure!(!self.stderr_per_bitwidth, "cannot specifiy stderr-per-bitwidth twice");
+                self.stderr_per_bitwidth = true;
+            }
+            command => {
+                if let Some(s) = command.strip_prefix("ignore-") {
+                    self.ignore.push(Condition::parse(s));
+                    return Ok(());
+                }
+
+                if let Some(s) = command.strip_prefix("only-") {
+                    self.only.push(Condition::parse(s));
+                    return Ok(());
+                }
+                bail!("unknown command {command}");
+            }
         }
+
         Ok(())
-    }
-
-    fn parse_command(&mut self, command: &str) -> Result<()> {
-        if let Some(s) = command.strip_prefix("ignore-") {
-            self.ignore.push(Condition::parse(s));
-            return Ok(());
-        }
-
-        if let Some(s) = command.strip_prefix("only-") {
-            self.only.push(Condition::parse(s));
-            return Ok(());
-        }
-
-        if command.starts_with("stderr-per-bitwidth") {
-            ensure!(!self.stderr_per_bitwidth, "cannot specifiy stderr-per-bitwidth twice");
-            self.stderr_per_bitwidth = true;
-            return Ok(());
-        }
-
-        bail!("unknown command {command}");
     }
 
     fn parse_pattern(
