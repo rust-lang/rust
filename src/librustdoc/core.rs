@@ -143,7 +143,7 @@ impl<'tcx> DocContext<'tcx> {
 crate fn new_handler(
     error_format: ErrorOutputType,
     source_map: Option<Lrc<source_map::SourceMap>>,
-    terminal_width: Option<usize>,
+    diagnostic_width: Option<usize>,
     debugging_opts: &DebuggingOptions,
 ) -> rustc_errors::Handler {
     let fallback_bundle =
@@ -159,7 +159,7 @@ crate fn new_handler(
                     fallback_bundle,
                     short,
                     debugging_opts.teach,
-                    terminal_width,
+                    diagnostic_width,
                     false,
                 )
                 .ui_testing(debugging_opts.ui_testing),
@@ -177,7 +177,7 @@ crate fn new_handler(
                     fallback_bundle,
                     pretty,
                     json_rendered,
-                    terminal_width,
+                    diagnostic_width,
                     false,
                 )
                 .ui_testing(debugging_opts.ui_testing),
@@ -198,7 +198,7 @@ crate fn create_config(
         crate_name,
         proc_macro_crate,
         error_format,
-        terminal_width,
+        diagnostic_width,
         libs,
         externs,
         mut cfgs,
@@ -255,7 +255,7 @@ crate fn create_config(
         actually_rustdoc: true,
         debugging_opts,
         error_format,
-        terminal_width,
+        diagnostic_width,
         edition,
         describe_lints,
         crate_name,
