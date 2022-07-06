@@ -2539,12 +2539,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 /// "Constrained" basically means that it appears in any type but
 /// not amongst the inputs to a projection. In other words, `<&'a
 /// T as Trait<''b>>::Foo` does not constrain `'a` or `'b`.
-fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxHashSet<LocalDefId>> {
+fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<LocalDefId>> {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let decl = tcx.hir().fn_decl_by_hir_id(hir_id)?;
     let generics = tcx.hir().get_generics(def_id)?;
 
-    let mut late_bound = FxHashSet::default();
+    let mut late_bound = FxIndexSet::default();
 
     let mut constrained_by_input = ConstrainedCollector::default();
     for arg_ty in decl.inputs {
