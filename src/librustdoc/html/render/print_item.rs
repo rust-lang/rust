@@ -864,7 +864,6 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                     &[],
                     ImplRenderingParameters {
                         show_def_docs: false,
-                        is_on_foreign_type: true,
                         show_default_items: false,
                         show_non_assoc_items: true,
                         toggle_open_by_default: false,
@@ -1642,7 +1641,6 @@ fn render_implementor(
         aliases,
         ImplRenderingParameters {
             show_def_docs: false,
-            is_on_foreign_type: false,
             show_default_items: false,
             show_non_assoc_items: false,
             toggle_open_by_default: false,

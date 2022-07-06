@@ -94,7 +94,7 @@ LL |     check(xm7::V);
 LL |         V {},
    |         - `xm7::V` defined here
 LL |         TV(),
-   |         ---- similarly named tuple variant `TV` defined here
+   |         -- similarly named tuple variant `TV` defined here
    |
 help: use struct literal syntax instead
    |

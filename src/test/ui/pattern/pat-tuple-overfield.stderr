@@ -289,7 +289,7 @@ error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 
   --> $DIR/pat-tuple-overfield.rs:71:16
    |
 LL |     Z1(),
-   |     ---- tuple variant has 0 fields
+   |     -- tuple variant has 0 fields
 ...
 LL |         E1::Z1(_) => {}
    |                ^ expected 0 fields, found 1
@@ -298,7 +298,7 @@ error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has
   --> $DIR/pat-tuple-overfield.rs:72:16
    |
 LL |     Z1(),
-   |     ---- tuple variant has 0 fields
+   |     -- tuple variant has 0 fields
 ...
 LL |         E1::Z1(_, _) => {}
    |                ^  ^ expected 0 fields, found 2

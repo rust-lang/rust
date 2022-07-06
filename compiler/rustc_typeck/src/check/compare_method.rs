@@ -33,14 +33,13 @@ use super::{potentially_plural_count, FnCtxt, Inherited};
 pub(crate) fn compare_impl_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
-    impl_m_span: Span,
     trait_m: &ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
     trait_item_span: Option<Span>,
 ) {
     debug!("compare_impl_method(impl_trait_ref={:?})", impl_trait_ref);
 
-    let impl_m_span = tcx.sess.source_map().guess_head_span(impl_m_span);
+    let impl_m_span = tcx.def_span(impl_m.def_id);
 
     if let Err(_) = compare_self_type(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref) {
         return;
@@ -444,13 +443,9 @@ fn check_region_bounds_on_impl_item<'tcx>(
             .as_local()
             .and_then(|did| tcx.hir().get_generics(did))
             .map_or(def_span, |g| g.span);
-        let generics_span = tcx.hir().span_if_local(trait_m.def_id).map(|sp| {
-            let def_sp = tcx.sess.source_map().guess_head_span(sp);
-            trait_m
-                .def_id
-                .as_local()
-                .and_then(|did| tcx.hir().get_generics(did))
-                .map_or(def_sp, |g| g.span)
+        let generics_span = trait_m.def_id.as_local().map(|did| {
+            let def_sp = tcx.def_span(did);
+            tcx.hir().get_generics(did).map_or(def_sp, |g| g.span)
         });
 
         let reported = tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
@@ -1044,8 +1039,7 @@ fn compare_generic_param_kinds<'tcx>(
             err.span_label(trait_header_span, "");
             err.span_label(param_trait_span, make_param_message("expected", param_trait));
 
-            let impl_header_span =
-                tcx.sess.source_map().guess_head_span(tcx.def_span(tcx.parent(impl_item.def_id)));
+            let impl_header_span = tcx.def_span(tcx.parent(impl_item.def_id));
             err.span_label(impl_header_span, "");
             err.span_label(param_impl_span, make_param_message("found", param_impl));
 

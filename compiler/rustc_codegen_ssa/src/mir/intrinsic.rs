@@ -513,9 +513,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         };
 
                         let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some()
-                            || (ty.is_unsafe_ptr() && op == "xchg")
-                        {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let mut ptr = args[0].immediate();
                             let mut val = args[1].immediate();
                             if ty.is_unsafe_ptr() {

@@ -1112,18 +1112,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     })
                     .collect::<Option<Vec<ArgKind>>>()?,
             ),
-            Node::Item(&hir::Item { span, kind: hir::ItemKind::Fn(ref sig, ..), .. })
-            | Node::ImplItem(&hir::ImplItem {
-                span,
-                kind: hir::ImplItemKind::Fn(ref sig, _),
-                ..
-            })
+            Node::Item(&hir::Item { kind: hir::ItemKind::Fn(ref sig, ..), .. })
+            | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(ref sig, _), .. })
             | Node::TraitItem(&hir::TraitItem {
-                span,
-                kind: hir::TraitItemKind::Fn(ref sig, _),
-                ..
+                kind: hir::TraitItemKind::Fn(ref sig, _), ..
             }) => (
-                sm.guess_head_span(span),
+                sig.span,
                 sig.decl
                     .inputs
                     .iter()
@@ -1138,7 +1132,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ),
             Node::Ctor(ref variant_data) => {
                 let span = variant_data.ctor_hir_id().map_or(DUMMY_SP, |id| hir.span(id));
-                let span = sm.guess_head_span(span);
                 (span, vec![ArgKind::empty(); variant_data.fields().len()])
             }
             _ => panic!("non-FnLike node found: {:?}", node),
@@ -2185,7 +2178,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         let mut post = vec![];
         for def_id in impls {
             match self.tcx.span_of_impl(*def_id) {
-                Ok(span) => spans.push(self.tcx.sess.source_map().guess_head_span(span)),
+                Ok(span) => spans.push(span),
                 Err(name) => {
                     crates.push(name);
                     if let Some(header) = to_pretty_impl_header(self.tcx, *def_id) {
@@ -2532,8 +2525,7 @@ pub fn recursive_type_with_infinite_size_error<'tcx>(
     spans: Vec<(Span, Option<hir::HirId>)>,
 ) {
     assert!(type_def_id.is_local());
-    let span = tcx.hir().span_if_local(type_def_id).unwrap();
-    let span = tcx.sess.source_map().guess_head_span(span);
+    let span = tcx.def_span(type_def_id);
     let path = tcx.def_path_str(type_def_id);
     let mut err =
         struct_span_err!(tcx.sess, span, E0072, "recursive type `{}` has infinite size", path);
