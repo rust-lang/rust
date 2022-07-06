@@ -427,19 +427,15 @@ impl Socket {
         self.0.set_nonblocking(nonblocking)
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
     pub fn set_mark(&self, mark: u32) -> io::Result<()> {
-        setsockopt(self, libc::SOL_SOCKET, libc::SO_MARK, mark as libc::c_int)
-    }
-
-    #[cfg(target_os = "freebsd")]
-    pub fn set_mark(&self, mark: u32) -> io::Result<()> {
-        setsockopt(self, libc::SOL_SOCKET, libc::SO_USER_COOKIE, mark)
-    }
-
-    #[cfg(target_os = "openbsd")]
-    pub fn set_mark(&self, mark: u32) -> io::Result<()> {
-        setsockopt(self, libc::SOL_SOCKET, libc::SO_RTABLE, mark as libc::c_int)
+        #[cfg(target_os = "linux")]
+        let option = libc::SO_MARK;
+        #[cfg(target_os = "freebsd")]
+        let option = libc::SO_USER_COOKIE;
+        #[cfg(target_os = "openbsd")]
+        let option = libc::SO_RTABLE;
+        setsockopt(self, libc::SOL_SOCKET, option, mark as libc::c_int)
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {

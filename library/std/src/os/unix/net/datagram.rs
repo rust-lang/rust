@@ -839,7 +839,6 @@ impl UnixDatagram {
     }
 
     /// Set the id of the socket for network filtering purpose
-    /// and is only a setter.
     ///
     /// ```no_run
     /// #![feature(unix_set_mark)]
@@ -847,12 +846,12 @@ impl UnixDatagram {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
-    ///     sock.set_mark(32 as u32).expect("set_mark function failed");
+    ///     sock.set_mark(32)?;
     ///     Ok(())
     /// }
     /// ```
     #[cfg(any(doc, target_os = "linux", target_os = "freebsd", target_os = "openbsd",))]
-    #[unstable(feature = "unix_set_mark", issue = "none")]
+    #[unstable(feature = "unix_set_mark", issue = "96467")]
     pub fn set_mark(&self, mark: u32) -> io::Result<()> {
         self.0.set_mark(mark)
     }
