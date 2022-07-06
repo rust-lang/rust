@@ -1,3 +1,5 @@
+use std::mem::transmute;
+
 fn one_line_ref() -> i16 {
     *&1
 }
@@ -48,6 +50,27 @@ fn dangling_pointer() -> *const i32 {
     &b.0 as *const i32
 }
 
+fn wide_ptr_ops() {
+    let a: *const dyn Send = &1 as &dyn Send;
+    let b: *const dyn Send = &1 as &dyn Send;
+    let _val = a == b;
+    let _val = a != b;
+    let _val = a < b;
+    let _val = a <= b;
+    let _val = a > b;
+    let _val = a >= b;
+
+    let a: *const [u8] = unsafe { transmute((1usize, 1usize)) };
+    let b: *const [u8] = unsafe { transmute((1usize, 2usize)) };
+    // confirmed with rustc.
+    assert!(!(a == b));
+    assert!(a != b);
+    assert!(a <= b);
+    assert!(a < b);
+    assert!(!(a >= b));
+    assert!(!(a > b));
+}
+
 fn main() {
     assert_eq!(one_line_ref(), 1);
     assert_eq!(basic_ref(), 1);
@@ -91,4 +114,6 @@ fn main() {
     assert!(dangling > 2);
     assert!(dangling > 3);
     assert!(dangling >= 4);
+
+    wide_ptr_ops();
 }
