@@ -181,12 +181,12 @@ pub(crate) fn complete_type_path(
                                                     acc.add_type_alias_with_eq(ctx, alias);
                                                 }
                                             });
-                                    }
 
-                                    let n_params =
-                                        trait_.type_or_const_param_count(ctx.sema.db, false);
-                                    if arg_idx >= n_params {
-                                        return; // only show assoc types
+                                        let n_params =
+                                            trait_.type_or_const_param_count(ctx.sema.db, false);
+                                        if arg_idx >= n_params {
+                                            return; // only show assoc types
+                                        }
                                     }
                                 }
                             }
