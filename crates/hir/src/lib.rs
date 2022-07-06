@@ -1709,7 +1709,11 @@ impl Trait {
         db.trait_data(self.id).is_unsafe
     }
 
-    pub fn type_parameters(&self, db: &dyn HirDatabase) -> Vec<TypeOrConstParamData> {
+    pub fn type_or_const_param_count(
+        &self,
+        db: &dyn HirDatabase,
+        count_required_only: bool,
+    ) -> usize {
         db.generic_params(GenericDefId::from(self.id))
             .type_or_consts
             .iter()
@@ -1721,9 +1725,9 @@ impl Trait {
                 }
                 _ => true,
             })
-            .map(|(_, ty)|ty.clone())
-            .collect()
-        }
+            .filter(|(_, ty)| !count_required_only || !ty.has_default())
+            .count()
+    }
 }
 
 impl HasVisibility for Trait {

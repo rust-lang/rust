@@ -47,6 +47,7 @@ pub struct LifetimeParamData {
 pub struct ConstParamData {
     pub name: Name,
     pub ty: Interned<TypeRef>,
+    pub has_default: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -67,6 +68,13 @@ impl TypeOrConstParamData {
         match self {
             TypeOrConstParamData::TypeParamData(x) => x.name.as_ref(),
             TypeOrConstParamData::ConstParamData(x) => Some(&x.name),
+        }
+    }
+
+    pub fn has_default(&self) -> bool {
+        match self {
+            TypeOrConstParamData::TypeParamData(x) => x.default.is_some(),
+            TypeOrConstParamData::ConstParamData(x) => x.has_default,
         }
     }
 
@@ -232,7 +240,11 @@ impl GenericParams {
                     let ty = const_param
                         .ty()
                         .map_or(TypeRef::Error, |it| TypeRef::from_ast(lower_ctx, it));
-                    let param = ConstParamData { name, ty: Interned::new(ty) };
+                    let param = ConstParamData {
+                        name,
+                        ty: Interned::new(ty),
+                        has_default: const_param.default_val().is_some(),
+                    };
                     self.type_or_consts.alloc(param.into());
                 }
             }

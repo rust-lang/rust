@@ -1,8 +1,7 @@
 //! Completion of names from the current scope in type position.
 
 use hir::{HirDisplay, ScopeDef};
-use itertools::Itertools;
-use syntax::{ast, AstNode};
+use syntax::{ast, AstNode, SyntaxKind};
 
 use crate::{
     context::{PathCompletionCtx, Qualified, TypeAscriptionTarget, TypeLocation},
@@ -141,34 +140,36 @@ pub(crate) fn complete_type_path(
                     return;
                 }
                 TypeLocation::GenericArgList(Some(arg_list)) => {
-                    // the current token is in which generic arg
-                    let arg_pos = if let Some((pos, _)) =
-                        arg_list.generic_args().find_position(|arg| {
-                            arg.syntax()
-                                .descendants_with_tokens()
-                                .any(|t| t.as_token() == Some(&ctx.original_token))
-                        }) {
-                        pos
-                    } else {
-                        0
-                    };
+                    let in_assoc_type_arg = ctx
+                        .original_token
+                        .parent_ancestors()
+                        .any(|node| node.kind() == SyntaxKind::ASSOC_TYPE_ARG);
 
-                    match arg_list.generic_args().next() {
-                        Some(ast::GenericArg::AssocTypeArg(_)) => {}
-                        _ => {
-                            if let Some(path_seg) =
-                                arg_list.syntax().parent().and_then(ast::PathSegment::cast)
+                    if !in_assoc_type_arg {
+                        if let Some(path_seg) =
+                            arg_list.syntax().parent().and_then(ast::PathSegment::cast)
+                        {
+                            if path_seg
+                                .syntax()
+                                .ancestors()
+                                .find_map(ast::TypeBound::cast)
+                                .is_some()
                             {
-                                if path_seg
-                                    .syntax()
-                                    .ancestors()
-                                    .find_map(ast::TypeBound::cast)
-                                    .is_some()
+                                if let Some(hir::PathResolution::Def(hir::ModuleDef::Trait(
+                                    trait_,
+                                ))) = ctx.sema.resolve_path(&path_seg.parent_path())
                                 {
-                                    if let Some(hir::PathResolution::Def(hir::ModuleDef::Trait(
-                                        trait_,
-                                    ))) = ctx.sema.resolve_path(&path_seg.parent_path())
-                                    {
+                                    let arg_idx = arg_list
+                                        .generic_args()
+                                        .filter(|arg| {
+                                            arg.syntax().text_range().end()
+                                                < ctx.original_token.text_range().start()
+                                        })
+                                        .count();
+
+                                    let n_required_params =
+                                        trait_.type_or_const_param_count(ctx.sema.db, true);
+                                    if arg_idx >= n_required_params {
                                         trait_
                                             .items_with_supertraits(ctx.sema.db)
                                             .into_iter()
@@ -180,10 +181,12 @@ pub(crate) fn complete_type_path(
                                                     acc.add_type_alias_with_eq(ctx, alias);
                                                 }
                                             });
+                                    }
 
-                                        if arg_pos >= trait_.type_parameters(ctx.sema.db).len() {
-                                            return; // only AssocTypeArgs make sense
-                                        }
+                                    let n_params =
+                                        trait_.type_or_const_param_count(ctx.sema.db, false);
+                                    if arg_idx >= n_params {
+                                        return; // only show assoc types
                                     }
                                 }
                             }
