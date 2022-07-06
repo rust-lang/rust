@@ -422,65 +422,67 @@ impl ::core::cmp::Ord for Unsized {
     }
 }
 
-// A packed tuple struct.
+// A packed tuple struct that impls `Copy`.
 #[repr(packed)]
-struct Packed(u32);
+struct PackedCopy(u32);
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::clone::Clone for Packed {
+impl ::core::clone::Clone for PackedCopy {
     #[inline]
-    fn clone(&self) -> Packed {
+    fn clone(&self) -> PackedCopy {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
     }
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::marker::Copy for Packed { }
+impl ::core::marker::Copy for PackedCopy { }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::fmt::Debug for Packed {
+impl ::core::fmt::Debug for PackedCopy {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         let Self(__self_0_0) = *self;
-        ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Packed",
+        ::core::fmt::Formatter::debug_tuple_field1_finish(f, "PackedCopy",
             &&__self_0_0)
     }
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::default::Default for Packed {
+impl ::core::default::Default for PackedCopy {
     #[inline]
-    fn default() -> Packed { Packed(::core::default::Default::default()) }
+    fn default() -> PackedCopy {
+        PackedCopy(::core::default::Default::default())
+    }
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::hash::Hash for Packed {
+impl ::core::hash::Hash for PackedCopy {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let Self(__self_0_0) = *self;
         ::core::hash::Hash::hash(&__self_0_0, state)
     }
 }
-impl ::core::marker::StructuralPartialEq for Packed {}
+impl ::core::marker::StructuralPartialEq for PackedCopy {}
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::cmp::PartialEq for Packed {
+impl ::core::cmp::PartialEq for PackedCopy {
     #[inline]
-    fn eq(&self, other: &Packed) -> bool {
+    fn eq(&self, other: &PackedCopy) -> bool {
         let Self(__self_0_0) = *self;
         let Self(__self_1_0) = *other;
         __self_0_0 == __self_1_0
     }
     #[inline]
-    fn ne(&self, other: &Packed) -> bool {
+    fn ne(&self, other: &PackedCopy) -> bool {
         let Self(__self_0_0) = *self;
         let Self(__self_1_0) = *other;
         __self_0_0 != __self_1_0
     }
 }
-impl ::core::marker::StructuralEq for Packed {}
+impl ::core::marker::StructuralEq for PackedCopy {}
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::cmp::Eq for Packed {
+impl ::core::cmp::Eq for PackedCopy {
     #[inline]
     #[doc(hidden)]
     #[no_coverage]
@@ -490,9 +492,9 @@ impl ::core::cmp::Eq for Packed {
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::cmp::PartialOrd for Packed {
+impl ::core::cmp::PartialOrd for PackedCopy {
     #[inline]
-    fn partial_cmp(&self, other: &Packed)
+    fn partial_cmp(&self, other: &PackedCopy)
         -> ::core::option::Option<::core::cmp::Ordering> {
         let Self(__self_0_0) = *self;
         let Self(__self_1_0) = *other;
@@ -501,12 +503,103 @@ impl ::core::cmp::PartialOrd for Packed {
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::cmp::Ord for Packed {
+impl ::core::cmp::Ord for PackedCopy {
     #[inline]
-    fn cmp(&self, other: &Packed) -> ::core::cmp::Ordering {
+    fn cmp(&self, other: &PackedCopy) -> ::core::cmp::Ordering {
         let Self(__self_0_0) = *self;
         let Self(__self_1_0) = *other;
         ::core::cmp::Ord::cmp(&__self_0_0, &__self_1_0)
+    }
+}
+
+// A packed tuple struct that does not impl `Copy`. Note that the alignment of
+// the field must be 1 for this code to be valid. Otherwise it triggers an
+// error "`#[derive]` can't be used on a `#[repr(packed)]` struct that does not
+// derive Copy (error E0133)" at MIR building time. This is a weird case and
+// it's possible that this struct is not supposed to work, but for now it does.
+#[repr(packed)]
+struct PackedNonCopy(u8);
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::clone::Clone for PackedNonCopy {
+    #[inline]
+    fn clone(&self) -> PackedNonCopy {
+        let Self(ref __self_0_0) = *self;
+        PackedNonCopy(::core::clone::Clone::clone(&*__self_0_0))
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::fmt::Debug for PackedNonCopy {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        let Self(ref __self_0_0) = *self;
+        ::core::fmt::Formatter::debug_tuple_field1_finish(f, "PackedNonCopy",
+            &&*__self_0_0)
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::default::Default for PackedNonCopy {
+    #[inline]
+    fn default() -> PackedNonCopy {
+        PackedNonCopy(::core::default::Default::default())
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::hash::Hash for PackedNonCopy {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        let Self(ref __self_0_0) = *self;
+        ::core::hash::Hash::hash(&*__self_0_0, state)
+    }
+}
+impl ::core::marker::StructuralPartialEq for PackedNonCopy {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialEq for PackedNonCopy {
+    #[inline]
+    fn eq(&self, other: &PackedNonCopy) -> bool {
+        let Self(ref __self_0_0) = *self;
+        let Self(ref __self_1_0) = *other;
+        *__self_0_0 == *__self_1_0
+    }
+    #[inline]
+    fn ne(&self, other: &PackedNonCopy) -> bool {
+        let Self(ref __self_0_0) = *self;
+        let Self(ref __self_1_0) = *other;
+        *__self_0_0 != *__self_1_0
+    }
+}
+impl ::core::marker::StructuralEq for PackedNonCopy {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Eq for PackedNonCopy {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u8>;
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialOrd for PackedNonCopy {
+    #[inline]
+    fn partial_cmp(&self, other: &PackedNonCopy)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        let Self(ref __self_0_0) = *self;
+        let Self(ref __self_1_0) = *other;
+        ::core::cmp::PartialOrd::partial_cmp(&*__self_0_0, &*__self_1_0)
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Ord for PackedNonCopy {
+    #[inline]
+    fn cmp(&self, other: &PackedNonCopy) -> ::core::cmp::Ordering {
+        let Self(ref __self_0_0) = *self;
+        let Self(ref __self_1_0) = *other;
+        ::core::cmp::Ord::cmp(&*__self_0_0, &*__self_1_0)
     }
 }
 

@@ -38,10 +38,19 @@ struct Big {
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Unsized([u32]);
 
-// A packed tuple struct.
+// A packed tuple struct that impls `Copy`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(packed)]
-struct Packed(u32);
+struct PackedCopy(u32);
+
+// A packed tuple struct that does not impl `Copy`. Note that the alignment of
+// the field must be 1 for this code to be valid. Otherwise it triggers an
+// error "`#[derive]` can't be used on a `#[repr(packed)]` struct that does not
+// derive Copy (error E0133)" at MIR building time. This is a weird case and
+// it's possible that this struct is not supposed to work, but for now it does.
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(packed)]
+struct PackedNonCopy(u8);
 
 // An empty enum.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
