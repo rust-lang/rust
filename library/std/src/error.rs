@@ -603,6 +603,7 @@ impl Error for string::FromUtf16Error {
 
 #[stable(feature = "str_parse_error2", since = "1.8.0")]
 impl Error for Infallible {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         match *self {}
     }

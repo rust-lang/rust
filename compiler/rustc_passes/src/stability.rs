@@ -760,8 +760,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     let impl_item = self.tcx.associated_item(impl_item_ref.id.def_id);
 
                     if let Some(def_id) = impl_item.trait_item_def_id {
-                        // Pass `None` to skip deprecation warnings.
-                        self.tcx.check_stability(def_id, None, impl_item_ref.span, None);
+                        self.tcx.check_stability(
+                            def_id,
+                            Some(impl_item_ref.id.hir_id()),
+                            impl_item_ref.span,
+                            None,
+                        );
                     }
                 }
             }
