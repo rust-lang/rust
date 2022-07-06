@@ -110,7 +110,7 @@ impl<'mir, 'tcx> GlobalStateInner {
         ecx: &MiriEvalContext<'mir, 'tcx>,
         addr: u64,
     ) -> Pointer<Option<Tag>> {
-        trace!("Transmuting 0x{:x} to a pointer", addr);
+        trace!("Transmuting {:#x} to a pointer", addr);
 
         let provenance = if ecx.machine.allow_ptr_int_transmute {
             // When we allow transmutes, treat them like casts: generating a wildcard pointer.
@@ -126,7 +126,7 @@ impl<'mir, 'tcx> GlobalStateInner {
         ecx: &MiriEvalContext<'mir, 'tcx>,
         addr: u64,
     ) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
-        trace!("Casting 0x{:x} to a pointer", addr);
+        trace!("Casting {:#x} to a pointer", addr);
 
         let global_state = ecx.machine.intptrcast.borrow();
 

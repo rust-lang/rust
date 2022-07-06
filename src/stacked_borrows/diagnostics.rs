@@ -140,9 +140,9 @@ impl AllocHistory {
         stack: &Stack,
     ) -> InterpError<'tcx> {
         let action = format!(
-            "trying to reborrow {derived_from:?} for {:?} permission at {alloc_id:?}[{:#x}]",
-            new.perm,
-            error_offset.bytes(),
+            "trying to reborrow {derived_from:?} for {new_perm:?} permission at {alloc_id:?}[{offset:#x}]",
+            new_perm = new.perm,
+            offset = error_offset.bytes(),
         );
         err_sb_ub(
             format!("{}{}", action, error_cause(stack, derived_from)),
@@ -162,8 +162,8 @@ impl AllocHistory {
         stack: &Stack,
     ) -> InterpError<'tcx> {
         let action = format!(
-            "attempting a {access} using {tag:?} at {alloc_id:?}[{:#x}]",
-            error_offset.bytes(),
+            "attempting a {access} using {tag:?} at {alloc_id:?}[{offset:#x}]",
+            offset = error_offset.bytes(),
         );
         err_sb_ub(
             format!("{}{}", action, error_cause(stack, tag)),

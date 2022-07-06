@@ -155,7 +155,7 @@ impl Provenance for Tag {
 
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (tag, addr) = ptr.into_parts(); // address is absolute
-        write!(f, "0x{:x}", addr.bytes())?;
+        write!(f, "{:#x}", addr.bytes())?;
 
         match tag {
             Tag::Concrete { alloc_id, sb } => {

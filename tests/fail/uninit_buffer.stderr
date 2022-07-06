@@ -17,7 +17,7 @@ LL |         drop(slice1.cmp(slice2));
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-Uninitialized read occurred at offsets 0x4..0x10 into this allocation:
+Uninitialized read occurred at ALLOC[0x4..0x10], in this allocation:
 ALLOC (Rust heap, size: 32, align: 8) {
     0x00 │ 41 42 43 44 __ __ __ __ __ __ __ __ __ __ __ __ │ ABCD░░░░░░░░░░░░
     0x10 │ 00 __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ │ .░░░░░░░░░░░░░░░
