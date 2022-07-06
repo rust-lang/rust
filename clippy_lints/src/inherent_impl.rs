@@ -127,7 +127,7 @@ fn get_impl_span(cx: &LateContext<'_>, id: LocalDefId) -> Option<Span> {
         (!span.from_expansion()
             && impl_item.generics.params.is_empty()
             && !is_lint_allowed(cx, MULTIPLE_INHERENT_IMPL, id))
-        .then(|| span)
+        .then_some(span)
     } else {
         None
     }
