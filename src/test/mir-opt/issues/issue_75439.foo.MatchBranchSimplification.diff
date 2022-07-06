@@ -27,7 +27,7 @@
           _2 = transmute::<[u8; 16], [u32; 4]>(move _3) -> bb1; // scope 2 at $DIR/issue-75439.rs:7:37: 7:53
                                            // mir::Constant
                                            // + span: $DIR/issue-75439.rs:7:37: 7:46
-                                           // + literal: Const { ty: unsafe extern "rust-intrinsic" fn([u8; 16]) -> [u32; 4] {transmute::<[u8; 16], [u32; 4]>}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: unsafe extern "rust-intrinsic" fn([u8; 16]) -> [u32; 4] {transmute::<[u8; 16], [u32; 4]>}, val: Value(<ZST>) }
       }
   
       bb1: {
@@ -50,7 +50,7 @@
           _5 = transmute::<u32, [u8; 4]>(move _6) -> bb7; // scope 4 at $DIR/issue-75439.rs:10:23: 10:36
                                            // mir::Constant
                                            // + span: $DIR/issue-75439.rs:10:23: 10:32
-                                           // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u32) -> [u8; 4] {transmute::<u32, [u8; 4]>}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u32) -> [u8; 4] {transmute::<u32, [u8; 4]>}, val: Value(<ZST>) }
       }
   
       bb5: {

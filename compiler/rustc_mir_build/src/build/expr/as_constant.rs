@@ -61,7 +61,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         inferred_ty: ty,
                     })
                 });
-                let literal = ConstantKind::Val(ConstValue::Zst, ty);
+                let literal = ConstantKind::Val(ConstValue::ZeroSized, ty);
 
                 Constant { span, user_ty: user_ty, literal }
             }

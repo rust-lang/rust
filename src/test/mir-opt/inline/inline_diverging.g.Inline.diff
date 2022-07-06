@@ -38,9 +38,9 @@
 +         _7 = begin_panic::<&str>(const "explicit panic"); // scope 1 at $SRC_DIR/std/src/panic.rs:LL:COL
                                            // mir::Constant
 -                                          // + span: $DIR/inline-diverging.rs:16:9: 16:14
--                                          // + literal: Const { ty: fn() -> ! {panic}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: fn() -> ! {panic}, val: Value(<ZST>) }
 +                                          // + span: $SRC_DIR/std/src/panic.rs:LL:COL
-+                                          // + literal: Const { ty: fn(&str) -> ! {begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
++                                          // + literal: Const { ty: fn(&str) -> ! {begin_panic::<&str>}, val: Value(<ZST>) }
 +                                          // mir::Constant
 +                                          // + span: $SRC_DIR/std/src/panic.rs:LL:COL
 +                                          // + literal: Const { ty: &str, val: Value(Slice(..)) }

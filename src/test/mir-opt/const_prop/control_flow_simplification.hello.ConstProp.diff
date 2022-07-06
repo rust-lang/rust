@@ -19,7 +19,7 @@
           _2 = begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/std/src/panic.rs:LL:COL
-                                           // + literal: Const { ty: fn(&str) -> ! {begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn(&str) -> ! {begin_panic::<&str>}, val: Value(<ZST>) }
                                            // mir::Constant
                                            // + span: $SRC_DIR/std/src/panic.rs:LL:COL
                                            // + literal: Const { ty: &str, val: Value(Slice(..)) }

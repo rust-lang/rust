@@ -39,7 +39,7 @@ fn main() -> () {
         _5 = foo(move _6) -> bb1;        // scope 4 at $DIR/array-index-is-temporary.rs:16:21: 16:27
                                          // mir::Constant
                                          // + span: $DIR/array-index-is-temporary.rs:16:21: 16:24
-                                         // + literal: Const { ty: unsafe fn(*mut usize) -> u32 {foo}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: unsafe fn(*mut usize) -> u32 {foo}, val: Value(<ZST>) }
     }
 
     bb1: {

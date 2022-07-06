@@ -16,7 +16,7 @@
           _3 = main as fn() (Pointer(ReifyFnPointer)); // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:17
                                            // mir::Constant
                                            // + span: $DIR/reify_fn_ptr.rs:4:13: 4:17
-                                           // + literal: Const { ty: fn() {main}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() {main}, val: Value(<ZST>) }
           _2 = move _3 as usize (PointerExposeAddress); // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:26
           StorageDead(_3);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:25: 4:26
           _1 = move _2 as *const fn() (PointerFromExposedAddress); // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:41

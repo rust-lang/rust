@@ -167,7 +167,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     }
 
     match const_val {
-        ConstValue::Zst => unreachable!(), // we already handles ZST above
+        ConstValue::ZeroSized => unreachable!(), // we already handles ZST above
         ConstValue::Scalar(x) => match x {
             Scalar::Int(int) => {
                 if fx.clif_type(layout.ty).is_some() {

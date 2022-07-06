@@ -272,7 +272,7 @@ pub fn valtree_to_const_value<'tcx>(
     match ty.kind() {
         ty::FnDef(..) => {
             assert!(valtree.unwrap_branch().is_empty());
-            ConstValue::Zst
+            ConstValue::ZeroSized
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => match valtree {
             ty::ValTree::Leaf(scalar_int) => ConstValue::Scalar(Scalar::Int(scalar_int)),

@@ -20,7 +20,7 @@ fn main() -> () {
         _2 = <str as ToString>::to_string(move _3) -> bb1; // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:34
                                          // mir::Constant
                                          // + span: $DIR/no-spurious-drop-after-call.rs:9:23: 9:32
-                                         // + literal: Const { ty: for<'r> fn(&'r str) -> String {<str as ToString>::to_string}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: for<'r> fn(&'r str) -> String {<str as ToString>::to_string}, val: Value(<ZST>) }
     }
 
     bb1: {
@@ -28,7 +28,7 @@ fn main() -> () {
         _1 = std::mem::drop::<String>(move _2) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:5: 9:35
                                          // mir::Constant
                                          // + span: $DIR/no-spurious-drop-after-call.rs:9:5: 9:19
-                                         // + literal: Const { ty: fn(String) {std::mem::drop::<String>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(String) {std::mem::drop::<String>}, val: Value(<ZST>) }
     }
 
     bb2: {
