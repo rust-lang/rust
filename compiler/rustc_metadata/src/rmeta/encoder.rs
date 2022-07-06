@@ -1494,7 +1494,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.constness.set(def_id.index, sig.header.constness);
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
-                record!(self.tables.macro_definition[def_id] <- macro_def);
+                if macro_def.macro_rules {
+                    self.tables.macro_rules.set(def_id.index, ());
+                }
+                record!(self.tables.macro_definition[def_id] <- &*macro_def.body);
             }
             hir::ItemKind::Mod(ref m) => {
                 return self.encode_info_for_mod(item.def_id, m);

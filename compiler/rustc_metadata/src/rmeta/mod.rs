@@ -394,7 +394,9 @@ define_tables! {
     may_have_doc_links: Table<DefIndex, ()>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,
     assoc_container: Table<DefIndex, ty::AssocItemContainer>,
-    macro_definition: Table<DefIndex, LazyValue<ast::MacroDef>>,
+    // Slot is full when macro is macro_rules.
+    macro_rules: Table<DefIndex, ()>,
+    macro_definition: Table<DefIndex, LazyValue<ast::MacArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
     // Slot is full when there is a self parameter.
     fn_has_self_parameter: Table<DefIndex, ()>,

@@ -1010,13 +1010,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 let span = self.get_span(child_index, sess);
                 let macro_rules = match kind {
                     DefKind::Macro(..) => {
-                        self.root
-                            .tables
-                            .macro_definition
-                            .get(self, child_index)
-                            .unwrap()
-                            .decode((self, sess))
-                            .macro_rules
+                        self.root.tables.macro_rules.get(self, child_index).is_some()
                     }
                     _ => false,
                 };
@@ -1326,7 +1320,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn get_macro(self, id: DefIndex, sess: &Session) -> ast::MacroDef {
         match self.def_kind(id) {
             DefKind::Macro(_) => {
-                self.root.tables.macro_definition.get(self, id).unwrap().decode((self, sess))
+                let macro_rules = self.root.tables.macro_rules.get(self, id).is_some();
+                let body =
+                    self.root.tables.macro_definition.get(self, id).unwrap().decode((self, sess));
+                ast::MacroDef { macro_rules, body: ast::ptr::P(body) }
             }
             _ => bug!(),
         }
