@@ -119,6 +119,18 @@ fn more_discriminant_overflow() {
     }
 }
 
+fn overaligned_casts() {
+    #[allow(dead_code)]
+    #[repr(align(8))]
+    enum Aligned {
+        Zero = 0,
+        One = 1,
+    }
+
+    let aligned = Aligned::Zero;
+    assert_eq!(aligned as u8, 0);
+}
+
 fn main() {
     test(MyEnum::MyEmptyVariant);
     test(MyEnum::MyNewtypeVariant(42));
@@ -127,4 +139,5 @@ fn main() {
 
     discriminant_overflow();
     more_discriminant_overflow();
+    overaligned_casts();
 }
