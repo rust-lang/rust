@@ -1,0 +1,36 @@
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/suggest-adding-missing-zero-to-floating-point-number.rs:4:7
+   |
+LL |     2.e1;
+   |       ^^
+   |
+help: If the number is meant to be a floating point number, consider adding a `0` after the period
+   |
+LL |     2.0e1;
+   |       +
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/suggest-adding-missing-zero-to-floating-point-number.rs:5:7
+   |
+LL |     2.f32;
+   |       ^^^
+   |
+help: If the number is meant to be a floating point number, consider adding a `0` after the period
+   |
+LL |     2.0f32;
+   |       +
+
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/suggest-adding-missing-zero-to-floating-point-number.rs:6:7
+   |
+LL |     2.f64;
+   |       ^^^
+   |
+help: If the number is meant to be a floating point number, consider adding a `0` after the period
+   |
+LL |     2.0f64;
+   |       +
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0610`.

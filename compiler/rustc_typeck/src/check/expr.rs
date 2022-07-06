@@ -2162,14 +2162,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if !expr_t.is_primitive_ty() {
             self.ban_nonexisting_field(field, base, expr, expr_t);
         } else {
-            type_error_struct!(
+            let field_name = field.to_string();
+            let mut err = type_error_struct!(
                 self.tcx().sess,
                 field.span,
                 expr_t,
                 E0610,
                 "`{expr_t}` is a primitive type and therefore doesn't have fields",
-            )
-            .emit();
+            );
+            if expr_t.is_integral()
+                && (field_name
+                    .strip_prefix('e')
+                    .or_else(|| field_name.strip_prefix('E'))
+                    .map(|prefix| prefix.chars().all(|c| c.is_numeric()))
+                    .unwrap_or_default()
+                    || field.name == sym::f32
+                    || field.name == sym::f64)
+            {
+                err.span_suggestion_verbose(
+                    field.span.shrink_to_lo(),
+                    "If the number is meant to be a floating point number, consider adding a `0` after the period",
+                    '0',
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            err.emit();
         }
 
         self.tcx().ty_error()
