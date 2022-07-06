@@ -55,10 +55,9 @@ fn main() {
                     let b = buf[0]; // capture buf[0]
                     thread::sleep(Duration::from_millis(200));
 
-                    // In this test, success is indicated by failing.
-                    if buf[0] == b {
-                        panic!("Success!");
-                    }
+                    // Check the buffer hasn't been written to after read.
+                    dbg!(buf[0], b);
+                    assert_eq!(buf[0], b);
                 }
             }
         })
@@ -71,6 +70,12 @@ fn main() {
     let _ = server.write(b"x");
     thread::sleep(Duration::from_millis(100));
     let _ = server.write(b"y");
-    let _ = t1.join();
-    let _ = t2.join();
+
+    // This is run fail because we need to test for the `abort`.
+    // That failing to run is the success case.
+    if t1.join().is_err() || t2.join().is_err() {
+        return;
+    } else {
+        panic!("success");
+    }
 }
