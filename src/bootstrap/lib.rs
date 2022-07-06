@@ -109,7 +109,7 @@ use std::env;
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command};
+use std::process::Command;
 use std::str;
 
 use filetime::FileTime;
@@ -711,7 +711,7 @@ impl Build {
             for failure in failures.iter() {
                 eprintln!("  - {}\n", failure);
             }
-            process::exit(1);
+            detail_exit(1);
         }
 
         #[cfg(feature = "build-metrics")]
@@ -1617,7 +1617,7 @@ Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
 to download LLVM rather than building it.
 "
                 );
-                std::process::exit(1);
+                detail_exit(1);
             }
         }
 
@@ -1645,6 +1645,20 @@ fn chmod(path: &Path, perms: u32) {
 }
 #[cfg(windows)]
 fn chmod(_path: &Path, _perms: u32) {}
+
+/// If code is not 0 (successful exit status), exit status is 101 (rust's default error code.)
+/// If the test is running and code is an error code, it will cause a panic.
+fn detail_exit(code: i32) -> ! {
+    // Successful exit
+    if code == 0 {
+        std::process::exit(0);
+    }
+    if cfg!(test) {
+        panic!("status code: {}", code);
+    } else {
+        std::panic::resume_unwind(Box::new(code));
+    }
+}
 
 impl Compiler {
     pub fn with_stage(mut self, stage: u32) -> Compiler {

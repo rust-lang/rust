@@ -13,7 +13,7 @@ use std::fs;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::process::{exit, Command, Stdio};
+use std::process::{Command, Stdio};
 use std::str;
 
 use serde::Deserialize;
@@ -1328,7 +1328,7 @@ pub fn run_cargo(
     });
 
     if !ok {
-        exit(1);
+        crate::detail_exit(1);
     }
 
     // Ok now we need to actually find all the files listed in `toplevel`. We've

@@ -4,7 +4,6 @@
 //! has various flags to configure how it's run.
 
 use std::path::PathBuf;
-use std::process;
 
 use getopts::Options;
 
@@ -261,7 +260,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                 // subcommand.
                 println!("{}\n", subcommand_help);
                 let exit_code = if args.is_empty() { 0 } else { 1 };
-                process::exit(exit_code);
+                crate::detail_exit(exit_code);
             }
         };
 
@@ -347,7 +346,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             } else if verbose {
                 panic!("No paths available for subcommand `{}`", subcommand.as_str());
             }
-            process::exit(exit_code);
+            crate::detail_exit(exit_code);
         };
 
         // Done specifying what options are possible, so do the getopts parsing
@@ -379,7 +378,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                 "Sorry, I couldn't figure out which subcommand you were trying to specify.\n\
                  You may need to move some options to after the subcommand.\n"
             );
-            process::exit(1);
+            crate::detail_exit(1);
         }
         // Extra help text for some commands
         match subcommand {
@@ -600,7 +599,7 @@ Arguments:
                         eprintln!("error: {}", err);
                         eprintln!("help: the available profiles are:");
                         eprint!("{}", Profile::all_for_help("- "));
-                        std::process::exit(1);
+                        crate::detail_exit(1);
                     })
                 } else {
                     t!(crate::setup::interactive_path())
@@ -614,7 +613,7 @@ Arguments:
                 || matches.opt_str("keep-stage-std").is_some()
             {
                 eprintln!("--keep-stage not yet supported for x.py check");
-                process::exit(1);
+                crate::detail_exit(1);
             }
         }
 
@@ -805,7 +804,7 @@ fn parse_deny_warnings(matches: &getopts::Matches) -> Option<bool> {
         Some("warn") => Some(false),
         Some(value) => {
             eprintln!(r#"invalid value for --warnings: {:?}, expected "warn" or "deny""#, value,);
-            process::exit(1);
+            crate::detail_exit(1);
         }
         None => None,
     }
