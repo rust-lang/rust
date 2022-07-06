@@ -184,19 +184,22 @@ impl Comments {
 
     fn parse_command(&mut self, command: &str, l: usize) -> Result<()> {
         // Commands are letters or dashes, grab everything until the first character that is neither of those.
-        let (command, args) = match command.chars().position(|c: char| !c.is_alphabetic() && c != '-') {
-            None => (command, ""),
-            Some(i) => {
-                let (command, args) = command.split_at(i);
-                let mut args = args.chars();
-                let next = args.next().expect("the `position` above guarantees that there is at least one char");
-                let args = match next {
-                    ':' | ' ' => args.as_str(),
-                    _ => bail!("expected space or `:`, got `{next}`"),
-                };
-                (command, args)
-            }
-        };
+        let (command, args) =
+            match command.chars().position(|c: char| !c.is_alphabetic() && c != '-') {
+                None => (command, ""),
+                Some(i) => {
+                    let (command, args) = command.split_at(i);
+                    let mut args = args.chars();
+                    let next = args
+                        .next()
+                        .expect("the `position` above guarantees that there is at least one char");
+                    let args = match next {
+                        ':' | ' ' => args.as_str(),
+                        _ => bail!("expected space or `:`, got `{next}`"),
+                    };
+                    (command, args)
+                }
+            };
 
         match command {
             "revisions" => {
