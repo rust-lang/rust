@@ -699,6 +699,11 @@ impl FunctionBody {
             ast::Expr::PathExpr(path_expr) => {
                 cb(path_expr.path().and_then(|it| it.as_single_name_ref()))
             }
+            ast::Expr::ClosureExpr(closure_expr) => {
+                if let Some(body) = closure_expr.body() {
+                    body.syntax().descendants().map(ast::NameRef::cast).for_each(|it| cb(it));
+                }
+            }
             ast::Expr::MacroExpr(expr) => {
                 if let Some(tt) = expr.macro_call().and_then(|call| call.token_tree()) {
                     tt.syntax()
@@ -4841,6 +4846,31 @@ impl Struct {
     fn $0fun_name(&self) -> i32 {
         self.0 + 2
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn closure_arguments() {
+        check_assist(
+            extract_function,
+            r#"
+fn parent(factor: i32) {
+    let v = &[1, 2, 3];
+
+    $0v.iter().map(|it| it * factor);$0
+}
+"#,
+            r#"
+fn parent(factor: i32) {
+    let v = &[1, 2, 3];
+
+    fun_name(v, factor);
+}
+
+fn $0fun_name(v: &[i32; 3], factor: i32) {
+    v.iter().map(|it| it * factor);
 }
 "#,
         );
