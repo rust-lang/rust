@@ -41,6 +41,7 @@ use hir_def::{
     adt::{ReprKind, VariantData},
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, LabelId, Pat, PatId},
+    generics::{TypeOrConstParamData, TypeParamProvenance},
     item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
     nameres::{self, diagnostics::DefDiagnostic},
@@ -1706,6 +1707,26 @@ impl Trait {
 
     pub fn is_unsafe(&self, db: &dyn HirDatabase) -> bool {
         db.trait_data(self.id).is_unsafe
+    }
+
+    pub fn type_or_const_param_count(
+        &self,
+        db: &dyn HirDatabase,
+        count_required_only: bool,
+    ) -> usize {
+        db.generic_params(GenericDefId::from(self.id))
+            .type_or_consts
+            .iter()
+            .filter(|(_, ty)| match ty {
+                TypeOrConstParamData::TypeParamData(ty)
+                    if ty.provenance != TypeParamProvenance::TypeParamList =>
+                {
+                    false
+                }
+                _ => true,
+            })
+            .filter(|(_, ty)| !count_required_only || !ty.has_default())
+            .count()
     }
 }
 
