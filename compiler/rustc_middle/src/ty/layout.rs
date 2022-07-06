@@ -235,9 +235,8 @@ fn sanity_check_layout<'tcx>(
     if cfg!(debug_assertions) {
         fn check_layout_abi<'tcx>(tcx: TyCtxt<'tcx>, layout: Layout<'tcx>) {
             match layout.abi() {
-                Abi::Scalar(_scalar) => {
+                Abi::Scalar(scalar) => {
                     // No padding in scalars.
-                    /* FIXME(#96185):
                     assert_eq!(
                         layout.align().abi,
                         scalar.align(&tcx).abi,
@@ -247,7 +246,7 @@ fn sanity_check_layout<'tcx>(
                         layout.size(),
                         scalar.size(&tcx),
                         "size mismatch between ABI and layout in {layout:#?}"
-                    );*/
+                    );
                 }
                 Abi::Vector { count, element } => {
                     // No padding in vectors. Alignment can be strengthened, though.
