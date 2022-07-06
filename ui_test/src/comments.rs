@@ -4,7 +4,7 @@ use regex::Regex;
 
 use crate::rustc_stderr::Level;
 
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{bail, ensure, eyre, Result};
 
 #[cfg(test)]
 mod tests;
@@ -66,43 +66,6 @@ impl Condition {
     }
 }
 
-macro_rules! checked {
-    ($path:expr, $l:expr) => {
-        let path = $path;
-        let l = $l;
-        #[allow(unused_macros)]
-        macro_rules! exit {
-            ($fmt:expr $$(,$args:expr)*) => {{
-                eprint!("{}:{l}: ", path.display());
-                eprintln!($fmt, $$($args,)*);
-                #[cfg(not(test))]
-                std::process::exit(1);
-                #[cfg(test)]
-                panic!();
-            }};
-        }
-        #[allow(unused_macros)]
-        macro_rules! check {
-            ($cond:expr, $fmt:expr $$(,$args:expr)*) => {{
-                if !$cond {
-                    exit!($fmt $$(,$args)*);
-                }
-            }};
-        }
-        #[allow(unused_macros)]
-        macro_rules! unwrap {
-            ($cond:expr, $fmt:expr $$(,$args:expr)*) => {{
-                match $cond {
-                    Some(val) => val,
-                    None => {
-                        exit!($fmt $$(,$args)*);
-                    }
-                }
-            }};
-        }
-    };
-}
-
 impl Comments {
     pub(crate) fn parse_file(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)?;
@@ -121,24 +84,36 @@ impl Comments {
         let mut fallthrough_to = None;
         for (l, line) in content.lines().enumerate() {
             let l = l + 1; // enumerate starts at 0, but line numbers start at 1
-            if let Some((_, command)) = line.split_once("//@") {
-                let command = command.trim();
-                if let Some((command, args)) = command.split_once(':') {
-                    this.parse_command_with_args(command, args, path, l);
-                } else if let Some((command, _comments)) = command.split_once(' ') {
-                    this.parse_command(command, path, l)
-                } else {
-                    this.parse_command(command, path, l)
-                }
-            } else if let Some((_, pattern)) = line.split_once("//~") {
-                this.parse_pattern(pattern, &mut fallthrough_to, path, l)
-            } else if let Some((_, pattern)) = line.split_once("//[") {
-                this.parse_revisioned_pattern(pattern, &mut fallthrough_to, path, l)
-            } else {
-                fallthrough_to = None;
-            }
+            this.parse_checked_line(l, &mut fallthrough_to, line).map_err(|err| {
+                err.wrap_err(format!("{}:{l}: failed to parse annotation", path.display()))
+            })?;
         }
         Ok(this)
+    }
+
+    fn parse_checked_line(
+        &mut self,
+        l: usize,
+        fallthrough_to: &mut Option<usize>,
+        line: &str,
+    ) -> Result<()> {
+        if let Some((_, command)) = line.split_once("//@") {
+            let command = command.trim();
+            if let Some((command, args)) = command.split_once(':') {
+                self.parse_command_with_args(command, args, l)
+            } else if let Some((command, _comments)) = command.split_once(' ') {
+                self.parse_command(command)
+            } else {
+                self.parse_command(command)
+            }
+        } else if let Some((_, pattern)) = line.split_once("//~") {
+            self.parse_pattern(pattern, fallthrough_to, l)
+        } else if let Some((_, pattern)) = line.split_once("//[") {
+            self.parse_revisioned_pattern(pattern, fallthrough_to, l)
+        } else {
+            *fallthrough_to = None;
+            Ok(())
+        }
     }
 
     /// Parse comments in `content`.
@@ -214,11 +189,10 @@ impl Comments {
         Ok(this)
     }
 
-    fn parse_command_with_args(&mut self, command: &str, args: &str, path: &Path, l: usize) {
-        checked!(path, l);
+    fn parse_command_with_args(&mut self, command: &str, args: &str, l: usize) -> Result<()> {
         match command {
             "revisions" => {
-                check!(self.revisions.is_none(), "cannot specifiy revisions twice");
+                ensure!(self.revisions.is_none(), "cannot specifiy revisions twice");
                 self.revisions = Some(args.split_whitespace().map(|s| s.to_string()).collect());
             }
             "compile-flags" => {
@@ -226,22 +200,22 @@ impl Comments {
             }
             "rustc-env" =>
                 for env in args.split_whitespace() {
-                    let (k, v) = unwrap!(
-                        env.split_once('='),
-                        "environment variables must be key/value pairs separated by a `=`"
-                    );
+                    let (k, v) = env.split_once('=').ok_or_else(|| {
+                        eyre!("environment variables must be key/value pairs separated by a `=`")
+                    })?;
                     self.env_vars.push((k.to_string(), v.to_string()));
                 },
             "normalize-stderr-test" => {
-                let (from, to) =
-                    unwrap!(args.split_once("->"), "normalize-stderr-test needs a `->`");
+                let (from, to) = args
+                    .split_once("->")
+                    .ok_or_else(|| eyre!("normalize-stderr-test needs a `->`"))?;
                 let from = from.trim().trim_matches('"');
                 let to = to.trim().trim_matches('"');
-                let from = unwrap!(Regex::new(from).ok(), "invalid regex");
+                let from = Regex::new(from).ok().ok_or_else(|| eyre!("invalid regex"))?;
                 self.normalize_stderr.push((from, to.to_string()));
             }
             "error-pattern" => {
-                check!(
+                ensure!(
                     self.error_pattern.is_none(),
                     "cannot specifiy error_pattern twice, previous: {:?}",
                     self.error_pattern
@@ -249,56 +223,52 @@ impl Comments {
                 self.error_pattern = Some((args.trim().to_string(), l));
             }
             // Maybe the user just left a comment explaining a command without arguments
-            _ => self.parse_command(command, path, l),
+            _ => self.parse_command(command)?,
         }
+        Ok(())
     }
 
-    fn parse_command(&mut self, command: &str, path: &Path, l: usize) {
-        checked!(path, l);
-
+    fn parse_command(&mut self, command: &str) -> Result<()> {
         if let Some(s) = command.strip_prefix("ignore-") {
             self.ignore.push(Condition::parse(s));
-            return;
+            return Ok(());
         }
 
         if let Some(s) = command.strip_prefix("only-") {
             self.only.push(Condition::parse(s));
-            return;
+            return Ok(());
         }
 
         if command.starts_with("stderr-per-bitwidth") {
-            check!(!self.stderr_per_bitwidth, "cannot specifiy stderr-per-bitwidth twice");
+            ensure!(!self.stderr_per_bitwidth, "cannot specifiy stderr-per-bitwidth twice");
             self.stderr_per_bitwidth = true;
-            return;
+            return Ok(());
         }
 
-        exit!("unknown command {command}");
+        bail!("unknown command {command}");
     }
 
     fn parse_pattern(
         &mut self,
         pattern: &str,
         fallthrough_to: &mut Option<usize>,
-        path: &Path,
         l: usize,
-    ) {
-        self.parse_pattern_inner(pattern, fallthrough_to, None, path, l)
+    ) -> Result<()> {
+        self.parse_pattern_inner(pattern, fallthrough_to, None, l)
     }
 
     fn parse_revisioned_pattern(
         &mut self,
         pattern: &str,
         fallthrough_to: &mut Option<usize>,
-        path: &Path,
         l: usize,
-    ) {
-        checked!(path, l);
+    ) -> Result<()> {
         let (revision, pattern) =
-            unwrap!(pattern.split_once(']'), "`//[` without corresponding `]`");
+            pattern.split_once(']').ok_or_else(|| eyre!("`//[` without corresponding `]`"))?;
         if let Some(pattern) = pattern.strip_prefix('~') {
-            self.parse_pattern_inner(pattern, fallthrough_to, Some(revision.to_owned()), path, l)
+            self.parse_pattern_inner(pattern, fallthrough_to, Some(revision.to_owned()), l)
         } else {
-            exit!("revisioned pattern must have `~` following the `]`");
+            bail!("revisioned pattern must have `~` following the `]`");
         }
     }
 
@@ -308,21 +278,25 @@ impl Comments {
         pattern: &str,
         fallthrough_to: &mut Option<usize>,
         revision: Option<String>,
-        path: &Path,
         l: usize,
-    ) {
-        checked!(path, l);
+    ) -> Result<()> {
         // FIXME: check that the error happens on the marked line
 
-        let (match_line, pattern) = match unwrap!(pattern.chars().next(), "no pattern specified") {
-            '|' =>
-                (*unwrap!(fallthrough_to, "`//~|` pattern without preceding line"), &pattern[1..]),
-            '^' => {
-                let offset = pattern.chars().take_while(|&c| c == '^').count();
-                (l - offset, &pattern[offset..])
-            }
-            _ => (l, pattern),
-        };
+        let (match_line, pattern) =
+            match pattern.chars().next().ok_or_else(|| eyre!("no pattern specified"))? {
+                '|' =>
+                    (
+                        *fallthrough_to
+                            .as_mut()
+                            .ok_or_else(|| eyre!("`//~|` pattern without preceding line"))?,
+                        &pattern[1..],
+                    ),
+                '^' => {
+                    let offset = pattern.chars().take_while(|&c| c == '^').count();
+                    (l - offset, &pattern[offset..])
+                }
+                _ => (l, pattern),
+            };
 
         let (level, pattern) = match pattern.trim_start().split_once(|c| matches!(c, ':' | ' ')) {
             None => (None, pattern),
@@ -335,7 +309,7 @@ impl Comments {
 
         let matched = pattern.trim().to_string();
 
-        check!(!matched.is_empty(), "no pattern specified");
+        ensure!(!matched.is_empty(), "no pattern specified");
 
         *fallthrough_to = Some(match_line);
 
@@ -346,5 +320,7 @@ impl Comments {
             definition_line: l,
             line: match_line,
         });
+
+        Ok(())
     }
 }

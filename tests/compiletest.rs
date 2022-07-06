@@ -2,7 +2,7 @@ use colored::*;
 use regex::Regex;
 use std::env;
 use std::path::PathBuf;
-use ui_test::{Config, Mode, OutputConflictHandling, color_eyre::Result};
+use ui_test::{color_eyre::Result, Config, Mode, OutputConflictHandling};
 
 fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))

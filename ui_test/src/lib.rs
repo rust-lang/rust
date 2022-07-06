@@ -7,12 +7,12 @@ use std::process::{Command, ExitStatus};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
+pub use color_eyre;
+use color_eyre::eyre::Result;
 use colored::*;
 use comments::ErrorMatch;
 use regex::Regex;
 use rustc_stderr::{Level, Message};
-use color_eyre::eyre::Result;
-pub use color_eyre;
 
 use crate::comments::{Comments, Condition};
 
@@ -68,7 +68,7 @@ pub fn run_tests(config: Config) -> Result<()> {
     let ignored = AtomicUsize::default();
     let filtered = AtomicUsize::default();
 
-    crossbeam::scope(|s| {
+    crossbeam::scope(|s| -> Result<()> {
         // Create a thread that is in charge of walking the directory and submitting jobs.
         // It closes the channel when it is done.
         s.spawn(|_| {
@@ -94,9 +94,11 @@ pub fn run_tests(config: Config) -> Result<()> {
             drop(submit);
         });
 
+        let mut threads = vec![];
+
         // Create N worker threads that receive files to test.
         for _ in 0..std::thread::available_parallelism().unwrap().get() {
-            s.spawn(|_| -> Result<()> {
+            threads.push(s.spawn(|_| -> Result<()> {
                 for path in &receive {
                     if !config.path_filter.is_empty() {
                         let path_display = path.display().to_string();
@@ -145,10 +147,14 @@ pub fn run_tests(config: Config) -> Result<()> {
                     }
                 }
                 Ok(())
-            });
+            }));
         }
+        for thread in threads {
+            thread.join().unwrap()?;
+        }
+        Ok(())
     })
-    .unwrap();
+    .unwrap()?;
 
     // Print all errors in a single thread to show reliable output
     let failures = failures.into_inner().unwrap();

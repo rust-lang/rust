@@ -1,9 +1,9 @@
-use std::{path::Path, panic::catch_unwind};
+use std::path::Path;
 
 use super::Comments;
 
-use color_eyre::eyre::{Result, bail};
 use crate::tests::init;
+use color_eyre::eyre::{bail, Result};
 
 #[test]
 fn parse_simple_comment() -> Result<()> {
@@ -48,8 +48,8 @@ fn parse_slash_slash_at_fail() -> Result<()> {
 use std::mem;
 
     ";
-    match catch_unwind(|| Comments::parse(Path::new("<dummy>"), s)) {
-        Ok(_) => bail!("expected parsing to panic"),
+    match Comments::parse(Path::new("<dummy>"), s) {
+        Ok(_) => bail!("expected parsing to fail"),
         Err(_) => Ok(()),
     }
 }
