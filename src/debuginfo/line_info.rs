@@ -140,7 +140,7 @@ impl<'tcx> DebugContext<'tcx> {
             // In order to have a good line stepping behavior in debugger, we overwrite debug
             // locations of macro expansions with that of the outermost expansion site
             // (unless the crate is being compiled with `-Z debug-macros`).
-            let span = if !span.from_expansion() || tcx.sess.opts.debugging_opts.debug_macros {
+            let span = if !span.from_expansion() || tcx.sess.opts.unstable_opts.debug_macros {
                 span
             } else {
                 // Walk up the macro expansion chain until we reach a non-expanded span.
