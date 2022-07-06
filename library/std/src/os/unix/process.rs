@@ -435,6 +435,16 @@ impl From<crate::process::ChildStdin> for OwnedFd {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
+impl From<OwnedFd> for process::ChildStdin {
+    #[inline]
+    fn from(fd: OwnedFd) -> process::ChildStdin {
+        let fd = sys::fd::FileDesc::from_inner(fd);
+        let pipe = sys::pipe::AnonPipe::from_inner(fd);
+        process::ChildStdin::from_inner(pipe)
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::process::ChildStdout {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -451,6 +461,16 @@ impl From<crate::process::ChildStdout> for OwnedFd {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
+impl From<OwnedFd> for process::ChildStdout {
+    #[inline]
+    fn from(fd: OwnedFd) -> process::ChildStdout {
+        let fd = sys::fd::FileDesc::from_inner(fd);
+        let pipe = sys::pipe::AnonPipe::from_inner(fd);
+        process::ChildStdout::from_inner(pipe)
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::process::ChildStderr {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -463,6 +483,16 @@ impl From<crate::process::ChildStderr> for OwnedFd {
     #[inline]
     fn from(child_stderr: crate::process::ChildStderr) -> OwnedFd {
         child_stderr.into_inner().into_inner().into_inner()
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl From<OwnedFd> for process::ChildStderr {
+    #[inline]
+    fn from(fd: OwnedFd) -> process::ChildStderr {
+        let fd = sys::fd::FileDesc::from_inner(fd);
+        let pipe = sys::pipe::AnonPipe::from_inner(fd);
+        process::ChildStderr::from_inner(pipe)
     }
 }
 

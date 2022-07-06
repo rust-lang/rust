@@ -12,7 +12,7 @@ use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::hashmap_random_keys;
-use crate::sys_common::IntoInner;
+use crate::sys_common::{FromInner, IntoInner};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes
@@ -25,6 +25,12 @@ pub struct AnonPipe {
 impl IntoInner<Handle> for AnonPipe {
     fn into_inner(self) -> Handle {
         self.inner
+    }
+}
+
+impl FromInner<Handle> for AnonPipe {
+    fn from_inner(inner: Handle) -> AnonPipe {
+        Self { inner }
     }
 }
 

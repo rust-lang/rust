@@ -106,6 +106,33 @@ impl IntoRawHandle for process::ChildStderr {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl From<OwnedHandle> for process::ChildStdin {
+    fn from(handle: OwnedHandle) -> process::ChildStdin {
+        let handle = sys::handle::Handle::from_inner(handle);
+        let pipe = sys::pipe::AnonPipe::from_inner(handle);
+        process::ChildStdin::from_inner(pipe)
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl From<OwnedHandle> for process::ChildStdout {
+    fn from(handle: OwnedHandle) -> process::ChildStdout {
+        let handle = sys::handle::Handle::from_inner(handle);
+        let pipe = sys::pipe::AnonPipe::from_inner(handle);
+        process::ChildStdout::from_inner(pipe)
+    }
+}
+
+#[stable(feature = "io_safety", since = "1.63.0")]
+impl From<OwnedHandle> for process::ChildStderr {
+    fn from(handle: OwnedHandle) -> process::ChildStderr {
+        let handle = sys::handle::Handle::from_inner(handle);
+        let pipe = sys::pipe::AnonPipe::from_inner(handle);
+        process::ChildStderr::from_inner(pipe)
+    }
+}
+
 /// Windows-specific extensions to [`process::ExitStatus`].
 ///
 /// This trait is sealed: it cannot be implemented outside the standard library.
