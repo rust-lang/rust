@@ -159,11 +159,18 @@ fn expressions() {
 
 // ################## Patterns
 fn patterns() {
-    // There aren't any early lints that I can find that apply to pattern fields.
-    //
-    // struct PatField{f1: i32, f2: i32};
-    // let f = PatField{f1: 1, f2: 2};
-    // let PatField{#[deny()]f1, #[deny()]..} = f;
+    struct PatField{f1: i32, f2: i32};
+    let f = PatField{f1: 1, f2: 2};
+    match f {
+        PatField {
+            #[deny(ellipsis_inclusive_range_patterns)]
+            f1: 0...100,
+            //~^ ERROR range patterns are deprecated
+            //~| WARNING this is accepted in the current edition
+            ..
+        } => {}
+        _ => {}
+    }
 }
 
 fn main() {}
