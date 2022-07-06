@@ -687,7 +687,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             source_info,
             target,
             cleanup,
-            self.cx.tcx().sess.opts.debugging_opts.strict_init_checks,
+            self.cx.tcx().sess.opts.unstable_opts.strict_init_checks,
         ) {
             return;
         }

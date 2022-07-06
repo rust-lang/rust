@@ -64,7 +64,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
             // See https://github.com/rust-lang/rust/issues/84565.
             1
         } else {
-            cx.sess().opts.debugging_opts.uninit_const_chunk_threshold
+            cx.sess().opts.unstable_opts.uninit_const_chunk_threshold
         };
         let allow_uninit_chunks = chunks.clone().take(max.saturating_add(1)).count() <= max;
 

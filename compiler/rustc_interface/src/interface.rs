@@ -300,7 +300,7 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
         );
     }
 
-    let temps_dir = sess.opts.debugging_opts.temps_dir.as_ref().map(|o| PathBuf::from(&o));
+    let temps_dir = sess.opts.unstable_opts.temps_dir.as_ref().map(|o| PathBuf::from(&o));
 
     let compiler = Compiler {
         sess,
@@ -333,7 +333,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     tracing::trace!("run_compiler");
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
-        config.opts.debugging_opts.threads,
+        config.opts.unstable_opts.threads,
         || create_compiler_and_run(config, f),
     )
 }

@@ -217,7 +217,7 @@ fn mir_const<'tcx>(
     }
 
     // Unsafety check uses the raw mir, so make sure it is run.
-    if !tcx.sess.opts.debugging_opts.thir_unsafeck {
+    if !tcx.sess.opts.unstable_opts.thir_unsafeck {
         if let Some(param_did) = def.const_param_did {
             tcx.ensure().unsafety_check_result_for_const_arg((def.did, param_did));
         } else {

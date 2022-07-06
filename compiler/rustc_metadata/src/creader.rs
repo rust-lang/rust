@@ -456,7 +456,7 @@ impl<'a> CrateLoader<'a> {
         proc_macro_locator.is_proc_macro = true;
 
         // Load the proc macro crate for the target
-        let (locator, target_result) = if self.sess.opts.debugging_opts.dual_proc_macros {
+        let (locator, target_result) = if self.sess.opts.unstable_opts.dual_proc_macros {
             proc_macro_locator.reset();
             let result = match self.load(&mut proc_macro_locator)? {
                 Some(LoadResult::Previous(cnum)) => {
@@ -485,7 +485,7 @@ impl<'a> CrateLoader<'a> {
             return Ok(None);
         };
 
-        Ok(Some(if self.sess.opts.debugging_opts.dual_proc_macros {
+        Ok(Some(if self.sess.opts.unstable_opts.dual_proc_macros {
             let host_result = match host_result {
                 LoadResult::Previous(..) => {
                     panic!("host and target proc macros must be loaded in lock-step")
@@ -762,9 +762,9 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_profiler_runtime(&mut self, krate: &ast::Crate) {
-        if self.sess.opts.debugging_opts.no_profiler_runtime
+        if self.sess.opts.unstable_opts.no_profiler_runtime
             || !(self.sess.instrument_coverage()
-                || self.sess.opts.debugging_opts.profile
+                || self.sess.opts.unstable_opts.profile
                 || self.sess.opts.cg.profile_generate.enabled())
         {
             return;
@@ -772,7 +772,7 @@ impl<'a> CrateLoader<'a> {
 
         info!("loading profiler");
 
-        let name = Symbol::intern(&self.sess.opts.debugging_opts.profiler_runtime);
+        let name = Symbol::intern(&self.sess.opts.unstable_opts.profiler_runtime);
         if name == sym::profiler_builtins && self.sess.contains_name(&krate.attrs, sym::no_core) {
             self.sess.err(
                 "`profiler_builtins` crate (required by compiler options) \

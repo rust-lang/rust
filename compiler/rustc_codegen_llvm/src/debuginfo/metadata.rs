@@ -824,7 +824,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
         output_filenames
             .split_dwarf_path(
                 tcx.sess.split_debuginfo(),
-                tcx.sess.opts.debugging_opts.split_dwarf_kind,
+                tcx.sess.opts.unstable_opts.split_dwarf_kind,
                 Some(codegen_unit_name),
             )
             // We get a path relative to the working directory from split_dwarf_path
@@ -881,15 +881,15 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             split_name.len(),
             kind,
             0,
-            tcx.sess.opts.debugging_opts.split_dwarf_inlining,
+            tcx.sess.opts.unstable_opts.split_dwarf_inlining,
         );
 
-        if tcx.sess.opts.debugging_opts.profile {
+        if tcx.sess.opts.unstable_opts.profile {
             let cu_desc_metadata =
                 llvm::LLVMRustMetadataAsValue(debug_context.llcontext, unit_metadata);
             let default_gcda_path = &output_filenames.with_extension("gcda");
             let gcda_path =
-                tcx.sess.opts.debugging_opts.profile_emit.as_ref().unwrap_or(default_gcda_path);
+                tcx.sess.opts.unstable_opts.profile_emit.as_ref().unwrap_or(default_gcda_path);
 
             let gcov_cu_info = [
                 path_to_mdstring(debug_context.llcontext, &output_filenames.with_extension("gcno")),
@@ -1559,7 +1559,7 @@ pub fn create_vtable_di_node<'ll, 'tcx>(
 ) {
     // FIXME(flip1995): The virtual function elimination optimization only works with full LTO in
     // LLVM at the moment.
-    if cx.sess().opts.debugging_opts.virtual_function_elimination && cx.sess().lto() == Lto::Fat {
+    if cx.sess().opts.unstable_opts.virtual_function_elimination && cx.sess().lto() == Lto::Fat {
         vcall_visibility_metadata(cx, ty, poly_trait_ref, vtable);
     }
 

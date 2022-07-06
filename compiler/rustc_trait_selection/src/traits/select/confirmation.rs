@@ -683,7 +683,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // FIXME: Chalk
 
-        if !self.tcx().sess.opts.debugging_opts.chalk {
+        if !self.tcx().sess.opts.unstable_opts.chalk {
             nested.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,

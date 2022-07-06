@@ -315,7 +315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect();
         self.typeck_results.borrow_mut().closure_fake_reads.insert(closure_def_id, fake_reads);
 
-        if self.tcx.sess.opts.debugging_opts.profile_closures {
+        if self.tcx.sess.opts.unstable_opts.profile_closures {
             self.typeck_results.borrow_mut().closure_size_eval.insert(
                 closure_def_id,
                 ClosureSizeProfileData {

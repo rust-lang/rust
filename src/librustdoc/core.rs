@@ -32,7 +32,7 @@ use crate::formats::cache::Cache;
 use crate::passes::collect_intra_doc_links::PreprocessedMarkdownLink;
 use crate::passes::{self, Condition::*};
 
-pub(crate) use rustc_session::config::{DebuggingOptions, Input, Options};
+pub(crate) use rustc_session::config::{Input, Options, UnstableOptions};
 
 pub(crate) struct ResolverCaches {
     pub(crate) markdown_links: Option<FxHashMap<String, Vec<PreprocessedMarkdownLink>>>,
@@ -155,7 +155,7 @@ pub(crate) fn new_handler(
     error_format: ErrorOutputType,
     source_map: Option<Lrc<source_map::SourceMap>>,
     diagnostic_width: Option<usize>,
-    debugging_opts: &DebuggingOptions,
+    unstable_opts: &UnstableOptions,
 ) -> rustc_errors::Handler {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
@@ -169,11 +169,11 @@ pub(crate) fn new_handler(
                     None,
                     fallback_bundle,
                     short,
-                    debugging_opts.teach,
+                    unstable_opts.teach,
                     diagnostic_width,
                     false,
                 )
-                .ui_testing(debugging_opts.ui_testing),
+                .ui_testing(unstable_opts.ui_testing),
             )
         }
         ErrorOutputType::Json { pretty, json_rendered } => {
@@ -191,14 +191,14 @@ pub(crate) fn new_handler(
                     diagnostic_width,
                     false,
                 )
-                .ui_testing(debugging_opts.ui_testing),
+                .ui_testing(unstable_opts.ui_testing),
             )
         }
     };
 
     rustc_errors::Handler::with_emitter_and_flags(
         emitter,
-        debugging_opts.diagnostic_handler_flags(true),
+        unstable_opts.diagnostic_handler_flags(true),
     )
 }
 
@@ -215,7 +215,7 @@ pub(crate) fn create_config(
         mut cfgs,
         check_cfgs,
         codegen_options,
-        debugging_opts,
+        unstable_opts,
         target,
         edition,
         maybe_sysroot,
@@ -266,7 +266,7 @@ pub(crate) fn create_config(
         target_triple: target,
         unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
         actually_rustdoc: true,
-        debugging_opts,
+        unstable_opts,
         error_format,
         diagnostic_width,
         edition,

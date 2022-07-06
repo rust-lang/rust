@@ -141,7 +141,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn't the case.
     let path = dep_graph_path(&sess);
-    let report_incremental_info = sess.opts.debugging_opts.incremental_info;
+    let report_incremental_info = sess.opts.unstable_opts.incremental_info;
     let expected_hash = sess.opts.dep_tracking_hash(false);
 
     let mut prev_work_products = FxHashMap::default();
@@ -163,7 +163,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
             for swp in work_products {
                 let all_files_exist = swp.work_product.saved_files.iter().all(|(_, path)| {
                     let exists = in_incr_comp_dir_sess(sess, path).exists();
-                    if !exists && sess.opts.debugging_opts.incremental_info {
+                    if !exists && sess.opts.unstable_opts.incremental_info {
                         eprintln!("incremental: could not find file for work product: {path}",);
                     }
                     exists
@@ -225,7 +225,7 @@ pub fn load_query_result_cache<'a, C: OnDiskCache<'a>>(sess: &'a Session) -> Opt
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
 
     match load_data(
-        sess.opts.debugging_opts.incremental_info,
+        sess.opts.unstable_opts.incremental_info,
         &query_cache_path(sess),
         sess.is_nightly_build(),
     ) {

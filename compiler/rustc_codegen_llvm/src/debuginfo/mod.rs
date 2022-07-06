@@ -104,7 +104,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             // This can be overridden using --llvm-opts -dwarf-version,N.
             // Android has the same issue (#22398)
             let dwarf_version =
-                sess.opts.debugging_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
+                sess.opts.unstable_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
             llvm::LLVMRustAddModuleFlag(
                 self.llmod,
                 llvm::LLVMModFlagBehavior::Warning,

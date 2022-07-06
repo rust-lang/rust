@@ -69,7 +69,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                                 yield_data.expr_and_pat_count, self.expr_count, source_span
                             );
 
-                            if self.fcx.sess().opts.debugging_opts.drop_tracking
+                            if self.fcx.sess().opts.unstable_opts.drop_tracking
                                 && self
                                     .drop_ranges
                                     .is_dropped_at(hir_id, yield_data.expr_and_pat_count)

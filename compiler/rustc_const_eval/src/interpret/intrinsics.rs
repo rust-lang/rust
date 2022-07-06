@@ -417,7 +417,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     && !layout.might_permit_raw_init(
                         self,
                         InitKind::Zero,
-                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
+                        self.tcx.sess.opts.unstable_opts.strict_init_checks,
                     )
                 {
                     M::abort(
@@ -432,7 +432,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     && !layout.might_permit_raw_init(
                         self,
                         InitKind::Uninit,
-                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
+                        self.tcx.sess.opts.unstable_opts.strict_init_checks,
                     )
                 {
                     M::abort(

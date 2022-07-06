@@ -1502,7 +1502,7 @@ impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
 /// Returns `None` if the type could not be normalized
 fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
     // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
-    if !cx.tcx.sess.opts.debugging_opts.normalize_docs {
+    if !cx.tcx.sess.opts.unstable_opts.normalize_docs {
         return None;
     }
 

@@ -665,7 +665,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hash: tcx.crate_hash(LOCAL_CRATE),
             stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
             required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
-            panic_in_drop_strategy: tcx.sess.opts.debugging_opts.panic_in_drop,
+            panic_in_drop_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
             edition: tcx.sess.edition(),
             has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
             has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
@@ -862,7 +862,7 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
         // Constructors
         DefKind::Ctor(_, _) => {
             let mir_opt_base = tcx.sess.opts.output_types.should_codegen()
-                || tcx.sess.opts.debugging_opts.always_encode_mir;
+                || tcx.sess.opts.unstable_opts.always_encode_mir;
             (true, mir_opt_base)
         }
         // Constants
@@ -880,7 +880,7 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());
-            let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
+            let always_encode_mir = tcx.sess.opts.unstable_opts.always_encode_mir;
             (is_const_fn, needs_inline || always_encode_mir)
         }
         // Closures can't be const fn.
@@ -889,7 +889,7 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
             let needs_inline = (generics.requires_monomorphization(tcx)
                 || tcx.codegen_fn_attrs(def_id).requests_inline())
                 && tcx.sess.opts.output_types.should_codegen();
-            let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
+            let always_encode_mir = tcx.sess.opts.unstable_opts.always_encode_mir;
             (false, needs_inline || always_encode_mir)
         }
         // Generators require optimized MIR to compute layout.
@@ -1360,7 +1360,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
-        if self.feat.staged_api || self.tcx.sess.opts.debugging_opts.force_unstable_if_unmarked {
+        if self.feat.staged_api || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
             if let Some(stab) = self.tcx.lookup_stability(def_id) {
                 record!(self.tables.lookup_stability[def_id] <- stab)
             }
@@ -1372,7 +1372,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
-        if self.feat.staged_api || self.tcx.sess.opts.debugging_opts.force_unstable_if_unmarked {
+        if self.feat.staged_api || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
             if let Some(stab) = self.tcx.lookup_const_stability(def_id) {
                 record!(self.tables.lookup_const_stability[def_id] <- stab)
             }

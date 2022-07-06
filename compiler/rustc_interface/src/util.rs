@@ -79,7 +79,7 @@ pub fn create_session(
     } else {
         get_codegen_backend(
             &sopts.maybe_sysroot,
-            sopts.debugging_opts.codegen_backend.as_ref().map(|name| &name[..]),
+            sopts.unstable_opts.codegen_backend.as_ref().map(|name| &name[..]),
         )
     };
 
@@ -89,9 +89,9 @@ pub fn create_session(
     let bundle = match rustc_errors::fluent_bundle(
         sopts.maybe_sysroot.clone(),
         sysroot_candidates(),
-        sopts.debugging_opts.translate_lang.clone(),
-        sopts.debugging_opts.translate_additional_ftl.as_deref(),
-        sopts.debugging_opts.translate_directionality_markers,
+        sopts.unstable_opts.translate_lang.clone(),
+        sopts.unstable_opts.translate_additional_ftl.as_deref(),
+        sopts.unstable_opts.translate_directionality_markers,
     ) {
         Ok(bundle) => bundle,
         Err(e) => {

@@ -122,7 +122,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // subtyping errors that it would have caught will now be
         // caught later on, during region checking. However, we
         // continue to use it for a transition period.
-        if self.tcx.sess.opts.debugging_opts.no_leak_check || self.skip_leak_check.get() {
+        if self.tcx.sess.opts.unstable_opts.no_leak_check || self.skip_leak_check.get() {
             return Ok(());
         }
 

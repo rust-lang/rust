@@ -36,7 +36,7 @@ fn unused_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
 ) -> FiniteBitSet<u32> {
-    if !tcx.sess.opts.debugging_opts.polymorphize {
+    if !tcx.sess.opts.unstable_opts.polymorphize {
         // If polymorphization disabled, then all parameters are used.
         return FiniteBitSet::new_empty();
     }

@@ -108,7 +108,7 @@ fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str)
         // which will cause us to require that this method always be called with `Span` hashing
         // enabled.
         HashingControls { hash_spans }
-            if hash_spans == !ctx.debug_opts_incremental_ignore_spans() => {}
+            if hash_spans == !ctx.unstable_opts_incremental_ignore_spans() => {}
         other => panic!("Attempted hashing of {msg} with non-default HashingControls: {:?}", other),
     }
 }
