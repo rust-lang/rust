@@ -518,7 +518,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         value: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, bool> {
         // Go over all the primitive types
-        let ty = value.layout.ty;
+        let ty = value.layout().ty;
         match ty.kind() {
             ty::Bool => {
                 let value = self.read_scalar(value)?;
@@ -768,7 +768,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         field: usize,
         new_op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        let elem = self.aggregate_field_path_elem(old_op.layout, field);
+        let elem = self.aggregate_field_path_elem(*old_op.layout(), field);
         self.with_elem(elem, move |this| this.visit_value(new_op))
     }
 
@@ -779,11 +779,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         variant_id: VariantIdx,
         new_op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        let name = match old_op.layout.ty.kind() {
+        let name = match old_op.layout().ty.kind() {
             ty::Adt(adt, _) => PathElem::Variant(adt.variant(variant_id).name),
             // Generators also have variants
             ty::Generator(..) => PathElem::GeneratorState(variant_id),
-            _ => bug!("Unexpected type with variant: {:?}", old_op.layout.ty),
+            _ => bug!("Unexpected type with variant: {:?}", old_op.layout().ty),
         };
         self.with_elem(name, move |this| this.visit_value(new_op))
     }
@@ -796,7 +796,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     ) -> InterpResult<'tcx> {
         // Special check preventing `UnsafeCell` inside unions in the inner part of constants.
         if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true, .. })) {
-            if !op.layout.ty.is_freeze(self.ecx.tcx.at(DUMMY_SP), self.ecx.param_env) {
+            if !op.layout().ty.is_freeze(self.ecx.tcx.at(DUMMY_SP), self.ecx.param_env) {
                 throw_validation_failure!(self.path, { "`UnsafeCell` in a `const`" });
             }
         }
@@ -811,7 +811,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
     #[inline]
     fn visit_value(&mut self, op: &OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
-        trace!("visit_value: {:?}, {:?}", *op, op.layout);
+        trace!("visit_value: {:?}, {:?}", *op, op.layout());
 
         // Check primitive types -- the leaves of our recursive descent.
         if self.try_visit_primitive(op)? {
@@ -819,7 +819,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         }
 
         // Special check preventing `UnsafeCell` in the inner part of constants
-        if let Some(def) = op.layout.ty.ty_adt_def() {
+        if let Some(def) = op.layout().ty.ty_adt_def() {
             if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true, .. }))
                 && Some(def.did()) == self.ecx.tcx.lang_items().unsafe_cell_type()
             {
@@ -840,10 +840,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // FIXME: We could avoid some redundant checks here. For newtypes wrapping
         // scalars, we do the same check on every "level" (e.g., first we check
         // MyNewtype and then the scalar in there).
-        match op.layout.abi {
+        match op.layout().abi {
             Abi::Uninhabited => {
                 throw_validation_failure!(self.path,
-                    { "a value of uninhabited type {:?}", op.layout.ty }
+                    { "a value of uninhabited type {:?}", op.layout().ty }
                 );
             }
             Abi::Scalar(scalar_layout) => {
@@ -882,7 +882,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         op: &OpTy<'tcx, M::PointerTag>,
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
-        match op.layout.ty.kind() {
+        match op.layout().ty.kind() {
             ty::Str => {
                 let mplace = op.assert_mem_place(); // strings are unsized and hence never immediate
                 let len = mplace.len(self.ecx)?;
@@ -995,7 +995,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ref_tracking: Option<&mut RefTracking<MPlaceTy<'tcx, M::PointerTag>, Vec<PathElem>>>,
         ctfe_mode: Option<CtfeValidationMode>,
     ) -> InterpResult<'tcx> {
-        trace!("validate_operand_internal: {:?}, {:?}", *op, op.layout.ty);
+        trace!("validate_operand_internal: {:?}, {:?}", *op, op.layout().ty);
 
         // Construct a visitor
         let mut visitor = ValidityVisitor { path, ref_tracking, ctfe_mode, ecx: self };

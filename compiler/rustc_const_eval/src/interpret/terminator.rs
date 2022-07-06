@@ -71,13 +71,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let func = self.eval_operand(func, None)?;
                 let args = self.eval_operands(args)?;
 
-                let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
+                let fn_sig_binder = func.layout().ty.fn_sig(*self.tcx);
                 let fn_sig =
                     self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
                 let extra_args = &args[fn_sig.inputs().len()..];
-                let extra_args = self.tcx.mk_type_list(extra_args.iter().map(|arg| arg.layout.ty));
+                let extra_args =
+                    self.tcx.mk_type_list(extra_args.iter().map(|arg| arg.layout().ty));
 
-                let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
+                let (fn_val, fn_abi, with_caller_location) = match *func.layout().ty.kind() {
                     ty::FnPtr(_sig) => {
                         let fn_ptr = self.read_pointer(&func)?;
                         let fn_val = self.get_ptr_fn(fn_ptr)?;
@@ -95,7 +96,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     _ => span_bug!(
                         terminator.source_info.span,
                         "invalid callee of type {:?}",
-                        func.layout.ty
+                        func.layout().ty
                     ),
                 };
 
@@ -289,13 +290,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             throw_ub_format!(
                 "calling a function with argument of type {:?} passing data of type {:?}",
                 callee_arg.layout.ty,
-                caller_arg.layout.ty
+                caller_arg.layout().ty
             )
         }
         // Special handling for unsized parameters.
-        if caller_arg.layout.is_unsized() {
+        if caller_arg.layout().is_unsized() {
             // `check_argument_compat` ensures that both have the same type, so we know they will use the metadata the same way.
-            assert_eq!(caller_arg.layout.ty, callee_arg.layout.ty);
+            assert_eq!(caller_arg.layout().ty, callee_arg.layout.ty);
             // We have to properly pre-allocate the memory for the callee.
             // So let's tear down some wrappers.
             // This all has to be in memory, there are no immediate unsized values.
@@ -304,7 +305,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let (dest_frame, dest_local) = callee_arg.assert_local();
             // We are just initializing things, so there can't be anything here yet.
             assert!(matches!(
-                *self.local_to_op(&self.stack()[dest_frame], dest_local, None)?,
+                self.local_to_op(&self.stack()[dest_frame], dest_local, None)?.op(),
                 Operand::Immediate(Immediate::Uninit)
             ));
             // Allocate enough memory to hold `src`.
@@ -416,7 +417,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         "caller ABI: {:?}, args: {:#?}",
                         caller_abi,
                         args.iter()
-                            .map(|arg| (arg.layout.ty, format!("{:?}", **arg)))
+                            .map(|arg| (arg.layout().ty, format!("{:?}", arg.op())))
                             .collect::<Vec<_>>()
                     );
                     trace!(
@@ -446,7 +447,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 args.iter()
                                     .map(|&a| Ok(a))
                                     .chain(
-                                        (0..untuple_arg.layout.fields.count())
+                                        (0..untuple_arg.layout().fields.count())
                                             .map(|i| self.operand_field(untuple_arg, i)),
                                     )
                                     .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>(
@@ -527,19 +528,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // unwrap those newtypes until we are there.
                 let mut receiver = args[0];
                 let receiver_place = loop {
-                    match receiver.layout.ty.kind() {
+                    match receiver.layout().ty.kind() {
                         ty::Ref(..) | ty::RawPtr(..) => break self.deref_operand(&receiver)?,
                         ty::Dynamic(..) => break receiver.assert_mem_place(), // no immediate unsized values
                         _ => {
                             // Not there yet, search for the only non-ZST field.
                             let mut non_zst_field = None;
-                            for i in 0..receiver.layout.fields.count() {
+                            for i in 0..receiver.layout().fields.count() {
                                 let field = self.operand_field(&receiver, i)?;
-                                if !field.layout.is_zst() {
+                                if !field.layout().is_zst() {
                                     assert!(
                                         non_zst_field.is_none(),
                                         "multiple non-ZST fields in dyn receiver type {}",
-                                        receiver.layout.ty
+                                        receiver.layout().ty
                                     );
                                     non_zst_field = Some(field);
                                 }
@@ -547,7 +548,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             receiver = non_zst_field.unwrap_or_else(|| {
                                 panic!(
                                     "no non-ZST fields in dyn receiver type {}",
-                                    receiver.layout.ty
+                                    receiver.layout().ty
                                 )
                             });
                         }

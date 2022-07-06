@@ -604,7 +604,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
         let count = self.read_scalar(&count)?.to_machine_usize(self)?;
-        let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
+        let layout = self.layout_of(src.layout().ty.builtin_deref(true).unwrap().ty)?;
         let (size, align) = (layout.size, layout.align.abi);
         // `checked_mul` enforces a too small bound (the correct one would probably be machine_isize_max),
         // but no actual allocation can be big enough for the difference to be noticeable.
@@ -627,7 +627,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         byte: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
         count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
     ) -> InterpResult<'tcx> {
-        let layout = self.layout_of(dst.layout.ty.builtin_deref(true).unwrap().ty)?;
+        let layout = self.layout_of(dst.layout().ty.builtin_deref(true).unwrap().ty)?;
 
         let dst = self.read_pointer(&dst)?;
         let byte = self.read_scalar(&byte)?.to_u8()?;
@@ -649,7 +649,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         lhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
         rhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
     ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
-        let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap().ty)?;
+        let layout = self.layout_of(lhs.layout().ty.builtin_deref(true).unwrap().ty)?;
         assert!(!layout.is_unsized());
 
         let lhs = self.read_pointer(lhs)?;

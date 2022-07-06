@@ -179,68 +179,6 @@ impl<'tcx, Tag: Provenance> std::ops::Deref for ImmTy<'tcx, Tag> {
     }
 }
 
-/// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
-/// or still in memory. The latter is an optimization, to delay reading that chunk of
-/// memory and to avoid having to store arbitrary-sized data here.
-#[derive(Copy, Clone, PartialEq, Eq, HashStable, Hash, Debug)]
-pub enum Operand<Tag: Provenance = AllocId> {
-    Immediate(Immediate<Tag>),
-    Indirect(MemPlace<Tag>),
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct OpTy<'tcx, Tag: Provenance = AllocId> {
-    op: Operand<Tag>, // Keep this private; it helps enforce invariants.
-    pub layout: TyAndLayout<'tcx>,
-    /// rustc does not have a proper way to represent the type of a field of a `repr(packed)` struct:
-    /// it needs to have a different alignment than the field type would usually have.
-    /// So we represent this here with a separate field that "overwrites" `layout.align`.
-    /// This means `layout.align` should never be used for an `OpTy`!
-    /// `None` means "alignment does not matter since this is a by-value operand"
-    /// (`Operand::Immediate`); this field is only relevant for `Operand::Indirect`.
-    /// Also CTFE ignores alignment anyway, so this is for Miri only.
-    pub align: Option<Align>,
-}
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(OpTy<'_>, 88);
-
-impl<'tcx, Tag: Provenance> std::ops::Deref for OpTy<'tcx, Tag> {
-    type Target = Operand<Tag>;
-    #[inline(always)]
-    fn deref(&self) -> &Operand<Tag> {
-        &self.op
-    }
-}
-
-impl<'tcx, Tag: Provenance> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
-    #[inline(always)]
-    fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
-        OpTy { op: Operand::Indirect(*mplace), layout: mplace.layout, align: Some(mplace.align) }
-    }
-}
-
-impl<'tcx, Tag: Provenance> From<&'_ MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
-    #[inline(always)]
-    fn from(mplace: &MPlaceTy<'tcx, Tag>) -> Self {
-        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout, align: Some(mplace.align) }
-    }
-}
-
-impl<'tcx, Tag: Provenance> From<&'_ mut MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
-    #[inline(always)]
-    fn from(mplace: &mut MPlaceTy<'tcx, Tag>) -> Self {
-        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout, align: Some(mplace.align) }
-    }
-}
-
-impl<'tcx, Tag: Provenance> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
-    #[inline(always)]
-    fn from(val: ImmTy<'tcx, Tag>) -> Self {
-        OpTy { op: Operand::Immediate(val.imm), layout: val.layout, align: None }
-    }
-}
-
 impl<'tcx, Tag: Provenance> ImmTy<'tcx, Tag> {
     #[inline]
     pub fn from_scalar(val: Scalar<Tag>, layout: TyAndLayout<'tcx>) -> Self {
@@ -284,15 +222,91 @@ impl<'tcx, Tag: Provenance> ImmTy<'tcx, Tag> {
     }
 }
 
+/// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
+/// or still in memory. The latter is an optimization, to delay reading that chunk of
+/// memory and to avoid having to store arbitrary-sized data here.
+#[derive(Copy, Clone, PartialEq, Eq, HashStable, Hash, Debug)]
+pub enum Operand<Tag: Provenance = AllocId> {
+    Immediate(Immediate<Tag>),
+    Indirect(MemPlace<Tag>),
+}
+
+/// An `OpTy` is basically an `Operand` + layout.
+/// However, that representation would waste space since *only* the `Indirect` variant needs an `align` as well.
+/// So we instead copy the variants of `Operand`.
+#[derive(Copy, Clone, Debug)]
+pub enum OpTy<'tcx, Tag: Provenance = AllocId> {
+    Immediate(ImmTy<'tcx, Tag>),
+    Indirect(MPlaceTy<'tcx, Tag>),
+}
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(OpTy<'_>, 80);
+
+impl<'tcx, Tag: Provenance> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+    #[inline(always)]
+    fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
+        OpTy::Indirect(mplace)
+    }
+}
+
+impl<'tcx, Tag: Provenance> From<&'_ MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+    #[inline(always)]
+    fn from(mplace: &MPlaceTy<'tcx, Tag>) -> Self {
+        OpTy::Indirect(*mplace)
+    }
+}
+
+impl<'tcx, Tag: Provenance> From<&'_ mut MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+    #[inline(always)]
+    fn from(mplace: &mut MPlaceTy<'tcx, Tag>) -> Self {
+        OpTy::Indirect(*mplace)
+    }
+}
+
+impl<'tcx, Tag: Provenance> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+    #[inline(always)]
+    fn from(val: ImmTy<'tcx, Tag>) -> Self {
+        OpTy::Immediate(val)
+    }
+}
+
+impl<'tcx, Tag: Provenance> OpTy<'tcx, Tag> {
+    #[inline(always)]
+    pub fn op(&self) -> Operand<Tag> {
+        match self {
+            OpTy::Immediate(imm) => Operand::Immediate(**imm),
+            OpTy::Indirect(mplace) => Operand::Indirect(**mplace),
+        }
+    }
+
+    #[inline(always)]
+    pub fn layout(&self) -> &TyAndLayout<'tcx> {
+        match self {
+            OpTy::Immediate(imm) => &imm.layout,
+            OpTy::Indirect(mplace) => &mplace.layout,
+        }
+    }
+
+    #[inline(always)]
+    pub fn align(&self) -> Option<Align> {
+        match self {
+            OpTy::Immediate(_) => None,
+            OpTy::Indirect(mplace) => Some(mplace.align),
+        }
+    }
+}
+
 impl<'tcx, Tag: Provenance> OpTy<'tcx, Tag> {
     pub fn len(&self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
-        if self.layout.is_unsized() {
-            // There are no unsized immediates.
-            self.assert_mem_place().len(cx)
-        } else {
-            match self.layout.fields {
-                abi::FieldsShape::Array { count, .. } => Ok(count),
-                _ => bug!("len not supported on sized type {:?}", self.layout.ty),
+        match self.try_as_mplace() {
+            Ok(mplace) => mplace.len(cx),
+            Err(imm) => {
+                assert!(!imm.layout.is_unsized());
+                match imm.layout.fields {
+                    abi::FieldsShape::Array { count, .. } => Ok(count),
+                    _ => bug!("len not supported on immediate of type {:?}", imm.layout.ty),
+                }
             }
         }
     }
@@ -430,7 +444,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Ok(imm) = self.read_immediate_raw(op, /*force*/ false)? {
             Ok(imm)
         } else {
-            span_bug!(self.cur_span(), "primitive read failed for type: {:?}", op.layout.ty);
+            span_bug!(self.cur_span(), "primitive read failed for type: {:?}", op.layout().ty);
         }
     }
 
@@ -468,7 +482,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, u64)> {
         // Basically we just transmute this place into an array following simd_size_and_type.
         // This only works in memory, but repr(simd) types should never be immediates anyway.
-        assert!(op.layout.ty.is_simd());
+        assert!(op.layout().ty.is_simd());
         match op.try_as_mplace() {
             Ok(mplace) => self.mplace_to_simd(&mplace),
             Err(imm) => match *imm {
@@ -496,11 +510,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = if layout.is_zst() {
             // Bypass `access_local` (helps in ConstProp)
-            Operand::Immediate(Immediate::Uninit)
+            ImmTy::uninit(layout).into()
         } else {
-            *M::access_local(frame, local)?
+            OpTy::from_op(M::access_local(frame, local)?, layout, Some(layout.align.abi))
         };
-        Ok(OpTy { op, layout, align: Some(layout.align.abi) })
+        Ok(op)
     }
 
     /// Every place can be read from, so we can turn them into an operand.
@@ -514,10 +528,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let op = match **place {
             Place::Ptr(mplace) => Operand::Indirect(mplace),
             Place::Local { frame, local } => {
-                *self.local_to_op(&self.stack()[frame], local, None)?
+                self.local_to_op(&self.stack()[frame], local, None)?.op()
             }
         };
-        Ok(OpTy { op, layout: place.layout, align: Some(place.align) })
+        Ok(OpTy::from_op(&op, place.layout, Some(place.align)))
     }
 
     /// Evaluate a place with the goal of reading from it.  This lets us sometimes
@@ -537,7 +551,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             op = self.operand_projection(&op, elem)?
         }
 
-        trace!("eval_place_to_op: got {:?}", *op);
+        trace!("eval_place_to_op: got {:?}", op.op());
         // Sanity-check the type we ended up with.
         debug_assert!(
             mir_assign_valid_types(
@@ -546,11 +560,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
                     mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty
                 )?)?,
-                op.layout,
+                *op.layout(),
             ),
             "eval_place of a MIR place with type {:?} produced an interpreter operand with type {:?}",
             mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
-            op.layout.ty,
+            op.layout().ty,
         );
         Ok(op)
     }
@@ -580,7 +594,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.mir_const_to_op(&val, layout)?
             }
         };
-        trace!("{:?}: {:?}", mir_op, *op);
+        trace!("{:?}: {:?}", mir_op, op.op());
         Ok(op)
     }
 
@@ -670,7 +684,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ))
             }
         };
-        Ok(OpTy { op, layout, align: Some(layout.align.abi) })
+        Ok(OpTy::from_op(&op, layout, Some(layout.align.abi)))
     }
 
     /// Read discriminant, return the runtime value as well as the variant index.
@@ -679,9 +693,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, VariantIdx)> {
-        trace!("read_discriminant_value {:#?}", op.layout);
+        trace!("read_discriminant_value {:#?}", op.layout());
         // Get type and layout of the discriminant.
-        let discr_layout = self.layout_of(op.layout.ty.discriminant_ty(*self.tcx))?;
+        let discr_layout = self.layout_of(op.layout().ty.discriminant_ty(*self.tcx))?;
         trace!("discriminant type: {:?}", discr_layout.ty);
 
         // We use "discriminant" to refer to the value associated with a particular enum variant.
@@ -689,9 +703,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // declared list of variants -- they can differ with explicitly assigned discriminants.
         // We use "tag" to refer to how the discriminant is encoded in memory, which can be either
         // straight-forward (`TagEncoding::Direct`) or with a niche (`TagEncoding::Niche`).
-        let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout.variants {
+        let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout().variants {
             Variants::Single { index } => {
-                let discr = match op.layout.ty.discriminant_for_variant(*self.tcx, index) {
+                let discr = match op.layout().ty.discriminant_for_variant(*self.tcx, index) {
                     Some(discr) => {
                         // This type actually has discriminants.
                         assert_eq!(discr.ty, discr_layout.ty);
@@ -745,7 +759,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.cast_from_int_like(scalar, tag_val.layout, discr_layout.ty).unwrap();
                 let discr_bits = discr_val.assert_bits(discr_layout.size);
                 // Convert discriminant to variant index, and catch invalid discriminants.
-                let index = match *op.layout.ty.kind() {
+                let index = match *op.layout().ty.kind() {
                     ty::Adt(adt, _) => {
                         adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
@@ -801,7 +815,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 .checked_add(variant_index_relative)
                                 .expect("overflow computing absolute variant idx");
                             let variants_len = op
-                                .layout
+                                .layout()
                                 .ty
                                 .ty_adt_def()
                                 .expect("tagged layout for non adt")

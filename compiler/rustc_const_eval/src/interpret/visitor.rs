@@ -46,7 +46,7 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::PointerTag> {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
-        self.layout
+        *self.layout()
     }
 
     #[inline(always)]

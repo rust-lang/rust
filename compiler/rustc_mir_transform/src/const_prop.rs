@@ -553,11 +553,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // where it makes sense.
                     if let interpret::Operand::Immediate(interpret::Immediate::Scalar(
                         ScalarMaybeUninit::Scalar(scalar),
-                    )) = *value
+                    )) = value.op()
                     {
                         *operand = self.operand_from_scalar(
                             scalar,
-                            value.layout.ty,
+                            value.layout().ty,
                             self.source_info.unwrap().span,
                         );
                     }
@@ -739,7 +739,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 interpret::Immediate::Scalar(ScalarMaybeUninit::Scalar(scalar)) => {
                     *rval = Rvalue::Use(self.operand_from_scalar(
                         scalar,
-                        value.layout.ty,
+                        value.layout().ty,
                         source_info.span,
                     ));
                 }
@@ -750,7 +750,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // Found a value represented as a pair. For now only do const-prop if the type
                     // of `rvalue` is also a tuple with two scalars.
                     // FIXME: enable the general case stated above ^.
-                    let ty = value.layout.ty;
+                    let ty = value.layout().ty;
                     // Only do it for tuples
                     if let ty::Tuple(types) = ty.kind() {
                         // Only do it if tuple is also a pair with two scalars
@@ -763,7 +763,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                 if ty_is_scalar(ty1) && ty_is_scalar(ty2) {
                                     let alloc = this
                                         .ecx
-                                        .intern_with_temp_alloc(value.layout, |ecx, dest| {
+                                        .intern_with_temp_alloc(*value.layout(), |ecx, dest| {
                                             ecx.write_immediate(*imm, dest)
                                         })
                                         .unwrap();
@@ -800,7 +800,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return false;
         }
 
-        match **op {
+        match op.op() {
             interpret::Operand::Immediate(Immediate::Scalar(ScalarMaybeUninit::Scalar(s))) => {
                 s.try_to_int().is_ok()
             }

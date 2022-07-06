@@ -116,9 +116,9 @@ pub(super) fn op_to_const<'tcx>(
     // instead allow `ConstValue::Scalar` to store `ScalarMaybeUninit`, but that would affect all
     // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
     // `Undef` situation.
-    let try_as_immediate = match op.layout.abi {
+    let try_as_immediate = match op.layout().abi {
         Abi::Scalar(abi::Scalar::Initialized { .. }) => true,
-        Abi::ScalarPair(..) => match op.layout.ty.kind() {
+        Abi::ScalarPair(..) => match op.layout().ty.kind() {
             ty::Ref(_, inner, _) => match *inner.kind() {
                 ty::Slice(elem) => elem == ecx.tcx.types.u8,
                 ty::Str => true,

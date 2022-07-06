@@ -168,9 +168,9 @@ where
         variant: VariantIdx,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Downcast just changes the layout
-        let mut base = *base;
-        base.layout = base.layout.for_variant(self, variant);
-        Ok(base)
+        let layout = base.layout().for_variant(self, variant);
+        let align = base.align();
+        Ok(OpTy::from_op(&base.op(), layout, align))
     }
 
     //# Slice indexing
@@ -182,7 +182,7 @@ where
         index: u64,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Not using the layout method because we want to compute on u64
-        match base.layout.fields {
+        match base.layout().fields {
             abi::FieldsShape::Array { stride, count: _ } => {
                 // `count` is nonsense for slices, use the dynamic length instead.
                 let len = base.len(self)?;
@@ -192,7 +192,7 @@ where
                 }
                 let offset = stride * index; // `Size` multiplication
                 // All fields have the same layout.
-                let field_layout = base.layout.field(self, 0);
+                let field_layout = base.layout().field(self, 0);
                 assert!(!field_layout.is_unsized());
 
                 base.offset(offset, MemPlaceMeta::None, field_layout, self)
@@ -200,7 +200,7 @@ where
             _ => span_bug!(
                 self.cur_span(),
                 "`mplace_index` called on non-array type {:?}",
-                base.layout.ty
+                base.layout().ty
             ),
         }
     }
@@ -212,10 +212,10 @@ where
         base: &'a OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, OpTy<'tcx, Tag>>> + 'a> {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
-        let abi::FieldsShape::Array { stride, .. } = base.layout.fields else {
+        let abi::FieldsShape::Array { stride, .. } = base.layout().fields else {
             span_bug!(self.cur_span(), "operand_array_fields: expected an array layout");
         };
-        let layout = base.layout.field(self, 0);
+        let layout = base.layout().field(self, 0);
         let dl = &self.tcx.data_layout;
         // `Size` multiplication
         Ok((0..len).map(move |i| base.offset(stride * i, MemPlaceMeta::None, layout, dl)))
@@ -304,25 +304,33 @@ where
 
         // Not using layout method because that works with usize, and does not work with slices
         // (that have count 0 in their layout).
-        let from_offset = match base.layout.fields {
+        let from_offset = match base.layout().fields {
             abi::FieldsShape::Array { stride, .. } => stride * from, // `Size` multiplication is checked
             _ => {
-                span_bug!(self.cur_span(), "unexpected layout of index access: {:#?}", base.layout)
+                span_bug!(
+                    self.cur_span(),
+                    "unexpected layout of index access: {:#?}",
+                    base.layout()
+                )
             }
         };
 
         // Compute meta and new layout
         let inner_len = actual_to.checked_sub(from).unwrap();
-        let (meta, ty) = match base.layout.ty.kind() {
+        let (meta, ty) = match base.layout().ty.kind() {
             // It is not nice to match on the type, but that seems to be the only way to
             // implement this.
             ty::Array(inner, _) => (MemPlaceMeta::None, self.tcx.mk_array(*inner, inner_len)),
             ty::Slice(..) => {
                 let len = Scalar::from_machine_usize(inner_len, self);
-                (MemPlaceMeta::Meta(len), base.layout.ty)
+                (MemPlaceMeta::Meta(len), base.layout().ty)
             }
             _ => {
-                span_bug!(self.cur_span(), "cannot subslice non-array type: `{:?}`", base.layout.ty)
+                span_bug!(
+                    self.cur_span(),
+                    "cannot subslice non-array type: `{:?}`",
+                    base.layout().ty
+                )
             }
         };
         let layout = self.layout_of(ty)?;

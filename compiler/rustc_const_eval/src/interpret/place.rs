@@ -265,16 +265,31 @@ impl<'tcx, Tag: Provenance> MPlaceTy<'tcx, Tag> {
 
 // These are defined here because they produce a place.
 impl<'tcx, Tag: Provenance> OpTy<'tcx, Tag> {
+    /// If `Op` is indirect, `align` *must* be `Some`.
+    ///
+    /// Be very careful with this function, a lot of code relies in `op` and `layout` matching
+    /// properly.
+    pub(super) fn from_op(
+        op: &Operand<Tag>,
+        layout: TyAndLayout<'tcx>,
+        align: Option<Align>,
+    ) -> Self {
+        match op {
+            Operand::Immediate(imm) => ImmTy::from_immediate(*imm, layout).into(),
+            Operand::Indirect(mplace) => {
+                OpTy::Indirect(MPlaceTy { mplace: *mplace, layout, align: align.unwrap() })
+            }
+        }
+    }
+
     #[inline(always)]
     /// Note: do not call `as_ref` on the resulting place. This function should only be used to
     /// read from the resulting mplace, not to get its address back.
     pub fn try_as_mplace(&self) -> Result<MPlaceTy<'tcx, Tag>, ImmTy<'tcx, Tag>> {
-        match **self {
-            Operand::Indirect(mplace) => {
-                Ok(MPlaceTy { mplace, layout: self.layout, align: self.align.unwrap() })
-            }
-            Operand::Immediate(_) if self.layout.is_zst() => Ok(MPlaceTy::dangling(self.layout)),
-            Operand::Immediate(imm) => Err(ImmTy::from_immediate(imm, self.layout)),
+        match self {
+            OpTy::Indirect(mplace) => Ok(*mplace),
+            OpTy::Immediate(imm) if imm.layout.is_zst() => Ok(MPlaceTy::dangling(imm.layout)),
+            OpTy::Immediate(imm) => Err(*imm),
         }
     }
 
@@ -645,12 +660,12 @@ where
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
         let layout_compat =
-            mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout);
+            mir_assign_valid_types(*self.tcx, self.param_env, *src.layout(), dest.layout);
         if !allow_transmute && !layout_compat {
             span_bug!(
                 self.cur_span(),
                 "type mismatch when copying!\nsrc: {:?},\ndest: {:?}",
-                src.layout.ty,
+                src.layout().ty,
                 dest.layout.ty,
             );
         }
@@ -659,12 +674,12 @@ where
         // avoid force_allocation.
         let src = match self.read_immediate_raw(src, /*force*/ false)? {
             Ok(src_val) => {
-                assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
+                assert!(!src.layout().is_unsized(), "cannot have unsized immediates");
                 assert!(
                     !dest.layout.is_unsized(),
                     "the src is sized, so the dest must also be sized"
                 );
-                assert_eq!(src.layout.size, dest.layout.size);
+                assert_eq!(src.layout().size, dest.layout.size);
                 // Yay, we got a value that we can write directly.
                 return if layout_compat {
                     self.write_immediate_no_validate(*src_val, dest)
@@ -676,7 +691,7 @@ where
                     let dest_mem = self.force_allocation(dest)?;
                     self.write_immediate_to_mplace_no_validate(
                         *src_val,
-                        src.layout,
+                        *src.layout(),
                         dest_mem.align,
                         *dest_mem,
                     )

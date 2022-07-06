@@ -57,10 +57,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::ReifyFnPointer) => {
                 // The src operand does not matter, just its type
-                match *src.layout.ty.kind() {
+                match *src.layout().ty.kind() {
                     ty::FnDef(def_id, substs) => {
                         // All reifications must be monomorphic, bail out otherwise.
-                        ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+                        ensure_monomorphic_enough(*self.tcx, src.layout().ty)?;
 
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             *self.tcx,
@@ -73,7 +73,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let fn_ptr = self.create_fn_alloc_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
-                    _ => span_bug!(self.cur_span(), "reify fn pointer on {:?}", src.layout.ty),
+                    _ => span_bug!(self.cur_span(), "reify fn pointer on {:?}", src.layout().ty),
                 }
             }
 
@@ -90,10 +90,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Pointer(PointerCast::ClosureFnPointer(_)) => {
                 // The src operand does not matter, just its type
-                match *src.layout.ty.kind() {
+                match *src.layout().ty.kind() {
                     ty::Closure(def_id, substs) => {
                         // All reifications must be monomorphic, bail out otherwise.
-                        ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+                        ensure_monomorphic_enough(*self.tcx, src.layout().ty)?;
 
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
@@ -105,7 +105,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let fn_ptr = self.create_fn_alloc_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
-                    _ => span_bug!(self.cur_span(), "closure fn pointer on {:?}", src.layout.ty),
+                    _ => span_bug!(self.cur_span(), "closure fn pointer on {:?}", src.layout().ty),
                 }
             }
         }
@@ -328,7 +328,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             _ => {
-                span_bug!(self.cur_span(), "invalid unsizing {:?} -> {:?}", src.layout.ty, cast_ty)
+                span_bug!(
+                    self.cur_span(),
+                    "invalid unsizing {:?} -> {:?}",
+                    src.layout().ty,
+                    cast_ty
+                )
             }
         }
     }
@@ -339,8 +344,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         cast_ty: TyAndLayout<'tcx>,
         dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout.ty, cast_ty.ty);
-        match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
+        trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout().ty, cast_ty.ty);
+        match (&src.layout().ty.kind(), &cast_ty.ty.kind()) {
             (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(TypeAndMut { ty: c, .. }))
             | (&ty::RawPtr(TypeAndMut { ty: s, .. }), &ty::RawPtr(TypeAndMut { ty: c, .. })) => {
                 self.unsize_into_ptr(src, dest, *s, *c)
@@ -351,14 +356,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // unsizing of generic struct with pointer fields
                 // Example: `Arc<T>` -> `Arc<Trait>`
                 // here we need to increase the size of every &T thin ptr field to a fat ptr
-                for i in 0..src.layout.fields.count() {
+                for i in 0..src.layout().fields.count() {
                     let cast_ty_field = cast_ty.field(self, i);
                     if cast_ty_field.is_zst() {
                         continue;
                     }
                     let src_field = self.operand_field(src, i)?;
                     let dst_field = self.place_field(dest, i)?;
-                    if src_field.layout.ty == cast_ty_field.ty {
+                    if src_field.layout().ty == cast_ty_field.ty {
                         self.copy_op(&src_field, &dst_field, /*allow_transmute*/ false)?;
                     } else {
                         self.unsize_into(&src_field, cast_ty_field, &dst_field)?;
@@ -369,7 +374,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => span_bug!(
                 self.cur_span(),
                 "unsize_into: invalid conversion: {:?} -> {:?}",
-                src.layout,
+                src.layout(),
                 dest.layout
             ),
         }

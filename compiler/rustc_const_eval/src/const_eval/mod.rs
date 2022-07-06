@@ -119,7 +119,7 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
         .map(|i| {
             let field_op = ecx.operand_field(&down, i)?;
             let val = op_to_const(&ecx, &field_op);
-            Ok(mir::ConstantKind::Val(val, field_op.layout.ty))
+            Ok(mir::ConstantKind::Val(val, field_op.layout().ty))
         })
         .collect::<InterpResult<'tcx, Vec<_>>>()?;
     let fields = tcx.arena.alloc_from_iter(fields_iter);
