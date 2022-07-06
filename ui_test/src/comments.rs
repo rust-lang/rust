@@ -75,7 +75,7 @@ impl Comments {
     /// Parse comments in `content`.
     /// `path` is only used to emit diagnostics if parsing fails.
     ///
-    /// This function will only parse `//@` and `//~` style comments
+    /// This function will only parse `//@` and `//~` style comments (and the `//[xxx]~` variant)
     /// and ignore all others
     fn parse_checked(path: &Path, content: &str) -> Result<Self> {
         let mut this = Self::default();
