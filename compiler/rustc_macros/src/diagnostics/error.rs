@@ -4,16 +4,16 @@ use quote::quote;
 use syn::{spanned::Spanned, Attribute, Error as SynError, Meta, NestedMeta};
 
 #[derive(Debug)]
-pub(crate) enum SessionDiagnosticDeriveError {
+pub(crate) enum DiagnosticDeriveError {
     SynError(SynError),
     ErrorHandled,
 }
 
-impl SessionDiagnosticDeriveError {
+impl DiagnosticDeriveError {
     pub(crate) fn to_compile_error(self) -> TokenStream {
         match self {
-            SessionDiagnosticDeriveError::SynError(e) => e.to_compile_error(),
-            SessionDiagnosticDeriveError::ErrorHandled => {
+            DiagnosticDeriveError::SynError(e) => e.to_compile_error(),
+            DiagnosticDeriveError::ErrorHandled => {
                 // Return ! to avoid having to create a blank DiagnosticBuilder to return when an
                 // error has already been emitted to the compiler.
                 quote! {
@@ -24,9 +24,9 @@ impl SessionDiagnosticDeriveError {
     }
 }
 
-impl From<SynError> for SessionDiagnosticDeriveError {
+impl From<SynError> for DiagnosticDeriveError {
     fn from(e: SynError) -> Self {
-        SessionDiagnosticDeriveError::SynError(e)
+        DiagnosticDeriveError::SynError(e)
     }
 }
 
@@ -34,9 +34,9 @@ impl From<SynError> for SessionDiagnosticDeriveError {
 pub(crate) fn _throw_err(
     diag: Diagnostic,
     f: impl FnOnce(Diagnostic) -> Diagnostic,
-) -> SessionDiagnosticDeriveError {
+) -> DiagnosticDeriveError {
     f(diag).emit();
-    SessionDiagnosticDeriveError::ErrorHandled
+    DiagnosticDeriveError::ErrorHandled
 }
 
 /// Helper function for printing `syn::Path` - doesn't handle arguments in paths and these are
@@ -60,7 +60,7 @@ pub(crate) fn span_err(span: impl MultiSpan, msg: &str) -> Diagnostic {
 /// Emit a diagnostic on span `$span` with msg `$msg` (optionally performing additional decoration
 /// using the `FnOnce` passed in `diag`) and return `Err(ErrorHandled)`.
 ///
-/// For methods that return a `Result<_, SessionDiagnosticDeriveError>`:
+/// For methods that return a `Result<_, DiagnosticDeriveError>`:
 macro_rules! throw_span_err {
     ($span:expr, $msg:expr) => {{ throw_span_err!($span, $msg, |diag| diag) }};
     ($span:expr, $msg:expr, $f:expr) => {{
@@ -87,7 +87,7 @@ pub(crate) fn invalid_attr(attr: &Attribute, meta: &Meta) -> Diagnostic {
 /// Emit a error diagnostic for an invalid attribute (optionally performing additional decoration
 /// using the `FnOnce` passed in `diag`) and return `Err(ErrorHandled)`.
 ///
-/// For methods that return a `Result<_, SessionDiagnosticDeriveError>`:
+/// For methods that return a `Result<_, DiagnosticDeriveError>`:
 macro_rules! throw_invalid_attr {
     ($attr:expr, $meta:expr) => {{ throw_invalid_attr!($attr, $meta, |diag| diag) }};
     ($attr:expr, $meta:expr, $f:expr) => {{
@@ -129,7 +129,7 @@ pub(crate) fn invalid_nested_attr(attr: &Attribute, nested: &NestedMeta) -> Diag
 /// Emit a error diagnostic for an invalid nested attribute (optionally performing additional
 /// decoration using the `FnOnce` passed in `diag`) and return `Err(ErrorHandled)`.
 ///
-/// For methods that return a `Result<_, SessionDiagnosticDeriveError>`:
+/// For methods that return a `Result<_, DiagnosticDeriveError>`:
 macro_rules! throw_invalid_nested_attr {
     ($attr:expr, $nested_attr:expr) => {{ throw_invalid_nested_attr!($attr, $nested_attr, |diag| diag) }};
     ($attr:expr, $nested_attr:expr, $f:expr) => {{

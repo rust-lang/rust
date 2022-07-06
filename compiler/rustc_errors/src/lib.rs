@@ -370,10 +370,10 @@ impl fmt::Display for ExplicitBug {
 impl error::Error for ExplicitBug {}
 
 pub use diagnostic::{
-    AddSubdiagnostic, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
+    AddSubdiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
     DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
-pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee};
+pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, LintDiagnosticBuilder};
 use std::backtrace::Backtrace;
 
 /// A handler deals with errors and other compiler output.
