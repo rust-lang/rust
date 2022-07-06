@@ -4,6 +4,19 @@
 enum A { A1, A2 }
 enum B { B1=4, B2=2 }
 
+#[allow(dead_code)]
+#[repr(align(8))]
+enum Aligned {
+    Zero = 0,
+    One = 1,
+}
+
+// regression test for https://github.com/rust-lang/rust/issues/96185
+const X: u8 = {
+    let aligned = Aligned::Zero;
+    aligned as u8
+};
+
 pub fn main () {
     static c1: isize = A::A2 as isize;
     static c2: isize = B::B2 as isize;
@@ -23,4 +36,6 @@ pub fn main () {
     assert_eq!(c2_2, 4);
     assert_eq!(a1_2, 0);
     assert_eq!(a2_2, 4);
+
+    assert_eq!(X, 0);
 }
