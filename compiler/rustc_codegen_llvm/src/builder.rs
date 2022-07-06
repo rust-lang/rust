@@ -480,10 +480,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             layout: TyAndLayout<'tcx>,
             offset: Size,
         ) {
-            if !scalar.is_always_valid(bx) {
-                bx.noundef_metadata(load);
-            }
-
             match scalar.primitive() {
                 abi::Int(..) => {
                     if !scalar.is_always_valid(bx) {
@@ -1245,16 +1241,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 load,
                 llvm::MD_align as c_uint,
                 llvm::LLVMMDNodeInContext(self.cx.llcx, v.as_ptr(), v.len() as c_uint),
-            );
-        }
-    }
-
-    fn noundef_metadata(&mut self, load: &'ll Value) {
-        unsafe {
-            llvm::LLVMSetMetadata(
-                load,
-                llvm::MD_noundef as c_uint,
-                llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0),
             );
         }
     }
