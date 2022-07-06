@@ -39,6 +39,7 @@ pub fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
     }
 }
 
+#[inline]
 pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
     match node {
         Node::Item(Item {
@@ -1292,27 +1293,19 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> Module
         }
 
         fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
-            if associated_body(Node::ForeignItem(item)).is_some() {
-                self.body_owners.push(item.def_id);
-            }
-
             self.foreign_items.push(item.foreign_item_id());
             intravisit::walk_foreign_item(self, item)
         }
 
         fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {
-            if matches!(ex.kind, ExprKind::Closure { .. })
-                && associated_body(Node::Expr(ex)).is_some()
-            {
+            if matches!(ex.kind, ExprKind::Closure { .. }) {
                 self.body_owners.push(self.tcx.hir().local_def_id(ex.hir_id));
             }
             intravisit::walk_expr(self, ex)
         }
 
         fn visit_anon_const(&mut self, c: &'hir AnonConst) {
-            if associated_body(Node::AnonConst(c)).is_some() {
-                self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
-            }
+            self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
             intravisit::walk_anon_const(self, c)
         }
     }
@@ -1382,10 +1375,6 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         }
 
         fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
-            if associated_body(Node::ForeignItem(item)).is_some() {
-                self.body_owners.push(item.def_id);
-            }
-
             self.foreign_items.push(item.foreign_item_id());
             intravisit::walk_foreign_item(self, item)
         }
@@ -1409,18 +1398,14 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
         }
 
         fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {
-            if matches!(ex.kind, ExprKind::Closure { .. })
-                && associated_body(Node::Expr(ex)).is_some()
-            {
+            if matches!(ex.kind, ExprKind::Closure { .. }) {
                 self.body_owners.push(self.tcx.hir().local_def_id(ex.hir_id));
             }
             intravisit::walk_expr(self, ex)
         }
 
         fn visit_anon_const(&mut self, c: &'hir AnonConst) {
-            if associated_body(Node::AnonConst(c)).is_some() {
-                self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
-            }
+            self.body_owners.push(self.tcx.hir().local_def_id(c.hir_id));
             intravisit::walk_anon_const(self, c)
         }
     }
