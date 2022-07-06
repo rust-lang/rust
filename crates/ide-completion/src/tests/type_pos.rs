@@ -563,7 +563,7 @@ fn f(t: impl MyTrait<u8, u8, I$0
 fn completes_type_parameter_or_associated_type_with_default_value() {
     check(
         r#"
-trait MyTrait<T = u8, U> {
+trait MyTrait<T, U = u8> {
     type Item1;
     type Item2;
 };
@@ -590,7 +590,7 @@ fn f(t: impl MyTrait<u$0
 
     check(
         r#"
-trait MyTrait<T = u8, U> {
+trait MyTrait<T, U = u8> {
     type Item1;
     type Item2;
 };
@@ -619,7 +619,7 @@ fn f(t: impl MyTrait<u8, u$0
 
     check(
         r#"
-trait MyTrait<T = u8, U> {
+trait MyTrait<T, U = u8> {
     type Item1;
     type Item2;
 };
