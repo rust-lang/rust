@@ -23,8 +23,6 @@ pub fn codegen_fulfill_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
 ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
-    // Remove any references to regions; this helps improve caching.
-    let trait_ref = tcx.erase_regions(trait_ref);
     // We expect the input to be fully normalized.
     debug_assert_eq!(trait_ref, tcx.normalize_erasing_regions(param_env, trait_ref));
 
