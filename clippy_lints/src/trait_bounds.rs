@@ -9,12 +9,12 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    GenericBound, Generics, Item, ItemKind, Node, Path, PathSegment, PredicateOrigin, QPath, TraitItem, Ty, TyKind,
-    WherePredicate,
+    GenericBound, Generics, Item, ItemKind, Node, Path, PathSegment, PredicateOrigin, QPath, TraitBoundModifier,
+    TraitItem, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -242,8 +242,17 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
 }
 
 fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'a [PathSegment<'a>], Span)> {
-    if let GenericBound::Trait(t, _) = bound {
-        Some((t.trait_ref.path.res, t.trait_ref.path.segments, t.span))
+    if let GenericBound::Trait(t, tbm) = bound {
+        let trait_path = t.trait_ref.path;
+        let trait_span = {
+            let path_span = trait_path.span;
+            if let TraitBoundModifier::Maybe = tbm {
+                path_span.with_lo(path_span.lo() - BytePos(1)) // include the `?`
+            } else {
+                path_span
+            }
+        };
+        Some((trait_path.res, trait_path.segments, trait_span))
     } else {
         None
     }
