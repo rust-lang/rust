@@ -116,17 +116,17 @@
 // cdb-check:    [chars]          : "IAMA OS string [...]"
 
 // cdb-command: dx some
-// cdb-check:some             : Some [Type: enum$<core::option::Option<i16> >]
-// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<i16> >]
+// cdb-check:some             : Some [Type: enum2$<core::option::Option<i16> >]
+// cdb-check:    [<Raw View>]     [Type: enum2$<core::option::Option<i16> >]
 // cdb-check:    [+0x002] __0              : 8 [Type: short]
 
 // cdb-command: dx none
-// cdb-check:none             : None [Type: enum$<core::option::Option<i64> >]
-// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<i64> >]
+// cdb-check:none             : None [Type: enum2$<core::option::Option<i64> >]
+// cdb-check:    [<Raw View>]     [Type: enum2$<core::option::Option<i64> >]
 
 // cdb-command: dx some_string
-// cdb-check:some_string      : Some [Type: enum$<core::option::Option<alloc::string::String> >]
-// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<alloc::string::String> >]
+// cdb-check:some_string      : Some [Type: enum2$<core::option::Option<alloc::string::String> >]
+// cdb-check:    [<Raw View>]     [Type: enum2$<core::option::Option<alloc::string::String> >]
 // cdb-check:    [+0x000] __0              : "IAMA optional string!" [Type: alloc::string::String]
 
 // cdb-command: dx linkedlist

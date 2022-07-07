@@ -389,7 +389,7 @@ fn push_debuginfo_type_name<'tcx>(
             // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or
             // "{async_fn_env#0}<T1, T2, ...>", etc.
             // In the case of cpp-like debuginfo, the name additionally gets wrapped inside of
-            // an artificial `enum$<>` type, as defined in msvc_enum_fallback().
+            // an artificial `enum2$<>` type, as defined in msvc_enum_fallback().
             if cpp_like_debuginfo && t.is_generator() {
                 let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).unwrap();
                 msvc_enum_fallback(
@@ -434,7 +434,7 @@ fn push_debuginfo_type_name<'tcx>(
         visited: &mut FxHashSet<Ty<'tcx>>,
     ) {
         debug_assert!(!wants_c_like_enum_debuginfo(ty_and_layout));
-        output.push_str("enum$<");
+        output.push_str("enum2$<");
         push_inner(output, visited);
         push_close_angle_bracket(true, output);
     }

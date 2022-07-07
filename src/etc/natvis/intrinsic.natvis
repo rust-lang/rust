@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
   <Type Name="str">
     <DisplayString>{(char*)data_ptr,[length]s8}</DisplayString>
@@ -154,7 +154,7 @@
     This is the visualizer for all enums. It takes care of selecting the active variant.
     See `compiler\rustc_codegen_llvm\src\debuginfo\metadata\enums\cpp_like.rs` for more information.
   -->
-  <Type Name="enum$&lt;*&gt;">
+  <Type Name="enum2$&lt;*&gt;">
     <Intrinsic Name="in_range" Expression="(start &lt;= end) ? ((tag &gt;= start) &amp;&amp; (tag &lt;= end)) : ((tag &gt;= start) || (tag &lt;= end))">
       <Parameter Name="start" Type="unsigned __int64" />
       <Parameter Name="end" Type="unsigned __int64" />

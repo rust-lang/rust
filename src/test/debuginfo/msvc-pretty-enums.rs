@@ -4,106 +4,105 @@
 // cdb-command: g
 
 // cdb-command: dx a
-// cdb-check:a                : Some [Type: enum$<core::option::Option<msvc_pretty_enums::CStyleEnum> >]
+// cdb-check:a                : Some [Type: enum2$<core::option::Option<msvc_pretty_enums::CStyleEnum> >]
 // cdb-check:    [+0x000] __0              : Low (0x2) [Type: msvc_pretty_enums::CStyleEnum]
 
 // cdb-command: dx b
-// cdb-check:b                : None [Type: enum$<core::option::Option<msvc_pretty_enums::CStyleEnum> >]
+// cdb-check:b                : None [Type: enum2$<core::option::Option<msvc_pretty_enums::CStyleEnum> >]
 
 // cdb-command: dx c
-// cdb-check:c                : Tag1 [Type: enum$<msvc_pretty_enums::NicheLayoutEnum>]
+// cdb-check:c                : Tag1 [Type: enum2$<msvc_pretty_enums::NicheLayoutEnum>]
 
 // cdb-command: dx d
-// cdb-check:d                : Data [Type: enum$<msvc_pretty_enums::NicheLayoutEnum>]
+// cdb-check:d                : Data [Type: enum2$<msvc_pretty_enums::NicheLayoutEnum>]
 // cdb-check:    [+0x000] my_data          : High (0x10) [Type: msvc_pretty_enums::CStyleEnum]
 
 // cdb-command: dx e
-// cdb-check:e                : Tag2 [Type: enum$<msvc_pretty_enums::NicheLayoutEnum>]
+// cdb-check:e                : Tag2 [Type: enum2$<msvc_pretty_enums::NicheLayoutEnum>]
 
 // cdb-command: dx f
-// cdb-check:f                : Some [Type: enum$<core::option::Option<ref$<u32> > >]
+// cdb-check:f                : Some [Type: enum2$<core::option::Option<ref$<u32> > >]
 // cdb-check:    [+0x000] __0              : 0x[...] : 0x1 [Type: unsigned int *]
 
 // cdb-command: dx g
-// cdb-check:g                : None [Type: enum$<core::option::Option<ref$<u32> > >]
+// cdb-check:g                : None [Type: enum2$<core::option::Option<ref$<u32> > >]
 
 // cdb-command: dx h
-// cdb-check:h                : Some [Type: enum$<core::option::Option<u32> >]
+// cdb-check:h                : Some [Type: enum2$<core::option::Option<u32> >]
 // cdb-check:    [+0x004] __0              : 0xc [Type: unsigned int]
 
 // cdb-command: dx i
-// cdb-check:i                : None [Type: enum$<core::option::Option<u32> >]
+// cdb-check:i                : None [Type: enum2$<core::option::Option<u32> >]
 
 // cdb-command: dx j
 // cdb-check:j                : High (0x10) [Type: msvc_pretty_enums::CStyleEnum]
 
 // cdb-command: dx k
-// cdb-check:k                : Some [Type: enum$<core::option::Option<alloc::string::String> >]
+// cdb-check:k                : Some [Type: enum2$<core::option::Option<alloc::string::String> >]
 // cdb-check:    [+0x000] __0              : "IAMA optional string!" [Type: alloc::string::String]
 
 // cdb-command: dx l
-// cdb-check:l                : Ok [Type: enum$<core::result::Result<u32,enum$<msvc_pretty_enums::Empty> > >]
+// cdb-check:l                : Ok [Type: enum2$<core::result::Result<u32,enum2$<msvc_pretty_enums::Empty> > >]
 // cdb-check:    [+0x000] __0              : 0x2a [Type: unsigned int]
 
 // cdb-command: dx niche128_some
-// cdb-check:niche128_some    : Some [Type: enum$<core::option::Option<core::num::nonzero::NonZeroI128> >]
+// cdb-check: niche128_some    : Some [Type: enum2$<core::option::Option<core::num::nonzero::NonZeroI128> >]
 // Note: we can't actually read the value of the field because CDB cannot handle 128 bit integers.
 // cdb-check:    [+0x000] __0 [...] [Type: core::num::nonzero::NonZeroI128]
 
 // cdb-command: dx niche128_none
-// cdb-check: niche128_none    : None [Type: enum$<core::option::Option<core::num::nonzero::NonZeroI128> >]
+// cdb-check: niche128_none    : None [Type: enum2$<core::option::Option<core::num::nonzero::NonZeroI128> >]
 
 // cdb-command: dx niche_w_fields_1_some,d
-// cdb-check: niche_w_fields_1_some,d : A [Type: enum$<msvc_pretty_enums::NicheLayoutWithFields1>]
+// cdb-check: niche_w_fields_1_some,d : A [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields1>]
 // cdb-check:     [+0x[...]] __0              : 0x[...] : 77 [Type: unsigned char *]
 // cdb-check:     [+0x[...]] __1              : 7 [Type: unsigned int]
 
 // cdb-command: dx niche_w_fields_1_none,d
-// cdb-check: niche_w_fields_1_none,d : B [Type: enum$<msvc_pretty_enums::NicheLayoutWithFields1>]
+// cdb-check: niche_w_fields_1_none,d : B [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields1>]
 // cdb-check:     [+0x[...]] __0              : 99 [Type: unsigned int]
 
 // cdb-command: dx niche_w_fields_2_some,d
-// cdb-check: niche_w_fields_2_some,d : A [Type: enum$<msvc_pretty_enums::NicheLayoutWithFields2>]
-// cdb-check:     [<Raw View>]     [Type: enum$<msvc_pretty_enums::NicheLayoutWithFields2>]
+// cdb-check: niche_w_fields_2_some,d : A [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields2>]
 // cdb-check:     [+0x[...]] __0              : 800 [Type: core::num::nonzero::NonZeroU32]
 // cdb-check:     [+0x[...]] __1              : 900 [Type: unsigned __int64]
 
 // cdb-command: dx niche_w_fields_2_none,d
-// cdb-check: niche_w_fields_2_none,d : B [Type: enum$<msvc_pretty_enums::NicheLayoutWithFields2>]
+// cdb-check: niche_w_fields_2_none,d : B [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields2>]
 // cdb-check:     [+0x[...]] __0              : 1000 [Type: unsigned __int64]
 
 // cdb-command: dx niche_w_fields_3_some,d
-// cdb-check: niche_w_fields_3_some,d : A [Type: enum$<msvc_pretty_enums::NicheLayoutWithFields3>]
+// cdb-check: niche_w_fields_3_some,d : A [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields3>]
 // cdb-check:     [+0x[...]] __0              : 137 [Type: unsigned char]
 // cdb-check:     [+0x[...]] __1              : true [Type: bool]
 
 // cdb-command: dx niche_w_fields_3_niche1,d
-// cdb-check: niche_w_fields_3_niche1,d : B [Type: enum$<msvc_pretty_enums::NicheLayoutWithFields3>]
+// cdb-check: niche_w_fields_3_niche1,d : B [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields3>]
 // cdb-check:     [+0x[...]] __0              : 12 [Type: unsigned char]
 
 // cdb-command: dx niche_w_fields_3_niche2,d
-// cdb-check: niche_w_fields_3_niche2,d : C [Type: enum$<msvc_pretty_enums::NicheLayoutWithFields3>]
+// cdb-check: niche_w_fields_3_niche2,d : C [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields3>]
 // cdb-check:     [+0x[...]] __0              : false [Type: bool]
 
 // cdb-command: dx niche_w_fields_3_niche3,d
-// cdb-check: niche_w_fields_3_niche3,d : D [Type: enum$<msvc_pretty_enums::NicheLayoutWithFields3>]
+// cdb-check: niche_w_fields_3_niche3,d : D [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields3>]
 // cdb-check:     [+0x[...]] __0              : 34 [Type: unsigned char]
 
 // cdb-command: dx niche_w_fields_3_niche4,d
-// cdb-check: niche_w_fields_3_niche4,d : E [Type: enum$<msvc_pretty_enums::NicheLayoutWithFields3>]
+// cdb-check: niche_w_fields_3_niche4,d : E [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields3>]
 // cdb-check:     [+0x[...]] __0              : 56 [Type: unsigned char]
 
 // cdb-command: dx niche_w_fields_3_niche5,d
-// cdb-check: niche_w_fields_3_niche5,d : F [Type: enum$<msvc_pretty_enums::NicheLayoutWithFields3>]
+// cdb-check: niche_w_fields_3_niche5,d : F [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields3>]
 
 // cdb-command: dx -r3 niche_w_fields_std_result_ok,d
-// cdb-check: niche_w_fields_std_result_ok,d : Ok [Type: enum$<core::result::Result<alloc::boxed::Box<slice$<u8>,alloc::alloc::Global>,u64> >]
+// cdb-check: niche_w_fields_std_result_ok,d : Ok [Type: enum2$<core::result::Result<alloc::boxed::Box<slice$<u8>,alloc::alloc::Global>,u64> >]
 // cdb-check:    [+0x[...]] __0              [Type: alloc::boxed::Box<slice$<u8>,alloc::alloc::Global>]
 // cdb-check:        [+0x[...]] data_ptr         : [...]
 // cdb-check:        [+0x[...]] length           : 3 [...]
 
 // cdb-command: dx -r3 niche_w_fields_std_result_err,d
-// cdb-check: niche_w_fields_std_result_err,d : Err [Type: enum$<core::result::Result<alloc::boxed::Box<slice$<u8>,alloc::alloc::Global>,u64> >]
+// cdb-check: niche_w_fields_std_result_err,d : Err [Type: enum2$<core::result::Result<alloc::boxed::Box<slice$<u8>,alloc::alloc::Global>,u64> >]
 // cdb-check:    [+0x[...]] __0              : 789 [Type: unsigned __int64]
 
 use std::num::{NonZeroI128, NonZeroU32};

@@ -21,15 +21,14 @@
 
 //
 // cdb-command:dx lock,d
-// cdb-check:lock,d           : Ok [Type: enum$<core::result::Result<std::sync::mutex::MutexGuard<i32>,enum$<std::sync::poison::TryLockError<std::sync::mutex::MutexGuard<i32> >, 0, 1, Poisoned> > >]
+// cdb-check:lock,d           : Ok [Type: enum2$<core::result::Result<std::sync::mutex::MutexGuard<i32>,enum2$<std::sync::poison::TryLockError<std::sync::mutex::MutexGuard<i32> >, 0, 1, Poisoned> > >]
 // cdb-check:    [variant]        : Ok
 // cdb-check:    [...] __0              [Type: std::sync::mutex::MutexGuard<i32>]
 
 use std::sync::Mutex;
 
 #[allow(unused_variables)]
-fn main()
-{
+fn main() {
     let m = Mutex::new(0);
     let lock = m.try_lock();
     zzz(); // #break

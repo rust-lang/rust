@@ -68,7 +68,7 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 /// It's roughly equivalent to the following C/C++ code:
 ///
 /// ```c
-/// union enum$<{fully-qualified-name}> {
+/// union enum2$<{fully-qualified-name}> {
 ///   struct Variant0 {
 ///     struct {name-of-variant-0} {
 ///        <variant 0 fields>
@@ -91,12 +91,27 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 /// }
 /// ```
 ///
-/// As you can see, the type name is wrapped `enum$`. This way we can have a
-/// single NatVis rule for handling all enums.
+/// As you can see, the type name is wrapped in `enum2$<_>`. This way we can
+/// have a single NatVis rule for handling all enums. The `2` in `enum2$<_>`
+/// is an encoding version tag, so that debuggers can decide to decode this
+/// differently than the previous `enum$<_>` encoding emitted by earlier
+/// compiler versions.
 ///
-/// For niche-tag enums, a variant might correspond to a range of tag values.
-/// In that case the variant struct has a `DISCR_BEGIN` and `DISCR_END` field
-/// instead of DISCR_EXACT.
+/// Niche-tag enums have one special variant, usually called the
+/// "dataful variant". This variant has a field that
+/// doubles as the tag of the enum. The variant is active when the value of
+/// that field is within a pre-defined range. Therefore the variant struct
+/// has a `DISCR_BEGIN` and `DISCR_END` field instead of `DISCR_EXACT` in
+/// that case. Both `DISCR_BEGIN` and `DISCR_END` are inclusive bounds.
+/// Note that these ranges can wrap around, so that `DISCR_END < DISCR_BEGIN`.
+///
+/// The field in the top-level union that corresponds to the dataful variant
+/// is called `variant_fallback` instead of `variant<index>`. This is mainly
+/// an optimization that enables a shorter NatVis definition. That way we
+/// only need to specify a `tag == variantX.DISCR_EXACT` entry for the indexed
+/// variants. Otherwise we'd need to have that and then an additional entry
+/// checking `in_range(variantX.DISCR_BEGIN, variantX.DISCR_END)` for each
+/// index.
 ///
 /// Single-variant enums don't actually have a tag field. In this case we
 /// emit a static tag field (that always has the value 0) so we can use the
