@@ -520,6 +520,11 @@ declare_lint! {
     /// The `expect` attribute can be removed if this is intended behavior otherwise
     /// it should be investigated why the expected lint is no longer issued.
     ///
+    /// In rare cases, the expectation might be emitted at a different location than
+    /// shown in the shown code snippet. In most cases, the `#[expect]` attribute
+    /// works when added to the outer scope. A few lints can only be expected
+    /// on a crate level.
+    ///
     /// Part of RFC 2383. The progress is being tracked in [#54503]
     ///
     /// [#54503]: https://github.com/rust-lang/rust/issues/54503
