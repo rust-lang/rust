@@ -1,3 +1,5 @@
+use crate::check::intrinsicck::InlineAsmCtxt;
+
 use super::coercion::CoerceMany;
 use super::compare_method::check_type_bounds;
 use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
@@ -936,11 +938,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
         DefKind::GlobalAsm => {
             let it = tcx.hir().item(id);
             let hir::ItemKind::GlobalAsm(asm) = it.kind else { span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it) };
-            Inherited::build(tcx, it.def_id).enter(|inh| {
-                let fcx = FnCtxt::new(&inh, tcx.param_env(it.def_id), id.hir_id());
-                fcx.check_asm(asm, it.hir_id());
-                fcx.select_all_obligations_or_error();
-            })
+            InlineAsmCtxt::new_global_asm(tcx).check_asm(asm, id.hir_id());
         }
         _ => {}
     }

@@ -111,6 +111,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         false
     }
+}
+
+pub struct InlineAsmCtxt<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    fcx: Option<&'a FnCtxt<'a, 'tcx>>,
+}
+
+impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
+    pub fn new_global_asm(tcx: TyCtxt<'tcx>) -> Self {
+        InlineAsmCtxt { tcx, fcx: None }
+    }
+
+    pub fn new_in_fn(fcx: &'a FnCtxt<'a, 'tcx>) -> Self {
+        InlineAsmCtxt { tcx: fcx.tcx, fcx: Some(fcx) }
+    }
 
     fn check_asm_operand_type(
         &self,
@@ -122,9 +137,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         tied_input: Option<(&hir::Expr<'tcx>, Option<InlineAsmType>)>,
         target_features: &FxHashSet<Symbol>,
     ) -> Option<InlineAsmType> {
+        let fcx = self.fcx.unwrap_or_else(|| span_bug!(expr.span, "asm operand for global asm"));
         // Check the type against the allowed types for inline asm.
-        let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
-        let ty = self.resolve_vars_if_possible(ty);
+        let ty = fcx.typeck_results.borrow().expr_ty_adjusted(expr);
+        let ty = fcx.resolve_vars_if_possible(ty);
         let asm_ty_isize = match self.tcx.sess.target.pointer_width {
             16 => InlineAsmType::I16,
             32 => InlineAsmType::I32,
@@ -134,7 +150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Expect types to be fully resolved, no const or type variables.
         if ty.has_infer_types_or_consts() {
-            assert!(self.is_tainted_by_errors());
+            assert!(fcx.is_tainted_by_errors());
             return None;
         }
 
@@ -151,7 +167,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Float(FloatTy::F32) => Some(InlineAsmType::F32),
             ty::Float(FloatTy::F64) => Some(InlineAsmType::F64),
             ty::FnPtr(_) => Some(asm_ty_isize),
-            ty::RawPtr(ty::TypeAndMut { ty, mutbl: _ }) if self.is_thin_ptr_ty(ty) => {
+            ty::RawPtr(ty::TypeAndMut { ty, mutbl: _ }) if fcx.is_thin_ptr_ty(ty) => {
                 Some(asm_ty_isize)
             }
             ty::Adt(adt, substs) if adt.repr().simd() => {
@@ -203,7 +219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Check that the type implements Copy. The only case where this can
         // possibly fail is for SIMD types which don't #[derive(Copy)].
-        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, DUMMY_SP) {
+        if !fcx.infcx.type_is_copy_modulo_regions(fcx.param_env, ty, DUMMY_SP) {
             let msg = "arguments for inline assembly must be copyable";
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
             err.note(&format!("`{ty}` does not implement the Copy trait"));
@@ -224,8 +240,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let msg = "incompatible types for asm inout argument";
                 let mut err = self.tcx.sess.struct_span_err(vec![in_expr.span, expr.span], msg);
 
-                let in_expr_ty = self.typeck_results.borrow().expr_ty_adjusted(in_expr);
-                let in_expr_ty = self.resolve_vars_if_possible(in_expr_ty);
+                let in_expr_ty = fcx.typeck_results.borrow().expr_ty_adjusted(in_expr);
+                let in_expr_ty = fcx.resolve_vars_if_possible(in_expr_ty);
                 err.span_label(in_expr.span, &format!("type `{in_expr_ty}`"));
                 err.span_label(expr.span, &format!("type `{ty}`"));
                 err.note(
