@@ -1412,7 +1412,10 @@ fn render_impl(
                         id, item_type, in_trait_class,
                     );
                     render_rightside(w, cx, item, containing_item, render_mode);
-                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                    if trait_.is_some() {
+                        // Anchors are only used on trait impls.
+                        write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                    }
                     w.write_str("<h4 class=\"code-header\">");
                     render_assoc_item(
                         w,
@@ -1435,7 +1438,10 @@ fn render_impl(
                     id, item_type, in_trait_class
                 );
                 render_rightside(w, cx, item, containing_item, render_mode);
-                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                if trait_.is_some() {
+                    // Anchors are only used on trait impls.
+                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                }
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_const(
                     w,
@@ -1457,7 +1463,10 @@ fn render_impl(
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
                 write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class);
-                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                if trait_.is_some() {
+                    // Anchors are only used on trait impls.
+                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                }
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_type(
                     w,
@@ -1480,7 +1489,10 @@ fn render_impl(
                     "<section id=\"{}\" class=\"{}{} has-srclink\">",
                     id, item_type, in_trait_class
                 );
-                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                if trait_.is_some() {
+                    // Anchors are only used on trait impls.
+                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                }
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_type(
                     w,
