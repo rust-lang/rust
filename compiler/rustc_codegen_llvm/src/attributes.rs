@@ -303,6 +303,8 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         // And it is a module-level attribute, so the alternative is pulling naked functions into new LLVM modules.
         // Otherwise LLVM's "naked" functions come with endbr prefixes per https://github.com/rust-lang/rust/issues/98768
         to_add.push(AttributeKind::NoCfCheck.create_attr(cx.llcx));
+        // Need this for AArch64.
+        to_add.push(llvm::CreateAttrStringValue(cx.llcx, "branch-target-enforcement", "false"));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR) {
         // apply to return place instead of function (unlike all other attributes applied in this function)
