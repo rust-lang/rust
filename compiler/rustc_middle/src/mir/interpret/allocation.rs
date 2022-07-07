@@ -179,6 +179,11 @@ pub fn alloc_range(start: Size, size: Size) -> AllocRange {
 }
 
 impl AllocRange {
+    #[inline]
+    pub fn from(r: Range<Size>) -> Self {
+        alloc_range(r.start, r.end - r.start) // `Size` subtraction (overflow-checked)
+    }
+
     #[inline(always)]
     pub fn end(self) -> Size {
         self.start + self.size // This does overflow checking.
@@ -1095,9 +1100,9 @@ impl InitMask {
     /// Returns `Ok(())` if it's initialized. Otherwise returns a range of byte
     /// indexes for the first contiguous span of the uninitialized access.
     #[inline]
-    pub fn is_range_initialized(&self, start: Size, end: Size) -> Result<(), Range<Size>> {
+    pub fn is_range_initialized(&self, start: Size, end: Size) -> Result<(), AllocRange> {
         if end > self.len {
-            return Err(self.len..end);
+            return Err(AllocRange::from(self.len..end));
         }
 
         let uninit_start = self.find_bit(start, end, false);
@@ -1105,7 +1110,7 @@ impl InitMask {
         match uninit_start {
             Some(uninit_start) => {
                 let uninit_end = self.find_bit(uninit_start, end, true).unwrap_or(end);
-                Err(uninit_start..uninit_end)
+                Err(AllocRange::from(uninit_start..uninit_end))
             }
             None => Ok(()),
         }
@@ -1176,19 +1181,17 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     ///
     /// Returns `Ok(())` if it's initialized. Otherwise returns the range of byte
     /// indexes of the first contiguous uninitialized access.
-    fn is_init(&self, range: AllocRange) -> Result<(), Range<Size>> {
+    fn is_init(&self, range: AllocRange) -> Result<(), AllocRange> {
         self.init_mask.is_range_initialized(range.start, range.end()) // `Size` addition
     }
 
     /// Checks that a range of bytes is initialized. If not, returns the `InvalidUninitBytes`
     /// error which will report the first range of bytes which is uninitialized.
     fn check_init(&self, range: AllocRange) -> AllocResult {
-        self.is_init(range).map_err(|idx_range| {
+        self.is_init(range).map_err(|uninit_range| {
             AllocError::InvalidUninitBytes(Some(UninitBytesAccess {
-                access_offset: range.start,
-                access_size: range.size,
-                uninit_offset: idx_range.start,
-                uninit_size: idx_range.end - idx_range.start, // `Size` subtraction
+                access: range,
+                uninit: uninit_range,
             }))
         })
     }
