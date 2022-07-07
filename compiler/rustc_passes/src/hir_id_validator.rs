@@ -1,9 +1,9 @@
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lock;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit;
 use rustc_hir::{HirId, ItemLocalId};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
@@ -15,32 +15,35 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         crate::hir_stats::print_hir_stats(tcx);
     }
 
-    let errors = Lock::new(Vec::new());
-    let hir_map = tcx.hir();
+    #[cfg(debug_assertions)]
+    {
+        let errors = Lock::new(Vec::new());
+        let hir_map = tcx.hir();
 
-    hir_map.par_for_each_module(|module_id| {
-        let mut v = HirIdValidator {
-            hir_map,
-            owner: None,
-            hir_ids_seen: Default::default(),
-            errors: &errors,
-        };
+        hir_map.par_for_each_module(|module_id| {
+            let mut v = HirIdValidator {
+                hir_map,
+                owner: None,
+                hir_ids_seen: Default::default(),
+                errors: &errors,
+            };
 
-        tcx.hir().deep_visit_item_likes_in_module(module_id, &mut v);
-    });
+            tcx.hir().deep_visit_item_likes_in_module(module_id, &mut v);
+        });
 
-    let errors = errors.into_inner();
+        let errors = errors.into_inner();
 
-    if !errors.is_empty() {
-        let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
-        tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
+        if !errors.is_empty() {
+            let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
+            tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, &message);
+        }
     }
 }
 
 struct HirIdValidator<'a, 'hir> {
     hir_map: Map<'hir>,
     owner: Option<LocalDefId>,
-    hir_ids_seen: FxHashSet<ItemLocalId>,
+    hir_ids_seen: GrowableBitSet<ItemLocalId>,
     errors: &'a Lock<Vec<String>>,
 }
 
@@ -80,7 +83,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
         if max != self.hir_ids_seen.len() - 1 {
             // Collect the missing ItemLocalIds
             let missing: Vec<_> = (0..=max as u32)
-                .filter(|&i| !self.hir_ids_seen.contains(&ItemLocalId::from_u32(i)))
+                .filter(|&i| !self.hir_ids_seen.contains(ItemLocalId::from_u32(i)))
                 .collect();
 
             // Try to map those to something more useful
@@ -106,7 +109,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
                     missing_items,
                     self.hir_ids_seen
                         .iter()
-                        .map(|&local_id| HirId { owner, local_id })
+                        .map(|local_id| HirId { owner, local_id })
                         .map(|h| format!("({:?} {})", h, self.hir_map.node_to_string(h)))
                         .collect::<Vec<_>>()
                 )
