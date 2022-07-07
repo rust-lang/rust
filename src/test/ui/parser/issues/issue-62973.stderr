@@ -20,11 +20,11 @@ LL |
 LL |
    |  ^
 
-error: expected one of `,` or `}`, found `{`
+error: expected one of `,`, `:`, or `}`, found `{`
   --> $DIR/issue-62973.rs:6:8
    |
 LL | fn p() { match s { v, E { [) {) }
-   |        ^       -       -^ expected one of `,` or `}`
+   |        ^       -       -^ expected one of `,`, `:`, or `}`
    |        |       |       |
    |        |       |       help: `}` may belong here
    |        |       while parsing this struct

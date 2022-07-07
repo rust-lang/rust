@@ -3012,6 +3012,11 @@ impl<'a> Parser<'a> {
                 }
             };
 
+            let is_shorthand = parsed_field.as_ref().map_or(false, |f| f.ident.span == f.expr.span);
+            // A shorthand field can be turned into a full field with `:`.
+            // We should point this out.
+            self.check_or_expected(!is_shorthand, TokenType::Token(token::Colon));
+
             match self.expect_one_of(&[token::Comma], &[token::CloseDelim(close_delim)]) {
                 Ok(_) => {
                     if let Some(f) = parsed_field.or(recovery_field) {

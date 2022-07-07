@@ -4,11 +4,11 @@ error: float literals must have an integer part
 LL |     let _ = Foo { bar: .5, baz: 42 };
    |                        ^^ help: must have an integer part: `0.5`
 
-error: expected one of `,` or `}`, found `.`
+error: expected one of `,`, `:`, or `}`, found `.`
   --> $DIR/issue-52496.rs:8:22
    |
 LL |     let _ = Foo { bar.into(), bat: -1, . };
-   |             ---      ^ expected one of `,` or `}`
+   |             ---      ^ expected one of `,`, `:`, or `}`
    |             |
    |             while parsing this struct
 
