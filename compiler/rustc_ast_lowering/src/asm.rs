@@ -24,10 +24,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> &'hir hir::InlineAsm<'hir> {
         // Rustdoc needs to support asm! from foreign architectures: don't try
         // lowering the register constraints in this case.
-        let asm_arch = if self.sess.opts.actually_rustdoc { None } else { self.sess.asm_arch };
-        if asm_arch.is_none() && !self.sess.opts.actually_rustdoc {
-            struct_span_err!(self.sess, sp, E0472, "inline assembly is unsupported on this target")
-                .emit();
+        let asm_arch =
+            if self.tcx.sess.opts.actually_rustdoc { None } else { self.tcx.sess.asm_arch };
+        if asm_arch.is_none() && !self.tcx.sess.opts.actually_rustdoc {
+            struct_span_err!(
+                self.tcx.sess,
+                sp,
+                E0472,
+                "inline assembly is unsupported on this target"
+            )
+            .emit();
         }
         if let Some(asm_arch) = asm_arch {
             // Inline assembly is currently only stable for these architectures.
@@ -40,9 +46,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     | asm::InlineAsmArch::RiscV32
                     | asm::InlineAsmArch::RiscV64
             );
-            if !is_stable && !self.sess.features_untracked().asm_experimental_arch {
+            if !is_stable && !self.tcx.features().asm_experimental_arch {
                 feature_err(
-                    &self.sess.parse_sess,
+                    &self.tcx.sess.parse_sess,
                     sym::asm_experimental_arch,
                     sp,
                     "inline assembly is not stable yet on this architecture",
@@ -52,17 +58,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
         if asm.options.contains(InlineAsmOptions::ATT_SYNTAX)
             && !matches!(asm_arch, Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64))
-            && !self.sess.opts.actually_rustdoc
+            && !self.tcx.sess.opts.actually_rustdoc
         {
-            self.sess
+            self.tcx
+                .sess
                 .struct_span_err(sp, "the `att_syntax` option is only supported on x86")
                 .emit();
         }
-        if asm.options.contains(InlineAsmOptions::MAY_UNWIND)
-            && !self.sess.features_untracked().asm_unwind
-        {
+        if asm.options.contains(InlineAsmOptions::MAY_UNWIND) && !self.tcx.features().asm_unwind {
             feature_err(
-                &self.sess.parse_sess,
+                &self.tcx.sess.parse_sess,
                 sym::asm_unwind,
                 sp,
                 "the `may_unwind` option is unstable",
@@ -73,12 +78,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut clobber_abis = FxHashMap::default();
         if let Some(asm_arch) = asm_arch {
             for (abi_name, abi_span) in &asm.clobber_abis {
-                match asm::InlineAsmClobberAbi::parse(asm_arch, &self.sess.target, *abi_name) {
+                match asm::InlineAsmClobberAbi::parse(asm_arch, &self.tcx.sess.target, *abi_name) {
                     Ok(abi) => {
                         // If the abi was already in the list, emit an error
                         match clobber_abis.get(&abi) {
                             Some((prev_name, prev_sp)) => {
-                                let mut err = self.sess.struct_span_err(
+                                let mut err = self.tcx.sess.struct_span_err(
                                     *abi_span,
                                     &format!("`{}` ABI specified multiple times", prev_name),
                                 );
@@ -86,7 +91,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                                 // Multiple different abi names may actually be the same ABI
                                 // If the specified ABIs are not the same name, alert the user that they resolve to the same ABI
-                                let source_map = self.sess.source_map();
+                                let source_map = self.tcx.sess.source_map();
                                 if source_map.span_to_snippet(*prev_sp)
                                     != source_map.span_to_snippet(*abi_span)
                                 {
@@ -101,7 +106,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
                     Err(&[]) => {
-                        self.sess
+                        self.tcx
+                            .sess
                             .struct_span_err(
                                 *abi_span,
                                 "`clobber_abi` is not supported on this target",
@@ -109,8 +115,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .emit();
                     }
                     Err(supported_abis) => {
-                        let mut err =
-                            self.sess.struct_span_err(*abi_span, "invalid ABI for `clobber_abi`");
+                        let mut err = self
+                            .tcx
+                            .sess
+                            .struct_span_err(*abi_span, "invalid ABI for `clobber_abi`");
                         let mut abis = format!("`{}`", supported_abis[0]);
                         for m in &supported_abis[1..] {
                             let _ = write!(abis, ", `{}`", m);
@@ -128,7 +136,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Lower operands to HIR. We use dummy register classes if an error
         // occurs during lowering because we still need to be able to produce a
         // valid HIR.
-        let sess = self.sess;
+        let sess = self.tcx.sess;
         let mut operands: Vec<_> = asm
             .operands
             .iter()
@@ -184,9 +192,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
                     InlineAsmOperand::Const { ref anon_const } => {
-                        if !self.sess.features_untracked().asm_const {
+                        if !self.tcx.features().asm_const {
                             feature_err(
-                                &self.sess.parse_sess,
+                                &sess.parse_sess,
                                 sym::asm_const,
                                 *op_sp,
                                 "const operands for inline assembly are unstable",
@@ -198,9 +206,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
                     InlineAsmOperand::Sym { ref sym } => {
-                        if !self.sess.features_untracked().asm_sym {
+                        if !self.tcx.features().asm_sym {
                             feature_err(
-                                &self.sess.parse_sess,
+                                &sess.parse_sess,
                                 sym::asm_sym,
                                 *op_sp,
                                 "sym operands for inline assembly are unstable",

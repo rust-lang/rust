@@ -218,13 +218,6 @@ impl<'hir> Map<'hir> {
         self.tcx.local_def_id_to_hir_id(def_id)
     }
 
-    pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'hir {
-        // Create a dependency to the crate to be sure we re-execute this when the amount of
-        // definitions change.
-        self.tcx.ensure().hir_crate(());
-        self.tcx.definitions_untracked().iter_local_def_id()
-    }
-
     /// Do not call this function directly. The query should be called.
     pub(super) fn opt_def_kind(self, local_def_id: LocalDefId) -> Option<DefKind> {
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
@@ -1142,34 +1135,35 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
 
     source_file_names.sort_unstable();
 
-    let mut hcx = tcx.create_stable_hashing_context();
-    let mut stable_hasher = StableHasher::new();
-    hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
-    upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
-    source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
-    if tcx.sess.opts.debugging_opts.incremental_relative_spans {
-        let definitions = &tcx.definitions_untracked();
-        let mut owner_spans: Vec<_> = krate
-            .owners
-            .iter_enumerated()
-            .filter_map(|(def_id, info)| {
-                let _ = info.as_owner()?;
-                let def_path_hash = definitions.def_path_hash(def_id);
-                let span = resolutions.source_span[def_id];
-                debug_assert_eq!(span.parent(), None);
-                Some((def_path_hash, span))
-            })
-            .collect();
-        owner_spans.sort_unstable_by_key(|bn| bn.0);
-        owner_spans.hash_stable(&mut hcx, &mut stable_hasher);
-    }
-    tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
-    tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
-    // Hash visibility information since it does not appear in HIR.
-    resolutions.visibilities.hash_stable(&mut hcx, &mut stable_hasher);
-    resolutions.has_pub_restricted.hash_stable(&mut hcx, &mut stable_hasher);
+    let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
+        let mut stable_hasher = StableHasher::new();
+        hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
+        upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
+        source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
+        if tcx.sess.opts.debugging_opts.incremental_relative_spans {
+            let definitions = tcx.definitions_untracked();
+            let mut owner_spans: Vec<_> = krate
+                .owners
+                .iter_enumerated()
+                .filter_map(|(def_id, info)| {
+                    let _ = info.as_owner()?;
+                    let def_path_hash = definitions.def_path_hash(def_id);
+                    let span = resolutions.source_span[def_id];
+                    debug_assert_eq!(span.parent(), None);
+                    Some((def_path_hash, span))
+                })
+                .collect();
+            owner_spans.sort_unstable_by_key(|bn| bn.0);
+            owner_spans.hash_stable(&mut hcx, &mut stable_hasher);
+        }
+        tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
+        tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
+        // Hash visibility information since it does not appear in HIR.
+        resolutions.visibilities.hash_stable(&mut hcx, &mut stable_hasher);
+        resolutions.has_pub_restricted.hash_stable(&mut hcx, &mut stable_hasher);
+        stable_hasher.finish()
+    });
 
-    let crate_hash: Fingerprint = stable_hasher.finish();
     Svh::new(crate_hash.to_smaller_hash())
 }
 

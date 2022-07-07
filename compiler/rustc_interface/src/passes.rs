@@ -14,7 +14,6 @@ use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
-use rustc_hir::Crate;
 use rustc_lint::{EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_metadata::{encode_metadata, EncodedMetadata};
@@ -482,37 +481,6 @@ pub fn configure_and_expand(
     Ok(krate)
 }
 
-fn lower_to_hir<'tcx>(
-    sess: &Session,
-    definitions: &mut Definitions,
-    cstore: &CrateStoreDyn,
-    resolutions: &ty::ResolverOutputs,
-    resolver: ty::ResolverAstLowering,
-    krate: Rc<ast::Crate>,
-    arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
-) -> &'tcx Crate<'tcx> {
-    // Lower AST to HIR.
-    let hir_crate = rustc_ast_lowering::lower_crate(
-        sess,
-        &krate,
-        definitions,
-        cstore,
-        resolutions,
-        resolver,
-        arena,
-    );
-
-    // Drop AST to free memory
-    sess.time("drop_ast", || std::mem::drop(krate));
-
-    // Discard hygiene data, which isn't required after lowering to HIR.
-    if !sess.opts.debugging_opts.keep_hygiene_data {
-        rustc_span::hygiene::clear_syntax_context_map();
-    }
-
-    hir_crate
-}
-
 // Returns all the paths that correspond to generated files.
 fn generated_output_paths(
     sess: &Session,
@@ -777,6 +745,7 @@ pub fn prepare_outputs(
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
+    providers.hir_crate = rustc_ast_lowering::lower_to_hir;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
@@ -823,7 +792,7 @@ impl<'tcx> QueryContext<'tcx> {
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<LintStore>,
-    krate: Rc<ast::Crate>,
+    krate: Lrc<ast::Crate>,
     dep_graph: DepGraph,
     resolver: Rc<RefCell<BoxedResolver>>,
     outputs: OutputFilenames,
@@ -831,29 +800,17 @@ pub fn create_global_ctxt<'tcx>(
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
-    hir_arena: &'tcx WorkerLocal<rustc_ast_lowering::Arena<'tcx>>,
+    hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
-    let (mut definitions, cstore, resolver_outputs, resolver_for_lowering) =
+    let (definitions, cstore, resolver_outputs, resolver_for_lowering) =
         BoxedResolver::to_resolver_outputs(resolver);
 
     let sess = &compiler.session();
-
-    // Lower AST to HIR.
-    let krate = lower_to_hir(
-        sess,
-        &mut definitions,
-        &*cstore,
-        &resolver_outputs,
-        resolver_for_lowering,
-        krate,
-        hir_arena,
-    );
-
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
@@ -877,9 +834,11 @@ pub fn create_global_ctxt<'tcx>(
                 sess,
                 lint_store,
                 arena,
+                hir_arena,
                 definitions,
                 cstore,
                 resolver_outputs,
+                resolver_for_lowering,
                 krate,
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),

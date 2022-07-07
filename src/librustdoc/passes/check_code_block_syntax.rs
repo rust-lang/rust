@@ -53,7 +53,8 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             None,
             None,
         );
-        let expn_id = LocalExpnId::fresh(expn_data, self.cx.tcx.create_stable_hashing_context());
+        let expn_id =
+            self.cx.tcx.with_stable_hashing_context(|hcx| LocalExpnId::fresh(expn_data, hcx));
         let span = DUMMY_SP.fresh_expansion(expn_id);
 
         let is_empty = rustc_driver::catch_fatal_errors(|| {

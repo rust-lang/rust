@@ -32,12 +32,13 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
+use rustc_data_structures::sync::{self, Lock, Lrc, ReadGuard, RwLock, WorkerLocal};
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::{DecorateLint, ErrorGuaranteed, LintDiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
@@ -1045,6 +1046,7 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
 
 pub struct GlobalCtxt<'tcx> {
     pub arena: &'tcx WorkerLocal<Arena<'tcx>>,
+    pub hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
 
     interners: CtxtInterners<'tcx>,
 
@@ -1069,13 +1071,15 @@ pub struct GlobalCtxt<'tcx> {
     /// Common consts, pre-interned for your convenience.
     pub consts: CommonConsts<'tcx>,
 
-    definitions: rustc_hir::definitions::Definitions,
+    definitions: RwLock<Definitions>,
     cstore: Box<CrateStoreDyn>,
 
     /// Output of the resolver.
     pub(crate) untracked_resolutions: ty::ResolverOutputs,
-
-    pub(crate) untracked_crate: &'tcx hir::Crate<'tcx>,
+    untracked_resolver_for_lowering: Steal<ty::ResolverAstLowering>,
+    /// The entire crate as AST. This field serves as the input for the hir_crate query,
+    /// which lowers it from AST to HIR. It must not be read or used by anything else.
+    pub untracked_crate: Steal<Lrc<ast::Crate>>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -1233,10 +1237,12 @@ impl<'tcx> TyCtxt<'tcx> {
         s: &'tcx Session,
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
-        definitions: rustc_hir::definitions::Definitions,
+        hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
+        definitions: Definitions,
         cstore: Box<CrateStoreDyn>,
         untracked_resolutions: ty::ResolverOutputs,
-        krate: &'tcx hir::Crate<'tcx>,
+        untracked_resolver_for_lowering: ty::ResolverAstLowering,
+        krate: Lrc<ast::Crate>,
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
@@ -1263,16 +1269,18 @@ impl<'tcx> TyCtxt<'tcx> {
             sess: s,
             lint_store,
             arena,
+            hir_arena,
             interners,
             dep_graph,
-            definitions,
+            definitions: RwLock::new(definitions),
             cstore,
-            untracked_resolutions,
             prof: s.prof.clone(),
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
-            untracked_crate: krate,
+            untracked_resolutions,
+            untracked_resolver_for_lowering: Steal::new(untracked_resolver_for_lowering),
+            untracked_crate: Steal::new(krate),
             on_disk_cache,
             queries,
             query_caches: query::QueryCaches::default(),
@@ -1368,7 +1376,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_key(self, id: DefId) -> rustc_hir::definitions::DefKey {
         // Accessing the DefKey is ok, since it is part of DefPathHash.
         if let Some(id) = id.as_local() {
-            self.definitions.def_key(id)
+            self.definitions_untracked().def_key(id)
         } else {
             self.cstore.def_key(id)
         }
@@ -1382,7 +1390,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_path(self, id: DefId) -> rustc_hir::definitions::DefPath {
         // Accessing the DefPath is ok, since it is part of DefPathHash.
         if let Some(id) = id.as_local() {
-            self.definitions.def_path(id)
+            self.definitions_untracked().def_path(id)
         } else {
             self.cstore.def_path(id)
         }
@@ -1392,7 +1400,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_path_hash(self, def_id: DefId) -> rustc_hir::definitions::DefPathHash {
         // Accessing the DefPathHash is ok, it is incr. comp. stable.
         if let Some(def_id) = def_id.as_local() {
-            self.definitions.def_path_hash(def_id)
+            self.definitions_untracked().def_path_hash(def_id)
         } else {
             self.cstore.def_path_hash(def_id)
         }
@@ -1429,7 +1437,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // If this is a DefPathHash from the local crate, we can look up the
         // DefId in the tcx's `Definitions`.
         if stable_crate_id == self.sess.local_stable_crate_id() {
-            self.definitions.local_def_path_hash_to_def_id(hash, err).to_def_id()
+            self.definitions.read().local_def_path_hash_to_def_id(hash, err).to_def_id()
         } else {
             // If this is a DefPathHash from an upstream crate, let the CrateStore map
             // it to a DefId.
@@ -1460,6 +1468,64 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    /// Create a new definition within the incr. comp. engine.
+    pub fn create_def(self, parent: LocalDefId, data: hir::definitions::DefPathData) -> LocalDefId {
+        // This function modifies `self.definitions` using a side-effect.
+        // We need to ensure that these side effects are re-run by the incr. comp. engine.
+        // Depending on the forever-red node will tell the graph that the calling query
+        // needs to be re-evaluated.
+        use rustc_query_system::dep_graph::DepNodeIndex;
+        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+
+        // The following call has the side effect of modifying the tables inside `definitions`.
+        // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
+        // decode the on-disk cache.
+        //
+        // Any LocalDefId which is used within queries, either as key or result, either:
+        // - has been created before the construction of the TyCtxt;
+        // - has been created by this call to `create_def`.
+        // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
+        // comp. engine itself.
+        //
+        // This call also writes to the value of `source_span` and `expn_that_defined` queries.
+        // This is fine because:
+        // - those queries are `eval_always` so we won't miss their result changing;
+        // - this write will have happened before these queries are called.
+        self.definitions.write().create_def(parent, data)
+    }
+
+    pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
+        // Create a dependency to the crate to be sure we re-execute this when the amount of
+        // definitions change.
+        self.ensure().hir_crate(());
+        // Leak a read lock once we start iterating on definitions, to prevent adding new onces
+        // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
+        let definitions = self.definitions.leak();
+        definitions.iter_local_def_id()
+    }
+
+    pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
+        // Create a dependency to the crate to be sure we reexcute this when the amount of
+        // definitions change.
+        self.ensure().hir_crate(());
+        // Leak a read lock once we start iterating on definitions, to prevent adding new onces
+        // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
+        let definitions = self.definitions.leak();
+        definitions.def_path_table()
+    }
+
+    pub fn def_path_hash_to_def_index_map(
+        self,
+    ) -> &'tcx rustc_hir::def_path_hash_map::DefPathHashMap {
+        // Create a dependency to the crate to be sure we reexcute this when the amount of
+        // definitions change.
+        self.ensure().hir_crate(());
+        // Leak a read lock once we start iterating on definitions, to prevent adding new onces
+        // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
+        let definitions = self.definitions.leak();
+        definitions.def_path_hash_to_def_index_map()
+    }
+
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
     pub fn cstore_untracked(self) -> &'tcx CrateStoreDyn {
@@ -1468,8 +1534,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
-    pub fn definitions_untracked(self) -> &'tcx hir::definitions::Definitions {
-        &self.definitions
+    #[inline]
+    pub fn definitions_untracked(self) -> ReadGuard<'tcx, Definitions> {
+        self.definitions.read()
     }
 
     /// Note that this is *untracked* and should only be used within the query
@@ -1480,23 +1547,18 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline(always)]
-    pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        StableHashingContext::new(
+    pub fn with_stable_hashing_context<R>(
+        self,
+        f: impl FnOnce(StableHashingContext<'_>) -> R,
+    ) -> R {
+        let definitions = self.definitions_untracked();
+        let hcx = StableHashingContext::new(
             self.sess,
-            &self.definitions,
+            &*definitions,
             &*self.cstore,
             &self.untracked_resolutions.source_span,
-        )
-    }
-
-    #[inline(always)]
-    pub fn create_no_span_stable_hashing_context(self) -> StableHashingContext<'tcx> {
-        StableHashingContext::ignore_spans(
-            self.sess,
-            &self.definitions,
-            &*self.cstore,
-            &self.untracked_resolutions.source_span,
-        )
+        );
+        f(hcx)
     }
 
     pub fn serialize_query_result_cache(self, encoder: FileEncoder) -> FileEncodeResult {
@@ -2304,7 +2366,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.interners.intern_ty(
             st,
             self.sess,
-            &self.definitions,
+            &self.definitions.read(),
             &*self.cstore,
             // This is only used to create a stable hashing context.
             &self.untracked_resolutions.source_span,
@@ -2922,6 +2984,7 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
 
 pub fn provide(providers: &mut ty::query::Providers) {
     providers.resolutions = |tcx, ()| &tcx.untracked_resolutions;
+    providers.resolver_for_lowering = |tcx, ()| &tcx.untracked_resolver_for_lowering;
     providers.module_reexports =
         |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
     providers.crate_name = |tcx, id| {

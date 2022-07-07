@@ -701,16 +701,20 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                 // If we cannot evaluate the constant to a known type, we fall back
                 // to emitting a stable hash value of the constant. This isn't very pretty
                 // but we get a deterministic, virtually unique value for the constant.
-                let hcx = &mut tcx.create_stable_hashing_context();
-                let mut hasher = StableHasher::new();
-                let ct = ct.eval(tcx, ty::ParamEnv::reveal_all());
-                hcx.while_hashing_spans(false, |hcx| ct.to_valtree().hash_stable(hcx, &mut hasher));
+                //
                 // Let's only emit 64 bits of the hash value. That should be plenty for
                 // avoiding collisions and will make the emitted type names shorter.
-                // Note: Don't use `StableHashResult` impl of `u64` here directly, since that
-                // would lead to endianness problems.
-                let hash: u128 = hasher.finish();
-                let hash_short = (hash.to_le() as u64).to_le();
+                let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
+                    let mut hasher = StableHasher::new();
+                    let ct = ct.eval(tcx, ty::ParamEnv::reveal_all());
+                    hcx.while_hashing_spans(false, |hcx| {
+                        ct.to_valtree().hash_stable(hcx, &mut hasher)
+                    });
+                    // Note: Don't use `StableHashResult` impl of `u64` here directly, since that
+                    // would lead to endianness problems.
+                    let hash: u128 = hasher.finish();
+                    (hash.to_le() as u64).to_le()
+                });
 
                 if cpp_like_debuginfo(tcx) {
                     write!(output, "CONST${:x}", hash_short)

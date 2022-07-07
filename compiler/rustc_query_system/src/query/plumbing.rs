@@ -542,8 +542,7 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
 
     debug!("BEGIN verify_ich({:?})", dep_node);
     let new_hash = query.hash_result.map_or(Fingerprint::ZERO, |f| {
-        let mut hcx = tcx.create_stable_hashing_context();
-        f(&mut hcx, result)
+        tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
     });
     let old_hash = tcx.dep_graph().prev_fingerprint_of(dep_node);
     debug!("END verify_ich({:?})", dep_node);

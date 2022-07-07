@@ -43,6 +43,7 @@ rustc_index::newtype_index! {
 impl DepNodeIndex {
     pub const INVALID: DepNodeIndex = DepNodeIndex::MAX;
     pub const SINGLETON_DEPENDENCYLESS_ANON_NODE: DepNodeIndex = DepNodeIndex::from_u32(0);
+    pub const FOREVER_RED_NODE: DepNodeIndex = DepNodeIndex::from_u32(1);
 }
 
 impl std::convert::From<DepNodeIndex> for QueryInvocationId {
@@ -124,6 +125,8 @@ impl<K: DepKind> DepGraph<K> {
             record_stats,
         );
 
+        let colors = DepNodeColorMap::new(prev_graph_node_count);
+
         // Instantiate a dependy-less node only once for anonymous queries.
         let _green_node_index = current.intern_new_node(
             profiler,
@@ -131,7 +134,19 @@ impl<K: DepKind> DepGraph<K> {
             smallvec![],
             Fingerprint::ZERO,
         );
-        debug_assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
+        assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
+
+        // Instantiate a dependy-less red node only once for anonymous queries.
+        let (_red_node_index, _prev_and_index) = current.intern_node(
+            profiler,
+            &prev_graph,
+            DepNode { kind: DepKind::RED, hash: Fingerprint::ZERO.into() },
+            smallvec![],
+            None,
+            false,
+        );
+        assert_eq!(_red_node_index, DepNodeIndex::FOREVER_RED_NODE);
+        assert!(matches!(_prev_and_index, None | Some((_, DepNodeColor::Red))));
 
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
@@ -140,7 +155,7 @@ impl<K: DepKind> DepGraph<K> {
                 current,
                 processed_side_effects: Default::default(),
                 previous: prev_graph,
-                colors: DepNodeColorMap::new(prev_graph_node_count),
+                colors,
                 debug_loaded_from_disk: Default::default(),
             })),
             virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
@@ -328,10 +343,8 @@ impl<K: DepKind> DepGraph<K> {
 
         let dcx = cx.dep_context();
         let hashing_timer = dcx.profiler().incr_result_hashing();
-        let current_fingerprint = hash_result.map(|f| {
-            let mut hcx = dcx.create_stable_hashing_context();
-            f(&mut hcx, &result)
-        });
+        let current_fingerprint =
+            hash_result.map(|f| dcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, &result)));
 
         let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
 
@@ -971,6 +984,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         let nanos = duration.as_secs() * 1_000_000_000 + duration.subsec_nanos() as u64;
         let mut stable_hasher = StableHasher::new();
         nanos.hash(&mut stable_hasher);
+        let anon_id_seed = stable_hasher.finish();
 
         #[cfg(debug_assertions)]
         let forbidden_edge = match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
@@ -1006,7 +1020,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 )
             }),
             prev_index_to_index: Lock::new(IndexVec::from_elem_n(None, prev_graph_node_count)),
-            anon_id_seed: stable_hasher.finish(),
+            anon_id_seed,
             #[cfg(debug_assertions)]
             forbidden_edge,
             total_read_count: AtomicU64::new(0),

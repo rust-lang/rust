@@ -588,7 +588,7 @@ impl<'tcx> Inliner<'tcx> {
                 );
                 expn_data.def_site = callee_body.span;
                 let expn_data =
-                    LocalExpnId::fresh(expn_data, self.tcx.create_stable_hashing_context());
+                    self.tcx.with_stable_hashing_context(|hcx| LocalExpnId::fresh(expn_data, hcx));
                 let mut integrator = Integrator {
                     args: &args,
                     new_locals: Local::new(caller_body.local_decls.len())..,

@@ -183,6 +183,9 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
 
+    // We use this to create a forever-red node.
+    [] Red,
+
     [anon] TraitSelect,
 
     // WARNING: if `Symbol` is changed, make sure you update `make_compile_codegen_unit` below.

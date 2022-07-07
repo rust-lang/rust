@@ -23,7 +23,7 @@ pub trait DepContext: Copy {
     type DepKind: self::DepKind;
 
     /// Create a hashing context for hashing new results.
-    fn create_stable_hashing_context(&self) -> StableHashingContext<'_>;
+    fn with_stable_hashing_context<R>(&self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R;
 
     /// Access the DepGraph.
     fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
@@ -85,7 +85,11 @@ impl FingerprintStyle {
 
 /// Describe the different families of dependency nodes.
 pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static {
+    /// DepKind to use when incr. comp. is turned off.
     const NULL: Self;
+
+    /// DepKind to use to create the initial forever-red node.
+    const RED: Self;
 
     /// Implementation of `std::fmt::Debug` for `DepNode`.
     fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
