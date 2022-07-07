@@ -19,6 +19,8 @@ gcc_master_branch=1
 channel="debug"
 funcs=()
 build_only=0
+nb_parts=0
+current_part=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -77,6 +79,19 @@ while [[ $# -gt 0 ]]; do
             funcs+=(extended_sysroot_tests)
             shift
             ;;
+        "--extended-rand-tests")
+            funcs+=(extended_rand_tests)
+            shift
+            ;;
+        "--extended-regex-example-tests")
+            funcs+=(extended_regex_example_tests)
+            shift
+            ;;
+        "--extended-regex-tests")
+            funcs+=(extended_regex_tests)
+            shift
+            ;;
+
         "--mini-tests")
             funcs+=(mini_tests)
             shift
@@ -88,6 +103,16 @@ while [[ $# -gt 0 ]]; do
             ;;
         "--build")
             build_only=1
+            shift
+            ;;
+        "--nb-parts")
+            shift
+            nb_parts=$1
+            shift
+            ;;
+        "--current-part")
+            shift
+            current_part=$1
             shift
             ;;
         *)
@@ -200,7 +225,7 @@ function test_libcore() {
 #echo "[BENCH RUN] mod_bench"
 #hyperfine --runs ${RUN_RUNS:-10} ./target/out/mod_bench{,_inline} ./target/out/mod_bench_llvm_*
 
-function extended_sysroot_tests() {
+function extended_rand_tests() {
     if (( $gcc_master_branch == 0 )); then
         return
     fi
@@ -210,17 +235,12 @@ function extended_sysroot_tests() {
     echo "[TEST] rust-random/rand"
     ../cargo.sh test --workspace
     popd
+}
 
-    #pushd simple-raytracer
-    #echo "[BENCH COMPILE] ebobby/simple-raytracer"
-    #hyperfine --runs "${RUN_RUNS:-10}" --warmup 1 --prepare "cargo clean" \
-    #"RUSTC=rustc RUSTFLAGS='' cargo build" \
-    #"../cargo.sh build"
-
-    #echo "[BENCH RUN] ebobby/simple-raytracer"
-    #cp ./target/debug/main ./raytracer_cg_gcc
-    #hyperfine --runs "${RUN_RUNS:-10}" ./raytracer_cg_llvm ./raytracer_cg_gcc
-    #popd
+function extended_regex_example_tests() {
+    if (( $gcc_master_branch == 0 )); then
+        return
+    fi
 
     pushd regex
     echo "[TEST] rust-lang/regex example shootout-regex-dna"
@@ -232,10 +252,36 @@ function extended_sysroot_tests() {
         | ../cargo.sh run --example shootout-regex-dna \
         | grep -v "Spawned thread" > res.txt
     diff -u res.txt examples/regexdna-output.txt
+    popd
+}
 
+function extended_regex_tests() {
+    if (( $gcc_master_branch == 0 )); then
+        return
+    fi
+
+    pushd regex
     echo "[TEST] rust-lang/regex tests"
+    export CG_RUSTFLAGS="--cap-lints warn" # newer aho_corasick versions throw a deprecation warning
     ../cargo.sh test --tests -- --exclude-should-panic --test-threads 1 -Zunstable-options -q
     popd
+}
+
+function extended_sysroot_tests() {
+    #pushd simple-raytracer
+    #echo "[BENCH COMPILE] ebobby/simple-raytracer"
+    #hyperfine --runs "${RUN_RUNS:-10}" --warmup 1 --prepare "cargo clean" \
+    #"RUSTC=rustc RUSTFLAGS='' cargo build" \
+    #"../cargo.sh build"
+
+    #echo "[BENCH RUN] ebobby/simple-raytracer"
+    #cp ./target/debug/main ./raytracer_cg_gcc
+    #hyperfine --runs "${RUN_RUNS:-10}" ./raytracer_cg_llvm ./raytracer_cg_gcc
+    #popd
+
+    extended_rand_tests
+    extended_regex_example_tests
+    extended_regex_tests
 }
 
 function test_rustc() {
@@ -295,6 +341,20 @@ EOF
         find src/test/ui -type f -name '*.rs' -exec rm {} \;
         # Putting back only the failing ones.
         xargs -a ../failing-ui-tests.txt -d'\n' git checkout --
+    fi
+
+    if [ $nb_parts -gt 0 ]; then
+        echo "Splitting ui_test into $nb_parts parts (and running part $current_part)"
+        find src/test/ui -type f -name '*.rs' -not -path "*/auxiliary/*" > ui_tests
+        count=$((`wc -l < ui_tests` / $nb_parts))
+        # We increment the number of tests by one because if this is an odd number, we would skip
+        # one test.
+        count=$((count + 1))
+        split -d -l $count -a 1 ui_tests ui_tests.split
+        # Removing all tests.
+        find src/test/ui -type f -name '*.rs' -not -path "*/auxiliary/*" -exec rm {} \;
+        # Putting back only the ones we want to test.
+        xargs -a "ui_tests.split$current_part" -d'\n' git checkout --
     fi
 
     echo "[TEST] rustc test suite"
