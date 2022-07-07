@@ -115,7 +115,8 @@ impl Step for Std {
         }
 
         let is_collecting = if let Some(path) = &builder.config.libstd_profile_generate {
-            if compiler.stage == 1 {
+            if compiler.stage == 2 {
+                eprintln!("STD STAGE 2 GENERATE");
                 cargo.env("RUST_LIBSTD_PGO", "1");
                 cargo.rustflag(&format!("-Cprofile-generate={}", path));
                 // Apparently necessary to avoid overflowing the counters during
@@ -126,7 +127,8 @@ impl Step for Std {
                 false
             }
         } else if let Some(path) = &builder.config.libstd_profile_use {
-            if compiler.stage == 1 {
+            if compiler.stage == 2 {
+                eprintln!("STD STAGE 2 USE");
                 cargo.rustflag(&format!("-Cprofile-use={}", path));
                 cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
                 true
