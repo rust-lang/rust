@@ -2241,6 +2241,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     pat_span,
                 },
             ))))),
+            always_storage_live: false,
         };
         let for_arm_body = self.local_decls.push(local);
         self.var_debug_info.push(VarDebugInfo {
@@ -2261,6 +2262,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 local_info: Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(
                     BindingForm::RefForGuard,
                 )))),
+                always_storage_live: false,
             });
             self.var_debug_info.push(VarDebugInfo {
                 name,
