@@ -109,6 +109,7 @@ pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
 #[inline(always)]
 #[cfg(not(target_feature = "ermsb"))]
 pub unsafe fn set_bytes(mut dest: *mut u8, c: u8, count: usize) {
+    let c = c as u64 * 0x0101_0101_0101_0101;
     let (pre_byte_count, qword_count, byte_count) = rep_param(dest, count);
     // Separating the blocks gives the compiler more freedom to reorder instructions.
     // It also allows us to trivially skip the rep stosb, which is faster when memcpying
@@ -118,7 +119,7 @@ pub unsafe fn set_bytes(mut dest: *mut u8, c: u8, count: usize) {
             "rep stosb",
             inout("ecx") pre_byte_count => _,
             inout("rdi") dest => dest,
-            in("al") c,
+            in("rax") c,
             options(nostack, preserves_flags)
         );
     }
@@ -126,7 +127,7 @@ pub unsafe fn set_bytes(mut dest: *mut u8, c: u8, count: usize) {
         "rep stosq",
         inout("rcx") qword_count => _,
         inout("rdi") dest => dest,
-        in("rax") (c as u64) * 0x0101010101010101,
+        in("rax") c,
         options(nostack, preserves_flags)
     );
     if byte_count > 0 {
@@ -134,7 +135,7 @@ pub unsafe fn set_bytes(mut dest: *mut u8, c: u8, count: usize) {
             "rep stosb",
             inout("ecx") byte_count => _,
             inout("rdi") dest => _,
-            in("al") c,
+            in("rax") c,
             options(nostack, preserves_flags)
         );
     }
