@@ -197,7 +197,7 @@ impl Comments {
                         ':' | ' ' => args.as_str(),
                         _ => bail!("expected space or `:`, got `{next}`"),
                     };
-                    (command, args)
+                    (command, args.trim())
                 }
             };
 
@@ -217,12 +217,37 @@ impl Comments {
                     self.env_vars.push((k.to_string(), v.to_string()));
                 },
             "normalize-stderr-test" => {
-                let (from, to) = args
-                    .split_once("->")
-                    .ok_or_else(|| eyre!("normalize-stderr-test needs a `->`"))?;
-                let from = from.trim().trim_matches('"');
-                let to = to.trim().trim_matches('"');
-                let from = Regex::new(from).ok().ok_or_else(|| eyre!("invalid regex"))?;
+                fn parse_str(s: &str) -> Result<(&str, &str)> {
+                    let mut chars = s.char_indices();
+                    match chars.next().ok_or_else(|| eyre!("missing arguments"))?.1 {
+                        '"' => {
+                            let s = chars.as_str();
+                            let mut escaped = false;
+                            for (i, c) in chars {
+                                if escaped {
+                                    escaped = false;
+                                } else if c == '"' {
+                                    return Ok((&s[..(i - 1)], s[i..].trim_start()))
+                                } else {
+                                    escaped = c == '\\';
+                                }
+                            }
+                            bail!("no closing quotes found for {s}")
+                        }
+                        c => bail!("expected '\"', got {c}"),
+                    }
+                }
+
+                let (from, rest) = parse_str(args)?;
+
+                let to = rest.strip_prefix("->").ok_or_else(|| {
+                    eyre!("normalize-stderr-test needs a pattern and replacement separated by `->`")
+                })?.trim_start();
+                let (to, rest) = parse_str(to)?;
+
+                ensure!(rest.is_empty(), "trailing text after pattern replacement: {rest}");
+
+                let from = Regex::new(from)?;
                 self.normalize_stderr.push((from, to.to_string()));
             }
             "error-pattern" => {
