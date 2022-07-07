@@ -525,7 +525,7 @@ impl ::core::clone::Clone for PackedNonCopy {
     #[inline]
     fn clone(&self) -> PackedNonCopy {
         let Self(ref __self_0_0) = *self;
-        PackedNonCopy(::core::clone::Clone::clone(&*__self_0_0))
+        PackedNonCopy(::core::clone::Clone::clone(__self_0_0))
     }
 }
 #[automatically_derived]
@@ -534,7 +534,7 @@ impl ::core::fmt::Debug for PackedNonCopy {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         let Self(ref __self_0_0) = *self;
         ::core::fmt::Formatter::debug_tuple_field1_finish(f, "PackedNonCopy",
-            &&*__self_0_0)
+            &__self_0_0)
     }
 }
 #[automatically_derived]
@@ -550,7 +550,7 @@ impl ::core::default::Default for PackedNonCopy {
 impl ::core::hash::Hash for PackedNonCopy {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let Self(ref __self_0_0) = *self;
-        ::core::hash::Hash::hash(&*__self_0_0, state)
+        ::core::hash::Hash::hash(__self_0_0, state)
     }
 }
 impl ::core::marker::StructuralPartialEq for PackedNonCopy {}
@@ -589,7 +589,7 @@ impl ::core::cmp::PartialOrd for PackedNonCopy {
         -> ::core::option::Option<::core::cmp::Ordering> {
         let Self(ref __self_0_0) = *self;
         let Self(ref __self_1_0) = *other;
-        ::core::cmp::PartialOrd::partial_cmp(&*__self_0_0, &*__self_1_0)
+        ::core::cmp::PartialOrd::partial_cmp(__self_0_0, __self_1_0)
     }
 }
 #[automatically_derived]
@@ -599,7 +599,7 @@ impl ::core::cmp::Ord for PackedNonCopy {
     fn cmp(&self, other: &PackedNonCopy) -> ::core::cmp::Ordering {
         let Self(ref __self_0_0) = *self;
         let Self(ref __self_1_0) = *other;
-        ::core::cmp::Ord::cmp(&*__self_0_0, &*__self_1_0)
+        ::core::cmp::Ord::cmp(__self_0_0, __self_1_0)
     }
 }
 
@@ -677,7 +677,7 @@ impl ::core::clone::Clone for Enum1 {
     fn clone(&self) -> Enum1 {
         match self {
             Enum1::Single { x: __self_0 } =>
-                Enum1::Single { x: ::core::clone::Clone::clone(&*__self_0) },
+                Enum1::Single { x: ::core::clone::Clone::clone(__self_0) },
         }
     }
 }
@@ -688,7 +688,7 @@ impl ::core::fmt::Debug for Enum1 {
         match self {
             Enum1::Single { x: __self_0 } =>
                 ::core::fmt::Formatter::debug_struct_field1_finish(f,
-                    "Single", "x", &&*__self_0),
+                    "Single", "x", &__self_0),
         }
     }
 }
@@ -698,7 +698,7 @@ impl ::core::hash::Hash for Enum1 {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         match self {
             Enum1::Single { x: __self_0 } => {
-                ::core::hash::Hash::hash(&*__self_0, state)
+                ::core::hash::Hash::hash(__self_0, state)
             }
         }
     }
@@ -741,7 +741,7 @@ impl ::core::cmp::PartialOrd for Enum1 {
         -> ::core::option::Option<::core::cmp::Ordering> {
         match (self, other) {
             (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg_1_0 }) =>
-                ::core::cmp::PartialOrd::partial_cmp(&*__self_0, &*__arg_1_0),
+                ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg_1_0),
         }
     }
 }
@@ -752,7 +752,7 @@ impl ::core::cmp::Ord for Enum1 {
     fn cmp(&self, other: &Enum1) -> ::core::cmp::Ordering {
         match (self, other) {
             (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg_1_0 }) =>
-                ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
+                ::core::cmp::Ord::cmp(__self_0, __arg_1_0),
         }
     }
 }
@@ -963,10 +963,10 @@ impl ::core::fmt::Debug for Mixed {
             Mixed::Q => ::core::fmt::Formatter::write_str(f, "Q"),
             Mixed::R(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "R",
-                    &&*__self_0),
+                    &__self_0),
             Mixed::S { d1: __self_0, d2: __self_1 } =>
                 ::core::fmt::Formatter::debug_struct_field2_finish(f, "S",
-                    "d1", &&*__self_0, "d2", &&*__self_1),
+                    "d1", &__self_0, "d2", &__self_1),
         }
     }
 }
@@ -984,13 +984,13 @@ impl ::core::hash::Hash for Mixed {
             Mixed::R(__self_0) => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
                     state);
-                ::core::hash::Hash::hash(&*__self_0, state)
+                ::core::hash::Hash::hash(__self_0, state)
             }
             Mixed::S { d1: __self_0, d2: __self_1 } => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
                     state);
-                ::core::hash::Hash::hash(&*__self_0, state);
-                ::core::hash::Hash::hash(&*__self_1, state)
+                ::core::hash::Hash::hash(__self_0, state);
+                ::core::hash::Hash::hash(__self_1, state)
             }
             _ => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
@@ -1056,16 +1056,14 @@ impl ::core::cmp::PartialOrd for Mixed {
         if __self_vi == __arg_1_vi {
                 match (self, other) {
                     (Mixed::R(__self_0), Mixed::R(__arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                            &*__arg_1_0),
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg_1_0),
                     (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
                         d1: __arg_1_0, d2: __arg_1_1 }) =>
-                        match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                                &*__arg_1_0) {
+                        match ::core::cmp::PartialOrd::partial_cmp(__self_0,
+                                __arg_1_0) {
                             ::core::option::Option::Some(::core::cmp::Ordering::Equal)
                                 =>
-                                ::core::cmp::PartialOrd::partial_cmp(&*__self_1,
-                                    &*__arg_1_1),
+                                ::core::cmp::PartialOrd::partial_cmp(__self_1, __arg_1_1),
                             cmp => cmp,
                         },
                     _ =>
@@ -1086,12 +1084,12 @@ impl ::core::cmp::Ord for Mixed {
         if __self_vi == __arg_1_vi {
                 match (self, other) {
                     (Mixed::R(__self_0), Mixed::R(__arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
+                        ::core::cmp::Ord::cmp(__self_0, __arg_1_0),
                     (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
                         d1: __arg_1_0, d2: __arg_1_1 }) =>
-                        match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
+                        match ::core::cmp::Ord::cmp(__self_0, __arg_1_0) {
                             ::core::cmp::Ordering::Equal =>
-                                ::core::cmp::Ord::cmp(&*__self_1, &*__arg_1_1),
+                                ::core::cmp::Ord::cmp(__self_1, __arg_1_1),
                             cmp => cmp,
                         },
                     _ => ::core::cmp::Ordering::Equal,
@@ -1110,11 +1108,11 @@ impl ::core::clone::Clone for Fielded {
     fn clone(&self) -> Fielded {
         match self {
             Fielded::X(__self_0) =>
-                Fielded::X(::core::clone::Clone::clone(&*__self_0)),
+                Fielded::X(::core::clone::Clone::clone(__self_0)),
             Fielded::Y(__self_0) =>
-                Fielded::Y(::core::clone::Clone::clone(&*__self_0)),
+                Fielded::Y(::core::clone::Clone::clone(__self_0)),
             Fielded::Z(__self_0) =>
-                Fielded::Z(::core::clone::Clone::clone(&*__self_0)),
+                Fielded::Z(::core::clone::Clone::clone(__self_0)),
         }
     }
 }
@@ -1125,13 +1123,13 @@ impl ::core::fmt::Debug for Fielded {
         match self {
             Fielded::X(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "X",
-                    &&*__self_0),
+                    &__self_0),
             Fielded::Y(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Y",
-                    &&*__self_0),
+                    &__self_0),
             Fielded::Z(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Z",
-                    &&*__self_0),
+                    &__self_0),
         }
     }
 }
@@ -1143,17 +1141,17 @@ impl ::core::hash::Hash for Fielded {
             Fielded::X(__self_0) => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
                     state);
-                ::core::hash::Hash::hash(&*__self_0, state)
+                ::core::hash::Hash::hash(__self_0, state)
             }
             Fielded::Y(__self_0) => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
                     state);
-                ::core::hash::Hash::hash(&*__self_0, state)
+                ::core::hash::Hash::hash(__self_0, state)
             }
             Fielded::Z(__self_0) => {
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
                     state);
-                ::core::hash::Hash::hash(&*__self_0, state)
+                ::core::hash::Hash::hash(__self_0, state)
             }
         }
     }
@@ -1219,14 +1217,11 @@ impl ::core::cmp::PartialOrd for Fielded {
         if __self_vi == __arg_1_vi {
                 match (self, other) {
                     (Fielded::X(__self_0), Fielded::X(__arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                            &*__arg_1_0),
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg_1_0),
                     (Fielded::Y(__self_0), Fielded::Y(__arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                            &*__arg_1_0),
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg_1_0),
                     (Fielded::Z(__self_0), Fielded::Z(__arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                            &*__arg_1_0),
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg_1_0),
                     _ => unsafe { ::core::intrinsics::unreachable() }
                 }
             } else {
@@ -1244,11 +1239,11 @@ impl ::core::cmp::Ord for Fielded {
         if __self_vi == __arg_1_vi {
                 match (self, other) {
                     (Fielded::X(__self_0), Fielded::X(__arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
+                        ::core::cmp::Ord::cmp(__self_0, __arg_1_0),
                     (Fielded::Y(__self_0), Fielded::Y(__arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
+                        ::core::cmp::Ord::cmp(__self_0, __arg_1_0),
                     (Fielded::Z(__self_0), Fielded::Z(__arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
+                        ::core::cmp::Ord::cmp(__self_0, __arg_1_0),
                     _ => unsafe { ::core::intrinsics::unreachable() }
                 }
             } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }

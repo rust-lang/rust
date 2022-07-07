@@ -71,10 +71,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
                 let [other_expr] = &field.other_selflike_exprs[..] else {
                         cx.span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
                     };
-                let args = vec![
-                    cx.expr_addr_of(field.span, field.self_expr.clone()),
-                    cx.expr_addr_of(field.span, other_expr.clone()),
-                ];
+                let args = vec![field.self_expr.clone(), other_expr.clone()];
                 cx.expr_call_global(field.span, partial_cmp_path.clone(), args)
             }
             CsFold::Combine(span, expr1, expr2) => {

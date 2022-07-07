@@ -1004,7 +1004,7 @@ impl<'a> MethodDef<'a> {
     /// ```
     /// #[derive(PartialEq)]
     /// # struct Dummy;
-    /// struct A { x: i32, y: i32 }
+    /// struct A { x: u8, y: u8 }
     ///
     /// // equivalent to:
     /// impl PartialEq for A {
@@ -1016,9 +1016,9 @@ impl<'a> MethodDef<'a> {
     /// But if the struct is `repr(packed)`, we can't use something like
     /// `&self.x` on a packed type (as required for e.g. `Debug` and `Hash`)
     /// because that might cause an unaligned ref. So we use let-destructuring
-    /// instead.
+    /// instead. If the struct impls `Copy`:
     /// ```
-    /// # struct A { x: i32, y: i32 }
+    /// # struct A { x: u8, y: u8 }
     /// impl PartialEq for A {
     ///     fn eq(&self, other: &A) -> bool {
     ///         let Self { x: __self_0_0, y: __self_0_1 } = *self;
@@ -1027,6 +1027,19 @@ impl<'a> MethodDef<'a> {
     ///     }
     /// }
     /// ```
+    /// If it doesn't impl `Copy`:
+    /// ```
+    /// # struct A { x: u8, y: u8 }
+    /// impl PartialEq for A {
+    ///     fn eq(&self, other: &A) -> bool {
+    ///         let Self { x: ref __self_0_0, y: ref __self_0_1 } = *self;
+    ///         let Self { x: ref __self_1_0, y: ref __self_1_1 } = *other;
+    ///         *__self_0_0 == *__self_1_0 && *__self_0_1 == *__self_1_1
+    ///     }
+    /// }
+    /// ```
+    /// This latter case only works if the fields match the alignment required
+    /// by the `packed(N)` attribute.
     fn expand_struct_method_body<'b>(
         &self,
         cx: &mut ExtCtxt<'_>,
@@ -1058,9 +1071,9 @@ impl<'a> MethodDef<'a> {
         } else {
             let prefixes: Vec<_> =
                 (0..selflike_args.len()).map(|i| format!("__self_{}", i)).collect();
-            let no_deref = always_copy;
+            let addr_of = always_copy;
             let selflike_fields =
-                trait_.create_struct_pattern_fields(cx, struct_def, &prefixes, no_deref);
+                trait_.create_struct_pattern_fields(cx, struct_def, &prefixes, addr_of);
             let mut body = mk_body(cx, selflike_fields);
 
             let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
@@ -1194,9 +1207,9 @@ impl<'a> MethodDef<'a> {
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
                 // (see "Final wrinkle" note below for why.)
 
-                let no_deref = false; // because enums can't be repr(packed)
+                let addr_of = false; // because enums can't be repr(packed)
                 let fields =
-                    trait_.create_struct_pattern_fields(cx, &variant.data, &prefixes, no_deref);
+                    trait_.create_struct_pattern_fields(cx, &variant.data, &prefixes, addr_of);
 
                 let sp = variant.span.with_ctxt(trait_.span.ctxt());
                 let variant_path = cx.path(sp, vec![type_ident, variant.ident]);
@@ -1512,7 +1525,7 @@ impl<'a> TraitDef<'a> {
         cx: &mut ExtCtxt<'_>,
         struct_def: &'a VariantData,
         prefixes: &[String],
-        no_deref: bool,
+        addr_of: bool,
     ) -> Vec<FieldInfo> {
         self.create_fields(struct_def, |i, _struct_field, sp| {
             prefixes
@@ -1520,7 +1533,7 @@ impl<'a> TraitDef<'a> {
                 .map(|prefix| {
                     let ident = self.mk_pattern_ident(prefix, i);
                     let expr = cx.expr_path(cx.path_ident(sp, ident));
-                    if no_deref { expr } else { cx.expr_deref(sp, expr) }
+                    if addr_of { cx.expr_addr_of(sp, expr) } else { expr }
                 })
                 .collect()
         })
@@ -1536,17 +1549,20 @@ impl<'a> TraitDef<'a> {
             selflike_args
                 .iter()
                 .map(|selflike_arg| {
-                    // Note: we must use `struct_field.span` rather than `span` in the
+                    // Note: we must use `struct_field.span` rather than `sp` in the
                     // `unwrap_or_else` case otherwise the hygiene is wrong and we get
                     // "field `0` of struct `Point` is private" errors on tuple
                     // structs.
-                    cx.expr(
+                    cx.expr_addr_of(
                         sp,
-                        ast::ExprKind::Field(
-                            selflike_arg.clone(),
-                            struct_field.ident.unwrap_or_else(|| {
-                                Ident::from_str_and_span(&i.to_string(), struct_field.span)
-                            }),
+                        cx.expr(
+                            sp,
+                            ast::ExprKind::Field(
+                                selflike_arg.clone(),
+                                struct_field.ident.unwrap_or_else(|| {
+                                    Ident::from_str_and_span(&i.to_string(), struct_field.span)
+                                }),
+                            ),
                         ),
                     )
                 })

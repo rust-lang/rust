@@ -2,7 +2,8 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::{path_local, path_std};
 
-use rustc_ast::{BinOpKind, MetaItem};
+use rustc_ast::ptr::P;
+use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -32,7 +33,21 @@ pub fn expand_deriving_partial_eq(
                     let [other_expr] = &field.other_selflike_exprs[..] else {
                         cx.span_bug(field.span, "not exactly 2 arguments in `derive(PartialEq)`");
                     };
-                    cx.expr_binary(field.span, op, field.self_expr.clone(), other_expr.clone())
+
+                    // We received `&T` arguments. Convert them to `T` by
+                    // stripping `&` or adding `*`. This isn't necessary for
+                    // type checking, but it results in much better error
+                    // messages if something goes wrong.
+                    let convert = |expr: &P<Expr>| {
+                        if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) =
+                            &expr.kind
+                        {
+                            inner.clone()
+                        } else {
+                            cx.expr_deref(field.span, expr.clone())
+                        }
+                    };
+                    cx.expr_binary(field.span, op, convert(&field.self_expr), convert(other_expr))
                 }
                 CsFold::Combine(span, expr1, expr2) => cx.expr_binary(span, combiner, expr1, expr2),
                 CsFold::Fieldless => cx.expr_bool(span, base),

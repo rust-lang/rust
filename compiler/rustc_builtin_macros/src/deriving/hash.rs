@@ -52,14 +52,13 @@ fn hash_substructure(
     let [state_expr] = substr.nonselflike_args else {
         cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };
-    let call_hash = |span, thing_expr| {
+    let call_hash = |span, expr| {
         let hash_path = {
             let strs = cx.std_path(&[sym::hash, sym::Hash, sym::hash]);
 
             cx.expr_path(cx.path_global(span, strs))
         };
-        let ref_thing = cx.expr_addr_of(span, thing_expr);
-        let expr = cx.expr_call(span, hash_path, vec![ref_thing, state_expr.clone()]);
+        let expr = cx.expr_call(span, hash_path, vec![expr, state_expr.clone()]);
         cx.stmt_expr(expr)
     };
     let mut stmts = Vec::new();
@@ -67,11 +66,14 @@ fn hash_substructure(
     let fields = match substr.fields {
         Struct(_, fs) | EnumMatching(_, 1, .., fs) => fs,
         EnumMatching(.., fs) => {
-            let variant_value = deriving::call_intrinsic(
-                cx,
+            let variant_value = cx.expr_addr_of(
                 trait_span,
-                sym::discriminant_value,
-                vec![cx.expr_self(trait_span)],
+                deriving::call_intrinsic(
+                    cx,
+                    trait_span,
+                    sym::discriminant_value,
+                    vec![cx.expr_self(trait_span)],
+                ),
             );
 
             stmts.push(call_hash(trait_span, variant_value));
