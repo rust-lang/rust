@@ -15,7 +15,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod alloc;
-#[path = "../unsupported/args.rs"]
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
@@ -70,8 +69,34 @@ pub fn unsupported_err() -> std_io::Error {
     )
 }
 
-pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
-    crate::io::ErrorKind::Uncategorized
+pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
+    use crate::io::ErrorKind;
+    use crate::os::uefi::raw::Status;
+
+    if let Ok(code) = usize::try_from(code) {
+        match uefi::raw::Status::from_usize(code) {
+            Status::INVALID_PARAMETER => ErrorKind::InvalidInput,
+            Status::UNSUPPORTED => ErrorKind::Unsupported,
+            Status::BAD_BUFFER_SIZE | Status::CRC_ERROR | Status::INVALID_LANGUAGE => {
+                ErrorKind::InvalidData
+            }
+            Status::BUFFER_TOO_SMALL => ErrorKind::FileTooLarge,
+            Status::NOT_READY => ErrorKind::ResourceBusy,
+            Status::WRITE_PROTECTED => ErrorKind::ReadOnlyFilesystem,
+            Status::VOLUME_FULL => ErrorKind::StorageFull,
+            Status::MEDIA_CHANGED => ErrorKind::StaleNetworkFileHandle,
+            Status::NOT_FOUND => ErrorKind::NotFound,
+            Status::ACCESS_DENIED | Status::SECURITY_VIOLATION => ErrorKind::PermissionDenied,
+            Status::NO_RESPONSE => ErrorKind::HostUnreachable,
+            Status::TIMEOUT => ErrorKind::TimedOut,
+            Status::END_OF_FILE => ErrorKind::UnexpectedEof,
+            Status::IP_ADDRESS_CONFLICT => ErrorKind::AddrInUse,
+            Status::HTTP_ERROR => ErrorKind::NetworkUnreachable,
+            _ => ErrorKind::Uncategorized,
+        }
+    } else {
+        ErrorKind::Uncategorized
+    }
 }
 
 pub fn abort_internal() -> ! {

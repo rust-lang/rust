@@ -27,6 +27,10 @@ impl fmt::Debug for Ucs2Char {
 impl Ucs2Char {
     #[unstable(feature = "ucs2", issue = "none")]
     pub const REPLACEMENT_CHARACTER: Ucs2Char = Ucs2Char { value: 0xfffdu16 };
+
+    #[unstable(feature = "ucs2", issue = "none")]
+    pub const NULL_CHARACTER: Ucs2Char = Ucs2Char { value: 0 };
+
     pub(crate) const CR: Self = Ucs2Char { value: 0x000du16 };
     pub(crate) const LF: Self = Ucs2Char { value: 0x000au16 };
 

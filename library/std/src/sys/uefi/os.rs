@@ -64,6 +64,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }
 
+// FIXME: Implement using Variable Services
 pub struct Env(!);
 
 impl Iterator for Env {
@@ -77,10 +78,12 @@ pub fn env() -> Env {
     panic!("not supported on this platform")
 }
 
+// FIXME: Use GetVariable() method
 pub fn getenv(_: &OsStr) -> Option<OsString> {
     None
 }
 
+// FIXME: Use SetVariable() method
 pub fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
     Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot set env vars on this platform"))
 }
@@ -98,18 +101,18 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
+    let code = match usize::try_from(code) {
+        Ok(x) => uefi::raw::Status::from_usize(x),
+        Err(_) => uefi::raw::Status::ABORTED,
+    };
+
     if let (Some(boot_services), Some(handle)) =
         (uefi::env::get_boot_services(), uefi::env::get_system_handle())
     {
-        let _ = unsafe {
-            ((*boot_services.as_ptr()).exit)(
-                handle.as_ptr(),
-                uefi::raw::Status::from_usize(code as usize),
-                0,
-                [0].as_mut_ptr(),
-            )
-        };
+        let _ =
+            unsafe { ((*boot_services.as_ptr()).exit)(handle.as_ptr(), code, 0, [0].as_mut_ptr()) };
     }
+
     crate::intrinsics::abort()
 }
 
