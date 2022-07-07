@@ -132,7 +132,7 @@ trap datecheck EXIT
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
 if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
-  $SRC/configure --enable-parallel-compiler
+  $SRC/configure --set rust.parallel-compiler
   CARGO_INCREMENTAL=0 $PYTHON ../x.py check
   rm -f config.toml
   rm -rf build
