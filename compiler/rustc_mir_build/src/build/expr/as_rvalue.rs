@@ -601,7 +601,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let this = self;
 
         let source_info = this.source_info(upvar_span);
-        let temp = this.local_decls.push(LocalDecl::new(upvar_ty, upvar_span));
+        let mut decl = LocalDecl::new(upvar_ty, upvar_span);
+        decl.always_storage_live = true; // this will be StorageLive below
+        let temp = this.local_decls.push(decl);
 
         this.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
 
