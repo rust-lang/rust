@@ -1156,6 +1156,8 @@ impl BasicBlock {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData
 
+/// Data for a basic block, including a list of its statements.
+///
 /// See [`BasicBlock`] for documentation on what basic blocks are at a high level.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BasicBlockData<'tcx> {
@@ -1187,7 +1189,7 @@ impl<'tcx> BasicBlockData<'tcx> {
     /// Accessor for terminator.
     ///
     /// Terminator may not be None after construction of the basic block is complete. This accessor
-    /// provides a convenience way to reach the terminator.
+    /// provides a convenient way to reach the terminator.
     #[inline]
     pub fn terminator(&self) -> &Terminator<'tcx> {
         self.terminator.as_ref().expect("invalid terminator state")
@@ -1394,6 +1396,7 @@ impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
 ///////////////////////////////////////////////////////////////////////////
 // Statements
 
+/// A statement in a basic block, including information about its source code.
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Statement<'tcx> {
     pub source_info: SourceInfo,
