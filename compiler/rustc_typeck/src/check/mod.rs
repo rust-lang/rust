@@ -621,9 +621,8 @@ fn missing_items_err(
     // adding the associated item at the end of its body.
     let sugg_sp = full_impl_span.with_lo(hi).with_hi(hi);
     // Obtain the level of indentation ending in `sugg_sp`.
-    let indentation = tcx.sess.source_map().span_to_margin(sugg_sp).unwrap_or(0);
-    // Make the whitespace that will make the suggestion have the right indentation.
-    let padding: String = " ".repeat(indentation);
+    let padding =
+        tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
 
     for trait_item in missing_items {
         let snippet = suggestion_signature(trait_item, tcx);

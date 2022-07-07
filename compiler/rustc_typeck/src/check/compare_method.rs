@@ -437,15 +437,17 @@ fn check_region_bounds_on_impl_item<'tcx>(
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
         let item_kind = assoc_item_kind_str(impl_m);
-        let def_span = tcx.sess.source_map().guess_head_span(span);
         let span = impl_m
             .def_id
             .as_local()
             .and_then(|did| tcx.hir().get_generics(did))
-            .map_or(def_span, |g| g.span);
-        let generics_span = trait_m.def_id.as_local().map(|did| {
-            let def_sp = tcx.def_span(did);
-            tcx.hir().get_generics(did).map_or(def_sp, |g| g.span)
+            .map_or(span, |g| g.span);
+        let generics_span = tcx.hir().span_if_local(trait_m.def_id).map(|sp| {
+            trait_m
+                .def_id
+                .as_local()
+                .and_then(|did| tcx.hir().get_generics(did))
+                .map_or(sp, |g| g.span)
         });
 
         let reported = tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
