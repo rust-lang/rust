@@ -97,6 +97,7 @@
 // Library features:
 #![feature(const_align_offset)]
 #![feature(const_align_of_val)]
+#![feature(const_alloc_layout)]
 #![feature(const_arguments_as_str)]
 #![feature(const_array_into_iter_constructors)]
 #![feature(const_bigint_helper_methods)]
@@ -139,6 +140,7 @@
 #![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_swap)]
 #![feature(const_trait_impl)]
+#![feature(const_try)]
 #![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_default_impls)]
