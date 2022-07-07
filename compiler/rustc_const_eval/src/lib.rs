@@ -60,3 +60,41 @@ pub fn provide(providers: &mut Providers) {
         const_eval::deref_mir_constant(tcx, param_env, value)
     };
 }
+
+use crate::const_eval::CompileTimeInterpreter;
+use crate::interpret::{InterpCx, MemoryKind, OpTy};
+use rustc_middle::ty::{layout::TyAndLayout, ParamEnv, TyCtxt};
+use rustc_session::Limit;
+use rustc_span::Span;
+
+pub fn is_uninit_valid<'tcx>(tcx: TyCtxt<'tcx>, root_span: Span, ty: TyAndLayout<'tcx>) -> bool {
+    let machine = CompileTimeInterpreter::new(Limit::new(0), false);
+    let mut cx = InterpCx::new(tcx, root_span, ParamEnv::reveal_all(), machine);
+    let allocated = cx
+        .allocate(ty, MemoryKind::Machine(const_eval::MemoryKind::Heap))
+        .expect("failed to allocate for uninit check");
+    let ot: OpTy<'_, _> = allocated.into();
+    cx.validate_operand(&ot).is_ok()
+}
+
+pub fn is_zero_valid<'tcx>(tcx: TyCtxt<'tcx>, root_span: Span, ty: TyAndLayout<'tcx>) -> bool {
+    let machine = CompileTimeInterpreter::new(Limit::new(0), false);
+
+    let mut cx = InterpCx::new(tcx, root_span, ParamEnv::reveal_all(), machine);
+
+    // We could panic here... Or we could just return "yeah it's valid whatever". Or let
+    // codegen_panic_intrinsic return an error that halts compilation.
+    // I'm not exactly sure *when* this can fail. OOM?
+    let allocated = cx
+        .allocate(ty, MemoryKind::Machine(const_eval::MemoryKind::Heap))
+        .expect("failed to allocate for uninit check");
+
+    // Again, unclear what to do here if it fails.
+    cx.write_bytes_ptr(allocated.ptr, std::iter::repeat(0_u8).take(ty.layout.size().bytes_usize()))
+        .expect("failed to write bytes for zero valid check");
+
+    let ot: OpTy<'_, _> = allocated.into();
+
+    // Assume that if it failed, it's a validation failure.
+    cx.validate_operand(&ot).is_ok()
+}

@@ -1494,7 +1494,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// FIXME: Once we removed all the conservatism, we could alternatively
     /// create an all-0/all-undef constant and run the const value validator to see if
     /// this is a valid value for the given type.
-    pub fn might_permit_raw_init<C>(self, cx: &C, init_kind: InitKind, strict: bool) -> bool
+    pub fn might_permit_raw_init<C>(self, cx: &C, init_kind: InitKind) -> bool
     where
         Self: Copy,
         Ty: TyAbiInterface<'a, C>,
@@ -1507,13 +1507,8 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                     s.valid_range(cx).contains(0)
                 }
                 InitKind::Uninit => {
-                    if strict {
-                        // The type must be allowed to be uninit (which means "is a union").
-                        s.is_uninit_valid()
-                    } else {
-                        // The range must include all values.
-                        s.is_always_valid(cx)
-                    }
+                    // The range must include all values.
+                    s.is_always_valid(cx)
                 }
             }
         };
@@ -1534,19 +1529,12 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         // If we have not found an error yet, we need to recursively descend into fields.
         match &self.fields {
             FieldsShape::Primitive | FieldsShape::Union { .. } => {}
-            FieldsShape::Array { count, .. } => {
+            FieldsShape::Array { .. } => {
                 // FIXME(#66151): For now, we are conservative and do not check arrays by default.
-                if strict
-                    && *count > 0
-                    && !self.field(cx, 0).might_permit_raw_init(cx, init_kind, strict)
-                {
-                    // Found non empty array with a type that is unhappy about this kind of initialization
-                    return false;
-                }
             }
             FieldsShape::Arbitrary { offsets, .. } => {
                 for idx in 0..offsets.len() {
-                    if !self.field(cx, idx).might_permit_raw_init(cx, init_kind, strict) {
+                    if !self.field(cx, idx).might_permit_raw_init(cx, init_kind) {
                         // We found a field that is unhappy with this kind of initialization.
                         return false;
                     }

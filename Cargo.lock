@@ -3680,6 +3680,7 @@ dependencies = [
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
+ "rustc_const_eval",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fs_util",

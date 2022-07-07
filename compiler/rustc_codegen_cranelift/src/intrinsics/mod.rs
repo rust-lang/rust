@@ -675,8 +675,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             if intrinsic == sym::assert_zero_valid
                 && !layout.might_permit_raw_init(
                     fx,
-                    InitKind::Zero,
-                    fx.tcx.sess.opts.debugging_opts.strict_init_checks) {
+                    InitKind::Zero) {
 
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic(
@@ -691,8 +690,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             if intrinsic == sym::assert_uninit_valid
                 && !layout.might_permit_raw_init(
                     fx,
-                    InitKind::Uninit,
-                    fx.tcx.sess.opts.debugging_opts.strict_init_checks) {
+                    InitKind::Uninit) {
 
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic(

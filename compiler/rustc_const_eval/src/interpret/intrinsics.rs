@@ -413,35 +413,41 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         ),
                     )?;
                 }
-                if intrinsic_name == sym::assert_zero_valid
-                    && !layout.might_permit_raw_init(
-                        self,
-                        InitKind::Zero,
-                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
-                    )
-                {
-                    M::abort(
-                        self,
-                        format!(
-                            "aborted execution: attempted to zero-initialize type `{}`, which is invalid",
-                            ty
-                        ),
-                    )?;
+
+                if intrinsic_name == sym::assert_zero_valid {
+                    let should_panic = if self.tcx.sess.opts.debugging_opts.strict_init_checks {
+                        !crate::is_zero_valid(*self.tcx, self.cur_span(), layout)
+                    } else {
+                        !layout.might_permit_raw_init(self, InitKind::Zero)
+                    };
+
+                    if should_panic {
+                        M::abort(
+                            self,
+                            format!(
+                                "aborted execution: attempted to zero-initialize type `{}`, which is invalid",
+                                ty
+                            ),
+                        )?;
+                    }
                 }
-                if intrinsic_name == sym::assert_uninit_valid
-                    && !layout.might_permit_raw_init(
-                        self,
-                        InitKind::Uninit,
-                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
-                    )
-                {
-                    M::abort(
-                        self,
-                        format!(
-                            "aborted execution: attempted to leave type `{}` uninitialized, which is invalid",
-                            ty
-                        ),
-                    )?;
+
+                if intrinsic_name == sym::assert_uninit_valid {
+                    let should_panic = if self.tcx.sess.opts.debugging_opts.strict_init_checks {
+                        !crate::is_uninit_valid(*self.tcx, self.cur_span(), layout)
+                    } else {
+                        !layout.might_permit_raw_init(self, InitKind::Uninit)
+                    };
+
+                    if should_panic {
+                        M::abort(
+                            self,
+                            format!(
+                                "aborted execution: attempted to leave type `{}` uninitialized, which is invalid",
+                                ty
+                            ),
+                        )?;
+                    }
                 }
             }
             sym::simd_insert => {
