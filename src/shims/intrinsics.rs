@@ -314,7 +314,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     ty::Float(FloatTy::F64) =>
                         this.float_to_int_unchecked(val.to_scalar()?.to_f64()?, dest.layout.ty)?,
                     _ =>
-                        bug!(
+                        span_bug!(
+                            this.cur_span(),
                             "`float_to_int_unchecked` called with non-float input type {:?}",
                             val.layout.ty
                         ),
@@ -371,7 +372,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Op::Abs => {
                             // Works for f32 and f64.
                             let ty::Float(float_ty) = op.layout.ty.kind() else {
-                                bug!("{} operand is not a float", intrinsic_name)
+                                span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
                             };
                             let op = op.to_scalar()?;
                             match float_ty {
@@ -381,7 +382,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         }
                         Op::HostOp(host_op) => {
                             let ty::Float(float_ty) = op.layout.ty.kind() else {
-                                bug!("{} operand is not a float", intrinsic_name)
+                                span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
                             };
                             // FIXME using host floats
                             match float_ty {
@@ -546,7 +547,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                     // Works for f32 and f64.
                     let ty::Float(float_ty) = dest.layout.ty.kind() else {
-                        bug!("{} operand is not a float", intrinsic_name)
+                        span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
                     };
                     let val = match float_ty {
                         FloatTy::F32 =>
@@ -763,7 +764,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // `index` is an array, not a SIMD type
                 let ty::Array(_, index_len) = index.layout.ty.kind() else {
-                    bug!("simd_shuffle index argument has non-array type {}", index.layout.ty)
+                    span_bug!(this.cur_span(), "simd_shuffle index argument has non-array type {}", index.layout.ty)
                 };
                 let index_len = index_len.eval_usize(*this.tcx, this.param_env());
 
@@ -785,10 +786,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             &this.mplace_index(&right, src_index - left_len)?.into(),
                         )?
                     } else {
-                        bug!(
-                            "simd_shuffle index {} is out of bounds for 2 vectors of size {}",
-                            src_index,
-                            left_len
+                        span_bug!(
+                            this.cur_span(),
+                            "simd_shuffle index {src_index} is out of bounds for 2 vectors of size {left_len}",
                         );
                     };
                     this.write_immediate(*val, &dest.into())?;
@@ -1187,8 +1187,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let [place, rhs] = check_arg_count(args)?;
         let place = this.deref_operand(place)?;
 
-        if !place.layout.ty.is_integral() {
-            bug!("Atomic arithmetic operations only work on integer types");
+        if !place.layout.ty.is_integral() && !place.layout.ty.is_unsafe_ptr() {
+            span_bug!(
+                this.cur_span(),
+                "atomic arithmetic operations only work on integer and raw pointer types",
+            );
         }
         let rhs = this.read_immediate(rhs)?;
 
@@ -1355,7 +1358,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
             // Nothing else
-            _ => bug!("`float_to_int_unchecked` called with non-int output type {dest_ty:?}"),
+            _ =>
+                span_bug!(
+                    this.cur_span(),
+                    "`float_to_int_unchecked` called with non-int output type {dest_ty:?}"
+                ),
         })
     }
 }

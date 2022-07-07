@@ -195,9 +195,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Test if this pointer equals 0.
     fn ptr_is_null(&self, ptr: Pointer<Option<Tag>>) -> InterpResult<'tcx, bool> {
-        let this = self.eval_context_ref();
-        let null = Scalar::null_ptr(this);
-        this.ptr_eq(Scalar::from_maybe_pointer(ptr, this), null)
+        Ok(ptr.addr().bytes() == 0)
     }
 
     /// Get the `Place` for a local
