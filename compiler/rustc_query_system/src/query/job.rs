@@ -84,6 +84,7 @@ pub struct QueryJob {
 
 impl QueryJob {
     /// Creates a new query job.
+    #[inline]
     pub fn new(id: QueryJobId, span: Span, parent: Option<QueryJobId>) -> Self {
         QueryJob {
             id,
@@ -106,6 +107,7 @@ impl QueryJob {
     ///
     /// This does nothing for single threaded rustc,
     /// as there are no concurrent jobs which could be waiting on us
+    #[inline]
     pub fn signal_complete(self) {
         #[cfg(parallel_compiler)]
         {

@@ -1603,6 +1603,7 @@ impl SourceFile {
         self.name.is_real()
     }
 
+    #[inline]
     pub fn is_imported(&self) -> bool {
         self.src.is_none()
     }

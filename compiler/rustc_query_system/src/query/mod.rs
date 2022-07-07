@@ -81,6 +81,7 @@ pub struct QuerySideEffects {
 }
 
 impl QuerySideEffects {
+    #[inline]
     pub fn is_empty(&self) -> bool {
         let QuerySideEffects { diagnostics } = self;
         diagnostics.is_empty()

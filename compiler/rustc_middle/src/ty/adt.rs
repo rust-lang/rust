@@ -165,22 +165,27 @@ impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
 pub struct AdtDef<'tcx>(pub Interned<'tcx, AdtDefData>);
 
 impl<'tcx> AdtDef<'tcx> {
+    #[inline]
     pub fn did(self) -> DefId {
         self.0.0.did
     }
 
+    #[inline]
     pub fn variants(self) -> &'tcx IndexVec<VariantIdx, VariantDef> {
         &self.0.0.variants
     }
 
+    #[inline]
     pub fn variant(self, idx: VariantIdx) -> &'tcx VariantDef {
         &self.0.0.variants[idx]
     }
 
+    #[inline]
     pub fn flags(self) -> AdtFlags {
         self.0.0.flags
     }
 
+    #[inline]
     pub fn repr(self) -> ReprOptions {
         self.0.0.repr
     }

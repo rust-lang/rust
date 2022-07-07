@@ -1315,6 +1315,7 @@ pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 impl<'tcx> Deref for Region<'tcx> {
     type Target = RegionKind<'tcx>;
 
+    #[inline]
     fn deref(&self) -> &RegionKind<'tcx> {
         &self.0.0
     }
