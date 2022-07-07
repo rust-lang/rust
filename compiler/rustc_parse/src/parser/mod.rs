@@ -1353,7 +1353,16 @@ impl<'a> Parser<'a> {
 
     /// Parses `extern string_literal?`.
     fn parse_extern(&mut self) -> Extern {
-        if self.eat_keyword(kw::Extern) { Extern::from_abi(self.parse_abi()) } else { Extern::None }
+        if self.eat_keyword(kw::Extern) {
+            let mut extern_span = self.prev_token.span;
+            let abi = self.parse_abi();
+            if let Some(abi) = abi {
+                extern_span = extern_span.to(abi.span);
+            }
+            Extern::from_abi(abi, extern_span)
+        } else {
+            Extern::None
+        }
     }
 
     /// Parses a string literal as an ABI spec.

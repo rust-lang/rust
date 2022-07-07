@@ -148,7 +148,7 @@ impl<'a> Item<'a> {
         Item {
             unsafety: fm.unsafety,
             abi: format_extern(
-                ast::Extern::from_abi(fm.abi),
+                ast::Extern::from_abi(fm.abi, DUMMY_SP),
                 config.force_explicit_abi(),
                 true,
             ),
