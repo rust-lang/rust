@@ -321,7 +321,8 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     }
 
     fn mir_to_initial_sorted_coverage_spans(&self) -> Vec<CoverageSpan> {
-        let mut initial_spans = Vec::<CoverageSpan>::with_capacity(self.mir_body.num_nodes() * 2);
+        let mut initial_spans =
+            Vec::<CoverageSpan>::with_capacity(self.mir_body.basic_blocks.len() * 2);
         for (bcb, bcb_data) in self.basic_coverage_blocks.iter_enumerated() {
             initial_spans.extend(self.bcb_to_initial_coverage_spans(bcb, bcb_data));
         }

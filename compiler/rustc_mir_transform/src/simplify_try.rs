@@ -386,14 +386,17 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
         trace!("running SimplifyArmIdentity on {:?}", source);
 
         let local_uses = LocalUseCounter::get_local_uses(body);
-        let (basic_blocks, local_decls, debug_info) =
-            body.basic_blocks_local_decls_mut_and_var_debug_info();
-        for bb in basic_blocks {
+        for bb in body.basic_blocks.as_mut() {
             if let Some(opt_info) =
-                get_arm_identity_info(&bb.statements, local_decls.len(), debug_info)
+                get_arm_identity_info(&bb.statements, body.local_decls.len(), &body.var_debug_info)
             {
                 trace!("got opt_info = {:#?}", opt_info);
-                if !optimization_applies(&opt_info, local_decls, &local_uses, &debug_info) {
+                if !optimization_applies(
+                    &opt_info,
+                    &body.local_decls,
+                    &local_uses,
+                    &body.var_debug_info,
+                ) {
                     debug!("optimization skipped for {:?}", source);
                     continue;
                 }
@@ -431,7 +434,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
 
                 // Fix the debug info to point to the right local
                 for dbg_index in opt_info.dbg_info_to_adjust {
-                    let dbg_info = &mut debug_info[dbg_index];
+                    let dbg_info = &mut body.var_debug_info[dbg_index];
                     assert!(
                         matches!(dbg_info.value, VarDebugInfoContents::Place(_)),
                         "value was not a Place"

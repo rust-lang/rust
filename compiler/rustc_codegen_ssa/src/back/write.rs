@@ -494,12 +494,18 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
 
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
-        if let Some(path) = &module.object {
-            if let Some((id, product)) =
-                copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, path)
-            {
-                work_products.insert(id, product);
-            }
+        let mut files = Vec::new();
+        if let Some(object_file_path) = &module.object {
+            files.push(("o", object_file_path.as_path()));
+        }
+        if let Some(dwarf_object_file_path) = &module.dwarf_object {
+            files.push(("dwo", dwarf_object_file_path.as_path()));
+        }
+
+        if let Some((id, product)) =
+            copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, files.as_slice())
+        {
+            work_products.insert(id, product);
         }
     }
 
@@ -856,29 +862,50 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     assert!(module_config.emit_obj != EmitObj::None);
 
     let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
-    let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name));
-    let source_file = in_incr_comp_dir(&incr_comp_session_dir, &module.source.saved_file);
-    debug!(
-        "copying pre-existing module `{}` from {:?} to {}",
-        module.name,
-        source_file,
-        obj_out.display()
+
+    let load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
+        let source_file = in_incr_comp_dir(&incr_comp_session_dir, saved_path);
+        debug!(
+            "copying pre-existing module `{}` from {:?} to {}",
+            module.name,
+            source_file,
+            output_path.display()
+        );
+        match link_or_copy(&source_file, &output_path) {
+            Ok(_) => Some(output_path),
+            Err(err) => {
+                let diag_handler = cgcx.create_diag_handler();
+                diag_handler.err(&format!(
+                    "unable to copy {} to {}: {}",
+                    source_file.display(),
+                    output_path.display(),
+                    err
+                ));
+                None
+            }
+        }
+    };
+
+    let object = load_from_incr_comp_dir(
+        cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name)),
+        &module.source.saved_files.get("o").expect("no saved object file in work product"),
     );
-    if let Err(err) = link_or_copy(&source_file, &obj_out) {
-        let diag_handler = cgcx.create_diag_handler();
-        diag_handler.err(&format!(
-            "unable to copy {} to {}: {}",
-            source_file.display(),
-            obj_out.display(),
-            err
-        ));
-    }
+    let dwarf_object =
+        module.source.saved_files.get("dwo").as_ref().and_then(|saved_dwarf_object_file| {
+            let dwarf_obj_out = cgcx
+                .output_filenames
+                .split_dwarf_path(cgcx.split_debuginfo, cgcx.split_dwarf_kind, Some(&module.name))
+                .expect(
+                    "saved dwarf object in work product but `split_dwarf_path` returned `None`",
+                );
+            load_from_incr_comp_dir(dwarf_obj_out, &saved_dwarf_object_file)
+        });
 
     WorkItemResult::Compiled(CompiledModule {
         name: module.name,
         kind: ModuleKind::Regular,
-        object: Some(obj_out),
-        dwarf_object: None,
+        object,
+        dwarf_object,
         bytecode: None,
     })
 }

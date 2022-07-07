@@ -61,7 +61,7 @@ impl<'tcx> MirPass<'tcx> for SeparateConstSwitch {
 /// Returns the amount of blocks that were duplicated
 pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
     let mut new_blocks: SmallVec<[(BasicBlock, BasicBlock); 6]> = SmallVec::new();
-    let predecessors = body.predecessors();
+    let predecessors = body.basic_blocks.predecessors();
     'block_iter: for (block_id, block) in body.basic_blocks().iter_enumerated() {
         if let TerminatorKind::SwitchInt {
             discr: Operand::Copy(switch_place) | Operand::Move(switch_place),

@@ -34,7 +34,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, print::Printer, subst::GenericArg, RegisteredTools, Ty, TyCtxt};
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -906,6 +906,29 @@ pub trait LintContext: Sized {
     ) {
         self.lookup(lint, None as Option<Span>, decorate);
     }
+
+    /// This returns the lint level for the given lint at the current location.
+    fn get_lint_level(&self, lint: &'static Lint) -> Level;
+
+    /// This function can be used to manually fulfill an expectation. This can
+    /// be used for lints which contain several spans, and should be suppressed,
+    /// if either location was marked with an expectation.
+    ///
+    /// Note that this function should only be called for [`LintExpectationId`]s
+    /// retrieved from the current lint pass. Buffered or manually created ids can
+    /// cause ICEs.
+    fn fulfill_expectation(&self, expectation: LintExpectationId) {
+        // We need to make sure that submitted expectation ids are correctly fulfilled suppressed
+        // and stored between compilation sessions. To not manually do these steps, we simply create
+        // a dummy diagnostic and emit is as usual, which will be suppressed and stored like a normal
+        // expected lint diagnostic.
+        self.sess()
+            .struct_expect(
+                "this is a dummy diagnostic, to submit and store an expectation",
+                expectation,
+            )
+            .emit();
+    }
 }
 
 impl<'a> EarlyContext<'a> {
@@ -953,6 +976,10 @@ impl LintContext for LateContext<'_> {
             None => self.tcx.struct_lint_node(lint, hir_id, decorate),
         }
     }
+
+    fn get_lint_level(&self, lint: &'static Lint) -> Level {
+        self.tcx.lint_level_at_node(lint, self.last_node_with_lint_attrs).0
+    }
 }
 
 impl LintContext for EarlyContext<'_> {
@@ -974,6 +1001,10 @@ impl LintContext for EarlyContext<'_> {
         decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
     ) {
         self.builder.struct_lint(lint, span.map(|s| s.into()), decorate)
+    }
+
+    fn get_lint_level(&self, lint: &'static Lint) -> Level {
+        self.builder.lint_level(lint).0
     }
 }
 
