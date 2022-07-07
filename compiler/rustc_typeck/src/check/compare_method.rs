@@ -1,4 +1,6 @@
+use super::{potentially_plural_count, Inherited};
 use crate::check::regionck::OutlivesEnvironmentExt;
+use crate::check::wfcheck;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
@@ -18,8 +20,6 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use std::iter;
-
-use super::{potentially_plural_count, FnCtxt, Inherited};
 
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
@@ -1491,12 +1491,11 @@ pub fn check_type_bounds<'tcx>(
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        //
-        // FIXME: Remove that `FnCtxt`.
-        let fcx = FnCtxt::new(&inh, param_env, impl_ty_hir_id);
         let implied_bounds = match impl_ty.container {
             ty::TraitContainer(_) => FxHashSet::default(),
-            ty::ImplContainer(def_id) => fcx.impl_implied_bounds(def_id, impl_ty_span),
+            ty::ImplContainer(def_id) => {
+                wfcheck::impl_implied_bounds(tcx, param_env, def_id.expect_local(), impl_ty_span)
+            }
         };
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
         outlives_environment.add_implied_bounds(infcx, implied_bounds, impl_ty_hir_id);

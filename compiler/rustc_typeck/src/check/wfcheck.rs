@@ -1,7 +1,6 @@
 use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
-
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
@@ -13,6 +12,7 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::outlives::obligations::TypeOutlives;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::Normalized;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -24,7 +24,9 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::query::normalize::AtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, WellFormedLoc};
+use rustc_trait_selection::traits::query::NoSolution;
 
 use std::cell::LazyCell;
 use std::convert::TryInto;
@@ -939,9 +941,10 @@ fn check_associated_item(
 
         let (mut implied_bounds, self_ty) = match item.container {
             ty::TraitContainer(_) => (FxHashSet::default(), fcx.tcx.types.self_param),
-            ty::ImplContainer(def_id) => {
-                (fcx.impl_implied_bounds(def_id, span), fcx.tcx.type_of(def_id))
-            }
+            ty::ImplContainer(def_id) => (
+                impl_implied_bounds(tcx, fcx.param_env, def_id.expect_local(), span),
+                fcx.tcx.type_of(def_id),
+            ),
         };
 
         match item.kind {
@@ -1259,7 +1262,7 @@ fn check_impl<'tcx>(
 
         check_where_clauses(fcx, item.span, item.def_id, None);
 
-        fcx.impl_implied_bounds(item.def_id.to_def_id(), item.span)
+        impl_implied_bounds(tcx, fcx.param_env, item.def_id, item.span)
     });
 }
 
@@ -1917,28 +1920,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .collect()
     }
+}
 
-    pub(super) fn impl_implied_bounds(
-        &self,
-        impl_def_id: DefId,
-        span: Span,
-    ) -> FxHashSet<Ty<'tcx>> {
-        match self.tcx.impl_trait_ref(impl_def_id) {
+pub(super) fn impl_implied_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl_def_id: LocalDefId,
+    span: Span,
+) -> FxHashSet<Ty<'tcx>> {
+    // We completely ignore any obligations caused by normalizing the types
+    // we assume to be well formed. Considering that the user of the implied
+    // bounds will also normalize them, we leave it to them to emit errors
+    // which should result in better causes and spans.
+    tcx.infer_ctxt().enter(|infcx| {
+        let cause = ObligationCause::misc(span, tcx.hir().local_def_id_to_hir_id(impl_def_id));
+        match tcx.impl_trait_ref(impl_def_id) {
             Some(trait_ref) => {
                 // Trait impl: take implied bounds from all types that
                 // appear in the trait reference.
-                let trait_ref = self.normalize_associated_types_in(span, trait_ref);
-                trait_ref.substs.types().collect()
+                match infcx.at(&cause, param_env).normalize(trait_ref) {
+                    Ok(Normalized { value, obligations: _ }) => value.substs.types().collect(),
+                    Err(NoSolution) => FxHashSet::default(),
+                }
             }
 
             None => {
                 // Inherent impl: take implied bounds from the `self` type.
-                let self_ty = self.tcx.type_of(impl_def_id);
-                let self_ty = self.normalize_associated_types_in(span, self_ty);
-                FxHashSet::from_iter([self_ty])
+                let self_ty = tcx.type_of(impl_def_id);
+                match infcx.at(&cause, param_env).normalize(self_ty) {
+                    Ok(Normalized { value, obligations: _ }) => FxHashSet::from_iter([value]),
+                    Err(NoSolution) => FxHashSet::default(),
+                }
             }
         }
-    }
+    })
 }
 
 fn error_392(
