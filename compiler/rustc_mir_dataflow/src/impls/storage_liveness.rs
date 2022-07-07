@@ -153,7 +153,7 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
         _: &mir::Statement<'tcx>,
         loc: Location,
     ) {
-        // If we move from a place then only stops needing storage *after*
+        // If we move from a place then it only stops needing storage *after*
         // that statement.
         self.check_for_move(trans, loc);
     }
