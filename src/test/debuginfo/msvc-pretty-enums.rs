@@ -55,15 +55,23 @@
 
 // cdb-command: dx wrapping_niche128_dataful
 // cdb-check: wrapping_niche128_dataful : X [Type: enum2$<msvc_pretty_enums::Wrapping128Niche>]
-// cdb-check:    [+0x000] __0              [Type: msvc_pretty_enums::Wrapping128]
+// cdb-check:    [+0x[...]] __0              [Type: msvc_pretty_enums::Wrapping128]
 
 // cdb-command: dx wrapping_niche128_none1
 // cdb-check: wrapping_niche128_none1 : Y [Type: enum2$<msvc_pretty_enums::Wrapping128Niche>]
-// cdb-check:    [+0x000] __0              [Type: msvc_pretty_enums::Wrapping128]
+// cdb-check:    [+0x[...]] __0              [Type: msvc_pretty_enums::Wrapping128]
 
 // cdb-command: dx wrapping_niche128_none2
 // cdb-check: wrapping_niche128_none2 : Z [Type: enum2$<msvc_pretty_enums::Wrapping128Niche>]
-// cdb-check:    [+0x000] __0              [Type: msvc_pretty_enums::Wrapping128]
+// cdb-check:    [+0x[...]] __0              [Type: msvc_pretty_enums::Wrapping128]
+
+// cdb-command: dx direct_tag_128_a,d
+// cdb-check: direct_tag_128_a,d : A [Type: enum2$<msvc_pretty_enums::DirectTag128>]
+// cdb-check:     [+0x[...]] __0              : 42 [Type: unsigned int]
+
+// cdb-command: dx direct_tag_128_b,d
+// cdb-check: direct_tag_128_b,d : B [Type: enum2$<msvc_pretty_enums::DirectTag128>]
+// cdb-check:     [+0x[...]] __0              : 137 [Type: unsigned int]
 
 // cdb-command: dx niche_w_fields_1_some,d
 // cdb-check: niche_w_fields_1_some,d : A [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields1>]
@@ -76,7 +84,6 @@
 
 // cdb-command: dx niche_w_fields_2_some,d
 // cdb-check: niche_w_fields_2_some,d : A [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields2>]
-// cdb-check:     [<Raw View>]     [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields2>]
 // cdb-check:     [+0x[...]] __0              : 800 [Type: core::num::nonzero::NonZeroU32]
 // cdb-check:     [+0x[...]] __1              : 900 [Type: unsigned __int64]
 
@@ -118,7 +125,17 @@
 // cdb-check: niche_w_fields_std_result_err,d : Err [Type: enum2$<core::result::Result<alloc::boxed::Box<slice$<u8>,alloc::alloc::Global>,u64> >]
 // cdb-check:    [+0x[...]] __0              : 789 [Type: unsigned __int64]
 
+// cdb-command: dx -r2 arbitrary_discr1,d
+// cdb-check: arbitrary_discr1,d : Abc [Type: enum2$<msvc_pretty_enums::ArbitraryDiscr>]
+// cdb-check:     [+0x[...]] __0              : 1234 [Type: unsigned int]
+
+// cdb-command: dx -r2 arbitrary_discr2,d
+// cdb-check: arbitrary_discr2,d : Def [Type: enum2$<msvc_pretty_enums::ArbitraryDiscr>]
+// cdb-check:     [+0x[...]] __0              : 5678 [Type: unsigned int]
+
 #![feature(rustc_attrs)]
+#![feature(repr128)]
+#![feature(arbitrary_enum_discriminant)]
 
 use std::num::{NonZeroI128, NonZeroU32};
 
@@ -168,6 +185,18 @@ enum Wrapping128Niche {
     Z,
 }
 
+#[repr(i128)]
+enum DirectTag128 {
+    A(u32),
+    B(u32),
+}
+
+#[repr(u32)]
+enum ArbitraryDiscr {
+    Abc(u32) = 1000,
+    Def(u32) = 5000_000,
+}
+
 fn main() {
     let a = Some(CStyleEnum::Low);
     let b = Option::<CStyleEnum>::None;
@@ -189,6 +218,9 @@ fn main() {
     let wrapping_niche128_none1 = Wrapping128Niche::Y;
     let wrapping_niche128_none2 = Wrapping128Niche::Z;
 
+    let direct_tag_128_a = DirectTag128::A(42);
+    let direct_tag_128_b = DirectTag128::B(137);
+
     let niche_w_fields_1_some = NicheLayoutWithFields1::A(&77, 7);
     let niche_w_fields_1_none = NicheLayoutWithFields1::B(99);
 
@@ -204,6 +236,9 @@ fn main() {
 
     let niche_w_fields_std_result_ok: Result<Box<[u8]>, u64> = Ok(vec![1, 2, 3].into());
     let niche_w_fields_std_result_err: Result<Box<[u8]>, u64> = Err(789);
+
+    let arbitrary_discr1 = ArbitraryDiscr::Abc(1234);
+    let arbitrary_discr2 = ArbitraryDiscr::Def(5678);
 
     zzz(); // #break
 }
