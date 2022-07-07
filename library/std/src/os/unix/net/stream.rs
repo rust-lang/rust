@@ -426,7 +426,14 @@ impl UnixStream {
 
     /// Set the id of the socket for network filtering purpose
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd")),
+        doc = "```ignore"
+    )]
     /// #![feature(unix_set_mark)]
     /// use std::os::unix::net::UnixStream;
     ///
