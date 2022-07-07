@@ -133,7 +133,7 @@ fn find_local_assigned_to_return_place(
             return local;
         }
 
-        match body.predecessors()[block].as_slice() {
+        match body.basic_blocks.predecessors()[block].as_slice() {
             &[pred] => block = pred,
             _ => return None,
         }

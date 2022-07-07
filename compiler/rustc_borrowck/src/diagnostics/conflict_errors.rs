@@ -1628,7 +1628,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             location: Location,
         ) -> impl Iterator<Item = Location> + Captures<'tcx> + 'a {
             if location.statement_index == 0 {
-                let predecessors = body.predecessors()[location.block].to_vec();
+                let predecessors = body.basic_blocks.predecessors()[location.block].to_vec();
                 Either::Left(predecessors.into_iter().map(move |bb| body.terminator_loc(bb)))
             } else {
                 Either::Right(std::iter::once(Location {
