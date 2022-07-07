@@ -46,7 +46,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, count: usize) 
             inout("ecx") pre_byte_count => _,
             inout("rdi") dest => dest,
             inout("rsi") src => src,
-            options(nostack, preserves_flags)
+            options(att_syntax, nostack, preserves_flags)
         );
     }
     asm!(
@@ -54,7 +54,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, count: usize) 
         inout("rcx") qword_count => _,
         inout("rdi") dest => dest,
         inout("rsi") src => src,
-        options(nostack, preserves_flags)
+        options(att_syntax, nostack, preserves_flags)
     );
     if byte_count > 0 {
         asm!(
@@ -62,7 +62,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, count: usize) 
             inout("ecx") byte_count => _,
             inout("rdi") dest => _,
             inout("rsi") src => _,
-            options(nostack, preserves_flags)
+            options(att_syntax, nostack, preserves_flags)
         );
     }
 }
@@ -74,13 +74,13 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
     asm!(
         "std",
         "rep movsb",
-        "sub rsi, 7",
-        "sub rdi, 7",
-        "mov rcx, {qword_count}",
+        "sub $7, %rsi",
+        "sub $7, %rdi",
+        "mov {qword_count}, %rcx",
         "rep movsq",
-        "add rsi, 7",
-        "add rdi, 7",
-        "mov ecx, {pre_byte_count:e}",
+        "add $7, %rsi",
+        "add $7, %rdi",
+        "mov {pre_byte_count:e}, %ecx",
         "rep movsb",
         "cld",
         pre_byte_count = in(reg) pre_byte_count,
@@ -89,7 +89,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
         inout("rdi") dest.add(count - 1) => _,
         inout("rsi") src.add(count - 1) => _,
         // We modify flags, but we restore it afterwards
-        options(nostack, preserves_flags)
+        options(att_syntax, nostack, preserves_flags)
     );
 }
 
@@ -120,7 +120,7 @@ pub unsafe fn set_bytes(mut dest: *mut u8, c: u8, count: usize) {
             inout("ecx") pre_byte_count => _,
             inout("rdi") dest => dest,
             in("rax") c,
-            options(nostack, preserves_flags)
+            options(att_syntax, nostack, preserves_flags)
         );
     }
     asm!(
@@ -128,7 +128,7 @@ pub unsafe fn set_bytes(mut dest: *mut u8, c: u8, count: usize) {
         inout("rcx") qword_count => _,
         inout("rdi") dest => dest,
         in("rax") c,
-        options(nostack, preserves_flags)
+        options(att_syntax, nostack, preserves_flags)
     );
     if byte_count > 0 {
         asm!(
@@ -136,7 +136,7 @@ pub unsafe fn set_bytes(mut dest: *mut u8, c: u8, count: usize) {
             inout("ecx") byte_count => _,
             inout("rdi") dest => _,
             in("rax") c,
-            options(nostack, preserves_flags)
+            options(att_syntax, nostack, preserves_flags)
         );
     }
 }
