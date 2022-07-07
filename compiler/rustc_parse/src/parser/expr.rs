@@ -3037,6 +3037,19 @@ impl<'a> Parser<'a> {
                                 ",",
                                 Applicability::MachineApplicable,
                             );
+                        } else if is_shorthand
+                            && (AssocOp::from_token(&self.token).is_some()
+                                || matches!(&self.token.kind, token::OpenDelim(_))
+                                || self.token.kind == token::Dot)
+                        {
+                            // Looks like they tried to write a shorthand, complex expression.
+                            let ident = parsed_field.expect("is_shorthand implies Some").ident;
+                            e.span_suggestion(
+                                ident.span.shrink_to_lo(),
+                                "try naming a field",
+                                &format!("{ident}: "),
+                                Applicability::HasPlaceholders,
+                            );
                         }
                     }
                     if !recover {
