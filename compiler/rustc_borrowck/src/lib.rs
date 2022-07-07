@@ -907,6 +907,16 @@ impl InitializationRequiringAction {
             InitializationRequiringAction::PartialAssignment => "partially assigned",
         }
     }
+
+    fn as_general_verb_in_past_tense(self) -> &'static str {
+        match self {
+            InitializationRequiringAction::Borrow
+            | InitializationRequiringAction::MatchOn
+            | InitializationRequiringAction::Use => "used",
+            InitializationRequiringAction::Assignment => "assigned",
+            InitializationRequiringAction::PartialAssignment => "partially assigned",
+        }
+    }
 }
 
 impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {

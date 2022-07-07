@@ -2,9 +2,12 @@ use either::Either;
 use rustc_const_eval::util::CallKind;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
@@ -18,6 +21,7 @@ use rustc_middle::ty::{
     self, subst::Subst, suggest_constraining_type_params, EarlyBinder, PredicateKind, Ty,
 };
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
+use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -94,32 +98,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return;
             }
 
-            let item_msg =
-                match self.describe_place_with_options(used_place, IncludingDowncast(true)) {
-                    Some(name) => format!("`{}`", name),
-                    None => "value".to_owned(),
-                };
-            let mut err = self.cannot_act_on_uninitialized_variable(
+            let err = self.report_use_of_uninitialized(
+                mpi,
+                used_place,
+                moved_place,
+                desired_action,
                 span,
-                desired_action.as_noun(),
-                &self
-                    .describe_place_with_options(moved_place, IncludingDowncast(true))
-                    .unwrap_or_else(|| "_".to_owned()),
+                use_spans,
             );
-            err.span_label(span, format!("use of possibly-uninitialized {}", item_msg));
-
-            use_spans.var_span_label_path_only(
-                &mut err,
-                format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
-            );
-
             self.buffer_error(err);
         } else {
             if let Some((reported_place, _)) = self.has_move_error(&move_out_indices) {
                 if self.prefixes(*reported_place, PrefixSet::All).any(|p| p == used_place) {
                     debug!(
-                        "report_use_of_moved_or_uninitialized place: error suppressed \
-                         mois={:?}",
+                        "report_use_of_moved_or_uninitialized place: error suppressed mois={:?}",
                         move_out_indices
                     );
                     return;
@@ -324,6 +316,130 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             self.buffer_move_error(move_out_indices, (used_place, err));
         }
+    }
+
+    fn report_use_of_uninitialized(
+        &self,
+        mpi: MovePathIndex,
+        used_place: PlaceRef<'tcx>,
+        moved_place: PlaceRef<'tcx>,
+        desired_action: InitializationRequiringAction,
+        span: Span,
+        use_spans: UseSpans<'tcx>,
+    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
+        // We need all statements in the body where the binding was assigned to to later find all
+        // the branching code paths where the binding *wasn't* assigned to.
+        let inits = &self.move_data.init_path_map[mpi];
+        let move_path = &self.move_data.move_paths[mpi];
+        let decl_span = self.body.local_decls[move_path.place.local].source_info.span;
+        let mut spans = vec![];
+        for init_idx in inits {
+            let init = &self.move_data.inits[*init_idx];
+            let span = init.span(&self.body);
+            if !span.is_dummy() {
+                spans.push(span);
+            }
+        }
+
+        let (name, desc) =
+            match self.describe_place_with_options(moved_place, IncludingDowncast(true)) {
+                Some(name) => (format!("`{name}`"), format!("`{name}` ")),
+                None => ("the variable".to_string(), String::new()),
+            };
+        let path = match self.describe_place_with_options(used_place, IncludingDowncast(true)) {
+            Some(name) => format!("`{name}`"),
+            None => "value".to_string(),
+        };
+
+        // We use the statements were the binding was initialized, and inspect the HIR to look
+        // for the branching codepaths that aren't covered, to point at them.
+        let hir_id = self.mir_hir_id();
+        let map = self.infcx.tcx.hir();
+        let body_id = map.body_owned_by(hir_id);
+        let body = map.body(body_id);
+
+        let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };
+        visitor.visit_body(&body);
+
+        let isnt_initialized = if let InitializationRequiringAction::PartialAssignment
+        | InitializationRequiringAction::Assignment = desired_action
+        {
+            // The same error is emitted for bindings that are *sometimes* initialized and the ones
+            // that are *partially* initialized by assigning to a field of an uninitialized
+            // binding. We differentiate between them for more accurate wording here.
+            "isn't fully initialized"
+        } else if spans
+            .iter()
+            .filter(|i| {
+                // We filter these to avoid misleading wording in cases like the following,
+                // where `x` has an `init`, but it is in the same place we're looking at:
+                // ```
+                // let x;
+                // x += 1;
+                // ```
+                !i.contains(span)
+                    // We filter these to avoid incorrect main message on `match-cfg-fake-edges.rs`
+                        && !visitor
+                            .errors
+                            .iter()
+                            .map(|(sp, _)| *sp)
+                            .any(|sp| span < sp && !sp.contains(span))
+            })
+            .count()
+            == 0
+        {
+            "isn't initialized"
+        } else {
+            "is possibly-uninitialized"
+        };
+
+        let used = desired_action.as_general_verb_in_past_tense();
+        let mut err =
+            struct_span_err!(self, span, E0381, "{used} binding {desc}{isnt_initialized}");
+        use_spans.var_span_label_path_only(
+            &mut err,
+            format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
+        );
+
+        if let InitializationRequiringAction::PartialAssignment
+        | InitializationRequiringAction::Assignment = desired_action
+        {
+            err.help(
+                "partial initialization isn't supported, fully initialize the binding with a \
+                 default value and mutate it, or use `std::mem::MaybeUninit`",
+            );
+        }
+        err.span_label(span, format!("{path} {used} here but it {isnt_initialized}"));
+
+        let mut shown = false;
+        for (sp, label) in visitor.errors {
+            if sp < span && !sp.overlaps(span) {
+                // When we have a case like `match-cfg-fake-edges.rs`, we don't want to mention
+                // match arms coming after the primary span because they aren't relevant:
+                // ```
+                // let x;
+                // match y {
+                //     _ if { x = 2; true } => {}
+                //     _ if {
+                //         x; //~ ERROR
+                //         false
+                //     } => {}
+                //     _ => {} // We don't want to point to this.
+                // };
+                // ```
+                err.span_label(sp, &label);
+                shown = true;
+            }
+        }
+        if !shown {
+            for sp in &spans {
+                if *sp < span && !sp.overlaps(span) {
+                    err.span_label(*sp, "binding initialized here in some conditions");
+                }
+            }
+        }
+        err.span_label(decl_span, "binding declared here but left uninitialized");
+        err
     }
 
     fn suggest_borrow_fn_like(
@@ -2446,5 +2562,144 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
                 region_name
             }
         }
+    }
+}
+
+/// Detect whether one of the provided spans is a statement nested within the top-most visited expr
+struct ReferencedStatementsVisitor<'a>(&'a [Span], bool);
+
+impl<'a, 'v> Visitor<'v> for ReferencedStatementsVisitor<'a> {
+    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
+        match s.kind {
+            hir::StmtKind::Semi(expr) if self.0.contains(&expr.span) => {
+                self.1 = true;
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Given a set of spans representing statements initializing the relevant binding, visit all the
+/// function expressions looking for branching code paths that *do not* initialize the binding.
+struct ConditionVisitor<'b> {
+    spans: &'b [Span],
+    name: &'b str,
+    errors: Vec<(Span, String)>,
+}
+
+impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
+    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+        match ex.kind {
+            hir::ExprKind::If(cond, body, None) => {
+                // `if` expressions with no `else` that initialize the binding might be missing an
+                // `else` arm.
+                let mut v = ReferencedStatementsVisitor(self.spans, false);
+                v.visit_expr(body);
+                if v.1 {
+                    self.errors.push((
+                        cond.span,
+                        format!(
+                            "if this `if` condition is `false`, {} is not initialized",
+                            self.name,
+                        ),
+                    ));
+                    self.errors.push((
+                        ex.span.shrink_to_hi(),
+                        format!("an `else` arm might be missing here, initializing {}", self.name),
+                    ));
+                }
+            }
+            hir::ExprKind::If(cond, body, Some(other)) => {
+                // `if` expressions where the binding is only initialized in one of the two arms
+                // might be missing a binding initialization.
+                let mut a = ReferencedStatementsVisitor(self.spans, false);
+                a.visit_expr(body);
+                let mut b = ReferencedStatementsVisitor(self.spans, false);
+                b.visit_expr(other);
+                match (a.1, b.1) {
+                    (true, true) | (false, false) => {}
+                    (true, false) => {
+                        if other.span.is_desugaring(DesugaringKind::WhileLoop) {
+                            self.errors.push((
+                                cond.span,
+                                format!(
+                                    "if this condition isn't met and the `while` loop runs 0 \
+                                     times, {} is not initialized",
+                                    self.name
+                                ),
+                            ));
+                        } else {
+                            self.errors.push((
+                                body.span.shrink_to_hi().until(other.span),
+                                format!(
+                                    "if the `if` condition is `false` and this `else` arm is \
+                                     executed, {} is not initialized",
+                                    self.name
+                                ),
+                            ));
+                        }
+                    }
+                    (false, true) => {
+                        self.errors.push((
+                            cond.span,
+                            format!(
+                                "if this condition is `true`, {} is not initialized",
+                                self.name
+                            ),
+                        ));
+                    }
+                }
+            }
+            hir::ExprKind::Match(e, arms, loop_desugar) => {
+                // If the binding is initialized in one of the match arms, then the other match
+                // arms might be missing an initialization.
+                let results: Vec<bool> = arms
+                    .iter()
+                    .map(|arm| {
+                        let mut v = ReferencedStatementsVisitor(self.spans, false);
+                        v.visit_arm(arm);
+                        v.1
+                    })
+                    .collect();
+                if results.iter().any(|x| *x) && !results.iter().all(|x| *x) {
+                    for (arm, seen) in arms.iter().zip(results) {
+                        if !seen {
+                            if loop_desugar == hir::MatchSource::ForLoopDesugar {
+                                self.errors.push((
+                                    e.span,
+                                    format!(
+                                        "if the `for` loop runs 0 times, {} is not initialized ",
+                                        self.name
+                                    ),
+                                ));
+                            } else if let Some(guard) = &arm.guard {
+                                self.errors.push((
+                                    arm.pat.span.to(guard.body().span),
+                                    format!(
+                                        "if this pattern and condition are matched, {} is not \
+                                         initialized",
+                                        self.name
+                                    ),
+                                ));
+                            } else {
+                                self.errors.push((
+                                    arm.pat.span,
+                                    format!(
+                                        "if this pattern is matched, {} is not initialized",
+                                        self.name
+                                    ),
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+            // FIXME: should we also account for binops, particularly `&&` and `||`? `try` should
+            // also be accounted for. For now it is fine, as if we don't find *any* relevant
+            // branching code paths, we point at the places where the binding *is* initialized for
+            // *some* context.
+            _ => {}
+        }
+        walk_expr(self, ex);
     }
 }
