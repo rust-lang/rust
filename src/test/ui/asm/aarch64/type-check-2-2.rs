@@ -17,10 +17,10 @@ fn main() {
 
         let x: u64;
         asm!("{}", in(reg) x);
-        //~^ ERROR use of possibly-uninitialized variable: `x`
+        //~^ ERROR used binding `x` isn't initialized
         let mut y: u64;
         asm!("{}", inout(reg) y);
-        //~^ ERROR use of possibly-uninitialized variable: `y`
+        //~^ ERROR used binding `y` isn't initialized
         let _ = y;
 
         // Outputs require mutable places
