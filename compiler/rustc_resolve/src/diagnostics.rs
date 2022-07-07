@@ -915,6 +915,13 @@ impl<'a> Resolver<'a> {
                     span,
                     format!("cannot be named the same as {} {}", article, shadowed_binding_descr),
                 );
+                err.span_suggestion(
+                    span,
+                    "try specify the pattern arguments",
+                    format!("{}(..)", name),
+                    Applicability::Unspecified,
+                )
+                .emit();
                 let msg =
                     format!("the {} `{}` is {} here", shadowed_binding_descr, name, participle);
                 err.span_label(shadowed_binding_span, msg);
