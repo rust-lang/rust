@@ -245,7 +245,8 @@ pub struct MethodDef<'a> {
 pub struct Substructure<'a> {
     /// ident of self
     pub type_ident: Ident,
-    /// verbatim access to any non-selflike arguments
+    /// Verbatim access to any non-selflike arguments, i.e. arguments that
+    /// don't have type `&Self`.
     pub nonselflike_args: &'a [P<Expr>],
     pub fields: &'a SubstructureFields<'a>,
 }
@@ -934,10 +935,9 @@ impl<'a> MethodDef<'a> {
 
             let arg_expr = cx.expr_ident(span, ident);
 
-            match *ty {
-                // for static methods, just treat any Self
-                // arguments as a normal arg
-                Ref(ref ty, _) if matches!(**ty, Self_) && !self.is_static() => {
+            match ty {
+                // Selflike (`&Self`) arguments only occur in non-static methods.
+                Ref(box Self_, _) if !self.is_static() => {
                     selflike_args.push(cx.expr_deref(span, arg_expr))
                 }
                 Self_ => cx.span_bug(span, "`Self` in non-return position"),
@@ -1459,11 +1459,8 @@ impl<'a> TraitDef<'a> {
         prefixes
             .iter()
             .map(|prefix| {
-                let pieces: Vec<_> = struct_def
-                    .fields()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, struct_field)| {
+                let pieces_iter =
+                    struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
                         let sp = struct_field.span.with_ctxt(self.span.ctxt());
                         let binding_mode = if use_temporaries {
                             ast::BindingMode::ByValue(ast::Mutability::Not)
@@ -1477,14 +1474,12 @@ impl<'a> TraitDef<'a> {
                             struct_field.ident,
                             cx.pat(path.span, PatKind::Ident(binding_mode, path, None)),
                         )
-                    })
-                    .collect();
+                    });
 
                 let struct_path = struct_path.clone();
                 match *struct_def {
                     VariantData::Struct(..) => {
-                        let field_pats = pieces
-                            .into_iter()
+                        let field_pats = pieces_iter
                             .map(|(sp, ident, pat)| {
                                 if ident.is_none() {
                                     cx.span_bug(
@@ -1506,7 +1501,7 @@ impl<'a> TraitDef<'a> {
                         cx.pat_struct(self.span, struct_path, field_pats)
                     }
                     VariantData::Tuple(..) => {
-                        let subpats = pieces.into_iter().map(|(_, _, subpat)| subpat).collect();
+                        let subpats = pieces_iter.map(|(_, _, subpat)| subpat).collect();
                         cx.pat_tuple_struct(self.span, struct_path, subpats)
                     }
                     VariantData::Unit(..) => cx.pat_path(self.span, struct_path),
