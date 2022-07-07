@@ -80,8 +80,7 @@ impl Comments {
     fn parse_checked(path: &Path, content: &str) -> Result<Self> {
         let mut this = Self::default();
 
-        // The line that a `|` will refer to
-        let mut fallthrough_to = None;
+        let mut fallthrough_to = None; // The line that a `|` will refer to.
         for (l, line) in content.lines().enumerate() {
             let l = l + 1; // enumerate starts at 0, but line numbers start at 1
             this.parse_checked_line(l, &mut fallthrough_to, line).map_err(|err| {
@@ -190,6 +189,7 @@ impl Comments {
                 Some(i) => {
                     let (command, args) = command.split_at(i);
                     let mut args = args.chars();
+                    // Commands are separated from their arguments by ':' or ' '
                     let next = args
                         .next()
                         .expect("the `position` above guarantees that there is at least one char");
