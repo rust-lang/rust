@@ -858,7 +858,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                             } else {
                                 AllowUnstable::No
                             },
-                        )
+                        );
                     }
                 }
             }

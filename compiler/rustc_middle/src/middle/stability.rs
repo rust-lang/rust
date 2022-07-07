@@ -492,6 +492,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If so, and `id` is not `None`, a deprecated lint attached to `id` will be emitted.
     ///
     /// Pass `AllowUnstable::Yes` to `allow_unstable` to force an unstable item to be allowed. Deprecation warnings will be emitted normally.
+    ///
+    /// Returns `true` if item is allowed aka, stable or unstable under an enabled feature.
     pub fn check_stability_allow_unstable(
         self,
         def_id: DefId,

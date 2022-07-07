@@ -465,7 +465,7 @@ where
             struct_span_err!(
                 diagnostic,
                 item_sp,
-                E0788,
+                E0789,
                 "`rustc_allowed_through_unstable_modules` attribute must be paired with a `stable` attribute"
             )
             .emit();
