@@ -286,8 +286,6 @@ impl Comments {
         revision: Option<String>,
         l: usize,
     ) -> Result<()> {
-        // FIXME: check that the error happens on the marked line
-
         let (match_line, pattern) =
             match pattern.chars().next().ok_or_else(|| eyre!("no pattern specified"))? {
                 '|' =>
