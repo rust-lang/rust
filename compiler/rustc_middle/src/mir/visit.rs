@@ -867,6 +867,7 @@ macro_rules! make_mir_visitor {
                     internal: _,
                     local_info: _,
                     is_block_tail: _,
+                    always_storage_live: _,
                 } = local_decl;
 
                 self.visit_ty($(& $mutability)? *ty, TyContext::LocalDecl {
