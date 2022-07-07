@@ -227,7 +227,7 @@ impl Comments {
                                 if escaped {
                                     escaped = false;
                                 } else if c == '"' {
-                                    return Ok((&s[..(i - 1)], s[i..].trim_start()))
+                                    return Ok((&s[..(i - 1)], s[i..].trim_start()));
                                 } else {
                                     escaped = c == '\\';
                                 }
