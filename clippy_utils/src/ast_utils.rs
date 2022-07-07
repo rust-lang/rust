@@ -600,8 +600,8 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
 pub fn eq_ext(l: &Extern, r: &Extern) -> bool {
     use Extern::*;
     match (l, r) {
-        (None, None) | (Implicit, Implicit) => true,
-        (Explicit(l), Explicit(r)) => eq_str_lit(l, r),
+        (None, None) | (Implicit(_), Implicit(_)) => true,
+        (Explicit(l,_), Explicit(r,_)) => eq_str_lit(l, r),
         _ => false,
     }
 }
