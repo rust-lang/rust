@@ -25,8 +25,8 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::AtExt;
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, WellFormedLoc};
 use rustc_trait_selection::traits::query::NoSolution;
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, WellFormedLoc};
 
 use std::cell::LazyCell;
 use std::convert::TryInto;
@@ -1090,7 +1090,7 @@ fn check_type_defn<'tcx, F>(
             }
         }
 
-        check_where_clauses(fcx, item.span, item.def_id, None);
+        check_where_clauses(fcx, item.span, item.def_id);
 
         // No implied bounds in a struct definition.
         FxHashSet::default()
@@ -1118,7 +1118,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
 
     // FIXME: this shouldn't use an `FnCtxt` at all.
     for_item(tcx, item).with_fcx(|fcx| {
-        check_where_clauses(fcx, item.span, item.def_id, None);
+        check_where_clauses(fcx, item.span, item.def_id);
 
         FxHashSet::default()
     });
@@ -1260,7 +1260,7 @@ fn check_impl<'tcx>(
             }
         }
 
-        check_where_clauses(fcx, item.span, item.def_id, None);
+        check_where_clauses(fcx, item.span, item.def_id);
 
         impl_implied_bounds(tcx, fcx.param_env, item.def_id, item.span)
     });
@@ -1272,7 +1272,6 @@ fn check_where_clauses<'tcx, 'fcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     span: Span,
     def_id: LocalDefId,
-    return_ty: Option<(Ty<'tcx>, Span)>,
 ) {
     let tcx = fcx.tcx;
 
@@ -1443,12 +1442,6 @@ fn check_where_clauses<'tcx, 'fcx>(
 
     let predicates = predicates.instantiate_identity(tcx);
 
-    if let Some((return_ty, _)) = return_ty {
-        if return_ty.has_infer_types_or_consts() {
-            fcx.select_obligations_where_possible(false, |_| {});
-        }
-    }
-
     let predicates = fcx.normalize_associated_types_in(span, predicates);
 
     debug!(?predicates.predicates);
@@ -1529,7 +1522,7 @@ fn check_fn_or_method<'fcx, 'tcx>(
 
     debug!(?implied_bounds);
 
-    check_where_clauses(fcx, span, def_id, Some((sig.output(), hir_decl.output.span())));
+    check_where_clauses(fcx, span, def_id);
 }
 
 const HELP_FOR_SELF_TYPE: &str = "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, \
