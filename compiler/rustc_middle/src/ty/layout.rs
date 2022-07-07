@@ -542,14 +542,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             debug!("univariant offset: {:?} field: {:#?}", offset, field);
             offsets[i as usize] = offset;
 
-            if !repr.hide_niche() {
-                if let Some(mut niche) = field.largest_niche {
-                    let available = niche.available(dl);
-                    if available > largest_niche_available {
-                        largest_niche_available = available;
-                        niche.offset += offset;
-                        largest_niche = Some(niche);
-                    }
+            if let Some(mut niche) = field.largest_niche {
+                let available = niche.available(dl);
+                if available > largest_niche_available {
+                    largest_niche_available = available;
+                    niche.offset += offset;
+                    largest_niche = Some(niche);
                 }
             }
 
@@ -1104,23 +1102,29 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 assert!(valid_range.end >= end);
                                 valid_range.end = end;
                             }
-
-                            // Update `largest_niche` if we have introduced a larger niche.
-                            let niche = if def.repr().hide_niche() {
-                                None
-                            } else {
-                                Niche::from_scalar(dl, Size::ZERO, *scalar)
-                            };
-                            if let Some(niche) = niche {
-                                match st.largest_niche {
-                                    Some(largest_niche) => {
-                                        // Replace the existing niche even if they're equal,
-                                        // because this one is at a lower offset.
-                                        if largest_niche.available(dl) <= niche.available(dl) {
-                                            st.largest_niche = Some(niche);
-                                        }
+                            if def.is_unsafe_cell() {
+                                match scalar {
+                                    Scalar::Initialized { value, valid_range } => {
+                                        *valid_range = WrappingRange::full(value.size(dl))
                                     }
-                                    None => st.largest_niche = Some(niche),
+                                    // Already doesn't have any niches
+                                    Scalar::Union { .. } => {}
+                                }
+                                st.largest_niche = None;
+                            } else {
+                                // Update `largest_niche` if we have introduced a larger niche.
+                                let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
+                                if let Some(niche) = niche {
+                                    match st.largest_niche {
+                                        Some(largest_niche) => {
+                                            // Replace the existing niche even if they're equal,
+                                            // because this one is at a lower offset.
+                                            if largest_niche.available(dl) <= niche.available(dl) {
+                                                st.largest_niche = Some(niche);
+                                            }
+                                        }
+                                        None => st.largest_niche = Some(niche),
+                                    }
                                 }
                             }
                         }

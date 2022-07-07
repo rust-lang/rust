@@ -1808,21 +1808,6 @@ impl CheckAttrVisitor<'_> {
                         _ => ("a", "struct, enum, or union"),
                     }
                 }
-                sym::no_niche => {
-                    if !self.tcx.features().enabled(sym::no_niche) {
-                        feature_err(
-                            &self.tcx.sess.parse_sess,
-                            sym::no_niche,
-                            hint.span(),
-                            "the attribute `repr(no_niche)` is currently unstable",
-                        )
-                        .emit();
-                    }
-                    match target {
-                        Target::Struct | Target::Enum => continue,
-                        _ => ("a", "struct or enum"),
-                    }
-                }
                 sym::i8
                 | sym::u8
                 | sym::i16
@@ -1870,10 +1855,8 @@ impl CheckAttrVisitor<'_> {
         // This is not ideal, but tracking precisely which ones are at fault is a huge hassle.
         let hint_spans = hints.iter().map(|hint| hint.span());
 
-        // Error on repr(transparent, <anything else apart from no_niche>).
-        let non_no_niche = |hint: &&NestedMetaItem| hint.name_or_empty() != sym::no_niche;
-        let non_no_niche_count = hints.iter().filter(non_no_niche).count();
-        if is_transparent && non_no_niche_count > 1 {
+        // Error on repr(transparent, <anything else>).
+        if is_transparent && hints.len() > 1 {
             let hint_spans: Vec<_> = hint_spans.clone().collect();
             struct_span_err!(
                 self.tcx.sess,
