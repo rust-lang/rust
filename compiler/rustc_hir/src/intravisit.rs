@@ -19,7 +19,7 @@
 //!    - Example: Examine each expression to look for its type and do some check or other.
 //!    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
 //!      `nested_filter::OnlyBodies` (and implement `nested_visit_map`), and use
-//!      `tcx.hir().deep_visit_all_item_likes(&mut visitor)`. Within your
+//!      `tcx.hir().visit_all_item_likes_in_crate(&mut visitor)`. Within your
 //!      `intravisit::Visitor` impl, implement methods like `visit_expr()` (don't forget to invoke
 //!      `intravisit::walk_expr()` to keep walking the subparts).
 //!    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
@@ -190,7 +190,7 @@ use nested_filter::NestedFilter;
 /// (this is why the module is called `intravisit`, to distinguish it
 /// from the AST's `visit` module, which acts differently). If you
 /// simply want to visit all items in the crate in some order, you
-/// should call `Crate::visit_all_items`. Otherwise, see the comment
+/// should call `tcx.hir().visit_all_item_likes_in_crate`. Otherwise, see the comment
 /// on `visit_nested_item` for details on how to visit nested items.
 ///
 /// If you want to ensure that your code handles every variant

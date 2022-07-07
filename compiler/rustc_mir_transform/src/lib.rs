@@ -173,7 +173,7 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
             intravisit::walk_struct_def(self, v)
         }
     }
-    tcx.hir().deep_visit_all_item_likes(&mut GatherCtors { tcx, set: &mut set });
+    tcx.hir().visit_all_item_likes_in_crate(&mut GatherCtors { tcx, set: &mut set });
 
     set
 }

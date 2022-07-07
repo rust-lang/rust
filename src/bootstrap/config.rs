@@ -11,7 +11,7 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{exit, Command};
+use std::process::Command;
 use std::str::FromStr;
 
 use crate::builder::{Builder, TaskPath};
@@ -805,8 +805,6 @@ impl Config {
         let get_toml = |_| TomlConfig::default();
         #[cfg(not(test))]
         let get_toml = |file: &Path| {
-            use std::process;
-
             let contents =
                 t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
             // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
@@ -817,7 +815,7 @@ impl Config {
                 Ok(table) => table,
                 Err(err) => {
                     eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
-                    process::exit(2);
+                    crate::detail_exit(2);
                 }
             }
         };
@@ -1487,7 +1485,7 @@ fn download_ci_rustc_commit(
         println!("help: maybe your repository history is too shallow?");
         println!("help: consider disabling `download-rustc`");
         println!("help: or fetch enough history to include one upstream commit");
-        exit(1);
+        crate::detail_exit(1);
     }
 
     // Warn if there were changes to the compiler or standard library since the ancestor commit.

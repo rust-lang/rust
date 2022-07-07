@@ -1499,10 +1499,16 @@ impl<'a> Resolver<'a> {
             && let ModuleKind::Def(DefKind::Enum, def_id, _) = parent_scope.module.kind
             && let Some(span) = self.opt_span(def_id)
         {
-            err.span_help(
-                self.session.source_map().guess_head_span(span),
-                "consider adding `#[derive(Default)]` to this enum",
-            );
+            let source_map = self.session.source_map();
+            let head_span = source_map.guess_head_span(span);
+            if let Ok(head) = source_map.span_to_snippet(head_span) {
+                err.span_suggestion(head_span, "consider adding a derive", format!("#[derive(Default)]\n{head}"), Applicability::MaybeIncorrect);
+            } else {
+                err.span_help(
+                    head_span,
+                    "consider adding `#[derive(Default)]` to this enum",
+                );
+            }
         }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
             if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(

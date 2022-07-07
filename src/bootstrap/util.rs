@@ -336,7 +336,7 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
 
 pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
     if !try_run(cmd, print_cmd_on_fail) {
-        std::process::exit(1);
+        crate::detail_exit(1);
     }
 }
 
@@ -375,7 +375,7 @@ pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
 
 pub fn run_suppressed(cmd: &mut Command) {
     if !try_run_suppressed(cmd) {
-        std::process::exit(1);
+        crate::detail_exit(1);
     }
 }
 
@@ -465,7 +465,7 @@ fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
 
 fn fail(s: &str) -> ! {
     eprintln!("\n\n{}\n\n", s);
-    std::process::exit(1);
+    crate::detail_exit(1);
 }
 
 /// Copied from `std::path::absolute` until it stabilizes.

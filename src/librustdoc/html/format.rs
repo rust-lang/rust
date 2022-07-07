@@ -268,6 +268,12 @@ impl clean::Generics {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Ending {
+    Newline,
+    NoNewline,
+}
+
 /// * The Generics from which to emit a where-clause.
 /// * The number of spaces to indent each line with.
 /// * Whether the where-clause needs to add a comma and newline after the last bound.
@@ -275,7 +281,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     gens: &'a clean::Generics,
     cx: &'a Context<'tcx>,
     indent: usize,
-    end_newline: bool,
+    ending: Ending,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
     use fmt::Write;
 
@@ -342,7 +348,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
 
         let where_preds = comma_sep(where_predicates, false);
         let clause = if f.alternate() {
-            if end_newline {
+            if ending == Ending::Newline {
                 // add a space so stripping <br> tags and breaking spaces still renders properly
                 format!(" where{where_preds}, ")
             } else {
@@ -356,7 +362,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             }
             let where_preds = where_preds.to_string().replace("<br>", &br_with_padding);
 
-            if end_newline {
+            if ending == Ending::Newline {
                 let mut clause = "&nbsp;".repeat(indent.saturating_sub(1));
                 // add a space so stripping <br> tags and breaking spaces still renders properly
                 write!(
@@ -1167,7 +1173,7 @@ impl clean::Impl {
                 fmt_type(&self.for_, f, use_absolute, cx)?;
             }
 
-            fmt::Display::fmt(&print_where_clause(&self.generics, cx, 0, true), f)?;
+            fmt::Display::fmt(&print_where_clause(&self.generics, cx, 0, Ending::Newline), f)?;
             Ok(())
         })
     }
