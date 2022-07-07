@@ -3,6 +3,7 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::{SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
 use if_chain::if_chain;
+use itertools::Itertools;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
@@ -14,7 +15,6 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
-use std::fmt::Write as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -178,30 +178,18 @@ impl TraitBounds {
                 );
 
                 then {
-                    let mut hint_string = format!(
-                        "consider combining the bounds: `{}:",
-                        snippet(cx, p.bounded_ty.span, "_")
+                    let trait_bounds = v
+                        .iter()
+                        .copied()
+                        .chain(p.bounds.iter())
+                        .filter_map(get_trait_info_from_bound)
+                        .map(|(_, _, span)| snippet_with_applicability(cx, span, "..", &mut applicability))
+                        .join(" + ");
+                    let hint_string = format!(
+                        "consider combining the bounds: `{}: {}`",
+                        snippet(cx, p.bounded_ty.span, "_"),
+                        trait_bounds,
                     );
-                    for b in v.iter() {
-                        if let GenericBound::Trait(ref poly_trait_ref, _) = b {
-                            let path = &poly_trait_ref.trait_ref.path;
-                            let _ = write!(hint_string,
-                                " {} +",
-                                snippet_with_applicability(cx, path.span, "..", &mut applicability)
-                            );
-                        }
-                    }
-                    for b in p.bounds.iter() {
-                        if let GenericBound::Trait(ref poly_trait_ref, _) = b {
-                            let path = &poly_trait_ref.trait_ref.path;
-                            let _ = write!(hint_string,
-                                " {} +",
-                                snippet_with_applicability(cx, path.span, "..", &mut applicability)
-                            );
-                        }
-                    }
-                    hint_string.truncate(hint_string.len() - 2);
-                    hint_string.push('`');
                     span_lint_and_help(
                         cx,
                         TYPE_REPETITION_IN_BOUNDS,
