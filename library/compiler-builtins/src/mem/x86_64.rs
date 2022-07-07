@@ -69,7 +69,7 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, count: usize) 
 
 #[inline(always)]
 pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
-    let (pre_byte_count, qword_count, byte_count) = rep_param_rev(dest, count);
+    let (pre_byte_count, qword_count, byte_count) = rep_param(dest, count);
     // We can't separate this block due to std/cld
     asm!(
         "std",
@@ -80,12 +80,12 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
         "rep movsq",
         "add rsi, 7",
         "add rdi, 7",
-        "mov ecx, {byte_count:e}",
+        "mov ecx, {pre_byte_count:e}",
         "rep movsb",
         "cld",
-        byte_count = in(reg) byte_count,
+        pre_byte_count = in(reg) pre_byte_count,
         qword_count = in(reg) qword_count,
-        inout("ecx") pre_byte_count => _,
+        inout("ecx") byte_count => _,
         inout("rdi") dest.add(count - 1) => _,
         inout("rsi") src.add(count - 1) => _,
         // We modify flags, but we restore it afterwards
@@ -200,16 +200,6 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
 fn rep_param(dest: *mut u8, mut count: usize) -> (usize, usize, usize) {
     // Unaligned writes are still slow on modern processors, so align the destination address.
     let pre_byte_count = ((8 - (dest as usize & 0b111)) & 0b111).min(count);
-    count -= pre_byte_count;
-    let qword_count = count >> 3;
-    let byte_count = count & 0b111;
-    (pre_byte_count, qword_count, byte_count)
-}
-
-/// Determine optimal parameters for a reverse `rep` instruction (i.e. direction bit is set).
-fn rep_param_rev(dest: *mut u8, mut count: usize) -> (usize, usize, usize) {
-    // Unaligned writes are still slow on modern processors, so align the destination address.
-    let pre_byte_count = ((dest as usize + count) & 0b111).min(count);
     count -= pre_byte_count;
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
