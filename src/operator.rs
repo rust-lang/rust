@@ -1,6 +1,7 @@
 use log::trace;
 
 use rustc_middle::{mir, ty::Ty};
+use rustc_target::abi::Size;
 
 use crate::*;
 
@@ -11,8 +12,6 @@ pub trait EvalContextExt<'tcx> {
         left: &ImmTy<'tcx, Tag>,
         right: &ImmTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, (Scalar<Tag>, bool, Ty<'tcx>)>;
-
-    fn ptr_eq(&self, left: Scalar<Tag>, right: Scalar<Tag>) -> InterpResult<'tcx, bool>;
 }
 
 impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
@@ -27,23 +26,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
 
         Ok(match bin_op {
-            Eq | Ne => {
-                // This supports fat pointers.
-                #[rustfmt::skip]
-                let eq = match (**left, **right) {
-                    (Immediate::Scalar(left), Immediate::Scalar(right)) => {
-                        self.ptr_eq(left.check_init()?, right.check_init()?)?
-                    }
-                    (Immediate::ScalarPair(left1, left2), Immediate::ScalarPair(right1, right2)) => {
-                        self.ptr_eq(left1.check_init()?, right1.check_init()?)?
-                            && self.ptr_eq(left2.check_init()?, right2.check_init()?)?
-                    }
-                    _ => bug!("Type system should not allow comparing Scalar with ScalarPair"),
-                };
-                (Scalar::from_bool(if bin_op == Eq { eq } else { !eq }), false, self.tcx.types.bool)
-            }
-
-            Lt | Le | Gt | Ge => {
+            Eq | Ne | Lt | Le | Gt | Ge => {
+                assert_eq!(left.layout.abi, right.layout.abi); // types an differ, e.g. fn ptrs with different `for`
                 let size = self.pointer_size();
                 // Just compare the bits. ScalarPairs are compared lexicographically.
                 // We thus always compare pairs and simply fill scalars up with 0.
@@ -58,35 +42,49 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                         (r1.check_init()?.to_bits(size)?, r2.check_init()?.to_bits(size)?),
                 };
                 let res = match bin_op {
+                    Eq => left == right,
+                    Ne => left != right,
                     Lt => left < right,
                     Le => left <= right,
                     Gt => left > right,
                     Ge => left >= right,
-                    _ => bug!("We already established it has to be one of these operators."),
+                    _ => bug!(),
                 };
                 (Scalar::from_bool(res), false, self.tcx.types.bool)
             }
 
             Offset => {
+                assert!(left.layout.ty.is_unsafe_ptr());
+                let ptr = self.scalar_to_ptr(left.to_scalar()?)?;
+                let offset = right.to_scalar()?.to_machine_isize(self)?;
+
                 let pointee_ty =
                     left.layout.ty.builtin_deref(true).expect("Offset called on non-ptr type").ty;
-                let ptr = self.ptr_offset_inbounds(
-                    self.scalar_to_ptr(left.to_scalar()?)?,
-                    pointee_ty,
-                    right.to_scalar()?.to_machine_isize(self)?,
-                )?;
+                let ptr = self.ptr_offset_inbounds(ptr, pointee_ty, offset)?;
                 (Scalar::from_maybe_pointer(ptr, self), false, left.layout.ty)
             }
 
-            _ => bug!("Invalid operator on pointers: {:?}", bin_op),
-        })
-    }
+            // Some more operations are possible with atomics.
+            // The return value always has the provenance of the *left* operand.
+            Add | Sub | BitOr | BitAnd | BitXor => {
+                assert!(left.layout.ty.is_unsafe_ptr());
+                assert!(right.layout.ty.is_unsafe_ptr());
+                let ptr = self.scalar_to_ptr(left.to_scalar()?)?;
+                // We do the actual operation with usize-typed scalars.
+                let left = ImmTy::from_uint(ptr.addr().bytes(), self.machine.layouts.usize);
+                let right = ImmTy::from_uint(
+                    right.to_scalar()?.to_machine_usize(self)?,
+                    self.machine.layouts.usize,
+                );
+                let (result, overflowing, _ty) =
+                    self.overflowing_binary_op(bin_op, &left, &right)?;
+                // Construct a new pointer with the provenance of `ptr` (the LHS).
+                let result_ptr =
+                    Pointer::new(ptr.provenance, Size::from_bytes(result.to_machine_usize(self)?));
+                (Scalar::from_maybe_pointer(result_ptr, self), overflowing, left.layout.ty)
+            }
 
-    fn ptr_eq(&self, left: Scalar<Tag>, right: Scalar<Tag>) -> InterpResult<'tcx, bool> {
-        let size = self.pointer_size();
-        // Just compare the integers.
-        let left = left.to_bits(size)?;
-        let right = right.to_bits(size)?;
-        Ok(left == right)
+            _ => span_bug!(self.cur_span(), "Invalid operator on pointers: {:?}", bin_op),
+        })
     }
 }

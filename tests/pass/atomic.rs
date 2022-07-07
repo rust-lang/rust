@@ -1,10 +1,15 @@
-use std::sync::atomic::{compiler_fence, fence, AtomicBool, AtomicIsize, AtomicU64, Ordering::*};
+// compile-flags: -Zmiri-strict-provenance
+#![feature(strict_provenance, strict_provenance_atomic_ptr)]
+use std::sync::atomic::{
+    compiler_fence, fence, AtomicBool, AtomicIsize, AtomicPtr, AtomicU64, Ordering::*,
+};
 
 fn main() {
     atomic_bool();
     atomic_all_ops();
     atomic_u64();
     atomic_fences();
+    atomic_ptr();
     weak_sometimes_fails();
 }
 
@@ -128,6 +133,54 @@ fn atomic_fences() {
     compiler_fence(Release);
     compiler_fence(Acquire);
     compiler_fence(AcqRel);
+}
+
+fn atomic_ptr() {
+    use std::ptr;
+    let array: Vec<i32> = (0..100).into_iter().collect(); // a target to point to, to test provenance things
+    let x = array.as_ptr() as *mut i32;
+
+    let ptr = AtomicPtr::<i32>::new(ptr::null_mut());
+    assert!(ptr.load(Relaxed).addr() == 0);
+    ptr.store(ptr::invalid_mut(13), SeqCst);
+    assert!(ptr.swap(x, Relaxed).addr() == 13);
+    unsafe { assert!(*ptr.load(Acquire) == 0) };
+
+    // comparison ignores provenance
+    assert_eq!(
+        ptr.compare_exchange(
+            (&mut 0 as *mut i32).with_addr(x.addr()),
+            ptr::invalid_mut(0),
+            SeqCst,
+            SeqCst
+        )
+        .unwrap()
+        .addr(),
+        x.addr(),
+    );
+    assert_eq!(
+        ptr.compare_exchange(
+            (&mut 0 as *mut i32).with_addr(x.addr()),
+            ptr::invalid_mut(0),
+            SeqCst,
+            SeqCst
+        )
+        .unwrap_err()
+        .addr(),
+        0,
+    );
+    ptr.store(x, Relaxed);
+
+    assert_eq!(ptr.fetch_ptr_add(13, AcqRel).addr(), x.addr());
+    unsafe { assert_eq!(*ptr.load(SeqCst), 13) }; // points to index 13 now
+    assert_eq!(ptr.fetch_ptr_sub(4, AcqRel).addr(), x.addr() + 13 * 4);
+    unsafe { assert_eq!(*ptr.load(SeqCst), 9) };
+    assert_eq!(ptr.fetch_or(3, AcqRel).addr(), x.addr() + 9 * 4); // ptr is 4-aligned, so set the last 2 bits
+    assert_eq!(ptr.fetch_and(!3, AcqRel).addr(), (x.addr() + 9 * 4) | 3); // and unset them again
+    unsafe { assert_eq!(*ptr.load(SeqCst), 9) };
+    assert_eq!(ptr.fetch_xor(0xdeadbeef, AcqRel).addr(), x.addr() + 9 * 4);
+    assert_eq!(ptr.fetch_xor(0xdeadbeef, AcqRel).addr(), (x.addr() + 9 * 4) ^ 0xdeadbeef);
+    unsafe { assert_eq!(*ptr.load(SeqCst), 9) }; // after XORing twice with the same thing, we get our ptr back
 }
 
 fn weak_sometimes_fails() {
