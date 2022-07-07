@@ -191,6 +191,7 @@ pub enum AttributeKind {
     StackProtect = 32,
     NoUndef = 33,
     SanitizeMemTag = 34,
+    NoCfCheck = 35,
 }
 
 /// LLVMIntPredicate

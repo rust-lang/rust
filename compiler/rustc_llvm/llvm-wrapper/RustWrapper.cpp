@@ -176,6 +176,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::NoAlias;
   case NoCapture:
     return Attribute::NoCapture;
+  case NoCfCheck:
+    return Attribute::NoCfCheck;
   case NoInline:
     return Attribute::NoInline;
   case NonNull:
