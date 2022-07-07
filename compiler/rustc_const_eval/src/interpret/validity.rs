@@ -427,7 +427,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             err_ub!(DanglingIntPointer(0, _)) =>
                 { "a null {kind}" },
             err_ub!(DanglingIntPointer(i, _)) =>
-                { "a dangling {kind} (address 0x{i:x} is unallocated)" },
+                { "a dangling {kind} (address {i:#x} is unallocated)" },
             err_ub!(PointerOutOfBounds { .. }) =>
                 { "a dangling {kind} (going beyond the bounds of its allocation)" },
             // This cannot happen during const-eval (because interning already detects
@@ -941,7 +941,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 // element that byte belongs to so we can
                                 // provide an index.
                                 let i = usize::try_from(
-                                    access.uninit_offset.bytes() / layout.size.bytes(),
+                                    access.uninit.start.bytes() / layout.size.bytes(),
                                 )
                                 .unwrap();
                                 self.path.push(PathElem::ArrayElem(i));

@@ -1,4 +1,4 @@
-use super::{AllocId, ConstAlloc, Pointer, Scalar};
+use super::{AllocId, AllocRange, ConstAlloc, Pointer, Scalar};
 
 use crate::mir::interpret::ConstValue;
 use crate::ty::{layout, query::TyCtxtAt, tls, FnSig, Ty, ValTree};
@@ -162,9 +162,9 @@ impl fmt::Display for InvalidProgramInfo<'_> {
             AlreadyReported(ErrorGuaranteed { .. }) => {
                 write!(f, "encountered constants with type errors, stopping evaluation")
             }
-            Layout(ref err) => write!(f, "{}", err),
-            FnAbiAdjustForForeignAbi(ref err) => write!(f, "{}", err),
-            SizeOfUnsizedType(ty) => write!(f, "size_of called on unsized type `{}`", ty),
+            Layout(ref err) => write!(f, "{err}"),
+            FnAbiAdjustForForeignAbi(ref err) => write!(f, "{err}"),
+            SizeOfUnsizedType(ty) => write!(f, "size_of called on unsized type `{ty}`"),
         }
     }
 }
@@ -205,14 +205,10 @@ impl fmt::Display for CheckInAllocMsg {
 /// Details of an access to uninitialized bytes where it is not allowed.
 #[derive(Debug)]
 pub struct UninitBytesAccess {
-    /// Location of the original memory access.
-    pub access_offset: Size,
-    /// Size of the original memory access.
-    pub access_size: Size,
-    /// Location of the first uninitialized byte that was accessed.
-    pub uninit_offset: Size,
-    /// Number of consecutive uninitialized bytes that were accessed.
-    pub uninit_size: Size,
+    /// Range of the original memory access.
+    pub access: AllocRange,
+    /// Range of the uninit memory that was encountered. (Might not be maximal.)
+    pub uninit: AllocRange,
 }
 
 /// Information about a size mismatch.
@@ -308,30 +304,28 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UndefinedBehaviorInfo::*;
         match self {
-            Ub(msg) => write!(f, "{}", msg),
+            Ub(msg) => write!(f, "{msg}"),
             Unreachable => write!(f, "entering unreachable code"),
             BoundsCheckFailed { ref len, ref index } => {
-                write!(f, "indexing out of bounds: the len is {} but the index is {}", len, index)
+                write!(f, "indexing out of bounds: the len is {len} but the index is {index}")
             }
             DivisionByZero => write!(f, "dividing by zero"),
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
             DivisionOverflow => write!(f, "overflow in signed division (dividing MIN by -1)"),
             RemainderOverflow => write!(f, "overflow in signed remainder (dividing MIN by -1)"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
-            InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
+            InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {msg}"),
             InvalidVtableDropFn(sig) => write!(
                 f,
-                "invalid drop function signature: got {}, expected exactly one argument which must be a pointer type",
-                sig
+                "invalid drop function signature: got {sig}, expected exactly one argument which must be a pointer type",
             ),
             InvalidVtableSize => {
                 write!(f, "invalid vtable: size is bigger than largest supported object")
             }
-            InvalidVtableAlignment(msg) => write!(f, "invalid vtable: alignment {}", msg),
+            InvalidVtableAlignment(msg) => write!(f, "invalid vtable: alignment {msg}"),
             UnterminatedCString(p) => write!(
                 f,
-                "reading a null-terminated string starting at {:?} with no null found before end of allocation",
-                p,
+                "reading a null-terminated string starting at {p:?} with no null found before end of allocation",
             ),
             PointerUseAfterFree(a) => {
                 write!(f, "pointer to {a:?} was dereferenced after this allocation got freed")
@@ -359,41 +353,36 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             }
             AlignmentCheckFailed { required, has } => write!(
                 f,
-                "accessing memory with alignment {}, but alignment {} is required",
-                has.bytes(),
-                required.bytes()
+                "accessing memory with alignment {has}, but alignment {required} is required",
+                has = has.bytes(),
+                required = required.bytes()
             ),
             WriteToReadOnly(a) => write!(f, "writing to {a:?} which is read-only"),
             DerefFunctionPointer(a) => write!(f, "accessing {a:?} which contains a function"),
             ValidationFailure { path: None, msg } => {
-                write!(f, "constructing invalid value: {}", msg)
+                write!(f, "constructing invalid value: {msg}")
             }
             ValidationFailure { path: Some(path), msg } => {
-                write!(f, "constructing invalid value at {}: {}", path, msg)
+                write!(f, "constructing invalid value at {path}: {msg}")
             }
             InvalidBool(b) => {
-                write!(f, "interpreting an invalid 8-bit value as a bool: 0x{:02x}", b)
+                write!(f, "interpreting an invalid 8-bit value as a bool: 0x{b:02x}")
             }
             InvalidChar(c) => {
-                write!(f, "interpreting an invalid 32-bit value as a char: 0x{:08x}", c)
+                write!(f, "interpreting an invalid 32-bit value as a char: 0x{c:08x}")
             }
-            InvalidTag(val) => write!(f, "enum value has invalid tag: {:x}", val),
+            InvalidTag(val) => write!(f, "enum value has invalid tag: {val:x}"),
             InvalidFunctionPointer(p) => {
-                write!(f, "using {:?} as function pointer but it does not point to a function", p)
+                write!(f, "using {p:?} as function pointer but it does not point to a function")
             }
-            InvalidStr(err) => write!(f, "this string is not valid UTF-8: {}", err),
-            InvalidUninitBytes(Some((alloc, access))) => write!(
+            InvalidStr(err) => write!(f, "this string is not valid UTF-8: {err}"),
+            InvalidUninitBytes(Some((alloc, info))) => write!(
                 f,
-                "reading {} byte{} of memory starting at {:?}, \
-                 but {} byte{} {} uninitialized starting at {:?}, \
+                "reading memory at {alloc:?}{access:?}, \
+                 but memory is uninitialized at {uninit:?}, \
                  and this operation requires initialized memory",
-                access.access_size.bytes(),
-                pluralize!(access.access_size.bytes()),
-                Pointer::new(*alloc, access.access_offset),
-                access.uninit_size.bytes(),
-                pluralize!(access.uninit_size.bytes()),
-                pluralize!("is", access.uninit_size.bytes()),
-                Pointer::new(*alloc, access.uninit_offset),
+                access = info.access,
+                uninit = info.uninit,
             ),
             InvalidUninitBytes(None) => write!(
                 f,
@@ -402,8 +391,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             DeadLocal => write!(f, "accessing a dead local variable"),
             ScalarSizeMismatch(self::ScalarSizeMismatch { target_size, data_size }) => write!(
                 f,
-                "scalar size mismatch: expected {} bytes but got {} bytes instead",
-                target_size, data_size
+                "scalar size mismatch: expected {target_size} bytes but got {data_size} bytes instead",
             ),
             UninhabitedEnumVariantWritten => {
                 write!(f, "writing discriminant of an uninhabited enum")
@@ -437,13 +425,13 @@ impl fmt::Display for UnsupportedOpInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UnsupportedOpInfo::*;
         match self {
-            Unsupported(ref msg) => write!(f, "{}", msg),
+            Unsupported(ref msg) => write!(f, "{msg}"),
             ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes"),
             PartialPointerOverwrite(ptr) => {
-                write!(f, "unable to overwrite parts of a pointer in memory at {:?}", ptr)
+                write!(f, "unable to overwrite parts of a pointer in memory at {ptr:?}")
             }
-            ThreadLocalStatic(did) => write!(f, "cannot access thread local static ({:?})", did),
-            ReadExternStatic(did) => write!(f, "cannot read from extern static ({:?})", did),
+            ThreadLocalStatic(did) => write!(f, "cannot access thread local static ({did:?})"),
+            ReadExternStatic(did) => write!(f, "cannot read from extern static ({did:?})"),
         }
     }
 }
@@ -526,11 +514,11 @@ impl fmt::Display for InterpError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InterpError::*;
         match *self {
-            Unsupported(ref msg) => write!(f, "{}", msg),
-            InvalidProgram(ref msg) => write!(f, "{}", msg),
-            UndefinedBehavior(ref msg) => write!(f, "{}", msg),
-            ResourceExhaustion(ref msg) => write!(f, "{}", msg),
-            MachineStop(ref msg) => write!(f, "{}", msg),
+            Unsupported(ref msg) => write!(f, "{msg}"),
+            InvalidProgram(ref msg) => write!(f, "{msg}"),
+            UndefinedBehavior(ref msg) => write!(f, "{msg}"),
+            ResourceExhaustion(ref msg) => write!(f, "{msg}"),
+            MachineStop(ref msg) => write!(f, "{msg}"),
         }
     }
 }
