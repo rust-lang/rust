@@ -28,7 +28,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 errors: &errors,
             };
 
-            tcx.hir().deep_visit_item_likes_in_module(module_id, &mut v);
+            tcx.hir().visit_item_likes_in_module(module_id, &mut v);
         });
 
         let errors = errors.into_inner();
