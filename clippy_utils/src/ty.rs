@@ -565,6 +565,9 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
 }
 
 fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
+    if ty.is_box() {
+        return ty_sig(cx, ty.boxed_ty());
+    }
     match *ty.kind() {
         ty::Closure(id, subs) => {
             let decl = id
@@ -573,6 +576,7 @@ fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>>
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs))),
+        ty::Opaque(id, _) => ty_sig(cx, cx.tcx.type_of(id)),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig)),
         ty::Dynamic(bounds, _) => {
             let lang_items = cx.tcx.lang_items();

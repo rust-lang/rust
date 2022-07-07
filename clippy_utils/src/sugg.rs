@@ -2,6 +2,7 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::source::{snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite};
+use crate::ty::expr_sig;
 use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{ast, token};
@@ -18,7 +19,6 @@ use rustc_span::source_map::{BytePos, CharPos, Pos, Span, SyntaxContext};
 use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::borrow::Cow;
 use std::fmt::{Display, Write as _};
-use std::iter;
 use std::ops::{Add, Neg, Not, Sub};
 
 /// A helper type to build suggestion correctly handling parentheses.
@@ -861,23 +861,37 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
 
     /// indicates whether the function from `parent_expr` takes its args by double reference
     fn func_takes_arg_by_double_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
-        let (call_args, inputs) = match parent_expr.kind {
+        let ty = match parent_expr.kind {
             ExprKind::MethodCall(_, call_args, _) => {
-                if let Some(method_did) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
-                    (call_args, self.cx.tcx.fn_sig(method_did).skip_binder().inputs())
+                if let Some(sig) = self
+                    .cx
+                    .typeck_results()
+                    .type_dependent_def_id(parent_expr.hir_id)
+                    .map(|did| self.cx.tcx.fn_sig(did).skip_binder())
+                {
+                    call_args
+                        .iter()
+                        .position(|arg| arg.hir_id == cmt_hir_id)
+                        .map(|i| sig.inputs()[i])
                 } else {
                     return false;
                 }
             },
             ExprKind::Call(func, call_args) => {
-                let typ = self.cx.typeck_results().expr_ty(func);
-                (call_args, typ.fn_sig(self.cx.tcx).skip_binder().inputs())
+                if let Some(sig) = expr_sig(self.cx, func) {
+                    call_args
+                        .iter()
+                        .position(|arg| arg.hir_id == cmt_hir_id)
+                        .and_then(|i| sig.input(i))
+                        .map(ty::Binder::skip_binder)
+                } else {
+                    return false;
+                }
             },
             _ => return false,
         };
 
-        iter::zip(call_args, inputs)
-            .any(|(arg, ty)| arg.hir_id == cmt_hir_id && matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
+        ty.map_or(false, |ty| matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
     }
 }
 
