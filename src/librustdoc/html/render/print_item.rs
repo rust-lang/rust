@@ -29,7 +29,7 @@ use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
     join_with_double_colon, print_abi_with_space, print_constness_with_space, print_where_clause,
-    Buffer, PrintWithSpace,
+    Buffer, Ending, PrintWithSpace,
 };
 use crate::html::highlight;
 use crate::html::layout::Page;
@@ -69,7 +69,7 @@ fn print_where_clause_and_check<'a, 'tcx: 'a>(
     cx: &'a Context<'tcx>,
 ) -> bool {
     let len_before = buffer.len();
-    write!(buffer, "{}", print_where_clause(gens, cx, 0, true));
+    write!(buffer, "{}", print_where_clause(gens, cx, 0, Ending::Newline));
     len_before != buffer.len()
 }
 
@@ -519,7 +519,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
                 abi = abi,
                 name = name,
                 generics = f.generics.print(cx),
-                where_clause = print_where_clause(&f.generics, cx, 0, true),
+                where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline),
                 decl = f.decl.full_print(header_len, 0, header.asyncness, cx),
                 notable_traits = notable_traits_decl(&f.decl, cx),
             );
@@ -556,7 +556,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             );
 
             if !t.generics.where_predicates.is_empty() {
-                write!(w, "{}", print_where_clause(&t.generics, cx, 0, true));
+                write!(w, "{}", print_where_clause(&t.generics, cx, 0, Ending::Newline));
             } else {
                 w.write_str(" ");
             }
@@ -1025,7 +1025,7 @@ fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &
                 "trait {}{}{} = {};",
                 it.name.unwrap(),
                 t.generics.print(cx),
-                print_where_clause(&t.generics, cx, 0, true),
+                print_where_clause(&t.generics, cx, 0, Ending::Newline),
                 bounds(&t.bounds, true, cx)
             );
         });
@@ -1049,7 +1049,7 @@ fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &cl
                 "type {}{}{where_clause} = impl {bounds};",
                 it.name.unwrap(),
                 t.generics.print(cx),
-                where_clause = print_where_clause(&t.generics, cx, 0, true),
+                where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
                 bounds = bounds(&t.bounds, false, cx),
             );
         });
@@ -1074,7 +1074,7 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
                 "type {}{}{where_clause} = {type_};",
                 it.name.unwrap(),
                 t.generics.print(cx),
-                where_clause = print_where_clause(&t.generics, cx, 0, true),
+                where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
                 type_ = t.type_.print(cx),
             );
         });
@@ -1784,7 +1784,7 @@ fn render_struct(
             }
             w.write_str(")");
             if let Some(g) = g {
-                write!(w, "{}", print_where_clause(g, cx, 0, false));
+                write!(w, "{}", print_where_clause(g, cx, 0, Ending::NoNewline));
             }
             // We only want a ";" when we are displaying a tuple struct, not a variant tuple struct.
             if structhead {
@@ -1794,7 +1794,7 @@ fn render_struct(
         CtorKind::Const => {
             // Needed for PhantomData.
             if let Some(g) = g {
-                write!(w, "{}", print_where_clause(g, cx, 0, false));
+                write!(w, "{}", print_where_clause(g, cx, 0, Ending::NoNewline));
             }
             w.write_str(";");
         }
