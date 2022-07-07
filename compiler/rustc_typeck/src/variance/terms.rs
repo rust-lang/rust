@@ -10,9 +10,8 @@
 // a variable.
 
 use rustc_arena::DroplessArena;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::HirIdMap;
+use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
 use rustc_middle::ty::{self, TyCtxt};
 use std::fmt;
 
@@ -52,11 +51,11 @@ pub struct TermsContext<'a, 'tcx> {
     // For marker types, UnsafeCell, and other lang items where
     // variance is hardcoded, records the item-id and the hardcoded
     // variance.
-    pub lang_items: Vec<(hir::HirId, Vec<ty::Variance>)>,
+    pub lang_items: Vec<(LocalDefId, Vec<ty::Variance>)>,
 
     // Maps from the node id of an item to the first inferred index
     // used for its type & region parameters.
-    pub inferred_starts: HirIdMap<InferredIndex>,
+    pub inferred_starts: LocalDefIdMap<InferredIndex>,
 
     // Maps from an InferredIndex to the term for that variable.
     pub inferred_terms: Vec<VarianceTermPtr<'a>>,
@@ -81,32 +80,31 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
     // - https://rustc-dev-guide.rust-lang.org/variance.html
     let crate_items = tcx.hir_crate_items(());
 
-    for id in crate_items.items() {
-        terms_cx.check_item(id);
-    }
+    for def_id in crate_items.definitions() {
+        debug!("add_inferreds for item {:?}", def_id);
 
-    for id in crate_items.trait_items() {
-        if let DefKind::AssocFn = tcx.def_kind(id.def_id) {
-            terms_cx.add_inferreds_for_item(id.hir_id());
-        }
-    }
+        let def_kind = tcx.def_kind(def_id);
 
-    for id in crate_items.impl_items() {
-        if let DefKind::AssocFn = tcx.def_kind(id.def_id) {
-            terms_cx.add_inferreds_for_item(id.hir_id());
-        }
-    }
+        match def_kind {
+            DefKind::Struct | DefKind::Union | DefKind::Enum => {
+                terms_cx.add_inferreds_for_item(def_id);
 
-    for id in crate_items.foreign_items() {
-        if let DefKind::Fn = tcx.def_kind(id.def_id) {
-            terms_cx.add_inferreds_for_item(id.hir_id());
+                let adt = tcx.adt_def(def_id);
+                for variant in adt.variants() {
+                    if let Some(ctor) = variant.ctor_def_id {
+                        terms_cx.add_inferreds_for_item(ctor.expect_local());
+                    }
+                }
+            }
+            DefKind::Fn | DefKind::AssocFn => terms_cx.add_inferreds_for_item(def_id),
+            _ => {}
         }
     }
 
     terms_cx
 }
 
-fn lang_items(tcx: TyCtxt<'_>) -> Vec<(hir::HirId, Vec<ty::Variance>)> {
+fn lang_items(tcx: TyCtxt<'_>) -> Vec<(LocalDefId, Vec<ty::Variance>)> {
     let lang_items = tcx.lang_items();
     let all = [
         (lang_items.phantom_data(), vec![ty::Covariant]),
@@ -114,18 +112,16 @@ fn lang_items(tcx: TyCtxt<'_>) -> Vec<(hir::HirId, Vec<ty::Variance>)> {
     ];
 
     all.into_iter() // iterating over (Option<DefId>, Variance)
-        .filter(|&(ref d, _)| d.is_some())
-        .map(|(d, v)| (d.unwrap(), v)) // (DefId, Variance)
         .filter_map(|(d, v)| {
-            d.as_local().map(|d| tcx.hir().local_def_id_to_hir_id(d)).map(|n| (n, v))
-        }) // (HirId, Variance)
+            let def_id = d?.as_local()?; // LocalDefId
+            Some((def_id, v))
+        })
         .collect()
 }
 
 impl<'a, 'tcx> TermsContext<'a, 'tcx> {
-    fn add_inferreds_for_item(&mut self, id: hir::HirId) {
+    fn add_inferreds_for_item(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
-        let def_id = tcx.hir().local_def_id(id);
         let count = tcx.generics_of(def_id).count();
 
         if count == 0 {
@@ -134,7 +130,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 
         // Record the start of this item's inferreds.
         let start = self.inferred_terms.len();
-        let newly_added = self.inferred_starts.insert(id, InferredIndex(start)).is_none();
+        let newly_added = self.inferred_starts.insert(def_id, InferredIndex(start)).is_none();
         assert!(newly_added);
 
         // N.B., in the code below for writing the results back into the
@@ -145,43 +141,5 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         self.inferred_terms.extend(
             (start..(start + count)).map(|i| &*arena.alloc(InferredTerm(InferredIndex(i)))),
         );
-    }
-
-    fn check_item(&mut self, id: hir::ItemId) {
-        debug!("add_inferreds for item {}", self.tcx.hir().node_to_string(id.hir_id()));
-
-        let def_kind = self.tcx.def_kind(id.def_id);
-        match def_kind {
-            DefKind::Struct | DefKind::Union => {
-                let item = self.tcx.hir().item(id);
-
-                if let hir::ItemKind::Struct(ref struct_def, _)
-                | hir::ItemKind::Union(ref struct_def, _) = item.kind
-                {
-                    self.add_inferreds_for_item(item.hir_id());
-
-                    if let hir::VariantData::Tuple(..) = *struct_def {
-                        self.add_inferreds_for_item(struct_def.ctor_hir_id().unwrap());
-                    }
-                }
-            }
-            DefKind::Enum => {
-                let item = self.tcx.hir().item(id);
-
-                if let hir::ItemKind::Enum(ref enum_def, _) = item.kind {
-                    self.add_inferreds_for_item(item.hir_id());
-
-                    for variant in enum_def.variants {
-                        if let hir::VariantData::Tuple(..) = variant.data {
-                            self.add_inferreds_for_item(variant.data.ctor_hir_id().unwrap());
-                        }
-                    }
-                }
-            }
-            DefKind::Fn => {
-                self.add_inferreds_for_item(id.hir_id());
-            }
-            _ => {}
-        }
     }
 }
