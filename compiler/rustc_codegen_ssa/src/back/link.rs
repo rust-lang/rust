@@ -151,11 +151,23 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             return;
         }
 
-        let remove_temps_from_module = |module: &CompiledModule| {
-            if let Some(ref obj) = module.object {
-                ensure_removed(sess.diagnostic(), obj);
-            }
-        };
+        let maybe_remove_temps_from_module =
+            |preserve_objects: bool, preserve_dwarf_objects: bool, module: &CompiledModule| {
+                if !preserve_objects {
+                    if let Some(ref obj) = module.object {
+                        ensure_removed(sess.diagnostic(), obj);
+                    }
+                }
+
+                if !preserve_dwarf_objects {
+                    if let Some(ref dwo_obj) = module.dwarf_object {
+                        ensure_removed(sess.diagnostic(), dwo_obj);
+                    }
+                }
+            };
+
+        let remove_temps_from_module =
+            |module: &CompiledModule| maybe_remove_temps_from_module(false, false, module);
 
         // Otherwise, always remove the metadata and allocator module temporaries.
         if let Some(ref metadata_module) = codegen_results.metadata_module {
@@ -177,15 +189,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
         debug!(?preserve_objects, ?preserve_dwarf_objects);
 
         for module in &codegen_results.modules {
-            if !preserve_objects {
-                remove_temps_from_module(module);
-            }
-
-            if !preserve_dwarf_objects {
-                if let Some(ref obj) = module.dwarf_object {
-                    ensure_removed(sess.diagnostic(), obj);
-                }
-            }
+            maybe_remove_temps_from_module(preserve_objects, preserve_dwarf_objects, module);
         }
     });
 
@@ -649,6 +653,7 @@ fn link_dwarf_object<'a>(
             sess.struct_err("linking dwarf objects with thorin failed")
                 .note(&format!("{:?}", e))
                 .emit();
+            sess.abort_if_errors();
         }
     }
 }
