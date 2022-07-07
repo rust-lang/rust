@@ -4,11 +4,11 @@ error: cannot find attribute `default` in this scope
 LL |     #[default]
    |       ^^^^^^^
    |
-help: consider adding `#[derive(Default)]` to this enum
-  --> $DIR/suggest-default-attribute.rs:1:1
+help: consider adding a derive
    |
-LL | pub enum Test {
-   | ^^^^^^^^^^^^^
+LL + #[derive(Default)]
+LL ~ pub enum Test {
+   |
 
 error: aborting due to previous error
 
