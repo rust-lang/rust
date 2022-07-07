@@ -1,5 +1,5 @@
 error: file is loaded as a module multiple times: `$DIR/b.rs`
-  --> $DIR/main.rs:3:1
+  --> $DIR/main.rs:5:1
    |
 LL |   mod b;
    |   ^^^^^^ first loaded here
@@ -11,7 +11,7 @@ LL | | mod b2;
    = help: replace all but one `mod` item with `use` items
 
 error: file is loaded as a module multiple times: `$DIR/c.rs`
-  --> $DIR/main.rs:7:1
+  --> $DIR/main.rs:9:1
    |
 LL |   mod c;
    |   ^^^^^^ first loaded here
@@ -25,7 +25,7 @@ LL | | mod c3;
    = help: replace all but one `mod` item with `use` items
 
 error: file is loaded as a module multiple times: `$DIR/from_other_module.rs`
-  --> $DIR/main.rs:13:1
+  --> $DIR/main.rs:15:1
    |
 LL |   mod from_other_module;
    |   ^^^^^^^^^^^^^^^^^^^^^^ first loaded here
@@ -38,5 +38,16 @@ LL | | mod m;
    |
    = help: replace all but one `mod` item with `use` items
 
-error: aborting due to 3 previous errors
+error: file is loaded as a module multiple times: `$DIR/b.rs`
+  --> $DIR/main.rs:18:1
+   |
+LL |   mod d;
+   |   ^^^^^^ first loaded here
+LL | / #[path = "d.rs"]
+LL | | mod d2;
+   | |_______^ loaded again here
+   |
+   = help: replace all but one `mod` item with `use` items
+
+error: aborting due to 4 previous errors
 
