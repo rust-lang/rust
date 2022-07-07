@@ -27,12 +27,10 @@ pub fn lower_slice_len_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     };
 
     // The one successor remains unchanged, so no need to invalidate
-    let (basic_blocks, local_decls, _) =
-        body.basic_blocks_local_decls_mut_and_var_debug_info_no_invalidate();
-
+    let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
     for block in basic_blocks {
         // lower `<[_]>::len` calls
-        lower_slice_len_call(tcx, block, &*local_decls, slice_len_fn_item_def_id);
+        lower_slice_len_call(tcx, block, &body.local_decls, slice_len_fn_item_def_id);
     }
 }
 

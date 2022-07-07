@@ -15,7 +15,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
 ) -> BitSet<mir::Local> {
     let mir = fx.mir;
-    let dominators = mir.dominators();
+    let dominators = mir.basic_blocks.dominators();
     let locals = mir
         .local_decls
         .iter()

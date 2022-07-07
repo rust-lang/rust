@@ -110,13 +110,13 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
 
             let patch = MirPatch::new(body);
 
-            let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
+            let local_decls = &mut body.local_decls;
 
             let mut visitor =
                 ElaborateBoxDerefVisitor { tcx, unique_did, nonnull_did, local_decls, patch };
 
             for (block, BasicBlockData { statements, terminator, .. }) in
-                basic_blocks.iter_enumerated_mut()
+                body.basic_blocks.as_mut().iter_enumerated_mut()
             {
                 let mut index = 0;
                 for statement in statements {

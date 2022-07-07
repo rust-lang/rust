@@ -91,7 +91,8 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         super::add_call_guards::AllCallEdges.run_pass(tcx, body);
 
         let (span, arg_count) = (body.span, body.arg_count);
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
+        let basic_blocks = body.basic_blocks.as_mut();
+        let local_decls = &body.local_decls;
         let needs_retag = |place: &Place<'tcx>| {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.

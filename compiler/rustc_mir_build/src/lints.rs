@@ -2,7 +2,7 @@ use rustc_data_structures::graph::iterate::{
     NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
 use rustc_hir::intravisit::FnKind;
-use rustc_middle::mir::{BasicBlock, Body, Operand, TerminatorKind};
+use rustc_middle::mir::{BasicBlock, BasicBlocks, Body, Operand, TerminatorKind};
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
@@ -30,7 +30,9 @@ pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         };
 
         let mut vis = Search { tcx, body, reachable_recursive_calls: vec![], trait_substs };
-        if let Some(NonRecursive) = TriColorDepthFirstSearch::new(&body).run_from_start(&mut vis) {
+        if let Some(NonRecursive) =
+            TriColorDepthFirstSearch::new(&body.basic_blocks).run_from_start(&mut vis)
+        {
             return;
         }
         if vis.reachable_recursive_calls.is_empty() {
@@ -101,7 +103,7 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
+impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
     type BreakVal = NonRecursive;
 
     fn node_examined(
