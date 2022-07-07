@@ -873,6 +873,7 @@ supported_targets! {
     ("armv7-linux-androideabi", armv7_linux_androideabi),
     ("thumbv7neon-linux-androideabi", thumbv7neon_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
+    ("riscv64gc-linux-android", riscv64gc_linux_android),
 
     ("x86_64-unknown-none-linuxkernel", x86_64_unknown_none_linuxkernel),
 
