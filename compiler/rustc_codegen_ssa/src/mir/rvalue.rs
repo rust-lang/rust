@@ -123,7 +123,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // Do not generate stores and GEPis for zero-sized fields.
                     if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
-                        let field = dest.project_field(&mut bx, field_index);
+                        let field = if let mir::AggregateKind::Array(_) = **kind {
+                            let llindex = bx.cx().const_usize(field_index as u64);
+                            dest.project_index(&mut bx, llindex)
+                        } else {
+                            dest.project_field(&mut bx, field_index)
+                        };
                         op.val.store(&mut bx, field);
                     }
                 }
