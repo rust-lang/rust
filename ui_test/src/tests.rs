@@ -329,8 +329,8 @@ fn main() {
     }
 }
 
-static INIT: std::sync::Once = std::sync::Once::new();
-
+/// Call this from every test to initialize eyre only once across all tests.
 pub fn init() {
+    static INIT: std::sync::Once = std::sync::Once::new();
     INIT.call_once(|| color_eyre::install().unwrap());
 }
