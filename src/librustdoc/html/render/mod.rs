@@ -70,7 +70,7 @@ use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
     href, join_with_double_colon, print_abi_with_space, print_constness_with_space,
-    print_default_space, print_generic_bounds, print_where_clause, Buffer, HrefError,
+    print_default_space, print_generic_bounds, print_where_clause, Buffer, Ending, HrefError,
     PrintWithSpace,
 };
 use crate::html::highlight;
@@ -748,7 +748,7 @@ fn assoc_type(
     if !bounds.is_empty() {
         write!(w, ": {}", print_generic_bounds(bounds, cx))
     }
-    write!(w, "{}", print_where_clause(generics, cx, indent, false));
+    write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline));
     if let Some(default) = default {
         write!(w, " = {}", default.print(cx))
     }
@@ -797,10 +797,10 @@ fn assoc_method(
         header_len += 4;
         let indent_str = "    ";
         render_attributes_in_pre(w, meth, indent_str);
-        (4, indent_str, false)
+        (4, indent_str, Ending::NoNewline)
     } else {
         render_attributes_in_code(w, meth);
-        (0, "", true)
+        (0, "", Ending::Newline)
     };
     w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
     write!(
