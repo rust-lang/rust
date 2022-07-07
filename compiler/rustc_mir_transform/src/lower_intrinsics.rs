@@ -11,8 +11,8 @@ pub struct LowerIntrinsics;
 
 impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-        for block in basic_blocks {
+        let local_decls = &body.local_decls;
+        for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator.as_mut().unwrap();
             if let TerminatorKind::Call { func, args, destination, target, .. } =
                 &mut terminator.kind

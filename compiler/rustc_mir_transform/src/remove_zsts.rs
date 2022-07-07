@@ -18,9 +18,9 @@ impl<'tcx> MirPass<'tcx> for RemoveZsts {
             return;
         }
         let param_env = tcx.param_env(body.source.def_id());
-        let (basic_blocks, local_decls, _) =
-            body.basic_blocks_local_decls_mut_and_var_debug_info_no_invalidate();
-        for block in basic_blocks.iter_mut() {
+        let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
+        let local_decls = &body.local_decls;
+        for block in basic_blocks {
             for statement in block.statements.iter_mut() {
                 if let StatementKind::Assign(box (place, _)) | StatementKind::Deinit(box place) =
                     statement.kind

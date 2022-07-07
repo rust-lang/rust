@@ -66,7 +66,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
         return;
     }
 
-    let bbs = body.basic_blocks_local_decls_mut_and_var_debug_info_no_invalidate().0;
+    let bbs = body.basic_blocks.as_mut_preserves_cfg();
     for Location { block, statement_index } in patch {
         bbs[block].statements[statement_index].make_nop();
     }
