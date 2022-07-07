@@ -557,7 +557,7 @@ impl Step for Std {
             return None;
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
+        builder.ensure(compile::Std { compiler, target });
 
         let mut tarball = Tarball::new(builder, "rust-std", &target.triple);
         tarball.include_target_in_component_name(true);
@@ -603,7 +603,7 @@ impl Step for RustcDev {
             return None;
         }
 
-        builder.ensure(compile::Rustc::new(compiler, target));
+        builder.ensure(compile::Rustc { compiler, target });
 
         let tarball = Tarball::new(builder, "rustc-dev", &target.triple);
 
@@ -666,7 +666,7 @@ impl Step for Analysis {
             return None;
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
+        builder.ensure(compile::Std { compiler, target });
         let src = builder
             .stage_out(compiler, Mode::Std)
             .join(target.triple)

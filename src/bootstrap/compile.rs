@@ -29,31 +29,10 @@ use crate::util::{exe, is_debug_info, is_dylib, output, symlink_dir, t, up_to_da
 use crate::LLVM_TOOLS;
 use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     pub target: TargetSelection,
     pub compiler: Compiler,
-    /// Whether to build only a subset of crates in the standard library.
-    ///
-    /// This shouldn't be used from other steps; see the comment on [`Rustc`].
-    crates: Interned<Vec<String>>,
-}
-
-impl Std {
-    pub fn new(compiler: Compiler, target: TargetSelection) -> Self {
-        Self { target, compiler, crates: Default::default() }
-    }
-}
-
-/// Return a `-p=x -p=y` string suitable for passing to a cargo invocation.
-fn build_crates_in_set(run: &RunConfig<'_>) -> Interned<Vec<String>> {
-    let mut crates = Vec::new();
-    for krate in &run.paths {
-        let path = krate.assert_single_path();
-        let crate_name = run.builder.crate_paths[&path.path];
-        crates.push(format!("-p={crate_name}"));
-    }
-    INTERNER.intern_list(crates)
 }
 
 impl Step for Std {
@@ -64,22 +43,15 @@ impl Step for Std {
         // When downloading stage1, the standard library has already been copied to the sysroot, so
         // there's no need to rebuild it.
         let builder = run.builder;
-        run.crate_or_deps("test")
+        run.all_krates("test")
             .path("library")
             .lazy_default_condition(Box::new(|| !builder.download_rustc()))
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // Normally, people will pass *just* library if they pass it.
-        // But it's possible (although strange) to pass something like `library std core`.
-        // Build all crates anyway, as if they hadn't passed the other args.
-        let has_library =
-            run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
-        let crates = if has_library { Default::default() } else { build_crates_in_set(&run) };
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
-            crates,
         });
     }
 
@@ -114,7 +86,7 @@ impl Step for Std {
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
-            builder.ensure(Std::new(compiler_to_use, target));
+            builder.ensure(Std { compiler: compiler_to_use, target });
             builder.info(&format!("Uplifting stage1 std ({} -> {})", compiler_to_use.host, target));
 
             // Even if we're not building std this stage, the new sysroot must
@@ -143,7 +115,7 @@ impl Step for Std {
         run_cargo(
             builder,
             cargo,
-            self.crates.to_vec(),
+            vec![],
             &libstd_stamp(builder, compiler, target),
             target_deps,
             false,
@@ -552,18 +524,6 @@ impl Step for StartupObjects {
 pub struct Rustc {
     pub target: TargetSelection,
     pub compiler: Compiler,
-    /// Whether to build a subset of crates, rather than the whole compiler.
-    ///
-    /// This should only be requested by the user, not used within rustbuild itself.
-    /// Using it within rustbuild can lead to confusing situation where lints are replayed
-    /// in two different steps.
-    crates: Interned<Vec<String>>,
-}
-
-impl Rustc {
-    pub fn new(compiler: Compiler, target: TargetSelection) -> Self {
-        Self { target, compiler, crates: Default::default() }
-    }
 }
 
 impl Step for Rustc {
@@ -572,22 +532,13 @@ impl Step for Rustc {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let mut crates = run.builder.in_tree_crates("rustc-main", None);
-        for (i, krate) in crates.iter().enumerate() {
-            if krate.name == "rustc-main" {
-                crates.swap_remove(i);
-                break;
-            }
-        }
-        run.crates(crates)
+        run.never()
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = build_crates_in_set(&run);
         run.builder.ensure(Rustc {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
-            crates,
         });
     }
 
@@ -609,7 +560,7 @@ impl Step for Rustc {
             return;
         }
 
-        builder.ensure(Std::new(compiler, target));
+        builder.ensure(Std { compiler, target });
 
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info("Warning: Using a potentially old librustc. This may not behave well.");
@@ -620,7 +571,7 @@ impl Step for Rustc {
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
-            builder.ensure(Rustc::new(compiler_to_use, target));
+            builder.ensure(Rustc { compiler: compiler_to_use, target });
             builder
                 .info(&format!("Uplifting stage1 rustc ({} -> {})", builder.config.build, target));
             builder.ensure(RustcLink {
@@ -632,10 +583,10 @@ impl Step for Rustc {
         }
 
         // Ensure that build scripts and proc macros have a std / libproc_macro to link against.
-        builder.ensure(Std::new(
-            builder.compiler(self.compiler.stage, builder.config.build),
-            builder.config.build,
-        ));
+        builder.ensure(Std {
+            compiler: builder.compiler(self.compiler.stage, builder.config.build),
+            target: builder.config.build,
+        });
 
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "build");
         rustc_cargo(builder, &mut cargo, target);
@@ -682,7 +633,7 @@ impl Step for Rustc {
         run_cargo(
             builder,
             cargo,
-            self.crates.to_vec(),
+            vec![],
             &librustc_stamp(builder, compiler, target),
             vec![],
             false,
@@ -870,7 +821,7 @@ impl Step for CodegenBackend {
         let target = self.target;
         let backend = self.backend;
 
-        builder.ensure(Rustc::new(compiler, target));
+        builder.ensure(Rustc { compiler, target });
 
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info(
@@ -1152,7 +1103,7 @@ impl Step for Assemble {
         // link to these. (FIXME: Is that correct? It seems to be correct most
         // of the time but I think we do link to these for stage2/bin compilers
         // when not performing a full bootstrap).
-        builder.ensure(Rustc::new(build_compiler, target_compiler.host));
+        builder.ensure(Rustc { compiler: build_compiler, target: target_compiler.host });
 
         for &backend in builder.config.rust_codegen_backends.iter() {
             if backend == "llvm" {

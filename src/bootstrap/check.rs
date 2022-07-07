@@ -184,8 +184,8 @@ impl Step for Rustc {
             // the sysroot for the compiler to find. Otherwise, we're going to
             // fail when building crates that need to generate code (e.g., build
             // scripts and their dependencies).
-            builder.ensure(crate::compile::Std::new(compiler, compiler.host));
-            builder.ensure(crate::compile::Std::new(compiler, target));
+            builder.ensure(crate::compile::Std { target: compiler.host, compiler });
+            builder.ensure(crate::compile::Std { target, compiler });
         } else {
             builder.ensure(Std { target });
         }
