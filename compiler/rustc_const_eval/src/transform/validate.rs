@@ -12,6 +12,7 @@ use rustc_middle::mir::{
     Statement, StatementKind, Terminator, TerminatorKind, UnOp, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_live_locals;
@@ -275,7 +276,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 };
 
-                match parent_ty.ty.kind() {
+                let kind = match parent_ty.ty.kind() {
+                    &ty::Opaque(def_id, substs) => {
+                        self.tcx.bound_type_of(def_id).subst(self.tcx, substs).kind()
+                    }
+                    kind => kind,
+                };
+
+                match kind {
                     ty::Tuple(fields) => {
                         let Some(f_ty) = fields.get(f.as_usize()) else {
                             fail_out_of_bounds(self, location);
@@ -299,12 +307,39 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, f_ty);
                     }
-                    ty::Generator(_, substs, _) => {
-                        let substs = substs.as_generator();
-                        let Some(f_ty) = substs.upvar_tys().nth(f.as_usize()) else {
-                            fail_out_of_bounds(self, location);
-                            return;
+                    &ty::Generator(def_id, substs, _) => {
+                        let f_ty = if let Some(var) = parent_ty.variant_index {
+                            let gen_body = if def_id == self.body.source.def_id() {
+                                self.body
+                            } else {
+                                self.tcx.optimized_mir(def_id)
+                            };
+
+                            let Some(layout) = gen_body.generator_layout() else {
+                                self.fail(location, format!("No generator layout for {:?}", parent_ty));
+                                return;
+                            };
+
+                            let Some(&local) = layout.variant_fields[var].get(f) else {
+                                fail_out_of_bounds(self, location);
+                                return;
+                            };
+
+                            let Some(&f_ty) = layout.field_tys.get(local) else {
+                                self.fail(location, format!("Out of bounds local {:?} for {:?}", local, parent_ty));
+                                return;
+                            };
+
+                            f_ty
+                        } else {
+                            let Some(f_ty) = substs.as_generator().prefix_tys().nth(f.index()) else {
+                                fail_out_of_bounds(self, location);
+                                return;
+                            };
+
+                            f_ty
                         };
+
                         check_equal(self, location, f_ty);
                     }
                     _ => {
@@ -328,6 +363,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         {
             self.fail(location, format!("{:?}, has deref at the wrong place", place));
         }
+
+        self.super_place(place, cntxt, location);
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
