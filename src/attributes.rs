@@ -25,7 +25,7 @@ pub fn check_tied_features(sess: &Session, features: &FxHashMap<&str, bool>) -> 
     None
 }
 
-// TODO: maybe move to a new module gcc_util.
+// TODO(antoyo): maybe move to a new module gcc_util.
 // To find a list of GCC's names, check https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
 fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]> {
     let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };
@@ -95,7 +95,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         .iter()
         .flat_map(|feat| to_gcc_features(cx.tcx.sess, feat).into_iter())
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
-            InstructionSetAttr::ArmA32 => "-thumb-mode", // TODO: support removing feature.
+            InstructionSetAttr::ArmA32 => "-thumb-mode", // TODO(antoyo): support removing feature.
             InstructionSetAttr::ArmT32 => "thumb-mode",
         }))
         .collect::<Vec<_>>();

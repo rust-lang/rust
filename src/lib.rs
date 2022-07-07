@@ -304,7 +304,7 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
         .filter(|_feature| {
             // TODO(antoyo): implement a way to get enabled feature in libgccjit.
             // Probably using the equivalent of __builtin_cpu_supports.
-            // TODO: maybe use whatever outputs the following command:
+            // TODO(antoyo): maybe use whatever outputs the following command:
             // gcc -march=native -Q --help=target
             #[cfg(feature="master")]
             {

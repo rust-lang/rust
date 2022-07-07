@@ -182,7 +182,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     // NOTE: since the intrinsic _xabort is called with a bitcast, which
                     // is non-const, but expects a constant, do a normal cast instead of a bitcast.
                     // FIXME(antoyo): fix bitcast to work in constant contexts.
-                    // TODO: perhaps only use bitcast for pointers?
+                    // TODO(antoyo): perhaps only use bitcast for pointers?
                     self.context.new_cast(None, value, ty)
                 }
                 else {
