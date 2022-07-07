@@ -886,8 +886,12 @@ impl<K: DepKind> DepGraph<K> {
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct WorkProduct {
     pub cgu_name: String,
-    /// Saved file associated with this CGU.
-    pub saved_file: String,
+    /// Saved files associated with this CGU. In each key/value pair, the value is the path to the
+    /// saved file and the key is some identifier for the type of file being saved.
+    ///
+    /// By convention, file extensions are currently used as identifiers, i.e. the key "o" maps to
+    /// the object file's path, and "dwo" to the dwarf object file's path.
+    pub saved_files: FxHashMap<String, String>,
 }
 
 // Index type for `DepNodeData`'s edges.
