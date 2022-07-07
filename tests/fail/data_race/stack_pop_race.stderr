@@ -11,8 +11,8 @@ LL | }
 note: inside `main` at $DIR/stack_pop_race.rs:LL:CC
   --> $DIR/stack_pop_race.rs:LL:CC
    |
-LL | fn main() { race(0); }
-   |             ^^^^^^^
+LL |     race(0);
+   |     ^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

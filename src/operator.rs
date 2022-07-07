@@ -35,11 +35,13 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     Immediate::Scalar(l) => (l.check_init()?.to_bits(size)?, 0),
                     Immediate::ScalarPair(l1, l2) =>
                         (l1.check_init()?.to_bits(size)?, l2.check_init()?.to_bits(size)?),
+                    Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
                 };
                 let right = match **right {
                     Immediate::Scalar(r) => (r.check_init()?.to_bits(size)?, 0),
                     Immediate::ScalarPair(r1, r2) =>
                         (r1.check_init()?.to_bits(size)?, r2.check_init()?.to_bits(size)?),
+                    Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
                 };
                 let res = match bin_op {
                     Eq => left == right,

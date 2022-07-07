@@ -24,7 +24,7 @@ fn unsized_params() {
     f0(*c);
     let foo = "foo".to_string().into_boxed_str();
     f1(*foo);
-    let sl: Box::<[i32]> = [0, 1, 2].to_vec().into_boxed_slice();
+    let sl: Box<[i32]> = [0, 1, 2].to_vec().into_boxed_slice();
     f2(5, *sl);
     let p: Box<dyn Send> = Box::new((1, 2));
     f3(*p);

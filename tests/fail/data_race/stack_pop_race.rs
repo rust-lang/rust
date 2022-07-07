@@ -1,3 +1,4 @@
+// ignore-windows: Concurrency on Windows is not supported yet.
 // compile-flags: -Zmiri-preemption-rate=0
 use std::thread;
 
@@ -5,7 +6,9 @@ use std::thread;
 struct MakeSend(*const i32);
 unsafe impl Send for MakeSend {}
 
-fn main() { race(0); }
+fn main() {
+    race(0);
+}
 
 // Using an argument for the ptr to point to, since those do not get StorageDead.
 fn race(local: i32) {
