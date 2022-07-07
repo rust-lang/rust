@@ -232,6 +232,13 @@ impl Level {
             Level::Deny | Level::Forbid => true,
         }
     }
+
+    pub fn get_expectation_id(&self) -> Option<LintExpectationId> {
+        match self {
+            Level::Expect(id) | Level::ForceWarn(Some(id)) => Some(*id),
+            _ => None,
+        }
+    }
 }
 
 /// Specification of a single lint.
