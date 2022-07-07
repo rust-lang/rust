@@ -515,6 +515,7 @@ impl<'a> fmt::Display for Display<'a> {
                         "aarch64" => "AArch64",
                         "arm" => "ARM",
                         "asmjs" => "JavaScript",
+                        "loongarch64" => "LoongArch LA64",
                         "m68k" => "M68k",
                         "mips" => "MIPS",
                         "mips64" => "MIPS-64",
