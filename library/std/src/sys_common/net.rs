@@ -345,6 +345,12 @@ impl TcpStream {
     }
 }
 
+impl AsInner<Socket> for TcpStream {
+    fn as_inner(&self) -> &Socket {
+        &self.inner
+    }
+}
+
 impl FromInner<Socket> for TcpStream {
     fn from_inner(socket: Socket) -> TcpStream {
         TcpStream { inner: socket }
