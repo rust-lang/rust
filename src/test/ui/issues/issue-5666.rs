@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 
 struct Dog {
     name : String
@@ -17,8 +16,8 @@ impl Barks for Dog {
 
 
 pub fn main() {
-    let snoopy = box Dog{name: "snoopy".to_string()};
-    let bubbles = box Dog{name: "bubbles".to_string()};
+    let snoopy = Box::new(Dog{name: "snoopy".to_string()});
+    let bubbles = Box::new(Dog{name: "bubbles".to_string()});
     let barker = [snoopy as Box<dyn Barks>, bubbles as Box<dyn Barks>];
 
     for pup in &barker {

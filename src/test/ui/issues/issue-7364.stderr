@@ -1,7 +1,7 @@
 error[E0277]: `RefCell<isize>` cannot be shared between threads safely
-  --> $DIR/issue-7364.rs:6:15
+  --> $DIR/issue-7364.rs:4:15
    |
-LL | static boxed: Box<RefCell<isize>> = box RefCell::new(0);
+LL | static boxed: Box<RefCell<isize>> = Box::new(RefCell::new(0));
    |               ^^^^^^^^^^^^^^^^^^^ `RefCell<isize>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `RefCell<isize>`

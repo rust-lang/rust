@@ -1,7 +1,6 @@
 // run-pass
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
-#![feature(box_syntax)]
 
 #[derive(Copy, Clone)]
 enum side { mayo, catsup, vinegar }
@@ -21,5 +20,5 @@ fn foo(m: Box<meal>, cond: bool) {
 }
 
 pub fn main() {
-    foo(box meal::for_here(order::hamburger), true)
+    foo(Box::new(meal::for_here(order::hamburger)), true)
 }

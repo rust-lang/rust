@@ -1,5 +1,5 @@
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
-  --> $DIR/issue-23024.rs:9:39
+  --> $DIR/issue-23024.rs:8:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    |                                       ^^ help: use parenthetical notation instead: `Fn() -> ()`
@@ -8,7 +8,7 @@ LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0107]: missing generics for trait `Fn`
-  --> $DIR/issue-23024.rs:9:39
+  --> $DIR/issue-23024.rs:8:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    |                                       ^^ expected 1 generic argument
@@ -24,7 +24,7 @@ LL |     println!("{:?}",(vfnfer[0] as dyn Fn<Args>)(3));
    |                                       ~~~~~~~~
 
 error[E0191]: the value of the associated type `Output` (from trait `FnOnce`) must be specified
-  --> $DIR/issue-23024.rs:9:39
+  --> $DIR/issue-23024.rs:8:39
    |
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
    |                                       ^^ help: specify the associated type: `Fn<Output = Type>`

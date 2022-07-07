@@ -1,13 +1,13 @@
 error[E0277]: `Rc<RefCell<A>>` cannot be sent between threads safely
-  --> $DIR/issue-7013.rs:26:19
+  --> $DIR/issue-7013.rs:24:19
    |
-LL |     let a = A {v: box B{v: None} as Box<dyn Foo + Send>};
-   |                   ^^^^^^^^^^^^^^ `Rc<RefCell<A>>` cannot be sent between threads safely
+LL |     let a = A {v: Box::new(B{v: None}) as Box<dyn Foo + Send>};
+   |                   ^^^^^^^^^^^^^^^^^^^^ `Rc<RefCell<A>>` cannot be sent between threads safely
    |
    = help: within `B`, the trait `Send` is not implemented for `Rc<RefCell<A>>`
    = note: required because it appears within the type `Option<Rc<RefCell<A>>>`
 note: required because it appears within the type `B`
-  --> $DIR/issue-7013.rs:10:8
+  --> $DIR/issue-7013.rs:8:8
    |
 LL | struct B {
    |        ^

@@ -1,6 +1,5 @@
 // run-pass
 #![allow(dead_code)]
-#![feature(box_syntax)]
 
 use std::mem;
 
@@ -232,9 +231,9 @@ pub fn main() {
     assert_eq!(mem::size_of_val(&a), 32);
     assert!(is_aligned_to(&a, 16));
 
-    let mut large = box AlignLarge {
+    let mut large = Box::new(AlignLarge {
         stuff: [0; 0x10000],
-    };
+    });
     large.stuff[0] = 132;
     *large.stuff.last_mut().unwrap() = 102;
     assert_eq!(large.stuff[0], 132);
