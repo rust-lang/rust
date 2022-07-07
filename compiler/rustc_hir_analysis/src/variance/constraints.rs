@@ -7,7 +7,7 @@ use hir::def_id::{DefId, LocalDefId};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Subst, Ty, TyCtxt};
 
 use super::terms::VarianceTerm::*;
 use super::terms::*;
@@ -257,8 +257,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_invariant_substs(current, substs, variance);
             }
 
-            ty::TyAlias(_, substs) => {
-                self.add_constraints_from_invariant_substs(current, substs, variance);
+            ty::TyAlias(def_id, substs) => {
+                let binder_ty = self.tcx().bound_type_of(def_id);
+                let ty = binder_ty.subst(self.tcx(), substs);
+                self.add_constraints_from_ty(current, ty, variance);
             }
 
             ty::Dynamic(data, r, _) => {
