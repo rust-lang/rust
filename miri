@@ -30,7 +30,7 @@ times and slower execution times.
 Format all sources and tests. <flags> are passed to `rustfmt`.
 
 ./miri clippy <flags>:
-Format all sources and tests. <flags> are passed to `cargo clippy`.
+Runs clippy on all sources. <flags> are passed to `cargo clippy`.
 
 ./miri many-seeds <command>:
 Runs <command> over and over again with different seeds for Miri. The MIRIFLAGS
