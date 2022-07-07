@@ -156,11 +156,14 @@
   -->
   <Type Name="enum2$&lt;*&gt;">
     <Intrinsic Name="in_range" Expression="(start &lt;= end) ? ((tag &gt;= start) &amp;&amp; (tag &lt;= end)) : ((tag &gt;= start) || (tag &lt;= end))">
+      <Parameter Name="tag" Type="unsigned __int64" />
       <Parameter Name="start" Type="unsigned __int64" />
       <Parameter Name="end" Type="unsigned __int64" />
     </Intrinsic>
 
     <Intrinsic Name="exact_match128" Expression="(tag128_hi == discr_hi) &amp;&amp; (tag128_lo == discr_lo)">
+      <Parameter Name="tag128_hi" Type="unsigned __int64" />
+      <Parameter Name="tag128_lo" Type="unsigned __int64" />
       <Parameter Name="discr_hi" Type="unsigned __int64" />
       <Parameter Name="discr_lo" Type="unsigned __int64" />
     </Intrinsic>
@@ -182,6 +185,8 @@
     <Intrinsic Name="in_range128" Expression="(lt128(begin_hi, begin_lo, end_hi, end_lo)) ?
                                               (lt_or_eq128(begin_hi, begin_lo, tag128_hi, tag128_lo) &amp;&amp; lt_or_eq128(tag128_hi, tag128_lo, end_hi, end_lo)) :
                                               (lt_or_eq128(begin_hi, begin_lo, tag128_hi, tag128_lo) || lt_or_eq128(tag128_hi, tag128_lo, end_hi, end_lo))">
+      <Parameter Name="tag128_hi" Type="unsigned __int64" />
+      <Parameter Name="tag128_lo" Type="unsigned __int64" />
       <Parameter Name="begin_hi" Type="unsigned __int64" />
       <Parameter Name="begin_lo" Type="unsigned __int64" />
       <Parameter Name="end_hi" Type="unsigned __int64" />
@@ -205,27 +210,27 @@
     <DisplayString Condition="tag == variant14.DISCR_EXACT" Optional="true">{variant14.NAME,en}</DisplayString>
     <DisplayString Condition="tag == variant15.DISCR_EXACT" Optional="true">{variant15.NAME,en}</DisplayString>
 
-    <DisplayString Condition="in_range(variant_fallback.DISCR_BEGIN, variant_fallback.DISCR_END)" Optional="true">{variant_fallback.NAME,en}</DisplayString>
+    <DisplayString Condition="in_range(tag, variant_fallback.DISCR_BEGIN, variant_fallback.DISCR_END)" Optional="true">{variant_fallback.NAME,en}</DisplayString>
 
-    <DisplayString Condition="exact_match128(variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">{variant0.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">{variant1.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">{variant2.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant3.DISCR128_EXACT_HI, variant3.DISCR128_EXACT_LO)" Optional="true">{variant3.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant4.DISCR128_EXACT_HI, variant4.DISCR128_EXACT_LO)" Optional="true">{variant4.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant5.DISCR128_EXACT_HI, variant5.DISCR128_EXACT_LO)" Optional="true">{variant5.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant6.DISCR128_EXACT_HI, variant6.DISCR128_EXACT_LO)" Optional="true">{variant6.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant7.DISCR128_EXACT_HI, variant7.DISCR128_EXACT_LO)" Optional="true">{variant7.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant8.DISCR128_EXACT_HI, variant8.DISCR128_EXACT_LO)" Optional="true">{variant8.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant9.DISCR128_EXACT_HI, variant9.DISCR128_EXACT_LO)" Optional="true">{variant9.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant10.DISCR128_EXACT_HI, variant10.DISCR128_EXACT_LO)" Optional="true">{variant10.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant11.DISCR128_EXACT_HI, variant11.DISCR128_EXACT_LO)" Optional="true">{variant11.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant12.DISCR128_EXACT_HI, variant12.DISCR128_EXACT_LO)" Optional="true">{variant12.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">{variant13.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">{variant14.NAME,en}</DisplayString>
-    <DisplayString Condition="exact_match128(variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">{variant15.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">{variant0.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">{variant1.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">{variant2.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant3.DISCR128_EXACT_HI, variant3.DISCR128_EXACT_LO)" Optional="true">{variant3.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant4.DISCR128_EXACT_HI, variant4.DISCR128_EXACT_LO)" Optional="true">{variant4.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant5.DISCR128_EXACT_HI, variant5.DISCR128_EXACT_LO)" Optional="true">{variant5.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant6.DISCR128_EXACT_HI, variant6.DISCR128_EXACT_LO)" Optional="true">{variant6.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant7.DISCR128_EXACT_HI, variant7.DISCR128_EXACT_LO)" Optional="true">{variant7.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant8.DISCR128_EXACT_HI, variant8.DISCR128_EXACT_LO)" Optional="true">{variant8.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant9.DISCR128_EXACT_HI, variant9.DISCR128_EXACT_LO)" Optional="true">{variant9.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant10.DISCR128_EXACT_HI, variant10.DISCR128_EXACT_LO)" Optional="true">{variant10.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant11.DISCR128_EXACT_HI, variant11.DISCR128_EXACT_LO)" Optional="true">{variant11.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant12.DISCR128_EXACT_HI, variant12.DISCR128_EXACT_LO)" Optional="true">{variant12.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">{variant13.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">{variant14.NAME,en}</DisplayString>
+    <DisplayString Condition="exact_match128(tag128_hi, tag128_lo, variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">{variant15.NAME,en}</DisplayString>
 
     <DisplayString
-      Condition="in_range128(variant_fallback.DISCR128_BEGIN_HI, variant_fallback.DISCR128_BEGIN_LO, variant_fallback.DISCR128_END_HI, variant_fallback.DISCR128_END_LO)"
+      Condition="in_range128(tag128_hi, tag128_lo, variant_fallback.DISCR128_BEGIN_HI, variant_fallback.DISCR128_BEGIN_LO, variant_fallback.DISCR128_END_HI, variant_fallback.DISCR128_END_LO)"
       Optional="true">{variant_fallback.NAME,en}</DisplayString>
 
     <Expand HideRawView="true">
@@ -246,27 +251,27 @@
       <ExpandedItem Condition="tag == variant14.DISCR_EXACT" Optional="true">variant14.value</ExpandedItem>
       <ExpandedItem Condition="tag == variant15.DISCR_EXACT" Optional="true">variant15.value</ExpandedItem>
 
-      <ExpandedItem Condition="in_range(variant_fallback.DISCR_BEGIN, variant_fallback.DISCR_END)" Optional="true">variant_fallback.value</ExpandedItem>
+      <ExpandedItem Condition="in_range(tag, variant_fallback.DISCR_BEGIN, variant_fallback.DISCR_END)" Optional="true">variant_fallback.value</ExpandedItem>
 
-      <ExpandedItem Condition="exact_match128(variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">variant0.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">variant1.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">variant2.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant3.DISCR128_EXACT_HI, variant3.DISCR128_EXACT_LO)" Optional="true">variant3.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant4.DISCR128_EXACT_HI, variant4.DISCR128_EXACT_LO)" Optional="true">variant4.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant5.DISCR128_EXACT_HI, variant5.DISCR128_EXACT_LO)" Optional="true">variant5.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant6.DISCR128_EXACT_HI, variant6.DISCR128_EXACT_LO)" Optional="true">variant6.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant7.DISCR128_EXACT_HI, variant7.DISCR128_EXACT_LO)" Optional="true">variant7.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant8.DISCR128_EXACT_HI, variant8.DISCR128_EXACT_LO)" Optional="true">variant8.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant9.DISCR128_EXACT_HI, variant9.DISCR128_EXACT_LO)" Optional="true">variant9.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant10.DISCR128_EXACT_HI, variant10.DISCR128_EXACT_LO)" Optional="true">variant10.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant11.DISCR128_EXACT_HI, variant11.DISCR128_EXACT_LO)" Optional="true">variant11.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant12.DISCR128_EXACT_HI, variant12.DISCR128_EXACT_LO)" Optional="true">variant12.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">variant13.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">variant14.value</ExpandedItem>
-      <ExpandedItem Condition="exact_match128(variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">variant15.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant0.DISCR128_EXACT_HI, variant0.DISCR128_EXACT_LO)" Optional="true">variant0.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant1.DISCR128_EXACT_HI, variant1.DISCR128_EXACT_LO)" Optional="true">variant1.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant2.DISCR128_EXACT_HI, variant2.DISCR128_EXACT_LO)" Optional="true">variant2.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant3.DISCR128_EXACT_HI, variant3.DISCR128_EXACT_LO)" Optional="true">variant3.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant4.DISCR128_EXACT_HI, variant4.DISCR128_EXACT_LO)" Optional="true">variant4.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant5.DISCR128_EXACT_HI, variant5.DISCR128_EXACT_LO)" Optional="true">variant5.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant6.DISCR128_EXACT_HI, variant6.DISCR128_EXACT_LO)" Optional="true">variant6.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant7.DISCR128_EXACT_HI, variant7.DISCR128_EXACT_LO)" Optional="true">variant7.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant8.DISCR128_EXACT_HI, variant8.DISCR128_EXACT_LO)" Optional="true">variant8.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant9.DISCR128_EXACT_HI, variant9.DISCR128_EXACT_LO)" Optional="true">variant9.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant10.DISCR128_EXACT_HI, variant10.DISCR128_EXACT_LO)" Optional="true">variant10.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant11.DISCR128_EXACT_HI, variant11.DISCR128_EXACT_LO)" Optional="true">variant11.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant12.DISCR128_EXACT_HI, variant12.DISCR128_EXACT_LO)" Optional="true">variant12.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant13.DISCR128_EXACT_HI, variant13.DISCR128_EXACT_LO)" Optional="true">variant13.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant14.DISCR128_EXACT_HI, variant14.DISCR128_EXACT_LO)" Optional="true">variant14.value</ExpandedItem>
+      <ExpandedItem Condition="exact_match128(tag128_hi, tag128_lo, variant15.DISCR128_EXACT_HI, variant15.DISCR128_EXACT_LO)" Optional="true">variant15.value</ExpandedItem>
 
       <ExpandedItem
-        Condition="in_range128(variant_fallback.DISCR128_BEGIN_HI, variant_fallback.DISCR128_BEGIN_LO, variant_fallback.DISCR128_END_HI, variant_fallback.DISCR128_END_LO)"
+        Condition="in_range128(tag128_hi, tag128_lo, variant_fallback.DISCR128_BEGIN_HI, variant_fallback.DISCR128_BEGIN_LO, variant_fallback.DISCR128_END_HI, variant_fallback.DISCR128_END_LO)"
         Optional="true">variant_fallback.value</ExpandedItem>
     </Expand>
   </Type>
