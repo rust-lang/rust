@@ -559,16 +559,9 @@ impl<'tcx> Stack {
             self.len()
         };
 
-        // Put the new item there. As an optimization, deduplicate if it is equal to one of its new neighbors.
-        // `new_idx` might be 0 if we just cleared the entire stack.
-        if self.get(new_idx) == Some(new) || (new_idx > 0 && self.get(new_idx - 1).unwrap() == new)
-        {
-            // Optimization applies, done.
-            trace!("reborrow: avoiding adding redundant item {:?}", new);
-        } else {
-            trace!("reborrow: adding item {:?}", new);
-            self.insert(new_idx, new);
-        }
+        // Put the new item there.
+        trace!("reborrow: adding item {:?}", new);
+        self.insert(new_idx, new);
         Ok(())
     }
 }
