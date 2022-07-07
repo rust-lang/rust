@@ -825,6 +825,8 @@ pub struct LocalDecl<'tcx> {
     /// ```
     pub source_info: SourceInfo,
 
+    /// `true` if the local has a fixed storage for the duration of the body
+    /// (that is, it does not have `StorageLive`/`StorageDead` annotations).
     pub always_storage_live: bool,
 }
 

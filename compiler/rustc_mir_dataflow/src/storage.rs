@@ -1,7 +1,8 @@
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, HasLocalDecls, Local};
 
-/// The set of locals in a MIR body that do not have `StorageLive`/`StorageDead` annotations.
+/// Returns the set of locals in a MIR body that do not have `StorageLive`/`StorageDead`
+/// annotations.
 ///
 /// These locals have fixed storage for the duration of the body.
 pub fn always_live_locals(body: &mir::Body<'_>) -> BitSet<Local> {
