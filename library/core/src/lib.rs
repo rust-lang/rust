@@ -170,6 +170,7 @@
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
+#![feature(arbitrary_self_types)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
 #![feature(cfg_sanitize)]

@@ -154,6 +154,7 @@
 
 use crate::fmt;
 use crate::intrinsics;
+use crate::mem::{self, ManuallyDrop};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -194,12 +195,90 @@ pub trait Any: 'static {
     /// ```
     #[stable(feature = "get_type_id", since = "1.34.0")]
     fn type_id(&self) -> TypeId;
+
+    /// Project a `Box<T>` to a `Box<DropNoUnwindSameAnyTypeId<T>>`.
+    #[unstable(feature = "dyn_into_drop_no_unwind", issue = "none")]
+    #[doc(hidden)]
+    fn __dyn_into_drop_no_unwind(self: *mut Self) -> *mut dyn Any;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: 'static + ?Sized> Any for T {
     fn type_id(&self) -> TypeId {
+        unsafe impl<T: ?Sized + Any> OverrideAnyTypeId for T {
+            default fn overridden_type_id() -> TypeId {
+                TypeId::of::<Self>()
+            }
+        }
+
+        <T as OverrideAnyTypeId>::overridden_type_id()
+    }
+
+    #[doc(hidden)]
+    fn __dyn_into_drop_no_unwind(self: *mut Self) -> *mut dyn Any {
+        <T as OverrideDynIntoDropNoUnwind>::dyn_into_drop_no_unwind(self)
+    }
+}
+
+// Safety: overriding the dynamic `type_id` of a type must not be done
+// in way where arbitrary code may witness the static and dynamic type mismatch.
+unsafe trait OverrideAnyTypeId: Any {
+    fn overridden_type_id() -> TypeId;
+}
+
+#[allow(missing_debug_implementations)]
+#[doc(hidden)]
+#[repr(transparent)] // repr ≥ C to ensure same layout as `T`
+struct DropNoUnwindSameAnyTypeId<T>(ManuallyDrop<T>);
+
+// SAFETY: `DropNoUnwindSameAnyTypeId` is private and only constructed here,
+// in a manner which indeed prevents witnessing the static vs. dynamic type mismatch.
+unsafe impl<T: 'static> OverrideAnyTypeId for DropNoUnwindSameAnyTypeId<T> {
+    fn overridden_type_id() -> TypeId {
         TypeId::of::<T>()
+    }
+}
+
+impl<T> Drop for DropNoUnwindSameAnyTypeId<T> {
+    fn drop(&mut self) {
+        struct AbortOnDrop {}
+
+        impl Drop for AbortOnDrop {
+            fn drop(&mut self) {
+                crate::intrinsics::abort();
+            }
+        }
+
+        let abort_on_drop_bomb = AbortOnDrop {};
+        // SAFETY: textbook ManuallyDrop.
+        unsafe {
+            ManuallyDrop::drop(&mut self.0);
+        }
+        mem::forget(abort_on_drop_bomb);
+    }
+}
+
+trait OverrideDynIntoDropNoUnwind: Any {
+    fn dyn_into_drop_no_unwind(ptr: *mut Self) -> *mut dyn Any;
+}
+/// `: !Sized`.
+impl<Dst: ?Sized + 'static> OverrideDynIntoDropNoUnwind for Dst {
+    default fn dyn_into_drop_no_unwind(_wide_ptr: *mut Dst) -> *mut dyn Any {
+        unimplemented!("not to be called");
+    }
+}
+/// `: Sized & ≠ DropNoUnwindSameAnyTypeId<_>`
+impl<T: 'static> OverrideDynIntoDropNoUnwind for T {
+    default fn dyn_into_drop_no_unwind(thin_ptr: *mut T) -> *mut dyn Any {
+        // Note: this can only be reached by deliberate misusage of
+        // `resume_unwind` (not resuming a payload, but a custom dyn any).
+        <*mut T>::cast::<DropNoUnwindSameAnyTypeId<T>>(thin_ptr) as _
+    }
+}
+/// `DropNoUnwindSameAnyTypeId<_>`
+impl<T: 'static> OverrideDynIntoDropNoUnwind for DropNoUnwindSameAnyTypeId<T> {
+    fn dyn_into_drop_no_unwind(thin_ptr: *mut DropNoUnwindSameAnyTypeId<T>) -> *mut dyn Any {
+        thin_ptr as _
     }
 }
 

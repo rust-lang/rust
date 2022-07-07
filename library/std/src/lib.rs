@@ -280,6 +280,7 @@
 #![feature(cstr_internals)]
 #![feature(duration_checked_float)]
 #![feature(duration_constants)]
+#![feature(dyn_into_drop_no_unwind)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]
 #![feature(error_iter)]
