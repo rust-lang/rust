@@ -1,4 +1,4 @@
-pub enum Test { //~ HELP consider adding `#[derive(Default)]` to this enum
+pub enum Test { //~ HELP consider adding a derive
     #[default]
     //~^ ERROR cannot find attribute `default` in this scope
     First,
