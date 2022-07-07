@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{exit, Command};
+use std::process::Command;
 
 use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::channel::GitInfo;
@@ -204,7 +204,7 @@ impl Step for ToolBuild {
 
         if !is_expected {
             if !is_optional_tool {
-                exit(1);
+                crate::detail_exit(1);
             } else {
                 None
             }

@@ -94,7 +94,7 @@ pub fn setup(config: &Config, profile: Profile) {
             "note: this will use the configuration in {}",
             profile.include_path(&config.src).display()
         );
-        std::process::exit(1);
+        crate::detail_exit(1);
     }
 
     let settings = format!(
@@ -287,7 +287,7 @@ pub fn interactive_path() -> io::Result<Profile> {
         io::stdin().read_line(&mut input)?;
         if input.is_empty() {
             eprintln!("EOF on stdin, when expecting answer to question.  Giving up.");
-            std::process::exit(1);
+            crate::detail_exit(1);
         }
         break match parse_with_abbrev(&input) {
             Ok(profile) => profile,
