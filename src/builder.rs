@@ -213,7 +213,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
                 let actual_ty = actual_val.get_type();
                 if expected_ty != actual_ty {
-                    if !actual_ty.is_vector() && !expected_ty.is_vector() && actual_ty.is_integral() && expected_ty.is_integral() {
+                    if !actual_ty.is_vector() && !expected_ty.is_vector() && (actual_ty.is_integral() && expected_ty.is_integral()) || (actual_ty.get_pointee().is_some() && expected_ty.get_pointee().is_some()) {
                         self.context.new_cast(None, actual_val, expected_ty)
                     }
                     else if on_stack_param_indices.contains(&index) {
@@ -1490,6 +1490,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let zeros = self.context.new_rvalue_from_vector(None, cond_type, &zeros);
 
         let masks = self.context.new_comparison(None, ComparisonOp::NotEquals, cond, zeros);
+        // NOTE: masks is a vector of integers, but the values can be vectors of floats, so use bitcast to make
+        // the & operation work.
+        let masks = self.bitcast_if_needed(masks, then_val.get_type());
         let then_vals = masks & then_val;
 
         let ones = vec![self.context.new_rvalue_one(element_type); num_units];
@@ -1509,6 +1512,16 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 fn difference_or_zero<'gcc>(a: RValue<'gcc>, b: RValue<'gcc>, context: &'gcc Context<'gcc>) -> RValue<'gcc> {
     let difference = a - b;
     let masks = context.new_comparison(None, ComparisonOp::GreaterThanEquals, b, a);
+    // NOTE: masks is a vector of integers, but the values can be vectors of floats, so use bitcast to make
+    // the & operation work.
+    let a_type = a.get_type();
+    let masks =
+        if masks.get_type() != a_type {
+            context.new_bitcast(None, masks, a_type)
+        }
+        else {
+            masks
+        };
     difference & masks
 }
 

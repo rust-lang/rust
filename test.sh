@@ -107,7 +107,7 @@ else
 fi
 
 if (( $build_only == 1 )); then
-    echo "Since it's `build-only`, exiting..."
+    echo "Since it's 'build-only', exiting..."
     exit
 fi
 
@@ -324,7 +324,7 @@ function all() {
 }
 
 if [ ${#funcs[@]} -eq 0 ]; then
-    echo "No command passed, running `--all`..."
+    echo "No command passed, running '--all'..."
     all
 else
     for t in ${funcs[@]}; do

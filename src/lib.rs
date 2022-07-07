@@ -13,6 +13,7 @@
 #![warn(unused_lifetimes)]
 
 extern crate rustc_ast;
+extern crate rustc_attr;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
@@ -32,6 +33,7 @@ mod abi;
 mod allocator;
 mod archive;
 mod asm;
+mod attributes;
 mod back;
 mod base;
 mod builder;
@@ -302,9 +304,11 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
         .filter(|_feature| {
             // TODO(antoyo): implement a way to get enabled feature in libgccjit.
             // Probably using the equivalent of __builtin_cpu_supports.
+            // TODO(antoyo): maybe use whatever outputs the following command:
+            // gcc -march=native -Q --help=target
             #[cfg(feature="master")]
             {
-                _feature.contains("sse") || _feature.contains("avx")
+                (_feature.contains("sse") || _feature.contains("avx")) && !_feature.contains("avx512")
             }
             #[cfg(not(feature="master"))]
             {
