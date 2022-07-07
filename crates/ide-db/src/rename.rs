@@ -177,6 +177,10 @@ fn rename_mod(
 
     let mut source_change = SourceChange::default();
 
+    if module.is_crate_root(sema.db) {
+        return Ok(source_change);
+    }
+
     let InFile { file_id, value: def_source } = module.definition_source(sema.db);
     if let ModuleSource::SourceFile(..) = def_source {
         let anchor = file_id.original_file(sema.db);

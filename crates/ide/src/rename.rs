@@ -379,6 +379,15 @@ mod tests {
         expect.assert_debug_eq(&source_change)
     }
 
+    fn check_expect_will_rename_file(new_name: &str, ra_fixture: &str, expect: Expect) {
+        let (analysis, position) = fixture::position(ra_fixture);
+        let source_change = analysis
+            .will_rename_file(position.file_id, new_name)
+            .unwrap()
+            .expect("Expect returned a RenameError");
+        expect.assert_debug_eq(&source_change)
+    }
+
     fn check_prepare(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let result = analysis
@@ -1242,6 +1251,26 @@ macro_rules! submodule {
 
 submodule!(bar);
 "#,
+        )
+    }
+
+    #[test]
+    fn test_rename_mod_for_crate_root() {
+        check_expect_will_rename_file(
+            "main",
+            r#"
+//- /lib.rs
+use crate::foo as bar;
+fn foo() {}
+mod bar$0;
+"#,
+            expect![[r#"
+                SourceChange {
+                    source_file_edits: {},
+                    file_system_edits: [],
+                    is_snippet: false,
+                }
+                "#]],
         )
     }
 
