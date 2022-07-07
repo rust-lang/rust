@@ -53,6 +53,18 @@
 // cdb-command: dx niche128_none
 // cdb-check: niche128_none    : None [Type: enum2$<core::option::Option<core::num::nonzero::NonZeroI128> >]
 
+// cdb-command: dx wrapping_niche128_dataful
+// cdb-check: wrapping_niche128_dataful : X [Type: enum2$<msvc_pretty_enums::Wrapping128Niche>]
+// cdb-check:    [+0x000] __0              [Type: msvc_pretty_enums::Wrapping128]
+
+// cdb-command: dx wrapping_niche128_none1
+// cdb-check: wrapping_niche128_none1 : Y [Type: enum2$<msvc_pretty_enums::Wrapping128Niche>]
+// cdb-check:    [+0x000] __0              [Type: msvc_pretty_enums::Wrapping128]
+
+// cdb-command: dx wrapping_niche128_none2
+// cdb-check: wrapping_niche128_none2 : Z [Type: enum2$<msvc_pretty_enums::Wrapping128Niche>]
+// cdb-check:    [+0x000] __0              [Type: msvc_pretty_enums::Wrapping128]
+
 // cdb-command: dx niche_w_fields_1_some,d
 // cdb-check: niche_w_fields_1_some,d : A [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields1>]
 // cdb-check:     [+0x[...]] __0              : 0x[...] : 77 [Type: unsigned char *]
@@ -64,6 +76,7 @@
 
 // cdb-command: dx niche_w_fields_2_some,d
 // cdb-check: niche_w_fields_2_some,d : A [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields2>]
+// cdb-check:     [<Raw View>]     [Type: enum2$<msvc_pretty_enums::NicheLayoutWithFields2>]
 // cdb-check:     [+0x[...]] __0              : 800 [Type: core::num::nonzero::NonZeroU32]
 // cdb-check:     [+0x[...]] __1              : 900 [Type: unsigned __int64]
 
@@ -105,6 +118,8 @@
 // cdb-check: niche_w_fields_std_result_err,d : Err [Type: enum2$<core::result::Result<alloc::boxed::Box<slice$<u8>,alloc::alloc::Global>,u64> >]
 // cdb-check:    [+0x[...]] __0              : 789 [Type: unsigned __int64]
 
+#![feature(rustc_attrs)]
+
 use std::num::{NonZeroI128, NonZeroU32};
 
 pub enum CStyleEnum {
@@ -141,6 +156,18 @@ enum NicheLayoutWithFields3 {
     F,
 }
 
+#[rustc_layout_scalar_valid_range_start(340282366920938463463374607431768211454)]
+#[rustc_layout_scalar_valid_range_end(1)]
+#[repr(transparent)]
+struct Wrapping128(u128);
+
+// #[rustc_layout(debug)]
+enum Wrapping128Niche {
+    X(Wrapping128),
+    Y,
+    Z,
+}
+
 fn main() {
     let a = Some(CStyleEnum::Low);
     let b = Option::<CStyleEnum>::None;
@@ -156,6 +183,11 @@ fn main() {
     let l = Result::<u32, Empty>::Ok(42);
     let niche128_some = Some(NonZeroI128::new(123456).unwrap());
     let niche128_none: Option<NonZeroI128> = None;
+
+    let wrapping_niche128_dataful =
+        unsafe { Wrapping128Niche::X(Wrapping128(340282366920938463463374607431768211454)) };
+    let wrapping_niche128_none1 = Wrapping128Niche::Y;
+    let wrapping_niche128_none2 = Wrapping128Niche::Z;
 
     let niche_w_fields_1_some = NicheLayoutWithFields1::A(&77, 7);
     let niche_w_fields_1_none = NicheLayoutWithFields1::B(99);

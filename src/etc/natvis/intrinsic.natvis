@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
   <Type Name="str">
     <DisplayString>{(char*)data_ptr,[length]s8}</DisplayString>
@@ -179,7 +179,9 @@
       <Parameter Name="y_lo" Type="unsigned __int64" />
     </Intrinsic>
 
-    <Intrinsic Name="in_range128" Expression="lt_or_eq128(begin_hi, begin_lo, tag128_hi, tag128_lo) &amp;&amp; lt_or_eq128(tag128_hi, tag128_lo, end_hi, end_lo)">
+    <Intrinsic Name="in_range128" Expression="(lt128(begin_hi, begin_lo, end_hi, end_lo)) ?
+                                              (lt_or_eq128(begin_hi, begin_lo, tag128_hi, tag128_lo) &amp;&amp; lt_or_eq128(tag128_hi, tag128_lo, end_hi, end_lo)) :
+                                              (lt_or_eq128(begin_hi, begin_lo, tag128_hi, tag128_lo) || lt_or_eq128(tag128_hi, tag128_lo, end_hi, end_lo))">
       <Parameter Name="begin_hi" Type="unsigned __int64" />
       <Parameter Name="begin_lo" Type="unsigned __int64" />
       <Parameter Name="end_hi" Type="unsigned __int64" />
