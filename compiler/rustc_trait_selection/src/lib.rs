@@ -37,5 +37,4 @@ extern crate smallvec;
 
 pub mod autoderef;
 pub mod infer;
-pub mod opaque_types;
 pub mod traits;
