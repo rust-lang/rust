@@ -953,7 +953,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let found_span = found_did
                     .and_then(|did| self.tcx.hir().span_if_local(did))
-                    .map(|sp| self.tcx.sess.source_map().guess_head_span(sp)); // the sp could be an fn def
+                    .map(|sp| self.tcx.sess.source_map().guess_head_span(sp)); // the sp could be a closure
 
                 if self.reported_closure_mismatch.borrow().contains(&(span, found_span)) {
                     // We check closures twice, with obligations flowing in different directions,
@@ -1089,7 +1089,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 kind: hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }),
                 ..
             }) => (
-                sm.guess_head_span(fn_decl_span),
+                fn_decl_span,
                 hir.body(body)
                     .params
                     .iter()

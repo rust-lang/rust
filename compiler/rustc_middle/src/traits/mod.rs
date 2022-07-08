@@ -139,13 +139,8 @@ impl<'tcx> ObligationCause<'tcx> {
         ObligationCause { span, body_id: hir::CRATE_HIR_ID, code: Default::default() }
     }
 
-    pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
+    pub fn span(&self, _tcx: TyCtxt<'tcx>) -> Span {
         match *self.code() {
-            ObligationCauseCode::CompareImplMethodObligation { .. }
-            | ObligationCauseCode::MainFunctionType
-            | ObligationCauseCode::StartFunctionType => {
-                tcx.sess.source_map().guess_head_span(self.span)
-            }
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                 arm_span,
                 ..
