@@ -204,7 +204,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         expected_substs: SubstsRef<'tcx>,
         actual_substs: SubstsRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let span = cause.span(self.tcx());
+        let span = cause.span();
         let msg = format!(
             "implementation of `{}` is not general enough",
             self.tcx().def_path_str(trait_def_id),

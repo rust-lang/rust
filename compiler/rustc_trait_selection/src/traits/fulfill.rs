@@ -603,7 +603,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         ),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
-                                obligation.cause.span(self.selcx.tcx()),
+                                obligation.cause.span(),
                                 "ConstEquate: const_eval_resolve returned an unexpected error"
                             )
                         }

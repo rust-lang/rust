@@ -139,7 +139,7 @@ impl<'tcx> ObligationCause<'tcx> {
         ObligationCause { span, body_id: hir::CRATE_HIR_ID, code: Default::default() }
     }
 
-    pub fn span(&self, _tcx: TyCtxt<'tcx>) -> Span {
+    pub fn span(&self) -> Span {
         match *self.code() {
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                 arm_span,

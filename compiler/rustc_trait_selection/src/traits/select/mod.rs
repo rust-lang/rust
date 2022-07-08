@@ -742,7 +742,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         | (_, Err(ErrorHandled::Reported(_))) => Ok(EvaluatedToErr),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
-                                obligation.cause.span(self.tcx()),
+                                obligation.cause.span(),
                                 "ConstEquate: const_eval_resolve returned an unexpected error"
                             )
                         }

@@ -298,7 +298,7 @@ fn compare_predicate_entailment<'tcx>(
 
             let mut diag = struct_span_err!(
                 tcx.sess,
-                cause.span(tcx),
+                cause.span(),
                 E0053,
                 "method `{}` has an incompatible type for trait",
                 trait_m.name
@@ -492,7 +492,7 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
         TypeError::ArgumentSorts(ExpectedFound { .. }, i) => {
             (impl_args.nth(i).unwrap(), trait_args.and_then(|mut args| args.nth(i)))
         }
-        _ => (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id)),
+        _ => (cause.span(), tcx.hir().span_if_local(trait_m.def_id)),
     }
 }
 
