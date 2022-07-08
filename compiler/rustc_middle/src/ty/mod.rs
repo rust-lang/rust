@@ -1105,6 +1105,7 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     Lift
 )]
 pub struct OpaqueTypeKey<'tcx> {
+    // FIXME(oli-obk): make this a LocalDefId
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
 }
