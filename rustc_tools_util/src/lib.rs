@@ -84,7 +84,7 @@ impl std::fmt::Debug for VersionInfo {
 #[must_use]
 pub fn get_commit_hash() -> Option<String> {
     std::process::Command::new("git")
-        .args(&["rev-parse", "--short", "HEAD"])
+        .args(["rev-parse", "--short", "HEAD"])
         .output()
         .ok()
         .and_then(|r| String::from_utf8(r.stdout).ok())
@@ -93,7 +93,7 @@ pub fn get_commit_hash() -> Option<String> {
 #[must_use]
 pub fn get_commit_date() -> Option<String> {
     std::process::Command::new("git")
-        .args(&["log", "-1", "--date=short", "--pretty=format:%cd"])
+        .args(["log", "-1", "--date=short", "--pretty=format:%cd"])
         .output()
         .ok()
         .and_then(|r| String::from_utf8(r.stdout).ok())

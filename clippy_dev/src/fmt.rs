@@ -46,7 +46,7 @@ pub fn run(check: bool, verbose: bool) {
         // dependency
         if fs::read_to_string(project_root.join("Cargo.toml"))
             .expect("Failed to read clippy Cargo.toml")
-            .contains(&"[target.'cfg(NOT_A_PLATFORM)'.dependencies]")
+            .contains("[target.'cfg(NOT_A_PLATFORM)'.dependencies]")
         {
             return Err(CliError::IntellijSetupActive);
         }
@@ -193,10 +193,10 @@ fn rustfmt_test(context: &FmtContext) -> Result<(), CliError> {
     let args = &["--version"];
 
     if context.verbose {
-        println!("{}", format_command(&program, &dir, args));
+        println!("{}", format_command(program, &dir, args));
     }
 
-    let output = Command::new(&program).current_dir(&dir).args(args.iter()).output()?;
+    let output = Command::new(program).current_dir(&dir).args(args.iter()).output()?;
 
     if output.status.success() {
         Ok(())
@@ -207,7 +207,7 @@ fn rustfmt_test(context: &FmtContext) -> Result<(), CliError> {
         Err(CliError::RustfmtNotInstalled)
     } else {
         Err(CliError::CommandFailed(
-            format_command(&program, &dir, args),
+            format_command(program, &dir, args),
             std::str::from_utf8(&output.stderr).unwrap_or("").to_string(),
         ))
     }

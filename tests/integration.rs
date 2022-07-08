@@ -19,7 +19,7 @@ fn integration_test() {
     repo_dir.push(crate_name);
 
     let st = Command::new("git")
-        .args(&[
+        .args([
             OsStr::new("clone"),
             OsStr::new("--depth=1"),
             OsStr::new(&repo_url),
@@ -37,7 +37,7 @@ fn integration_test() {
         .current_dir(repo_dir)
         .env("RUST_BACKTRACE", "full")
         .env("CARGO_TARGET_DIR", target_dir)
-        .args(&[
+        .args([
             "clippy",
             "--all-targets",
             "--all-features",
