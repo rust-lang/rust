@@ -291,8 +291,8 @@ pub fn report_error<'tcx, 'mir>(
     match e.kind() {
         UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(Some((alloc_id, access)))) => {
             eprintln!(
-                "Uninitialized read occurred at {alloc_id:?}{range:?}, in this allocation:",
-                range = alloc_range(access.uninit_offset, access.uninit_size),
+                "Uninitialized memory occurred at {alloc_id:?}{range:?}, in this allocation:",
+                range = access.uninit,
             );
             eprintln!("{:?}", ecx.dump_alloc(*alloc_id));
         }

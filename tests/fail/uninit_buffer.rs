@@ -1,4 +1,4 @@
-// error-pattern: 12 bytes are uninitialized
+// error-pattern: memory is uninitialized at [0x4..0x10]
 
 use std::alloc::{alloc, dealloc, Layout};
 use std::slice::from_raw_parts;
