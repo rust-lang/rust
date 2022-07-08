@@ -697,9 +697,8 @@ impl ::core::fmt::Debug for Enum1 {
 impl ::core::hash::Hash for Enum1 {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         match self {
-            Enum1::Single { x: __self_0 } => {
-                ::core::hash::Hash::hash(__self_0, state)
-            }
+            Enum1::Single { x: __self_0 } =>
+                ::core::hash::Hash::hash(__self_0, state),
         }
     }
 }
@@ -870,10 +869,9 @@ impl ::core::default::Default for Fieldless {
 impl ::core::hash::Hash for Fieldless {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         match self {
-            _ => {
+            _ =>
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
-                    state)
-            }
+                    state),
         }
     }
 }
@@ -992,10 +990,9 @@ impl ::core::hash::Hash for Mixed {
                 ::core::hash::Hash::hash(__self_0, state);
                 ::core::hash::Hash::hash(__self_1, state)
             }
-            _ => {
+            _ =>
                 ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
-                    state)
-            }
+                    state),
         }
     }
 }

@@ -339,11 +339,19 @@ impl BlockOrExpr {
     // Converts it into an expression.
     fn into_expr(self, cx: &ExtCtxt<'_>, span: Span) -> P<Expr> {
         if self.0.is_empty() {
+            // No statements.
             match self.1 {
                 None => cx.expr_block(cx.block(span, vec![])),
                 Some(expr) => expr,
             }
+        } else if self.0.len() == 1
+            && let ast::StmtKind::Expr(expr) = &self.0[0].kind
+            && self.1.is_none()
+        {
+            // There's only a single statement expression. Pull it out.
+            expr.clone()
         } else {
+            // Multiple statements and/or expressions.
             cx.expr_block(self.into_block(cx, span))
         }
     }
