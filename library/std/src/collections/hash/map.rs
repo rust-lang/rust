@@ -13,6 +13,7 @@ use crate::fmt::{self, Debug};
 #[allow(deprecated)]
 use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
 use crate::iter::FusedIterator;
+use crate::mem;
 use crate::ops::Index;
 use crate::sys;
 
@@ -1100,6 +1101,39 @@ where
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         self.base.insert(k, v)
+    }
+
+    /// Inserts `value` if there is no existing value for `key`. Otherwise,
+    /// calls `f` with the existing value and the new value to merge them
+    /// into one value that is inserted.
+    ///
+    /// The first argument given to `f` is the existing value. The second
+    /// argument is `value`.
+    ///
+    /// If a panic occurs in the function, the entry will be removed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hashmap_insert_or_merge)]
+    ///
+    /// use std::collections::HashMap;
+    /// use std::ops::Add;
+    ///
+    /// let mut word_counts: HashMap<&str, u32> = HashMap::new();
+    /// word_counts.insert_or_merge("very", 1, Add::add);
+    /// word_counts.insert_or_merge("very", 1, Add::add);
+    /// word_counts.insert_or_merge("wonderful", 1, Add::add);
+    ///
+    /// assert_eq!(word_counts["very"], 2);
+    /// assert_eq!(word_counts["wonderful"], 1);
+    /// ```
+    #[unstable(feature = "hashmap_insert_or_merge", issue = "none")]
+    pub fn insert_or_merge(&mut self, key: K, value: V, f: impl FnOnce(V, V) -> V) -> &mut V {
+        match self.entry(key) {
+            Occupied(entry) => entry.take_replace(move |old| f(old, value)),
+            Vacant(entry) => entry.insert(value),
+        }
     }
 
     /// Tries to insert a key-value pair into the map, and returns
@@ -2913,6 +2947,34 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     #[unstable(feature = "map_entry_replace", issue = "44286")]
     pub fn replace_key(self) -> K {
         self.base.replace_key()
+    }
+
+    /// Uses the existing value to produce a new value to replace it.
+    ///
+    /// If a panic occurs while `f` executes, the entry will be removed
+    /// from the map.
+    #[unstable(feature = "map_entry_replace_with_value", issue = "none")]
+    pub fn take_replace(self, f: impl FnOnce(V) -> V) -> &'a mut V {
+        struct Guard<'a, KK, VV>(Option<OccupiedEntry<'a, KK, VV>>);
+        impl<K, V> Drop for Guard<'_, K, V> {
+            fn drop(&mut self) {
+                if let Some(entry) = self.0.take() {
+                    mem::forget(entry.remove());
+                }
+            }
+        }
+        let mut guard = Guard(None);
+        let entry = guard.0.insert(self);
+        let value = entry.get_mut();
+        // SAFETY: The copied value is inaccessible while this function executes.
+        // It will be forgotten after the new value is inserted.
+        // If a panic occurs while getting a new value, the old value
+        // will be removed from the map and forgotten.
+        let copy = unsafe { crate::ptr::read(value) };
+        let new_value = f(copy);
+        mem::forget(mem::replace(value, new_value));
+        let entry = guard.0.take().unwrap();
+        entry.into_mut()
     }
 }
 
