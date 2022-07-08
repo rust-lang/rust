@@ -6,9 +6,8 @@ use clippy_utils::ty::{
     contains_ty, get_associated_type, get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item,
     peel_mid_ty_refs,
 };
-use clippy_utils::{meets_msrv, msrvs};
-
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item};
+use clippy_utils::{meets_msrv, msrvs};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -373,25 +372,15 @@ fn get_input_traits_and_projections<'tcx>(
 ) -> (Vec<TraitPredicate<'tcx>>, Vec<ProjectionPredicate<'tcx>>) {
     let mut trait_predicates = Vec::new();
     let mut projection_predicates = Vec::new();
-    for (predicate, _) in cx.tcx.predicates_of(callee_def_id).predicates.iter() {
-        // `substs` should have 1 + n elements. The first is the type on the left hand side of an
-        // `as`. The remaining n are trait parameters.
-        let is_input_substs = |substs: SubstsRef<'tcx>| {
-            if_chain! {
-                if let Some(arg) = substs.iter().next();
-                if let GenericArgKind::Type(arg_ty) = arg.unpack();
-                if arg_ty == input;
-                then { true } else { false }
-            }
-        };
+    for predicate in cx.tcx.param_env(callee_def_id).caller_bounds() {
         match predicate.kind().skip_binder() {
             PredicateKind::Trait(trait_predicate) => {
-                if is_input_substs(trait_predicate.trait_ref.substs) {
+                if trait_predicate.trait_ref.self_ty() == input {
                     trait_predicates.push(trait_predicate);
                 }
             },
             PredicateKind::Projection(projection_predicate) => {
-                if is_input_substs(projection_predicate.projection_ty.substs) {
+                if projection_predicate.projection_ty.self_ty() == input {
                     projection_predicates.push(projection_predicate);
                 }
             },

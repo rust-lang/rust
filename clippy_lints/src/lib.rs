@@ -821,7 +821,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(verbose_file_reads::VerboseFileReads));
     store.register_late_pass(|| Box::new(redundant_pub_crate::RedundantPubCrate::default()));
     store.register_late_pass(|| Box::new(unnamed_address::UnnamedAddress));
-    store.register_late_pass(|| Box::new(dereference::Dereferencing::default()));
+    store.register_late_pass(move || Box::new(dereference::Dereferencing::new(msrv)));
     store.register_late_pass(|| Box::new(option_if_let_else::OptionIfLetElse));
     store.register_late_pass(|| Box::new(future_not_send::FutureNotSend));
     store.register_late_pass(|| Box::new(if_let_mutex::IfLetMutex));
