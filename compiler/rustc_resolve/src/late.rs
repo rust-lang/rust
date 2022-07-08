@@ -50,7 +50,7 @@ struct BindingInfo {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum PatternSource {
+pub enum PatternSource {
     Match,
     Let,
     For,
@@ -64,7 +64,7 @@ enum IsRepeatExpr {
 }
 
 impl PatternSource {
-    fn descr(self) -> &'static str {
+    pub fn descr(self) -> &'static str {
         match self {
             PatternSource::Match => "match binding",
             PatternSource::Let => "let binding",
@@ -2845,7 +2845,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.report_error(
                     ident.span,
                     ResolutionError::BindingShadowsSomethingUnacceptable {
-                        shadowing_binding_descr: pat_src.descr(),
+                        shadowing_binding: pat_src,
                         name: ident.name,
                         participle: if binding.is_import() { "imported" } else { "defined" },
                         article: binding.res().article(),
@@ -2861,7 +2861,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.report_error(
                     ident.span,
                     ResolutionError::BindingShadowsSomethingUnacceptable {
-                        shadowing_binding_descr: pat_src.descr(),
+                        shadowing_binding: pat_src,
                         name: ident.name,
                         participle: "defined",
                         article: res.article(),

@@ -28,7 +28,7 @@ use rustc_span::{BytePos, Span};
 use tracing::debug;
 
 use crate::imports::{Import, ImportKind, ImportResolver};
-use crate::late::Rib;
+use crate::late::{PatternSource, Rib};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, Finalize};
 use crate::{HasGenericParams, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot};
@@ -896,7 +896,7 @@ impl<'a> Resolver<'a> {
                 err
             }
             ResolutionError::BindingShadowsSomethingUnacceptable {
-                shadowing_binding_descr,
+                shadowing_binding,
                 name,
                 participle,
                 article,
@@ -909,15 +909,18 @@ impl<'a> Resolver<'a> {
                     span,
                     E0530,
                     "{}s cannot shadow {}s",
-                    shadowing_binding_descr,
+                    shadowing_binding.descr(),
                     shadowed_binding_descr,
                 );
                 err.span_label(
                     span,
                     format!("cannot be named the same as {} {}", article, shadowed_binding_descr),
                 );
-                match shadowed_binding {
-                    Res::Def(DefKind::Ctor(CtorOf::Variant | CtorOf::Struct, CtorKind::Fn), _) => {
+                match (shadowing_binding, shadowed_binding) {
+                    (
+                        PatternSource::Match,
+                        Res::Def(DefKind::Ctor(CtorOf::Variant | CtorOf::Struct, CtorKind::Fn), _),
+                    ) => {
                         err.span_suggestion(
                             span,
                             "try specify the pattern arguments",
