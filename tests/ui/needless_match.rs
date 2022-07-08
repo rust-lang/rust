@@ -122,6 +122,7 @@ fn if_let_result() {
     let _: Result<i32, i32> = if let Err(e) = x { Err(e) } else { x };
     let _: Result<i32, i32> = if let Ok(val) = x { Ok(val) } else { x };
     // Input type mismatch, don't trigger
+    #[allow(clippy::question_mark)]
     let _: Result<i32, i32> = if let Err(e) = Ok(1) { Err(e) } else { x };
 }
 

@@ -1,5 +1,6 @@
 // run-rustfix
 #![allow(unreachable_code)]
+#![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps)]
 
 fn some_func(a: Option<u32>) -> Option<u32> {
@@ -186,26 +187,60 @@ fn f() -> NotOption {
     NotOption::First
 }
 
-fn main() {
-    some_func(Some(42));
-    some_func(None);
-    some_other_func(Some(42));
+fn do_something() {}
 
-    let copy_struct = CopyStruct { opt: Some(54) };
-    copy_struct.func();
-
-    let move_struct = MoveStruct {
-        opt: Some(vec![42, 1337]),
-    };
-    move_struct.ref_func();
-    move_struct.clone().mov_func_reuse();
-    move_struct.mov_func_no_use();
-
-    let so = SeemsOption::Some(45);
-    returns_something_similar_to_option(so);
-
-    func();
-
-    let _ = result_func(Ok(42));
-    let _ = f();
+fn err_immediate_return() -> Result<i32, i32> {
+    if let Err(err) = func_returning_result() {
+        return Err(err);
+    }
+    Ok(1)
 }
+
+fn err_immediate_return_and_do_something() -> Result<i32, i32> {
+    if let Err(err) = func_returning_result() {
+        return Err(err);
+    }
+    do_something();
+    Ok(1)
+}
+
+// No warning
+fn no_immediate_return() -> Result<i32, i32> {
+    if let Err(err) = func_returning_result() {
+        do_something();
+        return Err(err);
+    }
+    Ok(1)
+}
+
+// No warning
+fn mixed_result_and_option() -> Option<i32> {
+    if let Err(err) = func_returning_result() {
+        return Some(err);
+    }
+    None
+}
+
+// No warning
+fn else_if_check() -> Result<i32, i32> {
+    if true {
+        Ok(1)
+    } else if let Err(e) = func_returning_result() {
+        Err(e)
+    } else {
+        Err(-1)
+    }
+}
+
+// No warning
+#[allow(clippy::manual_map)]
+#[rustfmt::skip]
+fn option_map() -> Option<bool> {
+    if let Some(a) = Some(false) {
+        Some(!a)
+    } else {
+        None
+    }
+}
+
+fn main() {}
