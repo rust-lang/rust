@@ -1,5 +1,4 @@
 // run-rustfix
-#![feature(lint_reasons)]
 #![feature(async_closure)]
 #![warn(clippy::async_yields_async)]
 

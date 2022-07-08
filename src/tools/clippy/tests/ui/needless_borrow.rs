@@ -1,7 +1,5 @@
 // run-rustfix
 
-#![feature(lint_reasons)]
-
 #[warn(clippy::all, clippy::needless_borrow)]
 #[allow(unused_variables, clippy::unnecessary_mut_passed)]
 fn main() {

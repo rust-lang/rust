@@ -269,22 +269,20 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for attributes that allow lints without a reason.
     ///
-    /// (This requires the `lint_reasons` feature)
-    ///
     /// ### Why is this bad?
     /// Allowing a lint should always have a reason. This reason should be documented to
     /// ensure that others understand the reasoning
     ///
     /// ### Example
     /// ```rust
-    /// #![feature(lint_reasons)]
+    /// # #![cfg_attr(bootstrap, feature(lint_reasons))]
     ///
     /// #![allow(clippy::some_lint)]
     /// ```
     ///
     /// Use instead:
     /// ```rust
-    /// #![feature(lint_reasons)]
+    /// # #![cfg_attr(bootstrap, feature(lint_reasons))]
     ///
     /// #![allow(clippy::some_lint, reason = "False positive rust-lang/rust-clippy#1002020")]
     /// ```
@@ -450,11 +448,6 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMe
 }
 
 fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem], attr: &'_ Attribute) {
-    // Check for the feature
-    if !cx.tcx.sess.features_untracked().lint_reasons {
-        return;
-    }
-
     // Check if the reason is present
     if let Some(item) = items.last().and_then(NestedMetaItem::meta_item)
         && let MetaItemKind::NameValue(_) = &item.kind

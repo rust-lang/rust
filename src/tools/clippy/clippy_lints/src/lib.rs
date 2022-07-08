@@ -6,7 +6,7 @@
 #![feature(iter_intersperse)]
 #![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
-#![feature(lint_reasons)]
+#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(rustc_private)]

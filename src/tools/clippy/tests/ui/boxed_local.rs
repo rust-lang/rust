@@ -1,5 +1,4 @@
 #![feature(box_syntax)]
-#![feature(lint_reasons)]
 #![allow(
     clippy::borrowed_box,
     clippy::needless_pass_by_value,

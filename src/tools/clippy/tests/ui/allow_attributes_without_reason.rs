@@ -1,4 +1,3 @@
-#![feature(lint_reasons)]
 #![deny(clippy::allow_attributes_without_reason)]
 
 // These should trigger the lint
