@@ -23,8 +23,11 @@ jobs:
           "--mini-tests",
           "--std-tests",
           "--test-libcore",
-          "--extended-tests",
-          "--test-successful-rustc",
+          "--extended-rand-tests",
+          "--extended-regex-example-tests",
+          "--extended-regex-tests",
+          "--test-successful-rustc --nb-parts 2 --current-part 0",
+          "--test-successful-rustc --nb-parts 2 --current-part 1",
           "--test-failing-rustc",
         ]
 
