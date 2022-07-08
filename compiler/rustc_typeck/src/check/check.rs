@@ -375,8 +375,9 @@ fn check_alloc_error_fn(
     }
 }
 
-fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
+fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
+    let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
 
@@ -388,8 +389,9 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
     check_packed(tcx, span, def);
 }
 
-fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
+fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
+    let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
     check_transparent(tcx, span, def);
@@ -471,13 +473,14 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
 }
 
 /// Check that a `static` is inhabited.
-fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
+fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
     // Make sure statics are inhabited.
     // Other parts of the compiler assume that there are no uninhabited places. In principle it
     // would be enough to check this for `extern` statics, as statics with an initializer will
     // have UB during initialization if they are uninhabited, but there also seems to be no good
     // reason to allow any statics to be uninhabited.
     let ty = tcx.type_of(def_id);
+    let span = tcx.def_span(def_id);
     let layout = match tcx.layout_of(ParamEnv::reveal_all().and(ty)) {
         Ok(l) => l,
         // Foreign statics that overflow their allowed size should emit an error
@@ -524,9 +527,9 @@ pub(super) fn check_opaque<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     substs: SubstsRef<'tcx>,
-    span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) {
+    let span = tcx.def_span(def_id);
     check_opaque_for_inheriting_lifetimes(tcx, def_id, span);
     if tcx.type_of(def_id).references_error() {
         return;
@@ -781,13 +784,12 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
         id.def_id,
         tcx.def_path_str(id.def_id.to_def_id())
     );
-    let item_span = tcx.def_span(id.def_id);
     let _indenter = indenter();
     match tcx.def_kind(id.def_id) {
         DefKind::Static(..) => {
             tcx.ensure().typeck(id.def_id);
-            maybe_check_static_with_link_section(tcx, id.def_id, item_span);
-            check_static_inhabited(tcx, id.def_id, item_span);
+            maybe_check_static_with_link_section(tcx, id.def_id);
+            check_static_inhabited(tcx, id.def_id);
         }
         DefKind::Const => {
             tcx.ensure().typeck(id.def_id);
@@ -797,7 +799,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             let hir::ItemKind::Enum(ref enum_definition, _) = item.kind else {
                 return;
             };
-            check_enum(tcx, item_span, &enum_definition.variants, item.def_id);
+            check_enum(tcx, &enum_definition.variants, item.def_id);
         }
         DefKind::Fn => {} // entirely within check_item_body
         DefKind::Impl => {
@@ -848,10 +850,10 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             }
         }
         DefKind::Struct => {
-            check_struct(tcx, id.def_id, item_span);
+            check_struct(tcx, id.def_id);
         }
         DefKind::Union => {
-            check_union(tcx, id.def_id, item_span);
+            check_union(tcx, id.def_id);
         }
         DefKind::OpaqueTy => {
             let item = tcx.hir().item(id);
@@ -864,7 +866,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             // See https://github.com/rust-lang/rust/issues/75100
             if !tcx.sess.opts.actually_rustdoc {
                 let substs = InternalSubsts::identity_for_item(tcx, item.def_id.to_def_id());
-                check_opaque(tcx, item.def_id, substs, item_span, &origin);
+                check_opaque(tcx, item.def_id, substs, &origin);
             }
         }
         DefKind::TyAlias => {
@@ -928,7 +930,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                             require_c_abi_if_c_variadic(tcx, fn_decl, abi, item.span);
                         }
                         hir::ForeignItemKind::Static(..) => {
-                            check_static_inhabited(tcx, def_id, item.span);
+                            check_static_inhabited(tcx, def_id);
                         }
                         _ => {}
                     }
@@ -1442,13 +1444,9 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
 }
 
 #[allow(trivial_numeric_casts)]
-fn check_enum<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    sp: Span,
-    vs: &'tcx [hir::Variant<'tcx>],
-    def_id: LocalDefId,
-) {
+fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
+    let sp = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
 
     if vs.is_empty() {
