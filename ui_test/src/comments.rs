@@ -218,6 +218,9 @@ impl Comments {
                     self.env_vars.push((k.to_string(), v.to_string()));
                 },
             "normalize-stderr-test" => {
+                /// Parses a string literal. `s` has to start with `"`; everything until the next `"` is
+                /// returned in the first component. `\` can be used to escape arbitrary character.
+                /// Second return component is the rest of the string with leading whitespace removed.
                 fn parse_str(s: &str) -> Result<(&str, &str)> {
                     let mut chars = s.char_indices();
                     match chars.next().ok_or_else(|| eyre!("missing arguments"))?.1 {
@@ -226,6 +229,7 @@ impl Comments {
                             let mut escaped = false;
                             for (i, c) in chars {
                                 if escaped {
+                                    // Accept any character as literal after a `\`.
                                     escaped = false;
                                 } else if c == '"' {
                                     return Ok((&s[..(i - 1)], s[i..].trim_start()));
