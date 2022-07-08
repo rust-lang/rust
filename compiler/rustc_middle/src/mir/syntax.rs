@@ -237,19 +237,19 @@ pub enum StatementKind<'tcx> {
 
     /// `StorageLive` and `StorageDead` statements mark the live range of a local.
     ///
-    /// Using a local before a `StorageLive` or after a `StorageDead` is not well-formed. These
-    /// statements are not required. If the entire MIR body contains no `StorageLive`/`StorageDead`
-    /// statements for a particular local, the local is always considered live.
+    /// At any point during the execution of a function, each local is either allocated or
+    /// unallocated. Except as noted below, all locals except function parameters are initially
+    /// unallocated. `StorageLive` statements cause memory to be allocated for the local while
+    /// `StorageDead` statements cause the memory to be freed. Using a local in any way (not only
+    /// reading/writing from it) while it is unallocated is UB.
     ///
-    /// More precisely, the MIR validator currently does a `MaybeStorageLiveLocals` analysis to
-    /// check validity of each use of a local. I believe this is equivalent to requiring for every
-    /// use of a local, there exist at least one path from the root to that use that contains a
-    /// `StorageLive` more recently than a `StorageDead`.
+    /// Some locals have no `StorageLive` or `StorageDead` statements within the entire MIR body.
+    /// These locals are implicitly allocated for the full duration of the function. There is a
+    /// convenience method at `rustc_mir_dataflow::storage::always_storage_live_locals` for
+    /// computing these locals.
     ///
-    /// **Needs clarification**: Is it permitted to have two `StorageLive`s without an intervening
-    /// `StorageDead`? Two `StorageDead`s without an intervening `StorageLive`? LLVM says poison,
-    /// yes. If the answer to any of these is "no," is breaking that rule UB or is it an error to
-    /// have a path in the CFG that might do this?
+    /// If the local is already allocated, calling `StorageLive` again is UB. However, for an
+    /// unallocated local an additional `StorageDead` all is simply a nop.
     StorageLive(Local),
 
     /// See `StorageLive` above.
