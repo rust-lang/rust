@@ -926,8 +926,7 @@ impl<'a> Resolver<'a> {
                             "try specify the pattern arguments",
                             format!("{}(..)", name),
                             Applicability::Unspecified,
-                        )
-                        .emit();
+                        );
                     }
                     _ => (),
                 }
