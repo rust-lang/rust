@@ -1,5 +1,5 @@
 use crate::outlives::outlives_bounds::InferCtxtExt as _;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::InferCtxt;

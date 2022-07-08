@@ -6,7 +6,7 @@ use hir::{
     intravisit::{self, Visitor},
     Body, Expr, ExprKind, Guard, HirId, LoopIdError,
 };
-use rustc_data_structures::{fx::FxHashMap, stable_set::FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
 use rustc_middle::{

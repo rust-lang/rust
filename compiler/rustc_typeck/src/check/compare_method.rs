@@ -1,6 +1,6 @@
 use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};

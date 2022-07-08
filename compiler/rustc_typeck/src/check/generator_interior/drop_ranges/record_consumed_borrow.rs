@@ -4,7 +4,7 @@ use crate::{
     expr_use_visitor::{self, ExprUseVisitor},
 };
 use hir::{def_id::DefId, Body, HirId, HirIdMap};
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::hir::place::{PlaceBase, Projection, ProjectionKind};
 use rustc_middle::ty::{ParamEnv, TyCtxt};

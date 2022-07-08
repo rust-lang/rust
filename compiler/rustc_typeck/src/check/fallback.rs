@@ -1,9 +1,8 @@
 use crate::check::FnCtxt;
 use rustc_data_structures::{
-    fx::FxHashMap,
+    fx::{FxHashMap, FxHashSet},
     graph::WithSuccessors,
     graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
-    stable_set::FxHashSet,
 };
 use rustc_middle::ty::{self, Ty};
 

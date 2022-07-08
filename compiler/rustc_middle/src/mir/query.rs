@@ -2,7 +2,7 @@
 
 use crate::mir::{Body, ConstantKind, Promoted};
 use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
-use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;

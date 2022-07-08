@@ -3,7 +3,7 @@ use crate::{
     CodeSuggestion, DiagnosticMessage, EmissionGuarantee, Level, LintDiagnosticBuilder, MultiSpan,
     SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
-use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::edition::LATEST_STABLE_EDITION;

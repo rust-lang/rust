@@ -1,7 +1,7 @@
 //! A pass that eliminates branches on uninhabited enum variants.
 
 use crate::MirPass;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{
     BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, SwitchTargets, Terminator,
     TerminatorKind,

@@ -4,7 +4,10 @@
 
 use pulldown_cmark::LinkType;
 use rustc_ast::util::comments::may_have_doc_links;
-use rustc_data_structures::{fx::FxHashMap, intern::Interned, stable_set::FxHashSet};
+use rustc_data_structures::{
+    fx::{FxHashMap, FxHashSet},
+    intern::Interned,
+};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};

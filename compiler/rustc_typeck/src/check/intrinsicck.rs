@@ -1,5 +1,5 @@
 use rustc_ast::InlineAsmTemplatePiece;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
