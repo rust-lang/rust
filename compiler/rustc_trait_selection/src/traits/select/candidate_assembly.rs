@@ -37,7 +37,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         // Watch out for overflow. This intentionally bypasses (and does
         // not update) the cache.
-        self.check_recursion_limit(&stack.obligation, &stack.obligation)?;
+        if let Err(err) = self.check_recursion_limit(&stack.obligation, &stack.obligation) {
+            return SelectionResult::Error(err.into());
+        }
 
         // Check the cache. Note that we freshen the trait-ref
         // separately rather than using `stack.fresh_trait_ref` --
@@ -86,9 +88,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let mut no_candidates_apply = true;
 
                     for c in candidate_set.vec.iter() {
-                        if self.evaluate_candidate(stack, &c)?.may_apply() {
-                            no_candidates_apply = false;
-                            break;
+                        match self.evaluate_candidate(stack, &c) {
+                            Ok(result) => {
+                                if result.may_apply() {
+                                    no_candidates_apply = false;
+                                    break;
+                                }
+                            }
+                            Err(err) => return SelectionResult::Error(err.into()),
                         }
                     }
 
@@ -114,15 +121,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
             }
-            return Ok(None);
+            return SelectionResult::Ambiguous;
         }
 
-        let candidate_set = self.assemble_candidates(stack)?;
-
-        if candidate_set.ambiguous {
-            debug!("candidate set contains ambig");
-            return Ok(None);
-        }
+        let candidate_set = match self.assemble_candidates(stack) {
+            Ok(set) => {
+                if set.ambiguous {
+                    debug!("candidate set contains ambig");
+                    return SelectionResult::Ambiguous;
+                } else {
+                    set
+                }
+            }
+            Err(e) => return SelectionResult::Error(e),
+        };
 
         let candidates = candidate_set.vec;
 
@@ -159,7 +171,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Winnow, but record the exact outcome of evaluation, which
         // is needed for specialization. Propagate overflow if it occurs.
-        let mut candidates = candidates
+        let candidates_result = candidates
             .into_iter()
             .map(|c| match self.evaluate_candidate(stack, &c) {
                 Ok(eval) if eval.may_apply() => {
@@ -171,7 +183,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
             })
             .flat_map(Result::transpose)
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>();
+
+        let mut candidates = match candidates_result {
+            Ok(candidates) => candidates,
+            Err(e) => return SelectionResult::Error(e),
+        };
 
         debug!(?stack, ?candidates, "winnowed to {} candidates", candidates.len());
 
@@ -231,7 +248,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         })
                         .collect();
 
-                        return Err(Ambiguous(
+                        return SelectionResult::Error(Ambiguous(
                             candidates
                                 .into_iter()
                                 .filter_map(|c| match c.candidate {
@@ -268,9 +285,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // to have emitted at least one.
             if stack.obligation.predicate.references_error() {
                 debug!(?stack.obligation.predicate, "found error type in predicate, treating as ambiguous");
-                return Ok(None);
+                return SelectionResult::Ambiguous;
             }
-            return Err(Unimplemented);
+            return SelectionResult::Error(Unimplemented);
         }
 
         // Just one candidate left.

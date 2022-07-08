@@ -301,33 +301,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         let candidate = match self.select_from_obligation(obligation) {
-            Err(SelectionError::Overflow(OverflowError::Canonical)) => {
+            SelectionResult::Error(SelectionError::Overflow(OverflowError::Canonical)) => {
                 // In standard mode, overflow must have been caught and reported
                 // earlier.
                 assert!(self.query_mode == TraitQueryMode::Canonical);
-                return Err(SelectionError::Overflow(OverflowError::Canonical));
+                return SelectionResult::Error(SelectionError::Overflow(OverflowError::Canonical));
             }
-            Err(SelectionError::Ambiguous(_)) => {
-                return Ok(None);
+            SelectionResult::Error(SelectionError::Ambiguous(_)) | SelectionResult::Ambiguous => {
+                return SelectionResult::Ambiguous;
             }
-            Err(e) => {
-                return Err(e);
+            SelectionResult::Error(e) => {
+                return SelectionResult::Error(e);
             }
-            Ok(None) => {
-                return Ok(None);
-            }
-            Ok(Some(candidate)) => candidate,
+            SelectionResult::Success(candidate) => candidate,
         };
 
         match self.confirm_candidate(obligation, candidate) {
             Err(SelectionError::Overflow(OverflowError::Canonical)) => {
                 assert!(self.query_mode == TraitQueryMode::Canonical);
-                Err(SelectionError::Overflow(OverflowError::Canonical))
+                SelectionResult::Error(SelectionError::Overflow(OverflowError::Canonical))
             }
-            Err(e) => Err(e),
+            Err(e) => SelectionResult::Error(e),
             Ok(candidate) => {
                 debug!(?candidate, "confirmed");
-                Ok(Some(candidate))
+                SelectionResult::Success(candidate)
             }
         }
     }
@@ -983,12 +980,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match self.candidate_from_obligation(stack) {
-            Ok(Some(c)) => self.evaluate_candidate(stack, &c),
-            Err(SelectionError::Ambiguous(_)) => Ok(EvaluatedToAmbig),
-            Ok(None) => Ok(EvaluatedToAmbig),
-            Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
-            Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
-            Err(..) => Ok(EvaluatedToErr),
+            SelectionResult::Success(c) => self.evaluate_candidate(stack, &c),
+            SelectionResult::Error(SelectionError::Ambiguous(_)) | SelectionResult::Ambiguous => {
+                Ok(EvaluatedToAmbig)
+            }
+            SelectionResult::Error(Overflow(OverflowError::Canonical)) => {
+                Err(OverflowError::Canonical)
+            }
+            SelectionResult::Error(ErrorReporting) => Err(OverflowError::ErrorReporting),
+            SelectionResult::Error(..) => Ok(EvaluatedToErr),
         }
     }
 
@@ -1259,10 +1259,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         );
                     }
                 }
-                return Ok(None);
+                return SelectionResult::Ambiguous;
             }
         }
-        Ok(Some(candidate))
+        SelectionResult::Success(candidate)
     }
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Option<Conflict> {
@@ -1359,7 +1359,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return false;
         }
         match result {
-            Ok(Some(SelectionCandidate::ParamCandidate(trait_ref))) => !trait_ref.needs_infer(),
+            SelectionResult::Success(SelectionCandidate::ParamCandidate(trait_ref)) => {
+                !trait_ref.needs_infer()
+            }
             _ => true,
         }
     }
@@ -1383,7 +1385,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if self.can_use_global_caches(param_env) {
-            if let Err(Overflow(OverflowError::Canonical)) = candidate {
+            if let SelectionResult::Error(Overflow(OverflowError::Canonical)) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
             } else if !pred.needs_infer() {
                 if !candidate.needs_infer() {

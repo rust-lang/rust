@@ -16,6 +16,7 @@ use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_infer::traits::SelectionResult;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
@@ -1439,7 +1440,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .define_opaque_types(false)
                     .sup(candidate.xform_self_ty, self_ty);
                 match self.select_trait_candidate(trait_ref) {
-                    Ok(Some(traits::ImplSource::UserDefined(ref impl_data))) => {
+                    SelectionResult::Success(traits::ImplSource::UserDefined(ref impl_data)) => {
                         // If only a single impl matches, make the error message point
                         // to that impl.
                         CandidateSource::Impl(impl_data.impl_def_id)
@@ -1554,8 +1555,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         result = ProbeResult::NoMatch;
                         if self.probe(|_| {
                             match self.select_trait_candidate(trait_ref) {
-                                Err(_) => return true,
-                                Ok(Some(impl_source))
+                                SelectionResult::Error(_) => return true,
+                                SelectionResult::Success(impl_source)
                                     if !impl_source.borrow_nested_obligations().is_empty() =>
                                 {
                                     for obligation in impl_source.borrow_nested_obligations() {

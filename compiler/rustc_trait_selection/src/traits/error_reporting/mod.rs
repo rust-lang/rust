@@ -23,7 +23,7 @@ use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::same_type_modulo_infer;
-use rustc_infer::traits::{AmbiguousSelection, TraitEngine};
+use rustc_infer::traits::{AmbiguousSelection, SelectionResult, TraitEngine};
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::error::ExpectedFound;
@@ -2039,7 +2039,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     crate::traits::TraitQueryMode::Standard,
                 );
                 match selcx.select_from_obligation(&obligation) {
-                    Err(SelectionError::Ambiguous(impls)) if impls.len() > 1 => {
+                    SelectionResult::Error(SelectionError::Ambiguous(impls)) if impls.len() > 1 => {
                         if self.is_tainted_by_errors() && subst.is_none() {
                             // If `subst.is_none()`, then this is probably two param-env
                             // candidates or impl candidates that are equal modulo lifetimes.

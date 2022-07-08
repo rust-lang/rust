@@ -28,6 +28,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
+use rustc_infer::traits::SelectionResult;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
@@ -1397,12 +1398,12 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
     let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
     let _ = selcx.infcx().commit_if_ok(|_| {
         let impl_source = match selcx.select(&trait_obligation) {
-            Ok(Some(impl_source)) => impl_source,
-            Ok(None) => {
+            SelectionResult::Success(impl_source) => impl_source,
+            SelectionResult::Ambiguous => {
                 candidate_set.mark_ambiguous();
                 return Err(());
             }
-            Err(e) => {
+            SelectionResult::Error(e) => {
                 debug!(error = ?e, "selection error");
                 candidate_set.mark_error(e);
                 return Err(());

@@ -824,11 +824,14 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
 
     let implsrc = tcx.infer_ctxt().enter(|infcx| {
         let mut selcx = SelectionContext::new(&infcx);
-        selcx.select(&obligation).unwrap()
+        match selcx.select(&obligation) {
+            SelectionResult::Success(src) => src,
+            e => bug!("Expected SelectionResult::Success, got {e:?}"),
+        }
     });
 
-    let Some(ImplSource::TraitUpcasting(implsrc_traitcasting)) = implsrc else {
-        bug!();
+    let ImplSource::TraitUpcasting(implsrc_traitcasting) = implsrc else {
+        bug!("expected ImplSource::TraitUpcasting, found {implsrc:?}");
     };
 
     implsrc_traitcasting.vtable_vptr_slot

@@ -557,14 +557,18 @@ pub enum AmbiguousSelection {
 
 TrivialTypeTraversalAndLiftImpls! { AmbiguousSelection, }
 
-/// When performing resolution, it is typically the case that there
-/// can be one of three outcomes:
-///
-/// - `Ok(Some(r))`: success occurred with result `r`
-/// - `Ok(None)`: could not definitely determine anything, usually due
-///   to inconclusive type inference.
-/// - `Err(e)`: error `e` occurred
-pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
+/// When performing resolution, there are typically one of three outcomes
+/// represented by this enum.
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
+pub enum SelectionResult<'tcx, T> {
+    /// Success occurred with given result
+    Success(T),
+    /// Could not definitely determine anything, usually due to inconclusive
+    /// type inference.
+    Ambiguous,
+    /// Error occurred during selection
+    Error(SelectionError<'tcx>),
+}
 
 /// Given the successful resolution of an obligation, the `ImplSource`
 /// indicates where the impl comes from.

@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
+use rustc_infer::traits::{ImplSource, Obligation, ObligationCause, SelectionResult};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
@@ -734,14 +734,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     });
 
                     match implsrc {
-                        Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {
+                        SelectionResult::Success(ImplSource::Param(
+                            _,
+                            ty::BoundConstness::ConstIfConst,
+                        )) => {
                             debug!(
                                 "const_trait_impl: provided {:?} via where-clause in {:?}",
                                 trait_ref, param_env
                             );
                             return;
                         }
-                        Ok(Some(ImplSource::UserDefined(data))) => {
+                        SelectionResult::Success(ImplSource::UserDefined(data)) => {
                             let callee_name = tcx.item_name(callee);
                             if let Some(&did) = tcx
                                 .associated_item_def_ids(data.impl_def_id)
@@ -790,7 +793,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 // improve diagnostics by showing what failed. Our requirements are stricter this time
                                 // as we are going to error again anyways.
                                 tcx.infer_ctxt().enter(|infcx| {
-                                    if let Err(e) = implsrc {
+                                    if let SelectionResult::Error(e) = implsrc {
                                         infcx.report_selection_error(
                                             obligation.clone(),
                                             &obligation,

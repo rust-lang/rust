@@ -7,7 +7,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
+use rustc_infer::traits::{ImplSource, Obligation, ObligationCause, SelectionResult};
 use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
@@ -160,7 +160,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         selcx.select(&obligation)
                     });
 
-                    if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
+                    if let SelectionResult::Success(ImplSource::UserDefined(data)) = implsrc {
                         let span = tcx.def_span(data.impl_def_id);
                         err.span_note(span, "impl defined here, but it is not `const`");
                     }
