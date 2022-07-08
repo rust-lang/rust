@@ -1454,7 +1454,6 @@ impl<E> Report<E> {
     ///
     /// ```rust
     /// #![feature(error_reporter)]
-    /// #![feature(backtrace)]
     /// #![feature(provide_any)]
     /// #![feature(error_generic_member_access)]
     /// # use std::error::Error;

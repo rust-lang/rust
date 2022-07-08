@@ -4,7 +4,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(drain_filter)]
-#![feature(backtrace)]
 #![feature(if_let_guard)]
 #![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
