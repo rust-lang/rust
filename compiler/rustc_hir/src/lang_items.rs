@@ -11,7 +11,7 @@ use crate::def_id::DefId;
 use crate::{MethodKind, Target};
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -134,8 +134,8 @@ macro_rules! language_item_table {
         }
 
         /// A mapping from the name of the lang item to its order and the form it must be of.
-        pub static ITEM_REFS: LazyLock<FxHashMap<Symbol, (usize, Target)>> = LazyLock::new(|| {
-            let mut item_refs = FxHashMap::default();
+        pub static ITEM_REFS: LazyLock<FxIndexMap<Symbol, (usize, Target)>> = LazyLock::new(|| {
+            let mut item_refs = FxIndexMap::default();
             $( item_refs.insert($module::$name, (LangItem::$variant as usize, $target)); )*
             item_refs
         });
