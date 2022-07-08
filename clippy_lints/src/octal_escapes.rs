@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// and friends since the string is already preprocessed when Clippy lints
     /// can see it.
     ///
-    /// # Example
+    /// ### Example
     /// ```rust
     /// let one = "\033[1m Bold? \033[0m";  // \033 intended as escape
     /// let two = "\033\0";                 // \033 intended as null-3-3
