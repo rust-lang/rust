@@ -3480,6 +3480,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rand_core 0.5.1",
+ "regex",
  "serde",
  "serde_json",
  "smallvec",
