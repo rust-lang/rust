@@ -8,7 +8,6 @@
 #![feature(rustc_attrs)]
 #![feature(map_many_mut)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate rustc_macros;

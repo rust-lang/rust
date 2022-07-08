@@ -5,7 +5,7 @@ use crate::config::CheckCfg;
 use crate::lint::{BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId};
 use crate::SessionDiagnostic;
 use rustc_ast::node_id::NodeId;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
@@ -29,7 +29,7 @@ pub type CrateCheckConfig = CheckCfg<Symbol>;
 /// used and should be feature gated accordingly in `check_crate`.
 #[derive(Default)]
 pub struct GatedSpans {
-    pub spans: Lock<FxHashMap<Symbol, Vec<Span>>>,
+    pub spans: Lock<FxIndexMap<Symbol, Vec<Span>>>,
 }
 
 impl GatedSpans {
@@ -56,9 +56,9 @@ impl GatedSpans {
     }
 
     /// Prepend the given set of `spans` onto the set in `self`.
-    pub fn merge(&self, mut spans: FxHashMap<Symbol, Vec<Span>>) {
+    pub fn merge(&self, mut spans: FxIndexMap<Symbol, Vec<Span>>) {
         let mut inner = self.spans.borrow_mut();
-        for (gate, mut gate_spans) in inner.drain() {
+        for (gate, mut gate_spans) in inner.drain(..) {
             spans.entry(gate).or_default().append(&mut gate_spans);
         }
         *inner = spans;
@@ -68,7 +68,7 @@ impl GatedSpans {
 #[derive(Default)]
 pub struct SymbolGallery {
     /// All symbols occurred and their first occurrence span.
-    pub symbols: Lock<FxHashMap<Symbol, Span>>,
+    pub symbols: Lock<FxIndexMap<Symbol, Span>>,
 }
 
 impl SymbolGallery {
@@ -147,13 +147,13 @@ pub struct ParseSess {
     /// Places where identifiers that contain invalid Unicode codepoints but that look like they
     /// should be. Useful to avoid bad tokenization when encountering emoji. We group them to
     /// provide a single error per unique incorrect identifier.
-    pub bad_unicode_identifiers: Lock<FxHashMap<Symbol, Vec<Span>>>,
+    pub bad_unicode_identifiers: Lock<FxIndexMap<Symbol, Vec<Span>>>,
     source_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
     /// Contains the spans of block expressions that could have been incomplete based on the
     /// operation token that followed it, but that the parser cannot identify without further
     /// analysis.
-    pub ambiguous_block_expr_parse: Lock<FxHashMap<Span, Span>>,
+    pub ambiguous_block_expr_parse: Lock<FxIndexMap<Span, Span>>,
     pub gated_spans: GatedSpans,
     pub symbol_gallery: SymbolGallery,
     /// The parser has reached `Eof` due to an unclosed brace. Used to silence unnecessary errors.
