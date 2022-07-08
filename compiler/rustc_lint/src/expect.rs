@@ -4,7 +4,6 @@ use rustc_hir::HirId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::{lint::LintExpectation, ty::TyCtxt};
 use rustc_session::lint::LintExpectationId;
-use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -12,10 +11,6 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
-    if !tcx.sess.features_untracked().enabled(sym::lint_reasons) {
-        return;
-    }
-
     let fulfilled_expectations = tcx.sess.diagnostic().steal_fulfilled_expectation_ids();
     let lint_expectations = &tcx.lint_levels(()).lint_expectations;
 

@@ -17,7 +17,7 @@ use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS, SINGLE_USE_LIFETIMES, UNFULFILLED_LINT_EXPECTATIONS},
     Level, Lint, LintExpectationId, LintId,
 };
-use rustc_session::parse::{add_feature_diagnostics, feature_err};
+use rustc_session::parse::add_feature_diagnostics;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -306,15 +306,6 @@ impl<'s> LintLevelsBuilder<'s> {
                     ast::MetaItemKind::NameValue(ref name_value) => {
                         if item.path == sym::reason {
                             if let ast::LitKind::Str(rationale, _) = name_value.kind {
-                                if !self.sess.features_untracked().lint_reasons {
-                                    feature_err(
-                                        &self.sess.parse_sess,
-                                        sym::lint_reasons,
-                                        item.span,
-                                        "lint reasons are experimental",
-                                    )
-                                    .emit();
-                                }
                                 reason = Some(rationale);
                             } else {
                                 bad_attr(name_value.span)

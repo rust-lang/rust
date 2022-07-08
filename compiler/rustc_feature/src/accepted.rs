@@ -188,6 +188,8 @@ declare_features! (
     (accepted, item_like_imports, "1.15.0", Some(35120), None),
     /// Allows `if/while p && let q = r && ...` chains.
     (accepted, let_chains, "1.64.0", Some(53667), None),
+    /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
+    (accepted, lint_reasons, "1.64.0", Some(54503), None),
     /// Allows `break {expr}` with a value inside `loop`s.
     (accepted, loop_break_value, "1.19.0", Some(37339), None),
     /// Allows use of `?` as the Kleene "at most one" operator in macros.

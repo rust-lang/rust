@@ -1,5 +1,5 @@
 error[E0453]: expect(unused_variables) incompatible with previous forbid
-  --> $DIR/expect_with_forbid.rs:6:10
+  --> $DIR/expect_with_forbid.rs:4:10
    |
 LL | #[forbid(unused_variables)]
    |          ---------------- `forbid` level set here
@@ -8,7 +8,7 @@ LL | #[expect(unused_variables)]
    |          ^^^^^^^^^^^^^^^^ overruled by previous forbid
 
 error[E0453]: expect(while_true) incompatible with previous forbid
-  --> $DIR/expect_with_forbid.rs:17:10
+  --> $DIR/expect_with_forbid.rs:15:10
    |
 LL | #[forbid(while_true)]
    |          ---------- `forbid` level set here
@@ -17,7 +17,7 @@ LL | #[expect(while_true)]
    |          ^^^^^^^^^^ overruled by previous forbid
 
 error[E0453]: expect(unused_variables) incompatible with previous forbid
-  --> $DIR/expect_with_forbid.rs:6:10
+  --> $DIR/expect_with_forbid.rs:4:10
    |
 LL | #[forbid(unused_variables)]
    |          ---------------- `forbid` level set here
@@ -26,7 +26,7 @@ LL | #[expect(unused_variables)]
    |          ^^^^^^^^^^^^^^^^ overruled by previous forbid
 
 error[E0453]: expect(while_true) incompatible with previous forbid
-  --> $DIR/expect_with_forbid.rs:17:10
+  --> $DIR/expect_with_forbid.rs:15:10
    |
 LL | #[forbid(while_true)]
    |          ---------- `forbid` level set here
@@ -35,13 +35,13 @@ LL | #[expect(while_true)]
    |          ^^^^^^^^^^ overruled by previous forbid
 
 error: denote infinite loops with `loop { ... }`
-  --> $DIR/expect_with_forbid.rs:26:5
+  --> $DIR/expect_with_forbid.rs:24:5
    |
 LL |     while true {}
    |     ^^^^^^^^^^ help: use `loop`
    |
 note: the lint level is defined here
-  --> $DIR/expect_with_forbid.rs:13:10
+  --> $DIR/expect_with_forbid.rs:11:10
    |
 LL | #[forbid(while_true)]
    |          ^^^^^^^^^^

@@ -503,8 +503,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(lint_reasons)]
-    ///
     /// #[expect(unused_variables)]
     /// let x = 10;
     /// println!("{}", x);
@@ -530,8 +528,7 @@ declare_lint! {
     /// [#54503]: https://github.com/rust-lang/rust/issues/54503
     pub UNFULFILLED_LINT_EXPECTATIONS,
     Warn,
-    "unfulfilled lint expectation",
-    @feature_gate = rustc_span::sym::lint_reasons;
+    "unfulfilled lint expectation"
 }
 
 declare_lint! {

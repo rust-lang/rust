@@ -1,5 +1,3 @@
-#![feature(lint_reasons)]
-
 #[forbid(unused_variables)]
 //~^ NOTE `forbid` level set here
 //~| NOTE `forbid` level set here
