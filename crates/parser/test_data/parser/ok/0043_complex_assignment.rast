@@ -1,5 +1,5 @@
 SOURCE_FILE
-  COMMENT "// https://github.com/rust-analyzer/rust-analyzer/issues/674"
+  COMMENT "// https://github.com/rust-lang/rust-analyzer/issues/674"
   WHITESPACE "\n\n"
   STRUCT
     STRUCT_KW "struct"

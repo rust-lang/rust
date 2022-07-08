@@ -2,16 +2,16 @@
 
 ## About the guide
 
-This guide describes the current state of syntax trees and parsing in rust-analyzer as of 2020-01-09 ([link to commit](https://github.com/rust-analyzer/rust-analyzer/tree/cf5bdf464cad7ceb9a67e07985a3f4d3799ec0b6)).
+This guide describes the current state of syntax trees and parsing in rust-analyzer as of 2020-01-09 ([link to commit](https://github.com/rust-lang/rust-analyzer/tree/cf5bdf464cad7ceb9a67e07985a3f4d3799ec0b6)).
 
 ## Source Code
 
 The things described are implemented in three places
 
 * [rowan](https://github.com/rust-analyzer/rowan/tree/v0.9.0) -- a generic library for rowan syntax trees.
-* [ra_syntax](https://github.com/rust-analyzer/rust-analyzer/tree/cf5bdf464cad7ceb9a67e07985a3f4d3799ec0b6/crates/ra_syntax) crate inside rust-analyzer which wraps `rowan` into rust-analyzer specific API.
+* [ra_syntax](https://github.com/rust-lang/rust-analyzer/tree/cf5bdf464cad7ceb9a67e07985a3f4d3799ec0b6/crates/ra_syntax) crate inside rust-analyzer which wraps `rowan` into rust-analyzer specific API.
   Nothing in rust-analyzer except this crate knows about `rowan`.
-* [parser](https://github.com/rust-analyzer/rust-analyzer/tree/cf5bdf464cad7ceb9a67e07985a3f4d3799ec0b6/crates/parser) crate parses input tokens into an `ra_syntax` tree
+* [parser](https://github.com/rust-lang/rust-analyzer/tree/cf5bdf464cad7ceb9a67e07985a3f4d3799ec0b6/crates/parser) crate parses input tokens into an `ra_syntax` tree
 
 ## Design Goals
 

@@ -1,4 +1,4 @@
-// https://github.com/rust-analyzer/rust-analyzer/issues/972
+// https://github.com/rust-lang/rust-analyzer/issues/972
 
 fn main() {
     match Some(-1) {

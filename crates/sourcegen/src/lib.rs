@@ -125,7 +125,7 @@ impl fmt::Display for Location {
         let name = self.file.file_name().unwrap();
         write!(
             f,
-            "https://github.com/rust-analyzer/rust-analyzer/blob/master/{}#L{}[{}]",
+            "https://github.com/rust-lang/rust-analyzer/blob/master/{}#L{}[{}]",
             path,
             self.line,
             name.to_str().unwrap()

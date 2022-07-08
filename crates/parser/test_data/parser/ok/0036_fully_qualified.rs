@@ -1,4 +1,4 @@
-// https://github.com/rust-analyzer/rust-analyzer/issues/311
+// https://github.com/rust-lang/rust-analyzer/issues/311
 
 pub fn foo<S: Iterator>() -> String
 where

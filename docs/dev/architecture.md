@@ -111,10 +111,10 @@ env UPDATE_EXPECT=1 cargo qt
 
 After adding a new inline test you need to run `cargo test -p xtask` and also update the test data as described above.
 
-Note [`api_walkthrough`](https://github.com/rust-analyzer/rust-analyzer/blob/2fb6af89eb794f775de60b82afe56b6f986c2a40/crates/ra_syntax/src/lib.rs#L190-L348)
+Note [`api_walkthrough`](https://github.com/rust-lang/rust-analyzer/blob/2fb6af89eb794f775de60b82afe56b6f986c2a40/crates/ra_syntax/src/lib.rs#L190-L348)
 in particular: it shows off various methods of working with syntax tree.
 
-See [#93](https://github.com/rust-analyzer/rust-analyzer/pull/93) for an example PR which fixes a bug in the grammar.
+See [#93](https://github.com/rust-lang/rust-analyzer/pull/93) for an example PR which fixes a bug in the grammar.
 
 **Architecture Invariant:** `syntax` crate is completely independent from the rest of rust-analyzer. It knows nothing about salsa or LSP.
 This is important because it is possible to make useful tooling using only the syntax tree.

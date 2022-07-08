@@ -138,7 +138,7 @@ SOURCE_FILE
         R_CURLY "}"
   WHITESPACE "\n\n"
   IMPL
-    COMMENT "// https://github.com/rust-analyzer/rust-analyzer/issues/689"
+    COMMENT "// https://github.com/rust-lang/rust-analyzer/issues/689"
     WHITESPACE "\n"
     IMPL_KW "impl"
     WHITESPACE " "

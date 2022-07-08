@@ -1,4 +1,4 @@
-// https://github.com/rust-analyzer/rust-analyzer/issues/357
+// https://github.com/rust-lang/rust-analyzer/issues/357
 
 //! docs
 // non-docs

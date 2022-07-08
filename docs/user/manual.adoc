@@ -7,7 +7,7 @@
 :experimental:
 
 ////
-IMPORTANT: the master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository
+IMPORTANT: the master copy of this document lives in the https://github.com/rust-lang/rust-analyzer repository
 ////
 
 At its core, rust-analyzer is a *library* for semantic analysis of Rust code as it changes over time.
@@ -19,7 +19,7 @@ The LSP allows various code editors, like VS Code, Emacs or Vim, to implement se
 ====
 [.lead]
 To improve this document, send a pull request: +
-https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/manual.adoc[https://github.com/rust-analyzer/.../manual.adoc]
+https://github.com/rust-lang/rust-analyzer/blob/master/docs/user/manual.adoc[https://github.com/rust-analyzer/.../manual.adoc]
 
 The manual is written in https://asciidoc.org[AsciiDoc] and includes some extra files which are generated from the source code. Run `cargo test` and `cargo test -p xtask` to create these and then `asciidoctor manual.adoc` to create an HTML copy.
 ====
@@ -58,7 +58,7 @@ For example, with VS Code or coc-rust-analyzer:
 
 This is the best supported editor at the moment.
 The rust-analyzer plugin for VS Code is maintained
-https://github.com/rust-analyzer/rust-analyzer/tree/master/editors/code[in tree].
+https://github.com/rust-lang/rust-analyzer/tree/master/editors/code[in tree].
 
 You can install the latest release of the plugin from
 https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer[the marketplace].
@@ -105,7 +105,7 @@ To help us out by testing the newest code, you can enable pre-release versions i
 ==== Manual installation
 
 Alternatively, download a VSIX corresponding to your platform from the
-https://github.com/rust-analyzer/rust-analyzer/releases[releases] page.
+https://github.com/rust-lang/rust-analyzer/releases[releases] page.
 
 Install the extension with the `Extensions: Install from VSIX` command within VS Code, or from the command line via:
 [source]
@@ -126,7 +126,7 @@ Both the server and the Code plugin can be installed from source:
 
 [source]
 ----
-$ git clone https://github.com/rust-analyzer/rust-analyzer.git && cd rust-analyzer
+$ git clone https://github.com/rust-lang/rust-analyzer.git && cd rust-analyzer
 $ cargo xtask install
 ----
 
@@ -144,7 +144,7 @@ $ cargo xtask install --server
 === rust-analyzer Language Server Binary
 
 Other editors generally require the `rust-analyzer` binary to be in `$PATH`.
-You can download pre-built binaries from the https://github.com/rust-analyzer/rust-analyzer/releases[releases] page.
+You can download pre-built binaries from the https://github.com/rust-lang/rust-analyzer/releases[releases] page.
 You will need to uncompress and rename the binary for your platform, e.g. from `rust-analyzer-aarch64-apple-darwin.gz` on Mac OS to `rust-analyzer`, make it executable, then move it into a directory in your `$PATH`.
 
 On Linux to install the `rust-analyzer` binary into `~/.local/bin`, these commands should work:
@@ -152,7 +152,7 @@ On Linux to install the `rust-analyzer` binary into `~/.local/bin`, these comman
 [source,bash]
 ----
 $ mkdir -p ~/.local/bin
-$ curl -L https://github.com/rust-analyzer/rust-analyzer/releases/latest/download/rust-analyzer-x86_64-unknown-linux-gnu.gz | gunzip -c - > ~/.local/bin/rust-analyzer
+$ curl -L https://github.com/rust-lang/rust-analyzer/releases/latest/download/rust-analyzer-x86_64-unknown-linux-gnu.gz | gunzip -c - > ~/.local/bin/rust-analyzer
 $ chmod +x ~/.local/bin/rust-analyzer
 ----
 
@@ -165,11 +165,11 @@ You'll need the latest stable version of the Rust toolchain.
 
 [source,bash]
 ----
-$ git clone https://github.com/rust-analyzer/rust-analyzer.git && cd rust-analyzer
+$ git clone https://github.com/rust-lang/rust-analyzer.git && cd rust-analyzer
 $ cargo xtask install --server
 ----
 
-If your editor can't find the binary even though the binary is on your `$PATH`, the likely explanation is that it doesn't see the same `$PATH` as the shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue].
+If your editor can't find the binary even though the binary is on your `$PATH`, the likely explanation is that it doesn't see the same `$PATH` as the shell, see https://github.com/rust-lang/rust-analyzer/issues/1811[this issue].
 On Unix, running the editor from a shell or changing the `.desktop` file to set the environment should help.
 
 ==== `rustup`
@@ -426,7 +426,7 @@ With
         "rust": {
             "command": ["rust-analyzer"],
             "rootIndicationFileNames": ["Cargo.lock", "Cargo.toml"],
-            "url": "https://github.com/rust-analyzer/rust-analyzer",
+            "url": "https://github.com/rust-lang/rust-analyzer",
             "highlightingModeRegex": "^Rust$"
         },
 ----
@@ -506,11 +506,11 @@ $ rust-analyzer analysis-stats .
 It is especially useful when the `repo` doesn't use external crates or the standard library.
 
 If you want to go as far as to modify the source code to debug the problem, be sure to take a look at the
-https://github.com/rust-analyzer/rust-analyzer/tree/master/docs/dev[dev docs]!
+https://github.com/rust-lang/rust-analyzer/tree/master/docs/dev[dev docs]!
 
 == Configuration
 
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/rust-analyzer/src/config.rs[config.rs]
+**Source:** https://github.com/rust-lang/rust-analyzer/blob/master/crates/rust-analyzer/src/config.rs[config.rs]
 
 The <<_installation,Installation>> section contains details on configuration for some of the editors.
 In general `rust-analyzer` is configured via LSP messages, which means that it's up to the editor to decide on the exact format and location of configuration files.

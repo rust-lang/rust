@@ -357,7 +357,7 @@ fn traverse(
             element
         };
 
-        // FIXME: do proper macro def highlighting https://github.com/rust-analyzer/rust-analyzer/issues/6232
+        // FIXME: do proper macro def highlighting https://github.com/rust-lang/rust-analyzer/issues/6232
         // Skip metavariables from being highlighted to prevent keyword highlighting in them
         if descended_element.as_token().and_then(|t| macro_highlighter.highlight(t)).is_some() {
             continue;

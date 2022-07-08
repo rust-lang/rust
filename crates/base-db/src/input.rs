@@ -69,7 +69,7 @@ impl SourceRoot {
 /// `CrateGraph` by lowering `cargo metadata` output.
 ///
 /// `CrateGraph` is `!Serialize` by design, see
-/// <https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md#serialization>
+/// <https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/architecture.md#serialization>
 #[derive(Debug, Clone, Default /* Serialize, Deserialize */)]
 pub struct CrateGraph {
     arena: FxHashMap<CrateId, CrateData>,
@@ -482,7 +482,7 @@ impl CrateGraph {
         None
     }
 
-    // Work around for https://github.com/rust-analyzer/rust-analyzer/issues/6038.
+    // Work around for https://github.com/rust-lang/rust-analyzer/issues/6038.
     // As hacky as it gets.
     pub fn patch_cfg_if(&mut self) -> bool {
         let cfg_if = self.hacky_find_crate("cfg_if");

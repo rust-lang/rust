@@ -411,7 +411,7 @@ impl Test for T {
             expect![[""]],
         );
 
-        // https://github.com/rust-analyzer/rust-analyzer/pull/5976#issuecomment-692332191
+        // https://github.com/rust-lang/rust-analyzer/pull/5976#issuecomment-692332191
         check(
             r"
 trait Test { fn test(); fn test2(); }

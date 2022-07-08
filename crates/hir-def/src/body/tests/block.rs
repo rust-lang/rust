@@ -345,7 +345,7 @@ fn foo() {
 
 #[test]
 fn is_visible_from_same_def_map() {
-    // Regression test for https://github.com/rust-analyzer/rust-analyzer/issues/9481
+    // Regression test for https://github.com/rust-lang/rust-analyzer/issues/9481
     cov_mark::check!(is_visible_from_same_block_def_map);
     check_at(
         r#"

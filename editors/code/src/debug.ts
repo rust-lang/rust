@@ -114,7 +114,7 @@ async function getDebugConfiguration(
     const wsFolder = path.normalize(workspace.uri.fsPath);
     const workspaceQualifier = isMultiFolderWorkspace ? `:${workspace.name}` : "";
     function simplifyPath(p: string): string {
-        // see https://github.com/rust-analyzer/rust-analyzer/pull/5513#issuecomment-663458818 for why this is needed
+        // see https://github.com/rust-lang/rust-analyzer/pull/5513#issuecomment-663458818 for why this is needed
         return path.normalize(p).replace(wsFolder, "${workspaceFolder" + workspaceQualifier + "}");
     }
 

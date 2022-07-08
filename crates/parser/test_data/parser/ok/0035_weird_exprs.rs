@@ -1,7 +1,7 @@
 //! Adapted from a `rustc` test, which can be found at 
 //! https://github.com/rust-lang/rust/blob/6d34ec18c7d7e574553f6347ecf08e1e1c45c13d/src/test/run-pass/weird-exprs.rs.
 //! 
-//! Reported to rust-analyzer in https://github.com/rust-analyzer/rust-analyzer/issues/290
+//! Reported to rust-analyzer in https://github.com/rust-lang/rust-analyzer/issues/290
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]

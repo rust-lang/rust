@@ -187,7 +187,7 @@ fn f() {
         )
     }
 
-    /// https://github.com/rust-analyzer/rust-analyzer/issues/2922
+    /// https://github.com/rust-lang/rust-analyzer/issues/2922
     #[test]
     fn regression_issue_2922() {
         check_assist(

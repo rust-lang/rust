@@ -41,7 +41,7 @@ macro_rules! compile_error { () => {} }
     #[test]
     fn eager_macro_concat() {
         // FIXME: this is incorrectly handling `$crate`, resulting in a wrong diagnostic.
-        // See: https://github.com/rust-analyzer/rust-analyzer/issues/10300
+        // See: https://github.com/rust-lang/rust-analyzer/issues/10300
 
         check_diagnostics(
             r#"

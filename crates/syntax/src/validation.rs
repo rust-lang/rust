@@ -114,7 +114,7 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> &'static str {
 }
 
 fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
-    // FIXME: move this function to outer scope (https://github.com/rust-analyzer/rust-analyzer/pull/2834#discussion_r366196658)
+    // FIXME: move this function to outer scope (https://github.com/rust-lang/rust-analyzer/pull/2834#discussion_r366196658)
     fn unquote(text: &str, prefix_len: usize, end_delimiter: char) -> Option<&str> {
         text.rfind(end_delimiter).and_then(|end| text.get(prefix_len..end))
     }
@@ -122,7 +122,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
     let token = literal.token();
     let text = token.text();
 
-    // FIXME: lift this lambda refactor to `fn` (https://github.com/rust-analyzer/rust-analyzer/pull/2834#discussion_r366199205)
+    // FIXME: lift this lambda refactor to `fn` (https://github.com/rust-lang/rust-analyzer/pull/2834#discussion_r366199205)
     let mut push_err = |prefix_len, (off, err): (usize, unescape::EscapeError)| {
         let off = token.text_range().start() + TextSize::try_from(off + prefix_len).unwrap();
         acc.push(SyntaxError::new_at_offset(rustc_unescape_error_to_string(err), off));

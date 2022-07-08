@@ -38,7 +38,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     //
     // https://docs.microsoft.com/en-us/windows/win32/procthread/scheduling-priorities
     // https://docs.microsoft.com/en-us/windows/win32/procthread/priority-boosts
-    // https://github.com/rust-analyzer/rust-analyzer/issues/2835
+    // https://github.com/rust-lang/rust-analyzer/issues/2835
     #[cfg(windows)]
     unsafe {
         use winapi::um::processthreadsapi::*;

@@ -400,7 +400,7 @@ fn concat_expand(
     for (i, mut t) in tt.token_trees.iter().enumerate() {
         // FIXME: hack on top of a hack: `$e:expr` captures get surrounded in parentheses
         // to ensure the right parsing order, so skip the parentheses here. Ideally we'd
-        // implement rustc's model. cc https://github.com/rust-analyzer/rust-analyzer/pull/10623
+        // implement rustc's model. cc https://github.com/rust-lang/rust-analyzer/pull/10623
         if let tt::TokenTree::Subtree(tt::Subtree { delimiter: Some(delim), token_trees }) = t {
             if let [tt] = &**token_trees {
                 if delim.kind == tt::DelimiterKind::Parenthesis {

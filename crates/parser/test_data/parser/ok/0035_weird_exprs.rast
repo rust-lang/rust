@@ -5,7 +5,7 @@ SOURCE_FILE
   WHITESPACE "\n"
   COMMENT "//! "
   WHITESPACE "\n"
-  COMMENT "//! Reported to rust-analyzer in https://github.com/rust-analyzer/rust-analyzer/issues/290"
+  COMMENT "//! Reported to rust-analyzer in https://github.com/rust-lang/rust-analyzer/issues/290"
   WHITESPACE "\n\n"
   ATTR
     POUND "#"

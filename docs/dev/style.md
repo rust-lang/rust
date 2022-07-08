@@ -281,7 +281,7 @@ fn f() {
 Assert liberally.
 Prefer [`stdx::never!`](https://docs.rs/always-assert/0.1.2/always_assert/macro.never.html) to standard `assert!`.
 
-**Rationale:** See [cross cutting concern: error handling](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md#error-handling).
+**Rationale:** See [cross cutting concern: error handling](https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/architecture.md#error-handling).
 
 ## Getters & Setters
 
@@ -840,7 +840,7 @@ Context-first works better when non-context parameter is a lambda.
 
 ## Variable Naming
 
-Use boring and long names for local variables ([yay code completion](https://github.com/rust-analyzer/rust-analyzer/pull/4162#discussion_r417130973)).
+Use boring and long names for local variables ([yay code completion](https://github.com/rust-lang/rust-analyzer/pull/4162#discussion_r417130973)).
 The default name is a lowercased name of the type: `global_state: GlobalState`.
 Avoid ad-hoc acronyms and contractions, but use the ones that exist consistently (`db`, `ctx`, `acc`).
 Prefer American spelling (color, behavior).

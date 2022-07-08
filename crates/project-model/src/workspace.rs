@@ -579,7 +579,7 @@ fn cargo_to_crate_graph(
                 // add any targets except the library target, since those will not work correctly if
                 // they use dev-dependencies.
                 // In fact, they can break quite badly if multiple client workspaces get merged:
-                // https://github.com/rust-analyzer/rust-analyzer/issues/11300
+                // https://github.com/rust-lang/rust-analyzer/issues/11300
                 continue;
             }
 
