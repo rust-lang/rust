@@ -53,3 +53,17 @@ use std::mem;
         Err(_) => Ok(()),
     }
 }
+
+#[test]
+fn missing_colon_fail() -> Result<()> {
+    init();
+    let s = r"
+//@stderr-per-bitwidth hello
+use std::mem;
+
+    ";
+    match Comments::parse(Path::new("<dummy>"), s) {
+        Ok(_) => bail!("expected parsing to fail"),
+        Err(_) => Ok(()),
+    }
+}
