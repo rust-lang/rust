@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-compare-exchange-weak-failure-rate=0.0
+//@compile-flags: -Zmiri-compare-exchange-weak-failure-rate=0.0
 use std::sync::atomic::{AtomicBool, Ordering::*};
 
 // Ensure that compare_exchange_weak never fails.

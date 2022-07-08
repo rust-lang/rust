@@ -1,5 +1,5 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-ignore-leaks -Zmiri-preemption-rate=0
+//@ignore-windows: Concurrency on Windows is not supported yet.
+//@compile-flags: -Zmiri-ignore-leaks -Zmiri-preemption-rate=0
 
 // Tests showing weak memory behaviours are exhibited. All tests
 // return true when the desired behaviour is seen.

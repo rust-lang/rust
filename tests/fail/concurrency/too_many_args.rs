@@ -1,4 +1,4 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-windows: Concurrency on Windows is not supported yet.
 
 //! The thread function must have exactly one argument.
 

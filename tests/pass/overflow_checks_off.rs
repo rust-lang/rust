@@ -1,4 +1,4 @@
-// compile-flags: -C overflow-checks=off
+//@compile-flags: -C overflow-checks=off
 
 // Check that we correctly implement the intended behavior of these operators
 // when they are not being overflow-checked.

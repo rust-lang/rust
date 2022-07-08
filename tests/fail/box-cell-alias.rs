@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-strict-provenance
+//@compile-flags: -Zmiri-strict-provenance
 
 // Taken from <https://github.com/rust-lang/unsafe-code-guidelines/issues/194#issuecomment-520934222>.
 

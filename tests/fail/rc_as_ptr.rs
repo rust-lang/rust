@@ -1,5 +1,5 @@
 // This should fail even without validation
-// compile-flags: -Zmiri-disable-validation
+//@compile-flags: -Zmiri-disable-validation
 
 use std::ptr;
 use std::rc::{Rc, Weak};

@@ -1,5 +1,5 @@
-// compile-flags: -Zmiri-strict-provenance
-// error-pattern: is a dangling pointer
+//@compile-flags: -Zmiri-strict-provenance
+//@error-pattern: is a dangling pointer
 #![feature(strict_provenance)]
 
 fn main() {

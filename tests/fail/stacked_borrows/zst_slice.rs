@@ -1,5 +1,5 @@
-// compile-flags: -Zmiri-strict-provenance
-// error-pattern: does not exist in the borrow stack
+//@compile-flags: -Zmiri-strict-provenance
+//@error-pattern: does not exist in the borrow stack
 
 fn main() {
     unsafe {

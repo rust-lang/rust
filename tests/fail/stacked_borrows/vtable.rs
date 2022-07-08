@@ -1,4 +1,4 @@
-// error-pattern: vtable pointer does not have permission
+//@error-pattern: vtable pointer does not have permission
 #![feature(ptr_metadata)]
 
 trait Foo {}

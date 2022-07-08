@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-disable-alignment-check
+//@compile-flags: -Zmiri-disable-alignment-check
 
 fn main() {
     let mut x = [0u8; 20];

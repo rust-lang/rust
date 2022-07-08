@@ -1,4 +1,4 @@
-// normalize-stderr-test: "::<.*>" -> ""
+//@normalize-stderr-test: "::<.*>" -> ""
 
 #[inline(never)]
 fn func_a() -> Box<[*mut ()]> {

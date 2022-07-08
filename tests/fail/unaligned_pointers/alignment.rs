@@ -1,4 +1,4 @@
-// normalize-stderr-test: "\| +\^+" -> "| ^"
+//@normalize-stderr-test: "\| +\^+" -> "| ^"
 
 fn main() {
     // No retry needed, this fails reliably.

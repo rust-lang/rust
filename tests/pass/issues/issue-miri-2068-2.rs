@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-disable-validation
+//@compile-flags: -Zmiri-disable-validation
 
 use std::mem::MaybeUninit;
 

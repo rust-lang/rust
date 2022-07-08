@@ -1,6 +1,6 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-windows: Concurrency on Windows is not supported yet.
 // We are making scheduler assumptions here.
-// compile-flags: -Zmiri-strict-provenance -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-strict-provenance -Zmiri-preemption-rate=0
 
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;

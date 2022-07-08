@@ -1,5 +1,5 @@
-// only-linux
-// compile-flags: -Zmiri-disable-isolation
+//@only-linux
+//@compile-flags: -Zmiri-disable-isolation
 
 #![feature(rustc_private)]
 extern crate libc;

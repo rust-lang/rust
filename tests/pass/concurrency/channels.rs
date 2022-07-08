@@ -1,5 +1,5 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-strict-provenance
+//@ignore-windows: Concurrency on Windows is not supported yet.
+//@compile-flags: -Zmiri-strict-provenance
 
 use std::sync::mpsc::{channel, sync_channel};
 use std::thread;

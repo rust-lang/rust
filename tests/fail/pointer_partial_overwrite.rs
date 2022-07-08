@@ -1,5 +1,5 @@
 // Make sure we find these even with many checks disabled.
-// compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
+//@compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 
 // Test what happens when we overwrite parts of a pointer.
 // Also see <https://github.com/rust-lang/miri/issues/2181>.

@@ -1,5 +1,5 @@
-// ignore-windows: File handling is not implemented yet
-// compile-flags: -Zmiri-disable-isolation
+//@ignore-windows: File handling is not implemented yet
+//@compile-flags: -Zmiri-disable-isolation
 
 #![feature(rustc_private)]
 #![feature(io_error_more)]

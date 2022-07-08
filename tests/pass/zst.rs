@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-permissive-provenance
+//@compile-flags: -Zmiri-permissive-provenance
 #[derive(PartialEq, Debug)]
 struct A;
 

@@ -1,8 +1,8 @@
 // Validation makes this fail in the wrong place
 // Make sure we find these even with many checks disabled.
-// compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
+//@compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 
-// error-pattern: enum value has invalid tag
+//@error-pattern: enum value has invalid tag
 
 use std::mem;
 

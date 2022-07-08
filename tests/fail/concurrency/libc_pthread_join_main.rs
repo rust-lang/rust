@@ -1,4 +1,4 @@
-// ignore-windows: No libc on Windows
+//@ignore-windows: No libc on Windows
 
 // Joining the main thread is undefined behavior.
 

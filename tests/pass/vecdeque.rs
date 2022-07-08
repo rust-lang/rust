@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-strict-provenance
+//@compile-flags: -Zmiri-strict-provenance
 use std::collections::VecDeque;
 
 fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>) {

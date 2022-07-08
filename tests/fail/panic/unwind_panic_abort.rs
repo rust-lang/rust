@@ -1,4 +1,4 @@
-// compile-flags: -Cpanic=abort
+//@compile-flags: -Cpanic=abort
 
 //! Unwinding despite `-C panic=abort` is an error.
 

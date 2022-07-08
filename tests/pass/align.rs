@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-permissive-provenance
+//@compile-flags: -Zmiri-permissive-provenance
 
 /// This manually makes sure that we have a pointer with the proper alignment.
 fn manual_alignment() {

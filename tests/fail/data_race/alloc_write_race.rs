@@ -1,5 +1,5 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
+//@ignore-windows: Concurrency on Windows is not supported yet.
+//@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
 #![feature(new_uninit)]
 
 use std::ptr::null_mut;

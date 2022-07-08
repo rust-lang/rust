@@ -1,4 +1,4 @@
-// revisions: extern_block definition both
+//@revisions: extern_block definition both
 #![feature(rustc_attrs, c_unwind)]
 
 #[cfg_attr(any(definition, both), rustc_allocator_nounwind)]

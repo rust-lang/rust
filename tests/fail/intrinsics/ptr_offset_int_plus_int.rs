@@ -1,5 +1,5 @@
-// error-pattern: is a dangling pointer
-// compile-flags: -Zmiri-permissive-provenance
+//@error-pattern: is a dangling pointer
+//@compile-flags: -Zmiri-permissive-provenance
 
 fn main() {
     // Can't offset an integer pointer by non-zero offset.

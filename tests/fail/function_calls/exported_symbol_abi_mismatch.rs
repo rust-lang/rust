@@ -1,4 +1,4 @@
-// revisions: no_cache cache fn_ptr
+//@revisions: no_cache cache fn_ptr
 
 #[no_mangle]
 fn foo() {}

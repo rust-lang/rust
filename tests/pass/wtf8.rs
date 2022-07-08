@@ -1,4 +1,4 @@
-// only-windows
+//@only-windows
 
 use std::ffi::{OsStr, OsString};
 use std::os::windows::ffi::{OsStrExt, OsStringExt};

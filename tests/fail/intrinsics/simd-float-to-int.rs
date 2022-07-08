@@ -1,4 +1,4 @@
-// error-pattern: cannot be represented in target type `i32`
+//@error-pattern: cannot be represented in target type `i32`
 #![feature(portable_simd)]
 use std::simd::*;
 

@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-panic-on-unsupported
+//@compile-flags: -Zmiri-panic-on-unsupported
 
 fn main() {
     extern "Rust" {

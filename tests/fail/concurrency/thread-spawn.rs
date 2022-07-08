@@ -1,8 +1,8 @@
-// only-windows: Only Windows is not supported.
+//@only-windows: Only Windows is not supported.
 
 use std::thread;
 
-// error-pattern: can't create threads on Windows
+//@error-pattern: can't create threads on Windows
 
 fn main() {
     thread::spawn(|| {});

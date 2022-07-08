@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-symbolic-alignment-check
+//@compile-flags: -Zmiri-symbolic-alignment-check
 
 use std::mem::size_of;
 

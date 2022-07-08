@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-strict-provenance
+//@compile-flags: -Zmiri-strict-provenance
 
 fn main() {
     let addr = &0 as *const i32 as usize;

@@ -1,5 +1,5 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-ignore-leaks
+//@ignore-windows: Concurrency on Windows is not supported yet.
+//@compile-flags: -Zmiri-ignore-leaks
 
 // Tests operations not perfomable through C++'s atomic API
 // but doable in safe (at least sound) Rust.

@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-strict-provenance
+//@compile-flags: -Zmiri-strict-provenance
 #![feature(strict_provenance, strict_provenance_atomic_ptr)]
 use std::sync::atomic::{
     compiler_fence, fence, AtomicBool, AtomicIsize, AtomicPtr, AtomicU64, Ordering::*,

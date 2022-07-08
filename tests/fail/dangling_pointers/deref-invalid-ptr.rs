@@ -1,5 +1,5 @@
 // This should fail even without validation.
-// compile-flags: -Zmiri-disable-validation -Zmiri-permissive-provenance
+//@compile-flags: -Zmiri-disable-validation -Zmiri-permissive-provenance
 
 fn main() {
     let x = 16usize as *const u32;

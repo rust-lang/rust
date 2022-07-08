@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-disable-abi-check
+//@compile-flags: -Zmiri-disable-abi-check
 #![feature(core_intrinsics)]
 
 fn main() {

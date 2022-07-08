@@ -1,5 +1,5 @@
 // Some optimizations remove ZST accesses, thus masking this UB.
-// compile-flags: -Zmir-opt-level=0
+//@compile-flags: -Zmir-opt-level=0
 
 fn main() {
     // Not using the () type here, as writes of that type do not even have MIR generated.

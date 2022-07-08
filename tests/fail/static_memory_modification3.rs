@@ -1,5 +1,5 @@
 // Stacked Borrows detects that we are casting & to &mut and so it changes why we fail
-// compile-flags: -Zmiri-disable-stacked-borrows
+//@compile-flags: -Zmiri-disable-stacked-borrows
 
 use std::mem::transmute;
 

@@ -1,5 +1,5 @@
 // Stacked Borrows catches this (correctly) as UB.
-// compile-flags: -Zmiri-disable-stacked-borrows
+//@compile-flags: -Zmiri-disable-stacked-borrows
 
 // This test is intended to guard against the problem described in commit
 // 39bb1254d1eaf74f45a4e741097e33fc942168d5.

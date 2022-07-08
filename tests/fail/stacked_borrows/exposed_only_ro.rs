@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-permissive-provenance
+//@compile-flags: -Zmiri-permissive-provenance
 #![feature(strict_provenance)]
 
 // If we have only exposed read-only pointers, doing a write through a wildcard ptr should fail.

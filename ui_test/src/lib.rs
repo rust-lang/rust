@@ -7,6 +7,8 @@ use std::process::{Command, ExitStatus};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
+pub use color_eyre;
+use color_eyre::eyre::Result;
 use colored::*;
 use comments::ErrorMatch;
 use regex::Regex;
@@ -51,7 +53,7 @@ pub enum OutputConflictHandling {
 
 pub type Filter = Vec<(Regex, &'static str)>;
 
-pub fn run_tests(config: Config) {
+pub fn run_tests(config: Config) -> Result<()> {
     eprintln!("   Compiler flags: {:?}", config.args);
 
     // Get the triple with which to run the tests
@@ -66,7 +68,7 @@ pub fn run_tests(config: Config) {
     let ignored = AtomicUsize::default();
     let filtered = AtomicUsize::default();
 
-    crossbeam::scope(|s| {
+    crossbeam::scope(|s| -> Result<()> {
         // Create a thread that is in charge of walking the directory and submitting jobs.
         // It closes the channel when it is done.
         s.spawn(|_| {
@@ -92,9 +94,11 @@ pub fn run_tests(config: Config) {
             drop(submit);
         });
 
+        let mut threads = vec![];
+
         // Create N worker threads that receive files to test.
         for _ in 0..std::thread::available_parallelism().unwrap().get() {
-            s.spawn(|_| {
+            threads.push(s.spawn(|_| -> Result<()> {
                 for path in &receive {
                     if !config.path_filter.is_empty() {
                         let path_display = path.display().to_string();
@@ -103,7 +107,7 @@ pub fn run_tests(config: Config) {
                             continue;
                         }
                     }
-                    let comments = Comments::parse_file(&path);
+                    let comments = Comments::parse_file(&path)?;
                     // Ignore file if only/ignore rules do (not) apply
                     if !test_file_conditions(&comments, &target) {
                         ignored.fetch_add(1, Ordering::Relaxed);
@@ -142,10 +146,15 @@ pub fn run_tests(config: Config) {
                         }
                     }
                 }
-            });
+                Ok(())
+            }));
         }
+        for thread in threads {
+            thread.join().unwrap()?;
+        }
+        Ok(())
     })
-    .unwrap();
+    .unwrap()?;
 
     // Print all errors in a single thread to show reliable output
     let failures = failures.into_inner().unwrap();
@@ -246,6 +255,7 @@ pub fn run_tests(config: Config) {
         filtered.to_string().yellow(),
     );
     eprintln!();
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -377,7 +387,7 @@ fn check_annotations(
 ) {
     if let Some((ref error_pattern, definition_line)) = comments.error_pattern {
         // first check the diagnostics messages outside of our file. We check this first, so that
-        // you can mix in-file annotations with // error-pattern annotations, even if there is overlap
+        // you can mix in-file annotations with //@error-pattern annotations, even if there is overlap
         // in the messages.
         if let Some(i) = messages_from_unknown_file_or_line
             .iter()

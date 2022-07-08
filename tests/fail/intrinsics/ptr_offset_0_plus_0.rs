@@ -1,5 +1,5 @@
-// error-pattern: null pointer is a dangling pointer
-// compile-flags: -Zmiri-permissive-provenance
+//@error-pattern: null pointer is a dangling pointer
+//@compile-flags: -Zmiri-permissive-provenance
 
 fn main() {
     let x = 0 as *mut i32;

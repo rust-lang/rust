@@ -1,6 +1,6 @@
 // A niche-optimized enum where the discriminant is a pointer value -- relies on ptr-to-int casts in
 // the niche handling code.
-// compile-flags: -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
+//@compile-flags: -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 
 fn main() {
     let x = 42;

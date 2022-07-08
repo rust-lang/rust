@@ -1,5 +1,5 @@
 // Make sure we catch this even without validation
-// compile-flags: -Zmiri-disable-validation
+//@compile-flags: -Zmiri-disable-validation
 
 // Make sure that we cannot load from memory a `&` that got already invalidated.
 fn main() {
