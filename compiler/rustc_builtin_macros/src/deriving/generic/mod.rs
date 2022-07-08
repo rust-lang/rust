@@ -146,12 +146,12 @@
 //!
 //! ```{.text}
 //! EnumNonMatchingCollapsed(
-//!     &[<ident for self index value>, <ident of __arg_1 index value>])
+//!     &[<ident for self index value>, <ident of __arg1 index value>])
 //! ```
 //!
 //! It is the same for when the arguments are flipped to `C1 {x}` and
 //! `C0(a)`; the only difference is what the values of the identifiers
-//! <ident for self index value> and <ident of __arg_1 index value> will
+//! <ident for self index value> and <ident of __arg1 index value> will
 //! be in the generated code.
 //!
 //! `EnumNonMatchingCollapsed` deliberately provides far less information
@@ -1125,12 +1125,12 @@ impl<'a> MethodDef<'a> {
     /// impl ::core::cmp::PartialEq for A {
     ///     #[inline]
     ///     fn eq(&self, other: &A) -> bool {
-    ///         let __self_vi = ::core::intrinsics::discriminant_value(self);
-    ///         let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-    ///         if __self_vi == __arg_1_vi {
+    ///         let __self_tag = ::core::intrinsics::discriminant_value(self);
+    ///         let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+    ///         if __self_tag == __arg1_tag {
     ///             match (self, other) {
-    ///                 (A::A2(__self_0), A::A2(__arg_1_0)) =>
-    ///                     *__self_0 == *__arg_1_0,
+    ///                 (A::A2(__self_0), A::A2(__arg1_0)) =>
+    ///                     *__self_0 == *__arg1_0,
     ///                 _ => true,
     ///             }
     ///         } else {
@@ -1171,25 +1171,22 @@ impl<'a> MethodDef<'a> {
                     .iter()
                     .enumerate()
                     .skip(1)
-                    .map(|(arg_count, _selflike_arg)| format!("__arg_{}", arg_count)),
+                    .map(|(arg_count, _selflike_arg)| format!("__arg{}", arg_count)),
             )
             .collect::<Vec<String>>();
 
-        // The `vi_idents` will be bound, solely in the catch-all, to
+        // The `tag_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each selflike_arg to an int
         // value corresponding to its discriminant.
-        let vi_idents = prefixes
+        let tag_idents = prefixes
             .iter()
-            .map(|name| {
-                let vi_suffix = format!("{}_vi", name);
-                Ident::from_str_and_span(&vi_suffix, span)
-            })
+            .map(|name| Ident::from_str_and_span(&format!("{}_tag", name), span))
             .collect::<Vec<Ident>>();
 
         // Builds, via callback to call_substructure_method, the
         // delegated expression that handles the catch-all case,
         // using `__variants_tuple` to drive logic if necessary.
-        let catch_all_substructure = EnumNonMatchingCollapsed(&vi_idents);
+        let catch_all_substructure = EnumNonMatchingCollapsed(&tag_idents);
 
         let first_fieldless = variants.iter().find(|v| v.data.fields().is_empty());
 
@@ -1303,15 +1300,15 @@ impl<'a> MethodDef<'a> {
             // i.e., for `enum E<T> { A, B(1), C(T, T) }` for `PartialEq::eq`,
             // builds two statements:
             // ```
-            // let __self_vi = ::core::intrinsics::discriminant_value(self);
-            // let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
+            // let __self_tag = ::core::intrinsics::discriminant_value(self);
+            // let __arg1_tag = ::core::intrinsics::discriminant_value(other);
             // ```
-            let mut index_let_stmts: Vec<ast::Stmt> = Vec::with_capacity(vi_idents.len() + 1);
+            let mut index_let_stmts: Vec<ast::Stmt> = Vec::with_capacity(tag_idents.len() + 1);
 
             // We also build an expression which checks whether all discriminants are equal, e.g.
-            // `__self_vi == __arg_1_vi`.
+            // `__self_tag == __arg1_tag`.
             let mut discriminant_test = cx.expr_bool(span, true);
-            for (i, (&ident, selflike_arg)) in iter::zip(&vi_idents, &selflike_args).enumerate() {
+            for (i, (&ident, selflike_arg)) in iter::zip(&tag_idents, &selflike_args).enumerate() {
                 let variant_value = deriving::call_intrinsic(
                     cx,
                     span,
@@ -1322,7 +1319,7 @@ impl<'a> MethodDef<'a> {
                 index_let_stmts.push(let_stmt);
 
                 if i > 0 {
-                    let id0 = cx.expr_ident(span, vi_idents[0]);
+                    let id0 = cx.expr_ident(span, tag_idents[0]);
                     let id = cx.expr_ident(span, ident);
                     let test = cx.expr_binary(span, BinOpKind::Eq, id0, id);
                     discriminant_test = if i == 1 {
@@ -1346,7 +1343,7 @@ impl<'a> MethodDef<'a> {
             let match_arg = cx.expr(span, ast::ExprKind::Tup(selflike_args));
 
             // Lastly we create an expression which branches on all discriminants being equal, e.g.
-            //  if __self_vi == _arg_1_vi {
+            //  if __self_tag == _arg1_tag {
             //      match (self, other) {
             //          (Variant1, Variant1, ...) => Body1
             //          (Variant2, Variant2, ...) => Body2,
@@ -1355,7 +1352,7 @@ impl<'a> MethodDef<'a> {
             //      }
             //  }
             //  else {
-            //      <delegated expression referring to __self_vi, et al.>
+            //      <delegated expression referring to __self_tag, et al.>
             //  }
             let all_match = cx.expr_match(span, match_arg, match_arms);
             let arm_expr = cx.expr_if(span, discriminant_test, all_match, Some(arm_expr));

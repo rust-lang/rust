@@ -710,15 +710,15 @@ impl ::core::cmp::PartialEq for Enum1 {
     #[inline]
     fn eq(&self, other: &Enum1) -> bool {
         match (self, other) {
-            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg_1_0 }) =>
-                *__self_0 == *__arg_1_0,
+            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+                *__self_0 == *__arg1_0,
         }
     }
     #[inline]
     fn ne(&self, other: &Enum1) -> bool {
         match (self, other) {
-            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg_1_0 }) =>
-                *__self_0 != *__arg_1_0,
+            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+                *__self_0 != *__arg1_0,
         }
     }
 }
@@ -740,8 +740,8 @@ impl ::core::cmp::PartialOrd for Enum1 {
     fn partial_cmp(&self, other: &Enum1)
         -> ::core::option::Option<::core::cmp::Ordering> {
         match (self, other) {
-            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg_1_0 }) =>
-                ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg_1_0),
+            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+                ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
         }
     }
 }
@@ -751,8 +751,8 @@ impl ::core::cmp::Ord for Enum1 {
     #[inline]
     fn cmp(&self, other: &Enum1) -> ::core::cmp::Ordering {
         match (self, other) {
-            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg_1_0 }) =>
-                ::core::cmp::Ord::cmp(__self_0, __arg_1_0),
+            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
         }
     }
 }
@@ -883,9 +883,9 @@ impl ::core::marker::StructuralPartialEq for Fieldless {}
 impl ::core::cmp::PartialEq for Fieldless {
     #[inline]
     fn eq(&self, other: &Fieldless) -> bool {
-        let __self_vi = ::core::intrinsics::discriminant_value(self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-        if __self_vi == __arg_1_vi {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        if __self_tag == __arg1_tag {
                 match (self, other) { _ => true, }
             } else { false }
     }
@@ -905,15 +905,15 @@ impl ::core::cmp::PartialOrd for Fieldless {
     #[inline]
     fn partial_cmp(&self, other: &Fieldless)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        let __self_vi = ::core::intrinsics::discriminant_value(self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-        if __self_vi == __arg_1_vi {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        if __self_tag == __arg1_tag {
                 match (self, other) {
                     _ =>
                         ::core::option::Option::Some(::core::cmp::Ordering::Equal),
                 }
             } else {
-               ::core::cmp::PartialOrd::partial_cmp(&__self_vi, &__arg_1_vi)
+               ::core::cmp::PartialOrd::partial_cmp(&__self_tag, &__arg1_tag)
            }
     }
 }
@@ -922,11 +922,11 @@ impl ::core::cmp::PartialOrd for Fieldless {
 impl ::core::cmp::Ord for Fieldless {
     #[inline]
     fn cmp(&self, other: &Fieldless) -> ::core::cmp::Ordering {
-        let __self_vi = ::core::intrinsics::discriminant_value(self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-        if __self_vi == __arg_1_vi {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        if __self_tag == __arg1_tag {
                 match (self, other) { _ => ::core::cmp::Ordering::Equal, }
-            } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
+            } else { ::core::cmp::Ord::cmp(&__self_tag, &__arg1_tag) }
     }
 }
 
@@ -1005,30 +1005,30 @@ impl ::core::marker::StructuralPartialEq for Mixed {}
 impl ::core::cmp::PartialEq for Mixed {
     #[inline]
     fn eq(&self, other: &Mixed) -> bool {
-        let __self_vi = ::core::intrinsics::discriminant_value(self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-        if __self_vi == __arg_1_vi {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        if __self_tag == __arg1_tag {
                 match (self, other) {
-                    (Mixed::R(__self_0), Mixed::R(__arg_1_0)) =>
-                        *__self_0 == *__arg_1_0,
+                    (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                        *__self_0 == *__arg1_0,
                     (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
-                        d1: __arg_1_0, d2: __arg_1_1 }) =>
-                        *__self_0 == *__arg_1_0 && *__self_1 == *__arg_1_1,
+                        d1: __arg1_0, d2: __arg1_1 }) =>
+                        *__self_0 == *__arg1_0 && *__self_1 == *__arg1_1,
                     _ => true,
                 }
             } else { false }
     }
     #[inline]
     fn ne(&self, other: &Mixed) -> bool {
-        let __self_vi = ::core::intrinsics::discriminant_value(self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-        if __self_vi == __arg_1_vi {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        if __self_tag == __arg1_tag {
                 match (self, other) {
-                    (Mixed::R(__self_0), Mixed::R(__arg_1_0)) =>
-                        *__self_0 != *__arg_1_0,
+                    (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                        *__self_0 != *__arg1_0,
                     (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
-                        d1: __arg_1_0, d2: __arg_1_1 }) =>
-                        *__self_0 != *__arg_1_0 || *__self_1 != *__arg_1_1,
+                        d1: __arg1_0, d2: __arg1_1 }) =>
+                        *__self_0 != *__arg1_0 || *__self_1 != *__arg1_1,
                     _ => false,
                 }
             } else { true }
@@ -1051,26 +1051,25 @@ impl ::core::cmp::PartialOrd for Mixed {
     #[inline]
     fn partial_cmp(&self, other: &Mixed)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        let __self_vi = ::core::intrinsics::discriminant_value(self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-        if __self_vi == __arg_1_vi {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        if __self_tag == __arg1_tag {
                 match (self, other) {
-                    (Mixed::R(__self_0), Mixed::R(__arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg_1_0),
+                    (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
                     (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
-                        d1: __arg_1_0, d2: __arg_1_1 }) =>
+                        d1: __arg1_0, d2: __arg1_1 }) =>
                         match ::core::cmp::PartialOrd::partial_cmp(__self_0,
-                                __arg_1_0) {
+                                __arg1_0) {
                             ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                =>
-                                ::core::cmp::PartialOrd::partial_cmp(__self_1, __arg_1_1),
+                                => ::core::cmp::PartialOrd::partial_cmp(__self_1, __arg1_1),
                             cmp => cmp,
                         },
                     _ =>
                         ::core::option::Option::Some(::core::cmp::Ordering::Equal),
                 }
             } else {
-               ::core::cmp::PartialOrd::partial_cmp(&__self_vi, &__arg_1_vi)
+               ::core::cmp::PartialOrd::partial_cmp(&__self_tag, &__arg1_tag)
            }
     }
 }
@@ -1079,22 +1078,22 @@ impl ::core::cmp::PartialOrd for Mixed {
 impl ::core::cmp::Ord for Mixed {
     #[inline]
     fn cmp(&self, other: &Mixed) -> ::core::cmp::Ordering {
-        let __self_vi = ::core::intrinsics::discriminant_value(self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-        if __self_vi == __arg_1_vi {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        if __self_tag == __arg1_tag {
                 match (self, other) {
-                    (Mixed::R(__self_0), Mixed::R(__arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg_1_0),
+                    (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
                     (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
-                        d1: __arg_1_0, d2: __arg_1_1 }) =>
-                        match ::core::cmp::Ord::cmp(__self_0, __arg_1_0) {
+                        d1: __arg1_0, d2: __arg1_1 }) =>
+                        match ::core::cmp::Ord::cmp(__self_0, __arg1_0) {
                             ::core::cmp::Ordering::Equal =>
-                                ::core::cmp::Ord::cmp(__self_1, __arg_1_1),
+                                ::core::cmp::Ord::cmp(__self_1, __arg1_1),
                             cmp => cmp,
                         },
                     _ => ::core::cmp::Ordering::Equal,
                 }
-            } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
+            } else { ::core::cmp::Ord::cmp(&__self_tag, &__arg1_tag) }
     }
 }
 
@@ -1162,32 +1161,32 @@ impl ::core::marker::StructuralPartialEq for Fielded {}
 impl ::core::cmp::PartialEq for Fielded {
     #[inline]
     fn eq(&self, other: &Fielded) -> bool {
-        let __self_vi = ::core::intrinsics::discriminant_value(self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-        if __self_vi == __arg_1_vi {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        if __self_tag == __arg1_tag {
                 match (self, other) {
-                    (Fielded::X(__self_0), Fielded::X(__arg_1_0)) =>
-                        *__self_0 == *__arg_1_0,
-                    (Fielded::Y(__self_0), Fielded::Y(__arg_1_0)) =>
-                        *__self_0 == *__arg_1_0,
-                    (Fielded::Z(__self_0), Fielded::Z(__arg_1_0)) =>
-                        *__self_0 == *__arg_1_0,
+                    (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                        *__self_0 == *__arg1_0,
+                    (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                        *__self_0 == *__arg1_0,
+                    (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                        *__self_0 == *__arg1_0,
                     _ => unsafe { ::core::intrinsics::unreachable() }
                 }
             } else { false }
     }
     #[inline]
     fn ne(&self, other: &Fielded) -> bool {
-        let __self_vi = ::core::intrinsics::discriminant_value(self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-        if __self_vi == __arg_1_vi {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        if __self_tag == __arg1_tag {
                 match (self, other) {
-                    (Fielded::X(__self_0), Fielded::X(__arg_1_0)) =>
-                        *__self_0 != *__arg_1_0,
-                    (Fielded::Y(__self_0), Fielded::Y(__arg_1_0)) =>
-                        *__self_0 != *__arg_1_0,
-                    (Fielded::Z(__self_0), Fielded::Z(__arg_1_0)) =>
-                        *__self_0 != *__arg_1_0,
+                    (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                        *__self_0 != *__arg1_0,
+                    (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                        *__self_0 != *__arg1_0,
+                    (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                        *__self_0 != *__arg1_0,
                     _ => unsafe { ::core::intrinsics::unreachable() }
                 }
             } else { true }
@@ -1212,20 +1211,20 @@ impl ::core::cmp::PartialOrd for Fielded {
     #[inline]
     fn partial_cmp(&self, other: &Fielded)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        let __self_vi = ::core::intrinsics::discriminant_value(self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-        if __self_vi == __arg_1_vi {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        if __self_tag == __arg1_tag {
                 match (self, other) {
-                    (Fielded::X(__self_0), Fielded::X(__arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg_1_0),
-                    (Fielded::Y(__self_0), Fielded::Y(__arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg_1_0),
-                    (Fielded::Z(__self_0), Fielded::Z(__arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg_1_0),
+                    (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+                    (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+                    (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
                     _ => unsafe { ::core::intrinsics::unreachable() }
                 }
             } else {
-               ::core::cmp::PartialOrd::partial_cmp(&__self_vi, &__arg_1_vi)
+               ::core::cmp::PartialOrd::partial_cmp(&__self_tag, &__arg1_tag)
            }
     }
 }
@@ -1234,19 +1233,19 @@ impl ::core::cmp::PartialOrd for Fielded {
 impl ::core::cmp::Ord for Fielded {
     #[inline]
     fn cmp(&self, other: &Fielded) -> ::core::cmp::Ordering {
-        let __self_vi = ::core::intrinsics::discriminant_value(self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(other);
-        if __self_vi == __arg_1_vi {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        if __self_tag == __arg1_tag {
                 match (self, other) {
-                    (Fielded::X(__self_0), Fielded::X(__arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg_1_0),
-                    (Fielded::Y(__self_0), Fielded::Y(__arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg_1_0),
-                    (Fielded::Z(__self_0), Fielded::Z(__arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(__self_0, __arg_1_0),
+                    (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
                     _ => unsafe { ::core::intrinsics::unreachable() }
                 }
-            } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
+            } else { ::core::cmp::Ord::cmp(&__self_tag, &__arg1_tag) }
     }
 }
 
