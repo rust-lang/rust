@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::intravisit::{self, walk_block, walk_expr, Visitor};
 use rustc_hir::{
-    Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, Let, QPath, Stmt, UnOp,
+    Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, Let, Pat, QPath, Stmt, UnOp,
     UnsafeSource, Unsafety,
 };
 use rustc_lint::LateContext;
@@ -13,6 +13,74 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TypeckResults};
+use rustc_span::Span;
+
+mod internal {
+    /// Trait for visitor functions to control whether or not to descend to child nodes. Implemented
+    /// for only two types. `()` always descends. `Descend` allows controlled descent.
+    pub trait Continue {
+        fn descend(&self) -> bool;
+    }
+}
+use internal::Continue;
+
+impl Continue for () {
+    fn descend(&self) -> bool {
+        true
+    }
+}
+
+/// Allows for controlled descent whe using visitor functions. Use `()` instead when always
+/// descending into child nodes.
+#[derive(Clone, Copy)]
+pub enum Descend {
+    Yes,
+    No,
+}
+impl From<bool> for Descend {
+    fn from(from: bool) -> Self {
+        if from { Self::Yes } else { Self::No }
+    }
+}
+impl Continue for Descend {
+    fn descend(&self) -> bool {
+        matches!(self, Self::Yes)
+    }
+}
+
+/// Calls the given function once for each expression contained. This does not enter any bodies or
+/// nested items.
+pub fn for_each_expr<'tcx, B, C: Continue>(
+    node: impl Visitable<'tcx>,
+    f: impl FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B, C>,
+) -> Option<B> {
+    struct V<B, F> {
+        f: F,
+        res: Option<B>,
+    }
+    impl<'tcx, B, C: Continue, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B, C>> Visitor<'tcx> for V<B, F> {
+        fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) {
+            if self.res.is_some() {
+                return;
+            }
+            match (self.f)(e) {
+                ControlFlow::Continue(c) if c.descend() => walk_expr(self, e),
+                ControlFlow::Break(b) => self.res = Some(b),
+                ControlFlow::Continue(_) => (),
+            }
+        }
+
+        // Avoid unnecessary `walk_*` calls.
+        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx>) {}
+        fn visit_pat(&mut self, _: &'tcx Pat<'tcx>) {}
+        fn visit_qpath(&mut self, _: &'tcx QPath<'tcx>, _: HirId, _: Span) {}
+        // Avoid monomorphising all `visit_*` functions.
+        fn visit_nested_item(&mut self, _: ItemId) {}
+    }
+    let mut v = V { f, res: None };
+    node.visit(&mut v);
+    v.res
+}
 
 /// Convenience method for creating a `Visitor` with just `visit_expr` overridden and nested
 /// bodies (i.e. closures) are visited.
