@@ -170,6 +170,7 @@ top_level_options!(
 
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],
+        diagnostic_width: Option<usize> [UNTRACKED],
 
         /// If `Some`, enable incremental compilation, using the given
         /// directory to store intermediate results.
@@ -1388,6 +1389,8 @@ options! {
         "panic strategy for out-of-memory handling"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
+    diagnostic_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
+        "set the current output width for diagnostic truncation"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
         "support compiling tests with panic=abort (default: no)"),
     panic_in_drop: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy, [TRACKED],
@@ -1514,8 +1517,6 @@ options! {
         "show extended diagnostic help (default: no)"),
     temps_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "the directory the intermediate files are written to"),
-    terminal_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
-        "set the current terminal width"),
     // Diagnostics are considered side-effects of a query (see `QuerySideEffects`) and are saved
     // alongside query results and changes to translation options can affect diagnostics - so
     // translation options should be tracked.
