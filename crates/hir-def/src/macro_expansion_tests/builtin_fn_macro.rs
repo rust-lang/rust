@@ -199,9 +199,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    unsafe {
-        std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(arg1(a, b, c)), std::fmt::Display::fmt), std::fmt::ArgumentV1::new(&(arg2), std::fmt::Display::fmt), ])
-    };
+    std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(arg1(a, b, c)), std::fmt::Display::fmt), std::fmt::ArgumentV1::new(&(arg2), std::fmt::Display::fmt), ]);
 }
 "##]],
     );
@@ -229,9 +227,7 @@ macro_rules! format_args {
 }
 
 fn main() {
-    unsafe {
-        std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(a::<A, B>()), std::fmt::Display::fmt), std::fmt::ArgumentV1::new(&(b), std::fmt::Display::fmt), ])
-    };
+    std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(a::<A, B>()), std::fmt::Display::fmt), std::fmt::ArgumentV1::new(&(b), std::fmt::Display::fmt), ]);
 }
 "##]],
     );
@@ -262,9 +258,7 @@ macro_rules! format_args {
 fn main() {
     let _ =
         /* parse error: expected field name or number */
-unsafe {
-            std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(a.), std::fmt::Display::fmt), ])
-        };
+std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(a.), std::fmt::Display::fmt), ]);
 }
 "##]],
     );

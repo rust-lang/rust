@@ -261,13 +261,7 @@ fn format_args_expand(
         quote! { std::fmt::ArgumentV1::new(&(#arg), std::fmt::Display::fmt), }
     }.token_trees);
     let expanded = quote! {
-        // It's unsafe since https://github.com/rust-lang/rust/pull/83302
-        // Wrap an unsafe block to avoid false-positive `missing-unsafe` lint.
-        // FIXME: Currently we don't have `unused_unsafe` lint so an extra unsafe block won't cause issues on early
-        // stable rust-src.
-        unsafe {
-            std::fmt::Arguments::new_v1(&[], &[##arg_tts])
-        }
+        std::fmt::Arguments::new_v1(&[], &[##arg_tts])
     };
     ExpandResult::ok(expanded)
 }
