@@ -1393,7 +1393,9 @@ impl<'a> Parser<'a> {
             self.parse_yield_expr(attrs)
         } else if self.is_do_yeet() {
             self.parse_yeet_expr(attrs)
-        } else if self.eat_keyword(kw::Let) {
+        } else if self.check_keyword(kw::Let) {
+            self.manage_let_chains_context();
+            self.bump();
             self.parse_let_expr(attrs)
         } else if self.eat_keyword(kw::Underscore) {
             Ok(self.mk_expr(self.prev_token.span, ExprKind::Underscore, attrs))
@@ -2355,16 +2357,30 @@ impl<'a> Parser<'a> {
         Ok(cond)
     }
 
+    // Checks if `let` is in an invalid position like `let x = let y = 1;` or
+    // if the current `let` is in a let_chains context but nested in another
+    // expression like `if let Some(_) = _opt && [1, 2, 3][let _ = ()] = 1`.
+    //
+    // This method expects that the current token is `let`.
+    fn manage_let_chains_context(&mut self) {
+        debug_assert!(matches!(self.token.kind, TokenKind::Ident(kw::Let, _)));
+        let is_in_a_let_chains_context_but_nested_in_other_expr = self.let_expr_allowed
+            && !matches!(
+                self.prev_token.kind,
+                TokenKind::AndAnd
+                    | TokenKind::CloseDelim(Delimiter::Brace)
+                    | TokenKind::Ident(kw::If, _)
+                    | TokenKind::Ident(kw::While, _)
+            );
+        if !self.let_expr_allowed || is_in_a_let_chains_context_but_nested_in_other_expr {
+            self.struct_span_err(self.token.span, "expected expression, found `let` statement")
+                .emit();
+        }
+    }
+
     /// Parses a `let $pat = $expr` pseudo-expression.
     /// The `let` token has already been eaten.
     fn parse_let_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
-        if !self.let_expr_allowed {
-            self.struct_span_err(
-                self.prev_token.span,
-                "expected expression, found `let` statement",
-            )
-            .emit();
-        }
         let lo = self.prev_token.span;
         let pat = self.parse_pat_allow_top_alt(
             None,
