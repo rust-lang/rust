@@ -38,4 +38,13 @@ fn main() {
     assert_eq!(size_of::<Option<    RwLock<&()>>>(), 32); // (✗ niche opt)
     assert_eq!(size_of::<            Mutex<&()> >(), 16);
     assert_eq!(size_of::<Option<     Mutex<&()>>>(), 24); // (✗ niche opt)
+
+    assert_eq!(size_of::<       UnsafeCell<&[i32]> >(), 16);
+    assert_eq!(size_of::<Option<UnsafeCell<&[i32]>>>(), 24); // (✗ niche opt)
+    assert_eq!(size_of::<       UnsafeCell<(&(), &())> >(), 16);
+    assert_eq!(size_of::<Option<UnsafeCell<(&(), &())>>>(), 24); // (✗ niche opt)
+
+    trait Trait {}
+    assert_eq!(size_of::<       UnsafeCell<&dyn Trait> >(), 16);
+    assert_eq!(size_of::<Option<UnsafeCell<&dyn Trait>>>(), 24); // (✗ niche opt)
 }

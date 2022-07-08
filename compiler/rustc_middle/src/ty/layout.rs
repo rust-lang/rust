@@ -1076,6 +1076,34 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                     let mut st = self.univariant_uninterned(ty, &variants[v], &def.repr(), kind)?;
                     st.variants = Variants::Single { index: v };
+
+                    if def.is_unsafe_cell() {
+                        let fill = |scalar: &mut _| match scalar {
+                            Scalar::Initialized { value, valid_range } => {
+                                *valid_range = WrappingRange::full(value.size(dl))
+                            }
+                            // Already doesn't have any niches
+                            Scalar::Union { .. } => {}
+                        };
+                        match &mut st.abi {
+                            Abi::Uninhabited => {}
+                            Abi::Scalar(scalar) => fill(scalar),
+                            Abi::ScalarPair(a, b) => {
+                                fill(a);
+                                fill(b);
+                            }
+                            Abi::Vector { element, count: _ } => {
+                                // Until we support types other than floats and integers in SIMD,
+                                // `element` must already be a full for its range, so there's nothing to
+                                // do here.
+                                assert!(element.is_always_valid(dl));
+                            }
+                            Abi::Aggregate { sized: _ } => {}
+                        }
+                        st.largest_niche = None;
+                        return Ok(tcx.intern_layout(st));
+                    }
+
                     let (start, end) = self.tcx.layout_scalar_valid_range(def.did());
                     match st.abi {
                         Abi::Scalar(ref mut scalar) | Abi::ScalarPair(ref mut scalar, _) => {
@@ -1102,29 +1130,19 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 assert!(valid_range.end >= end);
                                 valid_range.end = end;
                             }
-                            if def.is_unsafe_cell() {
-                                match scalar {
-                                    Scalar::Initialized { value, valid_range } => {
-                                        *valid_range = WrappingRange::full(value.size(dl))
-                                    }
-                                    // Already doesn't have any niches
-                                    Scalar::Union { .. } => {}
-                                }
-                                st.largest_niche = None;
-                            } else {
-                                // Update `largest_niche` if we have introduced a larger niche.
-                                let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
-                                if let Some(niche) = niche {
-                                    match st.largest_niche {
-                                        Some(largest_niche) => {
-                                            // Replace the existing niche even if they're equal,
-                                            // because this one is at a lower offset.
-                                            if largest_niche.available(dl) <= niche.available(dl) {
-                                                st.largest_niche = Some(niche);
-                                            }
+
+                            // Update `largest_niche` if we have introduced a larger niche.
+                            let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
+                            if let Some(niche) = niche {
+                                match st.largest_niche {
+                                    Some(largest_niche) => {
+                                        // Replace the existing niche even if they're equal,
+                                        // because this one is at a lower offset.
+                                        if largest_niche.available(dl) <= niche.available(dl) {
+                                            st.largest_niche = Some(niche);
                                         }
-                                        None => st.largest_niche = Some(niche),
                                     }
+                                    None => st.largest_niche = Some(niche),
                                 }
                             }
                         }
