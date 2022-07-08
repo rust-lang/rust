@@ -37,6 +37,7 @@ fluent_messages! {
     parser => "../locales/en-US/parser.ftl",
     privacy => "../locales/en-US/privacy.ftl",
     typeck => "../locales/en-US/typeck.ftl",
+    const_eval => "../locales/en-US/const_eval.ftl",
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};

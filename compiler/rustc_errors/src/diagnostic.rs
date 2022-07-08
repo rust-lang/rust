@@ -5,6 +5,7 @@ use crate::{
 };
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_error_messages::FluentValue;
+use rustc_hir as hir;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::symbol::{Ident, Symbol};
@@ -157,6 +158,16 @@ impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
             DiagnosticArgValue::Str(s) => From::from(s),
             DiagnosticArgValue::Number(n) => From::from(n),
         }
+    }
+}
+
+impl IntoDiagnosticArg for hir::ConstContext {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Borrowed(match self {
+            hir::ConstContext::ConstFn => "constant function",
+            hir::ConstContext::Static(_) => "static",
+            hir::ConstContext::Const => "constant",
+        }))
     }
 }
 

@@ -3813,6 +3813,7 @@ dependencies = [
  "atty",
  "rustc_data_structures",
  "rustc_error_messages",
+ "rustc_hir",
  "rustc_lint_defs",
  "rustc_macros",
  "rustc_serialize",
