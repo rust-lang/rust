@@ -203,7 +203,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
             Some(&ProjectionCacheEntry::NormalizedTy { ref ty, complete: _ }) => {
                 info!("ProjectionCacheEntry::complete({:?}) - completing {:?}", key, ty);
                 let mut ty = ty.clone();
-                if result == EvaluationResult::EvaluatedToOk {
+                if result.must_apply_considering_regions() {
                     ty.obligations = vec![];
                 }
                 map.insert(key, ProjectionCacheEntry::NormalizedTy { ty, complete: Some(result) });
