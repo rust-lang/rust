@@ -2849,7 +2849,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         name: ident.name,
                         participle: if binding.is_import() { "imported" } else { "defined" },
                         article: binding.res().article(),
-                        shadowed_binding_descr: binding.res().descr(),
+                        shadowed_binding: binding.res(),
                         shadowed_binding_span: binding.span,
                     },
                 );
@@ -2865,7 +2865,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         name: ident.name,
                         participle: "defined",
                         article: res.article(),
-                        shadowed_binding_descr: res.descr(),
+                        shadowed_binding: res,
                         shadowed_binding_span: self.r.opt_span(def_id).expect("const parameter defined outside of local crate"),
                     }
                 );

@@ -234,7 +234,7 @@ enum ResolutionError<'a> {
         name: Symbol,
         participle: &'static str,
         article: &'static str,
-        shadowed_binding_descr: &'static str,
+        shadowed_binding: Res,
         shadowed_binding_span: Span,
     },
     /// Error E0128: generic parameters with a default cannot use forward-declared identifiers.

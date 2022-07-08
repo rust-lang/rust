@@ -900,9 +900,10 @@ impl<'a> Resolver<'a> {
                 name,
                 participle,
                 article,
-                shadowed_binding_descr,
+                shadowed_binding,
                 shadowed_binding_span,
             } => {
+                let shadowed_binding_descr = shadowed_binding.descr();
                 let mut err = struct_span_err!(
                     self.session,
                     span,
@@ -915,13 +916,18 @@ impl<'a> Resolver<'a> {
                     span,
                     format!("cannot be named the same as {} {}", article, shadowed_binding_descr),
                 );
-                err.span_suggestion(
-                    span,
-                    "try specify the pattern arguments",
-                    format!("{}(..)", name),
-                    Applicability::Unspecified,
-                )
-                .emit();
+                match shadowed_binding {
+                    Res::Def(DefKind::Ctor(CtorOf::Variant | CtorOf::Struct, CtorKind::Fn), _) => {
+                        err.span_suggestion(
+                            span,
+                            "try specify the pattern arguments",
+                            format!("{}(..)", name),
+                            Applicability::Unspecified,
+                        )
+                        .emit();
+                    }
+                    _ => (),
+                }
                 let msg =
                     format!("the {} `{}` is {} here", shadowed_binding_descr, name, participle);
                 err.span_label(shadowed_binding_span, msg);
