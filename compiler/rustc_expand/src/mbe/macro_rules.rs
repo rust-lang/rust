@@ -594,6 +594,20 @@ pub fn compile_declarative_macro(
     (mk_syn_ext(expander), rule_spans)
 }
 
+#[derive(SessionSubdiagnostic)]
+enum ExplainDocComment {
+    #[label(expand::explain_doc_comment_inner)]
+    Inner {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(expand::explain_doc_comment_outer)]
+    Outer {
+        #[primary_span]
+        span: Span,
+    },
+}
+
 fn annotate_doc_comment(
     err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
     sm: &SourceMap,
@@ -601,9 +615,9 @@ fn annotate_doc_comment(
 ) {
     if let Ok(src) = sm.span_to_snippet(span) {
         if src.starts_with("///") || src.starts_with("/**") {
-            err.span_label(span, "outer doc comments expand to `#[doc = \"...\"]`, which is what this macro attempted to match");
+            err.subdiagnostic(ExplainDocComment::Outer { span });
         } else if src.starts_with("//!") || src.starts_with("/*!") {
-            err.span_label(span, "inner doc comments expand to `#![doc = \"...\"]`, which is what this macro attempted to match");
+            err.subdiagnostic(ExplainDocComment::Inner { span });
         }
     }
 }
