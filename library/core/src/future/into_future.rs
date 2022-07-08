@@ -13,8 +13,6 @@ use crate::future::Future;
 /// on all futures.
 ///
 /// ```no_run
-/// #![feature(into_future)]
-///
 /// use std::future::IntoFuture;
 ///
 /// # async fn foo() {
@@ -33,8 +31,6 @@ use crate::future::Future;
 /// multiple times before being `.await`ed.
 ///
 /// ```rust
-/// #![feature(into_future)]
-///
 /// use std::future::{ready, Ready, IntoFuture};
 ///
 /// /// Eventually multiply two numbers
@@ -91,8 +87,6 @@ use crate::future::Future;
 /// `IntoFuture::into_future` to obtain an instance of `Future`:
 ///
 /// ```rust
-/// #![feature(into_future)]
-///
 /// use std::future::IntoFuture;
 ///
 /// /// Convert the output of a future to a string.
@@ -104,14 +98,14 @@ use crate::future::Future;
 ///     format!("{:?}", fut.await)
 /// }
 /// ```
-#[unstable(feature = "into_future", issue = "67644")]
+#[stable(feature = "into_future", since = "1.64.0")]
 pub trait IntoFuture {
     /// The output that the future will produce on completion.
-    #[unstable(feature = "into_future", issue = "67644")]
+    #[stable(feature = "into_future", since = "1.64.0")]
     type Output;
 
     /// Which kind of future are we turning this into?
-    #[unstable(feature = "into_future", issue = "67644")]
+    #[stable(feature = "into_future", since = "1.64.0")]
     type IntoFuture: Future<Output = Self::Output>;
 
     /// Creates a future from a value.
@@ -121,8 +115,6 @@ pub trait IntoFuture {
     /// Basic usage:
     ///
     /// ```no_run
-    /// #![feature(into_future)]
-    ///
     /// use std::future::IntoFuture;
     ///
     /// # async fn foo() {
@@ -131,12 +123,12 @@ pub trait IntoFuture {
     /// assert_eq!("meow", fut.await);
     /// # }
     /// ```
-    #[unstable(feature = "into_future", issue = "67644")]
+    #[stable(feature = "into_future", since = "1.64.0")]
     #[lang = "into_future"]
     fn into_future(self) -> Self::IntoFuture;
 }
 
-#[unstable(feature = "into_future", issue = "67644")]
+#[stable(feature = "into_future", since = "1.64.0")]
 impl<F: Future> IntoFuture for F {
     type Output = F::Output;
     type IntoFuture = F;

@@ -1570,6 +1570,19 @@ impl<'tcx> Region<'tcx> {
             _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),
         }
     }
+
+    /// True for free regions other than `'static`.
+    pub fn is_free(self) -> bool {
+        matches!(*self, ty::ReEarlyBound(_) | ty::ReFree(_))
+    }
+
+    /// True if `self` is a free region or static.
+    pub fn is_free_or_static(self) -> bool {
+        match *self {
+            ty::ReStatic => true,
+            _ => self.is_free(),
+        }
+    }
 }
 
 /// Type utilities

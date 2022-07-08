@@ -466,9 +466,6 @@ pub enum NllRegionVariableOrigin {
     /// from a `for<'a> T` binder). Meant to represent "any region".
     Placeholder(ty::PlaceholderRegion),
 
-    /// The variable we create to represent `'empty(U0)`.
-    RootEmptyRegion,
-
     Existential {
         /// If this is true, then this variable was created to represent a lifetime
         /// bound in a `for` binder. For example, it might have been created to
@@ -1250,7 +1247,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let lexical_region_resolutions = LexicalRegionResolutions {
-            error_region: self.tcx.lifetimes.re_static,
             values: rustc_index::vec::IndexVec::from_elem_n(
                 crate::infer::lexical_region_resolve::VarValue::Value(self.tcx.lifetimes.re_erased),
                 var_infos.len(),

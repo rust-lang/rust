@@ -206,13 +206,13 @@ impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
 
     fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         match *r {
-            ty::ReVar(rid) => Ok(self
+            ty::ReVar(_) => Ok(self
                 .infcx
                 .lexical_region_resolutions
                 .borrow()
                 .as_ref()
                 .expect("region resolution not performed")
-                .resolve_var(rid)),
+                .resolve_region(self.infcx.tcx, r)),
             _ => Ok(r),
         }
     }
