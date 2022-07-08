@@ -943,8 +943,8 @@ struct S {
 }
 
 fn foo(s: &mut S) {
-    let $0var_name = &mut s.vec;
-    var_name.push(0);
+    let $0vec = &mut s.vec;
+    vec.push(0);
 }"#,
         );
     }
@@ -979,8 +979,8 @@ struct S {
 }
 
 fn foo(f: &mut Y) {
-    let $0var_name = &mut f.field.field.vec;
-    var_name.push(0);
+    let $0vec = &mut f.field.field.vec;
+    vec.push(0);
 }"#,
         );
     }
