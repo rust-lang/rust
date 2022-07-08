@@ -193,6 +193,7 @@ impl Comments {
                     let next = args
                         .next()
                         .expect("the `position` above guarantees that there is at least one char");
+                    // FIXME: this replicates the existing flexibility in our syntax. Consider requiring the colon.
                     let args = match next {
                         ':' | ' ' => args.as_str(),
                         _ => bail!("expected space or `:`, got `{next}`"),
