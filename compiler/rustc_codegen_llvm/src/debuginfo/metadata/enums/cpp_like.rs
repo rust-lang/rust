@@ -119,7 +119,7 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 ///
 /// The following pseudocode shows how to decode an enum value in a debugger:
 ///
-/// ```ignore
+/// ```text
 ///
 /// fn find_active_variant(enum_value) -> (VariantName, VariantValue) {
 ///     let is_128_bit = enum_value.has_field("tag128_lo");
@@ -365,7 +365,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
                 unknown_file_metadata(cx),
                 UNKNOWN_LINE_NUMBER,
                 variant_names_type_di_node,
-                DIFlags::FlagArtificial,
+                DIFlags::FlagZero,
                 Some(cx.const_u64(SINGLE_VARIANT_VIRTUAL_DISR)),
                 tag_base_type_align.bits() as u32,
             )
@@ -482,7 +482,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
             // NOTE: We use size and align of enum_type, not from variant_layout:
             size_and_align_of(enum_or_generator_type_and_layout),
             Some(enum_or_generator_type_di_node),
-            DIFlags::FlagArtificial,
+            DIFlags::FlagZero,
         ),
         |cx, wrapper_struct_type_di_node| {
             enum DiscrKind {
@@ -526,7 +526,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                 "value",
                 size_and_align_of(enum_or_generator_type_and_layout),
                 Size::ZERO,
-                DIFlags::FlagArtificial,
+                DIFlags::FlagZero,
                 variant_struct_type_di_node,
             ));
 
@@ -540,7 +540,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                         unknown_file_metadata(cx),
                         UNKNOWN_LINE_NUMBER,
                         type_di_node,
-                        DIFlags::FlagArtificial,
+                        DIFlags::FlagZero,
                         Some(cx.const_u64(value)),
                         align.bits() as u32,
                     )
