@@ -13,7 +13,7 @@ use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, TyAndLayout, LayoutOfHelpers};
 use rustc_session::Session;
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
 
@@ -101,7 +101,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub global_lvalues: RefCell<FxHashMap<RValue<'gcc>, LValue<'gcc>>>,
 
     /// Cache of constant strings,
-    pub const_str_cache: RefCell<FxHashMap<Symbol, LValue<'gcc>>>,
+    pub const_str_cache: RefCell<FxHashMap<String, LValue<'gcc>>>,
 
     /// Cache of globals.
     pub globals: RefCell<FxHashMap<String, RValue<'gcc>>>,
