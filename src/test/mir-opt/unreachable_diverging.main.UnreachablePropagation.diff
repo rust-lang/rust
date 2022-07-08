@@ -24,7 +24,7 @@
           _2 = empty() -> bb1;             // scope 2 at $DIR/unreachable_diverging.rs:14:25: 14:32
                                            // mir::Constant
                                            // + span: $DIR/unreachable_diverging.rs:14:25: 14:30
-                                           // + literal: Const { ty: fn() -> Option<Empty> {empty}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() -> Option<Empty> {empty}, val: Value(<ZST>) }
       }
   
       bb1: {
@@ -48,7 +48,7 @@
 +         _5 = loop_forever() -> bb4;      // scope 2 at $DIR/unreachable_diverging.rs:16:13: 16:27
                                            // mir::Constant
                                            // + span: $DIR/unreachable_diverging.rs:16:13: 16:25
-                                           // + literal: Const { ty: fn() {loop_forever}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() {loop_forever}, val: Value(<ZST>) }
       }
   
       bb4: {

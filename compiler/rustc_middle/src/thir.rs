@@ -419,6 +419,10 @@ pub enum ExprKind<'tcx> {
         lit: ty::ScalarInt,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
+    /// A literal of a ZST type.
+    ZstLiteral {
+        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+    },
     /// Associated constants and named constants
     NamedConst {
         def_id: DefId,
@@ -452,12 +456,6 @@ pub enum ExprKind<'tcx> {
     Yield {
         value: ExprId,
     },
-}
-
-impl<'tcx> ExprKind<'tcx> {
-    pub fn zero_sized_literal(user_ty: Option<Canonical<'tcx, UserType<'tcx>>>) -> Self {
-        ExprKind::NonHirLiteral { lit: ty::ScalarInt::ZST, user_ty }
-    }
 }
 
 /// Represents the association of a field identifier and an expression.

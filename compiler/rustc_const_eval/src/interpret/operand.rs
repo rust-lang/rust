@@ -293,8 +293,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let Some(alloc) = self.get_place_alloc(mplace)? else {
             return Ok(Some(ImmTy {
-                // zero-sized type
-                imm: Scalar::ZST.into(),
+                // zero-sized type can be left uninit
+                imm: Immediate::Uninit,
                 layout: mplace.layout,
             }));
         };
@@ -437,8 +437,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // This makes several assumptions about what layouts we will encounter; we match what
         // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
         let field_val: Immediate<_> = match (*base, base.layout.abi) {
-            // the field contains no information
-            _ if field_layout.is_zst() => Scalar::ZST.into(),
+            // the field contains no information, can be left uninit
+            _ if field_layout.is_zst() => Immediate::Uninit,
             // the field covers the entire type
             _ if field_layout.size == base.layout.size => {
                 assert!(match (base.layout.abi, field_layout.abi) {
@@ -549,8 +549,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = if layout.is_zst() {
-            // Do not read from ZST, they might not be initialized
-            Operand::Immediate(Scalar::ZST.into())
+            // Bypass `access_local` (helps in ConstProp)
+            Operand::Immediate(Immediate::Uninit)
         } else {
             *M::access_local(frame, local)?
         };
@@ -705,6 +705,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Operand::Indirect(MemPlace::from_ptr(ptr.into()))
             }
             ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x)?.into()),
+            ConstValue::ZeroSized => Operand::Immediate(Immediate::Uninit),
             ConstValue::Slice { data, start, end } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.

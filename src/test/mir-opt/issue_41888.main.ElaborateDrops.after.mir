@@ -29,7 +29,7 @@ fn main() -> () {
         _2 = cond() -> [return: bb1, unwind: bb11]; // scope 1 at $DIR/issue-41888.rs:8:8: 8:14
                                          // mir::Constant
                                          // + span: $DIR/issue-41888.rs:8:8: 8:12
-                                         // + literal: Const { ty: fn() -> bool {cond}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn() -> bool {cond}, val: Value(<ZST>) }
     }
 
     bb1: {

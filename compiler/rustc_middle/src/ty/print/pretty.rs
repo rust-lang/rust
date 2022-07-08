@@ -1355,10 +1355,6 @@ pub trait PrettyPrinter<'tcx>:
                     " as ",
                 )?;
             }
-            // For function type zsts just printing the path is enough
-            ty::FnDef(d, s) if int == ScalarInt::ZST => {
-                p!(print_value_path(*d, s))
-            }
             // Nontrivial types with scalar bit representation
             _ => {
                 let print = |mut this: Self| {

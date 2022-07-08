@@ -799,7 +799,7 @@ impl<'tcx> Cx<'tcx> {
             }
         };
         let ty = self.tcx().mk_fn_def(def_id, substs);
-        Expr { temp_lifetime, ty, span, kind: ExprKind::zero_sized_literal(user_ty) }
+        Expr { temp_lifetime, ty, span, kind: ExprKind::ZstLiteral { user_ty } }
     }
 
     fn convert_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> ArmId {
@@ -828,7 +828,7 @@ impl<'tcx> Cx<'tcx> {
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
             | Res::SelfCtor(_) => {
                 let user_ty = self.user_substs_applied_to_res(expr.hir_id, res);
-                ExprKind::zero_sized_literal(user_ty)
+                ExprKind::ZstLiteral { user_ty }
             }
 
             Res::Def(DefKind::ConstParam, def_id) => {

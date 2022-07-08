@@ -70,7 +70,7 @@ fn main() -> () {
         _8 = guard() -> [return: bb6, unwind: bb15]; // scope 0 at $DIR/match_false_edges.rs:34:21: 34:28
                                          // mir::Constant
                                          // + span: $DIR/match_false_edges.rs:34:21: 34:26
-                                         // + literal: Const { ty: fn() -> bool {guard}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn() -> bool {guard}, val: Value(<ZST>) }
     }
 
     bb6: {
@@ -113,7 +113,7 @@ fn main() -> () {
         _12 = guard2(move _13) -> [return: bb11, unwind: bb15]; // scope 0 at $DIR/match_false_edges.rs:36:20: 36:29
                                          // mir::Constant
                                          // + span: $DIR/match_false_edges.rs:36:20: 36:26
-                                         // + literal: Const { ty: fn(i32) -> bool {guard2}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(i32) -> bool {guard2}, val: Value(<ZST>) }
     }
 
     bb11: {

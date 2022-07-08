@@ -13,7 +13,6 @@ use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_middle::ty::ScalarInt;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer, Size};
 
@@ -219,13 +218,13 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         })
     }
 
+    fn zst_to_backend(&self, _llty: &'ll Type) -> &'ll Value {
+        self.const_undef(self.type_ix(0))
+    }
+
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: &'ll Type) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
-            Scalar::Int(ScalarInt::ZST) => {
-                assert_eq!(0, layout.size(self).bytes());
-                self.const_undef(self.type_ix(0))
-            }
             Scalar::Int(int) => {
                 let data = int.assert_bits(layout.size(self));
                 let llval = self.const_uint_big(self.type_ix(bitsize), data);

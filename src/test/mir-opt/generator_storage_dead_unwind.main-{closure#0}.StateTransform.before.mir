@@ -41,7 +41,7 @@ yields ()
         _7 = take::<Foo>(move _8) -> [return: bb2, unwind: bb9]; // scope 2 at $DIR/generator-storage-dead-unwind.rs:26:9: 26:16
                                          // mir::Constant
                                          // + span: $DIR/generator-storage-dead-unwind.rs:26:9: 26:13
-                                         // + literal: Const { ty: fn(Foo) {take::<Foo>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(Foo) {take::<Foo>}, val: Value(<ZST>) }
     }
 
     bb2: {
@@ -53,7 +53,7 @@ yields ()
         _9 = take::<Bar>(move _10) -> [return: bb3, unwind: bb8]; // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:9: 27:16
                                          // mir::Constant
                                          // + span: $DIR/generator-storage-dead-unwind.rs:27:9: 27:13
-                                         // + literal: Const { ty: fn(Bar) {take::<Bar>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(Bar) {take::<Bar>}, val: Value(<ZST>) }
     }
 
     bb3: {

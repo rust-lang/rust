@@ -32,7 +32,7 @@ fn main() -> () {
         _1 = null_mut::<Test>() -> [return: bb1, unwind: bb4]; // scope 0 at $DIR/receiver-ptr-mutability.rs:14:26: 14:46
                                          // mir::Constant
                                          // + span: $DIR/receiver-ptr-mutability.rs:14:26: 14:44
-                                         // + literal: Const { ty: fn() -> *mut Test {null_mut::<Test>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn() -> *mut Test {null_mut::<Test>}, val: Value(<ZST>) }
     }
 
     bb1: {
@@ -47,7 +47,7 @@ fn main() -> () {
         _2 = Test::x(move _3) -> [return: bb2, unwind: bb4]; // scope 1 at $DIR/receiver-ptr-mutability.rs:15:5: 15:12
                                          // mir::Constant
                                          // + span: $DIR/receiver-ptr-mutability.rs:15:9: 15:10
-                                         // + literal: Const { ty: fn(*const Test) {Test::x}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(*const Test) {Test::x}, val: Value(<ZST>) }
     }
 
     bb2: {
@@ -75,7 +75,7 @@ fn main() -> () {
         _10 = Test::x(move _11) -> [return: bb3, unwind: bb4]; // scope 2 at $DIR/receiver-ptr-mutability.rs:19:5: 19:16
                                          // mir::Constant
                                          // + span: $DIR/receiver-ptr-mutability.rs:19:13: 19:14
-                                         // + literal: Const { ty: fn(*const Test) {Test::x}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(*const Test) {Test::x}, val: Value(<ZST>) }
     }
 
     bb3: {
