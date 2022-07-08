@@ -3,8 +3,8 @@ error[E0599]: the method `filterx` exists for struct `Map<Repeat, [closure@$DIR/
    |
 LL | pub struct Map<S, F> {
    | --------------------
-   | |          |
-   | |          method `filterx` not found for this struct
+   | |
+   | method `filterx` not found for this struct
    | doesn't satisfy `_: StreamExt`
 ...
 LL |     let filter = map.filterx(|x: &_| true);
@@ -28,8 +28,8 @@ error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, for<'r> 
    |
 LL | pub struct Filter<S, F> {
    | -----------------------
-   | |          |
-   | |          method `countx` not found for this struct
+   | |
+   | method `countx` not found for this struct
    | doesn't satisfy `_: StreamExt`
 ...
 LL |     let count = filter.countx();

@@ -94,7 +94,7 @@ error[E0599]: no method named `method` found for struct `Foo` in the current sco
   --> $DIR/no-method-suggested-traits.rs:40:9
    |
 LL | struct Foo;
-   |        --- method `method` not found for this struct
+   | ---------- method `method` not found for this struct
 ...
 LL |     Foo.method();
    |         ^^^^^^ method not found in `Foo`
@@ -201,7 +201,7 @@ error[E0599]: no method named `method3` found for struct `Foo` in the current sc
   --> $DIR/no-method-suggested-traits.rs:59:9
    |
 LL | struct Foo;
-   |        --- method `method3` not found for this struct
+   | ---------- method `method3` not found for this struct
 ...
 LL |     Foo.method3();
    |         ^^^^^^^ method not found in `Foo`
@@ -224,7 +224,7 @@ error[E0599]: no method named `method3` found for enum `Bar` in the current scop
   --> $DIR/no-method-suggested-traits.rs:63:12
    |
 LL | enum Bar { X }
-   |      --- method `method3` not found for this enum
+   | -------- method `method3` not found for this enum
 ...
 LL |     Bar::X.method3();
    |            ^^^^^^^ method not found in `Bar`

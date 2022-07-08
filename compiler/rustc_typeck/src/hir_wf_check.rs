@@ -72,7 +72,7 @@ fn diagnostic_hir_wf_check<'tcx>(
                 let cause = traits::ObligationCause::new(
                     ty.span,
                     self.hir_id,
-                    traits::ObligationCauseCode::MiscObligation,
+                    traits::ObligationCauseCode::WellFormed(None),
                 );
                 fulfill.register_predicate_obligation(
                     &infcx,

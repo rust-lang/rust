@@ -496,7 +496,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> Ty<'tcx> {
         let t = <dyn AstConv<'_>>::ast_ty_to_ty(self, ast_t);
-        self.register_wf_obligation(t.into(), ast_t.span, traits::MiscObligation);
+        self.register_wf_obligation(t.into(), ast_t.span, traits::WellFormed(None));
         t
     }
 
@@ -526,7 +526,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_wf_obligation(
             c.into(),
             self.tcx.hir().span(ast_c.hir_id),
-            ObligationCauseCode::MiscObligation,
+            ObligationCauseCode::WellFormed(None),
         );
         c
     }
@@ -544,7 +544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_wf_obligation(
             c.into(),
             self.tcx.hir().span(ast_c.hir_id),
-            ObligationCauseCode::MiscObligation,
+            ObligationCauseCode::WellFormed(None),
         );
         c
     }
@@ -607,7 +607,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for arg in substs.iter().filter(|arg| {
             matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
         }) {
-            self.register_wf_obligation(arg, expr.span, traits::MiscObligation);
+            self.register_wf_obligation(arg, expr.span, traits::WellFormed(None));
         }
     }
 

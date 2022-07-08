@@ -16,7 +16,7 @@ error[E0599]: the function or associated item `new` exists for struct `Inline<dy
   --> $DIR/issue-80742.rs:30:36
    |
 LL | struct Inline<T>
-   |        ------ function or associated item `new` not found for this struct
+   | ---------------- function or associated item `new` not found for this struct
 ...
 LL |     let dst = Inline::<dyn Debug>::new(0);
    |                                    ^^^ function or associated item cannot be called on `Inline<dyn Debug>` due to unsatisfied trait bounds

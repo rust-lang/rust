@@ -2,7 +2,7 @@ error[E0599]: no method named `clone` found for struct `Qux` in the current scop
   --> $DIR/explicitly-unimplemented-error-message.rs:34:9
    |
 LL | struct Qux;
-   |        --- method `clone` not found for this struct
+   | ---------- method `clone` not found for this struct
 ...
 LL |     Qux.clone();
    |         ^^^^^ method not found in `Qux`
@@ -23,7 +23,7 @@ error[E0599]: no method named `foo` found for struct `Qux` in the current scope
   --> $DIR/explicitly-unimplemented-error-message.rs:44:9
    |
 LL | struct Qux;
-   |        --- method `foo` not found for this struct
+   | ---------- method `foo` not found for this struct
 ...
 LL |     Qux.foo();
    |         ^^^ method not found in `Qux`

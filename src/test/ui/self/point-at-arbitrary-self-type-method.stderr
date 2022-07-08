@@ -2,7 +2,7 @@ error[E0599]: no method named `foo` found for struct `A` in the current scope
   --> $DIR/point-at-arbitrary-self-type-method.rs:8:7
    |
 LL | struct A;
-   |        - method `foo` not found for this struct
+   | -------- method `foo` not found for this struct
 ...
 LL |     fn foo(self: Box<Self>) {}
    |        --- the method is available for `Box<A>` here

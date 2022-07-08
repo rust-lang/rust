@@ -51,8 +51,8 @@ error[E0599]: `Foo` is not an iterator
    |
 LL | pub struct Foo;
    | --------------
-   | |          |
-   | |          method `take` not found for this struct
+   | |
+   | method `take` not found for this struct
    | doesn't satisfy `Foo: Iterator`
 ...
 LL |      .take()

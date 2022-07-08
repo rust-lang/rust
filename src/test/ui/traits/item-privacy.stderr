@@ -2,7 +2,7 @@ error[E0599]: no method named `a` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:67:7
    |
 LL | struct S;
-   |        - method `a` not found for this struct
+   | -------- method `a` not found for this struct
 ...
 LL |     S.a();
    |       ^ method not found in `S`
@@ -18,7 +18,7 @@ error[E0599]: no method named `b` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:68:7
    |
 LL | struct S;
-   |        - method `b` not found for this struct
+   | -------- method `b` not found for this struct
 ...
 LL |         fn b(&self) { }
    |            - the method is available for `S` here
@@ -45,7 +45,7 @@ error[E0599]: no function or associated item named `a` found for struct `S` in t
   --> $DIR/item-privacy.rs:78:8
    |
 LL | struct S;
-   |        - function or associated item `a` not found for this struct
+   | -------- function or associated item `a` not found for this struct
 ...
 LL |     S::a(&S);
    |        ^ function or associated item not found in `S`
@@ -61,7 +61,7 @@ error[E0599]: no function or associated item named `b` found for struct `S` in t
   --> $DIR/item-privacy.rs:80:8
    |
 LL | struct S;
-   |        - function or associated item `b` not found for this struct
+   | -------- function or associated item `b` not found for this struct
 ...
 LL |     S::b(&S);
    |        ^ function or associated item not found in `S`
@@ -85,7 +85,7 @@ error[E0599]: no associated item named `A` found for struct `S` in the current s
   --> $DIR/item-privacy.rs:97:8
    |
 LL | struct S;
-   |        - associated item `A` not found for this struct
+   | -------- associated item `A` not found for this struct
 ...
 LL |     S::A;
    |        ^ associated item not found in `S`
@@ -101,7 +101,7 @@ error[E0599]: no associated item named `B` found for struct `S` in the current s
   --> $DIR/item-privacy.rs:98:8
    |
 LL | struct S;
-   |        - associated item `B` not found for this struct
+   | -------- associated item `B` not found for this struct
 ...
 LL |     S::B;
    |        ^ associated item not found in `S`
