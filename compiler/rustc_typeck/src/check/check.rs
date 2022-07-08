@@ -767,7 +767,10 @@ fn check_opaque_meets_bounds<'tcx>(
             // Can have different predicates to their defining use
             hir::OpaqueTyOrigin::TyAlias => {
                 let outlives_environment = OutlivesEnvironment::new(param_env);
-                infcx.check_region_obligations_and_report_errors(&outlives_environment);
+                infcx.check_region_obligations_and_report_errors(
+                    defining_use_anchor,
+                    &outlives_environment,
+                );
             }
         }
 

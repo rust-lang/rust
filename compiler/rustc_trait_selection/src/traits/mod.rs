@@ -237,29 +237,37 @@ fn do_normalize_predicates<'tcx>(
         // cares about declarations like `'a: 'b`.
         let outlives_env = OutlivesEnvironment::new(elaborated_env);
 
-        infcx.resolve_regions_and_report_errors(&outlives_env);
+        // FIXME: It's very weird that we ignore region obligations but apparently
+        // still need to use `resolve_regions` as we need the resolved regions in
+        // the normalized predicates.
+        let errors = infcx.resolve_regions(&outlives_env);
+        if !errors.is_empty() {
+            tcx.sess.delay_span_bug(
+                span,
+                format!(
+                    "failed region resolution while normalizing {elaborated_env:?}: {errors:?}"
+                ),
+            );
+        }
 
-        let predicates = match infcx.fully_resolve(predicates) {
-            Ok(predicates) => predicates,
+        match infcx.fully_resolve(predicates) {
+            Ok(predicates) => Ok(predicates),
             Err(fixup_err) => {
                 // If we encounter a fixup error, it means that some type
                 // variable wound up unconstrained. I actually don't know
                 // if this can happen, and I certainly don't expect it to
                 // happen often, but if it did happen it probably
                 // represents a legitimate failure due to some kind of
-                // unconstrained variable, and it seems better not to ICE,
-                // all things considered.
-                let reported = tcx.sess.span_err(span, &fixup_err.to_string());
-                return Err(reported);
+                // unconstrained variable.
+                //
+                // @lcnr: Let's still ICE here for now. I want a test case
+                // for that.
+                span_bug!(
+                    span,
+                    "inference variables in normalized parameter environment: {}",
+                    fixup_err
+                );
             }
-        };
-        if predicates.needs_infer() {
-            let reported = tcx
-                .sess
-                .delay_span_bug(span, "encountered inference variables after `fully_resolve`");
-            Err(reported)
-        } else {
-            Ok(predicates)
         }
     })
 }

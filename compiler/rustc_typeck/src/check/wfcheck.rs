@@ -107,7 +107,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
 
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
         outlives_environment.add_implied_bounds(infcx, wf_tys, body_id);
-        infcx.check_region_obligations_and_report_errors(&outlives_environment);
+        infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
     })
 }
 

@@ -68,6 +68,7 @@ use crate::infer::{
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Region, Ty, TyCtxt, TypeVisitable};
 use smallvec::smallvec;
@@ -163,6 +164,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
     pub fn check_region_obligations_and_report_errors(
         &self,
+        generic_param_scope: LocalDefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) {
         self.process_registered_region_obligations(
@@ -170,7 +172,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             outlives_env.param_env,
         );
 
-        self.resolve_regions_and_report_errors(outlives_env)
+        self.resolve_regions_and_report_errors(generic_param_scope, outlives_env)
     }
 }
 

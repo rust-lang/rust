@@ -394,7 +394,10 @@ fn compare_predicate_entailment<'tcx>(
         // lifetime parameters.
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
         outlives_environment.add_implied_bounds(infcx, wf_tys, impl_m_hir_id);
-        infcx.check_region_obligations_and_report_errors(&outlives_environment);
+        infcx.check_region_obligations_and_report_errors(
+            impl_m.def_id.expect_local(),
+            &outlives_environment,
+        );
 
         Ok(())
     })
@@ -1145,7 +1148,8 @@ pub(crate) fn compare_const_impl<'tcx>(
         }
 
         let outlives_environment = OutlivesEnvironment::new(param_env);
-        infcx.resolve_regions_and_report_errors(&outlives_environment);
+        infcx
+            .resolve_regions_and_report_errors(impl_c.def_id.expect_local(), &outlives_environment);
     });
 }
 
@@ -1262,7 +1266,10 @@ fn compare_type_predicate_entailment<'tcx>(
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
         let outlives_environment = OutlivesEnvironment::new(param_env);
-        infcx.check_region_obligations_and_report_errors(&outlives_environment);
+        infcx.check_region_obligations_and_report_errors(
+            impl_ty.def_id.expect_local(),
+            &outlives_environment,
+        );
 
         Ok(())
     })
@@ -1493,7 +1500,10 @@ pub fn check_type_bounds<'tcx>(
         };
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
         outlives_environment.add_implied_bounds(&infcx, implied_bounds, impl_ty_hir_id);
-        infcx.check_region_obligations_and_report_errors(&outlives_environment);
+        infcx.check_region_obligations_and_report_errors(
+            impl_ty.def_id.expect_local(),
+            &outlives_environment,
+        );
 
         Ok(())
     })
