@@ -2,7 +2,7 @@ use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use crate::config::{self, CrateType, OutputType, SwitchWithOptPath};
-use crate::parse::ParseSess;
+use crate::parse::{add_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
 use crate::{filesearch, lint};
 
@@ -457,6 +457,15 @@ impl Session {
         err: impl SessionDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         self.parse_sess.create_err(err)
+    }
+    pub fn create_feature_err<'a>(
+        &'a self,
+        err: impl SessionDiagnostic<'a>,
+        feature: Symbol,
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        let mut err = self.parse_sess.create_err(err);
+        add_feature_diagnostics(&mut err, &self.parse_sess, feature);
+        err
     }
     pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
         self.parse_sess.emit_err(err)

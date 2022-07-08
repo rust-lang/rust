@@ -31,6 +31,7 @@ extern crate tracing;
 extern crate rustc_middle;
 
 pub mod const_eval;
+mod errors;
 pub mod interpret;
 pub mod transform;
 pub mod util;

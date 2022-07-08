@@ -1,7 +1,9 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::def_id::LocalDefId;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{
+    error_code, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -20,6 +22,10 @@ use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::traits::SelectionContext;
 
 use super::ConstCx;
+use crate::errors::{
+    MutDerefErr, NonConstOpErr, PanicNonStrErr, RawPtrComparisonErr, RawPtrToIntErr,
+    StaticAccessErr, TransientMutBorrowErr, TransientMutBorrowErrRaw,
+};
 use crate::util::{call_kind, CallDesugaringKind, CallKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -590,17 +596,17 @@ impl<'tcx> NonConstOp<'tcx> for TransientMutBorrow {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let raw = match self.0 {
-            hir::BorrowKind::Raw => "raw ",
-            hir::BorrowKind::Ref => "",
-        };
-
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_mut_refs,
-            span,
-            &format!("{}mutable references are not allowed in {}s", raw, ccx.const_kind()),
-        )
+        let kind = ccx.const_kind();
+        match self.0 {
+            hir::BorrowKind::Raw => ccx
+                .tcx
+                .sess
+                .create_feature_err(TransientMutBorrowErrRaw { span, kind }, sym::const_mut_refs),
+            hir::BorrowKind::Ref => ccx
+                .tcx
+                .sess
+                .create_feature_err(TransientMutBorrowErr { span, kind }, sym::const_mut_refs),
+        }
     }
 }
 
@@ -621,12 +627,9 @@ impl<'tcx> NonConstOp<'tcx> for MutDeref {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_mut_refs,
-            span,
-            &format!("mutation through a reference is not allowed in {}s", ccx.const_kind()),
-        )
+        ccx.tcx
+            .sess
+            .create_feature_err(MutDerefErr { span, kind: ccx.const_kind() }, sym::const_mut_refs)
     }
 }
 
@@ -639,10 +642,7 @@ impl<'tcx> NonConstOp<'tcx> for PanicNonStr {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.struct_span_err(
-            span,
-            "argument to `panic!()` in a const context must have type `&str`",
-        )
+        ccx.tcx.sess.create_err(PanicNonStrErr { span })
     }
 }
 
@@ -657,15 +657,7 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrComparison {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = ccx
-            .tcx
-            .sess
-            .struct_span_err(span, "pointers cannot be reliably compared during const eval");
-        err.note(
-            "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> \
-            for more information",
-        );
-        err
+        ccx.tcx.sess.create_err(RawPtrComparisonErr { span })
     }
 }
 
@@ -701,15 +693,7 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrToIntCast {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = ccx
-            .tcx
-            .sess
-            .struct_span_err(span, "pointers cannot be cast to integers during const eval");
-        err.note("at compile-time, pointers do not have an integer value");
-        err.note(
-            "avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior",
-        );
-        err
+        ccx.tcx.sess.create_err(RawPtrToIntErr { span })
     }
 }
 
@@ -730,24 +714,11 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            ccx.tcx.sess,
+        ccx.tcx.sess.create_err(StaticAccessErr {
             span,
-            E0013,
-            "{}s cannot refer to statics",
-            ccx.const_kind()
-        );
-        err.help(
-            "consider extracting the value of the `static` to a `const`, and referring to that",
-        );
-        if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
-            err.note(
-                "`static` and `const` variables can refer to other `const` variables. \
-                    A `const` variable, however, cannot refer to a `static` variable.",
-            );
-            err.help("To fix this, the value can be extracted to a `const` and then used.");
-        }
-        err
+            kind: ccx.const_kind(),
+            teach: ccx.tcx.sess.teach(&error_code!(E0013)).then_some(()),
+        })
     }
 }
 
@@ -760,13 +731,7 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        struct_span_err!(
-            ccx.tcx.sess,
-            span,
-            E0625,
-            "thread-local statics cannot be \
-            accessed at compile-time"
-        )
+        ccx.tcx.sess.create_err(NonConstOpErr { span })
     }
 }
 
