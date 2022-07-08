@@ -15,8 +15,6 @@ pub fn expand_deriving_partial_eq(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    // structures are equal if all fields are equal, and non equal, if
-    // any fields are not equal or if the enum variants are different
     fn cs_op(
         cx: &mut ExtCtxt<'_>,
         span: Span,
@@ -24,7 +22,7 @@ pub fn expand_deriving_partial_eq(
         op: BinOpKind,
         combiner: BinOpKind,
         base: bool,
-    ) -> P<Expr> {
+    ) -> BlockOrExpr {
         let op = |cx: &mut ExtCtxt<'_>, span: Span, self_f: P<Expr>, other_fs: &[P<Expr>]| {
             let [other_f] = other_fs else {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`");
@@ -33,7 +31,7 @@ pub fn expand_deriving_partial_eq(
             cx.expr_binary(span, op, self_f, other_f.clone())
         };
 
-        cs_fold1(
+        let expr = cs_fold(
             true, // use foldl
             |cx, span, subexpr, self_f, other_fs| {
                 let eq = op(cx, span, self_f, other_fs);
@@ -52,13 +50,14 @@ pub fn expand_deriving_partial_eq(
             cx,
             span,
             substr,
-        )
+        );
+        BlockOrExpr::new_expr(expr)
     }
 
-    fn cs_eq(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
+    fn cs_eq(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
         cs_op(cx, span, substr, BinOpKind::Eq, BinOpKind::And, true)
     }
-    fn cs_ne(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
+    fn cs_ne(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
         cs_op(cx, span, substr, BinOpKind::Ne, BinOpKind::Or, false)
     }
 

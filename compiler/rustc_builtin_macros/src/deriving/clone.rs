@@ -2,8 +2,8 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, Generics, ItemKind, MetaItem, VariantData};
+use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, VariantData};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -98,22 +98,31 @@ fn cs_clone_simple(
     trait_span: Span,
     substr: &Substructure<'_>,
     is_union: bool,
-) -> P<Expr> {
+) -> BlockOrExpr {
     let mut stmts = Vec::new();
+    let mut seen_type_names = FxHashSet::default();
     let mut process_variant = |variant: &VariantData| {
         for field in variant.fields() {
-            // let _: AssertParamIsClone<FieldTy>;
-            super::assert_ty_bounds(
-                cx,
-                &mut stmts,
-                field.ty.clone(),
-                field.span,
-                &[sym::clone, sym::AssertParamIsClone],
-            );
+            // This basic redundancy checking only prevents duplication of
+            // assertions like `AssertParamIsClone<Foo>` where the type is a
+            // simple name. That's enough to get a lot of cases, though.
+            if let Some(name) = field.ty.kind.is_simple_path() && !seen_type_names.insert(name) {
+                // Already produced an assertion for this type.
+            } else {
+                // let _: AssertParamIsClone<FieldTy>;
+                super::assert_ty_bounds(
+                    cx,
+                    &mut stmts,
+                    field.ty.clone(),
+                    field.span,
+                    &[sym::clone, sym::AssertParamIsClone],
+                );
+            }
         }
     };
 
     if is_union {
+        // Just a single assertion for unions, that the union impls `Copy`.
         // let _: AssertParamIsCopy<Self>;
         let self_ty = cx.ty_path(cx.path_ident(trait_span, Ident::with_dummy_span(kw::SelfUpper)));
         super::assert_ty_bounds(
@@ -139,8 +148,7 @@ fn cs_clone_simple(
             ),
         }
     }
-    stmts.push(cx.stmt_expr(cx.expr_deref(trait_span, cx.expr_self(trait_span))));
-    cx.expr_block(cx.block(trait_span, stmts))
+    BlockOrExpr::new_mixed(stmts, cx.expr_deref(trait_span, cx.expr_self(trait_span)))
 }
 
 fn cs_clone(
@@ -148,7 +156,7 @@ fn cs_clone(
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
-) -> P<Expr> {
+) -> BlockOrExpr {
     let ctor_path;
     let all_fields;
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
@@ -177,7 +185,7 @@ fn cs_clone(
         }
     }
 
-    match *vdata {
+    let expr = match *vdata {
         VariantData::Struct(..) => {
             let fields = all_fields
                 .iter()
@@ -201,5 +209,6 @@ fn cs_clone(
             cx.expr_call(trait_span, path, subcalls)
         }
         VariantData::Unit(..) => cx.expr_path(ctor_path),
-    }
+    };
+    BlockOrExpr::new_expr(expr)
 }

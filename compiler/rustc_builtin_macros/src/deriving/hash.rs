@@ -2,8 +2,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::{self, path_std, pathvec_std};
 
-use rustc_ast::ptr::P;
-use rustc_ast::{Expr, MetaItem, Mutability};
+use rustc_ast::{MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -45,7 +44,11 @@ pub fn expand_deriving_hash(
     hash_trait_def.expand(cx, mitem, item, push);
 }
 
-fn hash_substructure(cx: &mut ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> P<Expr> {
+fn hash_substructure(
+    cx: &mut ExtCtxt<'_>,
+    trait_span: Span,
+    substr: &Substructure<'_>,
+) -> BlockOrExpr {
     let [state_expr] = substr.nonself_args else {
         cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };
@@ -81,6 +84,5 @@ fn hash_substructure(cx: &mut ExtCtxt<'_>, trait_span: Span, substr: &Substructu
     stmts.extend(
         fields.iter().map(|FieldInfo { ref self_, span, .. }| call_hash(*span, self_.clone())),
     );
-
-    cx.expr_block(cx.block(trait_span, stmts))
+    BlockOrExpr::new_stmts(stmts)
 }

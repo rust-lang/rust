@@ -1,11 +1,10 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 
-use rustc_ast::ptr::P;
+use rustc_ast as ast;
 use rustc_ast::walk_list;
 use rustc_ast::EnumDef;
 use rustc_ast::VariantData;
-use rustc_ast::{Expr, MetaItem};
 use rustc_errors::Applicability;
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::symbol::Ident;
@@ -16,7 +15,7 @@ use smallvec::SmallVec;
 pub fn expand_deriving_default(
     cx: &mut ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
+    mitem: &ast::MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
@@ -59,12 +58,12 @@ fn default_struct_substructure(
     trait_span: Span,
     substr: &Substructure<'_>,
     summary: &StaticFields,
-) -> P<Expr> {
+) -> BlockOrExpr {
     // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
     let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
     let default_call = |span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
 
-    match summary {
+    let expr = match summary {
         Unnamed(ref fields, is_tuple) => {
             if !is_tuple {
                 cx.expr_ident(trait_span, substr.type_ident)
@@ -80,31 +79,27 @@ fn default_struct_substructure(
                 .collect();
             cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
         }
-    }
+    };
+    BlockOrExpr::new_expr(expr)
 }
 
 fn default_enum_substructure(
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     enum_def: &EnumDef,
-) -> P<Expr> {
-    let Ok(default_variant) = extract_default_variant(cx, enum_def, trait_span) else {
-        return DummyResult::raw_expr(trait_span, true);
+) -> BlockOrExpr {
+    let expr = if let Ok(default_variant) = extract_default_variant(cx, enum_def, trait_span)
+        && let Ok(_) = validate_default_attribute(cx, default_variant)
+    {
+        // We now know there is exactly one unit variant with exactly one `#[default]` attribute.
+        cx.expr_path(cx.path(
+            default_variant.span,
+            vec![Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
+        ))
+    } else {
+        DummyResult::raw_expr(trait_span, true)
     };
-
-    // At this point, we know that there is exactly one variant with a `#[default]` attribute. The
-    // attribute hasn't yet been validated.
-
-    if let Err(()) = validate_default_attribute(cx, default_variant) {
-        return DummyResult::raw_expr(trait_span, true);
-    }
-
-    // We now know there is exactly one unit variant with exactly one `#[default]` attribute.
-
-    cx.expr_path(cx.path(
-        default_variant.span,
-        vec![Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
-    ))
+    BlockOrExpr::new_expr(expr)
 }
 
 fn extract_default_variant<'a>(

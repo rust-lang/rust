@@ -62,7 +62,7 @@ fn decodable_substructure(
     trait_span: Span,
     substr: &Substructure<'_>,
     krate: Symbol,
-) -> P<Expr> {
+) -> BlockOrExpr {
     let decoder = substr.nonself_args[0].clone();
     let recurse = vec![
         Ident::new(krate, trait_span),
@@ -74,7 +74,7 @@ fn decodable_substructure(
     let blkarg = Ident::new(sym::_d, trait_span);
     let blkdecoder = cx.expr_ident(trait_span, blkarg);
 
-    match *substr.fields {
+    let expr = match *substr.fields {
         StaticStruct(_, ref summary) => {
             let nfields = match *summary {
                 Unnamed(ref fields, _) => fields.len(),
@@ -173,7 +173,8 @@ fn decodable_substructure(
             )
         }
         _ => cx.bug("expected StaticEnum or StaticStruct in derive(Decodable)"),
-    }
+    };
+    BlockOrExpr::new_expr(expr)
 }
 
 /// Creates a decoder for a single enum variant/struct:

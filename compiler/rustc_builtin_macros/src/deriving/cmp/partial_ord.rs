@@ -48,11 +48,10 @@ pub fn expand_deriving_partial_ord(
     trait_def.expand(cx, mitem, item, push)
 }
 
-pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
+pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
     let test_id = Ident::new(sym::cmp, span);
     let ordering = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
     let ordering_expr = cx.expr_path(ordering.clone());
-    let equals_expr = cx.expr_some(span, ordering_expr);
 
     let partial_cmp_path = cx.std_path(&[sym::cmp, sym::PartialOrd, sym::partial_cmp]);
 
@@ -69,7 +68,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
     // cmp => cmp
     // }
     //
-    cs_fold(
+    let expr = cs_fold(
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
@@ -95,7 +94,21 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
 
             cx.expr_match(span, new, vec![eq_arm, neq_arm])
         },
-        equals_expr,
+        |cx: &mut ExtCtxt<'_>, args: Option<(Span, P<Expr>, &[P<Expr>])>| match args {
+            Some((span, self_f, other_fs)) => {
+                let new = {
+                    let [other_f] = other_fs else {
+                            cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`");
+                        };
+                    let args =
+                        vec![cx.expr_addr_of(span, self_f), cx.expr_addr_of(span, other_f.clone())];
+                    cx.expr_call_global(span, partial_cmp_path.clone(), args)
+                };
+
+                new
+            }
+            None => cx.expr_some(span, ordering_expr.clone()),
+        },
         Box::new(|cx, span, tag_tuple| {
             if tag_tuple.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
@@ -110,5 +123,6 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
         cx,
         span,
         substr,
-    )
+    );
+    BlockOrExpr::new_expr(expr)
 }
