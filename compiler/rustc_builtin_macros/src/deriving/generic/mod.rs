@@ -1173,6 +1173,12 @@ impl<'a> MethodDef<'a> {
         let span = trait_.span;
         let variants = &enum_def.variants;
 
+        // There is no sensible code to be generated for *any* deriving on a
+        // zero-variant enum. So we just generate a failing expression.
+        if variants.is_empty() {
+            return BlockOrExpr(vec![], Some(deriving::call_unreachable(cx, span)));
+        }
+
         let prefixes = iter::once("__self".to_string())
             .chain(
                 selflike_args
@@ -1365,11 +1371,6 @@ impl<'a> MethodDef<'a> {
             let all_match = cx.expr_match(span, match_arg, match_arms);
             let arm_expr = cx.expr_if(span, discriminant_test, all_match, Some(arm_expr));
             BlockOrExpr(index_let_stmts, Some(arm_expr))
-        } else if variants.is_empty() {
-            // There is no sensible code to be generated for *any* deriving on
-            // a zero-variant enum. So we just generate a failing expression
-            // for the zero variant case.
-            BlockOrExpr(vec![], Some(deriving::call_unreachable(cx, span)))
         } else {
             let match_arg = if selflike_args.len() == 1 {
                 selflike_args.pop().unwrap()
