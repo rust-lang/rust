@@ -14,7 +14,6 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::ScalarInt;
-use rustc_span::symbol::Symbol;
 use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer, Size};
 
 use libc::{c_char, c_uint};
@@ -180,22 +179,27 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMConstReal(t, val) }
     }
 
-    fn const_str(&self, s: Symbol) -> (&'ll Value, &'ll Value) {
-        let s_str = s.as_str();
-        let str_global = *self.const_str_cache.borrow_mut().entry(s).or_insert_with(|| {
-            let sc = self.const_bytes(s_str.as_bytes());
-            let sym = self.generate_local_symbol_name("str");
-            let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
-                bug!("symbol `{}` is already defined", sym);
-            });
-            unsafe {
-                llvm::LLVMSetInitializer(g, sc);
-                llvm::LLVMSetGlobalConstant(g, True);
-                llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
-            }
-            g
-        });
-        let len = s_str.len();
+    fn const_str(&self, s: &str) -> (&'ll Value, &'ll Value) {
+        let str_global = *self
+            .const_str_cache
+            .borrow_mut()
+            .raw_entry_mut()
+            .from_key(s)
+            .or_insert_with(|| {
+                let sc = self.const_bytes(s.as_bytes());
+                let sym = self.generate_local_symbol_name("str");
+                let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
+                    bug!("symbol `{}` is already defined", sym);
+                });
+                unsafe {
+                    llvm::LLVMSetInitializer(g, sc);
+                    llvm::LLVMSetGlobalConstant(g, True);
+                    llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
+                }
+                (s.to_owned(), g)
+            })
+            .1;
+        let len = s.len();
         let cs = consts::ptrcast(
             str_global,
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).llvm_type(self)),

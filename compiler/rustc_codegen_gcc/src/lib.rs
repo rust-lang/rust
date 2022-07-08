@@ -6,7 +6,14 @@
  * TODO(antoyo): remove the patches.
  */
 
-#![feature(rustc_private, decl_macro, associated_type_bounds, never_type, trusted_len)]
+#![feature(
+    rustc_private,
+    decl_macro,
+    associated_type_bounds,
+    never_type,
+    trusted_len,
+    hash_raw_entry
+)]
 #![allow(broken_intra_doc_links)]
 #![recursion_limit="256"]
 #![warn(rust_2018_idioms)]
