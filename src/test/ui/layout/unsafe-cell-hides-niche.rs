@@ -5,9 +5,10 @@
 
 // run-pass
 
-use std::cell::UnsafeCell;
+use std::cell::{UnsafeCell, RefCell, Cell};
 use std::mem::size_of;
 use std::num::NonZeroU32 as N32;
+use std::sync::{Mutex, RwLock};
 
 struct Wrapper<T>(T);
 
@@ -18,12 +19,23 @@ struct NoNiche<T>(UnsafeCell<T>);
 
 fn main() {
     assert_eq!(size_of::<Option<Wrapper<u32>>>(),     8);
-    assert_eq!(size_of::<Option<Wrapper<N32>>>(),     4);
+    assert_eq!(size_of::<Option<Wrapper<N32>>>(),     4); // (✓ niche opt)
     assert_eq!(size_of::<Option<Transparent<u32>>>(), 8);
-    assert_eq!(size_of::<Option<Transparent<N32>>>(), 4);
+    assert_eq!(size_of::<Option<Transparent<N32>>>(), 4); // (✓ niche opt)
     assert_eq!(size_of::<Option<NoNiche<u32>>>(),     8);
-    assert_eq!(size_of::<Option<NoNiche<N32>>>(),     8);
+    assert_eq!(size_of::<Option<NoNiche<N32>>>(),     8); // (✗ niche opt)
 
     assert_eq!(size_of::<Option<UnsafeCell<u32>>>(),  8);
-    assert_eq!(size_of::<Option<UnsafeCell<N32>>>(),  8);
+    assert_eq!(size_of::<Option<UnsafeCell<N32>>>(),  8); // (✗ niche opt)
+
+    assert_eq!(size_of::<       UnsafeCell<&()> >(), 8);
+    assert_eq!(size_of::<Option<UnsafeCell<&()>>>(), 16); // (✗ niche opt)
+    assert_eq!(size_of::<             Cell<&()> >(), 8);
+    assert_eq!(size_of::<Option<      Cell<&()>>>(), 16); // (✗ niche opt)
+    assert_eq!(size_of::<          RefCell<&()> >(), 16);
+    assert_eq!(size_of::<Option<   RefCell<&()>>>(), 24); // (✗ niche opt)
+    assert_eq!(size_of::<           RwLock<&()> >(), 24);
+    assert_eq!(size_of::<Option<    RwLock<&()>>>(), 32); // (✗ niche opt)
+    assert_eq!(size_of::<            Mutex<&()> >(), 16);
+    assert_eq!(size_of::<Option<     Mutex<&()>>>(), 24); // (✗ niche opt)
 }
