@@ -54,3 +54,33 @@ fn panic_safety_traits() {
         assert::<Arc<AssertUnwindSafe<T>>>();
     }
 }
+
+#[test]
+fn test_try_panic_any_message_drop_glue_does_happen() {
+    use crate::sync::Arc;
+
+    let count = Arc::new(());
+    let weak = Arc::downgrade(&count);
+
+    match super::catch_unwind(|| super::panic_any(count)) {
+        Ok(()) => panic!("closure did not panic"),
+        Err(e) if e.is::<Arc<()>>() => {}
+        Err(_) => panic!("closure did not panic with the expected payload"),
+    }
+    assert!(weak.upgrade().is_none());
+}
+
+#[test]
+fn test_try_panic_resume_unwind_drop_glue_does_happen() {
+    use crate::sync::Arc;
+
+    let count = Arc::new(());
+    let weak = Arc::downgrade(&count);
+
+    match super::catch_unwind(|| super::resume_unwind(Box::new(count))) {
+        Ok(()) => panic!("closure did not panic"),
+        Err(e) if e.is::<Arc<()>>() => {}
+        Err(_) => panic!("closure did not panic with the expected payload"),
+    }
+    assert!(weak.upgrade().is_none());
+}

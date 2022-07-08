@@ -21,8 +21,7 @@ fn main() {
         [..] => std::panic::panic_any(Bomb),
     }.expect("running the command should have succeeded");
     println!("{:#?}", output);
-    let stderr = std::str::from_utf8(&output.stderr);
-    assert!(stderr.map(|v| {
-        v.ends_with("fatal runtime error: drop of the panic payload panicked\n")
-    }).unwrap_or(false));
+    let stderr = std::str::from_utf8(&output.stderr).expect("UTF-8 stderr");
+    // the drop of the panic payload cannot unwind anymore:
+    assert!(stderr.contains("fatal runtime error: drop of the panic payload panicked"));
 }
