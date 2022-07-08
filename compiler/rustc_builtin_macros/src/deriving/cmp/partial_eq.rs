@@ -51,7 +51,6 @@ pub fn expand_deriving_partial_eq(
                 }
                 CsFold::Combine(span, expr1, expr2) => cx.expr_binary(span, combiner, expr1, expr2),
                 CsFold::Fieldless => cx.expr_bool(span, base),
-                CsFold::EnumNonMatching(span, _tag_tuple) => cx.expr_bool(span, !base),
             },
         );
         BlockOrExpr::new_expr(expr)

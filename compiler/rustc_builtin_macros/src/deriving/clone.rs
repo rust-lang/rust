@@ -148,7 +148,7 @@ fn cs_clone_simple(
             ),
         }
     }
-    BlockOrExpr::new_mixed(stmts, cx.expr_deref(trait_span, cx.expr_self(trait_span)))
+    BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
 }
 
 fn cs_clone(
@@ -177,9 +177,7 @@ fn cs_clone(
             all_fields = af;
             vdata = &variant.data;
         }
-        EnumNonMatchingCollapsed(..) => {
-            cx.span_bug(trait_span, &format!("non-matching enum variants in `derive({})`", name,))
-        }
+        EnumTag(..) => cx.span_bug(trait_span, &format!("enum tags in `derive({})`", name,)),
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, &format!("associated function in `derive({})`", name))
         }

@@ -73,16 +73,6 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> Bl
                 cx.expr_match(span, expr2, vec![eq_arm, neq_arm])
             }
             CsFold::Fieldless => cx.expr_path(equal_path.clone()),
-            CsFold::EnumNonMatching(span, tag_tuple) => {
-                if tag_tuple.len() != 2 {
-                    cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`")
-                } else {
-                    let lft = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[0]));
-                    let rgt = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[1]));
-                    let fn_cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
-                    cx.expr_call_global(span, fn_cmp_path, vec![lft, rgt])
-                }
-            }
         },
     );
     BlockOrExpr::new_expr(expr)

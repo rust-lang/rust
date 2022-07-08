@@ -45,7 +45,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     let (ident, vdata, fields) = match substr.fields {
         Struct(vdata, fields) => (substr.type_ident, *vdata, fields),
         EnumMatching(_, _, v, fields) => (v.ident, &v.data, fields),
-        EnumNonMatchingCollapsed(..) | StaticStruct(..) | StaticEnum(..) => {
+        EnumTag(..) | StaticStruct(..) | StaticEnum(..) => {
             cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
         }
     };
@@ -176,6 +176,6 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
             stmts.push(names_let.unwrap());
         }
         stmts.push(values_let);
-        BlockOrExpr::new_mixed(stmts, expr)
+        BlockOrExpr::new_mixed(stmts, Some(expr))
     }
 }

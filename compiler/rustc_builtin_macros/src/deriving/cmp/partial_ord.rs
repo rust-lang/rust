@@ -82,17 +82,6 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
                 cx.expr_match(span, expr2, vec![eq_arm, neq_arm])
             }
             CsFold::Fieldless => cx.expr_some(span, cx.expr_path(equal_path.clone())),
-            CsFold::EnumNonMatching(span, tag_tuple) => {
-                if tag_tuple.len() != 2 {
-                    cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
-                } else {
-                    let lft = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[0]));
-                    let rgt = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[1]));
-                    let fn_partial_cmp_path =
-                        cx.std_path(&[sym::cmp, sym::PartialOrd, sym::partial_cmp]);
-                    cx.expr_call_global(span, fn_partial_cmp_path, vec![lft, rgt])
-                }
-            }
         },
     );
     BlockOrExpr::new_expr(expr)
