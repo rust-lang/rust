@@ -166,6 +166,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.realpath(path, resolved_path)?;
                 this.write_pointer(result, dest)?;
             }
+            "mkstemp" => {
+                let [template] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.mkstemp(template)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
 
             // Time related shims
             "gettimeofday" => {
