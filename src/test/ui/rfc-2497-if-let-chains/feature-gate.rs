@@ -19,6 +19,11 @@ fn _if() {
 
     if let Range { start: _, end: _ } = (true..true) && false {}
     //~^ ERROR `let` expressions in this position are unstable [E0658]
+
+    if let 1 = 1 && let true = { true } && false {
+    //~^ ERROR `let` expressions in this position are unstable [E0658]
+    //~| ERROR `let` expressions in this position are unstable [E0658]
+    }
 }
 
 fn _while() {
