@@ -377,14 +377,14 @@ For more details on bootstrapping, see
   - Main entry point: [`rustc_lexer::first_token`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/fn.first_token.html)
 - Parsing: Parse the stream of tokens to an Abstract Syntax Tree (AST)
   - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
+  - Guide: [Macro Expansion](https://rustc-dev-guide.rust-lang.org/macro-expansion.html)
+  - Guide: [Name Resolution](https://rustc-dev-guide.rust-lang.org/name-resolution.html)
   - Parser definition: [`rustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
   - Main entry points:
     - [Entry point for first file in crate](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/passes/fn.parse.html)
     - [Entry point for outline module parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/module/fn.parse_external_mod.html)
     - [Entry point for macro fragments][parse_nonterminal]
   - AST definition: [`rustc_ast`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html)
-  - Expansion: **TODO**
-  - Name Resolution: **TODO**
   - Feature gating: **TODO**
   - Early linting: **TODO**
 - The High Level Intermediate Representation (HIR)
