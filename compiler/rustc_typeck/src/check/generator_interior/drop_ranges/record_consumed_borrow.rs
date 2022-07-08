@@ -75,6 +75,7 @@ impl<'tcx> ExprUseDelegate<'tcx> {
         if !self.places.consumed.contains_key(&consumer) {
             self.places.consumed.insert(consumer, <_>::default());
         }
+        debug!(?consumer, ?target, "mark_consumed");
         self.places.consumed.get_mut(&consumer).map(|places| places.insert(target));
     }
 
@@ -136,13 +137,16 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
         diag_expr_id: HirId,
     ) {
-        let parent = match self.tcx.hir().find_parent_node(place_with_id.hir_id) {
+        let hir = self.tcx.hir();
+        let parent = match hir.find_parent_node(place_with_id.hir_id) {
             Some(parent) => parent,
             None => place_with_id.hir_id,
         };
         debug!(
-            "consume {:?}; diag_expr_id={:?}, using parent {:?}",
-            place_with_id, diag_expr_id, parent
+            "consume {:?}; diag_expr_id={}, using parent {}",
+            place_with_id,
+            hir.node_to_string(diag_expr_id),
+            hir.node_to_string(parent)
         );
         place_with_id
             .try_into()
