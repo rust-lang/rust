@@ -372,7 +372,7 @@ fn source_edit_from_name(edit: &mut TextEditBuilder, name: &ast::Name, new_name:
             //      ^ insert `new_name: `
 
             // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
-            // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
+            // other name https://github.com/rust-lang/rust-analyzer/issues/6547
             edit.insert(ident_pat.syntax().text_range().start(), format!("{}: ", new_name));
             return true;
         }

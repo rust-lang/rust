@@ -10,7 +10,7 @@ use crate::{TextRange, TextSize};
 pub struct SyntaxError(String, TextRange);
 
 // FIXME: there was an unused SyntaxErrorKind previously (before this enum was removed)
-// It was introduced in this PR: https://github.com/rust-analyzer/rust-analyzer/pull/846/files#diff-827da9b03b8f9faa1bade5cdd44d5dafR95
+// It was introduced in this PR: https://github.com/rust-lang/rust-analyzer/pull/846/files#diff-827da9b03b8f9faa1bade5cdd44d5dafR95
 // but it was not removed by a mistake.
 //
 // So, we need to find a place where to stick validation for attributes in match clauses.

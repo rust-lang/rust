@@ -434,7 +434,7 @@ pub enum ConstScalar {
     /// Case of an unknown value that rustc might know but we don't
     // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
     // constants
-    // https://github.com/rust-analyzer/rust-analyzer/pull/8813#issuecomment-840679177
+    // https://github.com/rust-lang/rust-analyzer/pull/8813#issuecomment-840679177
     // https://rust-lang.zulipchat.com/#narrow/stream/144729-wg-traits/topic/Handling.20non.20evaluatable.20constants'.20equality/near/238386348
     Unknown,
 }

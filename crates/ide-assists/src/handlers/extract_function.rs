@@ -1053,7 +1053,7 @@ fn locals_defined_in_body(
     body: &FunctionBody,
 ) -> FxIndexSet<Local> {
     // FIXME: this doesn't work well with macros
-    //        see https://github.com/rust-analyzer/rust-analyzer/pull/7535#discussion_r570048550
+    //        see https://github.com/rust-lang/rust-analyzer/pull/7535#discussion_r570048550
     let mut res = FxIndexSet::default();
     body.walk_pat(&mut |pat| {
         if let ast::Pat::IdentPat(pat) = pat {

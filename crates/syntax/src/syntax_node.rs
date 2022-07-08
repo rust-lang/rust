@@ -47,7 +47,7 @@ impl SyntaxTreeBuilder {
 
     pub fn finish(self) -> Parse<SyntaxNode> {
         let (green, errors) = self.finish_raw();
-        // Disable block validation, see https://github.com/rust-analyzer/rust-analyzer/pull/10357
+        // Disable block validation, see https://github.com/rust-lang/rust-analyzer/pull/10357
         if cfg!(debug_assertions) && false {
             let node = SyntaxNode::new_root(green.clone());
             crate::validation::validate_block_structure(&node);

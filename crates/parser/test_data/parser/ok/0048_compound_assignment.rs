@@ -1,4 +1,4 @@
-// https://github.com/rust-analyzer/rust-analyzer/pull/983
+// https://github.com/rust-lang/rust-analyzer/pull/983
 
 fn compound_assignment() {
     let mut a = 0;

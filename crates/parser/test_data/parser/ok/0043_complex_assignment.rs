@@ -1,4 +1,4 @@
-// https://github.com/rust-analyzer/rust-analyzer/issues/674
+// https://github.com/rust-lang/rust-analyzer/issues/674
 
 struct Repr { raw: [u8; 1] }
 

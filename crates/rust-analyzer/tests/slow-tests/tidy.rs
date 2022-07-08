@@ -344,7 +344,7 @@ fn check_dbg(path: &Path, text: &str) {
 
 fn check_test_attrs(path: &Path, text: &str) {
     let ignore_rule =
-        "https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/style.md#ignore";
+        "https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/style.md#ignore";
     let need_ignore: &[&str] = &[
         // This file.
         "slow-tests/tidy.rs",
@@ -365,7 +365,7 @@ fn check_test_attrs(path: &Path, text: &str) {
     }
 
     let panic_rule =
-        "https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/style.md#should_panic";
+        "https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/style.md#should_panic";
     let need_panic: &[&str] = &[
         // This file.
         "slow-tests/tidy.rs",

@@ -72,7 +72,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
     // fact.
     //
     // This is the usual
-    // <https://github.com/rust-analyzer/rust-analyzer/issues/3407>
+    // <https://github.com/rust-lang/rust-analyzer/issues/3407>
     // resolve/record tension!
     //
     // So here we try to do a resolve, which is necessary a heuristic. For macro

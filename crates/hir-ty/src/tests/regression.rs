@@ -985,7 +985,7 @@ fn test() {
 
 #[test]
 fn cfg_tail() {
-    // https://github.com/rust-analyzer/rust-analyzer/issues/8378
+    // https://github.com/rust-lang/rust-analyzer/issues/8378
     check_infer(
         r#"
         fn fake_tail(){

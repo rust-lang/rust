@@ -33,7 +33,7 @@ impl flags::Metrics {
         let _env = sh.push_env("RA_METRICS", "1");
 
         {
-            // https://github.com/rust-analyzer/rust-analyzer/issues/9997
+            // https://github.com/rust-lang/rust-analyzer/issues/9997
             let _d = sh.push_dir("target/rustc-perf/collector/benchmarks/webrender");
             cmd!(sh, "cargo update -p url --precise 1.6.1").run()?;
         }

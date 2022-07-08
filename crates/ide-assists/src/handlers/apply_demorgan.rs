@@ -222,7 +222,7 @@ fn f() { !(S <= S || S < S) }
         check_assist(apply_demorgan, "fn f() { (x ||$0 x) }", "fn f() { !(!x && !x) }")
     }
 
-    // https://github.com/rust-analyzer/rust-analyzer/issues/10963
+    // https://github.com/rust-lang/rust-analyzer/issues/10963
     #[test]
     fn demorgan_doesnt_hang() {
         check_assist(

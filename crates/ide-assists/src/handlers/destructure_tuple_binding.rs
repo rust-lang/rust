@@ -1793,7 +1793,7 @@ fn foo() -> Option<()> {
     let v: &i32 = &t.0;         // no deref, no parens, remove `&`
     f1(t.0);                    // deref, no parens
     f2(&t.0);                   // `&*` -> cancel out -> no deref, no parens
-    // https://github.com/rust-analyzer/rust-analyzer/issues/1109#issuecomment-658868639
+    // https://github.com/rust-lang/rust-analyzer/issues/1109#issuecomment-658868639
     // let v: i32 = t.1.0;      // no deref, no parens
     let v: i32 = t.4.value;     // no deref, no parens
     t.0.do_stuff();             // deref, parens
@@ -1827,7 +1827,7 @@ fn foo() -> Option<()> {
     let v: &i32 = _0;         // no deref, no parens, remove `&`
     f1(*_0);                    // deref, no parens
     f2(_0);                   // `&*` -> cancel out -> no deref, no parens
-    // https://github.com/rust-analyzer/rust-analyzer/issues/1109#issuecomment-658868639
+    // https://github.com/rust-lang/rust-analyzer/issues/1109#issuecomment-658868639
     // let v: i32 = t.1.0;      // no deref, no parens
     let v: i32 = _4.value;     // no deref, no parens
     (*_0).do_stuff();             // deref, parens

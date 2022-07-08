@@ -1,5 +1,5 @@
 SOURCE_FILE
-  COMMENT "// https://github.com/rust-analyzer/rust-analyzer/issues/972"
+  COMMENT "// https://github.com/rust-lang/rust-analyzer/issues/972"
   WHITESPACE "\n\n"
   FN
     FN_KW "fn"

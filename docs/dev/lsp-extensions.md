@@ -4,7 +4,7 @@ lsp_ext.rs hash: 2a188defec26cc7c
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
 
-  https://github.com/rust-analyzer/rust-analyzer/issues/4604
+  https://github.com/rust-lang/rust-analyzer/issues/4604
 
 --->
 
@@ -17,7 +17,7 @@ All capabilities are enabled via the `experimental` field of `ClientCapabilities
 Requests which we hope to upstream live under `experimental/` namespace.
 Requests, which are likely to always remain specific to `rust-analyzer` are under `rust-analyzer/` namespace.
 
-If you want to be notified about the changes to this document, subscribe to [#4604](https://github.com/rust-analyzer/rust-analyzer/issues/4604).
+If you want to be notified about the changes to this document, subscribe to [#4604](https://github.com/rust-lang/rust-analyzer/issues/4604).
 
 ## UTF-8 offsets
 
@@ -611,7 +611,7 @@ Such actions on the client side are appended to a hover bottom as command links:
 
 ## Open Cargo.toml
 
-**Upstream Issue:** https://github.com/rust-analyzer/rust-analyzer/issues/6462
+**Upstream Issue:** https://github.com/rust-lang/rust-analyzer/issues/6462
 
 **Experimental Server Capability:** `{ "openCargoToml": boolean }`
 
@@ -681,7 +681,7 @@ Triggering a hover inside the selection above will show a result of `i32`.
 
 ## Move Item
 
-**Upstream Issue:** https://github.com/rust-analyzer/rust-analyzer/issues/6823
+**Upstream Issue:** https://github.com/rust-lang/rust-analyzer/issues/6823
 
 This request is sent from client to server to move item under cursor or selection in some direction.
 

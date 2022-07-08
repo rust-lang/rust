@@ -75,7 +75,7 @@ impl Drop for Scope {
 ///
 /// See this diff for how to profile completions:
 ///
-/// <https://github.com/rust-analyzer/rust-analyzer/pull/5306>
+/// <https://github.com/rust-lang/rust-analyzer/pull/5306>
 #[derive(Debug)]
 pub struct CpuSpan {
     _private: (),

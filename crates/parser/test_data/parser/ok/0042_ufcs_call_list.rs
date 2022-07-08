@@ -1,4 +1,4 @@
-// https://github.com/rust-analyzer/rust-analyzer/issues/596
+// https://github.com/rust-lang/rust-analyzer/issues/596
 
 struct Foo;
 

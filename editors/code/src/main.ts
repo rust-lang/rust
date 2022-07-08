@@ -316,7 +316,7 @@ async function getServer(
             "You need to manually clone the rust-analyzer repository and " +
             "run `cargo xtask install --server` to build the language server from sources. " +
             "If you feel that your platform should be supported, please create an issue " +
-            "about that [here](https://github.com/rust-analyzer/rust-analyzer/issues) and we " +
+            "about that [here](https://github.com/rust-lang/rust-analyzer/issues) and we " +
             "will consider it."
     );
     return undefined;

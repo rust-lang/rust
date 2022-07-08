@@ -8,7 +8,7 @@ architectural solutions related to the problem of building IDE-first compiler
 for Rust. There is a video version of this guide as well:
 https://youtu.be/ANKBNiSWyfc.
 
-[guide-2019-01]: https://github.com/rust-analyzer/rust-analyzer/tree/guide-2019-01
+[guide-2019-01]: https://github.com/rust-lang/rust-analyzer/tree/guide-2019-01
 
 ## The big picture
 
@@ -40,8 +40,8 @@ terms of files and offsets, and **not** in terms of Rust concepts like structs,
 traits, etc. The "typed" API with Rust specific types is slightly lower in the
 stack, we'll talk about it later.
 
-[`AnalysisHost`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L265-L284
-[`Analysis`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L291-L478
+[`AnalysisHost`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L265-L284
+[`Analysis`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L291-L478
 
 The reason for this separation of `Analysis` and `AnalysisHost` is that we want to apply
 changes "uniquely", but we might also want to fork an `Analysis` and send it to
@@ -69,7 +69,7 @@ the `AnalysisHost::apply_change` method, which accepts a single argument, a
 "transaction", so it suffices to study its methods to understand all of the
 input data.
 
-[`Change`]: https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/base_db/src/change.rs#L14-L89
+[`Change`]: https://github.com/rust-lang/rust-analyzer/blob/master/crates/base_db/src/change.rs#L14-L89
 
 The `(add|change|remove)_file` methods control the set of the input files, where
 each file has an integer id (`FileId`, picked by the client), text (`String`)
@@ -142,8 +142,8 @@ like syntax highlighting). We use the event loop pattern to manage the zoo, and
 the loop is the [`main_loop_inner`] function. The [`main_loop`] does a one-time
 initialization and tearing down of the resources.
 
-[`main_loop`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L51-L110
-[`main_loop_inner`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L156-L258
+[`main_loop`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L51-L110
+[`main_loop_inner`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L156-L258
 
 
 Let's walk through a typical analyzer session!
@@ -154,7 +154,7 @@ and we run `rustc --print sysroot` and scan the "sysroot" (the directory contain
 `std`. Currently we load this configuration once at the start of the server, but
 it should be possible to dynamically reconfigure it later without restart.
 
-[main_loop.rs#L62-L70](https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L62-L70)
+[main_loop.rs#L62-L70](https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L62-L70)
 
 The [`ProjectModel`] we get after this step is very Cargo and sysroot specific,
 it needs to be lowered to get the input in the form of `Change`. This
@@ -165,19 +165,19 @@ happens in [`ServerWorldState::new`] method. Specifically
 * Create an analyzer's `Crate` for each Cargo **target** and sysroot crate.
 * Setup dependencies between the crates.
 
-[`ProjectModel`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/project_model.rs#L16-L20
-[`ServerWorldState::new`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/server_world.rs#L38-L160
+[`ProjectModel`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/project_model.rs#L16-L20
+[`ServerWorldState::new`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/server_world.rs#L38-L160
 
 The results of the scan (which may take a while) will be processed in the body
 of the main loop, just like any other change. Here's where we handle:
 
-* [File system changes](https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L194)
-* [Changes from the editor](https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L377)
+* [File system changes](https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L194)
+* [Changes from the editor](https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L377)
 
 After a single loop's turn, we group the changes into one `Change` and
 [apply] it. This always happens on the main thread and blocks the loop.
 
-[apply]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/server_world.rs#L216
+[apply]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/server_world.rs#L216
 
 To handle requests, like ["goto definition"], we create an instance of the
 `Analysis` and [`schedule`] the task (which consumes `Analysis`) on the
@@ -187,9 +187,9 @@ executing "goto definition" on the threadpool and a new change comes in, the
 task will be canceled as soon as the main loop calls `apply_change` on the
 `AnalysisHost`.
 
-["goto definition"]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/server_world.rs#L216
-[`schedule`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L426-L455
-[The task]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop/handlers.rs#L205-L223
+["goto definition"]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/server_world.rs#L216
+[`schedule`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L426-L455
+[The task]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop/handlers.rs#L205-L223
 
 This concludes the overview of the analyzer's programing *interface*. Next, let's
 dig into the implementation!
@@ -251,13 +251,13 @@ All analyzer information is stored in a salsa database. `Analysis` and
 `AnalysisHost` types are newtype wrappers for [`RootDatabase`] -- a salsa
 database.
 
-[`RootDatabase`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/db.rs#L88-L134
+[`RootDatabase`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/db.rs#L88-L134
 
 Salsa input queries are defined in [`FilesDatabase`] (which is a part of
 `RootDatabase`). They closely mirror the familiar `Change` structure:
 indeed, what `apply_change` does is it sets the values of input queries.
 
-[`FilesDatabase`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/base_db/src/input.rs#L150-L174
+[`FilesDatabase`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/base_db/src/input.rs#L150-L174
 
 ## From text to semantic model
 
@@ -273,7 +273,7 @@ several times, with different sets of `cfg`s enabled. The IDE-specific task of
 mapping source code into a semantic model is inherently imprecise for
 this reason and gets handled by the [`source_binder`].
 
-[`source_binder`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/source_binder.rs
+[`source_binder`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/source_binder.rs
 
 The semantic interface is declared in the [`code_model_api`] module. Each entity is
 identified by an integer ID and has a bunch of methods which take a salsa database
@@ -281,8 +281,8 @@ as an argument and returns other entities (which are also IDs). Internally, thes
 methods invoke various queries on the database to build the model on demand.
 Here's [the list of queries].
 
-[`code_model_api`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/code_model_api.rs
-[the list of queries]: https://github.com/rust-analyzer/rust-analyzer/blob/7e84440e25e19529e4ff8a66e521d1b06349c6ec/crates/hir/src/db.rs#L20-L106
+[`code_model_api`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/code_model_api.rs
+[the list of queries]: https://github.com/rust-lang/rust-analyzer/blob/7e84440e25e19529e4ff8a66e521d1b06349c6ec/crates/hir/src/db.rs#L20-L106
 
 The first step of building the model is parsing the source code.
 
@@ -328,7 +328,7 @@ The implementation is based on the generic [rowan] crate on top of which a
 
 [libsyntax]: https://github.com/apple/swift/tree/5e2c815edfd758f9b1309ce07bfc01c4bc20ec23/lib/Syntax
 [rowan]: https://github.com/rust-analyzer/rowan/tree/100a36dc820eb393b74abe0d20ddf99077b61f88
-[rust-specific]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_syntax/src/ast/generated.rs
+[rust-specific]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_syntax/src/ast/generated.rs
 
 The next step in constructing the semantic model is ...
 
@@ -339,7 +339,7 @@ The algorithm for building a tree of modules is to start with a crate root
 declarations and recursively process child modules. This is handled by the
 [`module_tree_query`], with two slight variations.
 
-[`module_tree_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/module_tree.rs#L116-L123
+[`module_tree_query`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/module_tree.rs#L116-L123
 
 First, rust-analyzer builds a module tree for all crates in a source root
 simultaneously. The main reason for this is historical (`module_tree` predates
@@ -362,7 +362,7 @@ the same, we don't have to re-execute [`module_tree_query`]. In fact, we only
 need to re-execute it when we add/remove new files or when we change mod
 declarations.
 
-[`submodules_query`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/module_tree.rs#L41
+[`submodules_query`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/module_tree.rs#L41
 
 We store the resulting modules in a `Vec`-based indexed arena. The indices in
 the arena becomes module IDs. And this brings us to the next topic:
@@ -390,8 +390,8 @@ integers which can "intern" a location and return an integer ID back. The salsa
 database we use includes a couple of [interners]. How to "garbage collect"
 unused locations is an open question.
 
-[`LocationInterner`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/base_db/src/loc2id.rs#L65-L71
-[interners]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/db.rs#L22-L23
+[`LocationInterner`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/base_db/src/loc2id.rs#L65-L71
+[interners]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/db.rs#L22-L23
 
 For example, we use `LocationInterner` to assign IDs to definitions of functions,
 structs, enums, etc. The location, [`DefLoc`] contains two bits of information:
@@ -405,7 +405,7 @@ using offsets, text ranges or syntax trees as keys and values for queries. What
 we do instead is we store "index" of the item among all of the items of a file
 (so, a positional based ID, but localized to a single file).
 
-[`DefLoc`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/ids.rs#L127-L139
+[`DefLoc`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/ids.rs#L127-L139
 
 One thing we've glossed over for the time being is support for macros. We have
 only proof of concept handling of macros at the moment, but they are extremely
@@ -438,7 +438,7 @@ terms of `HirFileId`! This does not recur infinitely though: any chain of
 `HirFileId`s bottoms out in `HirFileId::FileId`, that is, some source file
 actually written by the user.
 
-[`HirFileId`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/ids.rs#L18-L125
+[`HirFileId`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/ids.rs#L18-L125
 
 Now that we understand how to identify a definition, in a source or in a
 macro-generated file, we can discuss name resolution a bit.
@@ -452,14 +452,14 @@ each module into a position-independent representation which does not change if
 we modify bodies of the items. After that we [loop] resolving all imports until
 we've reached a fixed point.
 
-[lower]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L113-L117
-[loop]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres.rs#L186-L196
+[lower]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L113-L117
+[loop]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres.rs#L186-L196
 
 And, given all our preparation with IDs and a position-independent representation,
 it is satisfying to [test] that typing inside function body does not invalidate
 name resolution results.
 
-[test]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/tests.rs#L376
+[test]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/tests.rs#L376
 
 An interesting fact about name resolution is that it "erases" all of the
 intermediate paths from the imports: in the end, we know which items are defined
@@ -494,10 +494,10 @@ there's an intermediate [projection query] which returns only the first
 position-independent part of the lowering. The result of this query is stable.
 Naturally, name resolution [uses] this stable projection query.
 
-[imports]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L52-L59
-[`SourceMap`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L52-L59
-[projection query]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L97-L103
-[uses]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/query_definitions.rs#L49
+[imports]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L52-L59
+[`SourceMap`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L52-L59
+[projection query]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/nameres/lower.rs#L97-L103
+[uses]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/query_definitions.rs#L49
 
 ## Type inference
 
@@ -518,11 +518,11 @@ Given the lowered body of the function, we can now run [type inference] and
 construct a mapping from `ExprId`s to types.
 
 [@flodiebold]: https://github.com/flodiebold
-[#327]: https://github.com/rust-analyzer/rust-analyzer/pull/327
-[lower the AST]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/expr.rs
-[positional ID]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/expr.rs#L13-L15
-[a source map]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/expr.rs#L41-L44
-[type inference]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/hir/src/ty.rs#L1208-L1223
+[#327]: https://github.com/rust-lang/rust-analyzer/pull/327
+[lower the AST]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/expr.rs
+[positional ID]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/expr.rs#L13-L15
+[a source map]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/expr.rs#L41-L44
+[type inference]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/ty.rs#L1208-L1223
 
 ## Tying it all together: completion
 
@@ -559,15 +559,15 @@ function and map our syntactic expression to `ExprId`. Using the ID, we figure
 out the type of the receiver expression. Then we add all fields & methods from
 the type to completion.
 
-[receiving a message]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L203
-[schedule it on the threadpool]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L428
-[catch]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L436-L442
+[receiving a message]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L203
+[schedule it on the threadpool]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L428
+[catch]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L436-L442
 [the handler]: https://salsa.zulipchat.com/#narrow/stream/181542-rfcs.2Fsalsa-query-group/topic/design.20next.20steps
-[ask analysis for completion]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L439-L444
-[completion implementation]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion.rs#L46-L62
-[`CompletionContext`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion/completion_context.rs#L14-L37
-["IntelliJ Trick"]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion/completion_context.rs#L72-L75
-[find an ancestor `fn` node]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion/completion_context.rs#L116-L120
-[semantic model]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion/completion_context.rs#L123
-[series of independent completion routines]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion.rs#L52-L59
-[`complete_dot`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion/complete_dot.rs#L6-L22
+[ask analysis for completion]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L439-L444
+[completion implementation]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion.rs#L46-L62
+[`CompletionContext`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion/completion_context.rs#L14-L37
+["IntelliJ Trick"]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion/completion_context.rs#L72-L75
+[find an ancestor `fn` node]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion/completion_context.rs#L116-L120
+[semantic model]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion/completion_context.rs#L123
+[series of independent completion routines]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion.rs#L52-L59
+[`complete_dot`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/completion/complete_dot.rs#L6-L22

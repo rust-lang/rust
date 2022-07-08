@@ -243,7 +243,7 @@ fn main() { foo! {$0} }
 
     #[test]
     fn completes_macro_call_if_cursor_at_bang_token() {
-        // Regression test for https://github.com/rust-analyzer/rust-analyzer/issues/9904
+        // Regression test for https://github.com/rust-lang/rust-analyzer/issues/9904
         cov_mark::check!(completes_macro_call_if_cursor_at_bang_token);
         check_edit(
             "foo!",
