@@ -13,32 +13,18 @@ pub struct Args {
 
 // Implement using EFI_LOADED_IMAGE_PROTOCOL
 pub fn args() -> Args {
-    if let (Some(system_handle), Some(boot_services)) =
-        (uefi::env::get_system_handle(), uefi::env::get_boot_services())
-    {
-        let mut protocol_guid = uefi::raw::protocols::loaded_image::PROTOCOL_GUID;
-        let mut protocol: *mut crate::ffi::c_void = crate::ptr::null_mut();
+    use uefi::raw::protocols::loaded_image;
 
-        let r = unsafe {
-            ((*boot_services.as_ptr()).handle_protocol)(
-                system_handle.as_ptr(),
-                &mut protocol_guid,
-                &mut protocol,
-            )
-        };
-
-        if r.is_error() {
-            Args { parsed_args_list: Vec::new().into_iter() }
-        } else {
-            let protocol = protocol as *mut uefi::raw::protocols::loaded_image::Protocol;
-            let lp_cmd_line = unsafe { (*protocol).load_options as *const u16 };
+    let mut protocol_guid = loaded_image::PROTOCOL_GUID;
+    match uefi::env::get_current_handle_protocol::<loaded_image::Protocol>(&mut protocol_guid) {
+        Some(x) => {
+            let lp_cmd_line = unsafe { (*x.as_ptr()).load_options as *const u16 };
             let parsed_args_list =
                 parse_lp_cmd_line(unsafe { WStrUnits::new(lp_cmd_line) }, || OsString::new());
 
             Args { parsed_args_list: parsed_args_list.into_iter() }
         }
-    } else {
-        Args { parsed_args_list: Vec::new().into_iter() }
+        None => Args { parsed_args_list: Vec::new().into_iter() },
     }
 }
 

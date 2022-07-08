@@ -19,7 +19,6 @@ pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
 pub mod env;
-#[path = "../unsupported/fs.rs"]
 pub mod fs;
 #[path = "../unsupported/io.rs"]
 pub mod io;
@@ -28,7 +27,6 @@ pub mod locks;
 pub mod net;
 pub mod os;
 pub mod os_str;
-#[path = "../unix/path.rs"]
 pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;

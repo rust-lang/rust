@@ -1,6 +1,6 @@
 //! UEFI-specific extensions to the primitives in `std::env` module
 
-use super::raw::{BootServices, RuntimeServices, SystemTable};
+use super::raw::{BootServices, Guid, RuntimeServices, SystemTable};
 use crate::ffi::c_void;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicPtr, Ordering};
@@ -43,4 +43,27 @@ pub fn get_runtime_services() -> Option<NonNull<RuntimeServices>> {
     let system_table = get_system_table()?;
     let runtime_services = unsafe { (*system_table.as_ptr()).runtime_services };
     NonNull::new(runtime_services)
+}
+
+#[unstable(feature = "uefi_std", issue = "none")]
+/// Get the Protocol for current system handle.
+/// Note: Some protocols need to be manually freed. It is the callers responsibility to do so.
+pub fn get_current_handle_protocol<T>(protocol_guid: &mut Guid) -> Option<NonNull<T>> {
+    let boot_services = get_boot_services()?;
+    let system_handle = get_system_handle()?;
+    let mut protocol: *mut crate::ffi::c_void = crate::ptr::null_mut();
+
+    let r = unsafe {
+        ((*boot_services.as_ptr()).handle_protocol)(
+            system_handle.as_ptr(),
+            protocol_guid,
+            &mut protocol,
+        )
+    };
+
+    if r.is_error() {
+        None
+    } else {
+        NonNull::new(protocol.cast())
+    }
 }

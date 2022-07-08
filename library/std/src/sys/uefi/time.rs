@@ -1,3 +1,5 @@
+use crate::mem::MaybeUninit;
+use crate::os::uefi;
 use crate::time::Duration;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
@@ -6,11 +8,7 @@ pub struct Instant(Duration);
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct SystemTime(Duration);
 
-pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
-
-const NANOS_PER_SEC: u64 = 1_000_000_000;
-const NANOS_PER_MIN: u64 = 60 * NANOS_PER_SEC;
-const NANOS_PER_HOUR: u64 = 60 * NANOS_PER_MIN;
+pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::ZERO);
 
 // FIXME: Implement using `EFI_TIMESTAMP_PROTOCOL.GetTimestamp()`
 impl Instant {
@@ -31,10 +29,22 @@ impl Instant {
     }
 }
 
-// FIXME: Implement using `RuntimeServices->GetTime()`
+// Using Unix representation of Time.
 impl SystemTime {
     pub fn now() -> SystemTime {
-        panic!("time not implemented on this platform")
+        if let Some(runtime_services) = uefi::env::get_runtime_services() {
+            let mut t = uefi::raw::Time::default();
+            let r =
+                unsafe { ((*runtime_services.as_ptr()).get_time)(&mut t, crate::ptr::null_mut()) };
+
+            if r.is_error() {
+                panic!("time not implemented on this platform")
+            } else {
+                SystemTime::from(t)
+            }
+        } else {
+            panic!("time not implemented on this platform")
+        }
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
@@ -47,5 +57,28 @@ impl SystemTime {
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime(self.0.checked_sub(*other)?))
+    }
+}
+
+impl From<uefi::raw::system::Time> for SystemTime {
+    // FIXME: Don't know how to use Daylight Saving thing
+    fn from(t: uefi::raw::system::Time) -> Self {
+        const SEC_IN_MIN: u64 = 60;
+        const SEC_IN_HOUR: u64 = SEC_IN_MIN * 60;
+        const SEC_IN_DAY: u64 = SEC_IN_HOUR * 24;
+        const SEC_IN_YEAR: u64 = SEC_IN_DAY * 365;
+        const MONTH_DAYS: [u64; 12] = [0, 31, 59, 90, 120, 151, 181, 211, 242, 272, 303, 333];
+
+        let localtime_epoch: u64 = u64::from(t.year - 1970) * SEC_IN_YEAR
+            + u64::from((t.year - 1968) / 4) * SEC_IN_DAY
+            + MONTH_DAYS[usize::from(t.month - 1)] * SEC_IN_DAY
+            + u64::from(t.day - 1) * SEC_IN_DAY
+            + u64::from(t.hour) * SEC_IN_HOUR
+            + u64::from(t.minute) * SEC_IN_MIN
+            + u64::from(t.second);
+        let timezone_epoch: i64 = i64::from(t.timezone) * (SEC_IN_MIN as i64);
+        let utc_epoch: u64 = ((localtime_epoch as i64) + timezone_epoch) as u64;
+
+        SystemTime(Duration::new(utc_epoch, t.nanosecond))
     }
 }
