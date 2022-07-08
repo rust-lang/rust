@@ -6,58 +6,83 @@ fn a() {}
 fn b() {}
 
 mod test {
-    use super::a;  //~ ERROR unused import: `super::a`
+    use super::a; //~ ERROR unused import: `super::a`
 
+    #[test]
     fn foo() {
-        use crate::b;  //~ ERROR unused import: `crate::b`
+        a();
+        use crate::b;
     }
 }
 
 mod tests {
-    use super::a;  //~ ERROR unused import: `super::a`
+    use super::a; //~ ERROR unused import: `super::a`
 
+    #[test]
     fn foo() {
-        use crate::b;  //~ ERROR unused import: `crate::b`
+        a();
+        use crate::b;
     }
 }
 
 mod test_a {
-    use super::a;  //~ ERROR unused import: `super::a`
+    use super::a; //~ ERROR unused import: `super::a`
 
+    #[test]
     fn foo() {
-        use crate::b;  //~ ERROR unused import: `crate::b`
+        a();
+        use crate::b;
     }
 }
 
 mod a_test {
-    use super::a;  //~ ERROR unused import: `super::a`
+    use super::a; //~ ERROR unused import: `super::a`
 
+    #[test]
     fn foo() {
-        use crate::b;  //~ ERROR unused import: `crate::b`
+        a();
+        use crate::b;
     }
 }
 
 mod tests_a {
-    use super::a;  //~ ERROR unused import: `super::a`
+    use super::a; //~ ERROR unused import: `super::a`
 
+    #[test]
     fn foo() {
-        use crate::b;  //~ ERROR unused import: `crate::b`
+        a();
+        use crate::b;
     }
 }
 
 mod a_tests {
-    use super::a;  //~ ERROR unused import: `super::a`
+    use super::a; //~ ERROR unused import: `super::a`
 
+    #[test]
     fn foo() {
-        use crate::b;  //~ ERROR unused import: `crate::b`
+        a();
+        use crate::b;
     }
 }
 
 mod fastest_search {
-    use super::a;  //~ ERROR unused import: `super::a`
+    use super::a; //~ ERROR unused import: `super::a`
 
+    #[test]
     fn foo() {
-        use crate::b;  //~ ERROR unused import: `crate::b`
+        a();
+        use crate::b;
+    }
+}
+
+#[cfg(test)]
+mod test_has_attr {
+    use super::a;
+
+    #[test]
+    fn foo() {
+        a();
+        use crate::b;
     }
 }
 
