@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-strict-provenance
+//@compile-flags: -Zmiri-strict-provenance
 #![feature(btree_drain_filter)]
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;

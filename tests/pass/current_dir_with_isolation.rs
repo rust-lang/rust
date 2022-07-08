@@ -1,6 +1,6 @@
-// compile-flags: -Zmiri-isolation-error=warn-nobacktrace
-// normalize-stderr-test: "(getcwd|GetCurrentDirectoryW)" -> "$$GETCWD"
-// normalize-stderr-test: "(chdir|SetCurrentDirectoryW)" -> "$$SETCWD"
+//@compile-flags: -Zmiri-isolation-error=warn-nobacktrace
+//@normalize-stderr-test: "(getcwd|GetCurrentDirectoryW)" -> "$$GETCWD"
+//@normalize-stderr-test: "(chdir|SetCurrentDirectoryW)" -> "$$SETCWD"
 
 use std::env;
 use std::io::ErrorKind;

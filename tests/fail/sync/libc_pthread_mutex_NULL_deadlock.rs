@@ -1,4 +1,4 @@
-// ignore-windows: No libc on Windows
+//@ignore-windows: No libc on Windows
 //
 // Check that if we pass NULL attribute, then we get the default mutex type.
 

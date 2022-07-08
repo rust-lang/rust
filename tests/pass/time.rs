@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-disable-isolation
+//@compile-flags: -Zmiri-disable-isolation
 
 use std::time::{Duration, Instant, SystemTime};
 

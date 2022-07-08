@@ -1,4 +1,4 @@
-// ignore-windows: No libc on Windows
+//@ignore-windows: No libc on Windows
 #![feature(rustc_private)]
 
 /// Test that destroying a pthread_rwlock twice fails, even without a check for number validity

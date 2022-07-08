@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-symbolic-alignment-check
+//@compile-flags: -Zmiri-symbolic-alignment-check
 
 fn test_align_offset() {
     let d = Box::new([0u32; 4]);

@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-retag-fields
+//@compile-flags: -Zmiri-retag-fields
 #![feature(allocator_api)]
 use std::ptr;
 

@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-allow-uninit-numbers
+//@compile-flags: -Zmiri-allow-uninit-numbers
 // This test is adapted from https://github.com/rust-lang/miri/issues/1340#issue-600900312.
 
 fn main() {

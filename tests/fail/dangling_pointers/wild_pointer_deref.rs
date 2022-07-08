@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-permissive-provenance
+//@compile-flags: -Zmiri-permissive-provenance
 
 fn main() {
     let p = 44 as *const i32;

@@ -1,7 +1,7 @@
 // We want to test that granting a SharedReadWrite will be added
 // *below* an already granted SharedReadWrite -- so writing to
 // the SharedReadWrite will invalidate the SharedReadWrite.
-// normalize-stderr-test: "0x[0-9a-fA-F]+" -> "$$HEX"
+//@normalize-stderr-test: "0x[0-9a-fA-F]+" -> "$$HEX"
 
 use std::cell::RefCell;
 use std::mem;

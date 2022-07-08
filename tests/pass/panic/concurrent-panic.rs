@@ -1,6 +1,6 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-windows: Concurrency on Windows is not supported yet.
 // We are making scheduler assumptions here.
-// compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-preemption-rate=0
 
 //! Cause a panic in one thread while another thread is unwinding. This checks
 //! that separate threads have their own panicking state.

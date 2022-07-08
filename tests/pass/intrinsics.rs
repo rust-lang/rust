@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-permissive-provenance
+//@compile-flags: -Zmiri-permissive-provenance
 #![feature(core_intrinsics, const_raw_ptr_comparison)]
 #![feature(layout_for_ptr)]
 

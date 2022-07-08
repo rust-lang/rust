@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-ignore-leaks
+//@compile-flags: -Zmiri-ignore-leaks
 use std::mem;
 use std::sync::Mutex;
 

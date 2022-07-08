@@ -1,5 +1,5 @@
 // Make sure we find these even with many checks disabled.
-// compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
+//@compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 use std::ptr;
 
 fn main() {

@@ -1,5 +1,5 @@
 // This should fail even without validation
-// compile-flags: -Zmiri-disable-validation
+//@compile-flags: -Zmiri-disable-validation
 
 #![feature(never_type)]
 #![allow(unreachable_code)]

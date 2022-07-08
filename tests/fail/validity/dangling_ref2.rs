@@ -1,5 +1,5 @@
 // Make sure we catch this even without Stacked Borrows
-// compile-flags: -Zmiri-disable-stacked-borrows
+//@compile-flags: -Zmiri-disable-stacked-borrows
 use std::mem;
 
 fn main() {

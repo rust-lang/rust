@@ -74,10 +74,7 @@ impl Comments {
 
     /// Parse comments in `content`.
     /// `path` is only used to emit diagnostics if parsing fails.
-    ///
-    /// This function will only parse `//@` and `//~` style comments (and the `//[xxx]~` variant)
-    /// and ignore all others
-    fn parse_checked(path: &Path, content: &str) -> Result<Self> {
+    pub(crate) fn parse(path: &Path, content: &str) -> Result<Self> {
         let mut this = Self::default();
 
         let mut fallthrough_to = None; // The line that a `|` will refer to.
@@ -108,83 +105,10 @@ impl Comments {
         }
     }
 
-    /// Parse comments in `content`.
-    /// `path` is only used to emit diagnostics if parsing fails.
-    pub(crate) fn parse(path: &Path, content: &str) -> Result<Self> {
-        let mut this = Self::parse_checked(path, content)?;
-        if content.contains("//@") {
-            // Migration mode: if new syntax is used, ignore all old syntax
-            return Ok(this);
-        }
-
-        for (l, line) in content.lines().enumerate() {
-            let l = l + 1; // enumerate starts at 0, but line numbers start at 1
-            if let Some(revisions) = line.strip_prefix("// revisions:") {
-                assert_eq!(
-                    this.revisions,
-                    None,
-                    "{}:{l}, cannot specifiy revisions twice",
-                    path.display()
-                );
-                this.revisions =
-                    Some(revisions.split_whitespace().map(|s| s.to_string()).collect());
-            }
-            if let Some(s) = line.strip_prefix("// ignore-") {
-                let s = s
-                    .split_once(|c: char| c == ':' || c.is_whitespace())
-                    .map(|(s, _)| s)
-                    .unwrap_or(s);
-                this.ignore.push(Condition::parse(s));
-            }
-            if let Some(s) = line.strip_prefix("// only-") {
-                let s = s
-                    .split_once(|c: char| c == ':' || c.is_whitespace())
-                    .map(|(s, _)| s)
-                    .unwrap_or(s);
-                this.only.push(Condition::parse(s));
-            }
-            if line.starts_with("// stderr-per-bitwidth") {
-                assert!(
-                    !this.stderr_per_bitwidth,
-                    "{}:{l}, cannot specifiy stderr-per-bitwidth twice",
-                    path.display()
-                );
-                this.stderr_per_bitwidth = true;
-            }
-            if let Some(s) = line.strip_prefix("// compile-flags:") {
-                this.compile_flags.extend(s.split_whitespace().map(|s| s.to_string()));
-            }
-            if let Some(s) = line.strip_prefix("// rustc-env:") {
-                for env in s.split_whitespace() {
-                    if let Some((k, v)) = env.split_once('=') {
-                        this.env_vars.push((k.to_string(), v.to_string()));
-                    }
-                }
-            }
-            if let Some(s) = line.strip_prefix("// normalize-stderr-test:") {
-                let (from, to) = s.split_once("->").expect("normalize-stderr-test needs a `->`");
-                let from = from.trim().trim_matches('"');
-                let to = to.trim().trim_matches('"');
-                let from = Regex::new(from).unwrap();
-                this.normalize_stderr.push((from, to.to_string()));
-            }
-            if let Some(s) = line.strip_prefix("// error-pattern:") {
-                assert_eq!(
-                    this.error_pattern,
-                    None,
-                    "{}:{l}, cannot specifiy error_pattern twice",
-                    path.display()
-                );
-                this.error_pattern = Some((s.trim().to_string(), l));
-            }
-        }
-        Ok(this)
-    }
-
     fn parse_command(&mut self, command: &str, l: usize) -> Result<()> {
         // Commands are letters or dashes, grab everything until the first character that is neither of those.
         let (command, args) =
-            match command.chars().position(|c: char| !c.is_alphabetic() && c != '-') {
+            match command.chars().position(|c: char| !c.is_alphanumeric() && c != '-') {
                 None => (command, ""),
                 Some(i) => {
                     let (command, args) = command.split_at(i);

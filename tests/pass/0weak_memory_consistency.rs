@@ -1,5 +1,5 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-ignore-leaks -Zmiri-disable-stacked-borrows
+//@ignore-windows: Concurrency on Windows is not supported yet.
+//@compile-flags: -Zmiri-ignore-leaks -Zmiri-disable-stacked-borrows
 
 // The following tests check whether our weak memory emulation produces
 // any inconsistent execution outcomes

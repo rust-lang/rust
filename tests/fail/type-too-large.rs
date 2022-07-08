@@ -1,4 +1,4 @@
-// ignore-32bit
+//@ignore-32bit
 
 fn main() {
     let _fat: [u8; (1 << 61) + (1 << 31)];

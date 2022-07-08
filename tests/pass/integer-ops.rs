@@ -1,4 +1,4 @@
-// compile-flags: -Coverflow-checks=off
+//@compile-flags: -Coverflow-checks=off
 #![feature(int_log)]
 #![allow(arithmetic_overflow)]
 

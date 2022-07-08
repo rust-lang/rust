@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-mute-stdout-stderr
+//@compile-flags: -Zmiri-mute-stdout-stderr
 
 fn main() {
     println!("print to stdout");

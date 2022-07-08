@@ -1,4 +1,4 @@
-// stderr-per-bitwidth
+//@stderr-per-bitwidth
 
 fn main() {
     extern "C" {

@@ -1,5 +1,5 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-disable-isolation
+//@ignore-windows: Concurrency on Windows is not supported yet.
+//@compile-flags: -Zmiri-disable-isolation
 
 use std::mem;
 use std::thread::{sleep, spawn};

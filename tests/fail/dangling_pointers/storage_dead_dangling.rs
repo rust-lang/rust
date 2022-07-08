@@ -1,5 +1,5 @@
 // This should fail even without validation, but some MIR opts mask the error
-// compile-flags: -Zmiri-disable-validation -Zmir-opt-level=0 -Zmiri-permissive-provenance
+//@compile-flags: -Zmiri-disable-validation -Zmir-opt-level=0 -Zmiri-permissive-provenance
 
 static mut LEAK: usize = 0;
 

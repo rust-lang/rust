@@ -1,5 +1,5 @@
 // This should fail even without validation or Stacked Borrows.
-// compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
+//@compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
 use std::ptr;
 
 fn main() {

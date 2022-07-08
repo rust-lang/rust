@@ -1,5 +1,5 @@
 // When we notice something breaks only without validation, we add a test here.
-// compile-flags: -Zmiri-disable-validation
+//@compile-flags: -Zmiri-disable-validation
 use std::cell::*;
 
 fn refcell_unsize() {

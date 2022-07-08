@@ -1,6 +1,6 @@
 // We *can* have aliasing &RefCell<T> and &mut T, but we cannot read through the former.
 // Else we couldn't optimize based on the assumption that `xref` below is truly unique.
-// normalize-stderr-test: "0x[0-9a-fA-F]+" -> "$$HEX"
+//@normalize-stderr-test: "0x[0-9a-fA-F]+" -> "$$HEX"
 
 use std::cell::RefCell;
 use std::{mem, ptr};
