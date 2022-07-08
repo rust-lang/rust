@@ -346,6 +346,8 @@ EOF
     if [ $nb_parts -gt 0 ]; then
         echo "Splitting ui_test into $nb_parts parts (and running part $current_part)"
         find src/test/ui -type f -name '*.rs' -not -path "*/auxiliary/*" > ui_tests
+        # To ensure it'll be always the same sub files, we sort the content.
+        sort ui_tests -o ui_tests
         count=$((`wc -l < ui_tests` / $nb_parts))
         # We increment the number of tests by one because if this is an odd number, we would skip
         # one test.
