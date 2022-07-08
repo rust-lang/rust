@@ -42,4 +42,6 @@ jobs:
           rm Cargo.lock
           cargo workspaces rename ra_ap_%n
           find crates/rust-analyzer -type f -name '*.rs' -exec sed -i 's/rust_analyzer/ra_ap_rust_analyzer/g' {} +
+          # Fix names for crates that were published before switch to kebab-case.
+          find crates -name 'Cargo.toml' -exec sed -i "s/ra_ap_base-db/ra_ap_base_db/g; s/ra_ap_hir-def/ra_ap_hir_def/g; s/ra_ap_hir-expand/ra_ap_hir_expand/g; s/ra_ap_hir-ty/ra_ap_hir_ty/g; s/ra_ap_ide-assists/ra_ap_ide_assists/g; s/ra_ap_ide-completion/ra_ap_ide_completion/g; s/ra_ap_ide-db/ra_ap_ide_db/g; s/ra_ap_ide-diagnostics/ra_ap_ide_diagnostics/g; s/ra_ap_ide-ssr/ra_ap_ide_ssr/g; s/ra_ap_proc-macro-api/ra_ap_proc_macro_api/g; s/ra_ap_proc-macro-srv/ra_ap_proc_macro_srv/g; s/ra_ap_project-model/ra_ap_project_model/g; s/ra_ap_test-utils/ra_ap_test_utils/g; s/ra_ap_text-edit/ra_ap_text_edit/g" {} +
           cargo workspaces publish --yes --force '*' --exact --no-git-commit --allow-dirty --skip-published custom 0.0.$PATCH
