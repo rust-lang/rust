@@ -3,7 +3,7 @@ use crate::astconv::AstConv;
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};

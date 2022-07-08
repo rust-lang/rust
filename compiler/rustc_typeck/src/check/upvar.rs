@@ -49,8 +49,7 @@ use rustc_span::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
-use rustc_data_structures::stable_map::FxHashMap;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::Idx;
 use rustc_target::abi::VariantIdx;
 

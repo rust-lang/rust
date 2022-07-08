@@ -357,7 +357,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let trait_predicates = self.tcx.explicit_predicates_of(trait_item_def_id);
                 let impl_predicates = self.tcx.explicit_predicates_of(impl_item_def_id);
 
-                let impl_predicates: rustc_data_structures::stable_set::FxHashSet<_> =
+                let impl_predicates: rustc_data_structures::fx::FxHashSet<_> =
                     impl_predicates.predicates.into_iter().map(|(pred, _)| pred).collect();
                 let clauses: Vec<_> = trait_predicates
                     .predicates
