@@ -1,5 +1,4 @@
 use crate::infer::InferCtxt;
-use crate::opaque_types::required_region_bounds;
 use crate::traits;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -809,4 +808,64 @@ pub fn object_region_bounds<'tcx>(
     });
 
     required_region_bounds(tcx, open_ty, predicates)
+}
+
+/// Given a set of predicates that apply to an object type, returns
+/// the region bounds that the (erased) `Self` type must
+/// outlive. Precisely *because* the `Self` type is erased, the
+/// parameter `erased_self_ty` must be supplied to indicate what type
+/// has been used to represent `Self` in the predicates
+/// themselves. This should really be a unique type; `FreshTy(0)` is a
+/// popular choice.
+///
+/// N.B., in some cases, particularly around higher-ranked bounds,
+/// this function returns a kind of conservative approximation.
+/// That is, all regions returned by this function are definitely
+/// required, but there may be other region bounds that are not
+/// returned, as well as requirements like `for<'a> T: 'a`.
+///
+/// Requires that trait definitions have been processed so that we can
+/// elaborate predicates and walk supertraits.
+#[instrument(skip(tcx, predicates), level = "debug")]
+pub(crate) fn required_region_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    erased_self_ty: Ty<'tcx>,
+    predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
+) -> Vec<ty::Region<'tcx>> {
+    assert!(!erased_self_ty.has_escaping_bound_vars());
+
+    traits::elaborate_predicates(tcx, predicates)
+        .filter_map(|obligation| {
+            debug!(?obligation);
+            match obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Projection(..)
+                | ty::PredicateKind::Trait(..)
+                | ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::Coerce(..)
+                | ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::RegionOutlives(..)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
+                    // Search for a bound of the form `erased_self_ty
+                    // : 'a`, but be wary of something like `for<'a>
+                    // erased_self_ty : 'a` (we interpret a
+                    // higher-ranked bound like that as 'static,
+                    // though at present the code in `fulfill.rs`
+                    // considers such bounds to be unsatisfiable, so
+                    // it's kind of a moot point since you could never
+                    // construct such an object, but this seems
+                    // correct even if that code changes).
+                    if t == &erased_self_ty && !r.has_escaping_bound_vars() {
+                        Some(*r)
+                    } else {
+                        None
+                    }
+                }
+            }
+        })
+        .collect()
 }
