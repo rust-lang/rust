@@ -105,14 +105,6 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 /// that case. Both `DISCR_BEGIN` and `DISCR_END` are inclusive bounds.
 /// Note that these ranges can wrap around, so that `DISCR_END < DISCR_BEGIN`.
 ///
-/// The field in the top-level union that corresponds to the dataful variant
-/// is called `variant_fallback` instead of `variant<index>`. This is mainly
-/// an optimization that enables a shorter NatVis definition. That way we
-/// only need to specify a `tag == variantX.DISCR_EXACT` entry for the indexed
-/// variants. Otherwise we'd need to have that and then an additional entry
-/// checking `in_range(variantX.DISCR_BEGIN, variantX.DISCR_END)` for each
-/// index.
-///
 /// Single-variant enums don't actually have a tag field. In this case we
 /// emit a static tag field (that always has the value 0) so we can use the
 /// same representation (and NatVis).
@@ -123,6 +115,72 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 /// Instead of the `tag` field, we generate two fields `tag128_lo` and `tag128_hi`,
 /// Instead of `DISCR_EXACT`, we generate `DISCR128_EXACT_LO` and `DISCR128_EXACT_HI`,
 /// and so on.
+///
+///
+/// The following pseudocode shows how to decode an enum value in a debugger:
+///
+/// ```ignore
+///
+/// fn find_active_variant(enum_value) -> (VariantName, VariantValue) {
+///     let is_128_bit = enum_value.has_field("tag128_lo");
+///
+///     if !is_128_bit {
+///         // Note: `tag` can be a static field for enums with only one
+///         //       inhabited variant.
+///         let tag = enum_value.field("tag").value;
+///
+///         // For each variant, check if it is a match. Only one of them will match,
+///         // so if we find it we can return it immediately.
+///         for variant_field in enum_value.fields().filter(|f| f.name.starts_with("variant")) {
+///             if variant_field.has_field("DISCR_EXACT") {
+///                 // This variant corresponds to a single tag value
+///                 if variant_field.field("DISCR_EXACT").value == tag {
+///                     return (variant_field.field("NAME"), variant_field.value);
+///                 }
+///             } else {
+///                 // This is a range variant
+///                 let begin = variant_field.field("DISCR_BEGIN");
+///                 let end = variant_field.field("DISCR_END");
+///
+///                 if tag >= begin && tag <= end {
+///                     return (variant_field.field("NAME"), variant_field.value);
+///                 }
+///             }
+///         }
+///     } else {
+///         // Basically the same as with smaller tags, we just have to
+///         // stitch the values together.
+///         let tag: u128 = (enum_value.field("tag128_lo").value as u128) |
+///                         (enum_value.field("tag128_hi").value as u128 << 64);
+///
+///         for variant_field in enum_value.fields().filter(|f| f.name.starts_with("variant")) {
+///             if variant_field.has_field("DISCR128_EXACT_LO") {
+///                 let discr_exact = (variant_field.field("DISCR128_EXACT_LO" as u128) |
+///                                   (variant_field.field("DISCR128_EXACT_HI") as u128 << 64);
+///
+///                 // This variant corresponds to a single tag value
+///                 if discr_exact.value == tag {
+///                     return (variant_field.field("NAME"), variant_field.value);
+///                 }
+///             } else {
+///                 // This is a range variant
+///                 let begin = (variant_field.field("DISCR128_BEGIN_LO").value as u128) |
+///                             (variant_field.field("DISCR128_BEGIN_HI").value as u128 << 64);
+///                 let end = (variant_field.field("DISCR128_END_LO").value as u128) |
+///                           (variant_field.field("DISCR128_END_HI").value as u128 << 64);
+///
+///                 if tag >= begin && tag <= end {
+///                     return (variant_field.field("NAME"), variant_field.value);
+///                 }
+///             }
+///         }
+///     }
+///
+///     // We should have found an active variant at this point.
+///     unreachable!();
+/// }
+///
+/// ```
 pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
@@ -290,7 +348,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
         build_field_di_node(
             cx,
             enum_type_di_node,
-            &variant_union_field_name(variant_index, None),
+            &variant_union_field_name(variant_index),
             // NOTE: We use the size and align of the entire type, not from variant_layout
             //       since the later is sometimes smaller (if it has fewer fields).
             size_and_align_of(enum_type_and_layout),
@@ -691,8 +749,7 @@ fn build_union_fields_for_direct_tag_enum_or_generator<'ll, 'tcx>(
             .source_info
             .unwrap_or_else(|| (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER));
 
-        let field_name =
-            variant_union_field_name(variant_member_info.variant_index, dataful_variant_index);
+        let field_name = variant_union_field_name(variant_member_info.variant_index);
         let (size, align) = size_and_align_of(enum_type_and_layout);
 
         let variant_struct_type_wrapper = build_variant_struct_wrapper_type_di_node(
@@ -795,10 +852,7 @@ struct VariantFieldInfo<'ll> {
     discr: DiscrResult,
 }
 
-fn variant_union_field_name(
-    variant_index: VariantIdx,
-    dataful_variant_index: Option<VariantIdx>,
-) -> Cow<'static, str> {
+fn variant_union_field_name(variant_index: VariantIdx) -> Cow<'static, str> {
     const PRE_ALLOCATED: [&str; 16] = [
         "variant0",
         "variant1",
@@ -817,10 +871,6 @@ fn variant_union_field_name(
         "variant14",
         "variant15",
     ];
-
-    if Some(variant_index) == dataful_variant_index {
-        return Cow::from("variant_fallback");
-    }
 
     PRE_ALLOCATED
         .get(variant_index.as_usize())
