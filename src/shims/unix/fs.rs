@@ -50,6 +50,9 @@ trait FileDescriptor: std::fmt::Debug {
     ) -> InterpResult<'tcx, io::Result<i32>>;
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>>;
+
+    #[cfg(unix)]
+    fn as_unix_host_fd(&self) -> Option<i32>;
 }
 
 impl FileDescriptor for FileHandle {
@@ -114,6 +117,12 @@ impl FileDescriptor for FileHandle {
         let duplicated = self.file.try_clone()?;
         Ok(Box::new(FileHandle { file: duplicated, writable: self.writable }))
     }
+
+    #[cfg(unix)]
+    fn as_unix_host_fd(&self) -> Option<i32> {
+        use std::os::unix::io::AsRawFd;
+        Some(self.file.as_raw_fd())
+    }
 }
 
 impl FileDescriptor for io::Stdin {
@@ -158,6 +167,11 @@ impl FileDescriptor for io::Stdin {
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stdin()))
+    }
+
+    #[cfg(unix)]
+    fn as_unix_host_fd(&self) -> Option<i32> {
+        Some(libc::STDIN_FILENO)
     }
 }
 
@@ -209,6 +223,11 @@ impl FileDescriptor for io::Stdout {
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stdout()))
     }
+
+    #[cfg(unix)]
+    fn as_unix_host_fd(&self) -> Option<i32> {
+        Some(libc::STDOUT_FILENO)
+    }
 }
 
 impl FileDescriptor for io::Stderr {
@@ -251,6 +270,11 @@ impl FileDescriptor for io::Stderr {
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stderr()))
+    }
+
+    #[cfg(unix)]
+    fn as_unix_host_fd(&self) -> Option<i32> {
+        Some(libc::STDERR_FILENO)
     }
 }
 
@@ -296,6 +320,11 @@ impl FileDescriptor for DummyOutput {
 
     fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(DummyOutput))
+    }
+
+    #[cfg(unix)]
+    fn as_unix_host_fd(&self) -> Option<i32> {
+        None
     }
 }
 
@@ -1659,6 +1688,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(-1)
             }
         }
+    }
+
+    #[cfg_attr(not(unix), allow(unused))]
+    fn isatty(&mut self, miri_fd: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+        #[cfg(unix)]
+        {
+            let miri_fd = this.read_scalar(miri_fd)?.to_i32()?;
+            if let Some(host_fd) =
+                this.machine.file_handler.handles.get(&miri_fd).and_then(|fd| fd.as_unix_host_fd())
+            {
+                // "returns 1 if fd is an open file descriptor referring to a terminal;
+                // otherwise 0 is returned, and errno is set to indicate the error"
+                // SAFETY: isatty has no preconditions
+                let is_tty = unsafe { libc::isatty(host_fd) };
+                if is_tty == 0 {
+                    let errno = std::io::Error::last_os_error()
+                        .raw_os_error()
+                        .map(Scalar::from_i32)
+                        .unwrap();
+                    this.set_last_error(errno)?;
+                }
+                return Ok(is_tty);
+            }
+        }
+        // We are attemping to use a Unix interface on a non-Unix platform, or we are on a Unix
+        // platform and the passed file descriptor is not open.
+        // FIXME: It should be possible to emulate this at least on Windows by using
+        // GetConsoleMode.
+        let enotty = this.eval_libc("ENOTTY")?;
+        this.set_last_error(enotty)?;
+        Ok(0)
     }
 }
 

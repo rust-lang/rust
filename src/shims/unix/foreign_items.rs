@@ -440,12 +440,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Miscellaneous
             "isatty" => {
                 let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.read_scalar(fd)?.to_i32()?;
-                // "returns 1 if fd is an open file descriptor referring to a terminal; otherwise 0 is returned, and errno is set to indicate the error"
-                // FIXME: we just say nothing is a terminal.
-                let enotty = this.eval_libc("ENOTTY")?;
-                this.set_last_error(enotty)?;
-                this.write_null(dest)?;
+                let result = this.isatty(fd)?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "pthread_atfork" => {
                 let [prepare, parent, child] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
