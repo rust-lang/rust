@@ -759,6 +759,80 @@ impl ::core::cmp::Ord for Enum1 {
     }
 }
 
+// A C-like, fieldless enum with a single variant.
+enum Fieldless1 {
+
+    #[default]
+    A,
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::clone::Clone for Fieldless1 {
+    #[inline]
+    fn clone(&self) -> Fieldless1 {
+        match &*self { &Fieldless1::A => Fieldless1::A, }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::fmt::Debug for Fieldless1 {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match &*self {
+            &Fieldless1::A => ::core::fmt::Formatter::write_str(f, "A"),
+        }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::default::Default for Fieldless1 {
+    #[inline]
+    fn default() -> Fieldless1 { Self::A }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::hash::Hash for Fieldless1 {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        match &*self { _ => {} }
+    }
+}
+impl ::core::marker::StructuralPartialEq for Fieldless1 {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialEq for Fieldless1 {
+    #[inline]
+    fn eq(&self, other: &Fieldless1) -> bool {
+        match (&*self, &*other) { _ => true, }
+    }
+}
+impl ::core::marker::StructuralEq for Fieldless1 {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Eq for Fieldless1 {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {}
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialOrd for Fieldless1 {
+    #[inline]
+    fn partial_cmp(&self, other: &Fieldless1)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match (&*self, &*other) {
+            _ => ::core::option::Option::Some(::core::cmp::Ordering::Equal),
+        }
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Ord for Fieldless1 {
+    #[inline]
+    fn cmp(&self, other: &Fieldless1) -> ::core::cmp::Ordering {
+        match (&*self, &*other) { _ => ::core::cmp::Ordering::Equal, }
+    }
+}
+
 // A C-like, fieldless enum.
 enum Fieldless {
 

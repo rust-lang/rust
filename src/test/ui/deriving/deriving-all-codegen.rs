@@ -62,6 +62,13 @@ enum Enum1 {
     Single { x: u32 }
 }
 
+// A C-like, fieldless enum with a single variant.
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
+enum Fieldless1 {
+    #[default]
+    A,
+}
+
 // A C-like, fieldless enum.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 enum Fieldless {
