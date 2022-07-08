@@ -1438,18 +1438,8 @@ impl<'hir> Body<'hir> {
 }
 
 /// The type of source expression that caused this generator to be created.
-#[derive(
-    Clone,
-    PartialEq,
-    PartialOrd,
-    Eq,
-    Hash,
-    HashStable_Generic,
-    Encodable,
-    Decodable,
-    Debug,
-    Copy
-)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Hash, Debug, Copy)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum GeneratorKind {
     /// An explicit `async` block or the body of an async function.
     Async(AsyncGeneratorKind),
@@ -1481,18 +1471,8 @@ impl GeneratorKind {
 ///
 /// This helps error messages but is also used to drive coercions in
 /// type-checking (see #60424).
-#[derive(
-    Clone,
-    PartialEq,
-    PartialOrd,
-    Eq,
-    Hash,
-    HashStable_Generic,
-    Encodable,
-    Decodable,
-    Debug,
-    Copy
-)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Hash, Debug, Copy)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum AsyncGeneratorKind {
     /// An explicit `async` block written by the user.
     Block,
