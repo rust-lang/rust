@@ -747,14 +747,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (migration_string, migrated_variables_concat) =
                 migration_suggestion_for_2229(self.tcx, &need_migrations);
 
-            let local_def_id = closure_def_id.expect_local();
-            let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
-            let closure_span = self.tcx.hir().span(closure_hir_id);
-            let closure_head_span = self.tcx.sess.source_map().guess_head_span(closure_span);
+            let closure_hir_id =
+                self.tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+            let closure_head_span = self.tcx.def_span(closure_def_id);
             self.tcx.struct_span_lint_hir(
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
                 closure_hir_id,
-                 closure_head_span,
+                closure_head_span,
                 |lint| {
                     let mut diagnostics_builder = lint.build(
                         &reasons.migration_message(),
@@ -827,12 +826,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         migrated_variables_concat
                     );
 
+                    let closure_span = self.tcx.hir().span_with_body(closure_hir_id);
                     let mut closure_body_span = {
                         // If the body was entirely expanded from a macro
                         // invocation, i.e. the body is not contained inside the
                         // closure span, then we walk up the expansion until we
                         // find the span before the expansion.
-                        let s = self.tcx.hir().span(body_id.hir_id);
+                        let s = self.tcx.hir().span_with_body(body_id.hir_id);
                         s.find_ancestor_inside(closure_span).unwrap_or(s)
                     };
 

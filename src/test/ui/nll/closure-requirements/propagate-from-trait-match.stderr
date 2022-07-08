@@ -1,15 +1,8 @@
 note: external requirements
   --> $DIR/propagate-from-trait-match.rs:32:36
    |
-LL |       establish_relationships(value, |value| {
-   |  ____________________________________^
-LL | |
-LL | |
-LL | |         // This function call requires that
-...  |
-LL | |         require(value);
-LL | |     });
-   | |_____^
+LL |     establish_relationships(value, |value| {
+   |                                    ^^^^^^^
    |
    = note: defining type: supply::<'_#1r, T>::{closure#0} with closure substs [
                i32,

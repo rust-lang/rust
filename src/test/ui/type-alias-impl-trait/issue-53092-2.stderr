@@ -30,7 +30,7 @@ error[E0512]: cannot transmute between types of different sizes, or dependently-
 LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
    |                                         ^^^^^^^^^^^^^^^^^^^
    |
-   = note: source type: `[closure@$DIR/issue-53092-2.rs:6:61: 6:71]` (0 bits)
+   = note: source type: `[closure@$DIR/issue-53092-2.rs:6:61: 6:68]` (0 bits)
    = note: target type: `Bug<u8, ()>` (size can vary because of [type error])
 
 error[E0277]: the trait bound `U: From<T>` is not satisfied

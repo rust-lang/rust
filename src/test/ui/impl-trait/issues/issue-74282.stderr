@@ -13,7 +13,7 @@ LL | |     })
    | |_____^ expected closure, found a different closure
    |
    = note: expected opaque type `Closure`
-                  found closure `[closure@$DIR/issue-74282.rs:8:15: 10:6]`
+                  found closure `[closure@$DIR/issue-74282.rs:8:15: 8:17]`
    = note: no two closures, even if identical, have the same type
    = help: consider boxing your closure and/or using it as a trait object
 note: tuple struct defined here

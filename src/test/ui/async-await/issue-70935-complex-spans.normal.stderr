@@ -14,7 +14,7 @@ LL | |             foo(tx.clone());
 LL | |         }).await;
    | |         - ^^^^^^ await occurs here, with the value maybe used later
    | |_________|
-   |           has type `[closure@$DIR/issue-70935-complex-spans.rs:25:13: 27:10]` which is not `Send`
+   |           has type `[closure@$DIR/issue-70935-complex-spans.rs:25:13: 25:15]` which is not `Send`
 note: the value is later dropped here
   --> $DIR/issue-70935-complex-spans.rs:27:17
    |

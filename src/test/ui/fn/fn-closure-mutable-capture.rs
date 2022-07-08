@@ -6,6 +6,7 @@ pub fn foo() {
     //~^ ERROR cannot assign to `x`, as it is a captured variable in a `Fn` closure
     //~| NOTE cannot assign
     //~| NOTE expects `Fn` instead of `FnMut`
+    //~| NOTE in this closure
 }
 
 fn main() {}

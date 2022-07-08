@@ -9,12 +9,8 @@ LL |     let t = thread::spawn(|| {
 note: required because it's used within this closure
   --> $DIR/closure-move-sync.rs:6:27
    |
-LL |       let t = thread::spawn(|| {
-   |  ___________________________^
-LL | |         recv.recv().unwrap();
-LL | |
-LL | |     });
-   | |_____^
+LL |     let t = thread::spawn(|| {
+   |                           ^^
 note: required by a bound in `spawn`
   --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |
@@ -33,7 +29,7 @@ note: required because it's used within this closure
   --> $DIR/closure-move-sync.rs:18:19
    |
 LL |     thread::spawn(|| tx.send(()).unwrap());
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |                   ^^
 note: required by a bound in `spawn`
   --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |

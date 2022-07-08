@@ -2,11 +2,13 @@ error[E0308]: mismatched types
   --> $DIR/issue-3044.rs:3:35
    |
 LL |       needlesArr.iter().fold(|x, y| {
-   |  ___________________________________^
+   |  ____________________________------_^
+   | |                            |
+   | |                            the expected closure
 LL | |     });
    | |_____^ expected closure, found `()`
    |
-   = note: expected closure `[closure@$DIR/issue-3044.rs:3:28: 4:6]`
+   = note: expected closure `[closure@$DIR/issue-3044.rs:3:28: 3:34]`
             found unit type `()`
 
 error[E0061]: this function takes 2 arguments but 1 argument was supplied

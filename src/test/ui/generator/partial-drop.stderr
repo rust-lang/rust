@@ -4,7 +4,7 @@ error: generator cannot be sent between threads safely
 LL |     assert_send(|| {
    |     ^^^^^^^^^^^ generator is not `Send`
    |
-   = help: within `[generator@$DIR/partial-drop.rs:14:17: 20:6]`, the trait `Send` is not implemented for `Foo`
+   = help: within `[generator@$DIR/partial-drop.rs:14:17: 14:19]`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/partial-drop.rs:19:9
    |
@@ -27,7 +27,7 @@ error: generator cannot be sent between threads safely
 LL |     assert_send(|| {
    |     ^^^^^^^^^^^ generator is not `Send`
    |
-   = help: within `[generator@$DIR/partial-drop.rs:22:17: 30:6]`, the trait `Send` is not implemented for `Foo`
+   = help: within `[generator@$DIR/partial-drop.rs:22:17: 22:19]`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/partial-drop.rs:29:9
    |
@@ -50,7 +50,7 @@ error: generator cannot be sent between threads safely
 LL |     assert_send(|| {
    |     ^^^^^^^^^^^ generator is not `Send`
    |
-   = help: within `[generator@$DIR/partial-drop.rs:32:17: 39:6]`, the trait `Send` is not implemented for `Foo`
+   = help: within `[generator@$DIR/partial-drop.rs:32:17: 32:19]`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/partial-drop.rs:38:9
    |

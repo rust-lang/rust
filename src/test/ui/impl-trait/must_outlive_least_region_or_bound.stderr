@@ -100,7 +100,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
   --> $DIR/must_outlive_least_region_or_bound.rs:38:5
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
-   |                              -- hidden type `[closure@$DIR/must_outlive_least_region_or_bound.rs:38:5: 38:31]` captures the lifetime `'b` as defined here
+   |                              -- hidden type `[closure@$DIR/must_outlive_least_region_or_bound.rs:38:5: 38:13]` captures the lifetime `'b` as defined here
 LL |     move |_| println!("{}", y)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |

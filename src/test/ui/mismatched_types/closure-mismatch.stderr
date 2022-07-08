@@ -19,7 +19,7 @@ note: this closure does not fulfill the lifetime requirements
   --> $DIR/closure-mismatch.rs:8:9
    |
 LL |     baz(|_| ());
-   |         ^^^^^^
+   |         ^^^
 note: the lifetime requirement is introduced here
   --> $DIR/closure-mismatch.rs:5:11
    |

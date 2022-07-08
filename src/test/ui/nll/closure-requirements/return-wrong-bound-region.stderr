@@ -2,7 +2,7 @@ note: no external requirements
   --> $DIR/return-wrong-bound-region.rs:11:16
    |
 LL |     expect_sig(|a, b| b); // ought to return `a`
-   |                ^^^^^^^^
+   |                ^^^^^^
    |
    = note: defining type: test::{closure#0} with closure substs [
                i16,

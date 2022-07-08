@@ -12,7 +12,7 @@ note: return type inferred to be `Result<{integer}, _>` here
 LL |             return Ok(6);
    |                    ^^^^^
 
-error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-deduction.rs:7:5: 15:6] as Generator>::Return == i32`
+error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-deduction.rs:7:5: 7:7] as Generator>::Return == i32`
   --> $DIR/type-mismatch-signature-deduction.rs:5:13
    |
 LL | fn foo() -> impl Generator<Return = i32> {

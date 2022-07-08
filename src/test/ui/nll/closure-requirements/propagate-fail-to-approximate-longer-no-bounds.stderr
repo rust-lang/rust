@@ -1,13 +1,8 @@
 note: no external requirements
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:35:47
    |
-LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-   |  _______________________________________________^
-LL | |         // Only works if 'x: 'y:
-LL | |         demand_y(x, y, x.get())
-LL | |
-LL | |     });
-   | |_____^
+LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+   |                                               ^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
