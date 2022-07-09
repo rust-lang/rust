@@ -1487,13 +1487,17 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     ///
     /// `init_kind` indicates if the memory is zero-initialized or left uninitialized.
     ///
-    /// `strict` is an opt-in debugging flag added in #97323 that enables more checks.
+    /// This code is intentionally conservative, and will not detect
+    /// * zero init of an enum whose 0 variant does not allow zero initialization
+    /// * making uninitialized types who have a full valid range (ints, floats, raw pointers)
+    /// * Any form of invalid value being made inside an array (unless the value is uninhabited)
     ///
-    /// This is conservative: in doubt, it will answer `true`.
+    /// A strict form of these checks that uses const evaluation exists in
+    /// [`rustc_const_eval::might_permit_raw_init`], and a tracking issue for making these checks
+    /// stricter is <https://github.com/rust-lang/rust/issues/66151>.
     ///
-    /// FIXME: Once we removed all the conservatism, we could alternatively
-    /// create an all-0/all-undef constant and run the const value validator to see if
-    /// this is a valid value for the given type.
+    /// FIXME: Once all the conservatism is removed from here, and the checks are ran by default,
+    /// we can use the const evaluation checks always instead.
     pub fn might_permit_raw_init<C>(self, cx: &C, init_kind: InitKind) -> bool
     where
         Self: Copy,

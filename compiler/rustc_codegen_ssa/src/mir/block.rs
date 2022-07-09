@@ -549,7 +549,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             use AssertIntrinsic::*;
             let ty = instance.unwrap().substs.type_at(0);
             let layout = bx.layout_of(ty);
-            let do_panic = match &intrinsic {
+            let do_panic = match intrinsic {
                 Inhabited => layout.abi.is_uninhabited(),
                 ZeroValid => !rustc_const_eval::might_permit_raw_init(
                     bx.tcx(),
