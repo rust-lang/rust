@@ -92,6 +92,7 @@ pub use self::sty::{
 pub use self::trait_def::TraitDef;
 
 pub mod _match;
+pub mod abstract_const;
 pub mod adjustment;
 pub mod binding;
 pub mod cast;

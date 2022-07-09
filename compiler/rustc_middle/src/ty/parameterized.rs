@@ -3,7 +3,7 @@ use rustc_index::vec::{Idx, IndexVec};
 
 use crate::middle::exported_symbols::ExportedSymbol;
 use crate::mir::Body;
-use crate::thir::abstract_const::Node;
+use crate::ty::abstract_const::Node;
 use crate::ty::{
     self, Const, FnSig, GeneratorDiagnosticData, GenericPredicates, Predicate, TraitRef, Ty,
 };

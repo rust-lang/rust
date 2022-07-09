@@ -24,8 +24,8 @@ use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::same_type_modulo_infer;
 use rustc_infer::traits::{AmbiguousSelection, TraitEngine};
-use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::traits::select::OverflowError;
+use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{
