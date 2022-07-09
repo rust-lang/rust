@@ -107,19 +107,13 @@ impl<'mir, 'tcx> GlobalStateInner {
     }
 
     pub fn ptr_from_addr_transmute(
-        ecx: &MiriEvalContext<'mir, 'tcx>,
+        _ecx: &MiriEvalContext<'mir, 'tcx>,
         addr: u64,
     ) -> Pointer<Option<Tag>> {
         trace!("Transmuting {:#x} to a pointer", addr);
 
-        let provenance = if ecx.machine.allow_ptr_int_transmute {
-            // When we allow transmutes, treat them like casts: generating a wildcard pointer.
-            Some(Tag::Wildcard)
-        } else {
-            // Usually, we consider transmuted pointers to be "invalid" (`None` provenance).
-            None
-        };
-        Pointer::new(provenance, Size::from_bytes(addr))
+        // We consider transmuted pointers to be "invalid" (`None` provenance).
+        Pointer::new(None, Size::from_bytes(addr))
     }
 
     pub fn ptr_from_addr_cast(

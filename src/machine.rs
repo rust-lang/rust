@@ -260,13 +260,6 @@ pub struct Evaluator<'mir, 'tcx> {
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
 
-    /// Whether to allow uninitialized numbers (integers and floats).
-    pub(crate) allow_uninit_numbers: bool,
-
-    /// Whether to allow ptr2int transmutes, and whether to allow *dereferencing* the result of an
-    /// int2ptr transmute.
-    pub(crate) allow_ptr_int_transmute: bool,
-
     /// Whether to enforce [ABI](Abi) of function calls.
     pub(crate) enforce_abi: bool,
 
@@ -373,8 +366,6 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             tls: TlsData::default(),
             isolated_op: config.isolated_op,
             validate: config.validate,
-            allow_uninit_numbers: config.allow_uninit_numbers,
-            allow_ptr_int_transmute: config.allow_ptr_int_transmute,
             enforce_abi: config.check_abi,
             file_handler: FileHandler::new(config.mute_stdout_stderr),
             dir_handler: Default::default(),
@@ -527,13 +518,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn enforce_number_init(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
-        !ecx.machine.allow_uninit_numbers
+    fn enforce_number_init(_ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
+        true
     }
 
     #[inline(always)]
-    fn enforce_number_no_provenance(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
-        !ecx.machine.allow_ptr_int_transmute
+    fn enforce_number_no_provenance(_ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
+        true
     }
 
     #[inline(always)]
