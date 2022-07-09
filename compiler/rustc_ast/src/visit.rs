@@ -227,6 +227,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_vis(&mut self, vis: &'ast Visibility) {
         walk_vis(self, vis)
     }
+    fn visit_restriction(&mut self, restriction: &'ast Restriction) {
+        walk_restriction(self, restriction)
+    }
     fn visit_fn_ret_ty(&mut self, ret_ty: &'ast FnRetTy) {
         walk_fn_ret_ty(self, ret_ty)
     }
@@ -945,6 +948,12 @@ pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {
 
 pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
     if let VisibilityKind::Restricted { ref path, id, shorthand: _ } = vis.kind {
+        visitor.visit_path(path, id);
+    }
+}
+
+pub fn walk_restriction<'a, V: Visitor<'a>>(visitor: &mut V, restriction: &'a Restriction) {
+    if let RestrictionKind::Restricted { ref path, id } = restriction.kind {
         visitor.visit_path(path, id);
     }
 }

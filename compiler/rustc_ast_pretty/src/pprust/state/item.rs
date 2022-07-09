@@ -428,6 +428,23 @@ impl<'a> State<'a> {
         }
     }
 
+    // FIXME(jhpratt) make `kw` into a const generic when #![feature(adt_consts_params)] is no
+    // longer incomplete
+    pub(crate) fn print_restriction(&mut self, kw: &'static str, restriction: &ast::Restriction) {
+        match restriction.kind {
+            ast::RestrictionKind::Unrestricted => self.word_nbsp(kw),
+            ast::RestrictionKind::Restricted { ref path, .. } => {
+                let path = Self::to_string(|s| s.print_path(path, false, 0));
+                if path == "crate" || path == "self" || path == "super" {
+                    self.word_nbsp(format!("{kw}({path})"))
+                } else {
+                    self.word_nbsp(format!("{kw}(in {path})"))
+                }
+            }
+            ast::RestrictionKind::Implied => {}
+        }
+    }
+
     fn print_defaultness(&mut self, defaultness: ast::Defaultness) {
         if let ast::Defaultness::Default(_) = defaultness {
             self.word_nbsp("default");

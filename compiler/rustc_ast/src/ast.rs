@@ -2721,6 +2721,37 @@ impl VisibilityKind {
     }
 }
 
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Restriction {
+    pub kind: RestrictionKind,
+    pub span: Span,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum RestrictionKind {
+    Unrestricted,
+    Restricted { path: P<Path>, id: NodeId },
+    Implied,
+}
+
+impl Restriction {
+    pub fn unrestricted() -> Self {
+        Restriction { kind: RestrictionKind::Unrestricted, span: DUMMY_SP }
+    }
+
+    pub fn restricted(path: P<Path>, id: NodeId) -> Self {
+        Restriction { kind: RestrictionKind::Restricted { path, id }, span: DUMMY_SP }
+    }
+
+    pub fn implied() -> Self {
+        Restriction { kind: RestrictionKind::Implied, span: DUMMY_SP }
+    }
+
+    pub fn with_span(self, span: Span) -> Self {
+        Restriction { span, ..self }
+    }
+}
+
 /// Field definition in a struct, variant or union.
 ///
 /// E.g., `bar: usize` as in `struct Foo { bar: usize }`.

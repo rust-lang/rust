@@ -7,7 +7,7 @@ use crate::token::Nonterminal;
 use crate::tokenstream::LazyAttrTokenStream;
 use crate::{Arm, Crate, ExprField, FieldDef, GenericParam, Param, PatField, Variant};
 use crate::{AssocItem, Expr, ForeignItem, Item, NodeId};
-use crate::{AttrItem, AttrKind, Block, Pat, Path, Ty, Visibility};
+use crate::{AttrItem, AttrKind, Block, Pat, Path, Restriction, Ty, Visibility};
 use crate::{AttrVec, Attribute, Stmt, StmtKind};
 
 use rustc_span::Span;
@@ -108,7 +108,19 @@ macro_rules! impl_has_span {
     };
 }
 
-impl_has_span!(AssocItem, Block, Expr, ForeignItem, Item, Pat, Path, Stmt, Ty, Visibility);
+impl_has_span!(
+    AssocItem,
+    Block,
+    Expr,
+    ForeignItem,
+    Item,
+    Pat,
+    Path,
+    Stmt,
+    Ty,
+    Visibility,
+    Restriction,
+);
 
 impl<T: AstDeref<Target: HasSpan>> HasSpan for T {
     fn span(&self) -> Span {
@@ -324,7 +336,7 @@ impl_has_attrs!(
     PatField,
     Variant,
 );
-impl_has_attrs_none!(Attribute, AttrItem, Block, Pat, Path, Ty, Visibility);
+impl_has_attrs_none!(Attribute, AttrItem, Block, Pat, Path, Ty, Visibility, Restriction);
 
 impl<T: AstDeref<Target: HasAttrs>> HasAttrs for T {
     const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::Target::SUPPORTS_CUSTOM_INNER_ATTRS;

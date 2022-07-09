@@ -278,6 +278,10 @@ pub trait MutVisitor: Sized {
         noop_visit_vis(vis, self);
     }
 
+    fn visit_restriction(&mut self, restriction: &mut Restriction) {
+        noop_visit_restriction(restriction, self);
+    }
+
     fn visit_id(&mut self, _id: &mut NodeId) {
         // Do nothing.
     }
@@ -1552,6 +1556,14 @@ pub fn noop_visit_vis<T: MutVisitor>(visibility: &mut Visibility, vis: &mut T) {
         }
     }
     vis.visit_span(&mut visibility.span);
+}
+
+pub fn noop_visit_restriction<T: MutVisitor>(restriction: &mut Restriction, vis: &mut T) {
+    if let RestrictionKind::Restricted { path, id } = &mut restriction.kind {
+        vis.visit_path(path);
+        vis.visit_id(id);
+    }
+    vis.visit_span(&mut restriction.span);
 }
 
 /// Some value for the AST node that is valid but possibly meaningless.

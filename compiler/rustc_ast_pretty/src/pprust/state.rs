@@ -883,6 +883,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_visibility(v))
     }
 
+    fn restriction_to_string(&self, kw: &'static str, restriction: &ast::Restriction) -> String {
+        Self::to_string(|s| s.print_restriction(kw, restriction))
+    }
+
     fn block_to_string(&self, blk: &ast::Block) -> String {
         Self::to_string(|s| {
             // Containing cbox, will be closed by `print_block` at `}`.
