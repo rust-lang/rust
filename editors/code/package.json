@@ -35,25 +35,25 @@
         "test": "cross-env TEST_VARIABLE=test node ./out/tests/runTests.js"
     },
     "dependencies": {
-        "d3": "^7.3.0",
-        "d3-graphviz": "^4.1.0",
-        "vscode-languageclient": "8.0.0-next.14"
+        "d3": "^7.6.1",
+        "d3-graphviz": "^4.1.1",
+        "vscode-languageclient": "^8.0.1"
     },
     "devDependencies": {
-        "@types/node": "~14.17.5",
+        "@types/node": "~16.11.7",
         "@types/vscode": "~1.66.0",
-        "@typescript-eslint/eslint-plugin": "^5.16.0",
-        "@typescript-eslint/parser": "^5.16.0",
-        "@vscode/test-electron": "^2.1.3",
+        "@typescript-eslint/eslint-plugin": "^5.30.5",
+        "@typescript-eslint/parser": "^5.30.5",
+        "@vscode/test-electron": "^2.1.5",
         "cross-env": "^7.0.3",
-        "esbuild": "^0.14.27",
-        "eslint": "^8.11.0",
+        "esbuild": "^0.14.48",
+        "eslint": "^8.19.0",
         "eslint-config-prettier": "^8.5.0",
         "ovsx": "^0.5.1",
-        "prettier": "^2.6.2",
-        "tslib": "^2.3.0",
-        "typescript": "^4.6.3",
-        "vsce": "^2.7.0"
+        "prettier": "^2.7.1",
+        "tslib": "^2.4.0",
+        "typescript": "^4.7.4",
+        "vsce": "^2.9.2"
     },
     "activationEvents": [
         "onLanguage:rust",
