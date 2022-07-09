@@ -2550,13 +2550,22 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 ///
 /// * `dst` must be properly aligned.
 ///
-/// Additionally, note that changing `*dst` in this way can lead to undefined behavior later if the
-/// written bytes are not a valid representation of some `T`. For instance, if `dst: *mut bool`, a
-/// `dst.write_bytes(0xFFu8, 1)` followed by `dst.read()` is undefined behavior since the `read`
-/// tries to construct a `bool` value from `0xFF` which does not represent any `bool`.
-///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
 /// `0`, the pointer must be non-null and properly aligned.
+///
+/// Additionally, note that changing `*dst` in this way can easily lead to undefined behavior (UB)
+/// later if the written bytes are not a valid representation of some `T`. For instance, the
+/// follwing is an **incorrect** use of this function:
+///
+/// ```rust,no_run
+/// unsafe {
+///     let mut value: u8 = 0;
+///     let ptr: *mut bool = &mut value as *mut u8 as *mut bool;
+///     let _bool = ptr.read(); // This is fine, `ptr` points to a valid `bool`.
+///     ptr.write_bytes(42u8, 1); // This function itself does not cause UB...
+///     let _bool = ptr.read(); // ...but it makes this operation UB! ⚠️
+/// }
+/// ```
 ///
 /// [valid]: crate::ptr#safety
 ///
