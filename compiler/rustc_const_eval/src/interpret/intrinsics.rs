@@ -22,6 +22,8 @@ use super::{
     Pointer,
 };
 
+use crate::might_permit_raw_init::might_permit_raw_init;
+
 mod caller_location;
 mod type_name;
 
@@ -415,7 +417,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 if intrinsic_name == sym::assert_zero_valid {
-                    let should_panic = !crate::might_permit_raw_init(
+                    let should_panic = !might_permit_raw_init(
                         *self.tcx,
                         self.cur_span(),
                         layout,
@@ -435,7 +437,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 if intrinsic_name == sym::assert_uninit_valid {
-                    let should_panic = !crate::might_permit_raw_init(
+                    let should_panic = !might_permit_raw_init(
                         *self.tcx,
                         self.cur_span(),
                         layout,
