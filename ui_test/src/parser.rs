@@ -184,7 +184,7 @@ impl Comments {
                 self.error_pattern = Some((args.trim().to_string(), l));
             }
             "stderr-per-bitwidth" => {
-                // args are ignored (can be sue as comment)
+                // args are ignored (can be used as comment)
                 ensure!(!self.stderr_per_bitwidth, "cannot specifiy stderr-per-bitwidth twice");
                 self.stderr_per_bitwidth = true;
             }
