@@ -36,7 +36,10 @@ pub fn expand_deriving_rustc_decodable(
                 )],
             },
             explicit_self: false,
-            args: vec![(Ref(Box::new(Path(Path::new_local(typaram))), Mutability::Mut), sym::d)],
+            nonself_args: vec![(
+                Ref(Box::new(Path(Path::new_local(typaram))), Mutability::Mut),
+                sym::d,
+            )],
             ret_ty: Path(Path::new_(
                 pathvec_std!(result::Result),
                 vec![
@@ -63,7 +66,7 @@ fn decodable_substructure(
     substr: &Substructure<'_>,
     krate: Symbol,
 ) -> BlockOrExpr {
-    let decoder = substr.nonself_args[0].clone();
+    let decoder = substr.nonselflike_args[0].clone();
     let recurse = vec![
         Ident::new(krate, trait_span),
         Ident::new(sym::Decodable, trait_span),
