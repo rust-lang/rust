@@ -117,12 +117,8 @@ impl Comments {
                     let next = args
                         .next()
                         .expect("the `position` above guarantees that there is at least one char");
-                    // FIXME: this replicates the existing flexibility in our syntax. Consider requiring the colon.
-                    let args = match next {
-                        ':' | ' ' => args.as_str(),
-                        _ => bail!("expected space or `:`, got `{next}`"),
-                    };
-                    (command, args.trim())
+                    ensure!(next == ':', "test command must be followed by : (or end the line)");
+                    (command, args.as_str().trim())
                 }
             };
 
@@ -188,16 +184,19 @@ impl Comments {
                 self.error_pattern = Some((args.trim().to_string(), l));
             }
             "stderr-per-bitwidth" => {
+                // args are ignored (can be used as comment)
                 ensure!(!self.stderr_per_bitwidth, "cannot specifiy stderr-per-bitwidth twice");
                 self.stderr_per_bitwidth = true;
             }
             command => {
                 if let Some(s) = command.strip_prefix("ignore-") {
+                    // args are ignored (can be sue as comment)
                     self.ignore.push(Condition::parse(s));
                     return Ok(());
                 }
 
                 if let Some(s) = command.strip_prefix("only-") {
+                    // args are ignored (can be sue as comment)
                     self.only.push(Condition::parse(s));
                     return Ok(());
                 }

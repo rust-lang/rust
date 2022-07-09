@@ -10,13 +10,13 @@ use std::sync::Mutex;
 pub use color_eyre;
 use color_eyre::eyre::Result;
 use colored::*;
-use comments::ErrorMatch;
+use parser::ErrorMatch;
 use regex::Regex;
 use rustc_stderr::{Level, Message};
 
-use crate::comments::{Comments, Condition};
+use crate::parser::{Comments, Condition};
 
-mod comments;
+mod parser;
 mod rustc_stderr;
 #[cfg(test)]
 mod tests;
