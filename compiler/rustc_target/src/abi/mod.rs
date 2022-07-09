@@ -1372,7 +1372,7 @@ pub struct PointeeInfo {
 
 /// Used in `might_permit_raw_init` to indicate the kind of initialisation
 /// that is checked to be valid
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InitKind {
     Zero,
     Uninit,

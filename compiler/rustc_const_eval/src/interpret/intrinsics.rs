@@ -415,11 +415,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 if intrinsic_name == sym::assert_zero_valid {
-                    let should_panic = if self.tcx.sess.opts.debugging_opts.strict_init_checks {
-                        !crate::is_zero_valid(*self.tcx, self.cur_span(), layout)
-                    } else {
-                        !layout.might_permit_raw_init(self, InitKind::Zero)
-                    };
+                    let should_panic = !crate::might_permit_raw_init(
+                        *self.tcx,
+                        self.cur_span(),
+                        layout,
+                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
+                        InitKind::Zero,
+                    );
 
                     if should_panic {
                         M::abort(
@@ -433,11 +435,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 if intrinsic_name == sym::assert_uninit_valid {
-                    let should_panic = if self.tcx.sess.opts.debugging_opts.strict_init_checks {
-                        !crate::is_uninit_valid(*self.tcx, self.cur_span(), layout)
-                    } else {
-                        !layout.might_permit_raw_init(self, InitKind::Uninit)
-                    };
+                    let should_panic = !crate::might_permit_raw_init(
+                        *self.tcx,
+                        self.cur_span(),
+                        layout,
+                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
+                        InitKind::Uninit,
+                    );
 
                     if should_panic {
                         M::abort(

@@ -549,16 +549,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             use AssertIntrinsic::*;
             let ty = instance.unwrap().substs.type_at(0);
             let layout = bx.layout_of(ty);
-            let do_panic = match (&intrinsic, strict_validity) {
-                (Inhabited, _) => layout.abi.is_uninhabited(),
-                (ZeroValid, true) => {
-                    !rustc_const_eval::is_zero_valid(bx.tcx(), source_info.span, layout)
-                }
-                (UninitValid, true) => {
-                    !rustc_const_eval::is_uninit_valid(bx.tcx(), source_info.span, layout)
-                }
-                (ZeroValid, false) => !layout.might_permit_raw_init(bx, InitKind::Zero),
-                (UninitValid, false) => !layout.might_permit_raw_init(bx, InitKind::Uninit),
+            let do_panic = match &intrinsic {
+                Inhabited => layout.abi.is_uninhabited(),
+                ZeroValid => !rustc_const_eval::might_permit_raw_init(
+                    bx.tcx(),
+                    source_info.span,
+                    layout,
+                    strict_validity,
+                    InitKind::Zero,
+                ),
+                UninitValid => !rustc_const_eval::might_permit_raw_init(
+                    bx.tcx(),
+                    source_info.span,
+                    layout,
+                    strict_validity,
+                    InitKind::Uninit,
+                ),
             };
             if do_panic {
                 let msg_str = with_no_visible_paths!({

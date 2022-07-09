@@ -673,8 +673,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
             }
 
             if intrinsic == sym::assert_zero_valid
-                && !layout.might_permit_raw_init(
-                    fx,
+                && !rustc_const_eval::might_permit_raw_init(
+                    fx.tcx,
+                    source_info.span,
+                    layout,
+                    fx.tcx.sess.opts.debugging_opts.strict_init_checks,
                     InitKind::Zero) {
 
                 with_no_trimmed_paths!({
@@ -688,8 +691,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
             }
 
             if intrinsic == sym::assert_uninit_valid
-                && !layout.might_permit_raw_init(
-                    fx,
+                && !rustc_const_eval::might_permit_raw_init(
+                    fx.tcx,
+                    source_info.span,
+                    layout,
+                    fx.tcx.sess.opts.debugging_opts.strict_init_checks,
                     InitKind::Uninit) {
 
                 with_no_trimmed_paths!({
