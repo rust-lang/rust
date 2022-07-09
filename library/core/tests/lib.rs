@@ -65,7 +65,6 @@
 #![feature(iter_advance_by)]
 #![feature(iter_collect_into)]
 #![feature(iter_partition_in_place)]
-#![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
 #![feature(iter_next_chunk)]
 #![feature(iter_order_by)]

@@ -10,7 +10,6 @@
 #![feature(let_else)]
 #![feature(extern_types)]
 #![feature(once_cell)]
-#![feature(iter_intersperse)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 

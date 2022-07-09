@@ -15,7 +15,6 @@
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(type_ascription)]
-#![feature(iter_intersperse)]
 #![feature(type_alias_impl_trait)]
 #![feature(generic_associated_types)]
 #![recursion_limit = "256"]

@@ -31,7 +31,6 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
-#![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
 #![feature(let_else)]
