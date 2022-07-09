@@ -35,8 +35,8 @@
         "test": "cross-env TEST_VARIABLE=test node ./out/tests/runTests.js"
     },
     "dependencies": {
-        "d3": "^7.3.0",
-        "d3-graphviz": "^4.1.0",
+        "d3": "^7.6.1",
+        "d3-graphviz": "^4.1.1",
         "vscode-languageclient": "^8.0.1"
     },
     "devDependencies": {
