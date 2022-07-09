@@ -1120,7 +1120,7 @@ pub(crate) fn format_trait(
 ) -> Option<String> {
     if let ast::ItemKind::Trait(trait_kind) = &item.kind {
         let ast::Trait {
-            impl_restriction: _,
+            ref impl_restriction,
             is_auto,
             unsafety,
             ref generics,
@@ -1129,8 +1129,9 @@ pub(crate) fn format_trait(
         } = **trait_kind;
         let mut result = String::with_capacity(128);
         let header = format!(
-            "{}{}{}trait ",
+            "{}{}{}{}trait ",
             format_visibility(context, &item.vis),
+            format_restriction("impl", context, &impl_restriction),
             format_unsafety(unsafety),
             format_auto(is_auto),
         );

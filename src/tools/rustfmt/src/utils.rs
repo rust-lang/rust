@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use rustc_ast::ast::{
-    self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
-    VisibilityKind,
+    self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Restriction,
+    RestrictionKind, Visibility, VisibilityKind,
 };
 use rustc_ast::ptr;
 use rustc_ast_pretty::pprust;
@@ -71,6 +71,32 @@ pub(crate) fn format_visibility(
 
             Cow::from(format!("pub({}{}) ", in_str, path))
         }
+    }
+}
+
+// Does not allocate in the common, implied case.
+pub(crate) fn format_restriction(
+    kw: &'static str,
+    context: &RewriteContext<'_>,
+    restriction: &Restriction,
+) -> String {
+    match restriction.kind {
+        RestrictionKind::Unrestricted => format!("{kw} "),
+        RestrictionKind::Restricted { ref path, .. } => {
+            let Path { ref segments, .. } = **path;
+            let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
+            if path.is_global() && segments_iter.next().is_none() {
+                panic!("non-global path in {kw}(restricted)?");
+            }
+            let is_keyword = |s| s == "crate" || s == "self" || s == "super";
+            // FIXME use `segments_iter.intersperse("::").collect::<String>()` once
+            // `#![feature(iter_intersperse)]` is re-stabilized.
+            let path = itertools::join(segments_iter, "::");
+            let in_str = if is_keyword(&path) { "" } else { "in " };
+
+            format!("{kw}({in_str}{path}) ")
+        }
+        RestrictionKind::Implied => String::new(),
     }
 }
 
