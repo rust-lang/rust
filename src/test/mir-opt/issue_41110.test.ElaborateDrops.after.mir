@@ -28,7 +28,7 @@ fn test() -> () {
         _3 = std::mem::drop::<S>(move _4) -> [return: bb1, unwind: bb7]; // scope 2 at $DIR/issue-41110.rs:17:5: 17:12
                                          // mir::Constant
                                          // + span: $DIR/issue-41110.rs:17:5: 17:9
-                                         // + literal: Const { ty: fn(S) {std::mem::drop::<S>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(S) {std::mem::drop::<S>}, val: Value(<ZST>) }
     }
 
     bb1: {

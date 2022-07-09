@@ -30,7 +30,7 @@
           _4 = read(move _5) -> bb1;       // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:5: 8:12
                                            // mir::Constant
                                            // + span: $DIR/const_prop_fails_gracefully.rs:8:5: 8:9
-                                           // + literal: Const { ty: fn(usize) {read}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn(usize) {read}, val: Value(<ZST>) }
       }
   
       bb1: {

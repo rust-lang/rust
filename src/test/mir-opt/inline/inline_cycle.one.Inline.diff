@@ -18,7 +18,7 @@
                                            // mir::Constant
 -                                          // + span: $DIR/inline-cycle.rs:14:5: 14:22
 +                                          // + span: $DIR/inline-cycle.rs:36:9: 36:26
-                                           // + literal: Const { ty: fn() {<C as Call>::call}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() {<C as Call>::call}, val: Value(<ZST>) }
       }
   
       bb1: {

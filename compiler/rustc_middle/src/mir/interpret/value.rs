@@ -29,10 +29,13 @@ pub struct ConstAlloc<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
 pub enum ConstValue<'tcx> {
-    /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
+    /// Used only for types with `layout::abi::Scalar` ABI.
     ///
     /// Not using the enum `Value` to encode that this must not be `Uninit`.
     Scalar(Scalar),
+
+    /// Only used for ZSTs.
+    ZeroSized,
 
     /// Used only for `&[u8]` and `&str`
     Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
@@ -55,6 +58,7 @@ impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ConstValue<'tcx>> {
         Some(match self {
             ConstValue::Scalar(s) => ConstValue::Scalar(s),
+            ConstValue::ZeroSized => ConstValue::ZeroSized,
             ConstValue::Slice { data, start, end } => {
                 ConstValue::Slice { data: tcx.lift(data)?, start, end }
             }
@@ -69,7 +73,7 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
         match *self {
-            ConstValue::ByRef { .. } | ConstValue::Slice { .. } => None,
+            ConstValue::ByRef { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
             ConstValue::Scalar(val) => Some(val),
         }
     }
@@ -110,10 +114,6 @@ impl<'tcx> ConstValue<'tcx> {
 
     pub fn from_machine_usize(i: u64, cx: &impl HasDataLayout) -> Self {
         ConstValue::Scalar(Scalar::from_machine_usize(i, cx))
-    }
-
-    pub fn zst() -> Self {
-        Self::Scalar(Scalar::ZST)
     }
 }
 
@@ -194,8 +194,6 @@ impl<Tag> From<ScalarInt> for Scalar<Tag> {
 }
 
 impl<Tag> Scalar<Tag> {
-    pub const ZST: Self = Scalar::Int(ScalarInt::ZST);
-
     #[inline(always)]
     pub fn from_pointer(ptr: Pointer<Tag>, cx: &impl HasDataLayout) -> Self {
         Scalar::Ptr(ptr, u8::try_from(cx.pointer_size().bytes()).unwrap())

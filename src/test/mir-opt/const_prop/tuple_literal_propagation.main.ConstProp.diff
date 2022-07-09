@@ -22,7 +22,7 @@
           _2 = consume(move _3) -> bb1;    // scope 1 at $DIR/tuple_literal_propagation.rs:5:5: 5:15
                                            // mir::Constant
                                            // + span: $DIR/tuple_literal_propagation.rs:5:5: 5:12
-                                           // + literal: Const { ty: fn((u32, u32)) {consume}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn((u32, u32)) {consume}, val: Value(<ZST>) }
       }
   
       bb1: {

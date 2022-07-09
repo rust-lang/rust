@@ -12,7 +12,7 @@
 -         _1 = target_feature() -> bb1;    // scope 0 at $DIR/inline-compatibility.rs:13:5: 13:21
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-compatibility.rs:13:5: 13:19
--                                          // + literal: Const { ty: unsafe fn() {target_feature}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: unsafe fn() {target_feature}, val: Value(<ZST>) }
 -     }
 - 
 -     bb1: {

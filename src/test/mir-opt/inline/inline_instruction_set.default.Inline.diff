@@ -14,7 +14,7 @@
           _1 = instruction_set_a32() -> bb1; // scope 0 at $DIR/inline-instruction-set.rs:51:5: 51:26
                                            // mir::Constant
                                            // + span: $DIR/inline-instruction-set.rs:51:5: 51:24
-                                           // + literal: Const { ty: fn() {instruction_set_a32}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() {instruction_set_a32}, val: Value(<ZST>) }
       }
   
       bb1: {
@@ -23,7 +23,7 @@
           _2 = instruction_set_t32() -> bb2; // scope 0 at $DIR/inline-instruction-set.rs:52:5: 52:26
                                            // mir::Constant
                                            // + span: $DIR/inline-instruction-set.rs:52:5: 52:24
-                                           // + literal: Const { ty: fn() {instruction_set_t32}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() {instruction_set_t32}, val: Value(<ZST>) }
       }
   
       bb2: {
@@ -32,7 +32,7 @@
 -         _3 = instruction_set_default() -> bb3; // scope 0 at $DIR/inline-instruction-set.rs:53:5: 53:30
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-instruction-set.rs:53:5: 53:28
--                                          // + literal: Const { ty: fn() {instruction_set_default}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: fn() {instruction_set_default}, val: Value(<ZST>) }
 -     }
 - 
 -     bb3: {

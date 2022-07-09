@@ -22,7 +22,7 @@
           _2 = val() -> bb1;               // scope 0 at $DIR/union.rs:13:23: 13:28
                                            // mir::Constant
                                            // + span: $DIR/union.rs:13:23: 13:26
-                                           // + literal: Const { ty: fn() -> u32 {val}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() -> u32 {val}, val: Value(<ZST>) }
       }
   
       bb1: {
