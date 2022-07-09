@@ -51,8 +51,8 @@
         "eslint-config-prettier": "^8.5.0",
         "ovsx": "^0.5.1",
         "prettier": "^2.7.1",
-        "tslib": "^2.3.0",
-        "typescript": "^4.6.3",
+        "tslib": "^2.4.0",
+        "typescript": "^4.7.4",
         "vsce": "^2.9.2"
     },
     "activationEvents": [
