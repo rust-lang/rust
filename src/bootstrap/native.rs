@@ -429,13 +429,21 @@ impl Step for Llvm {
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
             let host_bin = builder.llvm_out(builder.config.build).join("bin");
-            cfg.define("CMAKE_CROSSCOMPILING", "True");
             cfg.define("LLVM_TABLEGEN", host_bin.join("llvm-tblgen").with_extension(EXE_EXTENSION));
+            // LLVM_NM is required for cross compiling using MSVC
             cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
             cfg.define(
                 "LLVM_CONFIG_PATH",
                 host_bin.join("llvm-config").with_extension(EXE_EXTENSION),
             );
+            if builder.config.llvm_clang {
+                let build_bin = builder.llvm_out(builder.config.build).join("build").join("bin");
+                let clang_tblgen = build_bin.join("clang-tblgen").with_extension(EXE_EXTENSION);
+                if !builder.config.dry_run && !clang_tblgen.exists() {
+                    panic!("unable to find {}", clang_tblgen.display());
+                }
+                cfg.define("CLANG_TABLEGEN", clang_tblgen);
+            }
         }
 
         let llvm_version_suffix = if let Some(ref suffix) = builder.config.llvm_version_suffix {
@@ -545,6 +553,8 @@ fn configure_cmake(
     cfg.target(&target.triple).host(&builder.config.build.triple);
 
     if target != builder.config.build {
+        cfg.define("CMAKE_CROSSCOMPILING", "True");
+
         if target.contains("netbsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
         } else if target.contains("freebsd") {
@@ -562,6 +572,17 @@ fn configure_cmake(
         // Since, the LLVM itself makes rather limited use of version checks in
         // CMakeFiles (and then only in tests), and so far no issues have been
         // reported, the system version is currently left unset.
+
+        if target.contains("darwin") {
+            // Make sure that CMake does not build universal binaries on macOS.
+            // Explicitly specifiy the one single target architecture.
+            if target.starts_with("aarch64") {
+                // macOS uses a different name for building arm64
+                cfg.define("CMAKE_OSX_ARCHITECTURES", "arm64");
+            } else {
+                cfg.define("CMAKE_OSX_ARCHITECTURES", target.triple.split('-').next().unwrap());
+            }
+        }
     }
 
     let sanitize_cc = |cc: &Path| {
