@@ -601,7 +601,7 @@ pub fn eq_ext(l: &Extern, r: &Extern) -> bool {
     use Extern::*;
     match (l, r) {
         (None, None) | (Implicit(_), Implicit(_)) => true,
-        (Explicit(l,_), Explicit(r,_)) => eq_str_lit(l, r),
+        (Explicit(l, _), Explicit(r, _)) => eq_str_lit(l, r),
         _ => false,
     }
 }

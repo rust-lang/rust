@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{Crate, Inline, Item, ItemKind, ModKind};
 use rustc_errors::MultiSpan;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext, Level};
+use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{FileName, Span};
 use std::collections::BTreeMap;
@@ -79,21 +79,29 @@ impl EarlyLintPass for DuplicateMod {
     }
 
     fn check_crate_post(&mut self, cx: &EarlyContext<'_>, _: &Crate) {
-        for Modules { local_path, spans, lint_levels } in self.modules.values() {
+        for Modules {
+            local_path,
+            spans,
+            lint_levels,
+        } in self.modules.values()
+        {
             if spans.len() < 2 {
                 continue;
             }
 
             // At this point the lint would be emitted
             assert_eq!(spans.len(), lint_levels.len());
-            let spans: Vec<_> = spans.into_iter().zip(lint_levels).filter_map(|(span, lvl)|{
-                if let Some(id) = lvl.get_expectation_id() {
-                    cx.fulfill_expectation(id);
-                }
+            let spans: Vec<_> = spans
+                .into_iter()
+                .zip(lint_levels)
+                .filter_map(|(span, lvl)| {
+                    if let Some(id) = lvl.get_expectation_id() {
+                        cx.fulfill_expectation(id);
+                    }
 
-                (!matches!(lvl, Level::Allow | Level::Expect(_))).then_some(*span)
-            })
-            .collect();
+                    (!matches!(lvl, Level::Allow | Level::Expect(_))).then_some(*span)
+                })
+                .collect();
 
             if spans.len() < 2 {
                 continue;
