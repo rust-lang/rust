@@ -37,7 +37,7 @@
     "dependencies": {
         "d3": "^7.3.0",
         "d3-graphviz": "^4.1.0",
-        "vscode-languageclient": "8.0.0-next.14"
+        "vscode-languageclient": "^8.0.1"
     },
     "devDependencies": {
         "@types/node": "~14.17.5",
