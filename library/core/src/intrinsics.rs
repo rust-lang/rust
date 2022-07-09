@@ -2550,10 +2550,10 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 ///
 /// * `dst` must be properly aligned.
 ///
-/// Additionally, the caller must ensure that writing `count *
-/// size_of::<T>()` bytes to the given region of memory results in a valid
-/// value of `T`. Using a region of memory typed as a `T` that contains an
-/// invalid value of `T` is undefined behavior.
+/// Additionally, note that changing `*dst` in this way can lead to undefined behavior later if the
+/// written bytes are not a valid representation of some `T`. For instance, if `dst: *mut bool`, a
+/// `dst.write_bytes(0xFFu8, 1)` followed by `dst.read()` is undefined behavior since the `read`
+/// tries to construct a `bool` value from `0xFF` which does not represent any `bool`.
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
 /// `0`, the pointer must be non-null and properly aligned.
