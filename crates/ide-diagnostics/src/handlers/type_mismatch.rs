@@ -156,7 +156,7 @@ fn str_ref_to_string(
     let edit = TextEdit::insert(expr.syntax().text_range().end(), to_string);
     let source_change =
         SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
-    acc.push(fix("str_ref_to_string", "Use to_string() here", source_change, expr_range));
+    acc.push(fix("str_ref_to_string", "Add .to_string() here", source_change, expr_range));
 
     Some(())
 }
@@ -530,11 +530,15 @@ fn foo() -> SomeOtherEnum { 0$0 }
     fn str_ref_to_string() {
         check_fix(
             r#"
+struct String;
+
 fn test() -> String {
     "a"$0
 }
             "#,
             r#"
+struct String;
+
 fn test() -> String {
     "a".to_string()
 }
