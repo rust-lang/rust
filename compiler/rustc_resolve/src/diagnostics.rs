@@ -928,10 +928,7 @@ impl<'a> Resolver<'a> {
                     "generic parameters with a default cannot use \
                                                 forward declared identifiers"
                 );
-                err.span_label(
-                    span,
-                    "defaulted generic parameters cannot be forward declared".to_string(),
-                );
+                err.span_label(span, "defaulted generic parameters cannot be forward declared");
                 err
             }
             ResolutionError::ParamInTyOfConstParam(name) => {

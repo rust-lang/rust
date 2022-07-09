@@ -263,7 +263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if let ExprKind::Block(block, _) = &then_expr.kind
                     && let Some(expr) = &block.expr
                 {
-                    err.span_label(expr.span, "found here".to_string());
+                    err.span_label(expr.span, "found here");
                 }
                 err.note("`if` expressions without `else` evaluate to `()`");
                 err.help("consider adding an `else` block that evaluates to the expected type");

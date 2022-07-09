@@ -39,13 +39,11 @@ fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         let message = if tcx.generics_of(def_id).own_requires_monomorphization() {
             "`#[derive]` can't be used on a `#[repr(packed)]` struct with \
              type or const parameters (error E0133)"
-                .to_string()
         } else {
             "`#[derive]` can't be used on a `#[repr(packed)]` struct that \
              does not derive Copy (error E0133)"
-                .to_string()
         };
-        lint.build(&message).emit();
+        lint.build(message).emit();
     });
 }
 

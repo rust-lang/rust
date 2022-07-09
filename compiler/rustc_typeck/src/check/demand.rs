@@ -317,9 +317,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .tcx
                                 .is_diagnostic_item(sym::Result, expected_adt.did())
                             {
-                                vec!["Ok(())".to_string()]
+                                vec!["Ok(())"]
                             } else if self.tcx.is_diagnostic_item(sym::Option, expected_adt.did()) {
-                                vec!["None".to_string(), "Some(())".to_string()]
+                                vec!["None", "Some(())"]
                             } else {
                                 return;
                             };

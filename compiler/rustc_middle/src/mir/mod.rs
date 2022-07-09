@@ -1929,12 +1929,10 @@ impl BorrowKind {
         }
     }
 
-    pub fn describe_mutability(&self) -> String {
+    pub fn describe_mutability(&self) -> &str {
         match *self {
-            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => {
-                "immutable".to_string()
-            }
-            BorrowKind::Mut { .. } => "mutable".to_string(),
+            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => "immutable",
+            BorrowKind::Mut { .. } => "mutable",
         }
     }
 }
