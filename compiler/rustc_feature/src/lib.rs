@@ -84,12 +84,11 @@ impl UnstableFeatures {
         // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
         let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
         // Returns whether `krate` should be counted as unstable
-        let is_unstable_crate = |var: &str| {
-            krate.is_some_and(|&name| var.split(',').any(|new_krate| new_krate == name))
-        };
+        let is_unstable_crate =
+            |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
         // `true` if we should enable unstable features for bootstrapping.
         let bootstrap =
-            std::env::var("RUSTC_BOOTSTRAP").is_ok_and(|var| var == "1" || is_unstable_crate(var));
+            std::env::var("RUSTC_BOOTSTRAP").is_ok_and(|var| var == "1" || is_unstable_crate(&var));
         match (disable_unstable_features, bootstrap) {
             (_, true) => UnstableFeatures::Cheat,
             (true, _) => UnstableFeatures::Disallow,

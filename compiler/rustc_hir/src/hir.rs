@@ -759,7 +759,7 @@ pub struct WhereBoundPredicate<'hir> {
 impl<'hir> WhereBoundPredicate<'hir> {
     /// Returns `true` if `param_def_id` matches the `bounded_ty` of this predicate.
     pub fn is_param_bound(&self, param_def_id: DefId) -> bool {
-        self.bounded_ty.as_generic_param().is_some_and(|&(def_id, _)| def_id == param_def_id)
+        self.bounded_ty.as_generic_param().is_some_and(|(def_id, _)| def_id == param_def_id)
     }
 }
 

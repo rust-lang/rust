@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
     let recv_impls_iterator = cx
         .tcx
         .get_diagnostic_item(sym::Iterator)
-        .is_some_and(|&id| implements_trait(cx, cx.typeck_results().expr_ty(recv), id, &[]));
+        .is_some_and(|id| implements_trait(cx, cx.typeck_results().expr_ty(recv), id, &[]));
     if recv_impls_iterator {
         let msg = "called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
                    `.find(..)` instead";

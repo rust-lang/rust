@@ -185,7 +185,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
                 segments: [PathSegment { ident: left_name, .. }], ..
             })) = &left_expr.kind;
             if left_name == left_ident;
-            if cx.tcx.get_diagnostic_item(sym::Ord).is_some_and(|&id| {
+            if cx.tcx.get_diagnostic_item(sym::Ord).is_some_and(|id| {
                 implements_trait(cx, cx.typeck_results().expr_ty(left_expr), id, &[])
             });
                 then {

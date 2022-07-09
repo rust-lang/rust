@@ -2359,7 +2359,7 @@ impl ConstantKind {
     pub(crate) fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
         match *self {
             ConstantKind::TyConst { .. } => false,
-            ConstantKind::Extern { def_id } => def_id.as_local().is_some_and(|&def_id| {
+            ConstantKind::Extern { def_id } => def_id.as_local().is_some_and(|def_id| {
                 is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(def_id))
             }),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {

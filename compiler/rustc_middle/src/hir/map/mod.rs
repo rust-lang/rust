@@ -407,7 +407,7 @@ impl<'hir> Map<'hir> {
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(self, BodyId { hir_id }: BodyId) -> HirId {
         let parent = self.get_parent_node(hir_id);
-        assert!(self.find(parent).is_some_and(|&n| is_body_owner(n, hir_id)));
+        assert!(self.find(parent).is_some_and(|n| is_body_owner(n, hir_id)));
         parent
     }
 

@@ -271,7 +271,7 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
     let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
     let trt_id = cx.tcx.trait_of_item(def_id);
-    trt_id.is_some_and(|&trt_id| match_def_path(cx, trt_id, path))
+    trt_id.is_some_and(|trt_id| match_def_path(cx, trt_id, path))
 }
 
 /// Checks if a method is defined in an impl of a diagnostic item
@@ -296,7 +296,7 @@ pub fn is_diag_trait_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol
 pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
     cx.typeck_results()
         .type_dependent_def_id(expr.hir_id)
-        .is_some_and(|&did| is_diag_trait_item(cx, did, diag_item))
+        .is_some_and(|did| is_diag_trait_item(cx, did, diag_item))
 }
 
 /// Checks if the given expression is a path referring an item on the trait
@@ -312,7 +312,7 @@ pub fn is_trait_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -
     if let hir::ExprKind::Path(ref qpath) = expr.kind {
         cx.qpath_res(qpath, expr.hir_id)
             .opt_def_id()
-            .is_some_and(|&def_id| is_diag_trait_item(cx, def_id, diag_item))
+            .is_some_and(|def_id| is_diag_trait_item(cx, def_id, diag_item))
     } else {
         false
     }
@@ -372,13 +372,13 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
 ///
 /// Please use `is_expr_diagnostic_item` if the target is a diagnostic item.
 pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
-    path_def_id(cx, expr).is_some_and(|&id| match_def_path(cx, id, segments))
+    path_def_id(cx, expr).is_some_and(|id| match_def_path(cx, id, segments))
 }
 
 /// If the expression is a path, resolves it to a `DefId` and checks if it matches the given
 /// diagnostic item.
 pub fn is_expr_diagnostic_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
-    path_def_id(cx, expr).is_some_and(|&id| cx.tcx.is_diagnostic_item(diag_item, id))
+    path_def_id(cx, expr).is_some_and(|id| cx.tcx.is_diagnostic_item(diag_item, id))
 }
 
 /// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
@@ -1084,7 +1084,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec
 pub fn is_entrypoint_fn(cx: &LateContext<'_>, def_id: DefId) -> bool {
     cx.tcx
         .entry_fn(())
-        .is_some_and(|&(entry_fn_def_id, _)| def_id == entry_fn_def_id)
+        .is_some_and(|(entry_fn_def_id, _)| def_id == entry_fn_def_id)
 }
 
 /// Returns `true` if the expression is in the program's `#[panic_handler]`.
@@ -1743,7 +1743,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         _ => None,
     };
 
-    did.is_some_and(|&did| cx.tcx.has_attr(did, sym::must_use))
+    did.is_some_and(|did| cx.tcx.has_attr(did, sym::must_use))
 }
 
 /// Checks if an expression represents the identity function
@@ -1790,7 +1790,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
 
     match expr.kind {
         ExprKind::Closure { body, .. } => is_body_identity_function(cx, cx.tcx.hir().body(body)),
-        _ => path_def_id(cx, expr).is_some_and(|&id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
+        _ => path_def_id(cx, expr).is_some_and(|id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
     }
 }
 

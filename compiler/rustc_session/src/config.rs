@@ -1779,7 +1779,7 @@ fn collect_print_requests(
     error_format: ErrorOutputType,
 ) -> Vec<PrintRequest> {
     let mut prints = Vec::<PrintRequest>::new();
-    if cg.target_cpu.is_some_and(|s| s == "help") {
+    if cg.target_cpu.as_ref().is_some_and(|s| s == "help") {
         prints.push(PrintRequest::TargetCPUs);
         cg.target_cpu = None;
     };

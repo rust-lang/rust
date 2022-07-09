@@ -484,7 +484,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
 
 fn implements_ord<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
-    get_trait_def_id(cx, &paths::ORD).is_some_and(|&id| implements_trait(cx, ty, id, &[]))
+    get_trait_def_id(cx, &paths::ORD).is_some_and(|id| implements_trait(cx, ty, id, &[]))
 }
 
 struct NotSimplificationVisitor<'a, 'tcx> {

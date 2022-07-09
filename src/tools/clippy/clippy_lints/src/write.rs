@@ -304,6 +304,7 @@ impl EarlyLintPass for Write {
             cx.sess()
                 .opts
                 .crate_name
+                .as_ref()
                 .is_some_and(|crate_name| crate_name == "build_script_build")
         }
 

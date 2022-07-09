@@ -160,7 +160,7 @@ fn eq_pattern_length<'tcx>(cx: &LateContext<'tcx>, pattern: &Expr<'_>, expr: &'t
         ..
     }) = expr.kind
     {
-        constant_length(cx, pattern).is_some_and(|&length| length == n)
+        constant_length(cx, pattern).is_some_and(|length| length == n)
     } else {
         len_arg(cx, expr).is_some_and(|arg| eq_expr_value(cx, pattern, arg))
     }

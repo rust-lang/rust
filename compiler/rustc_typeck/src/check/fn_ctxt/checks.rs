@@ -1680,7 +1680,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // within one of the args.
                 if arg.span.contains(error.obligation.cause.span) {
                     let references_arg =
-                        typeck_results.expr_ty_opt(arg).is_some_and(|&ty| ty_matches_self(ty))
+                        typeck_results.expr_ty_opt(arg).is_some_and(|ty| ty_matches_self(ty))
                             || expected_tys.get(idx).copied().map_or(false, &ty_matches_self);
                     if references_arg && !arg.span.from_expansion() {
                         error.obligation.cause.map_code(|parent_code| {

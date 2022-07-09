@@ -69,7 +69,7 @@ fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
     match ty.kind() {
         ty::Array(_, n) => n
             .try_eval_usize(cx.tcx, cx.param_env)
-            .is_some_and(|val| (0..=32).contains(val)),
+            .is_some_and(|val| (0..=32).contains(&val)),
         _ => false,
     }
 }

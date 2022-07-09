@@ -324,7 +324,7 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
     let impls_iterator = cx
         .tcx
         .get_diagnostic_item(sym::Iterator)
-        .is_some_and(|&id| implements_trait(cx, cx.typeck_results().expr_ty(arg), id, &[]));
+        .is_some_and(|id| implements_trait(cx, cx.typeck_results().expr_ty(arg), id, &[]));
     if impls_iterator {
         format!(
             "{}",

@@ -375,7 +375,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return (tcx.intern_substs(&[]), arg_count);
         }
 
-        let is_object = self_ty.is_some_and(|&ty| ty == self.tcx().types.trait_object_dummy_self);
+        let is_object = self_ty.is_some_and(|ty| ty == self.tcx().types.trait_object_dummy_self);
 
         struct SubstsForAstPathCtxt<'a, 'tcx> {
             astconv: &'a (dyn AstConv<'tcx> + 'a),

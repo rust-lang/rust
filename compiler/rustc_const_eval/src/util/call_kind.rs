@@ -135,7 +135,7 @@ pub fn call_kind<'tcx>(
                 ty::Adt(def, ..) => Some(def.did()),
                 _ => None,
             });
-        let is_option_or_result = parent_self_ty.is_some_and(|&def_id| {
+        let is_option_or_result = parent_self_ty.is_some_and(|def_id| {
             matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option | sym::Result))
         });
         CallKind::Normal { self_arg, desugaring, is_option_or_result }

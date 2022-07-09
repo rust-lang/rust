@@ -574,7 +574,7 @@ impl<'a> CrateLocator<'a> {
                     }
                 };
             // If we see multiple hashes, emit an error about duplicate candidates.
-            if slot.is_some_and(|s| s.0 != hash) {
+            if slot.as_ref().is_some_and(|s| s.0 != hash) {
                 if let Some(candidates) = err_data {
                     return Err(CrateError::MultipleCandidates(
                         self.crate_name,

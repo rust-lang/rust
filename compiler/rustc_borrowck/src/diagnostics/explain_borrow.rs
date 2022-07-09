@@ -429,7 +429,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         use_location: Location,
     ) -> bool {
         let back_edge = self.reach_through_backedge(borrow_location, use_location);
-        back_edge.is_some_and(|&back_edge| self.can_reach_head_of_loop(use_location, back_edge))
+        back_edge.is_some_and(|back_edge| self.can_reach_head_of_loop(use_location, back_edge))
     }
 
     /// Returns the outmost back edge if `from` location can reach `to` location passing through

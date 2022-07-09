@@ -1244,7 +1244,7 @@ pub fn build_session(
         .map(|&(_, ref level)| *level == lint::Allow)
         .last()
         .unwrap_or(false);
-    let cap_lints_allow = sopts.lint_cap.is_some_and(|&cap| cap == lint::Allow);
+    let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
     let write_dest = match diagnostics_output {

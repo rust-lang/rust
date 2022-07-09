@@ -269,9 +269,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::Block(l, _), &ExprKind::Block(r, _)) => self.eq_block(l, r),
             (&ExprKind::Binary(l_op, ll, lr), &ExprKind::Binary(r_op, rl, rr)) => {
                 l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
-                    || swap_binop(l_op.node, ll, lr).is_some_and(|&(l_op, ll, lr)| {
-                        l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
-                    })
+                    || swap_binop(l_op.node, ll, lr)
+                        .is_some_and(|(l_op, ll, lr)| l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr))
             },
             (&ExprKind::Break(li, ref le), &ExprKind::Break(ri, ref re)) => {
                 both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)

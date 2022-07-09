@@ -1546,7 +1546,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     cfg_pos = Some(pos); // a cfg attr found, no need to search anymore
                     break;
                 } else if attr_pos.is_none()
-                    && !name.is_some_and(|&name| rustc_feature::is_builtin_attr_name(name))
+                    && !name.is_some_and(|name| rustc_feature::is_builtin_attr_name(name))
                 {
                     attr_pos = Some(pos); // a non-cfg attr found, still may find a cfg attr
                 }

@@ -42,5 +42,5 @@ fn get_error_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
 fn has_debug_impl<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
     cx.tcx
         .get_diagnostic_item(sym::Debug)
-        .is_some_and(|&debug| implements_trait(cx, ty, debug, &[]))
+        .is_some_and(|debug| implements_trait(cx, ty, debug, &[]))
 }

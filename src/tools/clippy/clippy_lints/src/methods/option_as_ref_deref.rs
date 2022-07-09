@@ -48,7 +48,7 @@ pub(super) fn check<'tcx>(
         hir::ExprKind::Path(ref expr_qpath) => cx
             .qpath_res(expr_qpath, map_arg.hir_id)
             .opt_def_id()
-            .is_some_and(|&fun_def_id| deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))),
+            .is_some_and(|fun_def_id| deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))),
         hir::ExprKind::Closure { body, .. } => {
             let closure_body = cx.tcx.hir().body(body);
             let closure_expr = peel_blocks(&closure_body.value);

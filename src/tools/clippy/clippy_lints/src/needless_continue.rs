@@ -429,7 +429,7 @@ fn check_and_warn<'a>(cx: &EarlyContext<'_>, expr: &'a ast::Expr) {
 #[must_use]
 fn erode_from_back(s: &str) -> String {
     let mut ret = s.to_string();
-    while ret.pop().is_some_and(|&c| c != '}') {}
+    while ret.pop().is_some_and(|c| c != '}') {}
     while let Some(c) = ret.pop() {
         if !c.is_whitespace() {
             ret.push(c);

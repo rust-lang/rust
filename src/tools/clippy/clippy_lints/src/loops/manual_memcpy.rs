@@ -418,7 +418,7 @@ fn get_assignments<'a, 'tcx>(
         .chain((*expr).into_iter())
         .filter(move |e| {
             if let ExprKind::AssignOp(_, place, _) = e.kind {
-                path_to_local(place).is_some_and(|&id| {
+                path_to_local(place).is_some_and(|id| {
                     !loop_counters
                         .iter()
                         // skip the first item which should be `StartKind::Range`

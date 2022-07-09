@@ -1544,7 +1544,7 @@ impl<T: Idx> GrowableBitSet<T> {
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
-        self.bit_set.words.get(word_index).is_some_and(|&word| (word & mask) != 0)
+        self.bit_set.words.get(word_index).is_some_and(|word| (word & mask) != 0)
     }
 
     #[inline]
