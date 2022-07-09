@@ -70,7 +70,7 @@ is explicitly specified in the options.
 
 ### Fix mode
 You can run `./lintcheck/target/debug/lintcheck --fix` which will run Clippy with `--fix` and
-print a warning if Clippys suggestions fail to apply (if the resulting code does not build).  
+print a warning if Clippy's suggestions fail to apply (if the resulting code does not build).  
 This lets us spot bad suggestions or false positives automatically in some cases.  
 
 Please note that the target dir should be cleaned afterwards since clippy will modify
