@@ -2,8 +2,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, MetaItem};
+use rustc_ast::MetaItem;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -28,7 +27,7 @@ pub fn expand_deriving_ord(
             name: sym::cmp,
             generics: Bounds::empty(),
             explicit_self: true,
-            args: vec![(self_ref(), sym::other)],
+            nonself_args: vec![(self_ref(), sym::other)],
             ret_ty: Path(path_std!(cmp::Ordering)),
             attributes: attrs,
             unify_fieldless_variants: true,
@@ -40,84 +39,54 @@ pub fn expand_deriving_ord(
     trait_def.expand(cx, mitem, item, push)
 }
 
-pub fn ordering_collapsed(
-    cx: &mut ExtCtxt<'_>,
-    span: Span,
-    self_arg_tags: &[Ident],
-) -> P<ast::Expr> {
-    let lft = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[0]));
-    let rgt = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[1]));
-    let fn_cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
-    cx.expr_call_global(span, fn_cmp_path, vec![lft, rgt])
-}
-
 pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
     let test_id = Ident::new(sym::cmp, span);
-    let equals_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
-
+    let equal_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
     let cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
 
     // Builds:
     //
-    // match ::std::cmp::Ord::cmp(&self_field1, &other_field1) {
-    // ::std::cmp::Ordering::Equal =>
-    // match ::std::cmp::Ord::cmp(&self_field2, &other_field2) {
-    // ::std::cmp::Ordering::Equal => {
-    // ...
+    // match ::core::cmp::Ord::cmp(&self.x, &other.x) {
+    //     ::std::cmp::Ordering::Equal =>
+    //         ::core::cmp::Ord::cmp(&self.y, &other.y),
+    //     cmp => cmp,
     // }
-    // cmp => cmp
-    // },
-    // cmp => cmp
-    // }
-    //
     let expr = cs_fold(
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
-        |cx, span, old, self_f, other_fs| {
-            // match new {
-            //     ::std::cmp::Ordering::Equal => old,
-            //     cmp => cmp
-            // }
-            let new = {
-                let [other_f] = other_fs else {
-                    cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`");
-                };
-                let args =
-                    vec![cx.expr_addr_of(span, self_f), cx.expr_addr_of(span, other_f.clone())];
-                cx.expr_call_global(span, cmp_path.clone(), args)
-            };
-
-            let eq_arm = cx.arm(span, cx.pat_path(span, equals_path.clone()), old);
-            let neq_arm = cx.arm(span, cx.pat_ident(span, test_id), cx.expr_ident(span, test_id));
-
-            cx.expr_match(span, new, vec![eq_arm, neq_arm])
-        },
-        |cx, args| match args {
-            Some((span, self_f, other_fs)) => {
-                let new = {
-                    let [other_f] = other_fs else {
-                            cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`");
-                        };
-                    let args =
-                        vec![cx.expr_addr_of(span, self_f), cx.expr_addr_of(span, other_f.clone())];
-                    cx.expr_call_global(span, cmp_path.clone(), args)
-                };
-
-                new
-            }
-            None => cx.expr_path(equals_path.clone()),
-        },
-        Box::new(|cx, span, tag_tuple| {
-            if tag_tuple.len() != 2 {
-                cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`")
-            } else {
-                ordering_collapsed(cx, span, tag_tuple)
-            }
-        }),
         cx,
         span,
         substr,
+        |cx, fold| match fold {
+            CsFold::Single(field) => {
+                let [other_expr] = &field.other_selflike_exprs[..] else {
+                        cx.span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
+                    };
+                let args = vec![
+                    cx.expr_addr_of(field.span, field.self_expr.clone()),
+                    cx.expr_addr_of(field.span, other_expr.clone()),
+                ];
+                cx.expr_call_global(field.span, cmp_path.clone(), args)
+            }
+            CsFold::Combine(span, expr1, expr2) => {
+                let eq_arm = cx.arm(span, cx.pat_path(span, equal_path.clone()), expr1);
+                let neq_arm =
+                    cx.arm(span, cx.pat_ident(span, test_id), cx.expr_ident(span, test_id));
+                cx.expr_match(span, expr2, vec![eq_arm, neq_arm])
+            }
+            CsFold::Fieldless => cx.expr_path(equal_path.clone()),
+            CsFold::EnumNonMatching(span, tag_tuple) => {
+                if tag_tuple.len() != 2 {
+                    cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`")
+                } else {
+                    let lft = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[0]));
+                    let rgt = cx.expr_addr_of(span, cx.expr_ident(span, tag_tuple[1]));
+                    let fn_cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
+                    cx.expr_call_global(span, fn_cmp_path, vec![lft, rgt])
+                }
+            }
+        },
     );
     BlockOrExpr::new_expr(expr)
 }

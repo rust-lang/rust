@@ -10,7 +10,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Size;
-use rustc_target::spec::abi::Abi;
+use rustc_target::spec::abi::Abi as CallAbi;
 
 use super::{
     AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
@@ -138,7 +138,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether to enforce integers and floats not having provenance.
     fn enforce_number_no_provenance(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
-    /// Whether function calls should be [ABI](Abi)-checked.
+    /// Whether function calls should be [ABI](CallAbi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         true
     }
@@ -169,7 +169,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        abi: Abi,
+        abi: CallAbi,
         args: &[OpTy<'tcx, Self::PointerTag>],
         destination: &PlaceTy<'tcx, Self::PointerTag>,
         target: Option<mir::BasicBlock>,
@@ -181,7 +181,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn call_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Self::ExtraFnVal,
-        abi: Abi,
+        abi: CallAbi,
         args: &[OpTy<'tcx, Self::PointerTag>],
         destination: &PlaceTy<'tcx, Self::PointerTag>,
         target: Option<mir::BasicBlock>,
@@ -483,7 +483,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     fn call_extra_fn(
         _ecx: &mut InterpCx<$mir, $tcx, Self>,
         fn_val: !,
-        _abi: Abi,
+        _abi: CallAbi,
         _args: &[OpTy<$tcx>],
         _destination: &PlaceTy<$tcx, Self::PointerTag>,
         _target: Option<mir::BasicBlock>,

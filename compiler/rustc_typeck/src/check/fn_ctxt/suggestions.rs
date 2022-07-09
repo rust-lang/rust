@@ -13,7 +13,6 @@ use rustc_hir::{
 use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_infer::traits;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Binder, IsSuggestable, Subst, ToPredicate, Ty};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -238,25 +237,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
                 }
-            } else if found.to_string().starts_with("Option<")
-                && expected.to_string() == "Option<&str>"
+            } else if let ty::Adt(found_adt, found_substs) = found.kind()
+                && self.tcx.is_diagnostic_item(sym::Option, found_adt.did())
+                && let ty::Adt(expected_adt, expected_substs) = expected.kind()
+                && self.tcx.is_diagnostic_item(sym::Option, expected_adt.did())
+                && let ty::Ref(_, inner_ty, _) = expected_substs.type_at(0).kind()
+                && inner_ty.is_str()
             {
-                if let ty::Adt(_def, subst) = found.kind() {
-                    if subst.len() != 0 {
-                        if let GenericArgKind::Type(ty) = subst[0].unpack() {
-                            let peeled = ty.peel_refs().to_string();
-                            if peeled == "String" {
-                                let ref_cnt = ty.to_string().len() - peeled.len();
-                                let result = format!(".map(|x| &*{}x)", "*".repeat(ref_cnt));
-                                err.span_suggestion_verbose(
-                                    expr.span.shrink_to_hi(),
-                                    "try converting the passed type into a `&str`",
-                                    result,
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
-                        }
-                    }
+                let ty = found_substs.type_at(0);
+                let mut peeled = ty;
+                let mut ref_cnt = 0;
+                while let ty::Ref(_, inner, _) = peeled.kind() {
+                    peeled = *inner;
+                    ref_cnt += 1;
+                }
+                if let ty::Adt(adt, _) = peeled.kind()
+                    && self.tcx.is_diagnostic_item(sym::String, adt.did())
+                {
+                    err.span_suggestion_verbose(
+                        expr.span.shrink_to_hi(),
+                        "try converting the passed type into a `&str`",
+                        format!(".map(|x| &*{}x)", "*".repeat(ref_cnt)),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             }
         }

@@ -78,6 +78,7 @@ impl<'tcx, Tag: Provenance> Immediate<Tag> {
     }
 
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn to_scalar_or_uninit(self) -> ScalarMaybeUninit<Tag> {
         match self {
             Immediate::Scalar(val) => val,
@@ -87,11 +88,13 @@ impl<'tcx, Tag: Provenance> Immediate<Tag> {
     }
 
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn to_scalar(self) -> InterpResult<'tcx, Scalar<Tag>> {
         self.to_scalar_or_uninit().check_init()
     }
 
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn to_scalar_or_uninit_pair(self) -> (ScalarMaybeUninit<Tag>, ScalarMaybeUninit<Tag>) {
         match self {
             Immediate::ScalarPair(val1, val2) => (val1, val2),
@@ -101,6 +104,7 @@ impl<'tcx, Tag: Provenance> Immediate<Tag> {
     }
 
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn to_scalar_pair(self) -> InterpResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
         let (val1, val2) = self.to_scalar_or_uninit_pair();
         Ok((val1.check_init()?, val2.check_init()?))

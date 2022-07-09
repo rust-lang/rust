@@ -80,7 +80,7 @@ pub fn expand_deriving_clone(
             name: sym::clone,
             generics: Bounds::empty(),
             explicit_self: true,
-            args: Vec::new(),
+            nonself_args: Vec::new(),
             ret_ty: Self_,
             attributes: attrs,
             unify_fieldless_variants: false,
@@ -160,8 +160,8 @@ fn cs_clone(
     let ctor_path;
     let all_fields;
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
-    let subcall = |cx: &mut ExtCtxt<'_>, field: &FieldInfo<'_>| {
-        let args = vec![cx.expr_addr_of(field.span, field.self_.clone())];
+    let subcall = |cx: &mut ExtCtxt<'_>, field: &FieldInfo| {
+        let args = vec![cx.expr_addr_of(field.span, field.self_expr.clone())];
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };
 

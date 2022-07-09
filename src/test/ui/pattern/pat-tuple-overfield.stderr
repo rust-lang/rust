@@ -5,7 +5,10 @@ LL | struct Z1();
    | ------------ the tuple struct `Z1` is defined here
 ...
 LL |         Z1 => {}
-   |         ^^ cannot be named the same as a tuple struct
+   |         ^^
+   |         |
+   |         cannot be named the same as a tuple struct
+   |         help: try specify the pattern arguments: `Z1(..)`
 
 error[E0532]: expected tuple struct or tuple variant, found unit struct `Z0`
   --> $DIR/pat-tuple-overfield.rs:52:9

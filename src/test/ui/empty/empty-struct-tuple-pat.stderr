@@ -5,7 +5,10 @@ LL | struct Empty2();
    | ---------------- the tuple struct `Empty2` is defined here
 ...
 LL |         Empty2 => ()
-   |         ^^^^^^ cannot be named the same as a tuple struct
+   |         ^^^^^^
+   |         |
+   |         cannot be named the same as a tuple struct
+   |         help: try specify the pattern arguments: `Empty2(..)`
 
 error[E0530]: match bindings cannot shadow tuple structs
   --> $DIR/empty-struct-tuple-pat.rs:25:9
@@ -14,7 +17,10 @@ LL | use empty_struct::*;
    |     --------------- the tuple struct `XEmpty6` is imported here
 ...
 LL |         XEmpty6 => ()
-   |         ^^^^^^^ cannot be named the same as a tuple struct
+   |         ^^^^^^^
+   |         |
+   |         cannot be named the same as a tuple struct
+   |         help: try specify the pattern arguments: `XEmpty6(..)`
 
 error[E0532]: expected unit struct, unit variant or constant, found tuple variant `E::Empty4`
   --> $DIR/empty-struct-tuple-pat.rs:29:9

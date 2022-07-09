@@ -1275,9 +1275,9 @@ pub struct TargetOptions {
     pub is_like_msvc: bool,
     /// Whether a target toolchain is like WASM.
     pub is_like_wasm: bool,
-    /// Version of DWARF to use if not using the default.
+    /// Default supported version of DWARF on this platform.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
-    pub dwarf_version: Option<u32>,
+    pub default_dwarf_version: u32,
     /// Whether the linker support GNU-like arguments such as -O. Defaults to true.
     pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
@@ -1539,7 +1539,7 @@ impl Default for TargetOptions {
             is_like_windows: false,
             is_like_msvc: false,
             is_like_wasm: false,
-            dwarf_version: None,
+            default_dwarf_version: 4,
             linker_is_gnu: true,
             allows_weak_linkage: true,
             has_rpath: false,
@@ -1778,13 +1778,13 @@ impl Target {
                     base.$key_name = s;
                 }
             } );
-            ($key_name:ident, Option<u32>) => ( {
+            ($key_name:ident, u32) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.remove(&name).and_then(|b| b.as_u64()) {
                     if s < 1 || s > 5 {
                         return Err("Not a valid DWARF version number".into());
                     }
-                    base.$key_name = Some(s as u32);
+                    base.$key_name = s as u32;
                 }
             } );
             ($key_name:ident, Option<u64>) => ( {
@@ -2143,7 +2143,7 @@ impl Target {
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
         key!(is_like_wasm, bool);
-        key!(dwarf_version, Option<u32>);
+        key!(default_dwarf_version, u32);
         key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
         key!(has_rpath, bool);
@@ -2387,7 +2387,7 @@ impl ToJson for Target {
         target_option_val!(is_like_windows);
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_wasm);
-        target_option_val!(dwarf_version);
+        target_option_val!(default_dwarf_version);
         target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
