@@ -1,11 +1,11 @@
 error: implementation of restricted trait
-  --> $DIR/impl-restriction.rs:11:1
+  --> $DIR/impl-restriction.rs:13:1
    |
 LL | impl foo::bar::Foo for u8 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: trait restricted here
-  --> $DIR/impl-restriction.rs:5:20
+  --> $DIR/impl-restriction.rs:7:20
    |
 LL |         pub(crate) impl(super) trait Foo {}
    |                    ^^^^^^^^^^^

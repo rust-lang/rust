@@ -1,0 +1,27 @@
+error[E0658]: restrictions are experimental
+  --> $DIR/feature-gate.rs:8:5
+   |
+LL | pub impl trait Foo {}
+   |     ^^^^
+   |
+   = help: add `#![feature(restrictions)]` to the crate attributes to enable
+
+error[E0658]: restrictions are experimental
+  --> $DIR/feature-gate.rs:9:5
+   |
+LL | pub impl(crate) trait Bar {}
+   |     ^^^^^^^^^^^
+   |
+   = help: add `#![feature(restrictions)]` to the crate attributes to enable
+
+error[E0658]: restrictions are experimental
+  --> $DIR/feature-gate.rs:12:9
+   |
+LL |     pub impl(in foo) trait Baz {}
+   |         ^^^^^^^^^^^^
+   |
+   = help: add `#![feature(restrictions)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

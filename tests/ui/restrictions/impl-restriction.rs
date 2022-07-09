@@ -1,5 +1,7 @@
 // compile-flags: --crate-type=lib
 
+#![feature(restrictions)]
+
 pub mod foo {
     pub mod bar {
         pub(crate) impl(super) trait Foo {}

@@ -505,6 +505,8 @@ declare_features! (
     (incomplete, repr128, "1.16.0", Some(56071), None),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (active, repr_simd, "1.4.0", Some(27731), None),
+    /// Allows restricting the implementation of traits and mutability of fields.
+    (active, restrictions, "CURRENT_RUSTC_VERSION", None, None),
     /// Allows return-position `impl Trait` in traits.
     (active, return_position_impl_trait_in_trait, "1.65.0", Some(91611), None),
     /// Allows bounding the return type of AFIT/RPITIT.
