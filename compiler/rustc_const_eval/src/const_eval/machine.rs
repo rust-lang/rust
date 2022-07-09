@@ -14,7 +14,7 @@ use rustc_middle::mir::AssertMessage;
 use rustc_session::Limit;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{Align, Size};
-use rustc_target::spec::abi::Abi;
+use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
@@ -263,7 +263,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        _abi: Abi,
+        _abi: CallAbi,
         args: &[OpTy<'tcx>],
         _dest: &PlaceTy<'tcx>,
         _ret: Option<mir::BasicBlock>,
