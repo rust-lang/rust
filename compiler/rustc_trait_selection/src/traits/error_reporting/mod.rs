@@ -2074,6 +2074,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         //    |
                         //    = note: cannot satisfy `_: Tt`
 
+                        // Clear any more general suggestions in favor of our specific one
+                        err.clear_suggestions();
+
                         err.span_suggestion_verbose(
                             span.shrink_to_hi(),
                             &format!(

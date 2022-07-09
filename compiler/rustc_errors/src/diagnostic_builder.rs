@@ -461,6 +461,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     forward!(pub fn set_is_lint(&mut self,) -> &mut Self);
 
     forward!(pub fn disable_suggestions(&mut self,) -> &mut Self);
+    forward!(pub fn clear_suggestions(&mut self,) -> &mut Self);
 
     forward!(pub fn multipart_suggestion(
         &mut self,
