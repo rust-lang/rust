@@ -1805,8 +1805,26 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         || self.tcx.is_builtin_derive(def_id)
                 })
                 .filter_map(|def_id| self.tcx.impl_trait_ref(def_id))
-                // Avoid mentioning type parameters.
-                .filter(|trait_ref| !matches!(trait_ref.self_ty().kind(), ty::Param(_)))
+                .filter(|trait_ref| {
+                    let self_ty = trait_ref.self_ty();
+                    // Avoid mentioning type parameters.
+                    if let ty::Param(_) = self_ty.kind() {
+                        false
+                    }
+                    // Avoid mentioning types that are private to another crate
+                    else if let ty::Adt(def, _) = self_ty.peel_refs().kind() {
+                        // FIXME(compiler-errors): This could be generalized, both to
+                        // be more granular, and probably look past other `#[fundamental]`
+                        // types, too.
+                        match self.tcx.visibility(def.did()) {
+                            ty::Visibility::Public => true,
+                            ty::Visibility::Restricted(def_id) => def_id.is_local(),
+                            ty::Visibility::Invisible => false,
+                        }
+                    } else {
+                        true
+                    }
+                })
                 .collect();
             return report(normalized_impl_candidates, err);
         }
