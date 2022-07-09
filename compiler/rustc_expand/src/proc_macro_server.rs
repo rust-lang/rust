@@ -436,43 +436,6 @@ impl server::FreeFunctions for Rustc<'_, '_> {
             span: self.call_site,
         })
     }
-
-    fn literal_subspan(
-        &mut self,
-        literal: Literal<Self::Span, Self::Symbol>,
-        start: Bound<usize>,
-        end: Bound<usize>,
-    ) -> Option<Self::Span> {
-        let span = literal.span;
-        let length = span.hi().to_usize() - span.lo().to_usize();
-
-        let start = match start {
-            Bound::Included(lo) => lo,
-            Bound::Excluded(lo) => lo.checked_add(1)?,
-            Bound::Unbounded => 0,
-        };
-
-        let end = match end {
-            Bound::Included(hi) => hi.checked_add(1)?,
-            Bound::Excluded(hi) => hi,
-            Bound::Unbounded => length,
-        };
-
-        // Bounds check the values, preventing addition overflow and OOB spans.
-        if start > u32::MAX as usize
-            || end > u32::MAX as usize
-            || (u32::MAX - start as u32) < span.lo().to_u32()
-            || (u32::MAX - end as u32) < span.lo().to_u32()
-            || start >= end
-            || end > length
-        {
-            return None;
-        }
-
-        let new_lo = span.lo() + BytePos::from_usize(start);
-        let new_hi = span.lo() + BytePos::from_usize(end);
-        Some(span.with_lo(new_lo).with_hi(new_hi))
-    }
 }
 
 impl server::TokenStream for Rustc<'_, '_> {
@@ -695,6 +658,42 @@ impl server::Span for Rustc<'_, '_> {
         }
 
         Some(first.to(second))
+    }
+
+    fn subspan(
+        &mut self,
+        span: Self::Span,
+        start: Bound<usize>,
+        end: Bound<usize>,
+    ) -> Option<Self::Span> {
+        let length = span.hi().to_usize() - span.lo().to_usize();
+
+        let start = match start {
+            Bound::Included(lo) => lo,
+            Bound::Excluded(lo) => lo.checked_add(1)?,
+            Bound::Unbounded => 0,
+        };
+
+        let end = match end {
+            Bound::Included(hi) => hi.checked_add(1)?,
+            Bound::Excluded(hi) => hi,
+            Bound::Unbounded => length,
+        };
+
+        // Bounds check the values, preventing addition overflow and OOB spans.
+        if start > u32::MAX as usize
+            || end > u32::MAX as usize
+            || (u32::MAX - start as u32) < span.lo().to_u32()
+            || (u32::MAX - end as u32) < span.lo().to_u32()
+            || start >= end
+            || end > length
+        {
+            return None;
+        }
+
+        let new_lo = span.lo() + BytePos::from_usize(start);
+        let new_hi = span.lo() + BytePos::from_usize(end);
+        Some(span.with_lo(new_lo).with_hi(new_hi))
     }
 
     fn resolved_at(&mut self, span: Self::Span, at: Self::Span) -> Self::Span {

@@ -57,7 +57,6 @@ macro_rules! with_api {
                 fn track_env_var(var: &str, value: Option<&str>);
                 fn track_path(path: &str);
                 fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
-                fn literal_subspan(lit: Literal<$S::Span, $S::Symbol>, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
             },
             TokenStream {
                 fn drop($self: $S::TokenStream);
@@ -114,6 +113,7 @@ macro_rules! with_api {
                 fn before($self: $S::Span) -> $S::Span;
                 fn after($self: $S::Span) -> $S::Span;
                 fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
+                fn subspan($self: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
                 fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
                 fn source_text($self: $S::Span) -> Option<String>;
                 fn save_span($self: $S::Span) -> usize;

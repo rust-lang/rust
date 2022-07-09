@@ -1379,12 +1379,7 @@ impl Literal {
     // was 'c' or whether it was '\u{63}'.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
-        bridge::client::FreeFunctions::literal_subspan(
-            self.0.clone(),
-            range.start_bound().cloned(),
-            range.end_bound().cloned(),
-        )
-        .map(Span)
+        self.0.span.subspan(range.start_bound().cloned(), range.end_bound().cloned()).map(Span)
     }
 
     fn with_symbol_and_suffix<R>(&self, f: impl FnOnce(&str, &str) -> R) -> R {
