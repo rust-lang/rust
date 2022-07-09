@@ -670,6 +670,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_resolve::provide(providers);
     rustc_hir_analysis::provide(providers);
     rustc_hir_typeck::provide(providers);
+    rustc_restrictions::provide(providers);
     ty::provide(providers);
     traits::provide(providers);
     rustc_passes::provide(providers);
@@ -859,6 +860,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         tcx.ensure().check_mod_privacy(module);
                     });
                 });
+            },
+            {
+                sess.time("check_impl_restriction", || tcx.check_impl_restriction(()));
             }
         );
 

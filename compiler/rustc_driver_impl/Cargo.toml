@@ -28,6 +28,7 @@ rustc_passes = { path = "../rustc_passes" }
 rustc_privacy = { path = "../rustc_privacy" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_resolve = { path = "../rustc_resolve" }
+rustc_restrictions = { path = "../rustc_restrictions" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }

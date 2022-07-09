@@ -270,6 +270,7 @@ trivial! {
     rustc_middle::ty::fast_reject::SimplifiedType,
     rustc_middle::ty::ImplPolarity,
     rustc_middle::ty::Representability,
+    rustc_middle::ty::Restriction,
     rustc_middle::ty::ReprOptions,
     rustc_middle::ty::UnusedGenericParams,
     rustc_middle::ty::util::AlwaysRequiresDrop,
