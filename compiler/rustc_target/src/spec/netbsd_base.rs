@@ -11,7 +11,7 @@ pub fn opts() -> TargetOptions {
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
         use_ctors_section: true,
-        dwarf_version: Some(2),
+        default_dwarf_version: 2,
         ..Default::default()
     }
 }
