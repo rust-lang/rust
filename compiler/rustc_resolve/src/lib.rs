@@ -61,7 +61,7 @@ use tracing::debug;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use imports::{Import, ImportKind, ImportResolver, NameResolution};
-use late::{HasGenericParams, PathSource};
+use late::{HasGenericParams, PathSource, PatternSource};
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 
 use crate::access_levels::AccessLevelsVisitor;
@@ -230,11 +230,11 @@ enum ResolutionError<'a> {
     ),
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable {
-        shadowing_binding_descr: &'static str,
+        shadowing_binding: PatternSource,
         name: Symbol,
         participle: &'static str,
         article: &'static str,
-        shadowed_binding_descr: &'static str,
+        shadowed_binding: Res,
         shadowed_binding_span: Span,
     },
     /// Error E0128: generic parameters with a default cannot use forward-declared identifiers.
