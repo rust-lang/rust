@@ -1126,6 +1126,7 @@ impl<'tcx> TypeVisitable<'tcx> for ty::Predicate<'tcx> {
         self.outer_exclusive_binder() > binder
     }
 
+    #[inline]
     fn has_type_flags(&self, flags: ty::TypeFlags) -> bool {
         self.flags().intersects(flags)
     }

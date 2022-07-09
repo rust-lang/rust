@@ -60,6 +60,7 @@ pub enum DepNodeColor {
 }
 
 impl DepNodeColor {
+    #[inline]
     pub fn is_green(self) -> bool {
         match self {
             DepNodeColor::Red => false,

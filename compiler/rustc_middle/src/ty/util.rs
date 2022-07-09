@@ -1042,6 +1042,7 @@ impl<'tcx> Ty<'tcx> {
         ty
     }
 
+    #[inline]
     pub fn outer_exclusive_binder(self) -> ty::DebruijnIndex {
         self.0.outer_exclusive_binder
     }
