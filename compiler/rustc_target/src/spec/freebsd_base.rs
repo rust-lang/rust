@@ -10,7 +10,7 @@ pub fn opts() -> TargetOptions {
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
         abi_return_struct_as_int: true,
-        dwarf_version: Some(2),
+        default_dwarf_version: 2,
         ..Default::default()
     }
 }
