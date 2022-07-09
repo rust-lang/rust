@@ -2598,7 +2598,7 @@ impl Debug for () {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for PhantomData<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.debug_struct("PhantomData").finish()
+        write!(f, "PhantomData<{}>", crate::any::type_name::<T>())
     }
 }
 
