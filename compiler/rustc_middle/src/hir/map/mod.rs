@@ -1220,9 +1220,10 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         }
         tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
         tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
-        // Hash visibility information since it does not appear in HIR.
+        // Hash visibility and restriction information since it does not appear in HIR.
         resolutions.visibilities.hash_stable(&mut hcx, &mut stable_hasher);
         resolutions.has_pub_restricted.hash_stable(&mut hcx, &mut stable_hasher);
+        resolutions.impl_restrictions.hash_stable(&mut hcx, &mut stable_hasher);
         stable_hasher.finish()
     });
 

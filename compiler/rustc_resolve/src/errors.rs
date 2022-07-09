@@ -727,3 +727,25 @@ pub(crate) struct IsNotDirectlyImportable {
     pub(crate) span: Span,
     pub(crate) target: Ident,
 }
+
+#[derive(Diagnostic)]
+#[diag(resolve_restriction_relative_2018)]
+pub(crate) struct RestrictionRelative2018 {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[suggestion(code = "crate::{path_str}", applicability = "maybe-incorrect")]
+    pub(crate) path_span: Span,
+    pub(crate) path_str: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_restriction_ancestor_only, code = "E0742")]
+pub(crate) struct RestrictionAncestorOnly(#[primary_span] pub(crate) Span);
+
+#[derive(Diagnostic)]
+#[diag(resolve_restriction_indeterminate, code = "E0578")]
+pub(crate) struct RestrictionIndeterminate(#[primary_span] pub(crate) Span);
+
+#[derive(Diagnostic)]
+#[diag(resolve_restriction_module_only)]
+pub(crate) struct RestrictionModuleOnly(#[primary_span] pub(crate) Span);

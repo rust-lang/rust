@@ -221,6 +221,18 @@ resolve_relative_2018 =
 resolve_remove_surrounding_derive =
     remove from the surrounding `derive()`
 
+resolve_restriction_ancestor_only =
+    restrictions can only be restricted to ancestor modules
+
+resolve_restriction_indeterminate =
+    cannot determine resolution for the restriction
+
+resolve_restriction_module_only =
+    restriction must resolve to a module
+resolve_restriction_relative_2018 =
+    relative paths are not supported in restrictions in 2018 edition or later
+    .suggestion = try
+
 resolve_self_import_can_only_appear_once_in_the_list =
     `self` import can only appear once in an import list
     .label = can only appear once in an import list

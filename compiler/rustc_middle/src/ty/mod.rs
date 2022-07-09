@@ -162,6 +162,7 @@ pub struct ResolverOutputs {
 #[derive(Debug)]
 pub struct ResolverGlobalCtxt {
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
+    pub impl_restrictions: FxHashMap<LocalDefId, Restriction>,
     /// This field is used to decide whether we should make `PRIVATE_IN_PUBLIC` a hard error.
     pub has_pub_restricted: bool,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
@@ -288,6 +289,36 @@ pub enum Visibility<Id = LocalDefId> {
     Public,
     /// Visible only in the given crate-local module.
     Restricted(Id),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, Decodable, HashStable)]
+pub enum Restriction {
+    /// The restriction does not affect the item.
+    Unrestricted,
+    /// The restriction only applies outside of this path.
+    Restricted(DefId, Span),
+}
+
+impl Restriction {
+    /// Returns `true` if this restriction applies in the given module. This
+    /// means the behavior is _not_ allowed.
+    pub fn is_restricted_in(self, module: DefId, tcx: TyCtxt<'_>) -> bool {
+        let restricted_to = match self {
+            Restriction::Unrestricted => return false,
+            Restriction::Restricted(other, _) if other.krate != module.krate => return false,
+            Restriction::Restricted(module, _) => module,
+        };
+
+        !tcx.is_descendant_of(module, restricted_to)
+    }
+
+    /// Obtain the [`Span`] of the restriction. Panics if the restriction is unrestricted.
+    pub fn expect_span(&self) -> Span {
+        match self {
+            Restriction::Unrestricted => bug!("called `expect_span` on an unrestricted item"),
+            Restriction::Restricted(_, span) => *span,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
