@@ -95,6 +95,15 @@ jobs:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
 
+    - name: Cache rust repository
+      # We only clone the rust repository for rustc tests
+      if: ${{ contains(matrix.commands, 'rustc') }}
+      uses: actions/cache@v2
+      id: cache-rust-repository
+      with:
+        path: rust
+        key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
+
     - name: Build
       run: |
         ./prepare_build.sh
