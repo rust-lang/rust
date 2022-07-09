@@ -16,6 +16,7 @@ pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
+use rustc_errors::struct_span_err;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
@@ -26,7 +27,7 @@ use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AttrStyle, Const, DelimArgs, Extern};
 use rustc_ast::{Async, AttrArgs, AttrArgsEq, Expr, ExprKind, MacDelimiter, Mutability, StrLit};
-use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
+use rustc_ast::{HasAttrs, HasTokens, Restriction, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Ordering;
@@ -1454,6 +1455,85 @@ impl<'a> Parser<'a> {
 
         let path_str = pprust::path_to_string(&path);
         self.sess.emit_err(IncorrectVisibilityRestriction { span: path.span, inner_str: path_str });
+
+        Ok(())
+    }
+
+    /// Parses `kw` and `kw(in path)` plus shortcuts `kw(crate)` for `kw(in crate)`, `kw(self)` for
+    /// `kw(in self)` and `kw(super)` for `kw(in super)`.
+    fn parse_restriction(
+        &mut self,
+        kw: Symbol,
+        action: &str,
+        fbt: FollowedByType,
+    ) -> PResult<'a, Restriction> {
+        if !self.eat_keyword(kw) {
+            // We need a span, but there's inherently no keyword to grab a span from for an implied
+            // restriction. An empty span at the beginning of the current token is a reasonable
+            // fallback.
+            return Ok(Restriction::implied().with_span(self.token.span.shrink_to_lo()));
+        }
+
+        let lo = self.prev_token.span;
+
+        if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
+            // We don't `self.bump()` the `(` yet because this might be a struct definition where
+            // `()` or a tuple might be allowed. For example, `struct Struct(kw (), kw (usize));`.
+            // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
+            // by the following tokens.
+            if self.is_keyword_ahead(1, &[kw::In]) {
+                // Parse `kw(in path)`.
+                self.bump(); // `(`
+                self.bump(); // `in`
+                let path = self.parse_path(PathStyle::Mod)?; // `path`
+                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
+                return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID)
+                    .with_span(lo.to(self.prev_token.span)));
+            } else if self.look_ahead(2, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
+                && self.is_keyword_ahead(1, &[kw::Crate, kw::Super, kw::SelfLower])
+            {
+                // Parse `kw(crate)`, `kw(self)`, or `kw(super)`.
+                self.bump(); // `(`
+                let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
+                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
+                return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID)
+                    .with_span(lo.to(self.prev_token.span)));
+            } else if let FollowedByType::No = fbt {
+                // Provide this diagnostic if a type cannot follow;
+                // in particular, if this is not a tuple struct.
+                self.recover_incorrect_restriction(kw.as_str(), action)?;
+                // Emit diagnostic, but continue unrestricted.
+            }
+        }
+
+        Ok(Restriction::unrestricted().with_span(lo))
+    }
+
+    /// Recovery for e.g. `kw(something) fn ...` or `struct X { kw(something) y: Z }`
+    fn recover_incorrect_restriction(&mut self, kw: &str, action: &str) -> PResult<'a, ()> {
+        self.bump(); // `(`
+        let path = self.parse_path(PathStyle::Mod)?;
+        self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
+
+        let msg = "incorrect restriction";
+        let suggestion = format!(
+            r##"some possible restrictions are:\n\
+            `{kw}(crate)`: {action} only on the current crate\n\
+            `{kw}(super)`: {action} only in the current module's parent\n\
+            `{kw}(in path::to::module)`: {action} only on the specified path"##
+        );
+
+        let path_str = pprust::path_to_string(&path);
+
+        struct_span_err!(self.sess.span_diagnostic, path.span, E0704, "{msg}")
+            .help(suggestion)
+            .span_suggestion(
+                path.span,
+                format!("make this {action} only to module `{path_str}` with `in`"),
+                format!("in {path_str}"),
+                Applicability::MachineApplicable,
+            )
+            .emit();
 
         Ok(())
     }

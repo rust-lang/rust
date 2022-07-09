@@ -366,6 +366,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         },
         (
             Trait(box ast::Trait {
+                impl_restriction: _, // does not affect item kind
                 is_auto: la,
                 unsafety: lu,
                 generics: lg,
@@ -373,6 +374,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: li,
             }),
             Trait(box ast::Trait {
+                impl_restriction: _,
                 is_auto: ra,
                 unsafety: ru,
                 generics: rg,

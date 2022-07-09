@@ -415,7 +415,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     items: new_impl_items,
                 }))
             }
-            ItemKind::Trait(box Trait { is_auto, unsafety, generics, bounds, items }) => {
+            ItemKind::Trait(box Trait {
+                impl_restriction: _,
+                is_auto,
+                unsafety,
+                generics,
+                bounds,
+                items,
+            }) => {
                 // FIXME(const_trait_impl, effects, fee1-dead) this should be simplified if possible
                 let constness = attrs
                     .unwrap_or(&[])

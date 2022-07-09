@@ -1120,6 +1120,7 @@ pub(crate) fn format_trait(
 ) -> Option<String> {
     if let ast::ItemKind::Trait(trait_kind) = &item.kind {
         let ast::Trait {
+            impl_restriction: _,
             is_auto,
             unsafety,
             ref generics,

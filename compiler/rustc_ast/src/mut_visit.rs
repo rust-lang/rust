@@ -1096,7 +1096,15 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_ty(self_ty);
             items.flat_map_in_place(|item| vis.flat_map_impl_item(item));
         }
-        ItemKind::Trait(box Trait { unsafety, is_auto: _, generics, bounds, items }) => {
+        ItemKind::Trait(box Trait {
+            impl_restriction,
+            unsafety,
+            is_auto: _,
+            generics,
+            bounds,
+            items,
+        }) => {
+            noop_visit_restriction(impl_restriction, vis);
             visit_unsafety(unsafety, vis);
             vis.visit_generics(generics);
             visit_bounds(bounds, vis);

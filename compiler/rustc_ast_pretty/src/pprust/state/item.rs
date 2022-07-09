@@ -314,6 +314,7 @@ impl<'a> State<'a> {
                 self.bclose(item.span, empty);
             }
             ast::ItemKind::Trait(box ast::Trait {
+                impl_restriction,
                 is_auto,
                 unsafety,
                 generics,
@@ -323,6 +324,7 @@ impl<'a> State<'a> {
             }) => {
                 self.head("");
                 self.print_visibility(&item.vis);
+                self.print_restriction("impl", impl_restriction);
                 self.print_unsafety(*unsafety);
                 self.print_is_auto(*is_auto);
                 self.word_nbsp("trait");

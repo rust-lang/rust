@@ -360,10 +360,18 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_generics(generics);
             visitor.visit_variant_data(struct_definition);
         }
-        ItemKind::Trait(box Trait { unsafety: _, is_auto: _, generics, bounds, items }) => {
+        ItemKind::Trait(box Trait {
+            impl_restriction,
+            unsafety: _,
+            is_auto: _,
+            generics,
+            bounds,
+            items,
+        }) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::SuperTraits);
             walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Trait);
+            visitor.visit_restriction(impl_restriction);
         }
         ItemKind::TraitAlias(generics, bounds) => {
             visitor.visit_generics(generics);
