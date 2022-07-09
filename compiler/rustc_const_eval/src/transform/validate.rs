@@ -15,7 +15,7 @@ use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
-use rustc_mir_dataflow::storage::always_live_locals;
+use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_target::abi::{Size, VariantIdx};
 
@@ -49,7 +49,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
         let param_env = tcx.param_env(def_id);
         let mir_phase = self.mir_phase;
 
-        let always_live_locals = always_live_locals(body);
+        let always_live_locals = always_storage_live_locals(body);
         let storage_liveness = MaybeStorageLive::new(always_live_locals)
             .into_engine(tcx, body)
             .iterate_to_fixpoint()
