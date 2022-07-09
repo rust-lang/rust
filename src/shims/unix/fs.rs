@@ -1639,6 +1639,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let result = std::fs::read_link(pathname);
         match result {
             Ok(resolved) => {
+                // 'readlink' truncates the resolved path if the provided buffer is not large
+                // enough, and does *not* add a null terminator. That means we cannot use the usual
+                // `write_path_to_c_str` and have to re-implement parts of it ourselves.
                 let resolved = this.convert_path_separator(
                     Cow::Borrowed(resolved.as_ref()),
                     crate::shims::os_str::PathConversion::HostToTarget,
@@ -1648,8 +1651,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if path_bytes.len() > bufsize {
                     path_bytes = &path_bytes[..bufsize]
                 }
-                // 'readlink' truncates the resolved path if
-                // the provided buffer is not large enough.
                 this.write_bytes_ptr(buf, path_bytes.iter().copied())?;
                 Ok(path_bytes.len().try_into().unwrap())
             }
