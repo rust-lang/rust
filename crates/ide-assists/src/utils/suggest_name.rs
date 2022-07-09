@@ -94,7 +94,8 @@ pub(crate) fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>)
 
     let mut next_expr = Some(expr.clone());
     while let Some(expr) = next_expr {
-        let name = from_call(&expr).or_else(|| from_type(&expr, sema));
+        let name =
+            from_call(&expr).or_else(|| from_type(&expr, sema)).or_else(|| from_field_name(&expr));
         if let Some(name) = name {
             return name;
         }
@@ -261,6 +262,15 @@ fn trait_name(trait_: &hir::Trait, db: &RootDatabase) -> Option<String> {
         return None;
     }
     Some(name)
+}
+
+fn from_field_name(expr: &ast::Expr) -> Option<String> {
+    let field = match expr {
+        ast::Expr::FieldExpr(field) => field,
+        _ => return None,
+    };
+    let ident = field.name_ref()?.ident_token()?;
+    normalize(ident.text())
 }
 
 #[cfg(test)]
@@ -732,6 +742,19 @@ fn foo() { $0function.name().to_string()$0 }
 fn foo() { $0function.name().as_ref().unwrap().to_string()$0 }
 "#,
             "name",
+        );
+    }
+
+    #[test]
+    fn struct_field_name() {
+        check(
+            r#"
+struct S<T> {
+    some_field: T;
+}
+fn foo<T>(some_struct: S<T>) { $0some_struct.some_field$0 }
+"#,
+            "some_field",
         );
     }
 }
