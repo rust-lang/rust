@@ -22,7 +22,7 @@
 +         _2 = bar() -> [return: bb3, unwind: bb6]; // scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
                                            // mir::Constant
                                            // + span: $DIR/simplify_cfg.rs:9:12: 9:15
-                                           // + literal: Const { ty: fn() -> bool {bar}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() -> bool {bar}, val: Value(<ZST>) }
       }
   
       bb3: {

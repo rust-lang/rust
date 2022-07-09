@@ -22,7 +22,7 @@
           _2 = bar() -> [return: bb3, unwind: bb6]; // scope 0 at /the/src/instrument_coverage.rs:12:12: 12:17
                                            // mir::Constant
                                            // + span: /the/src/instrument_coverage.rs:12:12: 12:15
-                                           // + literal: Const { ty: fn() -> bool {bar}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() -> bool {bar}, val: Value(<ZST>) }
       }
   
       bb3: {

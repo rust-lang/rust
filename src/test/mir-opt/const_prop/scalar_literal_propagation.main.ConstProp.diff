@@ -21,7 +21,7 @@
 +         _2 = consume(const 1_u32) -> bb1; // scope 1 at $DIR/scalar_literal_propagation.rs:4:5: 4:15
                                            // mir::Constant
                                            // + span: $DIR/scalar_literal_propagation.rs:4:5: 4:12
-                                           // + literal: Const { ty: fn(u32) {consume}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn(u32) {consume}, val: Value(<ZST>) }
       }
   
       bb1: {

@@ -2,7 +2,7 @@ use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
-    Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
+    Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
     ScalarMaybeUninit, StackPopCleanup,
 };
 
@@ -157,7 +157,7 @@ pub(super) fn op_to_const<'tcx>(
                     "this MPlaceTy must come from a validated constant, thus we can assume the \
                 alignment is correct",
                 );
-                ConstValue::Scalar(Scalar::ZST)
+                ConstValue::ZeroSized
             }
         }
     };

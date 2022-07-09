@@ -24,7 +24,7 @@ fn main() -> () {
         _2 = transmute::<(), Void>(move _3) -> bb4; // scope 2 at $DIR/issue-72181-1.rs:17:9: 17:44
                                          // mir::Constant
                                          // + span: $DIR/issue-72181-1.rs:17:9: 17:40
-                                         // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(()) -> Void {transmute::<(), Void>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(()) -> Void {transmute::<(), Void>}, val: Value(<ZST>) }
     }
 
     bb1: {
@@ -37,7 +37,7 @@ fn main() -> () {
         _4 = f(move _5) -> bb4;          // scope 1 at $DIR/issue-72181-1.rs:20:5: 20:9
                                          // mir::Constant
                                          // + span: $DIR/issue-72181-1.rs:20:5: 20:6
-                                         // + literal: Const { ty: fn(Void) -> ! {f}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(Void) -> ! {f}, val: Value(<ZST>) }
     }
 
     bb2: {

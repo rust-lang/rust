@@ -36,7 +36,7 @@
           _1 = <&[i32; 2] as IntoIterator>::into_iter(move _2) -> bb1; // scope 0 at $DIR/derefer_complex_case.rs:4:17: 4:26
                                            // mir::Constant
                                            // + span: $DIR/derefer_complex_case.rs:4:17: 4:26
-                                           // + literal: Const { ty: fn(&[i32; 2]) -> <&[i32; 2] as IntoIterator>::IntoIter {<&[i32; 2] as IntoIterator>::into_iter}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn(&[i32; 2]) -> <&[i32; 2] as IntoIterator>::IntoIter {<&[i32; 2] as IntoIterator>::into_iter}, val: Value(<ZST>) }
       }
   
       bb1: {
@@ -56,7 +56,7 @@
           _7 = <std::slice::Iter<i32> as Iterator>::next(move _8) -> bb3; // scope 1 at $DIR/derefer_complex_case.rs:4:17: 4:26
                                            // mir::Constant
                                            // + span: $DIR/derefer_complex_case.rs:4:17: 4:26
-                                           // + literal: Const { ty: for<'r> fn(&'r mut std::slice::Iter<i32>) -> Option<<std::slice::Iter<i32> as Iterator>::Item> {<std::slice::Iter<i32> as Iterator>::next}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: for<'r> fn(&'r mut std::slice::Iter<i32>) -> Option<<std::slice::Iter<i32> as Iterator>::Item> {<std::slice::Iter<i32> as Iterator>::next}, val: Value(<ZST>) }
       }
   
       bb3: {
@@ -77,7 +77,7 @@
           _6 = std::mem::drop::<i32>(move _13) -> bb7; // scope 2 at $DIR/derefer_complex_case.rs:4:29: 4:38
                                            // mir::Constant
                                            // + span: $DIR/derefer_complex_case.rs:4:29: 4:33
-                                           // + literal: Const { ty: fn(i32) {std::mem::drop::<i32>}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn(i32) {std::mem::drop::<i32>}, val: Value(<ZST>) }
       }
   
       bb5: {

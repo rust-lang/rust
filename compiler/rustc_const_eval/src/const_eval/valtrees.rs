@@ -272,7 +272,7 @@ pub fn valtree_to_const_value<'tcx>(
     match ty.kind() {
         ty::FnDef(..) => {
             assert!(valtree.unwrap_branch().is_empty());
-            ConstValue::Scalar(Scalar::ZST)
+            ConstValue::ZeroSized
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => match valtree {
             ty::ValTree::Leaf(scalar_int) => ConstValue::Scalar(Scalar::Int(scalar_int)),
@@ -344,11 +344,7 @@ fn valtree_into_mplace<'tcx>(
 
     match ty.kind() {
         ty::FnDef(_, _) => {
-            ecx.write_immediate(
-                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::ZST)),
-                &place.into(),
-            )
-            .unwrap();
+            ecx.write_immediate(Immediate::Uninit, &place.into()).unwrap();
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
             let scalar_int = valtree.unwrap_leaf();

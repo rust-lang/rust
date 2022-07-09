@@ -25,7 +25,7 @@ fn main() -> () {
         _1 = std::mem::size_of::<Foo>() -> [return: bb1, unwind: bb3]; // scope 0 at $DIR/issue-72181.rs:24:13: 24:34
                                          // mir::Constant
                                          // + span: $DIR/issue-72181.rs:24:13: 24:32
-                                         // + literal: Const { ty: fn() -> usize {std::mem::size_of::<Foo>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn() -> usize {std::mem::size_of::<Foo>}, val: Value(<ZST>) }
     }
 
     bb1: {

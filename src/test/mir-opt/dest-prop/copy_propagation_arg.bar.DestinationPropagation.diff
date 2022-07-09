@@ -14,7 +14,7 @@
           _2 = dummy(move _3) -> bb1;      // scope 0 at $DIR/copy_propagation_arg.rs:16:5: 16:13
                                            // mir::Constant
                                            // + span: $DIR/copy_propagation_arg.rs:16:5: 16:10
-                                           // + literal: Const { ty: fn(u8) -> u8 {dummy}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn(u8) -> u8 {dummy}, val: Value(<ZST>) }
       }
   
       bb1: {
