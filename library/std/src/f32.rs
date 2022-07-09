@@ -116,7 +116,7 @@ impl f32 {
     #[cfg(not(bootstrap))]
     #[cfg_attr(not(bootstrap), rustc_allow_incoherent_impl)]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "round_ties_even", issue = "none")]
+    #[unstable(feature = "round_ties_even", issue = "96710")]
     #[inline]
     pub fn round_ties_even(self) -> f32 {
         unsafe { intrinsics::roundevenf32(self) }
