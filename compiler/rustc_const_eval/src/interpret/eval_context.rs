@@ -15,7 +15,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_mir_dataflow::storage::always_live_locals;
+use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Limit;
 use rustc_span::{Pos, Span};
@@ -707,7 +707,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
 
         // Now mark those locals as live that have no `Storage*` annotations.
-        let always_live = always_live_locals(self.body());
+        let always_live = always_storage_live_locals(self.body());
         for local in locals.indices() {
             if always_live.contains(local) {
                 locals[local].value = LocalValue::Live(Operand::Immediate(Immediate::Uninit));

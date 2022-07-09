@@ -7,7 +7,7 @@ use rustc_middle::mir::{self, Local};
 //
 // FIXME: Currently, we need to traverse the entire MIR to compute this. We should instead store it
 // as a field in the `LocalDecl` for each `Local`.
-pub fn always_live_locals(body: &mir::Body<'_>) -> BitSet<Local> {
+pub fn always_storage_live_locals(body: &mir::Body<'_>) -> BitSet<Local> {
     let mut always_live_locals = BitSet::new_filled(body.local_decls.len());
 
     for block in body.basic_blocks() {
