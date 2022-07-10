@@ -307,7 +307,7 @@ dependencies = [
  "cargo-test-macro",
  "cargo-test-support",
  "cargo-util",
- "clap 3.2.5",
+ "clap",
  "crates-io",
  "crossbeam-utils",
  "curl",
@@ -574,22 +574,6 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.34.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0610544180c38b88101fecf2dd634b174a62eef6946f84dfc6a7127512b381c"
-dependencies = [
- "ansi_term",
- "atty",
- "bitflags",
- "strsim 0.8.0",
- "textwrap 0.11.0",
- "unicode-width",
- "vec_map",
- "yaml-rust 0.3.5",
-]
-
-[[package]]
-name = "clap"
 version = "3.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d53da17d37dba964b9b3ecb5c5a1f193a2762c700e6829201e645b9381c99dc7"
@@ -600,9 +584,9 @@ dependencies = [
  "clap_lex",
  "indexmap",
  "once_cell",
- "strsim 0.10.0",
+ "strsim",
  "termcolor",
- "textwrap 0.15.0",
+ "textwrap",
 ]
 
 [[package]]
@@ -611,7 +595,7 @@ version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df6f3613c0a3cddfd78b41b10203eb322cb29b600cbdf808a7d3db95691b8e25"
 dependencies = [
- "clap 3.2.5",
+ "clap",
 ]
 
 [[package]]
@@ -669,7 +653,7 @@ name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
  "aho-corasick",
- "clap 3.2.5",
+ "clap",
  "indoc",
  "itertools",
  "opener",
@@ -1242,7 +1226,7 @@ name = "expand-yaml-anchors"
 version = "0.1.0"
 dependencies = [
  "yaml-merge-keys",
- "yaml-rust 0.4.4",
+ "yaml-rust",
 ]
 
 [[package]]
@@ -1862,7 +1846,7 @@ name = "installer"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 2.34.0",
+ "clap",
  "flate2",
  "lazy_static",
  "num_cpus",
@@ -2310,7 +2294,7 @@ dependencies = [
  "ammonia",
  "anyhow",
  "chrono",
- "clap 3.2.5",
+ "clap",
  "clap_complete",
  "elasticlunr-rs",
  "env_logger 0.7.1",
@@ -3385,7 +3369,7 @@ dependencies = [
 name = "rustbook"
 version = "0.1.0"
 dependencies = [
- "clap 2.34.0",
+ "clap",
  "env_logger 0.7.1",
  "mdbook",
 ]
@@ -3473,7 +3457,7 @@ version = "1.0.0"
 dependencies = [
  "bstr",
  "byteorder",
- "clap 3.2.5",
+ "clap",
  "crossbeam-utils",
  "libc",
  "libz-sys",
@@ -4662,7 +4646,7 @@ dependencies = [
  "anyhow",
  "bytecount",
  "cargo_metadata",
- "clap 3.2.5",
+ "clap",
  "derive-new",
  "diff",
  "dirs",
@@ -5055,12 +5039,6 @@ dependencies = [
 
 [[package]]
 name = "strsim"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
-
-[[package]]
-name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
@@ -5197,15 +5175,6 @@ dependencies = [
  "libc",
  "num_cpus",
  "term",
-]
-
-[[package]]
-name = "textwrap"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
-dependencies = [
- "unicode-width",
 ]
 
 [[package]]
@@ -5729,12 +5698,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6454029bf181f092ad1b853286f23e2c507d8e8194d01d92da4a55c274a5508c"
 
 [[package]]
-name = "vec_map"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
-
-[[package]]
 name = "vergen"
 version = "5.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5892,14 +5855,8 @@ checksum = "fd236a7dc9bb598f349fe4a8754f49181fee50284daa15cd1ba652d722280004"
 dependencies = [
  "lazy_static",
  "thiserror",
- "yaml-rust 0.4.4",
+ "yaml-rust",
 ]
-
-[[package]]
-name = "yaml-rust"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e66366e18dc58b46801afbf2ca7661a9f59cc8c5962c29892b6039b4f86fa992"
 
 [[package]]
 name = "yaml-rust"
