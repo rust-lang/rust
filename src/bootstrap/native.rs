@@ -147,8 +147,8 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
     let key = format!("{}{}", llvm_sha, config.llvm_assertions);
     if program_out_of_date(&llvm_stamp, &key) && !config.dry_run {
         download_ci_llvm(builder, &llvm_sha);
-        for binary in ["llvm-config", "FileCheck"] {
-            builder.fix_bin_or_dylib(&llvm_root.join("bin").join(binary));
+        for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
+            builder.fix_bin_or_dylib(&t!(entry).path());
         }
 
         // Update the timestamp of llvm-config to force rustc_llvm to be
