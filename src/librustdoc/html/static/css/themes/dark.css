@@ -178,9 +178,6 @@ a {
 	color: #D2991D;
 }
 
-a.test-arrow {
-	color: #dedede;
-}
 body.source .example-wrap pre.rust a {
 	background: #333;
 }
@@ -255,6 +252,7 @@ pre.rust .question-mark {
 }
 
 a.test-arrow {
+	color: #dedede;
 	background-color: rgba(78, 139, 202, 0.2);
 }
 

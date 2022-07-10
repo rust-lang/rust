@@ -991,7 +991,7 @@ impl<T> AtomicPtr<T> {
     /// use std::sync::atomic::AtomicPtr;
     ///
     /// let ptr = &mut 5;
-    /// let atomic_ptr  = AtomicPtr::new(ptr);
+    /// let atomic_ptr = AtomicPtr::new(ptr);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
