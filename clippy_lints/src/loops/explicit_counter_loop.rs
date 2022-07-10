@@ -1,5 +1,5 @@
 use super::{make_iterator_snippet, IncrementVisitor, InitializeVisitor, EXPLICIT_COUNTER_LOOP};
-use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{get_enclosing_block, is_integer_const};
 use if_chain::if_chain;
@@ -34,24 +34,29 @@ pub(super) fn check<'tcx>(
                 if let Some((name, ty, initializer)) = initialize_visitor.get_result();
                 if is_integer_const(cx, initializer, 0);
                 then {
-                    let mut applicability = Applicability::MachineApplicable;
+                    let mut applicability = Applicability::MaybeIncorrect;
 
                     let int_name = match ty.map(Ty::kind) {
                         // usize or inferred
                         Some(ty::Uint(UintTy::Usize)) | None => {
-                            span_lint_and_sugg(
+                            span_lint_and_then(
                                 cx,
                                 EXPLICIT_COUNTER_LOOP,
                                 expr.span.with_hi(arg.span.hi()),
                                 &format!("the variable `{}` is used as a loop counter", name),
-                                "consider using",
-                                format!(
-                                    "for ({}, {}) in {}.enumerate()",
-                                    name,
-                                    snippet_with_applicability(cx, pat.span, "item", &mut applicability),
-                                    make_iterator_snippet(cx, arg, &mut applicability),
-                                ),
-                                applicability,
+                                |diag| {
+                                    diag.span_suggestion(
+                                        expr.span.with_hi(arg.span.hi()),
+                                        "consider using",
+                                        format!(
+                                            "for ({}, {}) in {}.enumerate()",
+                                            name,
+                                            snippet_with_applicability(cx, pat.span, "item", &mut applicability),
+                                            make_iterator_snippet(cx, arg, &mut applicability),
+                                        ),
+                                        applicability,
+                                    );
+                                }
                             );
                             return;
                         }
