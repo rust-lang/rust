@@ -690,7 +690,8 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
+#[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
+#[rustc_allow_const_fn_unstable(ptr_metadata)]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     from_raw_parts(data.cast(), len)
 }
@@ -722,7 +723,7 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
+#[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
     from_raw_parts_mut(data.cast(), len)
 }
