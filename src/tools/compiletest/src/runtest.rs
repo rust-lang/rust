@@ -323,12 +323,13 @@ impl<'test> TestCx<'test> {
         let output_to_check = self.get_output(&proc_res);
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
         if !expected_errors.is_empty() {
-            if !self.props.error_patterns.is_empty() {
+            if !self.props.error_patterns.is_empty() || !self.props.regex_error_patterns.is_empty()
+            {
                 self.fatal("both error pattern and expected errors specified");
             }
             self.check_expected_errors(expected_errors, &proc_res);
         } else {
-            self.check_error_patterns(&output_to_check, &proc_res, pm);
+            self.check_all_error_patterns(&output_to_check, &proc_res, pm);
         }
         if self.props.should_ice {
             match proc_res.status.code() {
@@ -363,7 +364,7 @@ impl<'test> TestCx<'test> {
 
         let output_to_check = self.get_output(&proc_res);
         self.check_correct_failure_status(&proc_res);
-        self.check_error_patterns(&output_to_check, &proc_res, pm);
+        self.check_all_error_patterns(&output_to_check, &proc_res, pm);
     }
 
     fn get_output(&self, proc_res: &ProcRes) -> String {
@@ -1222,14 +1223,13 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn check_error_patterns(
+    fn check_all_error_patterns(
         &self,
         output_to_check: &str,
         proc_res: &ProcRes,
         pm: Option<PassMode>,
     ) {
-        debug!("check_error_patterns");
-        if self.props.error_patterns.is_empty() {
+        if self.props.error_patterns.is_empty() && self.props.regex_error_patterns.is_empty() {
             if pm.is_some() {
                 // FIXME(#65865)
                 return;
@@ -1240,16 +1240,10 @@ impl<'test> TestCx<'test> {
                 ));
             }
         }
-
         let mut missing_patterns: Vec<String> = Vec::new();
 
-        for pattern in &self.props.error_patterns {
-            if output_to_check.contains(pattern.trim()) {
-                debug!("found error pattern {}", pattern);
-            } else {
-                missing_patterns.push(pattern.to_string());
-            }
-        }
+        self.check_error_patterns(output_to_check, &mut missing_patterns);
+        self.check_regex_error_patterns(output_to_check, proc_res, &mut missing_patterns);
 
         if missing_patterns.is_empty() {
             return;
@@ -1265,6 +1259,44 @@ impl<'test> TestCx<'test> {
                 self.error(&format!("error pattern '{}' not found!", pattern));
             }
             self.fatal_proc_rec("multiple error patterns not found", proc_res);
+        }
+    }
+
+    fn check_error_patterns(&self, output_to_check: &str, missing_patterns: &mut Vec<String>) {
+        debug!("check_error_patterns");
+        for pattern in &self.props.error_patterns {
+            if output_to_check.contains(pattern.trim()) {
+                debug!("found error pattern {}", pattern);
+            } else {
+                missing_patterns.push(pattern.to_string());
+            }
+        }
+    }
+
+    fn check_regex_error_patterns(
+        &self,
+        output_to_check: &str,
+        proc_res: &ProcRes,
+        missing_patterns: &mut Vec<String>,
+    ) {
+        debug!("check_regex_error_patterns");
+
+        for pattern in &self.props.regex_error_patterns {
+            let pattern = pattern.trim();
+            let re = match Regex::new(pattern) {
+                Ok(re) => re,
+                Err(err) => {
+                    self.fatal_proc_rec(
+                        &format!("invalid regex error pattern '{}': {:?}", pattern, err),
+                        proc_res,
+                    );
+                }
+            };
+            if re.is_match(output_to_check) {
+                debug!("found regex error pattern {}", pattern);
+            } else {
+                missing_patterns.push(pattern.to_string());
+            }
         }
     }
 
@@ -1892,7 +1924,9 @@ impl<'test> TestCx<'test> {
                 // If we are extracting and matching errors in the new
                 // fashion, then you want JSON mode. Old-skool error
                 // patterns still match the raw compiler output.
-                if self.props.error_patterns.is_empty() {
+                if self.props.error_patterns.is_empty()
+                    && self.props.regex_error_patterns.is_empty()
+                {
                     rustc.args(&["--error-format", "json"]);
                     rustc.args(&["--json", "future-incompat"]);
                 }
@@ -3268,10 +3302,11 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec("test run succeeded!", &proc_res);
             }
 
-            if !self.props.error_patterns.is_empty() {
+            if !self.props.error_patterns.is_empty() || !self.props.regex_error_patterns.is_empty()
+            {
                 // "// error-pattern" comments
                 let output_to_check = self.get_output(&proc_res);
-                self.check_error_patterns(&output_to_check, &proc_res, pm);
+                self.check_all_error_patterns(&output_to_check, &proc_res, pm);
             }
         }
 
@@ -3285,15 +3320,16 @@ impl<'test> TestCx<'test> {
             self.props.error_patterns
         );
         if !explicit && self.config.compare_mode.is_none() {
-            let check_patterns =
-                should_run == WillExecute::No && !self.props.error_patterns.is_empty();
+            let check_patterns = should_run == WillExecute::No
+                && (!self.props.error_patterns.is_empty()
+                    || !self.props.regex_error_patterns.is_empty());
 
             let check_annotations = !check_patterns || !expected_errors.is_empty();
 
             if check_patterns {
                 // "// error-pattern" comments
                 let output_to_check = self.get_output(&proc_res);
-                self.check_error_patterns(&output_to_check, &proc_res, pm);
+                self.check_all_error_patterns(&output_to_check, &proc_res, pm);
             }
 
             if check_annotations {
