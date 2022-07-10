@@ -25,7 +25,6 @@ pub($0)
             kw crate
             kw in
             kw self
-            kw super
         "#]],
     );
 }
@@ -39,7 +38,6 @@ pub(in $0)
         expect![[r#"
             kw crate
             kw self
-            kw super
         "#]],
     );
 }

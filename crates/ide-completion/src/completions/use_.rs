@@ -17,10 +17,9 @@ pub(crate) fn complete_use_path(
     name_ref: &Option<ast::NameRef>,
 ) {
     match qualified {
-        Qualified::With { path, resolution: Some(resolution), is_super_chain } => {
-            if *is_super_chain {
-                acc.add_keyword(ctx, "super::");
-            }
+        Qualified::With { path, resolution: Some(resolution), super_chain_len } => {
+            acc.add_super_keyword(ctx, *super_chain_len);
+
             // only show `self` in a new use-tree when the qualifier doesn't end in self
             let not_preceded_by_self = *use_tree_parent
                 && !matches!(

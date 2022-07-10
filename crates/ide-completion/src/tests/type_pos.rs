@@ -31,7 +31,6 @@ struct Foo<'lt, T, const C: usize> {
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     )
 }
@@ -60,7 +59,6 @@ struct Foo<'lt, T, const C: usize>(f$0);
             kw pub(crate)
             kw pub(super)
             kw self::
-            kw super::
         "#]],
     )
 }
@@ -84,7 +82,6 @@ fn x<'lt, T, const C: usize>() -> $0
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -115,7 +112,6 @@ fn foo() -> B$0 {
         it ()
         kw crate::
         kw self::
-        kw super::
     "#]],
     )
 }
@@ -141,7 +137,6 @@ const FOO: $0 = Foo(2);
             it Foo<i32>
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -168,7 +163,6 @@ fn f2() {
             it i32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -197,7 +191,6 @@ fn f2() {
             it u64
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -223,7 +216,6 @@ fn f2(x: u64) -> $0 {
             it u64
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -250,7 +242,6 @@ fn f2(x: $0) {
             it i32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -285,7 +276,6 @@ fn foo<'lt, T, const C: usize>() {
             it a::Foo<a::Foo<i32>>
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -315,7 +305,6 @@ fn foo<'lt, T, const C: usize>() {
             it Foo<i32>
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -342,7 +331,6 @@ fn foo<'lt, T, const C: usize>() {
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
     check(
@@ -412,7 +400,6 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
     check(
@@ -465,7 +452,6 @@ impl Tr<$0
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -512,7 +498,6 @@ fn f(t: impl MyTrait<u$0
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 
@@ -539,7 +524,6 @@ fn f(t: impl MyTrait<u8, u$0
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 
@@ -584,7 +568,6 @@ fn f(t: impl MyTrait<u$0
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 
@@ -613,7 +596,6 @@ fn f(t: impl MyTrait<u8, u$0
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 
@@ -658,7 +640,6 @@ fn f(t: impl MyTrait<Item1 = $0
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 
@@ -685,7 +666,6 @@ fn f(t: impl MyTrait<Item1 = u8, Item2 = $0
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }

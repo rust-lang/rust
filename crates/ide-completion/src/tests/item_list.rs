@@ -60,7 +60,6 @@ fn in_source_file_item_list() {
             kw self::
             kw static
             kw struct
-            kw super::
             kw trait
             kw type
             kw union
@@ -93,7 +92,6 @@ fn in_item_list_after_attr() {
             kw self::
             kw static
             kw struct
-            kw super::
             kw trait
             kw type
             kw union
@@ -175,7 +173,6 @@ fn in_impl_assoc_item_list() {
             kw pub(crate)
             kw pub(super)
             kw self::
-            kw super::
             kw unsafe
         "#]],
     )
@@ -195,7 +192,6 @@ fn in_impl_assoc_item_list_after_attr() {
             kw pub(crate)
             kw pub(super)
             kw self::
-            kw super::
             kw unsafe
         "#]],
     )
@@ -212,7 +208,6 @@ fn in_trait_assoc_item_list() {
             kw crate::
             kw fn
             kw self::
-            kw super::
             kw type
             kw unsafe
         "#]],
@@ -247,7 +242,6 @@ impl Test for () {
             ta type Type1 =
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }

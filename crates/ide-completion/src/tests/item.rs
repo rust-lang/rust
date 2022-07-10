@@ -29,7 +29,6 @@ impl Tra$0
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     )
 }
@@ -52,7 +51,6 @@ impl Trait for Str$0
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     )
 }

@@ -28,7 +28,6 @@ struct Foo<'lt, T, const C: usize> where $0 {}
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -45,7 +44,6 @@ struct Foo<'lt, T, const C: usize> where T: $0 {}
             tt Trait
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -64,7 +62,6 @@ struct Foo<'lt, T, const C: usize> where 'lt: $0 {}
             tt Trait
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -81,7 +78,6 @@ struct Foo<'lt, T, const C: usize> where for<'a> T: $0 {}
             tt Trait
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -105,7 +101,6 @@ struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -131,7 +126,6 @@ impl Record {
             bt u32
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }

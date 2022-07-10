@@ -82,12 +82,10 @@ pub(crate) fn complete_attribute_path(
     match qualified {
         Qualified::With {
             resolution: Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))),
-            is_super_chain,
+            super_chain_len,
             ..
         } => {
-            if *is_super_chain {
-                acc.add_keyword(ctx, "super::");
-            }
+            acc.add_super_keyword(ctx, *super_chain_len);
 
             for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
                 match def {

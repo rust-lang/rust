@@ -58,7 +58,6 @@ fn baz() {
             kw mut
             kw return
             kw self::
-            kw super::
             kw true
             kw unsafe
             kw while
@@ -100,7 +99,6 @@ fn func(param0 @ (param1, param2): (i32, i32)) {
             kw match
             kw return
             kw self::
-            kw super::
             kw true
             kw unsafe
             kw while
@@ -162,7 +160,6 @@ impl Unit {
             kw self::
             kw static
             kw struct
-            kw super::
             kw trait
             kw true
             kw type
@@ -240,7 +237,6 @@ fn complete_in_block() {
             kw self::
             kw static
             kw struct
-            kw super::
             kw trait
             kw true
             kw type
@@ -288,7 +284,6 @@ fn complete_after_if_expr() {
             kw self::
             kw static
             kw struct
-            kw super::
             kw trait
             kw true
             kw type
@@ -326,7 +321,6 @@ fn complete_in_match_arm() {
             kw match
             kw return
             kw self::
-            kw super::
             kw true
             kw unsafe
             kw while
@@ -362,7 +356,6 @@ fn completes_in_loop_ctx() {
             kw self::
             kw static
             kw struct
-            kw super::
             kw trait
             kw true
             kw type
@@ -394,7 +387,6 @@ fn completes_in_let_initializer() {
             kw match
             kw return
             kw self::
-            kw super::
             kw true
             kw unsafe
             kw while
@@ -429,7 +421,6 @@ fn foo() {
             kw match
             kw return
             kw self::
-            kw super::
             kw true
             kw unsafe
             kw while
@@ -465,7 +456,6 @@ fn foo() {
             kw match
             kw return
             kw self::
-            kw super::
             kw true
             kw unsafe
             kw while
@@ -497,7 +487,6 @@ fn quux(x: i32) {
             kw match
             kw return
             kw self::
-            kw super::
             kw true
             kw unsafe
             kw while
@@ -525,7 +514,6 @@ fn quux(x: i32) {
             kw match
             kw return
             kw self::
-            kw super::
             kw true
             kw unsafe
             kw while

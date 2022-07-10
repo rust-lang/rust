@@ -4,6 +4,8 @@ mod analysis;
 #[cfg(test)]
 mod tests;
 
+use std::iter;
+
 use base_db::SourceDatabaseExt;
 use hir::{
     HasAttrs, Local, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo,
@@ -174,8 +176,17 @@ pub(super) enum Qualified {
     With {
         path: ast::Path,
         resolution: Option<PathResolution>,
-        /// Whether this path consists solely of `super` segments
-        is_super_chain: bool,
+        /// How many `super` segments are present in the path
+        ///
+        /// This would be None, if path is not solely made of
+        /// `super` segments, e.g.
+        ///
+        /// ```rust
+        ///   use super::foo;
+        /// ```
+        ///
+        /// Otherwise it should be Some(count of `super`)
+        super_chain_len: Option<usize>,
     },
     /// <_>::
     Infer,
@@ -343,6 +354,12 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) qualifier_ctx: QualifierCtx,
 
     pub(super) locals: FxHashMap<Name, Local>,
+
+    /// - crate-root
+    ///  - mod foo
+    ///   - mod bar
+    /// Here depth will be 2: {[bar<->foo], [foo<->crate-root]}
+    pub(super) depth_from_crate_root: usize,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -521,6 +538,8 @@ impl<'a> CompletionContext<'a> {
             }
         });
 
+        let depth_from_crate_root = iter::successors(module.parent(db), |m| m.parent(db)).count();
+
         let mut ctx = CompletionContext {
             sema,
             scope,
@@ -535,6 +554,7 @@ impl<'a> CompletionContext<'a> {
             expected_type: None,
             qualifier_ctx: Default::default(),
             locals,
+            depth_from_crate_root,
         };
         let ident_ctx = ctx.expand_and_analyze(
             original_file.syntax().clone(),

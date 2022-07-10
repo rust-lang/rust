@@ -111,10 +111,8 @@ pub(crate) fn complete_pattern_path(
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
 ) {
     match qualified {
-        Qualified::With { resolution: Some(resolution), is_super_chain, .. } => {
-            if *is_super_chain {
-                acc.add_keyword(ctx, "super::");
-            }
+        Qualified::With { resolution: Some(resolution), super_chain_len, .. } => {
+            acc.add_super_keyword(ctx, *super_chain_len);
 
             match resolution {
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {

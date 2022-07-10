@@ -35,7 +35,6 @@ struct Foo;
             md proc_macros
             kw crate::
             kw self::
-            kw super::
         "#]],
     )
 }
@@ -85,7 +84,6 @@ fn with_existing_attr() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     )
 }
@@ -117,7 +115,6 @@ fn attr_on_source_file() {
             at windows_subsystem = "…"
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -190,7 +187,6 @@ fn attr_on_macro_rules() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -214,7 +210,6 @@ fn attr_on_macro_def() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -239,7 +234,6 @@ fn attr_on_extern_crate() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -263,7 +257,6 @@ fn attr_on_use() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -287,7 +280,6 @@ fn attr_on_type_alias() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -320,7 +312,6 @@ struct Foo;
             md core
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -347,7 +338,6 @@ fn attr_on_enum() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -371,7 +361,6 @@ fn attr_on_const() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -400,7 +389,6 @@ fn attr_on_static() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -425,7 +413,6 @@ fn attr_on_trait() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -450,7 +437,6 @@ fn attr_on_impl() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
     check(
@@ -470,7 +456,6 @@ fn attr_on_impl() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -495,7 +480,6 @@ fn attr_on_extern_block() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
     check(
@@ -516,7 +500,6 @@ fn attr_on_extern_block() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -535,7 +518,6 @@ fn attr_on_variant() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -574,7 +556,6 @@ fn attr_on_fn() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -622,7 +603,6 @@ fn attr_in_source_file_end() {
             at warn(…)
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
 }
@@ -679,7 +659,6 @@ mod derive {
                 md core
                 kw crate::
                 kw self::
-                kw super::
             "#]],
         );
     }
@@ -701,7 +680,6 @@ mod derive {
                 md core
                 kw crate::
                 kw self::
-                kw super::
             "#]],
         )
     }
@@ -723,7 +701,6 @@ mod derive {
                 md core
                 kw crate::
                 kw self::
-                kw super::
             "#]],
         );
     }
@@ -744,7 +721,6 @@ mod derive {
                 md core
                 kw crate::
                 kw self::
-                kw super::
             "#]],
         );
     }
@@ -763,7 +739,6 @@ mod derive {
                 md proc_macros
                 kw crate::
                 kw self::
-                kw super::
             "#]],
         );
         check_derive(
@@ -779,7 +754,6 @@ use proc_macros::DeriveIdentity;
                 md proc_macros
                 kw crate::
                 kw self::
-                kw super::
             "#]],
         );
     }
