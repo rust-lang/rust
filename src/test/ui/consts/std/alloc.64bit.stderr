@@ -34,7 +34,7 @@ LL | const LAYOUT_SIZE_NEGATIVE_ONE: Layout = unsafe { Layout::from_size_align_u
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/alloc.rs:21:1
    |
-LL | const LAYOUT_SIZE_HIGH_BIT: Layout = unsafe { Layout::from_size_align_unchecked((isize::MAX as usize) + 1, 1) };
+LL | const LAYOUT_SIZE_HIGH_BIT: Layout = unsafe { Layout::from_size_align_unchecked(SIZE_MAX + 1, 1) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .size: encountered 9223372036854775808, but expected something less or equal to 9223372036854775807
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.

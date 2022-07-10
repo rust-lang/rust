@@ -18,7 +18,9 @@ const LAYOUT_SIZE_NEGATIVE_ONE: Layout = unsafe { Layout::from_size_align_unchec
 //~^ ERROR it is undefined behavior to use this value
 
 // not ok, since size needs to be no more than `isize::MAX`
-const LAYOUT_SIZE_HIGH_BIT: Layout = unsafe { Layout::from_size_align_unchecked((isize::MAX as usize) + 1, 1) };
+const LAYOUT_SIZE_HIGH_BIT: Layout = unsafe { Layout::from_size_align_unchecked(SIZE_MAX + 1, 1) };
 //~^ ERROR it is undefined behavior to use this value
+
+const SIZE_MAX: usize = isize::MAX as usize;
 
 fn main() {}

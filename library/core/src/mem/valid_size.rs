@@ -1,4 +1,5 @@
 use crate::convert::TryFrom;
+use crate::intrinsics::assert_unsafe_precondition;
 use crate::{fmt, num};
 
 /// A type storing a possible object size (in bytes) in the rust abstract machine.
@@ -19,8 +20,6 @@ pub(crate) struct ValidSize(usize);
 
 const MAX_SIZE: usize = isize::MAX as usize;
 
-const _: () = unsafe { ValidSize::new_unchecked(MAX_SIZE); };
-
 impl ValidSize {
     /// Creates a `ValidSize` from a `usize` that fits in an `isize`.
     ///
@@ -31,10 +30,11 @@ impl ValidSize {
     /// Equivalently, it must not have its high bit set.
     #[inline]
     pub(crate) const unsafe fn new_unchecked(size: usize) -> Self {
-        debug_assert!(size <= MAX_SIZE);
-
         // SAFETY: By precondition, this must be within our validity invariant.
-        unsafe { ValidSize(size) }
+        unsafe {
+            assert_unsafe_precondition!(size <= MAX_SIZE);
+            ValidSize(size)
+        }
     }
 
     #[inline]
