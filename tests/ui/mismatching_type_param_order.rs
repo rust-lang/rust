@@ -57,4 +57,8 @@ fn main() {
         B: Copy,
     {
     }
+
+    // if the types are complicated, do not lint
+    impl<K, V, B> Foo<(K, V), B> {}
+    impl<K, V, A> Foo<(K, V), A> {}
 }
