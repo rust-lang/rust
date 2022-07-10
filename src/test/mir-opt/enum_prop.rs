@@ -3,7 +3,6 @@
 fn main() {
   let v = match Some(Box::new(10)) {
     Some(x) => {
-      println!("{}", x);
       *x
     },
     _ => 3,

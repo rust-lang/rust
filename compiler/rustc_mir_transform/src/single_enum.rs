@@ -37,15 +37,17 @@ impl<'tcx> MirPass<'tcx> for SingleEnum {
         }
 
         for (Location { block, statement_index }, val) in discrs {
-            let (bbs, local_decls) = &mut body.basic_blocks_and_local_decls_mut();
+            let local_decls = &body.local_decls;
+            let bbs = body.basic_blocks.as_mut();
+
             let stmt = &mut bbs[block].statements[statement_index];
             let Some((lhs, rval)) = stmt.kind.as_assign_mut() else { unreachable!() };
             let Rvalue::Discriminant(rhs) = rval else { unreachable!() };
 
-            let Some(disc) = rhs.ty(*local_decls, tcx).ty.discriminant_for_variant(tcx, val)
+            let Some(disc) = rhs.ty(local_decls, tcx).ty.discriminant_for_variant(tcx, val)
             else { continue };
 
-            let scalar_ty = lhs.ty(*local_decls, tcx).ty;
+            let scalar_ty = lhs.ty(local_decls, tcx).ty;
             let layout = tcx.layout_of(ParamEnv::empty().and(scalar_ty)).unwrap().layout;
             let ct = Operand::const_from_scalar(
                 tcx,

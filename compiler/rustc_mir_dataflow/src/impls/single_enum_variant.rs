@@ -9,7 +9,13 @@ use rustc_middle::mir::*;
 
 use crate::{Analysis, AnalysisDomain};
 
-/// A dataflow analysis that tracks whether an enum can hold 0, 1, or more than one variants.
+/// A dataflow analysis that tracks whether an enum can hold exactly 1, or more than 1 variants.
+///
+/// Specifically, if a local is constructed with a value of `Some(1)`,
+/// We should be able to optimize it under the assumption that it has the `Some` variant.
+/// If a local can be multiple variants, then we assume nothing.
+/// This analysis returns whether or not an enum will have a specific discriminant
+/// at a given time, associating that local with exactly the 1 discriminant it is.
 pub struct SingleEnumVariant<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
@@ -17,23 +23,19 @@ pub struct SingleEnumVariant<'a, 'tcx> {
 
 impl<'tcx> AnalysisDomain<'tcx> for SingleEnumVariant<'_, 'tcx> {
     /// For each local, keep track of which enum index it is, if its uninhabited, or unknown.
-    //type Domain = FactArray<Fact, 128>;
     type Domain = FactCache<Local, Location, VariantIdx, 16>;
 
     const NAME: &'static str = "single_enum_variant";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
-        //FactArray { arr: [Fact::TOP; 128] }
         FactCache::new(Local::from_u32(0), Location::START, VariantIdx::MAX)
     }
 
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain) {
-        // assume everything is top initially.
+        // assume everything is TOP initially (i.e. it can be any variant).
         let local_decls = body.local_decls();
         for (l, _) in local_decls.iter_enumerated() {
             state.remove(l);
-            //state.insert(l, Fact::TOP);
-            //state[l] = Fact::TOP;
         }
     }
 }
@@ -57,18 +59,26 @@ impl<'tcx> SingleEnumVariant<'_, 'tcx> {
             if !self.is_tracked(lhs) {
                 return;
             }
-            let lhs_local = lhs.local_or_deref_local()?;
+            let lhs_local = lhs.as_local()?;
 
             let new_fact = match rhs {
                 Operand::Copy(rhs) | Operand::Move(rhs) => {
-                    if let Some(rhs_local) = rhs.local_or_deref_local() {
+                    if let Some(rhs_local) = rhs.as_local() {
                         state.get(rhs_local).map(|f| f.1).copied()
                     } else {
-                        rhs.ty(self.body, self.tcx).variant_index.map(|var_idx| var_idx)
+                        debug_assert!(
+                            rhs.ty(self.body, self.tcx)
+                                .variant_index
+                                .map(|var_idx| var_idx)
+                                .is_none()
+                        );
+                        None
                     }
                 }
-                // Assigning a constant does not affect discriminant?
-                Operand::Constant(_c) => return,
+                // For now, assume that assigning a constant removes known facts.
+                // More conservative than necessary, but a temp placeholder,
+                // rather than extracting an enum variant from a constant.
+                Operand::Constant(_c) => None,
             };
             if let Some(new_fact) = new_fact {
                 state.insert(lhs_local, location, new_fact);
@@ -86,6 +96,9 @@ impl<'tcx> Analysis<'tcx> for SingleEnumVariant<'_, 'tcx> {
         statement: &Statement<'tcx>,
         loc: Location,
     ) {
+        // (place = location which has new information,
+        //  fact = None if we no longer know what variant a value has
+        //  OR fact = Some(var_idx) if we know what variant a value has).
         let (place, fact) = match &statement.kind {
             StatementKind::Deinit(box place) => (place, None),
             StatementKind::SetDiscriminant { box place, variant_index } => {
@@ -112,7 +125,7 @@ impl<'tcx> Analysis<'tcx> for SingleEnumVariant<'_, 'tcx> {
         if !self.is_tracked(place) {
             return;
         }
-        let Some(local) = place.local_or_deref_local() else { return };
+        let Some(local) = place.as_local() else { return };
         if let Some(fact) = fact {
             state.insert(local, loc, fact);
         } else {
@@ -130,7 +143,7 @@ impl<'tcx> Analysis<'tcx> for SingleEnumVariant<'_, 'tcx> {
                 self.assign(state, place, value, loc)
             }
             TerminatorKind::Drop { place, .. } if self.is_tracked(place) => {
-                let Some(local) = place.local_or_deref_local() else { return };
+                let Some(local) = place.as_local() else { return };
                 state.remove(local);
             }
             _ => {}
@@ -147,18 +160,50 @@ impl<'tcx> Analysis<'tcx> for SingleEnumVariant<'_, 'tcx> {
 
     fn apply_switch_int_edge_effects(
         &self,
-        _block: BasicBlock,
+        from_block: BasicBlock,
         discr: &Operand<'tcx>,
         apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
     ) {
-        let Some(place) = discr.place() else { return };
-        if !self.is_tracked(&place) {
+        let Some(switch_on) = discr.place() else { return };
+
+        let mut src_place = None;
+        let mut adt_def = None;
+        for stmt in self.body[from_block].statements.iter().rev() {
+            match stmt.kind {
+                StatementKind::Assign(box (lhs, Rvalue::Discriminant(disc)))
+                    if lhs == switch_on =>
+                {
+                    match disc.ty(self.body, self.tcx).ty.kind() {
+                        ty::Adt(adt, _) => {
+                            src_place = Some(disc);
+                            adt_def = Some(adt);
+                            break;
+                        }
+
+                        // `Rvalue::Discriminant` is also used to get the active yield point for a
+                        // generator, but we do not need edge-specific effects in that case. This may
+                        // change in the future.
+                        ty::Generator(..) => return,
+
+                        t => bug!("`discriminant` called on unexpected type {:?}", t),
+                    }
+                }
+                StatementKind::Coverage(_) => continue,
+                _ => return,
+            };
+        }
+
+        let Some(src_place) = src_place else { return };
+        let Some(adt_def) = adt_def else { return };
+        if !self.is_tracked(&src_place) {
             return;
         }
-        let Some(local) = place.local_or_deref_local() else { return };
+        let Some(local) = src_place.as_local() else { return };
+
         apply_edge_effects.apply(|state, target| {
-            // This probably isn't right, need to check that it fits.
-            let new_fact = target.value.map(|v| VariantIdx::from_u32(v as u32));
+            let new_fact = target.value.and_then(|discr| {
+                adt_def.discriminants(self.tcx).find(|(_, d)| d.val == discr).map(|(vi, _)| vi)
+            });
 
             if let Some(new_fact) = new_fact {
                 let loc = Location { block: target.target, statement_index: 0 };

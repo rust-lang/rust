@@ -257,13 +257,16 @@ macro_rules! packed_int_join_semi_lattice {
         pub struct $name($base);
         impl $name {
             pub const TOP: Self = Self(<$base>::MAX);
-            // If the value is too large it will be top, which is more conservative and thus
-            // alright. It is only unsafe to make items bot.
             #[inline]
             pub const fn new(v: $base) -> Self {
                 Self(v)
             }
 
+            /// `saturating_new` will convert an arbitrary value (i.e. u32) into a Fact which
+            /// may have a smaller internal representation (i.e. u8). If the value is too large,
+            /// it will be converted to `TOP`, which is safe because `TOP` is the most
+            /// conservative estimate, assuming no information. Note, it is _not_ safe to
+            /// assume `BOT`, since this assumes information about the value.
             #[inline]
             pub fn saturating_new(v: impl TryInto<$base>) -> Self {
                 v.try_into().map(|v| Self(v)).unwrap_or(Self::TOP)
@@ -336,6 +339,14 @@ impl<T: MeetSemiLattice, const N: usize> MeetSemiLattice for FactArray<T, N> {
     }
 }
 
+/// FactCache is a struct that contains `N` recent facts (of type F) from dataflow analysis,
+/// where a fact is information about some component of a program, such as the possible values a
+/// variable can take. Variables are indexed by `I: Idx` (i.e. mir::Local), and `L` represents
+/// location/recency, so that when merging two fact caches, the more recent information takes
+/// precedence.
+/// This representation is used because it takes constant memory, and assumes that recent facts
+/// will have temporal locality (i.e. will be used closed to where they are generated). Thus, it
+/// is more conservative than a complete analysis, but should be fast.
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub struct FactCache<I, L, F, const N: usize> {
     facts: [F; N],
@@ -350,14 +361,16 @@ impl<I: Idx, L: Ord + Eq + Copy, F, const N: usize> FactCache<I, L, F, N> {
     {
         Self { facts: [empty_f; N], ord: [(empty_i, empty_l); N], len: 0 }
     }
-    /// inserts a fact into the cache, evicting the oldest one,
+    /// (nserts a fact into the cache, evicting the oldest one,
     /// Or updating it if there is information on one already. If the new fact being
     /// inserted is older than the previous fact, it will not be inserted.
     pub fn insert(&mut self, i: I, l: L, fact: F) {
         let mut idx = None;
-        for (j, (ci, cl)) in self.ord[..self.len].iter_mut().enumerate() {
+        for (j, (ci, _cl)) in self.ord[..self.len].iter_mut().enumerate() {
             if *ci == i {
-                assert!(*cl <= l);
+                // if an older fact is inserted, still update the cache: i.e. cl <= l usually
+                // but this is broken during apply switch int edge effects, because the engine
+                // may choose an arbitrary order for basic blocks to apply it to.
                 idx = Some(j);
                 break;
             }
