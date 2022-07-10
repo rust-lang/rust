@@ -17,6 +17,7 @@ use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
 use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
 mod drop_ranges;
@@ -50,6 +51,19 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             "attempting to record type ty={:?}; hir_id={:?}; scope={:?}; expr={:?}; source_span={:?}; expr_count={:?}",
             ty, hir_id, scope, expr, source_span, self.expr_count,
         );
+
+        if self.fcx.type_is_copy_modulo_regions(self.fcx.param_env, ty, source_span) {
+            // This is only used because it's dropped after the yield.
+            // But it's a Copy type, so it's not possible for the drop to read or write the value.
+            // Ignore it instead of giving an error.
+            if matches!(
+                scope,
+                Some(region::Scope { data: region::ScopeData::Remainder { .. }, .. })
+            ) {
+                debug!("ignoring Copy type only used in drop");
+                return;
+            }
+        }
 
         let live_across_yield = scope
             .map(|s| {

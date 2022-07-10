@@ -1,0 +1,24 @@
+error: generator cannot be sent between threads safely
+  --> $DIR/trivial-drop-non-copy.rs:14:5
+   |
+LL |     assert_send(g);
+   |     ^^^^^^^^^^^ generator is not `Send`
+   |
+   = help: within `[generator@$DIR/trivial-drop-non-copy.rs:10:13: 10:15]`, the trait `Send` is not implemented for `S`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/trivial-drop-non-copy.rs:12:9
+   |
+LL |         let x = S;
+   |             - has type `S` which is not `Send`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `x` maybe used later
+LL |     };
+   |     - `x` is later dropped here
+note: required by a bound in `assert_send`
+  --> $DIR/trivial-drop-non-copy.rs:3:19
+   |
+LL | fn assert_send<T: Send>(_: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error: aborting due to previous error
+
