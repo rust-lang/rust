@@ -1487,7 +1487,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     pub fn fetch_ptr_add(&self, val: usize, order: Ordering) -> *mut T {
         self.fetch_byte_add(val.wrapping_mul(core::mem::size_of::<T>()), order)
     }
@@ -1531,7 +1531,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     pub fn fetch_ptr_sub(&self, val: usize, order: Ordering) -> *mut T {
         self.fetch_byte_sub(val.wrapping_mul(core::mem::size_of::<T>()), order)
     }
@@ -1566,7 +1566,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     pub fn fetch_byte_add(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
@@ -1609,7 +1609,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     pub fn fetch_byte_sub(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
@@ -1667,7 +1667,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     pub fn fetch_or(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
@@ -1724,7 +1724,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     pub fn fetch_and(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
@@ -1779,7 +1779,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
-    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "95228")]
+    #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     pub fn fetch_xor(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
