@@ -65,7 +65,7 @@ in your program, and cannot run all programs:
   not support networking. System API support varies between targets; if you run
   on Windows it is a good idea to use `--target x86_64-unknown-linux-gnu` to get
   better support.
-* Weak memory emulation may [produce weak behaivours](https://github.com/rust-lang/miri/issues/2301)
+* Weak memory emulation may [produce weak behaviours](https://github.com/rust-lang/miri/issues/2301)
   unobservable by compiled programs running on real hardware when `SeqCst` fences are used, and it
   cannot produce all behaviors possibly observable on real hardware.
 
