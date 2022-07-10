@@ -403,7 +403,7 @@ fn clean_projection<'tcx>(
     Type::QPath {
         assoc: Box::new(projection_to_path_segment(ty, cx)),
         should_show_cast,
-        self_type: box self_type,
+        self_type: Box::new(self_type),
         trait_,
     }
 }
@@ -1320,7 +1320,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             Type::QPath {
                 assoc: Box::new(p.segments.last().expect("segments were empty").clean(cx)),
                 should_show_cast,
-                self_type: box self_type,
+                self_type: Box::new(self_type),
                 trait_,
             }
         }
@@ -1340,7 +1340,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             Type::QPath {
                 assoc: Box::new(segment.clean(cx)),
                 should_show_cast,
-                self_type: box self_type,
+                self_type: Box::new(self_type),
                 trait_,
             }
         }
@@ -1440,7 +1440,7 @@ impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
 
         match self.kind {
             TyKind::Never => Primitive(PrimitiveType::Never),
-            TyKind::Ptr(ref m) => RawPointer(m.mutbl, box m.ty.clean(cx)),
+            TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(m.ty.clean(cx))),
             TyKind::Rptr(ref l, ref m) => {
                 // There are two times a `Fresh` lifetime can be created:
                 // 1. For `&'_ x`, written by the user. This corresponds to `lower_lifetime` in `rustc_ast_lowering`.
@@ -1452,9 +1452,9 @@ impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
                 let elided =
                     l.is_elided() || matches!(l.name, LifetimeName::Param(_, ParamName::Fresh));
                 let lifetime = if elided { None } else { Some(l.clean(cx)) };
-                BorrowedRef { lifetime, mutability: m.mutbl, type_: box m.ty.clean(cx) }
+                BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(m.ty.clean(cx)) }
             }
-            TyKind::Slice(ty) => Slice(box ty.clean(cx)),
+            TyKind::Slice(ty) => Slice(Box::new(ty.clean(cx))),
             TyKind::Array(ty, ref length) => {
                 let length = match length {
                     hir::ArrayLen::Infer(_, _) => "_".to_string(),
@@ -1473,7 +1473,7 @@ impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
                     }
                 };
 
-                Array(box ty.clean(cx), length)
+                Array(Box::new(ty.clean(cx)), length)
             }
             TyKind::Tup(tys) => Tuple(tys.iter().map(|x| x.clean(cx)).collect()),
             TyKind::OpaqueDef(item_id, _) => {
@@ -1540,16 +1540,16 @@ fn clean_ty<'tcx>(this: Ty<'tcx>, cx: &mut DocContext<'tcx>, def_id: Option<DefI
         ty::Uint(uint_ty) => Primitive(uint_ty.into()),
         ty::Float(float_ty) => Primitive(float_ty.into()),
         ty::Str => Primitive(PrimitiveType::Str),
-        ty::Slice(ty) => Slice(box ty.clean(cx)),
+        ty::Slice(ty) => Slice(Box::new(ty.clean(cx))),
         ty::Array(ty, n) => {
             let mut n = cx.tcx.lift(n).expect("array lift failed");
             n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
             let n = print_const(cx, n);
-            Array(box ty.clean(cx), n)
+            Array(Box::new(ty.clean(cx)), n)
         }
-        ty::RawPtr(mt) => RawPointer(mt.mutbl, box mt.ty.clean(cx)),
+        ty::RawPtr(mt) => RawPointer(mt.mutbl, Box::new(mt.ty.clean(cx))),
         ty::Ref(r, ty, mutbl) => {
-            BorrowedRef { lifetime: r.clean(cx), mutability: mutbl, type_: box ty.clean(cx) }
+            BorrowedRef { lifetime: r.clean(cx), mutability: mutbl, type_: Box::new(ty.clean(cx)) }
         }
         ty::FnDef(..) | ty::FnPtr(_) => {
             let ty = cx.tcx.lift(this).expect("FnPtr lift failed");
