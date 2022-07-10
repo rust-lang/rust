@@ -38,7 +38,7 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 19:24
     bb1: {
         _10 = move _2;                   // scope 0 at $DIR/generator-tiny.rs:+0:16: +0:24
         nop;                             // scope 0 at $DIR/generator-tiny.rs:20:13: 20:15
-        Deinit((((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 19:24])) as variant#3).0: HasDrop)); // scope 0 at $DIR/generator-tiny.rs:20:18: 20:25
+        (((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 19:24])) as variant#3).0: HasDrop) = HasDrop; // scope 0 at $DIR/generator-tiny.rs:20:18: 20:25
         StorageLive(_4);                 // scope 1 at $DIR/generator-tiny.rs:21:9: 24:10
         goto -> bb2;                     // scope 1 at $DIR/generator-tiny.rs:21:9: 24:10
     }
@@ -46,7 +46,7 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 19:24
     bb2: {
         StorageLive(_6);                 // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         StorageLive(_7);                 // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
-        Deinit(_7);                      // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
+        _7 = ();                         // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         Deinit(_0);                      // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         ((_0 as Yielded).0: ()) = move _7; // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         discriminant(_0) = 0;            // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18

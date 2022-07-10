@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rustc_middle::mir::{self, Body, MirPhase};
+use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
@@ -72,11 +72,30 @@ where
     }
 }
 
+/// Run the sequence of passes without validating the MIR after each pass. The MIR is still
+/// validated at the end.
+pub fn run_passes_no_validate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    passes: &[&dyn MirPass<'tcx>],
+) {
+    run_passes_inner(tcx, body, passes, false);
+}
+
 pub fn run_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, passes: &[&dyn MirPass<'tcx>]) {
+    run_passes_inner(tcx, body, passes, true);
+}
+
+fn run_passes_inner<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    passes: &[&dyn MirPass<'tcx>],
+    validate_each: bool,
+) {
     let start_phase = body.phase;
     let mut cnt = 0;
 
-    let validate = tcx.sess.opts.unstable_opts.validate_mir;
+    let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir;
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
 
@@ -127,7 +146,7 @@ pub fn run_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, passes: &[&dyn
         }
     }
 
-    if validate || body.phase == MirPhase::Optimized {
+    if validate || body.phase == MirPhase::Runtime(RuntimePhase::Optimized) {
         validate_body(tcx, body, format!("end of phase transition to {:?}", body.phase));
     }
 }
@@ -144,7 +163,7 @@ pub fn dump_mir<'tcx>(
     cnt: usize,
     is_after: bool,
 ) {
-    let phase_index = phase as u32;
+    let phase_index = phase.phase_index();
 
     mir::dump_mir(
         tcx,

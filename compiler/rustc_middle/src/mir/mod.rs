@@ -128,8 +128,20 @@ pub trait MirPass<'tcx> {
 
 impl MirPhase {
     /// Gets the index of the current MirPhase within the set of all `MirPhase`s.
+    ///
+    /// FIXME(JakobDegen): Return a `(usize, usize)` instead.
     pub fn phase_index(&self) -> usize {
-        *self as usize
+        const BUILT_PHASE_COUNT: usize = 1;
+        const ANALYSIS_PHASE_COUNT: usize = 2;
+        match self {
+            MirPhase::Built => 1,
+            MirPhase::Analysis(analysis_phase) => {
+                1 + BUILT_PHASE_COUNT + (*analysis_phase as usize)
+            }
+            MirPhase::Runtime(runtime_phase) => {
+                1 + BUILT_PHASE_COUNT + ANALYSIS_PHASE_COUNT + (*runtime_phase as usize)
+            }
+        }
     }
 }
 
