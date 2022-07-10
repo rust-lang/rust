@@ -110,7 +110,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
                         };
                         debug!(?cause, "evaluate_stack: pushing cause");
-                        self.intercrate_ambiguity_causes.as_mut().unwrap().push(cause);
+                        self.intercrate_ambiguity_causes.as_mut().unwrap().insert(cause);
                     }
                 }
             }
