@@ -2062,7 +2062,7 @@ fn clean_extern_crate<'tcx>(
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: Some(name),
-        attrs: box attrs.clean(cx),
+        attrs: Box::new(attrs.clean(cx)),
         item_id: crate_def_id.into(),
         visibility: ty_vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },
