@@ -52,8 +52,8 @@ impl Layout {
     /// * `align` must be a power of two,
     ///
     /// * `size`, when rounded up to the nearest multiple of `align`,
-    ///    must not overflow (i.e., the rounded value must be less than
-    ///    or equal to `usize::MAX`).
+    ///    must not overflow isize (i.e., the rounded value must be
+    ///    less than or equal to `isize::MAX`).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[inline]
@@ -76,7 +76,7 @@ impl Layout {
         //
         // Above implies that checking for summation overflow is both
         // necessary and sufficient.
-        if size > usize::MAX - (align - 1) {
+        if size > isize::MAX as usize - (align - 1) {
             return Err(LayoutError);
         }
 
@@ -276,8 +276,8 @@ impl Layout {
         let pad = self.padding_needed_for(self.align());
         // This cannot overflow. Quoting from the invariant of Layout:
         // > `size`, when rounded up to the nearest multiple of `align`,
-        // > must not overflow (i.e., the rounded value must be less than
-        // > `usize::MAX`)
+        // > must not overflow isize (i.e., the rounded value must be
+        // > less than or equal to `isize::MAX`)
         let new_size = self.size() + pad;
 
         // SAFETY: self.align is already known to be valid and new_size has been
@@ -298,14 +298,13 @@ impl Layout {
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
         // This cannot overflow. Quoting from the invariant of Layout:
         // > `size`, when rounded up to the nearest multiple of `align`,
-        // > must not overflow (i.e., the rounded value must be less than
-        // > `usize::MAX`)
+        // > must not overflow isize (i.e., the rounded value must be
+        // > less than or equal to `isize::MAX`)
         let padded_size = self.size() + self.padding_needed_for(self.align());
         let alloc_size = padded_size.checked_mul(n).ok_or(LayoutError)?;
 
-        // SAFETY: self.align is already known to be valid and alloc_size has been
-        // padded already.
-        unsafe { Ok((Layout::from_size_align_unchecked(alloc_size, self.align()), padded_size)) }
+        // The safe constructor is called here to enforce the isize size limit.
+        Layout::from_size_align(alloc_size, self.align()).map(|layout| (layout, padded_size))
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -362,6 +361,7 @@ impl Layout {
         let offset = self.size().checked_add(pad).ok_or(LayoutError)?;
         let new_size = offset.checked_add(next.size()).ok_or(LayoutError)?;
 
+        // The safe constructor is called here to enforce the isize size limit.
         let layout = Layout::from_size_align(new_size, new_align)?;
         Ok((layout, offset))
     }
@@ -382,6 +382,7 @@ impl Layout {
     #[inline]
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
         let size = self.size().checked_mul(n).ok_or(LayoutError)?;
+        // The safe constructor is called here to enforce the isize size limit.
         Layout::from_size_align(size, self.align())
     }
 
@@ -395,6 +396,7 @@ impl Layout {
     #[inline]
     pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
         let new_size = self.size().checked_add(next.size()).ok_or(LayoutError)?;
+        // The safe constructor is called here to enforce the isize size limit.
         Layout::from_size_align(new_size, self.align())
     }
 
@@ -405,16 +407,8 @@ impl Layout {
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutError> {
         let array_size = mem::size_of::<T>().checked_mul(n).ok_or(LayoutError)?;
-
-        // SAFETY:
-        // - Size: `array_size` cannot be too big because `size_of::<T>()` must
-        //   be a multiple of `align_of::<T>()`. Therefore, `array_size`
-        //   rounded up to the nearest multiple of `align_of::<T>()` is just
-        //   `array_size`. And `array_size` cannot be too big because it was
-        //   just checked by the `checked_mul()`.
-        // - Alignment: `align_of::<T>()` will always give an acceptable
-        //   (non-zero, power of two) alignment.
-        Ok(unsafe { Layout::from_size_align_unchecked(array_size, mem::align_of::<T>()) })
+        // The safe constructor is called here to enforce the isize size limit.
+        Layout::from_size_align(array_size, mem::align_of::<T>())
     }
 }
 
