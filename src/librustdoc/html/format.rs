@@ -737,21 +737,23 @@ pub(crate) fn href_relative_parts<'fqp>(
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
             let fqp_module = &fqp[i..fqp.len()];
-            return box iter::repeat(sym::dotdot)
-                .take(dissimilar_part_count)
-                .chain(fqp_module.iter().copied());
+            return Box::new(
+                iter::repeat(sym::dotdot)
+                    .take(dissimilar_part_count)
+                    .chain(fqp_module.iter().copied()),
+            );
         }
     }
     // e.g. linking to std::sync::atomic from std::sync
     if relative_to_fqp.len() < fqp.len() {
-        box fqp[relative_to_fqp.len()..fqp.len()].iter().copied()
+        Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
     // e.g. linking to std::sync from std::sync::atomic
     } else if fqp.len() < relative_to_fqp.len() {
         let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-        box iter::repeat(sym::dotdot).take(dissimilar_part_count)
+        Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
     // linking to the same module
     } else {
-        box iter::empty()
+        Box::new(iter::empty())
     }
 }
 
