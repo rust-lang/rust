@@ -349,10 +349,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
             err.code(rustc_errors::error_code!(E0424));
             err.span_label(span, match source {
-                PathSource::Pat => "`self` value is a keyword and may not be bound to variables or shadowed"
-                                   .to_string(),
-                _ => "`self` value is a keyword only available in methods with a `self` parameter"
-                     .to_string(),
+                PathSource::Pat => "`self` value is a keyword and may not be bound to variables or shadowed",
+                _ => "`self` value is a keyword only available in methods with a `self` parameter",
             });
             if let Some((fn_kind, span)) = &self.diagnostic_metadata.current_function {
                 // The current function has a `self' parameter, but we were unable to resolve

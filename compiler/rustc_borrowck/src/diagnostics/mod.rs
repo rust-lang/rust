@@ -597,16 +597,16 @@ impl UseSpans<'_> {
     }
 
     /// Describe the span associated with a use of a place.
-    pub(super) fn describe(&self) -> String {
+    pub(super) fn describe(&self) -> &str {
         match *self {
             UseSpans::ClosureUse { generator_kind, .. } => {
                 if generator_kind.is_some() {
-                    " in generator".to_string()
+                    " in generator"
                 } else {
-                    " in closure".to_string()
+                    " in closure"
                 }
             }
-            _ => String::new(),
+            _ => "",
         }
     }
 

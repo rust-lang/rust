@@ -924,7 +924,6 @@ table,
 #crate-search {
 	min-width: 115px;
 	margin-top: 5px;
-	margin-left: 0.25em;
 	padding-left: 0.3125em;
 	padding-right: 23px;
 	border: 1px solid;
@@ -941,6 +940,8 @@ table,
 	background-size: 20px;
 	background-position: calc(100% - 1px) 56%;
 	background-image: /* AUTOREPLACE: */url("down-arrow.svg");
+	max-width: 100%;
+	text-overflow: ellipsis;
 }
 .search-container {
 	margin-top: 4px;
@@ -2056,8 +2057,18 @@ in storage.js plus the media query with (min-width: 701px)
 }
 
 @media print {
-	nav.sub, .content .out-of-band {
+	nav.sidebar, nav.sub, .content .out-of-band, a.srclink, #copy-path,
+	details.rustdoc-toggle[open] > summary::before, details.rustdoc-toggle > summary::before,
+	details.rustdoc-toggle.top-doc > summary {
 		display: none;
+	}
+
+	.docblock {
+		margin-left: 0;
+	}
+
+	main {
+		padding: 10px;
 	}
 }
 
