@@ -1490,7 +1490,7 @@ impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
                 let lifetime = if !lifetime.is_elided() { Some(lifetime.clean(cx)) } else { None };
                 DynTrait(bounds, lifetime)
             }
-            TyKind::BareFn(barefn) => BareFunction(box barefn.clean(cx)),
+            TyKind::BareFn(barefn) => BareFunction(Box::new(barefn.clean(cx))),
             // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
             TyKind::Infer | TyKind::Err => Infer,
             TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.kind),
@@ -1555,12 +1555,12 @@ fn clean_ty<'tcx>(this: Ty<'tcx>, cx: &mut DocContext<'tcx>, def_id: Option<DefI
             let ty = cx.tcx.lift(this).expect("FnPtr lift failed");
             let sig = ty.fn_sig(cx.tcx);
             let decl = clean_fn_decl_from_did_and_sig(cx, None, sig);
-            BareFunction(box BareFunctionDecl {
+            BareFunction(Box::new(BareFunctionDecl {
                 unsafety: sig.unsafety(),
                 generic_params: Vec::new(),
                 decl,
                 abi: sig.abi(),
-            })
+            }))
         }
         ty::Adt(def, substs) => {
             let did = def.did();
