@@ -891,6 +891,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .region_constraints_added_in_snapshot(&snapshot.undo_snapshot)
     }
 
+    pub fn opaque_types_added_in_snapshot(&self, snapshot: &CombinedSnapshot<'a, 'tcx>) -> bool {
+        self.inner.borrow().undo_log.opaque_types_in_snapshot(&snapshot.undo_snapshot)
+    }
+
     pub fn add_given(&self, sub: ty::Region<'tcx>, sup: ty::RegionVid) {
         self.inner.borrow_mut().unwrap_region_constraints().add_given(sub, sup);
     }

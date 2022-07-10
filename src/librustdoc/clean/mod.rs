@@ -167,7 +167,7 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
         .collect_referenced_late_bound_regions(&poly_trait_ref)
         .into_iter()
         .filter_map(|br| match br {
-            ty::BrNamed(_, name) => Some(GenericParamDef {
+            ty::BrNamed(_, name) if name != kw::UnderscoreLifetime => Some(GenericParamDef {
                 name,
                 kind: GenericParamDefKind::Lifetime { outlives: vec![] },
             }),
