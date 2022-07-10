@@ -3,7 +3,13 @@
 // aux-build: repr-transparent-non-exhaustive.rs
 extern crate repr_transparent_non_exhaustive;
 
-use repr_transparent_non_exhaustive::{Private, NonExhaustive, ExternalIndirection};
+use repr_transparent_non_exhaustive::{
+    Private,
+    NonExhaustive,
+    NonExhaustiveEnum,
+    NonExhaustiveVariant,
+    ExternalIndirection,
+};
 
 pub struct InternalPrivate {
     _priv: (),
@@ -38,22 +44,52 @@ pub struct T6(Sized, NonExhaustive);
 //~| WARN this was previously accepted by the compiler
 
 #[repr(transparent)]
-pub struct T7(Sized, InternalIndirection<Private>);
+pub struct T7(Sized, NonExhaustiveEnum);
 //~^ ERROR zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
 //~| WARN this was previously accepted by the compiler
 
 #[repr(transparent)]
-pub struct T8(Sized, InternalIndirection<NonExhaustive>);
+pub struct T8(Sized, NonExhaustiveVariant);
 //~^ ERROR zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
 //~| WARN this was previously accepted by the compiler
 
 #[repr(transparent)]
-pub struct T9(Sized, ExternalIndirection<Private>);
+pub struct T9(Sized, InternalIndirection<Private>);
 //~^ ERROR zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
 //~| WARN this was previously accepted by the compiler
 
 #[repr(transparent)]
-pub struct T10(Sized, ExternalIndirection<NonExhaustive>);
+pub struct T10(Sized, InternalIndirection<NonExhaustive>);
+//~^ ERROR zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
+
+#[repr(transparent)]
+pub struct T11(Sized, InternalIndirection<NonExhaustiveEnum>);
+//~^ ERROR zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
+
+#[repr(transparent)]
+pub struct T12(Sized, InternalIndirection<NonExhaustiveVariant>);
+//~^ ERROR zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
+
+#[repr(transparent)]
+pub struct T13(Sized, ExternalIndirection<Private>);
+//~^ ERROR zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
+
+#[repr(transparent)]
+pub struct T14(Sized, ExternalIndirection<NonExhaustive>);
+//~^ ERROR zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
+
+#[repr(transparent)]
+pub struct T15(Sized, ExternalIndirection<NonExhaustiveEnum>);
+//~^ ERROR zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
+//~| WARN this was previously accepted by the compiler
+
+#[repr(transparent)]
+pub struct T16(Sized, ExternalIndirection<NonExhaustiveVariant>);
 //~^ ERROR zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
 //~| WARN this was previously accepted by the compiler
 
