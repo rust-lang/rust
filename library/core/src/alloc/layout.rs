@@ -1,6 +1,6 @@
 use crate::cmp;
 use crate::fmt;
-use crate::mem::{self, ValidAlign};
+use crate::mem::{self, ValidAlign, ValidSize};
 use crate::ptr::NonNull;
 
 // While this function is used in one place and its implementation
@@ -30,7 +30,7 @@ const fn size_align<T>() -> (usize, usize) {
 #[lang = "alloc_layout"]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
-    size: usize,
+    size: ValidSize,
 
     // alignment of the requested block of memory, measured in bytes.
     // we ensure that this is always a power-of-two, because API's
@@ -96,8 +96,11 @@ impl Layout {
     #[must_use]
     #[inline]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
-        // SAFETY: the caller must ensure that `align` is a power of two.
-        Layout { size, align: unsafe { ValidAlign::new_unchecked(align) } }
+        // SAFETY: the caller must ensure that `align` is a power of two and
+        // that `size` is no more than `isize::MAX`.
+        unsafe {
+            Layout { size: ValidSize::new_unchecked(size), align: ValidAlign::new_unchecked(align) }
+        }
     }
 
     /// The minimum size in bytes for a memory block of this layout.
@@ -106,7 +109,7 @@ impl Layout {
     #[must_use]
     #[inline]
     pub const fn size(&self) -> usize {
-        self.size
+        self.size.as_usize()
     }
 
     /// The minimum byte alignment for a memory block of this layout.

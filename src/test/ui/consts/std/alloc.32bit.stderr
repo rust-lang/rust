@@ -20,6 +20,28 @@ LL | const LAYOUT_INVALID_THREE: Layout = unsafe { Layout::from_size_align_unche
                09 00 00 00 03 00 00 00                         │ ........
            }
 
-error: aborting due to 2 previous errors
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/alloc.rs:17:1
+   |
+LL | const LAYOUT_SIZE_NEGATIVE_ONE: Layout = unsafe { Layout::from_size_align_unchecked(-1 as _, 1) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .size: encountered 4294967295, but expected something less or equal to 2147483647
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 4) {
+               ff ff ff ff 01 00 00 00                         │ ........
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/alloc.rs:21:1
+   |
+LL | const LAYOUT_SIZE_HIGH_BIT: Layout = unsafe { Layout::from_size_align_unchecked((isize::MAX as usize) + 1, 1) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .size: encountered 2147483648, but expected something less or equal to 2147483647
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 4) {
+               00 00 00 80 01 00 00 00                         │ ........
+           }
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

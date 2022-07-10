@@ -13,4 +13,12 @@ const LAYOUT_INVALID_ZERO: Layout = unsafe { Layout::from_size_align_unchecked(0
 const LAYOUT_INVALID_THREE: Layout = unsafe { Layout::from_size_align_unchecked(9, 3) };
 //~^ ERROR it is undefined behavior to use this value
 
+// not ok, since size needs to be no more than `isize::MAX`
+const LAYOUT_SIZE_NEGATIVE_ONE: Layout = unsafe { Layout::from_size_align_unchecked(-1 as _, 1) };
+//~^ ERROR it is undefined behavior to use this value
+
+// not ok, since size needs to be no more than `isize::MAX`
+const LAYOUT_SIZE_HIGH_BIT: Layout = unsafe { Layout::from_size_align_unchecked((isize::MAX as usize) + 1, 1) };
+//~^ ERROR it is undefined behavior to use this value
+
 fn main() {}
