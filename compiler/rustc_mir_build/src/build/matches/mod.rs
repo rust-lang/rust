@@ -170,7 +170,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut arm_candidates = self.create_match_candidates(scrutinee_place.clone(), &arms);
 
-        let match_has_guard = arms.iter().copied().any(|arm| self.thir[arm].guard.is_some());
+        let match_has_guard = arm_candidates.iter().any(|(_, candidate)| candidate.has_guard);
         let mut candidates =
             arm_candidates.iter_mut().map(|(_, candidate)| candidate).collect::<Vec<_>>();
 
