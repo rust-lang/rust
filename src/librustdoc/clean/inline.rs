@@ -538,7 +538,7 @@ fn build_module(
                     attrs: Box::new(clean::Attributes::default()),
                     item_id: ItemId::Primitive(prim_ty, did.krate),
                     visibility: clean::Public,
-                    kind: box clean::ImportItem(clean::Import::new_simple(
+                    kind: Box::new(clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
                         clean::ImportSource {
                             path: clean::Path {
@@ -554,7 +554,7 @@ fn build_module(
                             did: None,
                         },
                         true,
-                    )),
+                    ))),
                     cfg: None,
                 });
             } else if let Some(i) = try_inline(cx, did, None, res, item.ident.name, None, visited) {

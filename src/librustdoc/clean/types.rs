@@ -502,7 +502,7 @@ impl Item {
             clean_visibility(cx.tcx.visibility(def_id))
         };
 
-        Item { item_id: def_id.into(), kind: box kind, name, attrs, visibility, cfg }
+        Item { item_id: def_id.into(), kind: Box::new(kind), name, attrs, visibility, cfg }
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined

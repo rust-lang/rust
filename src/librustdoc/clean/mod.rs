@@ -2108,7 +2108,7 @@ fn clean_extern_crate<'tcx>(
         attrs: Box::new(attrs.clean(cx)),
         item_id: crate_def_id.into(),
         visibility: clean_visibility(ty_vis),
-        kind: box ExternCrateItem { src: orig_name },
+        kind: Box::new(ExternCrateItem { src: orig_name }),
         cfg: attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
     }]
 }
