@@ -49,21 +49,20 @@ pub fn get_runtime_services() -> Option<NonNull<RuntimeServices>> {
 /// Get the Protocol for current system handle.
 /// Note: Some protocols need to be manually freed. It is the callers responsibility to do so.
 pub fn get_current_handle_protocol<T>(protocol_guid: &mut Guid) -> Option<NonNull<T>> {
-    let boot_services = get_boot_services()?;
     let system_handle = get_system_handle()?;
-    let mut protocol: *mut crate::ffi::c_void = crate::ptr::null_mut();
+    get_handle_protocol(system_handle, protocol_guid)
+}
+
+pub(crate) fn get_handle_protocol<T>(
+    handle: NonNull<c_void>,
+    protocol_guid: &mut Guid,
+) -> Option<NonNull<T>> {
+    let boot_services = get_boot_services()?;
+    let mut protocol: *mut c_void = crate::ptr::null_mut();
 
     let r = unsafe {
-        ((*boot_services.as_ptr()).handle_protocol)(
-            system_handle.as_ptr(),
-            protocol_guid,
-            &mut protocol,
-        )
+        ((*boot_services.as_ptr()).handle_protocol)(handle.as_ptr(), protocol_guid, &mut protocol)
     };
 
-    if r.is_error() {
-        None
-    } else {
-        NonNull::new(protocol.cast())
-    }
+    if r.is_error() { None } else { NonNull::new(protocol.cast()) }
 }

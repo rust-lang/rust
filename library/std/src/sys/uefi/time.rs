@@ -1,4 +1,3 @@
-use crate::mem::MaybeUninit;
 use crate::os::uefi;
 use crate::time::Duration;
 

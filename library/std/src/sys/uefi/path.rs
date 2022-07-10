@@ -1,6 +1,5 @@
 //! Implementation of path from UEFI. Mostly just copying Windows Implementation
 
-use crate::env;
 use crate::ffi::OsStr;
 use crate::io;
 use crate::path::{Path, PathBuf, Prefix};
@@ -20,9 +19,9 @@ pub fn is_verbatim_sep(b: u8) -> bool {
 
 #[inline]
 pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
-    todo!()
+    None
 }
 
-pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
+pub(crate) fn absolute(_path: &Path) -> io::Result<PathBuf> {
     todo!()
 }

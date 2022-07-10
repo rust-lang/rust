@@ -2,8 +2,6 @@ use crate::ffi::{OsStr, OsString};
 use crate::sealed::Sealed;
 use crate::sys_common::ucs2;
 
-const REPLACEMENT_CHARACTER_UCS2: u16 = 0xfffdu16;
-
 #[unstable(feature = "uefi_std", issue = "none")]
 pub trait OsStrExt: Sealed {
     /// This function does not do any allocation

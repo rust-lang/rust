@@ -101,6 +101,7 @@ pub fn abort_internal() -> ! {
     if let (Some(boot_services), Some(handle)) =
         (uefi::env::get_boot_services(), uefi::env::get_system_handle())
     {
+        println!("Aborting");
         let _ = unsafe {
             ((*boot_services.as_ptr()).exit)(
                 handle.as_ptr(),
@@ -111,8 +112,23 @@ pub fn abort_internal() -> ! {
         };
     }
 
-    // Should never be called ideally. Might remove in future.
-    core::intrinsics::abort();
+    // In case SystemTable and SystemHandle cannot be reached, do things the Windows way
+    #[allow(unused)]
+    const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
+    unsafe {
+        cfg_if::cfg_if! {
+            if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+                core::arch::asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
+            } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
+                core::arch::asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
+            } else if #[cfg(target_arch = "aarch64")] {
+                core::arch::asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
+            } else {
+                core::intrinsics::abort();
+            }
+        }
+        core::intrinsics::unreachable();
+    }
 }
 
 // This function is needed by the panic runtime. The symbol is named in
@@ -120,7 +136,9 @@ pub fn abort_internal() -> ! {
 #[cfg(not(test))]
 #[no_mangle]
 pub extern "C" fn __rust_abort() {
-    abort_internal();
+    unsafe {
+        abort_internal();
+    }
 }
 
 // FIXME: Use EFI_RNG_PROTOCOL
@@ -155,4 +173,8 @@ pub unsafe extern "efiapi" fn efi_main(
     } else {
         uefi::raw::Status::ABORTED
     }
+}
+
+pub fn unknown_error(e: &uefi::raw::Status) -> crate::io::Error {
+    crate::io::Error::new(crate::io::ErrorKind::Other, format!("Unknown Error: {}", e.as_usize()))
 }
