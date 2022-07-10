@@ -25,7 +25,7 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
@@ -89,7 +89,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 args_no_rcvr,
                 false,
                 tuple_arguments,
-                None,
+                method.ok().map(|method| method.def_id),
             );
             return self.tcx.ty_error();
         }
@@ -458,6 +458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 c_variadic,
                 err_code,
                 fn_def_id,
+                call_expr,
             );
         }
     }
@@ -474,6 +475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         c_variadic: bool,
         err_code: &str,
         fn_def_id: Option<DefId>,
+        call_expr: &hir::Expr<'tcx>,
     ) {
         // Don't print if it has error types or is just plain `_`
         fn has_error_or_infer<'tcx>(tys: impl IntoIterator<Item = Ty<'tcx>>) -> bool {
@@ -495,6 +497,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (self.resolve_vars_if_possible(ty), expr.span)
             })
             .collect();
+        let callee_expr = match &call_expr.peel_blocks().kind {
+            hir::ExprKind::Call(callee, _) => Some(*callee),
+            hir::ExprKind::MethodCall(_, callee, _) => {
+                if let Some((DefKind::AssocFn, def_id)) =
+                    self.typeck_results.borrow().type_dependent_def(call_expr.hir_id)
+                    && let Some(assoc) = tcx.opt_associated_item(def_id)
+                    && assoc.fn_has_self_parameter
+                {
+                    Some(&callee[0])
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+        let callee_ty = callee_expr
+            .and_then(|callee_expr| self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr));
 
         // A "softer" version of the `demand_compatible`, which checks types without persisting them,
         // and treats error types differently
@@ -631,7 +650,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                     };
-                    label_fn_like(tcx, &mut err, fn_def_id);
+                    self.label_fn_like(&mut err, fn_def_id, callee_ty);
                     err.emit();
                     return;
                 }
@@ -721,7 +740,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!("arguments to this {} are incorrect", call_name),
             );
             // Call out where the function is defined
-            label_fn_like(tcx, &mut err, fn_def_id);
+            self.label_fn_like(&mut err, fn_def_id, callee_ty);
             err.emit();
             return;
         }
@@ -1003,7 +1022,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Call out where the function is defined
-        label_fn_like(tcx, &mut err, fn_def_id);
+        self.label_fn_like(&mut err, fn_def_id, callee_ty);
 
         // And add a suggestion block for all of the parameters
         let suggestion_text = match suggestion_text {
@@ -1795,47 +1814,86 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
     }
-}
 
-fn label_fn_like<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    err: &mut rustc_errors::DiagnosticBuilder<'tcx, rustc_errors::ErrorGuaranteed>,
-    def_id: Option<DefId>,
-) {
-    let Some(def_id) = def_id else {
-        return;
-    };
+    fn label_fn_like(
+        &self,
+        err: &mut rustc_errors::DiagnosticBuilder<'tcx, rustc_errors::ErrorGuaranteed>,
+        def_id: Option<DefId>,
+        callee_ty: Option<Ty<'tcx>>,
+    ) {
+        let Some(mut def_id) = def_id else {
+            return;
+        };
 
-    if let Some(def_span) = tcx.def_ident_span(def_id) {
-        let mut spans: MultiSpan = def_span.into();
-
-        let params = tcx
-            .hir()
-            .get_if_local(def_id)
-            .and_then(|node| node.body_id())
-            .into_iter()
-            .flat_map(|id| tcx.hir().body(id).params);
-
-        for param in params {
-            spans.push_span_label(param.span, "");
+        if let Some(assoc_item) = self.tcx.opt_associated_item(def_id)
+            && let trait_def_id = assoc_item.trait_item_def_id.unwrap_or_else(|| self.tcx.parent(def_id))
+            // Just an easy way to check "trait_def_id == Fn/FnMut/FnOnce"
+            && ty::ClosureKind::from_def_id(self.tcx, trait_def_id).is_some()
+            && let Some(callee_ty) = callee_ty
+        {
+            let callee_ty = callee_ty.peel_refs();
+            match *callee_ty.kind() {
+                ty::Param(param) => {
+                    let param =
+                        self.tcx.generics_of(self.body_id.owner).type_param(&param, self.tcx);
+                    if param.kind.is_synthetic() {
+                        // if it's `impl Fn() -> ..` then just fall down to the def-id based logic
+                        def_id = param.def_id;
+                    } else {
+                        // Otherwise, find the predicate that makes this generic callable,
+                        // and point at that.
+                        let instantiated = self
+                            .tcx
+                            .explicit_predicates_of(self.body_id.owner)
+                            .instantiate_identity(self.tcx);
+                        // FIXME(compiler-errors): This could be problematic if something has two
+                        // fn-like predicates with different args, but callable types really never
+                        // do that, so it's OK.
+                        for (predicate, span) in
+                            std::iter::zip(instantiated.predicates, instantiated.spans)
+                        {
+                            if let ty::PredicateKind::Trait(pred) = predicate.kind().skip_binder()
+                                && pred.self_ty() == callee_ty
+                                && ty::ClosureKind::from_def_id(self.tcx, pred.def_id()).is_some()
+                            {
+                                err.span_note(span, "callable defined here");
+                                return;
+                            }
+                        }
+                    }
+                }
+                ty::Opaque(new_def_id, _) | ty::Closure(new_def_id, _) | ty::FnDef(new_def_id, _) => {
+                    def_id = new_def_id;
+                }
+                _ => {
+                    return;
+                }
+            }
         }
 
-        let def_kind = tcx.def_kind(def_id);
-        err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
-    } else {
-        match tcx.hir().get_if_local(def_id) {
-            Some(hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(hir::Closure { fn_decl_span, .. }),
-                ..
-            })) => {
-                let spans: MultiSpan = (*fn_decl_span).into();
+        if let Some(def_span) = self.tcx.def_ident_span(def_id) && !def_span.is_dummy() {
+            let mut spans: MultiSpan = def_span.into();
 
-                // Note: We don't point to param spans here because they overlap
-                // with the closure span itself
+            let params = self
+                .tcx
+                .hir()
+                .get_if_local(def_id)
+                .and_then(|node| node.body_id())
+                .into_iter()
+                .flat_map(|id| self.tcx.hir().body(id).params);
 
-                err.span_note(spans, "closure defined here");
+            for param in params {
+                spans.push_span_label(param.span, "");
             }
-            _ => {}
+
+            let def_kind = self.tcx.def_kind(def_id);
+            err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
+        } else if let def_kind @ (DefKind::Closure | DefKind::OpaqueTy) = self.tcx.def_kind(def_id)
+        {
+            err.span_note(
+                self.tcx.def_span(def_id),
+                &format!("{} defined here", def_kind.descr(def_id)),
+            );
         }
     }
 }
