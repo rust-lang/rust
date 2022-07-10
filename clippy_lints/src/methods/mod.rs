@@ -46,6 +46,7 @@ mod map_unwrap_or;
 mod needless_option_as_deref;
 mod needless_option_take;
 mod no_effect_replace;
+mod obfuscated_if_else;
 mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_or_none;
@@ -2259,6 +2260,35 @@ declare_clippy_lint! {
     "replace with no effect"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `.then_some(..).unwrap_or(..)`
+    ///
+    /// ### Why is this bad?
+    /// This can be written more clearly with `if .. else ..`
+    ///
+    /// ### Limitations
+    /// This lint currently only looks for usages of
+    /// `.then_some(..).unwrap_or(..)`, but will be expanded
+    /// to account for similar patterns.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x = true;
+    /// x.then_some("a").unwrap_or("b");
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let x = true;
+    /// if x { "a" } else { "b" };
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub OBFUSCATED_IF_ELSE,
+    style,
+    "use of `.then_some(..).unwrap_or(..)` can be written \
+    more clearly with `if .. else ..`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2360,6 +2390,7 @@ impl_lint_pass!(Methods => [
     IS_DIGIT_ASCII_RADIX,
     NEEDLESS_OPTION_TAKE,
     NO_EFFECT_REPLACE,
+    OBFUSCATED_IF_ELSE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2767,6 +2798,9 @@ impl Methods {
                     },
                     Some(("map", [m_recv, m_arg], span)) => {
                         option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span);
+                    },
+                    Some(("then_some", [t_recv, t_arg], _)) => {
+                        obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
                     },
                     _ => {},
                 },

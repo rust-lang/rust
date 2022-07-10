@@ -188,6 +188,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(methods::NEEDLESS_SPLITN),
     LintId::of(methods::NEW_RET_NO_SELF),
     LintId::of(methods::NO_EFFECT_REPLACE),
+    LintId::of(methods::OBFUSCATED_IF_ELSE),
     LintId::of(methods::OK_EXPECT),
     LintId::of(methods::OPTION_AS_REF_DEREF),
     LintId::of(methods::OPTION_FILTER_MAP),
