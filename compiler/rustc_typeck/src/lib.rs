@@ -252,7 +252,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let mut diag =
             struct_span_err!(tcx.sess, generics_param_span.unwrap_or(main_span), E0131, "{}", msg);
         if let Some(generics_param_span) = generics_param_span {
-            let label = "`main` cannot have generic parameters".to_string();
+            let label = "`main` cannot have generic parameters";
             diag.span_label(generics_param_span, label);
         }
         diag.emit();
@@ -307,8 +307,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let return_ty_span = main_fn_return_type_span(tcx, main_def_id).unwrap_or(main_span);
         if !return_ty.bound_vars().is_empty() {
             let msg = "`main` function return type is not allowed to have generic \
-                    parameters"
-                .to_owned();
+                    parameters";
             struct_span_err!(tcx.sess, return_ty_span, E0131, "{}", msg).emit();
             error = true;
         }

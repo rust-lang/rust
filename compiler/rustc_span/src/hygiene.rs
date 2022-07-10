@@ -629,8 +629,7 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
         if verbose {
             format!("{:#?}", data)
         } else {
-            let mut s = String::from("");
-            s.push_str("Expansions:");
+            let mut s = String::from("Expansions:");
             let mut debug_expn_data = |(id, expn_data): (&ExpnId, &ExpnData)| {
                 s.push_str(&format!(
                     "\n{:?}: parent: {:?}, call_site_ctxt: {:?}, def_site_ctxt: {:?}, kind: {:?}",

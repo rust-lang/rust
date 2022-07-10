@@ -565,9 +565,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .is_ok()
             {
                 let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
-                    ("( /* arguments */ )".to_string(), Applicability::HasPlaceholders)
+                    ("( /* arguments */ )", Applicability::HasPlaceholders)
                 } else {
-                    ("()".to_string(), Applicability::MaybeIncorrect)
+                    ("()", Applicability::MaybeIncorrect)
                 };
 
                 err.span_suggestion_verbose(

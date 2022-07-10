@@ -406,7 +406,7 @@ fn report_conflicting_impls(
         let mut err = err.build(&msg);
         match tcx.span_of_impl(overlap.with_impl) {
             Ok(span) => {
-                err.span_label(span, "first implementation here".to_string());
+                err.span_label(span, "first implementation here");
 
                 err.span_label(
                     impl_span,

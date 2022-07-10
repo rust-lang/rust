@@ -126,8 +126,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn kind(&self) -> String {
-        if self.missing_lifetimes() { "lifetime".to_string() } else { "generic".to_string() }
+    fn kind(&self) -> &str {
+        if self.missing_lifetimes() { "lifetime" } else { "generic" }
     }
 
     fn num_provided_args(&self) -> usize {
