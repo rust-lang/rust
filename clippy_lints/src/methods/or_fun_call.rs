@@ -59,7 +59,7 @@ pub(super) fn check<'tcx>(
                     span_replace_word,
                     &format!("use of `{}` followed by a call to `{}`", name, path),
                     "try this",
-                    format!("unwrap_or_default()"),
+                    "unwrap_or_default()".to_string(),
                     Applicability::MachineApplicable,
                 );
 
