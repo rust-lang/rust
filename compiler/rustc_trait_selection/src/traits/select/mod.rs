@@ -24,7 +24,7 @@ use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -52,7 +52,7 @@ pub use rustc_middle::traits::select::*;
 mod candidate_assembly;
 mod confirmation;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum IntercrateAmbiguityCause {
     DownstreamCrate { trait_desc: String, self_desc: Option<String> },
     UpstreamCrateUpdate { trait_desc: String, self_desc: Option<String> },
@@ -128,7 +128,7 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// We don't do his until we detect a coherence error because it can
     /// lead to false overflow results (#47139) and because always
     /// computing it may negatively impact performance.
-    intercrate_ambiguity_causes: Option<Vec<IntercrateAmbiguityCause>>,
+    intercrate_ambiguity_causes: Option<FxIndexSet<IntercrateAmbiguityCause>>,
 
     /// The mode that trait queries run in, which informs our error handling
     /// policy. In essence, canonicalized queries need their errors propagated
@@ -254,14 +254,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
         assert!(self.intercrate);
         assert!(self.intercrate_ambiguity_causes.is_none());
-        self.intercrate_ambiguity_causes = Some(vec![]);
+        self.intercrate_ambiguity_causes = Some(FxIndexSet::default());
         debug!("selcx: enable_tracking_intercrate_ambiguity_causes");
     }
 
     /// Gets the intercrate ambiguity causes collected since tracking
     /// was enabled and disables tracking at the same time. If
     /// tracking is not enabled, just returns an empty vector.
-    pub fn take_intercrate_ambiguity_causes(&mut self) -> Vec<IntercrateAmbiguityCause> {
+    pub fn take_intercrate_ambiguity_causes(&mut self) -> FxIndexSet<IntercrateAmbiguityCause> {
         assert!(self.intercrate);
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
@@ -960,7 +960,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             });
 
                             debug!(?cause, "evaluate_stack: pushing cause");
-                            self.intercrate_ambiguity_causes.as_mut().unwrap().push(cause);
+                            self.intercrate_ambiguity_causes.as_mut().unwrap().insert(cause);
                         }
                     }
                 }
@@ -1252,7 +1252,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                  reservation impl ambiguity on {:?}",
                             def_id
                         );
-                        intercrate_ambiguity_clauses.push(
+                        intercrate_ambiguity_clauses.insert(
                             IntercrateAmbiguityCause::ReservationImpl {
                                 message: value.to_string(),
                             },
