@@ -210,5 +210,11 @@ error: deref which would be done by auto-deref
 LL |     let _ = || -> &'static str { return *s };
    |                                         ^^ help: try this: `s`
 
-error: aborting due to 35 previous errors
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:238:9
+   |
+LL |         &**x
+   |         ^^^^ help: try this: `x`
+
+error: aborting due to 36 previous errors
 

@@ -233,4 +233,13 @@ fn main() {
         _ => panic!(),
     };
     let _: &X = &*if true { Y(X) } else { panic!() };
+
+    fn deref_to_u<U, T: core::ops::Deref<Target = U>>(x: &T) -> &U {
+        x
+    }
+
+    let _ = |x: &'static Box<dyn Iterator<Item = u32>>| -> &'static dyn Iterator<Item = u32> { &**x };
+    fn ret_any(x: &Box<dyn std::any::Any>) -> &dyn std::any::Any {
+        &**x
+    }
 }
