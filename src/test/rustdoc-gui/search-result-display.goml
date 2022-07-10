@@ -10,3 +10,31 @@ size: (600, 100)
 // As counter-intuitive as it may seem, in this width, the width is "100%", which is why
 // when computed it's larger.
 assert-css: (".search-results div.desc", {"width": "570px"})
+
+// Check that the crate filter `<select>` is correctly handled when it goes to next line.
+// To do so we need to update the length of one of its `<option>`.
+size: (900, 900)
+
+// First we check the current width and position.
+assert-css: ("#crate-search", {"width": "222px"})
+compare-elements-position-near: (
+    "#crate-search",
+    "#search-settings .search-results-title",
+    {"y": 5},
+)
+
+// Then we update the text of one of the `<option>`.
+text: (
+    "#crate-search option",
+    "sdjfaksdjfaksjdbfkadsbfkjsadbfkdsbkfbsadkjfbkdsabfkadsfkjdsafa",
+)
+
+// Then we compare again.
+assert-css: ("#crate-search", {"width": "640px"})
+compare-elements-position-near-false: (
+    "#crate-search",
+    "#search-settings .search-results-title",
+    {"y": 5},
+)
+// And we check that the `<select>` isn't bigger than its container.
+assert-css: ("#search", {"width": "640px"})
