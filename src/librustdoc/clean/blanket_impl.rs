@@ -106,7 +106,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         attrs: Default::default(),
                         visibility: Inherited,
                         item_id: ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
-                        kind: box ImplItem(Impl {
+                        kind: Box::new(ImplItem(Impl {
                             unsafety: hir::Unsafety::Normal,
                             generics: clean_ty_generics(
                                 cx,
@@ -123,8 +123,8 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                                 .map(|x| x.clean(cx))
                                 .collect::<Vec<_>>(),
                             polarity: ty::ImplPolarity::Positive,
-                            kind: ImplKind::Blanket(box trait_ref.0.self_ty().clean(cx)),
-                        }),
+                            kind: ImplKind::Blanket(Box::new(trait_ref.0.self_ty().clean(cx))),
+                        })),
                         cfg: None,
                     });
                 }
