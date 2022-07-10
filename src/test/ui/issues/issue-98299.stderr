@@ -1,8 +1,13 @@
-error[E0282]: type annotations needed
-  --> $DIR/issue-98299.rs:4:5
+error[E0282]: type annotations needed for `SmallCString<N>`
+  --> $DIR/issue-98299.rs:4:36
    |
 LL |     SmallCString::try_from(p).map(|cstr| cstr);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for enum `Result<SmallCString<{_: usize}>, ()>`
+   |                                    ^^^^
+   |
+help: consider giving this closure parameter an explicit type, where the the value of const parameter `N` is specified
+   |
+LL |     SmallCString::try_from(p).map(|cstr: SmallCString<N>| cstr);
+   |                                        +++++++++++++++++
 
 error: aborting due to previous error
 

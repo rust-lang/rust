@@ -452,26 +452,16 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 predicate,
                             ));
                         }
-                        ty::ConstKind::Infer(infer) => {
-                            let resolved = self.infcx.shallow_resolve(infer);
-                            // the `InferConst` changed, meaning that we made progress.
-                            if resolved != infer {
-                                let cause = self.cause(traits::WellFormed(None));
+                        ty::ConstKind::Infer(_) => {
+                            let cause = self.cause(traits::WellFormed(None));
 
-                                let resolved_constant = self.infcx.tcx.mk_const(ty::ConstS {
-                                    kind: ty::ConstKind::Infer(resolved),
-                                    ty: constant.ty(),
-                                });
-                                self.out.push(traits::Obligation::with_depth(
-                                    cause,
-                                    self.recursion_depth,
-                                    self.param_env,
-                                    ty::Binder::dummy(ty::PredicateKind::WellFormed(
-                                        resolved_constant.into(),
-                                    ))
+                            self.out.push(traits::Obligation::with_depth(
+                                cause,
+                                self.recursion_depth,
+                                self.param_env,
+                                ty::Binder::dummy(ty::PredicateKind::WellFormed(constant.into()))
                                     .to_predicate(self.tcx()),
-                                ));
-                            }
+                            ));
                         }
                         ty::ConstKind::Error(_)
                         | ty::ConstKind::Param(_)
@@ -675,22 +665,14 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 // See also the comment on `fn obligations`, describing "livelock"
                 // prevention, which happens before this can be reached.
                 ty::Infer(_) => {
-                    let ty = self.infcx.shallow_resolve(ty);
-                    if let ty::Infer(ty::TyVar(_)) = ty.kind() {
-                        // Not yet resolved, but we've made progress.
-                        let cause = self.cause(traits::WellFormed(None));
-                        self.out.push(traits::Obligation::with_depth(
-                            cause,
-                            self.recursion_depth,
-                            param_env,
-                            ty::Binder::dummy(ty::PredicateKind::WellFormed(ty.into()))
-                                .to_predicate(self.tcx()),
-                        ));
-                    } else {
-                        // Yes, resolved, proceed with the result.
-                        // FIXME(eddyb) add the type to `walker` instead of recursing.
-                        self.compute(ty.into());
-                    }
+                    let cause = self.cause(traits::WellFormed(None));
+                    self.out.push(traits::Obligation::with_depth(
+                        cause,
+                        self.recursion_depth,
+                        param_env,
+                        ty::Binder::dummy(ty::PredicateKind::WellFormed(ty.into()))
+                            .to_predicate(self.tcx()),
+                    ));
                 }
             }
         }
