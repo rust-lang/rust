@@ -36,20 +36,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             match s.kind {
                 StmtKind::Local(ref local) => {
                     let hir_id = self.lower_node_id(s.id);
-                    let els = if let LocalKind::InitElse(_, els) = &local.kind {
-                        if !self.tcx.features().let_else {
-                            feature_err(
-                                &self.tcx.sess.parse_sess,
-                                sym::let_else,
-                                s.span,
-                                "`let...else` statements are unstable",
-                            )
-                            .emit();
-                        }
-                        Some(self.lower_block(els, false))
-                    } else {
-                        None
-                    };
                     let local = self.lower_local(local);
                     self.alias_attrs(hir_id, local.hir_id);
                     let kind = hir::StmtKind::Local(local);
@@ -106,9 +92,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let hir_id = self.lower_node_id(l.id);
         let pat = self.lower_pat(&l.pat);
         let els = if let LocalKind::InitElse(_, els) = &l.kind {
-            if !self.sess.features_untracked().let_else {
+            if !self.tcx.features().let_else {
                 feature_err(
-                    &self.sess.parse_sess,
+                    &self.tcx.sess.parse_sess,
                     sym::let_else,
                     l.span,
                     "`let...else` statements are unstable",
