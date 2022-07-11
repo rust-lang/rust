@@ -51,6 +51,8 @@ impl MetaTemplate {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Op {
     Var { name: SmolStr, kind: Option<SmolStr>, id: tt::TokenId },
+    Ignore { name: SmolStr, id: tt::TokenId },
+    Index { depth: u32 },
     Repeat { tokens: MetaTemplate, kind: RepeatKind, separator: Option<Separator> },
     Leaf(tt::Leaf),
     Subtree { tokens: MetaTemplate, delimiter: Option<tt::Delimiter> },
@@ -113,11 +115,30 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
                 Some(it) => it,
             };
             match second {
-                tt::TokenTree::Subtree(subtree) => {
-                    let (separator, kind) = parse_repeat(src)?;
-                    let tokens = MetaTemplate::parse(subtree, mode)?;
-                    Op::Repeat { tokens, separator, kind }
-                }
+                tt::TokenTree::Subtree(subtree) => match subtree.delimiter_kind() {
+                    Some(tt::DelimiterKind::Parenthesis) => {
+                        let (separator, kind) = parse_repeat(src)?;
+                        let tokens = MetaTemplate::parse(subtree, mode)?;
+                        Op::Repeat { tokens, separator, kind }
+                    }
+                    Some(tt::DelimiterKind::Brace) => match mode {
+                        Mode::Template => {
+                            parse_metavar_expr(&mut TtIter::new(subtree)).map_err(|()| {
+                                ParseError::unexpected("invalid metavariable expression")
+                            })?
+                        }
+                        Mode::Pattern => {
+                            return Err(ParseError::unexpected(
+                                "`${}` metavariable expressions are not allowed in matchers",
+                            ))
+                        }
+                    },
+                    _ => {
+                        return Err(ParseError::expected(
+                            "expected `$()` repetition or `${}` expression",
+                        ))
+                    }
+                },
                 tt::TokenTree::Leaf(leaf) => match leaf {
                     tt::Leaf::Ident(ident) if ident.text == "crate" => {
                         // We simply produce identifier `$crate` here. And it will be resolved when lowering ast to Path.
@@ -208,4 +229,33 @@ fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), Par
         }
     }
     Err(ParseError::InvalidRepeat)
+}
+
+fn parse_metavar_expr(src: &mut TtIter) -> Result<Op, ()> {
+    let func = src.expect_ident()?;
+    let args = src.expect_subtree()?;
+
+    if args.delimiter_kind() != Some(tt::DelimiterKind::Parenthesis) {
+        return Err(());
+    }
+
+    let mut args = TtIter::new(args);
+
+    let op = match &*func.text {
+        "ignore" => {
+            let ident = args.expect_ident()?;
+            Op::Ignore { name: ident.text.clone(), id: ident.id }
+        }
+        "index" => {
+            let depth = if args.len() == 0 { 0 } else { args.expect_u32_literal()? };
+            Op::Index { depth }
+        }
+        _ => return Err(()),
+    };
+
+    if args.next().is_some() {
+        return Err(());
+    }
+
+    Ok(op)
 }

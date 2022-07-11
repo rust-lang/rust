@@ -179,6 +179,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
                 });
                 parent.token_trees.push(subtree.into());
             }
+            Op::Ignore { .. } | Op::Index { .. } => {}
         };
 
         // Simple linear congruential generator for determistic result

@@ -1612,3 +1612,21 @@ impl Foo {
 "#]],
     )
 }
+
+#[test]
+fn test_metavar_exprs() {
+    check(
+        r#"
+macro_rules! m {
+    ( $( $t:tt )* ) => ( $( ${ignore(t)} -${index()} )-* );
+}
+const _: i32 = m!(a b c);
+    "#,
+        expect![[r#"
+macro_rules! m {
+    ( $( $t:tt )* ) => ( $( ${ignore(t)} -${index()} )-* );
+}
+const _: i32 = -0--1--2;
+    "#]],
+    );
+}
