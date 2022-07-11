@@ -614,6 +614,14 @@ impl Diagnostic {
         self
     }
 
+    /// Clear any existing suggestions.
+    pub fn clear_suggestions(&mut self) -> &mut Self {
+        if let Ok(suggestions) = &mut self.suggestions {
+            suggestions.clear();
+        }
+        self
+    }
+
     /// Helper for pushing to `self.suggestions`, if available (not disable).
     fn push_suggestion(&mut self, suggestion: CodeSuggestion) {
         if let Ok(suggestions) = &mut self.suggestions {
