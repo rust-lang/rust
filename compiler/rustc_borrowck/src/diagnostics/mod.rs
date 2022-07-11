@@ -975,7 +975,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if self.fn_self_span_reported.insert(fn_span) {
                         err.span_note(
                             // Check whether the source is accessible
-                            if self.infcx.tcx.sess.source_map().is_accessible_span(self_arg.span) {
+                            if self.infcx.tcx.sess.source_map().is_span_accessible(self_arg.span) {
                                 self_arg.span
                             } else {
                                 fn_call_span

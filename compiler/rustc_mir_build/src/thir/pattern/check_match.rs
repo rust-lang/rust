@@ -432,7 +432,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 "`let` bindings require an \"irrefutable pattern\", like a `struct` or \
                  an `enum` with only one variant",
             );
-            if self.tcx.sess.source_map().is_accessible_span(span) {
+            if self.tcx.sess.source_map().is_span_accessible(span) {
                 let semi_span = span.shrink_to_hi().with_lo(span.hi() - BytePos(1));
                 let start_span = span.shrink_to_lo();
                 let end_span = semi_span.shrink_to_lo();

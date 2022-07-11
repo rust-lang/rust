@@ -597,7 +597,7 @@ impl SourceMap {
         local_begin.sf.src.is_some() && local_end.sf.src.is_some()
     }
 
-    pub fn is_accessible_span(&self, sp: Span) -> bool {
+    pub fn is_span_accessible(&self, sp: Span) -> bool {
         self.span_to_source(sp, |src, start_index, end_index| {
             Ok(src.get(start_index..end_index).is_some())
         })

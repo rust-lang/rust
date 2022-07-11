@@ -760,7 +760,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(call_span) =
                         iter::successors(Some(expr.span), |s| s.parent_callsite())
                             .find(|&s| sp.contains(s))
-                        && sm.is_accessible_span(call_span)
+                        && sm.is_span_accessible(call_span)
                     {
                         return Some((
                             sp.with_hi(call_span.lo()),
@@ -773,7 +773,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return None;
                 }
                 if sp.contains(expr.span)
-                    && sm.is_accessible_span(expr.span)
+                    && sm.is_span_accessible(expr.span)
                 {
                     return Some((
                         sp.with_hi(expr.span.lo()),

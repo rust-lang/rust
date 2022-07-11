@@ -309,7 +309,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ));
 
                 // Check first whether the source is accessible (issue #87060)
-                if self.infcx.tcx.sess.source_map().is_accessible_span(deref_target) {
+                if self.infcx.tcx.sess.source_map().is_span_accessible(deref_target) {
                     err.span_note(deref_target, "deref defined here");
                 }
             }

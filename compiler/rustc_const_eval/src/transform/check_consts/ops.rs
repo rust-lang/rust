@@ -299,7 +299,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 err.note(&format!("attempting to deref into `{}`", deref_target_ty));
 
                 // Check first whether the source is accessible (issue #87060)
-                if tcx.sess.source_map().is_accessible_span(deref_target) {
+                if tcx.sess.source_map().is_span_accessible(deref_target) {
                     err.span_note(deref_target, "deref defined here");
                 }
 
