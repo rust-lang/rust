@@ -40,7 +40,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 //
 // .Import Granularity
 //
-// It is possible to configure how use-trees are merged with the `importGranularity` setting.
+// It is possible to configure how use-trees are merged with the `imports.granularity.group` setting.
 // It has the following configurations:
 //
 // - `crate`: Merge imports from the same crate into a single use statement. This kind of
@@ -50,11 +50,11 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // - `preserve`: Do not change the granularity of any imports. For auto-import this has the same
 //  effect as `item`.
 //
-// In `VS Code` the configuration for this is `rust-analyzer.assist.importGranularity`.
+// In `VS Code` the configuration for this is `rust-analyzer.imports.granularity.group`.
 //
 // .Import Prefix
 //
-// The style of imports in the same crate is configurable through the `importPrefix` setting.
+// The style of imports in the same crate is configurable through the `imports.prefix` setting.
 // It has the following configurations:
 //
 // - `crate`: This setting will force paths to be always absolute, starting with the `crate`
@@ -64,7 +64,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 //  `super` or an extern crate identifier.
 // - `plain`: This setting does not impose any restrictions in imports.
 //
-// In `VS Code` the configuration for this is `rust-analyzer.assist.importPrefix`.
+// In `VS Code` the configuration for this is `rust-analyzer.imports.prefix`.
 //
 // image::https://user-images.githubusercontent.com/48062697/113020673-b85be580-917a-11eb-9022-59585f35d4f8.gif[]
 
