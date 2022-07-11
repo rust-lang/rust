@@ -4,7 +4,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
-use rustc_middle::ty::{self, Article, FloatTy, InferTy, IntTy, Ty, TyCtxt, TypeVisitable, UintTy};
+use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitable, UintTy};
 use rustc_session::lint;
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};
@@ -99,8 +99,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit();
     }
 
+    // FIXME(compiler-errors): This could use `<$ty as Pointee>::Metadata == ()`
     fn is_thin_ptr_ty(&self, ty: Ty<'tcx>) -> bool {
-        if ty.is_sized(self.tcx.at(DUMMY_SP), self.param_env) {
+        // Type still may have region variables, but `Sized` does not depend
+        // on those, so just erase them before querying.
+        if self.tcx.erase_regions(ty).is_sized(self.tcx.at(DUMMY_SP), self.param_env) {
             return true;
         }
         if let ty::Foreign(..) = ty.kind() {
@@ -128,30 +131,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             64 => InlineAsmType::I64,
             _ => unreachable!(),
         };
+
+        // Expect types to be fully resolved, no const or type variables.
+        if ty.has_infer_types_or_consts() {
+            assert!(self.is_tainted_by_errors());
+            return None;
+        }
+
         let asm_ty = match *ty.kind() {
             // `!` is allowed for input but not for output (issue #87802)
             ty::Never if is_input => return None,
             ty::Error(_) => return None,
             ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::I8),
             ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Some(InlineAsmType::I16),
-            // Somewhat of a hack: fallback in the presence of errors does not actually
-            // fall back to i32, but to ty::Error. For integer inference variables this
-            // means that they don't get any fallback and stay as `{integer}`.
-            // Since compilation can't succeed anyway, it's fine to use this to avoid printing
-            // "cannot use value of type `{integer}`", even though that would absolutely
-            // work due due i32 fallback if the current function had no other errors.
-            ty::Infer(InferTy::IntVar(_)) => {
-                assert!(self.is_tainted_by_errors());
-                Some(InlineAsmType::I32)
-            }
             ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Some(InlineAsmType::I32),
             ty::Int(IntTy::I64) | ty::Uint(UintTy::U64) => Some(InlineAsmType::I64),
             ty::Int(IntTy::I128) | ty::Uint(UintTy::U128) => Some(InlineAsmType::I128),
             ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => Some(asm_ty_isize),
-            ty::Infer(InferTy::FloatVar(_)) => {
-                assert!(self.is_tainted_by_errors());
-                Some(InlineAsmType::F32)
-            }
             ty::Float(FloatTy::F32) => Some(InlineAsmType::F32),
             ty::Float(FloatTy::F64) => Some(InlineAsmType::F64),
             ty::FnPtr(_) => Some(asm_ty_isize),
@@ -191,6 +187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => None,
                 }
             }
+            ty::Infer(_) => unreachable!(),
             _ => None,
         };
         let Some(asm_ty) = asm_ty else {
@@ -203,11 +200,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.emit();
             return None;
         };
-
-        if ty.has_infer_types_or_consts() {
-            assert!(self.is_tainted_by_errors());
-            return None;
-        }
 
         // Check that the type implements Copy. The only case where this can
         // possibly fail is for SIMD types which don't #[derive(Copy)].
