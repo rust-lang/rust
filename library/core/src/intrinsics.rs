@@ -2583,38 +2583,6 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// }
 /// assert_eq!(vec, [0xfefefefe, 0xfefefefe, 0, 0]);
 /// ```
-///
-/// Creating an invalid value:
-///
-/// ```
-/// use std::ptr;
-///
-/// let mut v = Box::new(0i32);
-///
-/// unsafe {
-///     // Leaks the previously held value by overwriting the `Box<T>` with
-///     // a null pointer.
-///     ptr::write_bytes(&mut v as *mut Box<i32>, 0, 1);
-/// }
-///
-/// // At this point, using or dropping `v` results in undefined behavior.
-/// // drop(v); // ERROR
-///
-/// // Even leaking `v` "uses" it, and hence is undefined behavior.
-/// // mem::forget(v); // ERROR
-///
-/// // In fact, `v` is invalid according to basic type layout invariants, so *any*
-/// // operation touching it is undefined behavior.
-/// // let v2 = v; // ERROR
-///
-/// unsafe {
-///     // Let us instead put in a valid value
-///     ptr::write(&mut v as *mut Box<i32>, Box::new(42i32));
-/// }
-///
-/// // Now the box is fine
-/// assert_eq!(*v, 42);
-/// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
