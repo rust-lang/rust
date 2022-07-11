@@ -33,7 +33,7 @@ if [ ! -d $MUSL ]; then
 fi
 
 cd $MUSL
-./configure --enable-optimize --enable-debug --disable-shared --prefix=/musl-$TAG "$@"
+./configure --enable-debug --disable-shared --prefix=/musl-$TAG "$@"
 if [ "$TAG" = "i586" -o "$TAG" = "i686" ]; then
   hide_output make -j$(nproc) AR=ar RANLIB=ranlib
 else
