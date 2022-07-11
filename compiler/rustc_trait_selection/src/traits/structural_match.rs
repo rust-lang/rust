@@ -26,6 +26,7 @@ pub enum NonStructuralMatchTyKind<'tcx> {
     Closure,
     Generator,
     Projection,
+    Float,
 }
 
 /// This method traverses the structure of `ty`, trying to find an
@@ -53,12 +54,16 @@ pub enum NonStructuralMatchTyKind<'tcx> {
 /// For more background on why Rust has this requirement, and issues
 /// that arose when the requirement was not enforced completely, see
 /// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
+///
+/// The floats_allowed flag is used to deny constants in floating point
 pub fn search_for_structural_match_violation<'tcx>(
     span: Span,
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
+    floats_allowed: bool,
 ) -> Option<NonStructuralMatchTy<'tcx>> {
-    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default() }).break_value()
+    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), floats_allowed })
+        .break_value()
 }
 
 /// This method returns true if and only if `adt_ty` itself has been marked as
@@ -119,6 +124,8 @@ struct Search<'tcx> {
     /// Tracks ADTs previously encountered during search, so that
     /// we will not recur on them again.
     seen: FxHashSet<hir::def_id::DefId>,
+
+    floats_allowed: bool,
 }
 
 impl<'tcx> Search<'tcx> {
@@ -192,11 +199,22 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                 // for empty array.
                 return ControlFlow::CONTINUE;
             }
-            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => {
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Str | ty::Never => {
                 // These primitive types are always structural match.
                 //
                 // `Never` is kind of special here, but as it is not inhabitable, this should be fine.
                 return ControlFlow::CONTINUE;
+            }
+
+            ty::Float(_) => {
+                if self.floats_allowed {
+                    return ControlFlow::CONTINUE;
+                } else {
+                    return ControlFlow::Break(NonStructuralMatchTy {
+                        ty,
+                        kind: NonStructuralMatchTyKind::Float,
+                    });
+                }
             }
 
             ty::Array(..) | ty::Slice(_) | ty::Ref(..) | ty::Tuple(..) => {

@@ -14,7 +14,7 @@ use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -25,6 +25,7 @@ use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
+use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
 
@@ -345,7 +346,7 @@ fn expand_macro<'cx>(
     if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
         err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
     }
-
+    annotate_doc_comment(&mut err, sess.source_map(), span);
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
         for lhs in lhses {
@@ -453,7 +454,10 @@ pub fn compile_declarative_macro(
         Failure(token, msg) => {
             let s = parse_failure_msg(&token);
             let sp = token.span.substitute_dummy(def.span);
-            sess.parse_sess.span_diagnostic.struct_span_err(sp, &s).span_label(sp, msg).emit();
+            let mut err = sess.parse_sess.span_diagnostic.struct_span_err(sp, &s);
+            err.span_label(sp, msg);
+            annotate_doc_comment(&mut err, sess.source_map(), sp);
+            err.emit();
             return dummy_syn_ext();
         }
         Error(sp, msg) => {
@@ -588,6 +592,34 @@ pub fn compile_declarative_macro(
         valid,
     });
     (mk_syn_ext(expander), rule_spans)
+}
+
+#[derive(SessionSubdiagnostic)]
+enum ExplainDocComment {
+    #[label(expand::explain_doc_comment_inner)]
+    Inner {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(expand::explain_doc_comment_outer)]
+    Outer {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+fn annotate_doc_comment(
+    err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+    sm: &SourceMap,
+    span: Span,
+) {
+    if let Ok(src) = sm.span_to_snippet(span) {
+        if src.starts_with("///") || src.starts_with("/**") {
+            err.subdiagnostic(ExplainDocComment::Outer { span });
+        } else if src.starts_with("//!") || src.starts_with("/*!") {
+            err.subdiagnostic(ExplainDocComment::Inner { span });
+        }
+    }
 }
 
 fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree) -> bool {

@@ -673,6 +673,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             if !self.report_similar_impl_candidates(
                                 impl_candidates,
                                 trait_ref,
+                                obligation.cause.body_id,
                                 &mut err,
                             ) {
                                 // This is *almost* equivalent to
@@ -707,6 +708,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     self.report_similar_impl_candidates(
                                         impl_candidates,
                                         trait_ref,
+                                        obligation.cause.body_id,
                                         &mut err,
                                     );
                                 }
@@ -1353,6 +1355,7 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
         &self,
         impl_candidates: Vec<ImplCandidate<'tcx>>,
         trait_ref: ty::PolyTraitRef<'tcx>,
+        body_id: hir::HirId,
         err: &mut Diagnostic,
     ) -> bool;
 
@@ -1735,6 +1738,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         impl_candidates: Vec<ImplCandidate<'tcx>>,
         trait_ref: ty::PolyTraitRef<'tcx>,
+        body_id: hir::HirId,
         err: &mut Diagnostic,
     ) -> bool {
         let report = |mut candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
@@ -1805,8 +1809,24 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         || self.tcx.is_builtin_derive(def_id)
                 })
                 .filter_map(|def_id| self.tcx.impl_trait_ref(def_id))
-                // Avoid mentioning type parameters.
-                .filter(|trait_ref| !matches!(trait_ref.self_ty().kind(), ty::Param(_)))
+                .filter(|trait_ref| {
+                    let self_ty = trait_ref.self_ty();
+                    // Avoid mentioning type parameters.
+                    if let ty::Param(_) = self_ty.kind() {
+                        false
+                    }
+                    // Avoid mentioning types that are private to another crate
+                    else if let ty::Adt(def, _) = self_ty.peel_refs().kind() {
+                        // FIXME(compiler-errors): This could be generalized, both to
+                        // be more granular, and probably look past other `#[fundamental]`
+                        // types, too.
+                        self.tcx
+                            .visibility(def.did())
+                            .is_accessible_from(body_id.owner.to_def_id(), self.tcx)
+                    } else {
+                        true
+                    }
+                })
                 .collect();
             return report(normalized_impl_candidates, err);
         }

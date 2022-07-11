@@ -5,7 +5,10 @@ LL | macro_rules! outer {
    | ------------------ when calling this macro
 ...
 LL |     //! Inner
-   |     ^^^^^^^^^ no rules expected this token in macro call
+   |     ^^^^^^^^^
+   |     |
+   |     no rules expected this token in macro call
+   |     inner doc comments expand to `#![doc = "..."]`, which is what this macro attempted to match
 
 error: aborting due to previous error
 
