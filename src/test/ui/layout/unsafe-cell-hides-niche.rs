@@ -19,46 +19,46 @@ struct Transparent<T>(T);
 struct NoNiche<T>(UnsafeCell<T>);
 
 // Overwriting the runtime assertion and making it a compile-time assertion
-macro_rules! assert_eq {
+macro_rules! assert_size {
     ($a:ty, $b:literal) => {{
         const _: () = assert!(std::mem::size_of::<$a>() == $b);
     }};
 }
 
 fn main() {
-    assert_eq!(Option<Wrapper<u32>>,     8);
-    assert_eq!(Option<Wrapper<N32>>,     4); // (✓ niche opt)
-    assert_eq!(Option<Transparent<u32>>, 8);
-    assert_eq!(Option<Transparent<N32>>, 4); // (✓ niche opt)
-    assert_eq!(Option<NoNiche<u32>>,     8);
-    assert_eq!(Option<NoNiche<N32>>,     8); // (✗ niche opt)
+    assert_size!(Option<Wrapper<u32>>,     8);
+    assert_size!(Option<Wrapper<N32>>,     4); // (✓ niche opt)
+    assert_size!(Option<Transparent<u32>>, 8);
+    assert_size!(Option<Transparent<N32>>, 4); // (✓ niche opt)
+    assert_size!(Option<NoNiche<u32>>,     8);
+    assert_size!(Option<NoNiche<N32>>,     8); // (✗ niche opt)
 
-    assert_eq!(Option<UnsafeCell<u32>>,  8);
-    assert_eq!(Option<UnsafeCell<N32>>,  8); // (✗ niche opt)
+    assert_size!(Option<UnsafeCell<u32>>,  8);
+    assert_size!(Option<UnsafeCell<N32>>,  8); // (✗ niche opt)
 
-    assert_eq!(       UnsafeCell<&()> , 8);
-    assert_eq!(Option<UnsafeCell<&()>>, 16); // (✗ niche opt)
-    assert_eq!(             Cell<&()> , 8);
-    assert_eq!(Option<      Cell<&()>>, 16); // (✗ niche opt)
-    assert_eq!(          RefCell<&()> , 16);
-    assert_eq!(Option<   RefCell<&()>>, 24); // (✗ niche opt)
-    assert_eq!(           RwLock<&()> , 24);
-    assert_eq!(Option<    RwLock<&()>>, 32); // (✗ niche opt)
-    assert_eq!(            Mutex<&()> , 16);
-    assert_eq!(Option<     Mutex<&()>>, 24); // (✗ niche opt)
+    assert_size!(       UnsafeCell<&()> , 8);
+    assert_size!(Option<UnsafeCell<&()>>, 16); // (✗ niche opt)
+    assert_size!(             Cell<&()> , 8);
+    assert_size!(Option<      Cell<&()>>, 16); // (✗ niche opt)
+    assert_size!(          RefCell<&()> , 16);
+    assert_size!(Option<   RefCell<&()>>, 24); // (✗ niche opt)
+    assert_size!(           RwLock<&()> , 24);
+    assert_size!(Option<    RwLock<&()>>, 32); // (✗ niche opt)
+    assert_size!(            Mutex<&()> , 16);
+    assert_size!(Option<     Mutex<&()>>, 24); // (✗ niche opt)
 
-    assert_eq!(       UnsafeCell<&[i32]> , 16);
-    assert_eq!(Option<UnsafeCell<&[i32]>>, 24); // (✗ niche opt)
-    assert_eq!(       UnsafeCell<(&(), &())> , 16);
-    assert_eq!(Option<UnsafeCell<(&(), &())>>, 24); // (✗ niche opt)
+    assert_size!(       UnsafeCell<&[i32]> , 16);
+    assert_size!(Option<UnsafeCell<&[i32]>>, 24); // (✗ niche opt)
+    assert_size!(       UnsafeCell<(&(), &())> , 16);
+    assert_size!(Option<UnsafeCell<(&(), &())>>, 24); // (✗ niche opt)
 
     trait Trait {}
-    assert_eq!(       UnsafeCell<&dyn Trait> , 16);
-    assert_eq!(Option<UnsafeCell<&dyn Trait>>, 24); // (✗ niche opt)
+    assert_size!(       UnsafeCell<&dyn Trait> , 16);
+    assert_size!(Option<UnsafeCell<&dyn Trait>>, 24); // (✗ niche opt)
 
     #[repr(simd)]
     pub struct Vec4<T>([T; 4]);
 
-    assert_eq!(       UnsafeCell<Vec4<N32>> , 16);
-    assert_eq!(Option<UnsafeCell<Vec4<N32>>>, 32); // (✗ niche opt)
+    assert_size!(       UnsafeCell<Vec4<N32>> , 16);
+    assert_size!(Option<UnsafeCell<Vec4<N32>>>, 32); // (✗ niche opt)
 }
