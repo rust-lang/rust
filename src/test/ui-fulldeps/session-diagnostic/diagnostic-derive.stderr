@@ -21,7 +21,7 @@ error: `#[nonsense(...)]` is not a valid attribute
 LL | #[nonsense(typeck::ambiguous_lifetime_bound, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: only `error`, `warning`, `help` and `note` are valid attributes
+   = help: only `error`, `warning`, `help`, `note` and `warn_` are valid attributes
 
 error: diagnostic kind not specified
   --> $DIR/diagnostic-derive.rs:53:1
@@ -363,7 +363,7 @@ error: `#[label(...)]` is not a valid attribute
 LL |     #[label(typeck::label, foo("..."))]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: only `#[error(..)]` and `#[warn(..)]` are supported
+error: only `#[error(..)]` and `#[warning(..)]` are supported
   --> $DIR/diagnostic-derive.rs:540:1
    |
 LL | / #[lint(typeck::ambiguous_lifetime_bound)]

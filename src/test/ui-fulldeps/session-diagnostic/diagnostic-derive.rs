@@ -538,7 +538,7 @@ struct LabelWithTrailingList {
 
 #[derive(SessionDiagnostic)]
 #[lint(typeck::ambiguous_lifetime_bound)]
-//~^ ERROR only `#[error(..)]` and `#[warn(..)]` are supported
+//~^ ERROR only `#[error(..)]` and `#[warning(..)]` are supported
 struct LintsBad {
 }
 
@@ -558,4 +558,11 @@ struct ErrorsBad {
 struct ErrorWithMultiSpan {
     #[primary_span]
     span: MultiSpan,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[warn_]
+struct ErrorWithWarn {
+    val: String,
 }

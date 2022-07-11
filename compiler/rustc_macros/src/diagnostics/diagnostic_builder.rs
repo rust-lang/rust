@@ -8,7 +8,7 @@ use crate::diagnostics::utils::{
     report_error_if_not_applied_to_span, report_type_error, type_is_unit, type_matches_path,
     Applicability, FieldInfo, FieldInnerTy, HasFieldMap, SetOnce,
 };
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -156,7 +156,7 @@ impl DiagnosticDeriveBuilder {
         let name = name.as_str();
         let meta = attr.parse_meta()?;
 
-        let is_help_or_note = matches!(name, "help" | "note");
+        let is_help_note_or_warn = matches!(name, "help" | "note" | "warn_");
 
         let nested = match meta {
             // Most attributes are lists, like `#[error(..)]`/`#[warning(..)]` for most cases or
@@ -164,8 +164,12 @@ impl DiagnosticDeriveBuilder {
             Meta::List(MetaList { ref nested, .. }) => nested,
             // Subdiagnostics without spans can be applied to the type too, and these are just
             // paths: `#[help]` and `#[note]`
-            Meta::Path(_) if is_help_or_note => {
-                let fn_name = proc_macro2::Ident::new(name, attr.span());
+            Meta::Path(_) if is_help_note_or_warn => {
+                let fn_name = if name == "warn_" {
+                    Ident::new("warn", attr.span())
+                } else {
+                    Ident::new(name, attr.span())
+                };
                 return Ok(quote! { #diag.#fn_name(rustc_errors::fluent::_subdiag::#fn_name); });
             }
             _ => throw_invalid_attr!(attr, &meta),
@@ -177,9 +181,11 @@ impl DiagnosticDeriveBuilder {
             "error" => self.kind.set_once((DiagnosticDeriveKind::Error, span)),
             "warning" => self.kind.set_once((DiagnosticDeriveKind::Warn, span)),
             "lint" => self.kind.set_once((DiagnosticDeriveKind::Lint, span)),
-            "help" | "note" => (),
+            "help" | "note" | "warn_" => (),
             _ => throw_invalid_attr!(attr, &meta, |diag| {
-                diag.help("only `error`, `warning`, `help` and `note` are valid attributes")
+                diag.help(
+                    "only `error`, `warning`, `help`, `note` and `warn_` are valid attributes",
+                )
             }),
         }
 
@@ -188,14 +194,16 @@ impl DiagnosticDeriveBuilder {
         let mut nested_iter = nested.into_iter();
         if let Some(nested_attr) = nested_iter.next() {
             // Report an error if there are any other list items after the path.
-            if is_help_or_note && nested_iter.next().is_some() {
+            if is_help_note_or_warn && nested_iter.next().is_some() {
                 throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
-                    diag.help("`help` and `note` struct attributes can only have one argument")
+                    diag.help(
+                        "`help`, `note` and `warn_` struct attributes can only have one argument",
+                    )
                 });
             }
 
             match nested_attr {
-                NestedMeta::Meta(Meta::Path(path)) if is_help_or_note => {
+                NestedMeta::Meta(Meta::Path(path)) if is_help_note_or_warn => {
                     let fn_name = proc_macro2::Ident::new(name, attr.span());
                     return Ok(quote! { #diag.#fn_name(rustc_errors::fluent::#path); });
                 }
@@ -203,7 +211,7 @@ impl DiagnosticDeriveBuilder {
                     self.slug.set_once((path.clone(), span));
                 }
                 NestedMeta::Meta(meta @ Meta::NameValue(_))
-                    if !is_help_or_note
+                    if !is_help_note_or_warn
                         && meta.path().segments.last().unwrap().ident.to_string() == "code" =>
                 {
                     // don't error for valid follow-up attributes
@@ -347,10 +355,12 @@ impl DiagnosticDeriveBuilder {
                 report_error_if_not_applied_to_span(attr, &info)?;
                 Ok(self.add_spanned_subdiagnostic(binding, ident, parse_quote! { _subdiag::label }))
             }
-            "note" | "help" => {
-                let path = match name {
-                    "note" => parse_quote! { _subdiag::note },
-                    "help" => parse_quote! { _subdiag::help },
+            "note" | "help" | "warn_" => {
+                let warn_ident = Ident::new("warn", Span::call_site());
+                let (ident, path) = match name {
+                    "note" => (ident, parse_quote! { _subdiag::note }),
+                    "help" => (ident, parse_quote! { _subdiag::help }),
+                    "warn_" => (&warn_ident, parse_quote! { _subdiag::warn }),
                     _ => unreachable!(),
                 };
                 if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
@@ -387,10 +397,10 @@ impl DiagnosticDeriveBuilder {
             "suggestion" | "suggestion_short" | "suggestion_hidden" | "suggestion_verbose" => {
                 return self.generate_inner_field_code_suggestion(attr, info);
             }
-            "label" | "help" | "note" => (),
+            "label" | "help" | "note" | "warn_" => (),
             _ => throw_invalid_attr!(attr, &meta, |diag| {
                 diag.help(
-                    "only `label`, `note`, `help` or `suggestion{,_short,_hidden,_verbose}` are \
+                    "only `label`, `help`, `note`, `warn` or `suggestion{,_short,_hidden,_verbose}` are \
                      valid field attributes",
                 )
             }),
@@ -419,7 +429,14 @@ impl DiagnosticDeriveBuilder {
                 Ok(self.add_spanned_subdiagnostic(binding, ident, msg))
             }
             "note" | "help" if type_is_unit(&info.ty) => Ok(self.add_subdiagnostic(ident, msg)),
-            "note" | "help" => report_type_error(attr, "`Span` or `()`")?,
+            // `warn_` must be special-cased because the attribute `warn` already has meaning and
+            // so isn't used, despite the diagnostic API being named `warn`.
+            "warn_" if type_matches_path(&info.ty, &["rustc_span", "Span"]) => Ok(self
+                .add_spanned_subdiagnostic(binding, &Ident::new("warn", Span::call_site()), msg)),
+            "warn_" if type_is_unit(&info.ty) => {
+                Ok(self.add_subdiagnostic(&Ident::new("warn", Span::call_site()), msg))
+            }
+            "note" | "help" | "warn_" => report_type_error(attr, "`Span` or `()`")?,
             _ => unreachable!(),
         }
     }
