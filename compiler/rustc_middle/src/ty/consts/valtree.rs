@@ -33,6 +33,7 @@ pub enum ValTree<'tcx> {
 }
 
 impl<'tcx> ValTree<'tcx> {
+    #[inline(always)]
     pub fn zst() -> Self {
         Self::Branch(&[])
     }
@@ -60,6 +61,7 @@ impl<'tcx> ValTree<'tcx> {
         Self::Branch(interned)
     }
 
+    #[inline(always)]
     pub fn from_scalar_int(i: ScalarInt) -> Self {
         Self::Leaf(i)
     }
