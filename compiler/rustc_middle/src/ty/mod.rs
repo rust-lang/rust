@@ -292,24 +292,23 @@ pub enum Visibility<Id = LocalDefId> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, Decodable, HashStable)]
-pub enum Restriction {
+pub enum Restriction<Id = DefId> {
     /// The restriction does not affect the item.
     Unrestricted,
     /// The restriction only applies outside of this path.
-    Restricted(DefId, Span),
+    Restricted(Id, Span),
 }
 
-impl Restriction {
+impl<Id: Into<DefId>> Restriction<Id> {
     /// Returns `true` if this restriction applies in the given module. This
     /// means the behavior is _not_ allowed.
     pub fn is_restricted_in(self, module: DefId, tcx: TyCtxt<'_>) -> bool {
         let restricted_to = match self {
             Restriction::Unrestricted => return false,
-            Restriction::Restricted(other, _) if other.krate != module.krate => return false,
             Restriction::Restricted(module, _) => module,
         };
 
-        !tcx.is_descendant_of(module, restricted_to)
+        !tcx.is_descendant_of(module, restricted_to.into())
     }
 
     /// Obtain the [`Span`] of the restriction. Panics if the restriction is unrestricted.
@@ -317,6 +316,13 @@ impl Restriction {
         match self {
             Restriction::Unrestricted => bug!("called `expect_span` on an unrestricted item"),
             Restriction::Restricted(_, span) => *span,
+        }
+    }
+
+    pub fn map_id<OutId>(self, f: impl FnOnce(Id) -> OutId) -> Restriction<OutId> {
+        match self {
+            Restriction::Unrestricted => Restriction::Unrestricted,
+            Restriction::Restricted(id, span) => Restriction::Restricted(f(id), span),
         }
     }
 }

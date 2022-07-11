@@ -716,6 +716,7 @@ pub fn walk_field_def<'a, V: Visitor<'a>>(visitor: &mut V, field: &'a FieldDef) 
     if let Some(ident) = field.ident {
         visitor.visit_ident(ident);
     }
+    visitor.visit_restriction(&field.mut_restriction);
     visitor.visit_ty(&field.ty);
     walk_list!(visitor, visit_attribute, &field.attrs);
 }

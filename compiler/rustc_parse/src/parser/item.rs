@@ -1589,6 +1589,16 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 };
+                let mut_restriction =
+                    match p.parse_restriction(kw::Mut, "mutate", FollowedByType::Yes) {
+                        Ok(mut_restriction) => mut_restriction,
+                        Err(err) => {
+                            if let Some(ref mut snapshot) = snapshot {
+                                snapshot.recover_diff_marker();
+                            }
+                            return Err(err);
+                        }
+                    };
                 let ty = match p.parse_ty() {
                     Ok(ty) => ty,
                     Err(err) => {
@@ -1603,6 +1613,7 @@ impl<'a> Parser<'a> {
                     FieldDef {
                         span: lo.to(ty.span),
                         vis,
+                        mut_restriction,
                         ident: None,
                         id: DUMMY_NODE_ID,
                         ty,
@@ -1624,7 +1635,11 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            Ok((this.parse_single_struct_field(adt_ty, lo, vis, attrs)?, TrailingToken::None))
+            let mut_restriction = this.parse_restriction(kw::Mut, "mutate", FollowedByType::No)?;
+            Ok((
+                this.parse_single_struct_field(adt_ty, lo, vis, mut_restriction, attrs)?,
+                TrailingToken::None,
+            ))
         })
     }
 
@@ -1634,10 +1649,11 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
+        mut_restriction: Restriction,
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let mut seen_comma: bool = false;
-        let a_var = self.parse_name_and_ty(adt_ty, lo, vis, attrs)?;
+        let a_var = self.parse_name_and_ty(adt_ty, lo, vis, mut_restriction, attrs)?;
         if self.token == token::Comma {
             seen_comma = true;
         }
@@ -1773,6 +1789,7 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
+        mut_restriction: Restriction,
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
@@ -1791,6 +1808,7 @@ impl<'a> Parser<'a> {
             span: lo.to(self.prev_token.span),
             ident: Some(name),
             vis,
+            mut_restriction,
             id: DUMMY_NODE_ID,
             ty,
             attrs,

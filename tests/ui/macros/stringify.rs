@@ -882,3 +882,8 @@ fn test_vis() {
     }
     assert_eq!(stringify_inherited_vis!(struct), "");
 }
+
+#[test]
+fn test_restriction() {
+    assert_eq!(stringify!(pub impl(crate) trait Foo {}), "pub impl(crate) trait Foo {}");
+}

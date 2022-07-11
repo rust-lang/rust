@@ -466,6 +466,7 @@ impl<'a> State<'a> {
                 self.maybe_print_comment(field.span.lo());
                 self.print_outer_attributes(&field.attrs);
                 self.print_visibility(&field.vis);
+                self.print_restriction("mut", &field.mut_restriction);
                 self.print_ident(field.ident.unwrap());
                 self.word_nbsp(":");
                 self.print_type(&field.ty);
