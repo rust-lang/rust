@@ -47,10 +47,22 @@ fn main() {
     assert_size!(Option<      Cell<&()>>, PTR_SIZE * 2); // (✗ niche opt)
     assert_size!(          RefCell<&()> , PTR_SIZE * 2);
     assert_size!(Option<   RefCell<&()>>, PTR_SIZE * 3); // (✗ niche opt)
-    assert_size!(           RwLock<&()> , if cfg!(target_pointer_width = "32") { 16 } else { 24 });
-    assert_size!(Option<    RwLock<&()>>, if cfg!(target_pointer_width = "32") { 20 } else { 32 }); // (✗ niche opt)
-    assert_size!(            Mutex<&()> , if cfg!(target_pointer_width = "32") { 12 } else { 16 });
-    assert_size!(Option<     Mutex<&()>>, if cfg!(target_pointer_width = "32") { 16 } else { 24 }); // (✗ niche opt)
+    assert_size!(
+        RwLock<&()>,
+        if cfg!(target_pointer_width = "32") { 16 } else { 24 }
+    );
+    assert_size!(
+        Option<RwLock<&()>>,
+        if cfg!(target_pointer_width = "32") { 20 } else { 32 }
+    ); // (✗ niche opt)
+    assert_size!(
+        Mutex<&()> ,
+        if cfg!(target_pointer_width = "32") { 12 } else { 16 }
+    );
+    assert_size!(
+        Option<Mutex<&()>>,
+        if cfg!(target_pointer_width = "32") { 16 } else { 24 }
+    ); // (✗ niche opt)
 
     assert_size!(       UnsafeCell<&[i32]> , PTR_SIZE * 2);
     assert_size!(Option<UnsafeCell<&[i32]>>, PTR_SIZE * 3); // (✗ niche opt)
