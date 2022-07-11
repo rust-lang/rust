@@ -7,6 +7,6 @@ use std::mem::transmute;
 fn main() {
     unsafe {
         let bs = b"this is a test";
-        transmute::<&[u8], &mut [u8]>(bs)[4] = 42; //~ ERROR read-only
+        transmute::<&[u8], &mut [u8]>(bs)[4] = 42; //~ ERROR: read-only
     }
 }

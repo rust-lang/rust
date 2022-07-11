@@ -7,6 +7,6 @@ use std::mem::transmute;
 fn main() {
     unsafe {
         let s = "this is a test";
-        transmute::<&[u8], &mut [u8]>(s.as_bytes())[4] = 42; //~ ERROR read-only
+        transmute::<&[u8], &mut [u8]>(s.as_bytes())[4] = 42; //~ ERROR: read-only
     }
 }

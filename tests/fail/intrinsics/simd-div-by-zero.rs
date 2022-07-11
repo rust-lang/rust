@@ -12,6 +12,6 @@ fn main() {
     unsafe {
         let x = i32x2(1, 1);
         let y = i32x2(1, 0);
-        simd_div(x, y); //~ERROR Undefined Behavior: dividing by zero
+        simd_div(x, y); //~ERROR: Undefined Behavior: dividing by zero
     }
 }

@@ -31,6 +31,9 @@ pub(crate) struct Comments {
     /// An arbitrary pattern to look for in the stderr.
     pub error_pattern: Option<(String, usize)>,
     pub error_matches: Vec<ErrorMatch>,
+    /// Ignore diagnostics below this level.
+    /// `None` means pick the lowest level from the `error_pattern`s.
+    pub require_annotations_for_level: Option<Level>,
 }
 
 /// The conditions used for "ignore" and "only" filters.
@@ -46,7 +49,7 @@ pub(crate) enum Condition {
 pub(crate) struct ErrorMatch {
     pub matched: String,
     pub revision: Option<String>,
-    pub level: Option<Level>,
+    pub level: Level,
     /// The line where the message was defined, for reporting issues with it (e.g. in case it wasn't found).
     pub definition_line: usize,
     /// The line this pattern is expecting to find a message in.
@@ -188,6 +191,13 @@ impl Comments {
                 ensure!(!self.stderr_per_bitwidth, "cannot specifiy stderr-per-bitwidth twice");
                 self.stderr_per_bitwidth = true;
             }
+            "require-annotations-for-level" => {
+                ensure!(
+                    self.require_annotations_for_level.is_none(),
+                    "cannot specify `require-annotations-for-level` twice"
+                );
+                self.require_annotations_for_level = Some(args.trim().parse()?);
+            }
             command => {
                 if let Some(s) = command.strip_prefix("ignore-") {
                     // args are ignored (can be sue as comment)
@@ -231,7 +241,7 @@ impl Comments {
         }
     }
 
-    // parse something like (?P<offset>\||[\^]+)? *(?P<level>ERROR|HELP|WARN|NOTE)?:?(?P<text>.*)
+    // parse something like (?P<offset>\||[\^]+)? *(?P<level>ERROR|HELP|WARN|NOTE): (?P<text>.*)
     fn parse_pattern_inner(
         &mut self,
         pattern: &str,
@@ -255,14 +265,15 @@ impl Comments {
                 _ => (l, pattern),
             };
 
-        let (level, pattern) = match pattern.trim_start().split_once(|c| matches!(c, ':' | ' ')) {
-            None => (None, pattern),
-            Some((level, pattern_without_level)) =>
-                match level.parse().ok() {
-                    Some(level) => (Some(level), pattern_without_level),
-                    None => (None, pattern),
-                },
-        };
+        let pattern = pattern.trim_start();
+        let offset = pattern
+            .chars()
+            .position(|c| !matches!(c, 'A'..='Z' | 'a'..='z'))
+            .ok_or_else(|| eyre!("pattern without level"))?;
+
+        let level = pattern[..offset].parse()?;
+        let pattern = &pattern[offset..];
+        let pattern = pattern.strip_prefix(':').ok_or_else(|| eyre!("no `:` after level found"))?;
 
         let matched = pattern.trim().to_string();
 

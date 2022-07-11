@@ -6,6 +6,6 @@ fn main() {
     let raw2 = &mut l as *mut _; // invalidates raw1
     // Without raw pointer tracking, Stacked Borrows cannot distinguish raw1 and raw2, and thus
     // fails to realize that raw1 should not be used any more.
-    unsafe { *raw1 = 13 }; //~ ERROR does not exist in the borrow stack
+    unsafe { *raw1 = 13 }; //~ ERROR: does not exist in the borrow stack
     unsafe { *raw2 = 13 };
 }

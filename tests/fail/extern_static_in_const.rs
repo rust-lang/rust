@@ -7,5 +7,5 @@ extern "C" {
 static X: &'static [u8; 0] = unsafe { &E };
 
 fn main() {
-    let _val = X; //~ ERROR is not supported by Miri
+    let _val = X; //~ ERROR: is not supported by Miri
 }

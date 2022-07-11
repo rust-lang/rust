@@ -2,20 +2,16 @@ use std::path::Path;
 
 use super::Comments;
 
-use crate::tests::init;
-use color_eyre::eyre::{bail, Result};
-
 #[test]
-fn parse_simple_comment() -> Result<()> {
-    init();
+fn parse_simple_comment() {
     let s = r"
 use std::mem;
 
 fn main() {
-    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR encountered a dangling reference (address $HEX is unallocated)
+    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR: encountered a dangling reference (address $HEX is unallocated)
 }
     ";
-    let comments = Comments::parse(Path::new("<dummy>"), s)?;
+    let comments = Comments::parse(Path::new("<dummy>"), s).unwrap();
     println!("parsed comments: {:#?}", comments);
     assert_eq!(comments.error_matches[0].definition_line, 5);
     assert_eq!(comments.error_matches[0].revision, None);
@@ -23,47 +19,48 @@ fn main() {
         comments.error_matches[0].matched,
         "encountered a dangling reference (address $HEX is unallocated)"
     );
-    Ok(())
 }
 
 #[test]
-fn parse_slash_slash_at() -> Result<()> {
-    init();
+fn parse_missing_level() {
+    let s = r"
+use std::mem;
+
+fn main() {
+    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ encountered a dangling reference (address $HEX is unallocated)
+}
+    ";
+    assert!(Comments::parse(Path::new("<dummy>"), s).is_err(), "expected parsing to fail");
+}
+
+#[test]
+fn parse_slash_slash_at() {
     let s = r"
 //@  error-pattern:  foomp
 use std::mem;
 
     ";
-    let comments = Comments::parse(Path::new("<dummy>"), s)?;
+    let comments = Comments::parse(Path::new("<dummy>"), s).unwrap();
     println!("parsed comments: {:#?}", comments);
     assert_eq!(comments.error_pattern, Some(("foomp".to_string(), 2)));
-    Ok(())
 }
 
 #[test]
-fn parse_slash_slash_at_fail() -> Result<()> {
-    init();
+fn parse_slash_slash_at_fail() {
     let s = r"
 //@  error-patttern  foomp
 use std::mem;
 
     ";
-    match Comments::parse(Path::new("<dummy>"), s) {
-        Ok(_) => bail!("expected parsing to fail"),
-        Err(_) => Ok(()),
-    }
+    assert!(Comments::parse(Path::new("<dummy>"), s).is_err(), "expected parsing to fail");
 }
 
 #[test]
-fn missing_colon_fail() -> Result<()> {
-    init();
+fn missing_colon_fail() {
     let s = r"
 //@stderr-per-bitwidth hello
 use std::mem;
 
     ";
-    match Comments::parse(Path::new("<dummy>"), s) {
-        Ok(_) => bail!("expected parsing to fail"),
-        Err(_) => Ok(()),
-    }
+    assert!(Comments::parse(Path::new("<dummy>"), s).is_err(), "expected parsing to fail");
 }

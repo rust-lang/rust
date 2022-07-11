@@ -5,6 +5,6 @@ fn main() {
     unsafe {
         std::intrinsics::assume(x < 10);
         std::intrinsics::assume(x > 1);
-        std::intrinsics::assume(x > 42); //~ ERROR `assume` intrinsic called with `false`
+        std::intrinsics::assume(x > 42); //~ ERROR: `assume` intrinsic called with `false`
     }
 }

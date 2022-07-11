@@ -1,6 +1,6 @@
 use std::mem;
 
-pub fn safe(_x: &mut i32, _y: &i32) {} //~ ERROR borrow stack
+pub fn safe(_x: &mut i32, _y: &i32) {} //~ ERROR: borrow stack
 
 fn main() {
     let mut x = 0;

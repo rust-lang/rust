@@ -19,7 +19,7 @@ mod safe {
 fn main() {
     let mut array = [1, 2, 3, 4];
     let (a, b) = safe::split_at_mut(&mut array, 0);
-    //~^ ERROR borrow stack
+    //~^ ERROR: borrow stack
     a[1] = 5;
     b[1] = 6;
 }

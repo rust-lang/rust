@@ -215,12 +215,6 @@ pub fn run_tests(config: Config) -> Result<()> {
                             eprintln!("    {level:?}: {message}")
                         }
                     }
-                    Error::ErrorPatternWithoutErrorAnnotation(path, line) => {
-                        eprintln!(
-                            "Annotation at {}:{line} matched an error diagnostic but did not have `ERROR` before its message",
-                            path.display()
-                        );
-                    }
                 }
                 eprintln!();
             }
@@ -280,7 +274,6 @@ enum Error {
         msgs: Vec<Message>,
         path: Option<(PathBuf, usize)>,
     },
-    ErrorPatternWithoutErrorAnnotation(PathBuf, usize),
 }
 
 type Errors = Vec<Error>;
@@ -414,27 +407,17 @@ fn check_annotations(
                 continue;
             }
         }
-        if let Some(level) = level {
-            // If we found a diagnostic with a level annotation, make sure that all
-            // diagnostics of that level have annotations, even if we don't end up finding a matching diagnostic
-            // for this pattern.
-            lowest_annotation_level = std::cmp::min(lowest_annotation_level, level);
-        }
+
+        // If we found a diagnostic with a level annotation, make sure that all
+        // diagnostics of that level have annotations, even if we don't end up finding a matching diagnostic
+        // for this pattern.
+        lowest_annotation_level = std::cmp::min(lowest_annotation_level, level);
 
         if let Some(msgs) = messages.get_mut(line) {
-            let found = msgs.iter().position(|msg| {
-                msg.message.contains(matched)
-                    // in case there is no level on the annotation, match any level.
-                    && level.map_or(true, |level| {
-                        msg.level == level
-                    })
-            });
+            let found =
+                msgs.iter().position(|msg| msg.message.contains(matched) && msg.level == level);
             if let Some(found) = found {
-                let msg = msgs.remove(found);
-                if msg.level == Level::Error && level.is_none() {
-                    errors
-                        .push(Error::ErrorPatternWithoutErrorAnnotation(path.to_path_buf(), line));
-                }
+                msgs.remove(found);
                 continue;
             }
         }
@@ -443,7 +426,12 @@ fn check_annotations(
     }
 
     let filter = |msgs: Vec<Message>| -> Vec<_> {
-        msgs.into_iter().filter(|msg| msg.level >= lowest_annotation_level).collect()
+        msgs.into_iter()
+            .filter(|msg| {
+                msg.level
+                    >= comments.require_annotations_for_level.unwrap_or(lowest_annotation_level)
+            })
+            .collect()
     };
 
     let messages_from_unknown_file_or_line = filter(messages_from_unknown_file_or_line);

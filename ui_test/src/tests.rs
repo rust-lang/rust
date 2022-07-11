@@ -20,17 +20,16 @@ fn config() -> Config {
 }
 
 #[test]
-fn issue_2156() -> Result<()> {
-    init();
+fn issue_2156() {
     let s = r"
 use std::mem;
 
 fn main() {
-    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR encountered a dangling reference (address $HEX is unallocated)
+    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR: encountered a dangling reference (address $HEX is unallocated)
 }
     ";
     let path = Path::new("$DIR/<dummy>");
-    let comments = Comments::parse(path, s)?;
+    let comments = Comments::parse(path, s).unwrap();
     let mut errors = vec![];
     let config = config();
     let messages = vec![
@@ -47,22 +46,21 @@ fn main() {
         [
             Error::PatternNotFound { definition_line: 5, .. },
             Error::ErrorsWithoutPattern { path: Some((_, 5)), .. },
-        ] => Ok(()),
+        ] => {}
         _ => panic!("{:#?}", errors),
     }
 }
 
 #[test]
-fn find_pattern() -> Result<()> {
-    init();
+fn find_pattern() {
     let s = r"
 use std::mem;
 
 fn main() {
-    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR encountered a dangling reference (address 0x10 is unallocated)
+    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR: encountered a dangling reference (address 0x10 is unallocated)
 }
     ";
-    let comments = Comments::parse(Path::new("<dummy>"), s)?;
+    let comments = Comments::parse(Path::new("<dummy>"), s).unwrap();
     let config = config();
     {
         let messages = vec![vec![], vec![], vec![], vec![], vec![], vec![
@@ -139,24 +137,23 @@ fn main() {
         );
         match &errors[..] {
             // Note no `ErrorsWithoutPattern`, because there are no `//~NOTE` in the test file, so we ignore them
-            [Error::PatternNotFound { definition_line: 5, .. }] => Ok(()),
+            [Error::PatternNotFound { definition_line: 5, .. }] => {}
             _ => panic!("not the expected error: {:#?}", errors),
         }
     }
 }
 
 #[test]
-fn duplicate_pattern() -> Result<()> {
-    init();
+fn duplicate_pattern() {
     let s = r"
 use std::mem;
 
 fn main() {
-    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR encountered a dangling reference (address 0x10 is unallocated)
-    //~^ ERROR encountered a dangling reference (address 0x10 is unallocated)
+    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR: encountered a dangling reference (address 0x10 is unallocated)
+    //~^ ERROR: encountered a dangling reference (address 0x10 is unallocated)
 }
     ";
-    let comments = Comments::parse(Path::new("<dummy>"), s)?;
+    let comments = Comments::parse(Path::new("<dummy>"), s).unwrap();
     let config = config();
     let messages = vec![
         vec![], vec![], vec![], vec![], vec![],
@@ -170,22 +167,21 @@ fn main() {
     let mut errors = vec![];
     check_annotations(messages, vec![], Path::new("moobar"), &mut errors, &config, "", &comments);
     match &errors[..] {
-        [Error::PatternNotFound { definition_line: 6, .. }] => Ok(()),
+        [Error::PatternNotFound { definition_line: 6, .. }] => {}
         _ => panic!("{:#?}", errors),
     }
 }
 
 #[test]
-fn missing_pattern() -> Result<()> {
-    init();
+fn missing_pattern() {
     let s = r"
 use std::mem;
 
 fn main() {
-    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR encountered a dangling reference (address 0x10 is unallocated)
+    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR: encountered a dangling reference (address 0x10 is unallocated)
 }
     ";
-    let comments = Comments::parse(Path::new("<dummy>"), s)?;
+    let comments = Comments::parse(Path::new("<dummy>"), s).unwrap();
     let config = config();
     let messages = vec![
         vec![], vec![], vec![], vec![], vec![],
@@ -203,23 +199,22 @@ fn main() {
     let mut errors = vec![];
     check_annotations(messages, vec![], Path::new("moobar"), &mut errors, &config, "", &comments);
     match &errors[..] {
-        [Error::ErrorsWithoutPattern { path: Some((_, 5)), .. }] => Ok(()),
+        [Error::ErrorsWithoutPattern { path: Some((_, 5)), .. }] => {}
         _ => panic!("{:#?}", errors),
     }
 }
 
 #[test]
-fn missing_warn_pattern() -> Result<()> {
-    init();
+fn missing_warn_pattern() {
     let s = r"
 use std::mem;
 
 fn main() {
-    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR encountered a dangling reference (address 0x10 is unallocated)
-    //~^ WARN cake
+    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR: encountered a dangling reference (address 0x10 is unallocated)
+    //~^ WARN: cake
 }
     ";
-    let comments = Comments::parse(Path::new("<dummy>"), s)?;
+    let comments = Comments::parse(Path::new("<dummy>"), s).unwrap();
     let config = config();
     let messages= vec![
         vec![],
@@ -247,7 +242,7 @@ fn main() {
     match &errors[..] {
         [Error::ErrorsWithoutPattern { path: Some((_, 5)), msgs, .. }] =>
             match &msgs[..] {
-                [Message { message, level: Level::Warn }] if message == "kaboom" => Ok(()),
+                [Message { message, level: Level::Warn }] if message == "kaboom" => {}
                 _ => panic!("{:#?}", msgs),
             },
         _ => panic!("{:#?}", errors),
@@ -255,17 +250,16 @@ fn main() {
 }
 
 #[test]
-fn missing_implicit_warn_pattern() -> Result<()> {
-    init();
+fn missing_implicit_warn_pattern() {
     let s = r"
 use std::mem;
-
+//@require-annotations-for-level: ERROR
 fn main() {
-    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR encountered a dangling reference (address 0x10 is unallocated)
-    //~^ cake
+    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR: encountered a dangling reference (address 0x10 is unallocated)
+    //~^ WARN: cake
 }
     ";
-    let comments = Comments::parse(Path::new("<dummy>"), s)?;
+    let comments = Comments::parse(Path::new("<dummy>"), s).unwrap();
     let config = config();
     let messages = vec![
         vec![],
@@ -291,46 +285,7 @@ fn main() {
     let mut errors = vec![];
     check_annotations(messages, vec![], Path::new("moobar"), &mut errors, &config, "", &comments);
     match &errors[..] {
-        [] => Ok(()),
+        [] => {}
         _ => panic!("{:#?}", errors),
     }
-}
-
-#[test]
-fn implicit_err_pattern() -> Result<()> {
-    init();
-    let s = r"
-use std::mem;
-
-fn main() {
-    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ encountered a dangling reference (address 0x10 is unallocated)
-}
-    ";
-    let comments = Comments::parse(Path::new("<dummy>"), s)?;
-    let config = config();
-    let messages = vec![
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-        vec![
-            Message {
-                message: "Undefined Behavior: type validation failed: encountered a dangling reference (address 0x10 is unallocated)".to_string(),
-                level: Level::Error,
-            },
-        ],
-    ];
-    let mut errors = vec![];
-    check_annotations(messages, vec![], Path::new("moobar"), &mut errors, &config, "", &comments);
-    match &errors[..] {
-        [Error::ErrorPatternWithoutErrorAnnotation(_, 5)] => Ok(()),
-        _ => panic!("{:#?}", errors),
-    }
-}
-
-/// Call this from every test to initialize eyre only once across all tests.
-pub fn init() {
-    static INIT: std::sync::Once = std::sync::Once::new();
-    INIT.call_once(|| color_eyre::install().unwrap());
 }

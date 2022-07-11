@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use color_eyre::eyre::{eyre, Error};
 use regex::Regex;
 
 #[derive(serde::Deserialize, Debug)]
@@ -45,7 +46,7 @@ struct Span {
 }
 
 impl std::str::FromStr for Level {
-    type Err = String;
+    type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "ERROR" | "error" => Ok(Self::Error),
@@ -54,7 +55,7 @@ impl std::str::FromStr for Level {
             "NOTE" | "note" => Ok(Self::Note),
             "failure-note" => Ok(Self::FailureNote),
             "error: internal compiler error" => Ok(Self::Ice),
-            _ => Err(format!("unknown level `{s}`")),
+            _ => Err(eyre!("unknown level `{s}`")),
         }
     }
 }
@@ -116,7 +117,7 @@ impl Span {
 }
 
 pub(crate) fn filter_annotations_from_rendered(rendered: &str) -> std::borrow::Cow<'_, str> {
-    let annotations = Regex::new(r" *//(\[[^\]]\])?~.*").unwrap();
+    let annotations = Regex::new(r" *//(\[[a-z,]+\])?~.*").unwrap();
     annotations.replace_all(rendered, "")
 }
 

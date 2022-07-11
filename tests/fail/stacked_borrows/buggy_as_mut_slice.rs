@@ -11,5 +11,5 @@ fn main() {
     let v1 = safe::as_mut_slice(&v);
     let _v2 = safe::as_mut_slice(&v);
     v1[1] = 5;
-    //~^ ERROR borrow stack
+    //~^ ERROR: borrow stack
 }

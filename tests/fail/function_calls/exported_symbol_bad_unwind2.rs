@@ -4,8 +4,8 @@
 #[cfg_attr(any(definition, both), rustc_allocator_nounwind)]
 #[no_mangle]
 extern "C-unwind" fn nounwind() {
-    //[definition]~^ ERROR abnormal termination: the program aborted execution
-    //[both]~^^ ERROR abnormal termination: the program aborted execution
+    //[definition]~^ ERROR: abnormal termination: the program aborted execution
+    //[both]~^^ ERROR: abnormal termination: the program aborted execution
     panic!();
 }
 
@@ -15,5 +15,5 @@ fn main() {
         fn nounwind();
     }
     unsafe { nounwind() }
-    //[extern_block]~^ ERROR unwinding past a stack frame that does not allow unwinding
+    //[extern_block]~^ ERROR: unwinding past a stack frame that does not allow unwinding
 }

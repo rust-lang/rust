@@ -10,6 +10,6 @@ fn main() {
         let _val = *y2;
         let _val = *y1;
         *y2 += 1;
-        let _fail = *y1; //~ ERROR borrow stack
+        let _fail = *y1; //~ ERROR: borrow stack
     }
 }

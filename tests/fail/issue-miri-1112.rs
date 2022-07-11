@@ -28,7 +28,7 @@ impl FunnyPointer {
             data: data as *const _ as *const (),
             vtable: ptr as *const _ as *const (),
         };
-        let obj = std::mem::transmute::<FatPointer, *mut FunnyPointer>(obj); //~ ERROR invalid drop function pointer in vtable
+        let obj = std::mem::transmute::<FatPointer, *mut FunnyPointer>(obj); //~ ERROR: invalid drop function pointer in vtable
         &*obj
     }
 }

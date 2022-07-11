@@ -17,6 +17,6 @@ fn main() {
         // without invalidating `x`.  That would be bad!  It would mean that creating `shr`
         // leaked `x` to `raw`.
         let _val = ptr::read(raw);
-        let _val = *x.get_mut(); //~ ERROR borrow stack
+        let _val = *x.get_mut(); //~ ERROR: borrow stack
     }
 }

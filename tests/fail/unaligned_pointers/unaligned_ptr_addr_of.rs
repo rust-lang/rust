@@ -9,6 +9,6 @@ fn main() {
         let x = &x[0] as *const _ as *const u32;
         // This must fail because alignment is violated: the allocation's base is not sufficiently aligned.
         // The deref is UB even if we just put the result into a raw pointer.
-        let _x = unsafe { ptr::addr_of!(*x) }; //~ ERROR memory with alignment 2, but alignment 4 is required
+        let _x = unsafe { ptr::addr_of!(*x) }; //~ ERROR: memory with alignment 2, but alignment 4 is required
     }
 }

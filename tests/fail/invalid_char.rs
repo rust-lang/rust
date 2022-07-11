@@ -6,5 +6,5 @@ fn main() {
     let c = 0xFFFFFFu32;
     assert!(std::char::from_u32(c).is_none());
     let c = unsafe { std::mem::transmute::<u32, char>(c) };
-    let _x = c == 'x'; //~ ERROR interpreting an invalid 32-bit value as a char
+    let _x = c == 'x'; //~ ERROR: interpreting an invalid 32-bit value as a char
 }

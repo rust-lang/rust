@@ -14,6 +14,6 @@ fn main() {
     for _ in 0..10 {
         let foo = Foo { x: 42, y: 99 };
         let p = &foo.x;
-        let i = *p; //~ERROR alignment 4 is required
+        let i = *p; //~ERROR: alignment 4 is required
     }
 }

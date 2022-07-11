@@ -11,5 +11,5 @@ fn main() {
     let g: fn() -> &'static i32 = unsafe { std::mem::transmute(f as fn() -> *const i32) };
 
     let _x = g();
-    //~^ ERROR encountered a null reference
+    //~^ ERROR: encountered a null reference
 }

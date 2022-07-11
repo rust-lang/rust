@@ -8,6 +8,6 @@ fn main() {
     let zptr = &z as *const _ as *const u64;
     unsafe {
         ::std::intrinsics::atomic_load_seqcst(zptr);
-        //~^ERROR accessing memory with alignment 4, but alignment 8 is required
+        //~^ERROR: accessing memory with alignment 4, but alignment 8 is required
     }
 }

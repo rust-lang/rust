@@ -12,7 +12,7 @@ fn firstn() -> impl Generator<Yield = u64, Return = ()> {
         let num = &mut num;
 
         yield *num;
-        *num += 1; //~ ERROR dereferenced after this allocation got freed
+        *num += 1; //~ ERROR: dereferenced after this allocation got freed
     }
 }
 

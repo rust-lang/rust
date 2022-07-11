@@ -6,5 +6,5 @@ union MyUninit {
 }
 
 fn main() {
-    let _b = unsafe { MyUninit { init: () }.uninit }; //~ ERROR encountered uninitialized bytes, but expected a boolean
+    let _b = unsafe { MyUninit { init: () }.uninit }; //~ ERROR: encountered uninitialized bytes, but expected a boolean
 }

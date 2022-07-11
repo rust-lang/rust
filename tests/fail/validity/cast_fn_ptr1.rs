@@ -9,5 +9,5 @@ fn main() {
     let g: fn(*const i32) = unsafe { std::mem::transmute(f as fn(&i32)) };
 
     g(0usize as *const i32)
-    //~^ ERROR encountered a null reference
+    //~^ ERROR: encountered a null reference
 }

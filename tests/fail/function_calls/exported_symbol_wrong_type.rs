@@ -5,5 +5,5 @@ fn main() {
     extern "C" {
         fn FOO();
     }
-    unsafe { FOO() } //~ ERROR attempt to call an exported symbol that is not defined as a function
+    unsafe { FOO() } //~ ERROR: attempt to call an exported symbol that is not defined as a function
 }

@@ -7,12 +7,12 @@
 
 struct PrintName<T>(T);
 impl<T> PrintName<T> {
-    const VOID: ! = panic!(); //~ERROR evaluation of `PrintName::<i32>::VOID` failed
+    const VOID: ! = panic!(); //~ERROR: evaluation of `PrintName::<i32>::VOID` failed
 }
 
 fn no_codegen<T>() {
     if false {
-        let _ = PrintName::<T>::VOID; //~ERROR post-monomorphization error
+        let _ = PrintName::<T>::VOID; //~ERROR: post-monomorphization error
     }
 }
 fn main() {

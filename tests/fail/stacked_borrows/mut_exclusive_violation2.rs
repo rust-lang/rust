@@ -7,6 +7,6 @@ fn main() {
         let mut ptr2 = ptr1.clone();
         let raw1 = ptr1.as_mut();
         let _raw2 = ptr2.as_mut();
-        let _val = *raw1; //~ ERROR borrow stack
+        let _val = *raw1; //~ ERROR: borrow stack
     }
 }

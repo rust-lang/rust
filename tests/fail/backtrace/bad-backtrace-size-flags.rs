@@ -4,6 +4,6 @@ extern "Rust" {
 
 fn main() {
     unsafe {
-        miri_backtrace_size(2); //~ ERROR  unsupported operation: unknown `miri_backtrace_size` flags 2
+        miri_backtrace_size(2); //~ ERROR:  unsupported operation: unknown `miri_backtrace_size` flags 2
     }
 }

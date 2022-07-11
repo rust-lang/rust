@@ -38,6 +38,8 @@ their command specifies, or the test will fail without even being run.
     * you can specify this multiple times, accumulating all the env vars
 * `//@normalize-stderr-test: "REGEX" -> "REPLACEMENT"` replaces all matches of `REGEX` in the stderr with `REPLACEMENT`. The replacement may specify `$1` and similar backreferences to paste captures.
     * you can specify multiple such commands, there is no need to create a single regex that handles multiple replacements that you want to perform.
+* `//@require-annotations-for-level: LEVEL` can be used to change the level of diagnostics that require a corresponding annotation.
+    * this is only useful if there are any annotations like `HELP`, `WARN` or `NOTE`, as these would automatically require annotations for all other diagnostics of the same or higher level.
 
 ## Significant differences to compiletest-rs
 
