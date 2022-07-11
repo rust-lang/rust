@@ -432,31 +432,30 @@ where
     #[instrument(skip(self), level = "debug")]
     pub fn eval_place(
         &mut self,
-        place: mir::Place<'tcx>,
+        mir_place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        let base_place = self.local_to_place(self.frame_idx(), place.local)?;
+        let mut place = self.local_to_place(self.frame_idx(), mir_place.local)?;
+        // Using `try_fold` turned out to be bad for performance, hence the loop.
+        for elem in mir_place.projection.iter() {
+            place = self.place_projection(&place, elem)?
+        }
 
-        let final_place = place
-            .projection
-            .iter()
-            .try_fold(base_place, |op, elem| self.place_projection(&op, elem))?;
-
-        trace!("{:?}", self.dump_place(final_place.place));
+        trace!("{:?}", self.dump_place(place.place));
         // Sanity-check the type we ended up with.
         debug_assert!(
             mir_assign_valid_types(
                 *self.tcx,
                 self.param_env,
                 self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
-                    place.ty(&self.frame().body.local_decls, *self.tcx).ty
+                    mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty
                 )?)?,
-                final_place.layout,
+                place.layout,
             ),
             "eval_place of a MIR place with type {:?} produced an interpreter place with type {:?}",
-            place.ty(&self.frame().body.local_decls, *self.tcx).ty,
-            final_place.layout.ty,
+            mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
+            place.layout.ty,
         );
-        Ok(final_place)
+        Ok(place)
     }
 
     /// Write an immediate to a place

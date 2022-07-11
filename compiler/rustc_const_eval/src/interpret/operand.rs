@@ -524,19 +524,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// avoid allocations.
     pub fn eval_place_to_op(
         &self,
-        place: mir::Place<'tcx>,
+        mir_place: mir::Place<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Do not use the layout passed in as argument if the base we are looking at
         // here is not the entire place.
-        let layout = if place.projection.is_empty() { layout } else { None };
+        let layout = if mir_place.projection.is_empty() { layout } else { None };
 
-        let base_op = self.local_to_op(self.frame(), place.local, layout)?;
-
-        let op = place
-            .projection
-            .iter()
-            .try_fold(base_op, |op, elem| self.operand_projection(&op, elem))?;
+        let mut op = self.local_to_op(self.frame(), mir_place.local, layout)?;
+        // Using `try_fold` turned out to be bad for performance, hence the loop.
+        for elem in mir_place.projection.iter() {
+            op = self.operand_projection(&op, elem)?
+        }
 
         trace!("eval_place_to_op: got {:?}", *op);
         // Sanity-check the type we ended up with.
@@ -545,12 +544,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 *self.tcx,
                 self.param_env,
                 self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
-                    place.ty(&self.frame().body.local_decls, *self.tcx).ty
+                    mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty
                 )?)?,
                 op.layout,
             ),
             "eval_place of a MIR place with type {:?} produced an interpreter operand with type {:?}",
-            place.ty(&self.frame().body.local_decls, *self.tcx).ty,
+            mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
             op.layout.ty,
         );
         Ok(op)
