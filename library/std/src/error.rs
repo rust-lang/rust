@@ -365,7 +365,8 @@ pub trait Error: Debug + Display {
     /// }
     /// ```
     #[unstable(feature = "error_generic_member_access", issue = "none")]
-    fn provide<'a>(&'a self, _req: &mut Demand<'a>) {}
+    #[allow(unused_variables)]
+    fn provide<'a>(&'a self, req: &mut Demand<'a>) {}
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "none")]
@@ -910,13 +911,13 @@ impl dyn Error + 'static {
         }
     }
 
-    /// Request a reference to context of type `T`.
+    /// Request a reference of type `T` as context about this error.
     #[unstable(feature = "error_generic_member_access", issue = "none")]
     pub fn request_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
         core::any::request_ref(self)
     }
 
-    /// Request a value to context of type `T`.
+    /// Request a value of type `T` as context about this error.
     #[unstable(feature = "error_generic_member_access", issue = "none")]
     pub fn request_value<T: 'static>(&self) -> Option<T> {
         core::any::request_value(self)
@@ -945,13 +946,13 @@ impl dyn Error + 'static + Send {
         <dyn Error + 'static>::downcast_mut::<T>(self)
     }
 
-    /// Request a reference to context of type `T`.
+    /// Request a reference of type `T` as context about this error.
     #[unstable(feature = "error_generic_member_access", issue = "none")]
     pub fn request_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
         <dyn Error + 'static>::request_ref(self)
     }
 
-    /// Request a value to context of type `T`.
+    /// Request a value of type `T` as context about this error.
     #[unstable(feature = "error_generic_member_access", issue = "none")]
     pub fn request_value<T: 'static>(&self) -> Option<T> {
         <dyn Error + 'static>::request_value(self)
@@ -980,13 +981,13 @@ impl dyn Error + 'static + Send + Sync {
         <dyn Error + 'static>::downcast_mut::<T>(self)
     }
 
-    /// Request a reference to context of type `T`.
+    /// Request a reference of type `T` as context about this error.
     #[unstable(feature = "error_generic_member_access", issue = "none")]
     pub fn request_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
         <dyn Error + 'static>::request_ref(self)
     }
 
-    /// Request a value to context of type `T`.
+    /// Request a value of type `T` as context about this error.
     #[unstable(feature = "error_generic_member_access", issue = "none")]
     pub fn request_value<T: 'static>(&self) -> Option<T> {
         <dyn Error + 'static>::request_value(self)
