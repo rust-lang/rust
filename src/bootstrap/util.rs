@@ -576,3 +576,27 @@ fn absolute_windows(path: &std::path::Path) -> std::io::Result<std::path::PathBu
         }
     }
 }
+
+/// Adapted from https://github.com/llvm/llvm-project/blob/782e91224601e461c019e0a4573bbccc6094fbcd/llvm/cmake/modules/HandleLLVMOptions.cmake#L1058-L1079
+///
+/// When `clang-cl` is used with instrumentation, we need to add clang's runtime library resource
+/// directory to the linker flags, otherwise there will be linker errors about the profiler runtime
+/// missing. This function returns the path to that directory.
+pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
+    // Similar to how LLVM does it, to find clang's library runtime directory:
+    // - we ask `clang-cl` to locate the `clang_rt.builtins` lib.
+    let mut builtins_locator = Command::new(clang_cl_path);
+    builtins_locator.args(&["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
+
+    let clang_rt_builtins = output(&mut builtins_locator);
+    let clang_rt_builtins = Path::new(clang_rt_builtins.trim());
+    assert!(
+        clang_rt_builtins.exists(),
+        "`clang-cl` must correctly locate the library runtime directory"
+    );
+
+    // - the profiler runtime will be located in the same directory as the builtins lib, like
+    // `$LLVM_DISTRO_ROOT/lib/clang/$LLVM_VERSION/lib/windows`.
+    let clang_rt_dir = clang_rt_builtins.parent().expect("The clang lib folder should exist");
+    clang_rt_dir.to_path_buf()
+}

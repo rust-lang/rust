@@ -1,4 +1,5 @@
 #!/bin/bash
+# ignore-tidy-linelength
 # This script installs clang on the local machine. Note that we don't install
 # clang on Linux since its compiler story is just so different. Each container
 # has its own toolchain configured appropriately already.
@@ -9,7 +10,7 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 # Update both macOS's and Windows's tarballs when bumping the version here.
-LLVM_VERSION="14.0.2"
+LLVM_VERSION="14.0.5"
 
 if isMacOS; then
     # If the job selects a specific Xcode version, use that instead of

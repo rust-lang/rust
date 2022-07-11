@@ -18,6 +18,7 @@ use std::process::Command;
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::TargetSelection;
+use crate::util::get_clang_cl_resource_dir;
 use crate::util::{self, exe, output, program_out_of_date, t, up_to_date};
 use crate::{CLang, GitRepo};
 
@@ -776,7 +777,22 @@ impl Step for Lld {
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
-        configure_cmake(builder, target, &mut cfg, true, LdFlags::default());
+        let mut ldflags = LdFlags::default();
+
+        // When building LLD as part of a build with instrumentation on windows, for example
+        // when doing PGO on CI, cmake or clang-cl don't automatically link clang's
+        // profiler runtime in. In that case, we need to manually ask cmake to do it, to avoid
+        // linking errors, much like LLVM's cmake setup does in that situation.
+        if builder.config.llvm_profile_generate && target.contains("msvc") {
+            if let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref() {
+                // Find clang's runtime library directory and push that as a search path to the
+                // cmake linker flags.
+                let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
+                ldflags.push_all(&format!("/libpath:{}", clang_rt_dir.display()));
+            }
+        }
+
+        configure_cmake(builder, target, &mut cfg, true, ldflags);
 
         // This is an awful, awful hack. Discovered when we migrated to using
         // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of
