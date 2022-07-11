@@ -31,6 +31,10 @@ use crate::{
     *,
 };
 
+/// The number of the available real-time signal with the lowest priority.
+/// Dummy constant related to epoll, must be between 32 and 64.
+pub const SIGRTMAX: i32 = 42;
+
 /// Extra data stored with each stack frame
 pub struct FrameExtra<'tcx> {
     /// Extra data for Stacked Borrows.

@@ -17,18 +17,23 @@ use crate::shims::os_str::bytes_to_os_str;
 use crate::*;
 use shims::os_str::os_str_to_bytes;
 use shims::time::system_time_to_duration;
+use shims::unix::linux::fd::epoll::Epoll;
 
 #[derive(Debug)]
-struct FileHandle {
+pub struct FileHandle {
     file: File,
     writable: bool,
 }
 
-trait FileDescriptor: std::fmt::Debug {
+pub trait FileDescriptor: std::fmt::Debug {
     fn name(&self) -> &'static str;
 
     fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
         throw_unsup_format!("{} cannot be used as FileHandle", self.name());
+    }
+
+    fn as_epoll_handle<'tcx>(&mut self) -> InterpResult<'tcx, &mut Epoll> {
+        throw_unsup_format!("not an epoll file descriptor");
     }
 
     fn read<'tcx>(
@@ -274,7 +279,7 @@ impl FileDescriptor for NullOutput {
 
 #[derive(Debug)]
 pub struct FileHandler {
-    handles: BTreeMap<i32, Box<dyn FileDescriptor>>,
+    pub handles: BTreeMap<i32, Box<dyn FileDescriptor>>,
 }
 
 impl VisitTags for FileHandler {
@@ -297,7 +302,7 @@ impl FileHandler {
         FileHandler { handles }
     }
 
-    fn insert_fd(&mut self, file_handle: Box<dyn FileDescriptor>) -> i32 {
+    pub fn insert_fd(&mut self, file_handle: Box<dyn FileDescriptor>) -> i32 {
         self.insert_fd_with_min_fd(file_handle, 0)
     }
 
@@ -374,17 +379,6 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx
         )?;
 
         Ok(0)
-    }
-
-    /// Function used when a handle is not found inside `FileHandler`. It returns `Ok(-1)`and sets
-    /// the last OS error to `libc::EBADF` (invalid file descriptor). This function uses
-    /// `T: From<i32>` instead of `i32` directly because some fs functions return different integer
-    /// types (like `read`, that returns an `i64`).
-    fn handle_not_found<T: From<i32>>(&mut self) -> InterpResult<'tcx, T> {
-        let this = self.eval_context_mut();
-        let ebadf = this.eval_libc("EBADF");
-        this.set_last_error(ebadf)?;
-        Ok((-1).into())
     }
 
     fn file_type_to_d_type(
@@ -724,6 +718,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.handle_not_found()?
             },
         ))
+    }
+
+    /// Function used when a handle is not found inside `FileHandler`. It returns `Ok(-1)`and sets
+    /// the last OS error to `libc::EBADF` (invalid file descriptor). This function uses
+    /// `T: From<i32>` instead of `i32` directly because some fs functions return different integer
+    /// types (like `read`, that returns an `i64`).
+    fn handle_not_found<T: From<i32>>(&mut self) -> InterpResult<'tcx, T> {
+        let this = self.eval_context_mut();
+        let ebadf = this.eval_libc("EBADF");
+        this.set_last_error(ebadf)?;
+        Ok((-1).into())
     }
 
     fn read(
