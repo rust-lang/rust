@@ -20,8 +20,8 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, ToPredicate, Ty, TypeVisitable};
+use rustc_middle::ty::{DefIdTree, GenericParamDefKind};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -221,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // We probe again, taking all traits into account (not only those in scope).
-            let candidates = match self.lookup_probe(
+            let mut candidates = match self.lookup_probe(
                 span,
                 segment.ident,
                 self_ty,
@@ -243,6 +243,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .collect(),
                 _ => Vec::new(),
             };
+            candidates.retain(|candidate| *candidate != self.tcx.parent(result.callee.def_id));
 
             return Err(IllegalSizedBound(candidates, needs_mut, span));
         }
