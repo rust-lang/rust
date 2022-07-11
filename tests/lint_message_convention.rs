@@ -42,6 +42,7 @@ impl Message {
             r".*remove .*the return type...",
             r"note: Clippy version: .*",
             r"the compiler unexpectedly panicked. this is a bug.",
+            r"remove the `if let` statement in the for loop and then...",
         ])
         .unwrap();
 
