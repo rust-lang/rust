@@ -824,50 +824,62 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                 }
 
                 if let Some(non_structural_match_ty) =
-                    traits::search_for_structural_match_violation(param.span, tcx, ty)
+                    traits::search_for_structural_match_violation(param.span, tcx, ty, false)
                 {
                     // We use the same error code in both branches, because this is really the same
                     // issue: we just special-case the message for type parameters to make it
                     // clearer.
-                    if let ty::Param(_) = ty.peel_refs().kind() {
-                        // Const parameters may not have type parameters as their types,
-                        // because we cannot be sure that the type parameter derives `PartialEq`
-                        // and `Eq` (just implementing them is not enough for `structural_match`).
-                        struct_span_err!(
-                            tcx.sess,
-                            hir_ty.span,
-                            E0741,
-                            "`{}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
-                            used as the type of a const parameter",
-                            ty,
-                        )
-                        .span_label(
-                            hir_ty.span,
-                            format!("`{}` may not derive both `PartialEq` and `Eq`", ty),
-                        )
-                        .note(
-                            "it is not currently possible to use a type parameter as the type of a \
-                            const parameter",
-                        )
-                        .emit();
-                    } else {
-                        let mut diag = struct_span_err!(
-                            tcx.sess,
-                            hir_ty.span,
-                            E0741,
-                            "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
-                            the type of a const parameter",
-                            non_structural_match_ty.ty,
-                        );
-
-                        if ty == non_structural_match_ty.ty {
-                            diag.span_label(
+                    match ty.peel_refs().kind() {
+                        ty::Param(_) => {
+                            // Const parameters may not have type parameters as their types,
+                            // because we cannot be sure that the type parameter derives `PartialEq`
+                            // and `Eq` (just implementing them is not enough for `structural_match`).
+                            struct_span_err!(
+                                tcx.sess,
                                 hir_ty.span,
-                                format!("`{ty}` doesn't derive both `PartialEq` and `Eq`"),
-                            );
+                                E0741,
+                                "`{ty}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
+                                used as the type of a const parameter",
+                            )
+                            .span_label(
+                                hir_ty.span,
+                                format!("`{ty}` may not derive both `PartialEq` and `Eq`"),
+                            )
+                            .note(
+                                "it is not currently possible to use a type parameter as the type of a \
+                                const parameter",
+                            )
+                            .emit();
                         }
+                        ty::Float(_) => {
+                            struct_span_err!(
+                                tcx.sess,
+                                hir_ty.span,
+                                E0741,
+                                "`{ty}` is forbidden as the type of a const generic parameter",
+                            )
+                            .note("floats do not derive `Eq` or `Ord`, which are required for const parameters")
+                            .emit();
+                        }
+                        _ => {
+                            let mut diag = struct_span_err!(
+                                tcx.sess,
+                                hir_ty.span,
+                                E0741,
+                                "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
+                                the type of a const parameter",
+                                non_structural_match_ty.ty,
+                            );
 
-                        diag.emit();
+                            if ty == non_structural_match_ty.ty {
+                                diag.span_label(
+                                    hir_ty.span,
+                                    format!("`{ty}` doesn't derive both `PartialEq` and `Eq`"),
+                                );
+                            }
+
+                            diag.emit();
+                        }
                     }
                 }
             } else {
