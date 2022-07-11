@@ -286,6 +286,7 @@ fn main() {
             let _val = mem::zeroed::<LR_NonZero>();
             let _val = mem::zeroed::<[LR_NonZero; 1]>();
             let _val = mem::zeroed::<[NonNull<()>; 1]>();
+            let _val = mem::uninitialized::<[NonNull<()>; 1]>();
         }
     }
 }
