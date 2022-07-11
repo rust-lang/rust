@@ -3405,7 +3405,11 @@ impl fmt::Debug for AtomicBool {
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl<T> fmt::Debug for AtomicPtr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.load(Ordering::Relaxed), f)
+        if f.debug_variant() == fmt::DebugVariant::Pointer {
+            fmt::Pointer::fmt(self, f)
+        } else {
+            fmt::Debug::fmt(&self.load(Ordering::Relaxed), f)
+        }
     }
 }
 

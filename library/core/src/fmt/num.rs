@@ -183,12 +183,14 @@ macro_rules! debug {
         impl fmt::Debug for $T {
             #[inline]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                if f.debug_lower_hex() {
-                    fmt::LowerHex::fmt(self, f)
-                } else if f.debug_upper_hex() {
-                    fmt::UpperHex::fmt(self, f)
-                } else {
-                    fmt::Display::fmt(self, f)
+                match f.debug_variant() {
+                    fmt::DebugVariant::LowerHex => fmt::LowerHex::fmt(self, f),
+                    fmt::DebugVariant::UpperHex => fmt::UpperHex::fmt(self, f),
+                    fmt::DebugVariant::Octal => fmt::Octal::fmt(self, f),
+                    fmt::DebugVariant::Binary => fmt::Binary::fmt(self, f),
+                    fmt::DebugVariant::LowerExp => fmt::LowerExp::fmt(self, f),
+                    fmt::DebugVariant::UpperExp => fmt::UpperExp::fmt(self, f),
+                    _ => fmt::Display::fmt(self, f),
                 }
             }
         }

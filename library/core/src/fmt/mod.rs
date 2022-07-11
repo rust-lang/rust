@@ -376,12 +376,46 @@ impl<'a> ArgumentV1<'a> {
 // flags available in the v1 format of format_args
 #[derive(Copy, Clone)]
 enum FlagV1 {
-    SignPlus,
-    SignMinus,
-    Alternate,
-    SignAwareZeroPad,
-    DebugLowerHex,
-    DebugUpperHex,
+    // boolean flags
+    SignPlus = 0b0000_0001,
+    SignMinus = 0b0000_0010,
+    Alternate = 0b0000_0100,
+    SignAwareZeroPad = 0b0000_1000,
+
+    // bitfields
+    DebugVariant = 0b1111_0000_0000,
+}
+
+/// Variant for a debug format.
+///
+/// This exposes the type given alongside debug formatting.
+#[unstable(feature = "debug_variants", issue = "none")]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+pub enum DebugVariant {
+    /// [`Display`]-like formatting. (`{:?}`)
+    #[default]
+    Display = 0b0000_0000_0000,
+
+    /// [`LowerHex`]-like formatting. (`{:x?}`)
+    LowerHex = 0b0001_0000_0000,
+
+    /// [`UpperHex`]-like formatting. (`{:X?}`)
+    UpperHex = 0b0010_0000_0000,
+
+    /// [`Octal`]-like formatting. (`{:o?}`)
+    Octal = 0b0100_0000_0000,
+
+    /// [`Binary`]-like formatting. (`{:b?}`)
+    Binary = 0b1000_0000_0000,
+
+    /// [`LowerExp`]-like formatting. (`{:e?}`)
+    LowerExp = 0b0011_0000_0000,
+
+    /// [`UpperExp`]-like formatting. (`{:E?}`)
+    UpperExp = 0b0110_0000_0000,
+
+    /// [`Pointer`]-like formatting. (`{:p?}`)
+    Pointer = 0b1100_0000_0000,
 }
 
 impl<'a> Arguments<'a> {
@@ -1840,7 +1874,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_plus(&self) -> bool {
-        self.flags & (1 << FlagV1::SignPlus as u32) != 0
+        self.flags & FlagV1::SignPlus as u32 != 0
     }
 
     /// Determines if the `-` flag was specified.
@@ -1869,7 +1903,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_minus(&self) -> bool {
-        self.flags & (1 << FlagV1::SignMinus as u32) != 0
+        self.flags & FlagV1::SignMinus as u32 != 0
     }
 
     /// Determines if the `#` flag was specified.
@@ -1897,7 +1931,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn alternate(&self) -> bool {
-        self.flags & (1 << FlagV1::Alternate as u32) != 0
+        self.flags & FlagV1::Alternate as u32 != 0
     }
 
     /// Determines if the `0` flag was specified.
@@ -1923,17 +1957,31 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_aware_zero_pad(&self) -> bool {
-        self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
+        self.flags & FlagV1::SignAwareZeroPad as u32 != 0
     }
 
-    // FIXME: Decide what public API we want for these two flags.
-    // https://github.com/rust-lang/rust/issues/48584
-    fn debug_lower_hex(&self) -> bool {
-        self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0
-    }
+    /// Determines the variant for a [`Debug`] format.
+    #[unstable(feature = "debug_variants", issue = "none")]
+    pub fn debug_variant(&self) -> DebugVariant {
+        // FIXME: use const patterns
+        const LOWER_HEX: u32 = DebugVariant::LowerHex as u32;
+        const UPPER_HEX: u32 = DebugVariant::UpperHex as u32;
+        const OCTAL: u32 = DebugVariant::Octal as u32;
+        const BINARY: u32 = DebugVariant::Binary as u32;
+        const LOWER_EXP: u32 = DebugVariant::LowerExp as u32;
+        const UPPER_EXP: u32 = DebugVariant::UpperExp as u32;
+        const POINTER: u32 = DebugVariant::Pointer as u32;
 
-    fn debug_upper_hex(&self) -> bool {
-        self.flags & (1 << FlagV1::DebugUpperHex as u32) != 0
+        match self.flags & FlagV1::DebugVariant as u32 {
+            LOWER_HEX => DebugVariant::LowerHex,
+            UPPER_HEX => DebugVariant::UpperHex,
+            OCTAL => DebugVariant::Octal,
+            BINARY => DebugVariant::Binary,
+            LOWER_EXP => DebugVariant::LowerExp,
+            UPPER_EXP => DebugVariant::UpperExp,
+            POINTER => DebugVariant::Pointer,
+            _ => DebugVariant::Display,
+        }
     }
 
     /// Creates a [`DebugStruct`] builder designed to assist with creation of
@@ -2380,7 +2428,7 @@ macro_rules! fmt_refs {
     }
 }
 
-fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
+fmt_refs! { Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
 
 #[unstable(feature = "never_type", issue = "35121")]
 impl Debug for ! {
@@ -2493,13 +2541,13 @@ pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Resul
     // or not to zero extend, and then unconditionally set it to get the
     // prefix.
     if f.alternate() {
-        f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
+        f.flags |= FlagV1::SignAwareZeroPad as u32;
 
         if f.width.is_none() {
             f.width = Some((usize::BITS / 4) as usize + 2);
         }
     }
-    f.flags |= 1 << (FlagV1::Alternate as u32);
+    f.flags |= FlagV1::Alternate as u32;
 
     let ret = LowerHex::fmt(&ptr_addr, f);
 
@@ -2542,6 +2590,27 @@ impl<T: ?Sized> Debug for *const T {
 impl<T: ?Sized> Debug for *mut T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         Pointer::fmt(self, f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + Debug> Debug for &T {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        if f.debug_variant() == DebugVariant::Pointer {
+            Pointer::fmt(self, f)
+        } else {
+            Debug::fmt(&**self, f)
+        }
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + Debug> Debug for &mut T {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        if f.debug_variant() == DebugVariant::Pointer {
+            Pointer::fmt(self, f)
+        } else {
+            Debug::fmt(&**self, f)
+        }
     }
 }
 

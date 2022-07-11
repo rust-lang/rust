@@ -218,8 +218,21 @@ fn test_format_int_twos_complement() {
     assert_eq!(format!("{}", i64::MIN), "-9223372036854775808");
 }
 
+#[cfg(not(bootstrap))]
 #[test]
-fn test_format_debug_hex() {
+fn test_format_debug_bases() {
     assert_eq!(format!("{:02x?}", b"Foo\0"), "[46, 6f, 6f, 00]");
     assert_eq!(format!("{:02X?}", b"Foo\0"), "[46, 6F, 6F, 00]");
+    #[cfg(not(bootstrap))]
+    {
+        assert_eq!(format!("{:03o?}", b"Foo\0"), "[106, 157, 157, 000]");
+        assert_eq!(format!("{:07b?}", b"Foo\0"), "[1000110, 1101111, 1101111, 0000000]");
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[test]
+fn test_format_debug_exp() {
+    assert_eq!(format!("{:e?}", &[1, 20, 300]), "[1e0, 2e1, 3e2]");
+    assert_eq!(format!("{:E?}", &[1, 20, 300]), "[1E0, 2E1, 3E2]");
 }

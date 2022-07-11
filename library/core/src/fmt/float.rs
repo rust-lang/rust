@@ -1,4 +1,4 @@
-use crate::fmt::{Debug, Display, Formatter, LowerExp, Result, UpperExp};
+use crate::fmt::{Debug, DebugVariant, Display, Formatter, LowerExp, Result, UpperExp};
 use crate::mem::MaybeUninit;
 use crate::num::flt2dec;
 use crate::num::fmt as numfmt;
@@ -195,7 +195,11 @@ macro_rules! floating {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Debug for $ty {
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
-                float_to_general_debug(fmt, self)
+                match fmt.debug_variant() {
+                    DebugVariant::LowerExp => LowerExp::fmt(self, fmt),
+                    DebugVariant::UpperExp => UpperExp::fmt(self, fmt),
+                    _ => float_to_general_debug(fmt, self),
+                }
             }
         }
 

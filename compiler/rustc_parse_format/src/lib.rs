@@ -142,19 +142,36 @@ pub enum Alignment {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Flag {
     /// A `+` will be used to denote positive numbers.
-    FlagSignPlus,
+    FlagSignPlus = 0b0000_0001,
     /// A `-` will be used to denote negative numbers. This is the default.
-    FlagSignMinus,
+    FlagSignMinus = 0b0000_0010,
     /// An alternate form will be used for the value. In the case of numbers,
     /// this means that the number will be prefixed with the supplied string.
-    FlagAlternate,
+    FlagAlternate = 0b0000_0100,
     /// For numbers, this means that the number will be padded with zeroes,
     /// and the sign (`+` or `-`) will precede them.
-    FlagSignAwareZeroPad,
-    /// For Debug / `?`, format integers in lower-case hexadecimal.
-    FlagDebugLowerHex,
-    /// For Debug / `?`, format integers in upper-case hexadecimal.
-    FlagDebugUpperHex,
+    FlagSignAwareZeroPad = 0b0000_1000,
+    /// For Debug / `?`, the variant used.
+    FlagDebugVariant = 0b1111_0000_0000,
+}
+
+/// Version of `DebugVariant` that can be used on stable.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum DebugVariant {
+    /// [`LowerHex`]-like formatting. (`{:x?}`)
+    LowerHex = 0b0001_0000_0000,
+    /// [`UpperHex`]-like formatting. (`{:X?}`)
+    UpperHex = 0b0010_0000_0000,
+    /// [`Octal`]-like formatting. (`{:o?}`)
+    Octal = 0b0100_0000_0000,
+    /// [`Binary`]-like formatting. (`{:b?}`)
+    Binary = 0b1000_0000_0000,
+    /// [`LowerExp`]-like formatting. (`{:e?}`)
+    LowerExp = 0b0011_0000_0000,
+    /// [`UpperExp`]-like formatting. (`{:E?}`)
+    UpperExp = 0b0110_0000_0000,
+    /// [`Pointer`]-like formatting. (`{:p?}`)
+    Pointer = 0b1100_0000_0000,
 }
 
 /// A count is used for the precision and width parameters of an integer, and
@@ -580,13 +597,13 @@ impl<'a> Parser<'a> {
         }
         // Sign flags
         if self.consume('+') {
-            spec.flags |= 1 << (FlagSignPlus as u32);
+            spec.flags |= FlagSignPlus as u32;
         } else if self.consume('-') {
-            spec.flags |= 1 << (FlagSignMinus as u32);
+            spec.flags |= FlagSignMinus as u32;
         }
         // Alternate marker
         if self.consume('#') {
-            spec.flags |= 1 << (FlagAlternate as u32);
+            spec.flags |= FlagAlternate as u32;
         }
         // Width and precision
         let mut havewidth = false;
@@ -601,7 +618,7 @@ impl<'a> Parser<'a> {
                 spec.width_span = Some(self.span(end - 1, end + 1));
                 havewidth = true;
             } else {
-                spec.flags |= 1 << (FlagSignAwareZeroPad as u32);
+                spec.flags |= FlagSignAwareZeroPad as u32;
             }
         }
 
@@ -628,30 +645,42 @@ impl<'a> Parser<'a> {
             spec.precision_span = Some(self.span(start, end));
         }
 
-        let ty_span_start = self.current_pos();
+        let mut ty_span_start = self.cur.peek().map(|(pos, _)| *pos);
         // Optional radix followed by the actual format specifier
-        if self.consume('x') {
-            if self.consume('?') {
-                spec.flags |= 1 << (FlagDebugLowerHex as u32);
-                spec.ty = "?";
-            } else {
-                spec.ty = "x";
-            }
-        } else if self.consume('X') {
-            if self.consume('?') {
-                spec.flags |= 1 << (FlagDebugUpperHex as u32);
-                spec.ty = "?";
-            } else {
-                spec.ty = "X";
-            }
-        } else if self.consume('?') {
+        if self.consume('?') {
             spec.ty = "?";
         } else {
             spec.ty = self.word();
-            if !spec.ty.is_empty() {
-                let ty_span_end = self.current_pos();
-                spec.ty_span = Some(self.span(ty_span_start, ty_span_end));
+
+            // FIXME: let chains
+            if let Some(&(pos, c)) = self.cur.peek() {
+                if c == '?' {
+                    let variant = match spec.ty {
+                        "x" => Some(DebugVariant::LowerHex),
+                        "X" => Some(DebugVariant::UpperHex),
+                        "o" => Some(DebugVariant::Octal),
+                        "b" => Some(DebugVariant::Binary),
+                        "e" => Some(DebugVariant::LowerExp),
+                        "E" => Some(DebugVariant::UpperExp),
+                        "p" => Some(DebugVariant::Pointer),
+                        _ => None,
+                    };
+                    if let Some(variant) = variant {
+                        spec.ty = "?";
+                        spec.flags |= variant as u32;
+                        ty_span_start = Some(pos);
+
+                        // only advance if we have a valid variant
+                        self.cur.next();
+                    }
+                }
             }
+        }
+        let ty_span_end = self.cur.peek().map(|(pos, _)| *pos);
+        if !spec.ty.is_empty() {
+            spec.ty_span = ty_span_start
+                .and_then(|s| ty_span_end.map(|e| (s, e)))
+                .map(|(start, end)| self.to_span_index(start).to(self.to_span_index(end)));
         }
         spec
     }

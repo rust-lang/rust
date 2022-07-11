@@ -2421,7 +2421,11 @@ impl<T: ?Sized + fmt::Display> fmt::Display for Arc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&**self, f)
+        if f.debug_variant() == fmt::DebugVariant::Pointer {
+            fmt::Pointer::fmt(self, f)
+        } else {
+            fmt::Debug::fmt(&**self, f)
+        }
     }
 }
 

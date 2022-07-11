@@ -19,6 +19,14 @@ fn test_pointer_formats_data_pointer() {
     assert_eq!(format!("{b:p}"), format!("{:p}", b.as_ptr()));
 }
 
+#[cfg(not(bootstrap))]
+#[test]
+fn test_pointer_debug() {
+    let data = &1;
+    assert_eq!(format!("{:?}", data), "1");
+    assert_eq!(format!("{data:p?}"), format!("{data:p}"));
+}
+
 #[test]
 fn test_estimated_capacity() {
     assert_eq!(format_args!("").estimated_capacity(), 0);

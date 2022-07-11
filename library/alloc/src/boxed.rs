@@ -1830,7 +1830,11 @@ impl<T: fmt::Display + ?Sized, A: Allocator> fmt::Display for Box<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug + ?Sized, A: Allocator> fmt::Debug for Box<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&**self, f)
+        if f.debug_variant() == fmt::DebugVariant::Pointer {
+            fmt::Pointer::fmt(self, f)
+        } else {
+            fmt::Debug::fmt(&**self, f)
+        }
     }
 }
 

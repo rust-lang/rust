@@ -319,7 +319,7 @@
 //! sign := '+' | '-'
 //! width := count
 //! precision := count | '*'
-//! type := '' | '?' | 'x?' | 'X?' | identifier
+//! type := '' | '?' | identifier | identifier '?'
 //! count := parameter | integer
 //! parameter := argument '$'
 //! ```
@@ -338,16 +338,18 @@
 //! well as [`isize`]). The current mapping of types to traits is:
 //!
 //! * *nothing* ⇒ [`Display`]
-//! * `?` ⇒ [`Debug`]
-//! * `x?` ⇒ [`Debug`] with lower-case hexadecimal integers
-//! * `X?` ⇒ [`Debug`] with upper-case hexadecimal integers
-//! * `o` ⇒ [`Octal`]
 //! * `x` ⇒ [`LowerHex`]
 //! * `X` ⇒ [`UpperHex`]
-//! * `p` ⇒ [`Pointer`]
+//! * `o` ⇒ [`Octal`]
 //! * `b` ⇒ [`Binary`]
+//! * `p` ⇒ [`Pointer`]
 //! * `e` ⇒ [`LowerExp`]
 //! * `E` ⇒ [`UpperExp`]
+//!
+//! Additionally, any formatting kind can add `?` to be converted into [`Debug`] formatting,
+//! which gives a hint to use a particular kind of formatting if possible. This means that `?`
+//! by itself will fall back to the default debug-formatting, but `x?` will hint to use
+//! `LowerHex`-style formatting if possible.
 //!
 //! What this means is that any type of argument which implements the
 //! [`fmt::Binary`][`Binary`] trait can then be formatted with `{:b}`. Implementations
