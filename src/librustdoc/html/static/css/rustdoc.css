@@ -950,8 +950,8 @@ table,
 	/* Removes default arrow from firefox */
 	text-indent: 0.01px;
 }
-/* cancel stylistic differences in padding
-in firefox for "appearance: none" <select>s */
+/* cancel stylistic differences in padding in firefox
+for "appearance: none"-style (or equivalent) <select>s */
 @-moz-document url-prefix() {
 	#crate-search {
 		padding-left: 0px; /* == 4px - 4px */
