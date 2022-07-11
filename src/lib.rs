@@ -167,7 +167,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
     }
 
-    fn target_features(&self, _sess: &Session) -> Vec<rustc_span::Symbol> {
+    fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
         vec![]
     }
 
