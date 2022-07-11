@@ -611,6 +611,30 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             TyKind::Path(ref qself, ref path) => {
                 self.diagnostic_metadata.current_type_path = Some(ty);
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
+
+                // Check whether we should interpret this as a bare trait object.
+                if qself.is_none()
+                    && let Some(partial_res) = self.r.partial_res_map.get(&ty.id)
+                    && partial_res.unresolved_segments() == 0
+                    && let Res::Def(DefKind::Trait | DefKind::TraitAlias, _) = partial_res.base_res()
+                {
+                    // This path is actually a bare trait object.  In case of a bare `Fn`-trait
+                    // object with anonymous lifetimes, we need this rib to correctly place the
+                    // synthetic lifetimes.
+                    let span = ty.span.shrink_to_lo().to(path.span.shrink_to_lo());
+                    self.with_generic_param_rib(
+                        &[],
+                        NormalRibKind,
+                        LifetimeRibKind::Generics {
+                            binder: ty.id,
+                            kind: LifetimeBinderKind::PolyTrait,
+                            span,
+                        },
+                        |this| this.visit_path(&path, ty.id),
+                    );
+                    self.diagnostic_metadata.current_type_path = prev_ty;
+                    return;
+                }
             }
             TyKind::ImplicitSelf => {
                 let self_ty = Ident::with_dummy_span(kw::SelfUpper);
