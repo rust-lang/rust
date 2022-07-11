@@ -48,7 +48,10 @@ pub fn add_configuration(
 ) {
     let tf = sym::target_feature;
 
-    let target_features = codegen_backend.target_features(sess);
+    let unstable_target_features = codegen_backend.target_features(sess, true);
+    sess.unstable_target_features.extend(unstable_target_features.iter().cloned());
+
+    let target_features = codegen_backend.target_features(sess, false);
     sess.target_features.extend(target_features.iter().cloned());
 
     cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));

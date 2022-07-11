@@ -194,6 +194,9 @@ pub struct Session {
 
     /// Set of enabled features for the current target.
     pub target_features: FxHashSet<Symbol>,
+
+    /// Set of enabled features for the current target, including unstable ones.
+    pub unstable_target_features: FxHashSet<Symbol>,
 }
 
 pub struct PerfStats {
@@ -1341,6 +1344,7 @@ pub fn build_session(
         miri_unleashed_features: Lock::new(Default::default()),
         asm_arch,
         target_features: FxHashSet::default(),
+        unstable_target_features: FxHashSet::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);

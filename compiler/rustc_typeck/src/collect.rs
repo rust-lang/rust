@@ -3198,7 +3198,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
 /// Computes the set of target features used in a function for the purposes of
 /// inline assembly.
 fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx FxHashSet<Symbol> {
-    let mut target_features = tcx.sess.target_features.clone();
+    let mut target_features = tcx.sess.unstable_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);
         target_features.extend(&attrs.target_features);
