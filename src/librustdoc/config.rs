@@ -329,6 +329,17 @@ impl Options {
             return Err(0);
         }
 
+        let z_flags = matches.opt_strs("Z");
+        if z_flags.iter().any(|x| *x == "help") {
+            print_flag_list("-Z", config::DB_OPTIONS);
+            return Err(0);
+        }
+        let c_flags = matches.opt_strs("C");
+        if c_flags.iter().any(|x| *x == "help") {
+            print_flag_list("-C", config::CG_OPTIONS);
+            return Err(0);
+        }
+
         let color = config::parse_color(matches);
         let config::JsonConfig { json_rendered, json_unused_externs, .. } =
             config::parse_json(matches);
@@ -342,17 +353,6 @@ impl Options {
 
         // check for deprecated options
         check_deprecated_options(matches, &diag);
-
-        let z_flags = matches.opt_strs("Z");
-        if z_flags.iter().any(|x| *x == "help") {
-            print_flag_list("-Z", config::DB_OPTIONS);
-            return Err(0);
-        }
-        let c_flags = matches.opt_strs("C");
-        if c_flags.iter().any(|x| *x == "help") {
-            print_flag_list("-C", config::CG_OPTIONS);
-            return Err(0);
-        }
 
         if matches.opt_strs("passes") == ["list"] {
             println!("Available passes for running rustdoc:");
