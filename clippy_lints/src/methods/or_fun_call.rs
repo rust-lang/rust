@@ -52,11 +52,10 @@ pub(super) fn check<'tcx>(
                 || (matches!(path, sym::new) && implements_default(arg, default_trait_id));
 
             then {
-                let span_replace_word = method_span.with_hi(span.hi());
                 span_lint_and_sugg(
                     cx,
                     OR_FUN_CALL,
-                    span_replace_word,
+                    method_span.with_hi(span.hi()),
                     &format!("use of `{}` followed by a call to `{}`", name, path),
                     "try this",
                     "unwrap_or_default()".to_string(),
