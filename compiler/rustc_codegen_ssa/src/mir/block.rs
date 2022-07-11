@@ -528,7 +528,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         source_info: mir::SourceInfo,
         target: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
-        strict_validity: bool,
     ) -> bool {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
@@ -553,20 +552,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let layout = bx.layout_of(ty);
             let do_panic = match intrinsic {
                 Inhabited => layout.abi.is_uninhabited(),
-                ZeroValid => !might_permit_raw_init(
-                    bx.tcx(),
-                    source_info.span,
-                    layout,
-                    strict_validity,
-                    InitKind::Zero,
-                ),
-                UninitValid => !might_permit_raw_init(
-                    bx.tcx(),
-                    source_info.span,
-                    layout,
-                    strict_validity,
-                    InitKind::Uninit,
-                ),
+                ZeroValid => !might_permit_raw_init(bx.tcx(), layout, InitKind::Zero),
+                UninitValid => !might_permit_raw_init(bx.tcx(), layout, InitKind::Uninit),
             };
             if do_panic {
                 let msg_str = with_no_visible_paths!({
@@ -701,7 +688,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             source_info,
             target,
             cleanup,
-            self.cx.tcx().sess.opts.debugging_opts.strict_init_checks,
         ) {
             return;
         }

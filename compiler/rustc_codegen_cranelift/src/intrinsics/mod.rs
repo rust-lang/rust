@@ -55,6 +55,7 @@ mod simd;
 pub(crate) use cpuid::codegen_cpuid_call;
 pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
+use rustc_const_eval::might_permit_raw_init::might_permit_raw_init;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -673,12 +674,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             }
 
             if intrinsic == sym::assert_zero_valid
-                && !rustc_const_eval::might_permit_raw_init::might_permit_raw_init(
-                    fx.tcx,
-                    source_info.span,
-                    layout,
-                    fx.tcx.sess.opts.debugging_opts.strict_init_checks,
-                    InitKind::Zero) {
+                && !might_permit_raw_init(fx.tcx, layout, InitKind::Zero) {
 
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic(
@@ -691,12 +687,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             }
 
             if intrinsic == sym::assert_uninit_valid
-                && !rustc_const_eval::might_permit_raw_init::might_permit_raw_init(
-                    fx.tcx,
-                    source_info.span,
-                    layout,
-                    fx.tcx.sess.opts.debugging_opts.strict_init_checks,
-                    InitKind::Uninit) {
+                && !might_permit_raw_init(fx.tcx, layout, InitKind::Uninit) {
 
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic(

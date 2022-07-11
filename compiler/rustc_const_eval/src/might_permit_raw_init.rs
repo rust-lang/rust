@@ -3,20 +3,19 @@ use crate::interpret::{InterpCx, MemoryKind, OpTy};
 use rustc_middle::ty::layout::LayoutCx;
 use rustc_middle::ty::{layout::TyAndLayout, ParamEnv, TyCtxt};
 use rustc_session::Limit;
-use rustc_span::Span;
 use rustc_target::abi::InitKind;
 
 pub fn might_permit_raw_init<'tcx>(
     tcx: TyCtxt<'tcx>,
-    root_span: Span,
     ty: TyAndLayout<'tcx>,
-    strict: bool,
     kind: InitKind,
 ) -> bool {
+    let strict = tcx.sess.opts.debugging_opts.strict_init_checks;
+
     if strict {
         let machine = CompileTimeInterpreter::new(Limit::new(0), false);
 
-        let mut cx = InterpCx::new(tcx, root_span, ParamEnv::reveal_all(), machine);
+        let mut cx = InterpCx::new(tcx, rustc_span::DUMMY_SP, ParamEnv::reveal_all(), machine);
 
         // We could panic here... Or we could just return "yeah it's valid whatever". Or let
         // codegen_panic_intrinsic return an error that halts compilation.

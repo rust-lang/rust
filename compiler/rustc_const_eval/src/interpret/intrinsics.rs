@@ -417,13 +417,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 if intrinsic_name == sym::assert_zero_valid {
-                    let should_panic = !might_permit_raw_init(
-                        *self.tcx,
-                        self.cur_span(),
-                        layout,
-                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
-                        InitKind::Zero,
-                    );
+                    let should_panic = !might_permit_raw_init(*self.tcx, layout, InitKind::Zero);
 
                     if should_panic {
                         M::abort(
@@ -437,13 +431,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 if intrinsic_name == sym::assert_uninit_valid {
-                    let should_panic = !might_permit_raw_init(
-                        *self.tcx,
-                        self.cur_span(),
-                        layout,
-                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
-                        InitKind::Uninit,
-                    );
+                    let should_panic = !might_permit_raw_init(*self.tcx, layout, InitKind::Uninit);
 
                     if should_panic {
                         M::abort(
