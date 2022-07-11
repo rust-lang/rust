@@ -1092,12 +1092,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 hide_niches(a);
                                 hide_niches(b);
                             }
-                            Abi::Vector { element, count: _ } => {
-                                // Until we support types other than floats and integers in SIMD,
-                                // `element` must already be a full for its range, so there's nothing to
-                                // do here.
-                                assert!(element.is_always_valid(dl));
-                            }
+                            Abi::Vector { element, count: _ } => hide_niches(element),
                             Abi::Aggregate { sized: _ } => {}
                         }
                         st.largest_niche = None;

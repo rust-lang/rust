@@ -5,6 +5,8 @@
 
 // run-pass
 
+#![feature(repr_simd)]
+
 use std::cell::{UnsafeCell, RefCell, Cell};
 use std::mem::size_of;
 use std::num::NonZeroU32 as N32;
@@ -47,4 +49,10 @@ fn main() {
     trait Trait {}
     assert_eq!(size_of::<       UnsafeCell<&dyn Trait> >(), 16);
     assert_eq!(size_of::<Option<UnsafeCell<&dyn Trait>>>(), 24); // (✗ niche opt)
+
+    #[repr(simd)]
+    pub struct Vec4<T>([T; 4]);
+
+    assert_eq!(size_of::<       UnsafeCell<Vec4<N32>> >(), 16);
+    assert_eq!(size_of::<Option<UnsafeCell<Vec4<N32>>>>(), 32); // (✗ niche opt)
 }
