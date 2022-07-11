@@ -1014,19 +1014,20 @@ impl<'a> MethodDef<'a> {
     /// ```
     /// But if the struct is `repr(packed)`, we can't use something like
     /// `&self.x` on a packed type (as required for e.g. `Debug` and `Hash`)
-    /// because that might cause an unaligned ref. So we use let-destructuring
-    /// instead. If the struct impls `Copy`:
+    /// because that might cause an unaligned ref. If the struct impls `Copy`,
+    /// we use a local block to force a copy:
     /// ```
     /// # struct A { x: u8, y: u8 }
     /// impl PartialEq for A {
     ///     fn eq(&self, other: &A) -> bool {
-    ///         let Self { x: __self_0_0, y: __self_0_1 } = *self;
-    ///         let Self { x: __self_1_0, y: __self_1_1 } = *other;
-    ///         __self_0_0 == __self_1_0 && __self_0_1 == __self_1_1
+    ///         { self.x } == { other.y } && { self.y } == { other.y }
     ///     }
     /// }
     /// ```
-    /// If it doesn't impl `Copy`:
+    /// (The copy isn't necessary for `eq`, but it makes more sense for other
+    /// functions that use e.g. `&{ self.x }`.)
+    ///
+    /// If it doesn't impl `Copy`, we use let-destructuring with `ref`:
     /// ```
     /// # struct A { x: u8, y: u8 }
     /// impl PartialEq for A {
@@ -1065,9 +1066,14 @@ impl<'a> MethodDef<'a> {
 
         if !is_packed {
             let selflike_fields =
-                trait_.create_struct_field_access_fields(cx, selflike_args, struct_def);
+                trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, false);
+            mk_body(cx, selflike_fields)
+        } else if always_copy {
+            let selflike_fields =
+                trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, true);
             mk_body(cx, selflike_fields)
         } else {
+            // Neither packed nor copy. Need to use ref patterns.
             let prefixes: Vec<_> =
                 (0..selflike_args.len()).map(|i| format!("__self_{}", i)).collect();
             let addr_of = always_copy;
@@ -1536,6 +1542,7 @@ impl<'a> TraitDef<'a> {
         cx: &mut ExtCtxt<'_>,
         selflike_args: &[P<Expr>],
         struct_def: &'a VariantData,
+        copy: bool,
     ) -> Vec<FieldInfo> {
         self.create_fields(struct_def, |i, struct_field, sp| {
             selflike_args
@@ -1545,18 +1552,21 @@ impl<'a> TraitDef<'a> {
                     // `unwrap_or_else` case otherwise the hygiene is wrong and we get
                     // "field `0` of struct `Point` is private" errors on tuple
                     // structs.
-                    cx.expr_addr_of(
+                    let mut field_expr = cx.expr(
                         sp,
-                        cx.expr(
-                            sp,
-                            ast::ExprKind::Field(
-                                selflike_arg.clone(),
-                                struct_field.ident.unwrap_or_else(|| {
-                                    Ident::from_str_and_span(&i.to_string(), struct_field.span)
-                                }),
-                            ),
+                        ast::ExprKind::Field(
+                            selflike_arg.clone(),
+                            struct_field.ident.unwrap_or_else(|| {
+                                Ident::from_str_and_span(&i.to_string(), struct_field.span)
+                            }),
                         ),
-                    )
+                    );
+                    if copy {
+                        field_expr = cx.expr_block(
+                            cx.block(struct_field.span, vec![cx.stmt_expr(field_expr)]),
+                        );
+                    }
+                    cx.expr_addr_of(sp, field_expr)
                 })
                 .collect()
         })

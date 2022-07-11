@@ -38,6 +38,13 @@ pub fn expand_deriving_partial_eq(
                     // stripping `&` or adding `*`. This isn't necessary for
                     // type checking, but it results in much better error
                     // messages if something goes wrong.
+                    //
+                    // For `packed` structs that impl `Copy`, we'll end up with
+                    // an expr like `{ self.0 } != { other.0 }`. It would be
+                    // nice to strip those blocks, giving `self.0 != other.0`,
+                    // but then the "`#[derive]` can't be used on a
+                    // `#[repr(packed)]` struct that does not derive Copy"
+                    // error is issued erroneously by the MIR builder.
                     let convert = |expr: &P<Expr>| {
                         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) =
                             &expr.kind
