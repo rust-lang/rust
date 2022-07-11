@@ -68,6 +68,13 @@ impl Layout {
             return Err(LayoutError);
         }
 
+        // SAFETY: just checked that align is a power of two.
+        Layout::from_size_valid_align(size, unsafe { ValidAlign::new_unchecked(align) })
+    }
+
+    /// Internal helper constructor to skip revalidating alignment validity.
+    #[inline]
+    const fn from_size_valid_align(size: usize, align: ValidAlign) -> Result<Self, LayoutError> {
         // (power-of-two implies align != 0.)
 
         // Rounded up size is:
@@ -82,23 +89,11 @@ impl Layout {
         //
         // Above implies that checking for summation overflow is both
         // necessary and sufficient.
-        if size > isize::MAX as usize - (align - 1) {
-            return Err(LayoutError);
-        }
-
-        // SAFETY: the conditions for `from_size_align_unchecked` have been
-        // checked above.
-        unsafe { Ok(Layout::from_size_align_unchecked(size, align)) }
-    }
-
-    /// Internal helper constructor to skip revalidating alignment validity.
-    #[inline]
-    const fn from_size_valid_align(size: usize, align: ValidAlign) -> Result<Self, LayoutError> {
-        // See above for the correctness of this check.
         if size > isize::MAX as usize - (align.as_nonzero().get() - 1) {
             return Err(LayoutError);
         }
-        // SAFTEY: as above, this check is sufficient.
+
+        // SAFETY: Layout::size invariants checked above.
         Ok(Layout { size, align })
     }
 
@@ -113,8 +108,8 @@ impl Layout {
     #[must_use]
     #[inline]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
-        // SAFETY: the caller must ensure that `align` is a power of two.
-        Layout { size, align: unsafe { ValidAlign::new_unchecked(align) } }
+        // SAFETY: the caller is required to uphold the preconditions.
+        unsafe { Layout { size, align: ValidAlign::new_unchecked(align) } }
     }
 
     /// The minimum size in bytes for a memory block of this layout.
