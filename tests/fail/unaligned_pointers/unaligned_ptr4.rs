@@ -9,6 +9,6 @@ fn main() {
     for _ in 0..10 {
         let x = [0u8; 4];
         let ptr = x.as_ptr().wrapping_offset(1).cast::<u16>();
-        let _val = unsafe { *ptr }; //~ERROR but alignment
+        let _val = unsafe { *ptr }; //~ERROR: but alignment
     }
 }

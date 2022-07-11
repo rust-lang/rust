@@ -17,7 +17,7 @@ fn main() {
         assert_eq!(byte, 0);
     }
     let v = unsafe { *z.offset(first_undef) };
-    //~^ ERROR uninitialized
+    //~^ ERROR: uninitialized
     if v == 0 {
         println!("it is zero");
     }

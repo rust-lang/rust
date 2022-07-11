@@ -12,6 +12,6 @@ fn main() {
     unsafe {
         let x = i32x2(1, 1);
         let y = i32x2(1, 0);
-        simd_rem(x, y); //~ERROR Undefined Behavior: calculating the remainder with a divisor of zero
+        simd_rem(x, y); //~ERROR: Undefined Behavior: calculating the remainder with a divisor of zero
     }
 }

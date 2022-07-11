@@ -11,6 +11,6 @@ fn main() {
         miri_get_backtrace(1, buf.as_mut_ptr());
 
         // miri_resolve_frame_names will error from an invalid backtrace before it will from invalid flags
-        miri_resolve_frame_names(buf[0], 2, std::ptr::null_mut(), std::ptr::null_mut()); //~ ERROR  unsupported operation: unknown `miri_resolve_frame_names` flags 2
+        miri_resolve_frame_names(buf[0], 2, std::ptr::null_mut(), std::ptr::null_mut()); //~ ERROR:  unsupported operation: unknown `miri_resolve_frame_names` flags 2
     }
 }

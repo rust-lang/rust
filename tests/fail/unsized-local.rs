@@ -14,7 +14,7 @@ fn main() {
         }
     }
 
-    let x = *(Box::new(A) as Box<dyn Foo>); //~ERROR unsized locals are not supported
+    let x = *(Box::new(A) as Box<dyn Foo>); //~ERROR: unsized locals are not supported
     assert_eq!(x.foo(), format!("hello"));
 
     // I'm not sure whether we want this to work

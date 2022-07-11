@@ -12,6 +12,6 @@ fn main() {
     unsafe {
         let x = i32x2(1, i32::MIN);
         let y = i32x2(1, -1);
-        simd_div(x, y); //~ERROR Undefined Behavior: overflow in signed division
+        simd_div(x, y); //~ERROR: Undefined Behavior: overflow in signed division
     }
 }

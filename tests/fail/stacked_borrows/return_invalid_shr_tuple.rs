@@ -8,5 +8,5 @@ fn foo(x: &mut (i32, i32)) -> (&i32,) {
 }
 
 fn main() {
-    foo(&mut (1, 2)).0; //~ ERROR borrow stack
+    foo(&mut (1, 2)).0; //~ ERROR: borrow stack
 }

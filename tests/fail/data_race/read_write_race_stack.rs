@@ -43,7 +43,7 @@ pub fn main() {
 
             sleep(Duration::from_millis(200));
 
-            stack_var //~ ERROR Data race detected between Read on thread `<unnamed>` and Write on thread `<unnamed>`
+            stack_var //~ ERROR: Data race detected between Read on thread `<unnamed>` and Write on thread `<unnamed>`
         });
 
         let j2 = spawn(move || {

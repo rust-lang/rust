@@ -24,7 +24,7 @@ pub fn main() {
 
         let j2 = spawn(move || {
             let atomic_ref = &mut *c.0;
-            *atomic_ref.get_mut() = 32; //~ ERROR Data race detected between Write on thread `<unnamed>` and Atomic Store on thread `<unnamed>`
+            *atomic_ref.get_mut() = 32; //~ ERROR: Data race detected between Write on thread `<unnamed>` and Atomic Store on thread `<unnamed>`
         });
 
         j1.join().unwrap();

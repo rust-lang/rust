@@ -11,5 +11,5 @@ fn main() {
         fn unwind();
     }
     unsafe { unwind() }
-    //~^ ERROR unwinding past a stack frame that does not allow unwinding
+    //~^ ERROR: unwinding past a stack frame that does not allow unwinding
 }

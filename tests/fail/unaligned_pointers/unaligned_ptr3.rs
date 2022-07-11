@@ -8,6 +8,6 @@ fn main() {
         let x = &x[0] as *const _ as *const *const u8; // cast to ptr-to-ptr, so that we load a ptr
         // This must fail because alignment is violated. Test specifically for loading pointers,
         // which have special code in miri's memory.
-        let _x = unsafe { *x }; //~ERROR but alignment
+        let _x = unsafe { *x }; //~ERROR: but alignment
     }
 }

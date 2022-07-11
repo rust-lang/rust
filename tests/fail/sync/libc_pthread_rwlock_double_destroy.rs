@@ -11,6 +11,6 @@ fn main() {
         libc::pthread_rwlock_destroy(&mut lock);
 
         libc::pthread_rwlock_destroy(&mut lock);
-        //~^ ERROR Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+        //~^ ERROR: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
     }
 }

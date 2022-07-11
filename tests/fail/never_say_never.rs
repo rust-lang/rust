@@ -7,7 +7,7 @@
 fn main() {
     let y = &5;
     let x: ! = unsafe {
-        *(y as *const _ as *const !) //~ ERROR entering unreachable code
+        *(y as *const _ as *const !) //~ ERROR: entering unreachable code
     };
     f(x)
 }

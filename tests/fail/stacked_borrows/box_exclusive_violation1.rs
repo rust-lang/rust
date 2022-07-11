@@ -24,7 +24,7 @@ fn unknown_code_1(x: &i32) {
 
 fn unknown_code_2() {
     unsafe {
-        *LEAK = 7; //~ ERROR borrow stack
+        *LEAK = 7; //~ ERROR: borrow stack
     }
 }
 

@@ -4,5 +4,5 @@
 
 fn main() {
     let i = unsafe { std::mem::MaybeUninit::<i32>::uninit().assume_init() };
-    let _x = i + 0; //~ ERROR this operation requires initialized memory
+    let _x = i + 0; //~ ERROR: this operation requires initialized memory
 }

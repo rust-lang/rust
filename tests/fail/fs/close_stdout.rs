@@ -9,6 +9,6 @@ extern crate libc;
 
 fn main() {
     unsafe {
-        libc::close(1); //~ ERROR stdout cannot be closed
+        libc::close(1); //~ ERROR: stdout cannot be closed
     }
 }

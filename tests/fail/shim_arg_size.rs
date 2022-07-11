@@ -12,6 +12,6 @@ fn main() {
     }
 
     unsafe {
-        let _p1 = malloc(42); //~ ERROR Undefined Behavior: scalar size mismatch
+        let _p1 = malloc(42); //~ ERROR: Undefined Behavior: scalar size mismatch
     };
 }

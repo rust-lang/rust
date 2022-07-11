@@ -22,4 +22,4 @@ fn race(local: i32) {
     // Deallocating the local (when `main` returns)
     // races with the read in the other thread.
     // Make sure the error points at this function's end, not just the call site.
-} //~ERROR Data race detected between Deallocate on thread `main` and Read on thread `<unnamed>`
+} //~ERROR: Data race detected between Deallocate on thread `main` and Read on thread `<unnamed>`

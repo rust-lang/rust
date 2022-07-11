@@ -14,6 +14,6 @@ fn main() {
         libc::pthread_condattr_destroy(attr.as_mut_ptr());
 
         libc::pthread_condattr_destroy(attr.as_mut_ptr());
-        //~^ ERROR Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+        //~^ ERROR: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
     }
 }

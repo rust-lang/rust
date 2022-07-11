@@ -6,5 +6,5 @@ fn main() {
     let xraw = x as *mut _;
     let xref = unsafe { &*xraw };
     unsafe { *xraw = 42 }; // unfreeze
-    foo(xref); //~ ERROR borrow stack
+    foo(xref); //~ ERROR: borrow stack
 }
