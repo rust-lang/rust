@@ -3,7 +3,7 @@
 // test checks that an `Option<UnsafeCell<NonZeroU32>>` has the same
 // size in memory as an `Option<UnsafeCell<u32>>` (namely, 8 bytes).
 
-// run-pass
+// check-pass
 
 #![feature(repr_simd)]
 
@@ -18,6 +18,13 @@ struct Wrapper<T>(T);
 struct Transparent<T>(T);
 
 struct NoNiche<T>(UnsafeCell<T>);
+
+// Overwriting the runtime assertion and making it a compile-time assertion
+macro_rules! assert_eq {
+    ($a:expr, $b:literal) => {{
+        const _: () = assert!($a == $b);
+    }};
+}
 
 fn main() {
     assert_eq!(size_of::<Option<Wrapper<u32>>>(),     8);
