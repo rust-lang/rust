@@ -673,6 +673,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             if !self.report_similar_impl_candidates(
                                 impl_candidates,
                                 trait_ref,
+                                obligation.cause.body_id,
                                 &mut err,
                             ) {
                                 // This is *almost* equivalent to
@@ -707,6 +708,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     self.report_similar_impl_candidates(
                                         impl_candidates,
                                         trait_ref,
+                                        obligation.cause.body_id,
                                         &mut err,
                                     );
                                 }
@@ -1353,6 +1355,7 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
         &self,
         impl_candidates: Vec<ImplCandidate<'tcx>>,
         trait_ref: ty::PolyTraitRef<'tcx>,
+        body_id: hir::HirId,
         err: &mut Diagnostic,
     ) -> bool;
 
@@ -1735,6 +1738,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         impl_candidates: Vec<ImplCandidate<'tcx>>,
         trait_ref: ty::PolyTraitRef<'tcx>,
+        body_id: hir::HirId,
         err: &mut Diagnostic,
     ) -> bool {
         let report = |mut candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
@@ -1816,11 +1820,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         // FIXME(compiler-errors): This could be generalized, both to
                         // be more granular, and probably look past other `#[fundamental]`
                         // types, too.
-                        match self.tcx.visibility(def.did()) {
-                            ty::Visibility::Public => true,
-                            ty::Visibility::Restricted(def_id) => def_id.is_local(),
-                            ty::Visibility::Invisible => false,
-                        }
+                        self.tcx
+                            .visibility(def.did())
+                            .is_accessible_from(body_id.owner.to_def_id(), self.tcx)
                     } else {
                         true
                     }
