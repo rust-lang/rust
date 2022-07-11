@@ -106,6 +106,8 @@ regexes! {
     "[^ `]*/(rust[^/]*|checkout)/library/" => "RUSTLIB/",
     // erase platform file paths
     "sys/[a-z]+/"                    => "sys/PLATFORM/",
+    // erase error annotations
+    "//(\\[[a-z,]+\\])?~.*"                    => "",
 }
 
 fn ui(mode: Mode, path: &str) -> Result<()> {

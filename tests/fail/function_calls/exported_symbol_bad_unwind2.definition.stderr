@@ -4,8 +4,8 @@ error: abnormal termination: the program aborted execution
   --> $DIR/exported_symbol_bad_unwind2.rs:LL:CC
    |
 LL | / extern "C-unwind" fn nounwind() {
-LL | |     //[definition]~^ ERROR: abnormal termination: the program aborted execution
-LL | |     //[both]~^^ ERROR: abnormal termination: the program aborted execution
+LL | |     
+LL | |     
 LL | |     panic!();
 LL | | }
    | |_^ the program aborted execution
