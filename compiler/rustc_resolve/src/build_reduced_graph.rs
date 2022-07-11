@@ -846,6 +846,9 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                             ctor_vis = field_vis;
                         }
                         ret_fields.push(field_vis.to_def_id());
+
+                        let mut_restriction = self.resolve_restriction(&field.mut_restriction);
+                        self.r.mut_restrictions.insert(local_def_id, mut_restriction);
                     }
                     let ctor_def_id = self.r.local_def_id(ctor_node_id);
                     let ctor_res =
