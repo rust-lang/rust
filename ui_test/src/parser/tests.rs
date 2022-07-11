@@ -30,10 +30,7 @@ fn main() {
     let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ encountered a dangling reference (address $HEX is unallocated)
 }
     ";
-    match Comments::parse(Path::new("<dummy>"), s) {
-        Ok(_) => panic!("expected parsing to fail"),
-        Err(_) => {}
-    }
+    assert!(Comments::parse(Path::new("<dummy>"), s).is_err(), "expected parsing to fail");
 }
 
 #[test]
@@ -55,10 +52,7 @@ fn parse_slash_slash_at_fail() {
 use std::mem;
 
     ";
-    match Comments::parse(Path::new("<dummy>"), s) {
-        Ok(_) => panic!("expected parsing to fail"),
-        Err(_) => {}
-    }
+    assert!(Comments::parse(Path::new("<dummy>"), s).is_err(), "expected parsing to fail");
 }
 
 #[test]
@@ -68,8 +62,5 @@ fn missing_colon_fail() {
 use std::mem;
 
     ";
-    match Comments::parse(Path::new("<dummy>"), s) {
-        Ok(_) => panic!("expected parsing to fail"),
-        Err(_) => {}
-    }
+    assert!(Comments::parse(Path::new("<dummy>"), s).is_err(), "expected parsing to fail");
 }
