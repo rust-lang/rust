@@ -18,10 +18,12 @@ struct Transparent<T>(T);
 
 struct NoNiche<T>(UnsafeCell<T>);
 
+struct Size<const S: usize>;
+
 // Overwriting the runtime assertion and making it a compile-time assertion
 macro_rules! assert_size {
     ($a:ty, $b:literal) => {{
-        const _: () = assert!(std::mem::size_of::<$a>() == $b);
+        const _: Size::<$b> = Size::<{std::mem::size_of::<$a>()}>;
     }};
 }
 
