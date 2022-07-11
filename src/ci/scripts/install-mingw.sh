@@ -64,7 +64,7 @@ if isWindows; then
     else
         mingw_dir="mingw${bits}"
 
-        curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
+        curl -o mingw.7z "https://github.com/niXman/mingw-builds-binaries/releases/download/12.1.0-rt_v10-rev3/i686-12.1.0-release-posix-dwarf-rt_v10-rev3.7z"
         7z x -y mingw.7z > /dev/null
         curl -o "${mingw_dir}/bin/gdborig.exe" "${MIRRORS_BASE}/2017-04-20-${bits}bit-gdborig.exe"
         ciCommandAddPath "$(pwd)/${mingw_dir}/bin"

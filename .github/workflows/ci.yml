@@ -558,9 +558,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
-            os: ubuntu-20.04-xl
-            env: {}
+          - name: i686-mingw-1
+            env:
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
+              SCRIPT: make ci-mingw-subset-1
+              CUSTOM_MINGW: 1
+            os: windows-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
