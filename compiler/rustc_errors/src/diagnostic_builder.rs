@@ -595,6 +595,7 @@ macro_rules! error_code {
 pub struct LintDiagnosticBuilder<'a, G: EmissionGuarantee>(DiagnosticBuilder<'a, G>);
 
 impl<'a, G: EmissionGuarantee> LintDiagnosticBuilder<'a, G> {
+    #[rustc_lint_diagnostics]
     /// Return the inner `DiagnosticBuilder`, first setting the primary message to `msg`.
     pub fn build(mut self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'a, G> {
         self.0.set_primary_message(msg);

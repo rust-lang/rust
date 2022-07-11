@@ -38,8 +38,8 @@ use std::ops::ControlFlow;
 use std::{cmp, fmt, mem};
 
 use errors::{
-    FieldIsPrivate, FieldIsPrivateLabel, InPublicInterface, InPublicInterfaceTraits, ItemIsPrivate,
-    UnnamedItemIsPrivate,
+    FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
+    InPublicInterfaceTraits, ItemIsPrivate, PrivateInPublicLint, UnnamedItemIsPrivate,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1716,19 +1716,14 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
-            self.tcx.struct_span_lint_hir(
+            self.tcx.emit_spanned_lint(
                 lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
                 self.tcx.hir().local_def_id_to_hir_id(self.item_def_id),
                 self.tcx.def_span(self.item_def_id.to_def_id()),
-                |lint| {
-                    lint.build(&format!(
-                        "{} `{}` from private dependency '{}' in public \
-                                                interface",
-                        kind,
-                        descr,
-                        self.tcx.crate_name(def_id.krate)
-                    ))
-                    .emit();
+                FromPrivateDependencyInPublicInterface {
+                    kind,
+                    descr: descr.to_string(),
+                    krate: self.tcx.crate_name(def_id.krate),
                 },
             );
         }
@@ -1754,12 +1749,14 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 }
             };
             let span = self.tcx.def_span(self.item_def_id.to_def_id());
+            let descr = descr.to_string();
             if self.has_old_errors
                 || self.in_assoc_ty
                 || self.tcx.resolutions(()).has_pub_restricted
             {
                 let descr = descr.to_string();
-                let vis_span = self.tcx.def_span(def_id);
+                let vis_span =
+                    self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id));
                 if kind == "trait" {
                     self.tcx.sess.emit_err(InPublicInterfaceTraits {
                         span,
@@ -1778,19 +1775,11 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     });
                 }
             } else {
-                let err_code = if kind == "trait" { "E0445" } else { "E0446" };
-                self.tcx.struct_span_lint_hir(
+                self.tcx.emit_spanned_lint(
                     lint::builtin::PRIVATE_IN_PUBLIC,
                     hir_id,
                     span,
-                    |lint| {
-                        lint.build(&format!(
-                            "{} (error {})",
-                            format!("{} {} `{}` in public interface", vis_descr, kind, descr),
-                            err_code
-                        ))
-                        .emit();
-                    },
+                    PrivateInPublicLint { vis_descr, kind, descr },
                 );
             }
         }
