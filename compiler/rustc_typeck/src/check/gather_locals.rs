@@ -16,19 +16,20 @@ pub(super) struct Declaration<'a> {
     pub ty: Option<&'a hir::Ty<'a>>,
     pub span: Span,
     pub init: Option<&'a hir::Expr<'a>>,
+    pub els: Option<&'a hir::Block<'a>>,
 }
 
 impl<'a> From<&'a hir::Local<'a>> for Declaration<'a> {
     fn from(local: &'a hir::Local<'a>) -> Self {
-        let hir::Local { hir_id, pat, ty, span, init, .. } = *local;
-        Declaration { hir_id, pat, ty, span, init }
+        let hir::Local { hir_id, pat, ty, span, init, els, source: _ } = *local;
+        Declaration { hir_id, pat, ty, span, init, els }
     }
 }
 
 impl<'a> From<&'a hir::Let<'a>> for Declaration<'a> {
     fn from(let_expr: &'a hir::Let<'a>) -> Self {
         let hir::Let { hir_id, pat, ty, span, init } = *let_expr;
-        Declaration { hir_id, pat, ty, span, init: Some(init) }
+        Declaration { hir_id, pat, ty, span, init: Some(init), els: None }
     }
 }
 

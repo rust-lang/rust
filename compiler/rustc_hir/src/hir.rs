@@ -1296,7 +1296,6 @@ pub struct Stmt<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub enum StmtKind<'hir> {
     /// A local (`let`) binding.
-    /// FIXME: bundle the last two components into another `struct`
     Local(&'hir Local<'hir>),
 
     /// An item binding.
