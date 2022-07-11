@@ -496,20 +496,9 @@ a.result-keyword:focus {}
 .sidebar a.current.keyword {}
 
 @media (max-width: 700px) {
-	.sidebar-menu {
-		background-color: #14191f;
-		border-bottom-color: #5c6773;
-		border-right-color: #5c6773;
-	}
-
 	.sidebar-elems {
 		background-color: #14191f;
 		border-right-color: #5c6773;
-	}
-
-	#sidebar-filler {
-		background-color: #14191f;
-		border-bottom-color: #5c6773;
 	}
 }
 

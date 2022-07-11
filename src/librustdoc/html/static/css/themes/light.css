@@ -339,20 +339,9 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 @media (max-width: 700px) {
-	.sidebar-menu {
-		background-color: #F5F5F5;
-		border-bottom-color: #e0e0e0;
-		border-right-color: #e0e0e0;
-	}
-
 	.sidebar-elems {
 		background-color: #F5F5F5;
 		border-right-color: #000;
-	}
-
-	#sidebar-filler {
-		background-color: #F5F5F5;
-		border-bottom-color: #e0e0e0;
 	}
 }
 
