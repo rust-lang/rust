@@ -1809,7 +1809,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.erase_late_bound_regions(xform_fn_sig)
     }
 
-    /// Gets the type of an impl and generate substitutions with placeholders.
+    /// Gets the type of an impl and generate substitutions with inference vars.
     fn impl_ty_and_substs(
         &self,
         impl_def_id: DefId,
