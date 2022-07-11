@@ -64,6 +64,7 @@ into_diagnostic_arg_using_display!(
     i128,
     u128,
     std::num::NonZeroU32,
+    hir::Target,
     Edition,
     Ident,
 );
