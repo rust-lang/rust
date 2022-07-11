@@ -226,6 +226,7 @@ pub struct Stage0Config {
     pub artifacts_server: String,
     pub artifacts_with_llvm_assertions_server: String,
     pub git_merge_commit_email: String,
+    pub nightly_branch: String,
 }
 #[derive(Default, Deserialize)]
 #[cfg_attr(test, derive(Clone))]
