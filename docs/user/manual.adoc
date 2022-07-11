@@ -315,7 +315,9 @@ nvim_lsp.rust_analyzer.setup({
                 prefix = "self",
             },
             cargo = {
-                loadOutDirsFromCheck = true
+                buildScripts = {
+                    enable = true,
+                },
             },
             procMacro = {
                 enable = true
@@ -366,7 +368,9 @@ if executable('rust-analyzer')
         \   'whitelist': ['rust'],
         \   'initialization_options': {
         \     'cargo': {
-        \       'loadOutDirsFromCheck': v:true,
+        \       'buildScripts': {
+        \         'enable': v:true,
+        \       },
         \     },
         \     'procMacro': {
         \       'enable': v:true,
@@ -529,7 +533,9 @@ For example, a very common configuration is to enable proc-macro support, can be
 ----
 {
   "cargo": {
-    "loadOutDirsFromCheck": true,
+    "buildScripts": {
+      "enable": true,
+    },
   },
   "procMacro": {
     "enable": true,
