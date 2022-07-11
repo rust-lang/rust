@@ -325,7 +325,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         // Can't have BrEnv in functions, constants or generators.
                         bug!("BrEnv outside of closure.");
                     };
-                    let hir::ExprKind::Closure { fn_decl_span, .. }
+                    let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. })
                         = tcx.hir().expect_expr(self.mir_hir_id()).kind
                     else {
                         bug!("Closure is not defined by a closure expr");
@@ -701,16 +701,16 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let (return_span, mir_description, hir_ty) = match hir.get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { fn_decl, body, fn_decl_span, .. },
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl, body, fn_decl_span, .. }),
                 ..
             }) => {
                 let (mut span, mut hir_ty) = match fn_decl.output {
                     hir::FnRetTy::DefaultReturn(_) => {
-                        (tcx.sess.source_map().end_point(*fn_decl_span), None)
+                        (tcx.sess.source_map().end_point(fn_decl_span), None)
                     }
                     hir::FnRetTy::Return(hir_ty) => (fn_decl.output.span(), Some(hir_ty)),
                 };
-                let mir_description = match hir.body(*body).generator_kind {
+                let mir_description = match hir.body(body).generator_kind {
                     Some(hir::GeneratorKind::Async(gen)) => match gen {
                         hir::AsyncGeneratorKind::Block => " of async block",
                         hir::AsyncGeneratorKind::Closure => " of async closure",
@@ -841,9 +841,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let yield_span = match tcx.hir().get(self.mir_hir_id()) {
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { fn_decl_span, .. },
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
-            }) => (tcx.sess.source_map().end_point(*fn_decl_span)),
+            }) => (tcx.sess.source_map().end_point(fn_decl_span)),
             _ => self.body.span,
         };
 

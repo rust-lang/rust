@@ -571,7 +571,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure { binder, bound_generic_params, fn_decl, .. } = e.kind {
+        if let hir::ExprKind::Closure(hir::Closure {
+            binder, bound_generic_params, fn_decl, ..
+        }) = e.kind
+        {
             if let &hir::ClosureBinder::For { span: for_sp, .. } = binder {
                 fn span_of_infer(ty: &hir::Ty<'_>) -> Option<Span> {
                     struct V(Option<Span>);

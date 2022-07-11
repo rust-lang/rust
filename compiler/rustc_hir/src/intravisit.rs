@@ -1144,23 +1144,17 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprKind::Closure {
+        ExprKind::Closure(&Closure {
             binder: _,
             bound_generic_params,
-            ref fn_decl,
+            fn_decl,
             body,
             capture_clause: _,
             fn_decl_span: _,
             movability: _,
-        } => {
+        }) => {
             walk_list!(visitor, visit_generic_param, bound_generic_params);
-            visitor.visit_fn(
-                FnKind::Closure,
-                fn_decl,
-                body,
-                expression.span,
-                expression.hir_id,
-            )
+            visitor.visit_fn(FnKind::Closure, fn_decl, body, expression.span, expression.hir_id)
         }
         ExprKind::Block(ref block, ref opt_label) => {
             walk_list!(visitor, visit_label, opt_label);

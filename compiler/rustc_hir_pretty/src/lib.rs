@@ -1441,7 +1441,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose(expr.span);
             }
-            hir::ExprKind::Closure {
+            hir::ExprKind::Closure(&hir::Closure {
                 binder,
                 capture_clause,
                 bound_generic_params,
@@ -1449,7 +1449,7 @@ impl<'a> State<'a> {
                 body,
                 fn_decl_span: _,
                 movability: _,
-            } => {
+            }) => {
                 self.print_closure_binder(binder, bound_generic_params);
                 self.print_capture_clause(capture_clause);
 
@@ -2037,7 +2037,7 @@ impl<'a> State<'a> {
 
     pub fn print_closure_binder(
         &mut self,
-        binder: &hir::ClosureBinder,
+        binder: hir::ClosureBinder,
         generic_params: &[GenericParam<'_>],
     ) {
         let generic_params = generic_params

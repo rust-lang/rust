@@ -483,7 +483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let param_parent = self.tcx.hir().get_parent_node(*param_hir_id);
         let Some(Node::Expr(hir::Expr {
             hir_id: expr_hir_id,
-            kind: hir::ExprKind::Closure { fn_decl: closure_fn_decl, .. },
+            kind: hir::ExprKind::Closure(hir::Closure { fn_decl: closure_fn_decl, .. }),
             ..
         })) = self.tcx.hir().find(param_parent) else {
             return None;

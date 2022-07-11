@@ -891,7 +891,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(local_did);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
-        if let hir::ExprKind::Closure { body, fn_decl_span, .. } = expr {
+        if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = expr {
             for (captured_place, place) in self
                 .infcx
                 .tcx
@@ -904,11 +904,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if target_place == place.as_ref() =>
                     {
                         debug!("closure_span: found captured local {:?}", place);
-                        let body = self.infcx.tcx.hir().body(*body);
+                        let body = self.infcx.tcx.hir().body(body);
                         let generator_kind = body.generator_kind();
 
                         return Some((
-                            *fn_decl_span,
+                            fn_decl_span,
                             generator_kind,
                             captured_place.get_capture_kind_span(self.infcx.tcx),
                             captured_place.get_path_span(self.infcx.tcx),

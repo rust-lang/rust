@@ -1360,7 +1360,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Closure { ref fn_decl, body, .. } => {
+            hir::ExprKind::Closure(&hir::Closure { ref fn_decl, body, .. }) => {
                 let id = format!("${}", ex.hir_id);
 
                 // walk arg and return types

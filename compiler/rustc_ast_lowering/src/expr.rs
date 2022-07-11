@@ -608,14 +608,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         // `static |_task_context| -> <ret_ty> { body }`:
-        let generator_kind = hir::ExprKind::Closure {
-            binder: &hir::ClosureBinder::Default,
-            capture_clause,
-            bound_generic_params: &[],
-            fn_decl,
-            body,
-            fn_decl_span: self.lower_span(span),
-            movability: Some(hir::Movability::Static),
+        let generator_kind = {
+            let c = self.arena.alloc(hir::Closure {
+                binder: hir::ClosureBinder::Default,
+                capture_clause,
+                bound_generic_params: &[],
+                fn_decl,
+                body,
+                fn_decl_span: self.lower_span(span),
+                movability: Some(hir::Movability::Static),
+            });
+
+            hir::ExprKind::Closure(c)
         };
         let generator = hir::Expr {
             hir_id: self.lower_node_id(closure_node_id),
@@ -864,7 +868,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // Lower outside new scope to preserve `is_in_loop_condition`.
             let fn_decl = this.lower_fn_decl(decl, None, FnDeclKind::Closure, None);
 
-            hir::ExprKind::Closure {
+            let c = self.arena.alloc(hir::Closure {
                 binder: binder_clause,
                 capture_clause,
                 bound_generic_params,
@@ -872,7 +876,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 body: body_id,
                 fn_decl_span: this.lower_span(fn_decl_span),
                 movability: generator_option,
-            }
+            });
+
+            hir::ExprKind::Closure(c)
         })
     }
 
@@ -917,7 +923,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_closure_binder<'c>(
         &mut self,
         binder: &'c ClosureBinder,
-    ) -> (&'hir hir::ClosureBinder, &'c [GenericParam]) {
+    ) -> (hir::ClosureBinder, &'c [GenericParam]) {
         let (binder, params) = match binder {
             ClosureBinder::NotPresent => (hir::ClosureBinder::Default, &[][..]),
             &ClosureBinder::For { span, ref generic_params } => {
@@ -926,7 +932,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
-        (self.arena.alloc(binder), params)
+        (binder, params)
     }
 
     fn lower_expr_async_closure(
@@ -991,7 +997,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // closure argument types.
             let fn_decl = this.lower_fn_decl(&outer_decl, None, FnDeclKind::Closure, None);
 
-            hir::ExprKind::Closure {
+            let c = self.arena.alloc(hir::Closure {
                 binder: binder_clause,
                 capture_clause,
                 bound_generic_params,
@@ -999,7 +1005,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 body,
                 fn_decl_span: this.lower_span(fn_decl_span),
                 movability: None,
-            }
+            });
+            hir::ExprKind::Closure(c)
         })
     }
 
