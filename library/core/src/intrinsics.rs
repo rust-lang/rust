@@ -2555,7 +2555,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 ///
 /// Additionally, note that changing `*dst` in this way can easily lead to undefined behavior (UB)
 /// later if the written bytes are not a valid representation of some `T`. For instance, the
-/// follwing is an **incorrect** use of this function:
+/// following is an **incorrect** use of this function:
 ///
 /// ```rust,no_run
 /// unsafe {
