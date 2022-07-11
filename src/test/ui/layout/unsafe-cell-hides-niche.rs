@@ -30,7 +30,10 @@ macro_rules! assert_size_eq {
     ($ty:ty, $size:expr, $optioned_size:expr) => {
         assert_size_eq!($ty, $size);
         assert_size_eq!(Option<$ty>, $optioned_size);
-        const _: () = assert!($size == $optioned_size || size_of::<$ty>() < size_of::<Option<$ty>>());
+        const _: () = assert!(
+            $size == $optioned_size ||
+            size_of::<$ty>() < size_of::<Option<$ty>>()
+        );
     };
 }
 
