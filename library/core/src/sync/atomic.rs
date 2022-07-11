@@ -323,8 +323,7 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
     pub fn get_mut(&mut self) -> &mut bool {
-        // SAFETY: the mutable reference guarantees unique ownership.
-        unsafe { &mut *(self.v.get() as *mut bool) }
+        self.v.get_mut()
     }
 
     /// Get atomic access to a `&mut bool`.
