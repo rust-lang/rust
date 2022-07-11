@@ -1078,7 +1078,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     st.variants = Variants::Single { index: v };
 
                     if def.is_unsafe_cell() {
-                        let fill = |scalar: &mut _| match scalar {
+                        let hide_niches = |scalar: &mut _| match scalar {
                             Scalar::Initialized { value, valid_range } => {
                                 *valid_range = WrappingRange::full(value.size(dl))
                             }
@@ -1087,10 +1087,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         };
                         match &mut st.abi {
                             Abi::Uninhabited => {}
-                            Abi::Scalar(scalar) => fill(scalar),
+                            Abi::Scalar(scalar) => hide_niches(scalar),
                             Abi::ScalarPair(a, b) => {
-                                fill(a);
-                                fill(b);
+                                hide_niches(a);
+                                hide_niches(b);
                             }
                             Abi::Vector { element, count: _ } => {
                                 // Until we support types other than floats and integers in SIMD,
