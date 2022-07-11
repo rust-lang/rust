@@ -73,6 +73,13 @@ impl<'a> TtIter<'a> {
         }
     }
 
+    pub(crate) fn expect_u32_literal(&mut self) -> Result<u32, ()> {
+        match self.expect_literal()? {
+            tt::Leaf::Literal(lit) => lit.text.parse().map_err(drop),
+            _ => Err(()),
+        }
+    }
+
     pub(crate) fn expect_punct(&mut self) -> Result<&'a tt::Punct, ()> {
         match self.expect_leaf()? {
             tt::Leaf::Punct(it) => Ok(it),

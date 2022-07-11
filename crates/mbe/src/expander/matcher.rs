@@ -502,6 +502,7 @@ fn match_loop_inner<'t>(
                 }
                 try_push!(next_items, item);
             }
+            OpDelimited::Op(Op::Ignore { .. } | Op::Index { .. }) => {}
             OpDelimited::Open => {
                 if matches!(src.clone().next(), Some(tt::TokenTree::Subtree(..))) {
                     item.dot.next();
@@ -747,6 +748,7 @@ fn collect_vars(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate)
             Op::Leaf(_) => (),
             Op::Subtree { tokens, .. } => collect_vars(collector_fun, tokens),
             Op::Repeat { tokens, .. } => collect_vars(collector_fun, tokens),
+            Op::Ignore { .. } | Op::Index { .. } => {}
         }
     }
 }

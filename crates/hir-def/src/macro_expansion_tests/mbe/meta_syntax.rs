@@ -16,7 +16,9 @@ macro_rules! m {
     ($($i:ident)*) => ($_);
     ($($true:ident)*) => ($true);
     ($($false:ident)*) => ($false);
+    (double_dollar) => ($$);
     ($) => (m!($););
+    ($($t:tt)*) => ($( ${ignore(t)} ${index()} )-*);
 }
 m!($);
 "#,
@@ -29,7 +31,9 @@ macro_rules! m {
     ($($i:ident)*) => ($_);
     ($($true:ident)*) => ($true);
     ($($false:ident)*) => ($false);
+    (double_dollar) => ($$);
     ($) => (m!($););
+    ($($t:tt)*) => ($( ${ignore(t)} ${index()} )-*);
 }
 m!($);
 "#]],
@@ -59,6 +63,8 @@ f3!();
 
 macro_rules! m1 { ($$i) => () }
 m1!();
+macro_rules! m2 { () => ( ${invalid()} ) }
+m2!();
 "#,
         expect![[r#"
 macro_rules! i1 { invalid }
@@ -80,6 +86,8 @@ macro_rules! f3 { ($i:_) => () }
 
 macro_rules! m1 { ($$i) => () }
 /* error: invalid macro definition: `$$` is not allowed on the pattern side */
+macro_rules! m2 { () => ( ${invalid()} ) }
+/* error: invalid macro definition: invalid metavariable expression */
 "#]],
     )
 }
