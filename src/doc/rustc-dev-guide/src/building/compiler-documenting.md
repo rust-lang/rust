@@ -30,7 +30,7 @@ and then it documents the files.
 ```bash
 ./x.py doc src/doc/book
 ./x.py doc src/doc/nomicon
-./x.py doc src/doc/book library/std
+./x.py doc src/doc/book library
 ```
 
 Much like individual tests or building certain components you can build only

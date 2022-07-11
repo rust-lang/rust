@@ -35,8 +35,8 @@ Examples:
 
 | Command | Description |
 |---------|-------------|
-| `./x.py test library/std` | Runs tests on `std` |
-| `./x.py test library/core` | Runs tests on `core` |
+| `./x.py test library/std` | Runs tests on `std` only |
+| `./x.py test library/core` | Runs tests on `core` only |
 | `./x.py test compiler/rustc_data_structures` | Runs tests on `rustc_data_structures` |
 
 The standard library relies very heavily on documentation tests to cover its functionality.

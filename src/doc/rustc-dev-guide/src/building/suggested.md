@@ -144,13 +144,13 @@ don't work (but that is easily detected and fixed).
 
 The sequence of commands you want is as follows:
 
-- Initial build: `./x.py build -i library/std`
+- Initial build: `./x.py build library`
   - As [documented previously], this will build a functional
     stage1 compiler as part of running all stage0 commands (which include
     building a `std` compatible with the stage1 compiler) as well as the
     first few steps of the "stage 1 actions" up to "stage1 (sysroot stage1)
     builds std".
-- Subsequent builds: `./x.py build -i library/std --keep-stage 1`
+- Subsequent builds: `./x.py build library --keep-stage 1`
   - Note that we added the `--keep-stage 1` flag here
 
 [documented previously]: ./how-to-build-and-run.md#building-the-compiler
@@ -172,8 +172,8 @@ rebuild. That ought to fix the problem.
 
 You can also use `--keep-stage 1` when running tests. Something like this:
 
-- Initial test run: `./x.py test -i src/test/ui`
-- Subsequent test run: `./x.py test -i src/test/ui --keep-stage 1`
+- Initial test run: `./x.py test src/test/ui`
+- Subsequent test run: `./x.py test src/test/ui --keep-stage 1`
 
 ## Fine-tuning optimizations
 

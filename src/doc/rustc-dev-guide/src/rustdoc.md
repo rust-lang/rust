@@ -50,9 +50,9 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
     custom toolchain called `stage2` to your rustup environment. After
     running that, `cargo +stage2 doc` in any directory will build with
     your locally-compiled rustdoc.
-* Use `./x.py doc library/std` to use this rustdoc to generate the
+* Use `./x.py doc library` to use this rustdoc to generate the
   standard library docs.
-  * The completed docs will be available in `build/$TARGET/doc/std`.
+  * The completed docs will be available in `build/$TARGET/doc` (under `core`, `alloc`, and `std`).
   * If you want to copy those docs to a webserver, copy all of
     `build/$TARGET/doc`, since that's where the CSS, JS, fonts, and landing
     page are.

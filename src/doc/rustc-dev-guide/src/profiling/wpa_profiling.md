@@ -47,11 +47,11 @@ we'll need to build a stage 1 compiler and then a stage 2 compiler ourselves.
 To do this, make sure you have set `debuginfo-level = 1` in your `config.toml` file. This tells
 rustc to generate debug information which includes stack frames when bootstrapping.
 
-Now you can build the stage 1 compiler: `python x.py build --stage 1 -i library/std` or however
+Now you can build the stage 1 compiler: `python x.py build --stage 1 -i library` or however
 else you want to build the stage 1 compiler.
 
 Now that the stage 1 compiler is built, we can record the stage 2 build. Go back to WPR, click the
-"start" button and build the stage 2 compiler (e.g., `python x build --stage=2 -i library/std `).
+"start" button and build the stage 2 compiler (e.g., `python x build --stage=2 -i library`).
 When this process finishes, stop the recording.
 
 Click the Save button and once that process is complete, click the "Open in WPA" button which

@@ -138,34 +138,23 @@ Once you've created a `config.toml`, you are now ready to run
 probably the best "go to" command for building a local rust:
 
 ```bash
-./x.py build -i library/std
+./x.py build library
 ```
 
-This may *look* like it only builds `std`, but that is not the case.
+This may *look* like it only builds the standard library, but that is not the case.
 What this command does is the following:
 
-- Build `std` using the stage0 compiler (using incremental)
-- Build `rustc` using the stage0 compiler (using incremental)
+- Build `std` using the stage0 compiler
+- Build `rustc` using the stage0 compiler
   - This produces the stage1 compiler
-- Build `std` using the stage1 compiler (cannot use incremental)
+- Build `std` using the stage1 compiler
 
 This final product (stage1 compiler + libs built using that compiler)
 is what you need to build other Rust programs (unless you use `#![no_std]` or
 `#![no_core]`).
 
-The command includes the `-i` switch which enables incremental compilation.
-This will be used to speed up the first two steps of the process:
-in particular, if you make a small change, we ought to be able to use your old
-results to make producing the stage1 **compiler** faster.
-
-Unfortunately, incremental cannot be used to speed up making the
-stage1 libraries.  This is because incremental only works when you run
-the *same compiler* twice in a row.  In this case, we are building a
-*new stage1 compiler* every time. Therefore, the old incremental
-results may not apply. **As a result, you will probably find that
-building the stage1 `std` is a bottleneck for you** -- but fear not,
-there is a (hacky) workaround.  See [the section on "recommended
-workflows"](./suggested.md) below.
+You will probably find that building the stage1 `std` is a bottleneck for you** -- but fear not,
+there is a (hacky) workaround. See [the section on "recommended workflows"](./suggested.md) below.
 
 Note that this whole command just gives you a subset of the full `rustc`
 build. The **full** `rustc` build (what you get with `./x.py build
@@ -185,13 +174,8 @@ the compiler unless you are planning to use a recently added nightly feature.
 Instead, you can just build using the bootstrap compiler.
 
 ```bash
-./x.py build --stage 0 library/std
+./x.py build --stage 0 library
 ```
-
-Sometimes you might just want to test if the part you’re working on can
-compile. Using these commands you can test that it compiles before doing
-a bigger build to make sure it works with the compiler. As shown before
-you can also pass flags at the end such as `--stage`.
 
 ## Creating a rustup toolchain
 
@@ -251,7 +235,7 @@ in other sections:
     `rustdoc` (which doesn't take too long)
 - Running tests (see the [section on running tests](../tests/running.html) for
   more details):
-  - `./x.py test library/std` – runs the `#[test]` tests from `std`
+  - `./x.py test library/std` – runs the unit tests and integration tests from `std`
   - `./x.py test src/test/ui` – runs the `ui` test suite
   - `./x.py test src/test/ui/const-generics` - runs all the tests in
   the `const-generics/` subdirectory of the `ui` test suite

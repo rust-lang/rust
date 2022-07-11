@@ -55,7 +55,7 @@ However, it takes a very long time to build
 because one must first build the new compiler with an older compiler
 and then use that to build the new compiler with itself.
 For development, you usually only want the `stage1` compiler,
-which you can build with `./x.py build library/std`.
+which you can build with `./x.py build library`.
 See [Building the Compiler](./how-to-build-and-run.html#building-the-compiler).
 
 ### Stage 3
@@ -169,7 +169,7 @@ Build artifacts include, but are not limited to:
 
 #### Examples of what *not* to do
 
-- `./x.py test --stage 0 src/test/ui` is not meaningful: it runs tests on the
+- `./x.py test --stage 0 src/test/ui` is not useful: it runs tests on the
   _beta_ compiler and doesn't build `rustc` from source. Use `test src/test/ui`
   instead, which builds stage 1 from source.
 - `./x.py test --stage 0 compiler/rustc` builds the compiler but runs no tests:
@@ -177,7 +177,7 @@ Build artifacts include, but are not limited to:
   tests. You shouldn't need to use this, use `test` instead (without arguments).
 - `./x.py build --stage 0 compiler/rustc` builds the compiler, but does not build
   libstd or even libcore. Most of the time, you'll want `./x.py build
-  library/std` instead, which allows compiling programs without needing to define
+  library` instead, which allows compiling programs without needing to define
   lang items.
 
 ### Building vs. running

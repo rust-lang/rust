@@ -74,6 +74,9 @@ Likewise, you can test a single file by passing its path:
 ./x.py test --stage 0 library/std
 ```
 
+Note that this only runs tests on `std`; if you want to test `core` or other crates,
+you have to specify those explicitly.
+
 ### Run the tidy script and tests on the standard library
 
 ```bash
@@ -83,7 +86,7 @@ Likewise, you can test a single file by passing its path:
 ### Run tests on the standard library using a stage 1 compiler
 
 ```bash
-./x.py test library/std
+./x.py test --stage 1 library/std
 ```
 
 By listing which test suites you want to run you avoid having to run
@@ -98,7 +101,7 @@ there are some limitations.
 ```bash
 ./x.py test --stage 2
 ```
-You almost never need to do this.
+You almost never need to do this; CI will run these tests for you.
 
 ## Run unit tests on the compiler/library
 
