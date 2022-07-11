@@ -22,54 +22,49 @@ struct NoNiche<T>(UnsafeCell<T>);
 
 struct Size<const S: usize>;
 
-// Overwriting the runtime assertion and making it a compile-time assertion
-macro_rules! assert_size_eq {
-    ($ty:ty, $size:expr) => {
+macro_rules! check_sizes {
+    (check_one_specific_size: $ty:ty, $size:expr) => {
         const _: Size::<{$size}> = Size::<{size_of::<$ty>()}>;
     };
     ($ty:ty, $size:expr, $optioned_size:expr) => {
-        assert_size_eq!($ty, $size);
-        assert_size_eq!(Option<$ty>, $optioned_size);
-        const _: () = assert!(
-            $size == $optioned_size ||
-            size_of::<$ty>() < size_of::<Option<$ty>>()
-        );
+        check_sizes!(check_one_specific_size: $ty, $size);
+        check_sizes!(check_one_specific_size: Option<$ty>, $optioned_size);
+        check_sizes!(check_no_niche_opt: $size != $optioned_size, $ty);
+    };
+    ($ty:ty) => {
+        check_sizes!(check_no_niche_opt: true, $ty);
+    };
+    (check_no_niche_opt: $no_niche_opt:expr, $ty:ty) => {
+        const _: () = if $no_niche_opt { assert!(size_of::<$ty>() < size_of::<Option<$ty>>()); };
     };
 }
 
 const PTR_SIZE: usize = std::mem::size_of::<*const ()>();
 
-assert_size_eq!(Wrapper<u32>,     4, 8);
-assert_size_eq!(Wrapper<N32>,     4, 4); // (✓ niche opt)
-assert_size_eq!(Transparent<u32>, 4, 8);
-assert_size_eq!(Transparent<N32>, 4, 4); // (✓ niche opt)
-assert_size_eq!(NoNiche<u32>,     4, 8);
-assert_size_eq!(NoNiche<N32>,     4, 8);
+check_sizes!(Wrapper<u32>,     4, 8);
+check_sizes!(Wrapper<N32>,     4, 4); // (✓ niche opt)
+check_sizes!(Transparent<u32>, 4, 8);
+check_sizes!(Transparent<N32>, 4, 4); // (✓ niche opt)
+check_sizes!(NoNiche<u32>,     4, 8);
+check_sizes!(NoNiche<N32>,     4, 8);
 
-assert_size_eq!(UnsafeCell<u32>,  4, 8);
-assert_size_eq!(UnsafeCell<N32>,  4, 8);
+check_sizes!(UnsafeCell<u32>,  4, 8);
+check_sizes!(UnsafeCell<N32>,  4, 8);
 
-assert_size_eq!(UnsafeCell<&()> , PTR_SIZE, PTR_SIZE * 2);
-assert_size_eq!(      Cell<&()> , PTR_SIZE, PTR_SIZE * 2);
-assert_size_eq!(   RefCell<&()> , PTR_SIZE * 2, PTR_SIZE * 3);
-assert_size_eq!(
-    RwLock<&()>,
-    if cfg!(target_pointer_width = "32") { 16 } else { 24 },
-    if cfg!(target_pointer_width = "32") { 20 } else { 32 }
-);
-assert_size_eq!(
-    Mutex<&()> ,
-    if cfg!(target_pointer_width = "32") { 12 } else { 16 },
-    if cfg!(target_pointer_width = "32") { 16 } else { 24 }
-);
+check_sizes!(UnsafeCell<&()> , PTR_SIZE, PTR_SIZE * 2);
+check_sizes!(      Cell<&()> , PTR_SIZE, PTR_SIZE * 2);
+check_sizes!(   RefCell<&()> , PTR_SIZE * 2, PTR_SIZE * 3);
 
-assert_size_eq!(UnsafeCell<&[i32]> , PTR_SIZE * 2, PTR_SIZE * 3);
-assert_size_eq!(UnsafeCell<(&(), &())> , PTR_SIZE * 2, PTR_SIZE * 3);
+check_sizes!(RwLock<&()>);
+check_sizes!(Mutex<&()>);
+
+check_sizes!(UnsafeCell<&[i32]> , PTR_SIZE * 2, PTR_SIZE * 3);
+check_sizes!(UnsafeCell<(&(), &())> , PTR_SIZE * 2, PTR_SIZE * 3);
 
 trait Trait {}
-assert_size_eq!(UnsafeCell<&dyn Trait> , PTR_SIZE * 2, PTR_SIZE * 3);
+check_sizes!(UnsafeCell<&dyn Trait> , PTR_SIZE * 2, PTR_SIZE * 3);
 
 #[repr(simd)]
 pub struct Vec4<T>([T; 4]);
 
-assert_size_eq!(UnsafeCell<Vec4<N32>> , 16, 32);
+check_sizes!(UnsafeCell<Vec4<N32>> , 16, 32);
