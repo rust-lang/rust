@@ -2,8 +2,13 @@
 	--main-background-color: #353535;
 	--main-color: #ddd;
 	--settings-input-color: #2196f3;
-	--sidebar-background-color: #565656;
+	--sidebar-background-color: #505050;
 	--sidebar-background-color-hover: #676767;
+	--code-block-background-color: #2A2A2A;
+	--scrollbar-track-background-color: #717171;
+	--scrollbar-thumb-background-color: rgba(32, 34, 37, .6);
+	--scrollbar-color: rgba(32,34,37,.6) #5a5a5a;
+	--headings-border-bottom-color: #d2d2d2;
 }
 
 .slider {
@@ -16,26 +21,8 @@ input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
 }
 
-h1.fqn {
-	border-bottom-color: #d2d2d2;
-}
-h2, h3, h4 {
-	border-bottom-color: #d2d2d2;
-}
-
 .in-band {
 	background-color: #353535;
-}
-
-.docblock code, .docblock-short code {
-	background-color: #2A2A2A;
-}
-pre, .rustdoc.source .example-wrap {
-	background-color: #2A2A2A;
-}
-
-.sidebar, .mobile-topbar, .sidebar-menu-toggle {
-	background-color: #505050;
 }
 
 .rust-logo {
@@ -43,28 +30,6 @@ pre, .rustdoc.source .example-wrap {
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
 		drop-shadow(0 -1px 0 #fff)
-}
-
-/* Improve the scrollbar display on firefox */
-* {
-	scrollbar-color: rgb(64, 65, 67) #717171;
-}
-.sidebar {
-	scrollbar-color: rgba(32,34,37,.6) #5a5a5a;
-}
-
-/* Improve the scrollbar display on webkit-based browsers */
-::-webkit-scrollbar-track {
-	background-color: #717171;
-}
-::-webkit-scrollbar-thumb {
-	background-color: rgba(32, 34, 37, .6);
-}
-.sidebar::-webkit-scrollbar-track {
-	background-color: #717171;
-}
-.sidebar::-webkit-scrollbar-thumb {
-	background-color: rgba(32, 34, 37, .6);
 }
 
 .sidebar .current,
@@ -357,7 +322,6 @@ pre.ignore:hover, .information:hover + pre.ignore {
 
 @media (max-width: 700px) {
 	.sidebar-elems {
-		background-color: #505050;
 		border-right-color: #000;
 	}
 }

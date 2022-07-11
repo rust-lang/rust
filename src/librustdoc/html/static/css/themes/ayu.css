@@ -9,6 +9,11 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--settings-input-color: #ffb454;
 	--sidebar-background-color: #14191f;
 	--sidebar-background-color-hover: rgba(70, 70, 70, 0.33);
+	--code-block-background-color: #191f26;
+	--scrollbar-track-background-color: transparent;
+	--scrollbar-thumb-background-color: #5c6773;
+	--scrollbar-color: #5c6773 #24292f;
+	--headings-border-bottom-color: #5c6773;
 }
 
 .slider {
@@ -24,14 +29,8 @@ input:focus + .slider {
 h1, h2, h3, h4 {
 	color: white;
 }
-h1.fqn {
-	border-bottom-color: #5c6773;
-}
 h1.fqn  a {
 	color: #fff;
-}
-h2, h3, h4 {
-	border-bottom-color: #5c6773;
 }
 h4 {
 	border: none;
@@ -56,16 +55,8 @@ span code {
 .docblock a > code {
 	color: #39AFD7 !important;
 }
-.docblock code, .docblock-short code {
-	background-color: #191f26;
-}
 pre, .rustdoc.source .example-wrap {
 	color: #e6e1cf;
-	background-color: #191f26;
-}
-
-.sidebar, .mobile-topbar, .sidebar-menu-toggle {
-	background-color: #14191f;
 }
 
 .rust-logo {
@@ -73,29 +64,6 @@ pre, .rustdoc.source .example-wrap {
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
 		drop-shadow(0 -1px 0 #fff);
-}
-
-/* Improve the scrollbar display on firefox */
-* {
-	scrollbar-color: #5c6773 #24292f;
-}
-
-.sidebar {
-	scrollbar-color: #5c6773 #24292f;
-}
-
-/* Improve the scrollbar display on webkit-based browsers */
-::-webkit-scrollbar-track {
-	background-color: transparent;
-}
-::-webkit-scrollbar-thumb {
-	background-color: #5c6773;
-}
-.sidebar::-webkit-scrollbar-track {
-	background-color: transparent;
-}
-.sidebar::-webkit-scrollbar-thumb {
-	background-color: #5c6773;
 }
 
 .sidebar .current,
@@ -114,10 +82,6 @@ pre, .rustdoc.source .example-wrap {
 	background-color: rgba(255, 236, 164, 0.06);
 	padding-right: 4px;
 	border-right: 1px solid #ffb44c;
-}
-
-.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
-	border-bottom-color: #5c6773;
 }
 
 .docblock table td, .docblock table th {
@@ -497,7 +461,6 @@ a.result-keyword:focus {}
 
 @media (max-width: 700px) {
 	.sidebar-elems {
-		background-color: #14191f;
 		border-right-color: #5c6773;
 	}
 }
