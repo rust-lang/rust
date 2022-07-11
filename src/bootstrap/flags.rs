@@ -91,6 +91,10 @@ pub enum Subcommand {
     Clippy {
         fix: bool,
         paths: Vec<PathBuf>,
+        clippy_lint_allow: Vec<String>,
+        clippy_lint_deny: Vec<String>,
+        clippy_lint_warn: Vec<String>,
+        clippy_lint_forbid: Vec<String>,
     },
     Fix {
         paths: Vec<PathBuf>,
@@ -240,6 +244,10 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         opts.optopt("", "rust-profile-use", "use PGO profile for rustc build", "PROFILE");
         opts.optflag("", "llvm-profile-generate", "generate PGO profile with llvm built for rustc");
         opts.optopt("", "llvm-profile-use", "use PGO profile for llvm build", "PROFILE");
+        opts.optmulti("A", "", "allow certain clippy lints", "OPT");
+        opts.optmulti("D", "", "deny certain clippy lints", "OPT");
+        opts.optmulti("W", "", "warn about certain clippy lints", "OPT");
+        opts.optmulti("F", "", "forbid certain clippy lints", "OPT");
 
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
@@ -538,7 +546,14 @@ Arguments:
                 }
                 Subcommand::Check { paths }
             }
-            Kind::Clippy => Subcommand::Clippy { paths, fix: matches.opt_present("fix") },
+            Kind::Clippy => Subcommand::Clippy {
+                paths,
+                fix: matches.opt_present("fix"),
+                clippy_lint_allow: matches.opt_strs("A"),
+                clippy_lint_warn: matches.opt_strs("W"),
+                clippy_lint_deny: matches.opt_strs("D"),
+                clippy_lint_forbid: matches.opt_strs("F"),
+            },
             Kind::Fix => Subcommand::Fix { paths },
             Kind::Test => Subcommand::Test {
                 paths,
