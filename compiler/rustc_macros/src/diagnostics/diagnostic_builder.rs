@@ -13,7 +13,8 @@ use quote::{format_ident, quote};
 use std::collections::HashMap;
 use std::str::FromStr;
 use syn::{
-    parse_quote, spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type,
+    parse_quote, spanned::Spanned, Attribute, Field, Meta, MetaList, MetaNameValue, NestedMeta,
+    Path, Type,
 };
 use synstructure::{BindingInfo, Structure};
 
@@ -80,8 +81,8 @@ impl DiagnosticDeriveBuilder {
     }
 
     pub fn body<'s>(&mut self, structure: &mut Structure<'s>) -> (TokenStream, TokenStream) {
-        // Keep track of which fields are subdiagnostics or have no attributes.
-        let mut subdiagnostics_or_empty = std::collections::HashSet::new();
+        // Keep track of which fields need to be handled with a by-move binding.
+        let mut needs_moved = std::collections::HashSet::new();
 
         // Generates calls to `span_label` and similar functions based on the attributes
         // on fields. Code for suggestions uses formatting machinery and the value of
@@ -92,16 +93,11 @@ impl DiagnosticDeriveBuilder {
         let attrs = structure
             .clone()
             .filter(|field_binding| {
-                let attrs = &field_binding.ast().attrs;
-
-                (!attrs.is_empty()
-                    && attrs.iter().all(|attr| {
-                        "subdiagnostic" != attr.path.segments.last().unwrap().ident.to_string()
-                    }))
-                    || {
-                        subdiagnostics_or_empty.insert(field_binding.binding.clone());
-                        false
-                    }
+                let ast = &field_binding.ast();
+                !self.needs_move(ast) || {
+                    needs_moved.insert(field_binding.binding.clone());
+                    false
+                }
             })
             .each(|field_binding| self.generate_field_attrs_code(field_binding));
 
@@ -111,10 +107,39 @@ impl DiagnosticDeriveBuilder {
         // attributes or a `#[subdiagnostic]` attribute then it must be passed as an
         // argument to the diagnostic so that it can be referred to by Fluent messages.
         let args = structure
-            .filter(|field_binding| subdiagnostics_or_empty.contains(&field_binding.binding))
+            .filter(|field_binding| needs_moved.contains(&field_binding.binding))
             .each(|field_binding| self.generate_field_attrs_code(field_binding));
 
         (attrs, args)
+    }
+
+    /// Returns `true` if `field` should generate a `set_arg` call rather than any other diagnostic
+    /// call (like `span_label`).
+    fn should_generate_set_arg(&self, field: &Field) -> bool {
+        field.attrs.is_empty()
+    }
+
+    /// Returns `true` if `field` needs to have code generated in the by-move branch of the
+    /// generated derive rather than the by-ref branch.
+    fn needs_move(&self, field: &Field) -> bool {
+        let generates_set_arg = self.should_generate_set_arg(field);
+        let is_multispan = type_matches_path(&field.ty, &["rustc_errors", "MultiSpan"]);
+        // FIXME(davidtwco): better support for one field needing to be in the by-move and
+        // by-ref branches.
+        let is_subdiagnostic = field
+            .attrs
+            .iter()
+            .map(|attr| attr.path.segments.last().unwrap().ident.to_string())
+            .any(|attr| attr == "subdiagnostic");
+
+        // `set_arg` calls take their argument by-move..
+        generates_set_arg
+            // If this is a `MultiSpan` field then it needs to be moved to be used by any
+            // attribute..
+            || is_multispan
+            // If this a `#[subdiagnostic]` then it needs to be moved as the other diagnostic is
+            // unlikely to be `Copy`..
+            || is_subdiagnostic
     }
 
     /// Establishes state in the `DiagnosticDeriveBuilder` resulting from the struct
@@ -227,57 +252,55 @@ impl DiagnosticDeriveBuilder {
         let field = binding_info.ast();
         let field_binding = &binding_info.binding;
 
-        let inner_ty = FieldInnerTy::from_type(&field.ty);
-
-        // When generating `set_arg` or `add_subdiagnostic` calls, move data rather than
-        // borrow it to avoid requiring clones - this must therefore be the last use of
-        // each field (for example, any formatting machinery that might refer to a field
-        // should be generated already).
-        if field.attrs.is_empty() {
+        if self.should_generate_set_arg(&field) {
             let diag = &self.diag;
             let ident = field.ident.as_ref().unwrap();
-            quote! {
+            return quote! {
                 #diag.set_arg(
                     stringify!(#ident),
                     #field_binding
                 );
-            }
-        } else {
-            field
-                .attrs
-                .iter()
-                .map(move |attr| {
-                    let name = attr.path.segments.last().unwrap().ident.to_string();
-                    let (binding, needs_destructure) = match (name.as_str(), &inner_ty) {
-                        // `primary_span` can accept a `Vec<Span>` so don't destructure that.
-                        ("primary_span", FieldInnerTy::Vec(_)) => {
-                            (quote! { #field_binding.clone() }, false)
-                        }
-                        // `subdiagnostics` are not derefed because they are bound by value.
-                        ("subdiagnostic", _) => (quote! { #field_binding }, true),
-                        _ => (quote! { *#field_binding }, true),
-                    };
-
-                    let generated_code = self
-                        .generate_inner_field_code(
-                            attr,
-                            FieldInfo {
-                                binding: binding_info,
-                                ty: inner_ty.inner_type().unwrap_or(&field.ty),
-                                span: &field.span(),
-                            },
-                            binding,
-                        )
-                        .unwrap_or_else(|v| v.to_compile_error());
-
-                    if needs_destructure {
-                        inner_ty.with(field_binding, generated_code)
-                    } else {
-                        generated_code
-                    }
-                })
-                .collect()
+            };
         }
+
+        let needs_move = self.needs_move(&field);
+        let inner_ty = FieldInnerTy::from_type(&field.ty);
+
+        field
+            .attrs
+            .iter()
+            .map(move |attr| {
+                let name = attr.path.segments.last().unwrap().ident.to_string();
+                let needs_clone =
+                    name == "primary_span" && matches!(inner_ty, FieldInnerTy::Vec(_));
+                let (binding, needs_destructure) = if needs_clone {
+                    // `primary_span` can accept a `Vec<Span>` so don't destructure that.
+                    (quote! { #field_binding.clone() }, false)
+                } else if needs_move {
+                    (quote! { #field_binding }, true)
+                } else {
+                    (quote! { *#field_binding }, true)
+                };
+
+                let generated_code = self
+                    .generate_inner_field_code(
+                        attr,
+                        FieldInfo {
+                            binding: binding_info,
+                            ty: inner_ty.inner_type().unwrap_or(&field.ty),
+                            span: &field.span(),
+                        },
+                        binding,
+                    )
+                    .unwrap_or_else(|v| v.to_compile_error());
+
+                if needs_destructure {
+                    inner_ty.with(field_binding, generated_code)
+                } else {
+                    generated_code
+                }
+            })
+            .collect()
     }
 
     fn generate_inner_field_code(

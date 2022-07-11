@@ -244,7 +244,7 @@ enum V {
 //~^ ERROR label without `#[primary_span]` field
 struct W {
     #[primary_span]
-    //~^ ERROR the `#[primary_span]` attribute can only be applied to fields of type `Span`
+    //~^ ERROR the `#[primary_span]` attribute can only be applied to fields of type `Span` or `MultiSpan`
     span: String,
 }
 

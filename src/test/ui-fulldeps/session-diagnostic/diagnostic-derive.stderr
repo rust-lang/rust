@@ -233,7 +233,7 @@ LL | | struct SlugNotProvided {}
    |
    = help: specify the slug as the first argument to the attribute, such as `#[error(typeck::example_error)]`
 
-error: the `#[primary_span]` attribute can only be applied to fields of type `Span`
+error: the `#[primary_span]` attribute can only be applied to fields of type `Span` or `MultiSpan`
   --> $DIR/diagnostic-derive.rs:142:5
    |
 LL |     #[primary_span]
@@ -247,7 +247,7 @@ LL |     #[nonsense]
    |
    = help: only `skip_arg`, `primary_span`, `label`, `note`, `help` and `subdiagnostic` are valid field attributes
 
-error: the `#[label(...)]` attribute can only be applied to fields of type `Span`
+error: the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
   --> $DIR/diagnostic-derive.rs:167:5
    |
 LL |     #[label(typeck::label)]
@@ -279,7 +279,7 @@ LL | #[derive(SessionDiagnostic)]
    = note: if you intended to print `}`, you can escape it using `}}`
    = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the `#[label(...)]` attribute can only be applied to fields of type `Span`
+error: the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
   --> $DIR/diagnostic-derive.rs:210:5
    |
 LL |     #[label(typeck::label)]
