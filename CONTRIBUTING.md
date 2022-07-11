@@ -16,7 +16,6 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [The Clippy book](#the-clippy-book)
   - [High level approach](#high-level-approach)
   - [Finding something to fix/improve](#finding-something-to-fiximprove)
-  - [Writing code](#writing-code)
   - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
     - [IntelliJ Rust](#intellij-rust)
     - [Rust Analyzer](#rust-analyzer)
