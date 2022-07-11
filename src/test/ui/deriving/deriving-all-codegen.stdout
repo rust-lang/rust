@@ -441,9 +441,8 @@ impl ::core::marker::Copy for PackedCopy { }
 #[allow(unused_qualifications)]
 impl ::core::fmt::Debug for PackedCopy {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        let Self(__self_0_0) = *self;
         ::core::fmt::Formatter::debug_tuple_field1_finish(f, "PackedCopy",
-            &&__self_0_0)
+            &&{ self.0 })
     }
 }
 #[automatically_derived]
@@ -458,8 +457,7 @@ impl ::core::default::Default for PackedCopy {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for PackedCopy {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        let Self(__self_0_0) = *self;
-        ::core::hash::Hash::hash(&__self_0_0, state)
+        ::core::hash::Hash::hash(&{ self.0 }, state)
     }
 }
 impl ::core::marker::StructuralPartialEq for PackedCopy {}
@@ -467,17 +465,9 @@ impl ::core::marker::StructuralPartialEq for PackedCopy {}
 #[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for PackedCopy {
     #[inline]
-    fn eq(&self, other: &PackedCopy) -> bool {
-        let Self(__self_0_0) = *self;
-        let Self(__self_1_0) = *other;
-        __self_0_0 == __self_1_0
-    }
+    fn eq(&self, other: &PackedCopy) -> bool { { self.0 } == { other.0 } }
     #[inline]
-    fn ne(&self, other: &PackedCopy) -> bool {
-        let Self(__self_0_0) = *self;
-        let Self(__self_1_0) = *other;
-        __self_0_0 != __self_1_0
-    }
+    fn ne(&self, other: &PackedCopy) -> bool { { self.0 } != { other.0 } }
 }
 impl ::core::marker::StructuralEq for PackedCopy {}
 #[automatically_derived]
@@ -496,9 +486,7 @@ impl ::core::cmp::PartialOrd for PackedCopy {
     #[inline]
     fn partial_cmp(&self, other: &PackedCopy)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        let Self(__self_0_0) = *self;
-        let Self(__self_1_0) = *other;
-        ::core::cmp::PartialOrd::partial_cmp(&__self_0_0, &__self_1_0)
+        ::core::cmp::PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
     }
 }
 #[automatically_derived]
@@ -506,9 +494,7 @@ impl ::core::cmp::PartialOrd for PackedCopy {
 impl ::core::cmp::Ord for PackedCopy {
     #[inline]
     fn cmp(&self, other: &PackedCopy) -> ::core::cmp::Ordering {
-        let Self(__self_0_0) = *self;
-        let Self(__self_1_0) = *other;
-        ::core::cmp::Ord::cmp(&__self_0_0, &__self_1_0)
+        ::core::cmp::Ord::cmp(&{ self.0 }, &{ other.0 })
     }
 }
 
