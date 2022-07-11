@@ -528,7 +528,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         source_info: mir::SourceInfo,
         target: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
-        strict_validity: bool,
     ) -> bool {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
@@ -546,13 +545,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => None,
         });
         if let Some(intrinsic) = panic_intrinsic {
+            use rustc_const_eval::might_permit_raw_init::might_permit_raw_init;
             use AssertIntrinsic::*;
+
             let ty = instance.unwrap().substs.type_at(0);
             let layout = bx.layout_of(ty);
             let do_panic = match intrinsic {
                 Inhabited => layout.abi.is_uninhabited(),
-                ZeroValid => !layout.might_permit_raw_init(bx, InitKind::Zero, strict_validity),
-                UninitValid => !layout.might_permit_raw_init(bx, InitKind::Uninit, strict_validity),
+                ZeroValid => !might_permit_raw_init(bx.tcx(), layout, InitKind::Zero),
+                UninitValid => !might_permit_raw_init(bx.tcx(), layout, InitKind::Uninit),
             };
             if do_panic {
                 let msg_str = with_no_visible_paths!({
@@ -687,7 +688,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             source_info,
             target,
             cleanup,
-            self.cx.tcx().sess.opts.debugging_opts.strict_init_checks,
         ) {
             return;
         }
