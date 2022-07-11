@@ -8,6 +8,7 @@
 #![feature(repr_simd)]
 
 use std::cell::{UnsafeCell, RefCell, Cell};
+use std::mem::size_of;
 use std::num::NonZeroU32 as N32;
 use std::sync::{Mutex, RwLock};
 
@@ -22,10 +23,12 @@ struct Size<const S: usize>;
 
 // Overwriting the runtime assertion and making it a compile-time assertion
 macro_rules! assert_size {
-    ($a:ty, $b:literal) => {{
-        const _: Size::<$b> = Size::<{std::mem::size_of::<$a>()}>;
+    ($a:ty, $b:expr) => {{
+        const _: Size::<{$b}> = Size::<{size_of::<$a>()}>;
     }};
 }
+
+const PTR_SIZE: usize = std::mem::size_of::<*const ()>();
 
 fn main() {
     assert_size!(Option<Wrapper<u32>>,     8);
@@ -38,25 +41,25 @@ fn main() {
     assert_size!(Option<UnsafeCell<u32>>,  8);
     assert_size!(Option<UnsafeCell<N32>>,  8); // (✗ niche opt)
 
-    assert_size!(       UnsafeCell<&()> , 8);
-    assert_size!(Option<UnsafeCell<&()>>, 16); // (✗ niche opt)
-    assert_size!(             Cell<&()> , 8);
-    assert_size!(Option<      Cell<&()>>, 16); // (✗ niche opt)
-    assert_size!(          RefCell<&()> , 16);
-    assert_size!(Option<   RefCell<&()>>, 24); // (✗ niche opt)
-    assert_size!(           RwLock<&()> , 24);
-    assert_size!(Option<    RwLock<&()>>, 32); // (✗ niche opt)
-    assert_size!(            Mutex<&()> , 16);
-    assert_size!(Option<     Mutex<&()>>, 24); // (✗ niche opt)
+    assert_size!(       UnsafeCell<&()> , PTR_SIZE);
+    assert_size!(Option<UnsafeCell<&()>>, PTR_SIZE * 2); // (✗ niche opt)
+    assert_size!(             Cell<&()> , PTR_SIZE);
+    assert_size!(Option<      Cell<&()>>, PTR_SIZE * 2); // (✗ niche opt)
+    assert_size!(          RefCell<&()> , PTR_SIZE * 2);
+    assert_size!(Option<   RefCell<&()>>, PTR_SIZE * 3); // (✗ niche opt)
+    assert_size!(           RwLock<&()> , if cfg!(target_pointer_width = "32") { 16 } else { 24 });
+    assert_size!(Option<    RwLock<&()>>, if cfg!(target_pointer_width = "32") { 20 } else { 32 }); // (✗ niche opt)
+    assert_size!(            Mutex<&()> , if cfg!(target_pointer_width = "32") { 12 } else { 16 });
+    assert_size!(Option<     Mutex<&()>>, if cfg!(target_pointer_width = "32") { 16 } else { 24 }); // (✗ niche opt)
 
-    assert_size!(       UnsafeCell<&[i32]> , 16);
-    assert_size!(Option<UnsafeCell<&[i32]>>, 24); // (✗ niche opt)
-    assert_size!(       UnsafeCell<(&(), &())> , 16);
-    assert_size!(Option<UnsafeCell<(&(), &())>>, 24); // (✗ niche opt)
+    assert_size!(       UnsafeCell<&[i32]> , PTR_SIZE * 2);
+    assert_size!(Option<UnsafeCell<&[i32]>>, PTR_SIZE * 3); // (✗ niche opt)
+    assert_size!(       UnsafeCell<(&(), &())> , PTR_SIZE * 2);
+    assert_size!(Option<UnsafeCell<(&(), &())>>, PTR_SIZE * 3); // (✗ niche opt)
 
     trait Trait {}
-    assert_size!(       UnsafeCell<&dyn Trait> , 16);
-    assert_size!(Option<UnsafeCell<&dyn Trait>>, 24); // (✗ niche opt)
+    assert_size!(       UnsafeCell<&dyn Trait> , PTR_SIZE * 2);
+    assert_size!(Option<UnsafeCell<&dyn Trait>>, PTR_SIZE * 3); // (✗ niche opt)
 
     #[repr(simd)]
     pub struct Vec4<T>([T; 4]);
