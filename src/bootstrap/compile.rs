@@ -104,7 +104,7 @@ impl Step for Std {
             || builder.config.keep_stage_std.contains(&compiler.stage)
         {
             builder.info("Warning: Using a potentially old libstd. This may not behave well.");
-            builder.ensure(StdLink { compiler, target_compiler: compiler, target });
+            builder.ensure(StdLink::from_std(self, compiler));
             return;
         }
 
@@ -122,11 +122,7 @@ impl Step for Std {
             copy_third_party_objects(builder, &compiler, target);
             copy_self_contained_objects(builder, &compiler, target);
 
-            builder.ensure(StdLink {
-                compiler: compiler_to_use,
-                target_compiler: compiler,
-                target,
-            });
+            builder.ensure(StdLink::from_std(self, compiler_to_use));
             return;
         }
 
@@ -149,11 +145,10 @@ impl Step for Std {
             false,
         );
 
-        builder.ensure(StdLink {
-            compiler: builder.compiler(compiler.stage, builder.config.build),
-            target_compiler: compiler,
-            target,
-        });
+        builder.ensure(StdLink::from_std(
+            self,
+            builder.compiler(compiler.stage, builder.config.build),
+        ));
     }
 }
 
@@ -394,6 +389,19 @@ struct StdLink {
     pub compiler: Compiler,
     pub target_compiler: Compiler,
     pub target: TargetSelection,
+    /// Not actually used; only present to make sure the cache invalidation is correct.
+    crates: Interned<Vec<String>>,
+}
+
+impl StdLink {
+    fn from_std(std: Std, host_compiler: Compiler) -> Self {
+        Self {
+            compiler: host_compiler,
+            target_compiler: std.compiler,
+            target: std.target,
+            crates: std.crates,
+        }
+    }
 }
 
 impl Step for StdLink {
@@ -614,7 +622,7 @@ impl Step for Rustc {
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info("Warning: Using a potentially old librustc. This may not behave well.");
             builder.info("Warning: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
-            builder.ensure(RustcLink { compiler, target_compiler: compiler, target });
+            builder.ensure(RustcLink::from_rustc(self, compiler));
             return;
         }
 
@@ -623,11 +631,7 @@ impl Step for Rustc {
             builder.ensure(Rustc::new(compiler_to_use, target));
             builder
                 .info(&format!("Uplifting stage1 rustc ({} -> {})", builder.config.build, target));
-            builder.ensure(RustcLink {
-                compiler: compiler_to_use,
-                target_compiler: compiler,
-                target,
-            });
+            builder.ensure(RustcLink::from_rustc(self, compiler_to_use));
             return;
         }
 
@@ -688,11 +692,10 @@ impl Step for Rustc {
             false,
         );
 
-        builder.ensure(RustcLink {
-            compiler: builder.compiler(compiler.stage, builder.config.build),
-            target_compiler: compiler,
-            target,
-        });
+        builder.ensure(RustcLink::from_rustc(
+            self,
+            builder.compiler(compiler.stage, builder.config.build),
+        ));
     }
 }
 
@@ -807,6 +810,19 @@ struct RustcLink {
     pub compiler: Compiler,
     pub target_compiler: Compiler,
     pub target: TargetSelection,
+    /// Not actually used; only present to make sure the cache invalidation is correct.
+    crates: Interned<Vec<String>>,
+}
+
+impl RustcLink {
+    fn from_rustc(rustc: Rustc, host_compiler: Compiler) -> Self {
+        Self {
+            compiler: host_compiler,
+            target_compiler: rustc.compiler,
+            target: rustc.target,
+            crates: rustc.crates,
+        }
+    }
 }
 
 impl Step for RustcLink {
