@@ -1323,6 +1323,11 @@ fn ty_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedenc
             ty::Infer(_) | ty::Error(_) | ty::Bound(..) | ty::Opaque(..) | ty::Placeholder(_) | ty::Dynamic(..) => {
                 Position::ReborrowStable(precedence).into()
             },
+            ty::TyAlias(def_id, substs) => {
+                let binder_ty = cx.tcx.bound_type_of(def_id);
+                ty = binder_ty.subst(cx.tcx, substs);
+                continue;
+            }
             ty::Adt(..) if ty.has_placeholders() || ty.has_opaque_types() => {
                 Position::ReborrowStable(precedence).into()
             },
