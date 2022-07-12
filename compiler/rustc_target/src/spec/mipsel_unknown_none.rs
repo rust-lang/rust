@@ -17,7 +17,6 @@ pub fn target() -> Target {
             cpu: "mips32r2".into(),
             features: "+mips32r2,+soft-float,+noabicalls".into(),
             max_atomic_width: Some(32),
-            executables: true,
             linker: Some("rust-lld".into()),
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,

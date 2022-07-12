@@ -20,7 +20,6 @@ pub fn opts() -> TargetOptions {
         abi: "llvm".into(),
         linker: Some("clang".into()),
         dynamic_linking: true,
-        executables: true,
         dll_prefix: "".into(),
         dll_suffix: ".dll".into(),
         exe_suffix: ".exe".into(),

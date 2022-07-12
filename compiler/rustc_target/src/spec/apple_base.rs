@@ -25,7 +25,6 @@ pub fn opts(os: &'static str) -> TargetOptions {
         function_sections: false,
         dynamic_linking: true,
         linker_is_gnu: false,
-        executables: true,
         families: cvs!["unix"],
         is_like_osx: true,
         default_dwarf_version: 2,

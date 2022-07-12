@@ -24,7 +24,6 @@ pub fn target() -> Target {
         features:
             "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float"
                 .into(),
-        executables: true,
         disable_redzone: true,
         panic_strategy: PanicStrategy::Abort,
         code_model: Some(CodeModel::Kernel),
