@@ -890,7 +890,7 @@ pub fn capture_local_usage<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> Captur
             Node::Expr(e) => match e.kind {
                 ExprKind::AddrOf(_, mutability, _) => return CaptureKind::Ref(mutability),
                 ExprKind::Index(..) | ExprKind::Unary(UnOp::Deref, _) => capture = CaptureKind::Ref(Mutability::Not),
-                ExprKind::Assign(lhs, ..) | ExprKind::Assign(_, lhs, _) if lhs.hir_id == child_id => {
+                ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) if lhs.hir_id == child_id => {
                     return CaptureKind::Ref(Mutability::Mut);
                 },
                 ExprKind::Field(..) => {
