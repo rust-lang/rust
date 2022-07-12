@@ -225,7 +225,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         debug!("{:?} normalized to {:?}", t, norm_ty);
 
-        for data in constraints.into_iter().collect::<Vec<_>>() {
+        for data in constraints {
             ConstraintConversion::new(
                 self.infcx,
                 &self.borrowck_context.universal_regions,

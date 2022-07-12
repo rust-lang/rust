@@ -10,7 +10,6 @@ use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use std::fmt;
-use std::rc::Rc;
 
 pub mod ascribe_user_type;
 pub mod custom;
@@ -41,7 +40,7 @@ pub struct TypeOpOutput<'tcx, Op: TypeOp<'tcx>> {
     /// The output from the type op.
     pub output: Op::Output,
     /// Any region constraints from performing the type op.
-    pub constraints: Option<Rc<QueryRegionConstraints<'tcx>>>,
+    pub constraints: Option<&'tcx QueryRegionConstraints<'tcx>>,
     /// Used for error reporting to be able to rerun the query
     pub error_info: Option<Op::ErrorInfo>,
 }
@@ -158,8 +157,11 @@ where
 
         // Promote the final query-region-constraints into a
         // (optional) ref-counted vector:
-        let region_constraints =
-            if region_constraints.is_empty() { None } else { Some(Rc::new(region_constraints)) };
+        let region_constraints = if region_constraints.is_empty() {
+            None
+        } else {
+            Some(&*infcx.tcx.arena.alloc(region_constraints))
+        };
 
         Ok(TypeOpOutput { output, constraints: region_constraints, error_info })
     }
