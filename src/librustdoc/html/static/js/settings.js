@@ -150,7 +150,7 @@
             {
                 "name": "Theme",
                 "js_name": "theme",
-                "default": "",
+                "default": "system-preference",
                 "options": themes.concat("system preference"),
             },
             {

@@ -35,9 +35,8 @@ reload:
 click: "#settings-menu"
 wait-for: "#settings"
 
-// We check that the "Use system theme" is disabled.
-assert-property: ("#use-system-theme", {"checked": "false"})
-assert: "//*[@class='setting-line']//span[text()='Use system theme']"
+// We check that the current theme is not "system theme" is disabled.
+assert-property: ("#theme-system-preference", {"checked": "false"})
 // Meaning that only the "theme" menu is showing up.
 assert: ".setting-line:not(.hidden) #theme"
 assert: ".setting-line.hidden #preferred-dark-theme"
@@ -105,13 +104,14 @@ assert-css: (
     },
 )
 
-// We now switch the display.
-click: "#use-system-theme"
+// We now select the "system preference" theme.
+click: "#theme-system-preference"
+// Checking its text.
+assert-text: ("#theme-system-preference + span", "system preference")
 // Wait for the hidden element to show up.
 wait-for: ".setting-line:not(.hidden) #preferred-dark-theme"
 assert: ".setting-line:not(.hidden) #preferred-light-theme"
-// Check that the theme picking is hidden.
-assert: ".setting-line.hidden #theme"
+assert-local-storage: {"rustdoc-theme": "system-preference"}
 
 // We check their text as well.
 assert-text: ("#preferred-dark-theme .setting-name", "Preferred dark theme")
