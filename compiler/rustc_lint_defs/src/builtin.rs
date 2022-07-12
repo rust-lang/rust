@@ -3134,8 +3134,9 @@ declare_lint! {
 
 declare_lint! {
     /// The `repr_transparent_external_private_fields` lint
-    /// detects types marked #[repr(trasparent)] that (transitively)
-    /// contain an external ZST type marked #[non_exhaustive]
+    /// detects types marked `#[repr(transparent)]` that (transitively)
+    /// contain an external ZST type marked `#[non_exhaustive]` or containing
+    /// private fields
     ///
     /// ### Example
     ///
@@ -3150,17 +3151,20 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// error: deprecated `#[macro_use]` attribute used to import macros should be replaced at use sites with a `use` item to import the macro instead
-    ///  --> src/main.rs:3:1
+    /// error: zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
+    ///  --> src/main.rs:5:28
     ///   |
-    /// 3 | #[macro_use]
-    ///   | ^^^^^^^^^^^^
+    /// 5 | struct Bar(u32, ([u32; 0], NonExhaustiveZst));
+    ///   |                            ^^^^^^^^^^^^^^^^
     ///   |
     /// note: the lint level is defined here
     ///  --> src/main.rs:1:9
     ///   |
     /// 1 | #![deny(repr_transparent_external_private_fields)]
     ///   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
+    ///   = note: this struct contains `NonExhaustiveZst`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
     /// ```
     ///
     /// ### Explanation
