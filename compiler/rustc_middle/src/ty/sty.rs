@@ -932,6 +932,10 @@ impl<T> EarlyBinder<T> {
         let value = f(self.0)?;
         Ok(EarlyBinder(value))
     }
+
+    pub fn rebind<U>(&self, value: U) -> EarlyBinder<U> {
+        EarlyBinder(value)
+    }
 }
 
 impl<T> EarlyBinder<Option<T>> {

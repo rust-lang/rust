@@ -12,7 +12,7 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, EarlyBinder, GenericParamDefKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
 use rustc_span::def_id::DefId;
 
@@ -555,7 +555,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                         let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
                         let bound =
-                            EarlyBinder(bound.0.kind().skip_binder()).subst(tcx, assoc_ty_substs);
+                            bound.map_bound(|b| b.kind().skip_binder()).subst(tcx, assoc_ty_substs);
                         tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))
                     };
                 let normalized_bound = normalize_with_depth_to(
