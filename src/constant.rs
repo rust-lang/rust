@@ -536,11 +536,12 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         {
                             return None;
                         }
-                        StatementKind::CopyNonOverlapping(_) => {
-                            return None;
-                        } // conservative handling
+                        StatementKind::Intrinsic(ref intrinsic) => match **intrinsic {
+                            NonDivergingIntrinsic::CopyNonOverlapping(..) => return None,
+                            NonDivergingIntrinsic::Assume(..) => {}
+                        },
+                        // conservative handling
                         StatementKind::Assign(_)
-                        | StatementKind::Assume(_)
                         | StatementKind::FakeRead(_)
                         | StatementKind::SetDiscriminant { .. }
                         | StatementKind::Deinit(_)
