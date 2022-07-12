@@ -104,7 +104,7 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
-    pub(super) fn new(const_eval_limit: Limit, can_access_statics: bool) -> Self {
+    pub(crate) fn new(const_eval_limit: Limit, can_access_statics: bool) -> Self {
         CompileTimeInterpreter {
             steps_remaining: const_eval_limit.0,
             stack: Vec::new(),

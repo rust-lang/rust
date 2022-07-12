@@ -33,6 +33,7 @@ extern crate rustc_middle;
 pub mod const_eval;
 mod errors;
 pub mod interpret;
+pub mod might_permit_raw_init;
 pub mod transform;
 pub mod util;
 
