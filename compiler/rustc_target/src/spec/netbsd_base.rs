@@ -4,7 +4,6 @@ pub fn opts() -> TargetOptions {
     TargetOptions {
         os: "netbsd".into(),
         dynamic_linking: true,
-        executables: true,
         families: cvs!["unix"],
         no_default_libraries: false,
         has_rpath: true,

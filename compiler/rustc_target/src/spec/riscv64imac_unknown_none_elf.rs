@@ -14,7 +14,6 @@ pub fn target() -> Target {
             cpu: "generic-rv64".into(),
             max_atomic_width: Some(64),
             features: "+m,+a,+c".into(),
-            executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             code_model: Some(CodeModel::Medium),

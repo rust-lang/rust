@@ -24,7 +24,6 @@ pub fn opts() -> TargetOptions {
     TargetOptions {
         abi: "uwp".into(),
         vendor: "uwp".into(),
-        executables: false,
         limit_rdylib_exports: false,
         late_link_args,
         late_link_args_dynamic,
