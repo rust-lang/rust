@@ -1066,17 +1066,28 @@ impl File {
         cfg_if::cfg_if! {
             // futimens requires macOS 10.13, and Android API level 19
             if #[cfg(any(target_os = "android", target_os = "macos"))] {
-                fn ts_to_tv(ts: &libc::timespec) -> libc::timeval {
-                    libc::timeval { tv_sec: ts.tv_sec, tv_usec: (ts.tv_nsec / 1000) as _ }
-                }
                 cvt(unsafe {
                     weak!(fn futimens(c_int, *const libc::timespec) -> c_int);
-                    futimens.get()
-                        .map(|futimens| futimens(self.as_raw_fd(), times.0.as_ptr()))
-                        .unwrap_or_else(|| {
+                    match futimens.get() {
+                        Some(futimens) => futimens(self.as_raw_fd(), times.0.as_ptr()),
+                        #[cfg(target_os = "macos")]
+                        None => {
+                            fn ts_to_tv(ts: &libc::timespec) -> libc::timeval {
+                                libc::timeval {
+                                    tv_sec: ts.tv_sec,
+                                    tv_usec: (ts.tv_nsec / 1000) as _
+                                }
+                            }
                             let timevals = [ts_to_tv(&times.0[0]), ts_to_tv(&times.0[1])];
                             libc::futimes(self.as_raw_fd(), timevals.as_ptr())
-                        })
+                        }
+                        // futimes requires even newer Android.
+                        #[cfg(target_os = "android")]
+                        None => return Err(io::const_io_error!(
+                            io::ErrorKind::Unsupported,
+                            "setting file times requires Android API level >= 19",
+                        )),
+                    }
                 })?;
             } else {
                 cvt(unsafe { libc::futimens(self.as_raw_fd(), times.0.as_ptr()) })?;
