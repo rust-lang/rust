@@ -1,5 +1,4 @@
 // run-rustfix
-#![feature(let_chains)]
 #![allow(
     unused,
     clippy::assign_op_pattern,
