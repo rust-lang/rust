@@ -16,6 +16,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::Size;
+use smallvec::SmallVec;
 use std::collections::HashSet;
 
 use crate::*;
@@ -23,8 +24,10 @@ use crate::*;
 pub mod diagnostics;
 use diagnostics::{AllocHistory, TagHistory};
 
-pub mod stack;
-use stack::Stack;
+mod item;
+pub use item::{Item, Permission};
+mod stack;
+pub use stack::Stack;
 
 pub type CallId = NonZeroU64;
 
@@ -78,113 +81,21 @@ impl SbTagExtra {
     }
 }
 
-/// Indicates which permission is granted (by this item to some pointers)
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Permission {
-    /// Grants unique mutable access.
-    Unique,
-    /// Grants shared mutable access.
-    SharedReadWrite,
-    /// Grants shared read-only access.
-    SharedReadOnly,
-    /// Grants no access, but separates two groups of SharedReadWrite so they are not
-    /// all considered mutually compatible.
-    Disabled,
+#[derive(Debug)]
+pub struct FrameExtra {
+    /// The ID of the call this frame corresponds to.
+    call_id: CallId,
+
+    /// If this frame is protecting any tags, they are listed here. We use this list to do
+    /// incremental updates of the global list of protected tags stored in the
+    /// `stacked_borrows::GlobalState` upon function return, and if we attempt to pop a protected
+    /// tag, to identify which call is responsible for protecting the tag.
+    /// See `Stack::item_popped` for more explanation.
+    ///
+    /// This will contain one tag per reference passed to the function, so
+    /// a size of 2 is enough for the vast majority of functions.
+    protected_tags: SmallVec<[SbTag; 2]>,
 }
-
-impl Permission {
-    const UNIQUE: u64 = 0;
-    const SHARED_READ_WRITE: u64 = 1;
-    const SHARED_READ_ONLY: u64 = 2;
-    const DISABLED: u64 = 3;
-
-    fn to_bits(self) -> u64 {
-        match self {
-            Permission::Unique => Self::UNIQUE,
-            Permission::SharedReadWrite => Self::SHARED_READ_WRITE,
-            Permission::SharedReadOnly => Self::SHARED_READ_ONLY,
-            Permission::Disabled => Self::DISABLED,
-        }
-    }
-
-    fn from_bits(perm: u64) -> Self {
-        match perm {
-            Self::UNIQUE => Permission::Unique,
-            Self::SHARED_READ_WRITE => Permission::SharedReadWrite,
-            Self::SHARED_READ_ONLY => Permission::SharedReadOnly,
-            Self::DISABLED => Permission::Disabled,
-            _ => unreachable!(),
-        }
-    }
-}
-
-mod item {
-    use super::{Permission, SbTag};
-    use std::fmt;
-    use std::num::NonZeroU64;
-
-    /// An item in the per-location borrow stack.
-    #[derive(Copy, Clone, Hash, PartialEq, Eq)]
-    pub struct Item(u64);
-
-    // An Item contains 3 bitfields:
-    // * Bits 0-61 store an SbTag
-    // * Bits 61-63 store a Permission
-    // * Bit 64 stores a flag which indicates if we have a protector
-    const TAG_MASK: u64 = u64::MAX >> 3;
-    const PERM_MASK: u64 = 0x3 << 61;
-    const PROTECTED_MASK: u64 = 0x1 << 63;
-
-    const PERM_SHIFT: u64 = 61;
-    const PROTECTED_SHIFT: u64 = 63;
-
-    impl Item {
-        pub fn new(tag: SbTag, perm: Permission, protected: bool) -> Self {
-            assert!(tag.0.get() <= TAG_MASK);
-            let packed_tag = tag.0.get();
-            let packed_perm = perm.to_bits() << PERM_SHIFT;
-            let packed_protected = (protected as u64) << PROTECTED_SHIFT;
-
-            let new = Self(packed_tag | packed_perm | packed_protected);
-
-            debug_assert!(new.tag() == tag);
-            debug_assert!(new.perm() == perm);
-            debug_assert!(new.protected() == protected);
-
-            new
-        }
-
-        /// The pointers the permission is granted to.
-        pub fn tag(self) -> SbTag {
-            SbTag(NonZeroU64::new(self.0 & TAG_MASK).unwrap())
-        }
-
-        /// The permission this item grants.
-        pub fn perm(self) -> Permission {
-            Permission::from_bits((self.0 & PERM_MASK) >> PERM_SHIFT)
-        }
-
-        /// Whether or not there is a protector for this tag
-        pub fn protected(self) -> bool {
-            self.0 & PROTECTED_MASK > 0
-        }
-
-        /// Set the Permission stored in this Item to Permission::Disabled
-        pub fn set_disabled(&mut self) {
-            // Clear the current set permission
-            self.0 &= !PERM_MASK;
-            // Write Permission::Disabled to the Permission bits
-            self.0 |= Permission::Disabled.to_bits() << PERM_SHIFT;
-        }
-    }
-
-    impl fmt::Debug for Item {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "[{:?} for {:?}]", self.perm(), self.tag())
-        }
-    }
-}
-pub use item::Item;
 
 /// Extra per-allocation state.
 #[derive(Clone, Debug)]
@@ -208,7 +119,11 @@ pub struct GlobalStateInner {
     base_ptr_tags: FxHashMap<AllocId, SbTag>,
     /// Next unused call ID (for protectors).
     next_call_id: CallId,
-    /// All tags currently protected
+    /// All currently protected tags.
+    /// An item is protected if its tag is in this set, *and* it has the "protected" bit set.
+    /// We add tags to this when they are created with a protector in `reborrow`, and
+    /// we remove tags from this when the call which is protecting them returns, in
+    /// `GlobalStateInner::end_call`. See `Stack::item_popped` for more details.
     protected_tags: FxHashSet<SbTag>,
     /// The pointer ids to trace
     tracked_pointer_tags: HashSet<SbTag>,
@@ -287,18 +202,23 @@ impl GlobalStateInner {
         id
     }
 
-    pub fn new_call(&mut self) -> CallId {
-        let id = self.next_call_id;
-        trace!("new_call: Assigning ID {}", id);
-        if self.tracked_call_ids.contains(&id) {
-            register_diagnostic(NonHaltingDiagnostic::CreatedCallId(id));
+    pub fn new_frame(&mut self) -> FrameExtra {
+        let call_id = self.next_call_id;
+        trace!("new_frame: Assigning call ID {}", call_id);
+        if self.tracked_call_ids.contains(&call_id) {
+            register_diagnostic(NonHaltingDiagnostic::CreatedCallId(call_id));
         }
-        self.next_call_id = NonZeroU64::new(id.get() + 1).unwrap();
-        id
+        self.next_call_id = NonZeroU64::new(call_id.get() + 1).unwrap();
+        FrameExtra { call_id, protected_tags: SmallVec::new() }
     }
 
     pub fn end_call(&mut self, frame: &machine::FrameData<'_>) {
-        for tag in &frame.protected_tags {
+        for tag in &frame
+            .stacked_borrows
+            .as_ref()
+            .expect("we should have Stacked Borrows data")
+            .protected_tags
+        {
             self.protected_tags.remove(tag);
         }
     }
@@ -407,17 +327,40 @@ impl<'tcx> Stack {
             return Ok(());
         }
 
+        // We store tags twice, once in global.protected_tags and once in each call frame.
+        // We do this because consulting a single global set in this function is faster
+        // than attempting to search all call frames in the program for the `FrameExtra`
+        // (if any) which is protecting the popped tag.
+        //
+        // This duplication trades off making `end_call` slower to make this function faster. This
+        // trade-off is profitable in practice for a combination of two reasons.
+        // 1. A single protected tag can (and does in some programs) protect thousands of `Item`s.
+        //    Therefore, adding overhead to in function call/return is profitable even if it only
+        //    saves a little work in this function.
+        // 2. Most frames protect only one or two tags. So this duplicative global turns a search
+        //    which ends up about linear in the number of protected tags in the program into a
+        //    constant time check (and a slow linear, because the tags in the frames aren't contiguous).
         if global.protected_tags.contains(&item.tag()) {
+            // This path is cold because it is fatal to the program. So here it is fine to do the
+            // more expensive search to figure out which call is responsible for protecting this
+            // tag.
             let call_id = threads
                 .all_stacks()
                 .flatten()
-                .find(|t| t.extra.protected_tags.contains(&item.tag()))
-                .map(|frame| frame.extra.call_id)
+                .map(|frame| {
+                    frame
+                        .extra
+                        .stacked_borrows
+                        .as_ref()
+                        .expect("we should have Stacked Borrows data")
+                })
+                .find(|frame| frame.protected_tags.contains(&item.tag()))
+                .map(|frame| frame.call_id)
                 .unwrap(); // FIXME: Surely we should find something, but a panic seems wrong here?
             if let Some((tag, _alloc_range, _offset, _access)) = provoking_access {
                 Err(err_sb_ub(
                     format!(
-                        "not granting access to tag {:?} because incompatible item is protected: {:?} (call {:?})",
+                        "not granting access to tag {:?} because incompatible item {:?} is protected by call {:?}",
                         tag, item, call_id
                     ),
                     None,
@@ -426,7 +369,7 @@ impl<'tcx> Stack {
             } else {
                 Err(err_sb_ub(
                     format!(
-                        "deallocating while item is protected: {:?} (call {:?})",
+                        "deallocating while item {:?} is protected by call {:?}",
                         item, call_id
                     ),
                     None,
@@ -904,7 +847,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         );
 
         if protect {
-            this.frame_mut().extra.protected_tags.push(new_tag);
+            this.frame_mut().extra.stacked_borrows.as_mut().unwrap().protected_tags.push(new_tag);
             this.machine.stacked_borrows.as_mut().unwrap().get_mut().protected_tags.insert(new_tag);
         }
         // FIXME: can't hold the current span handle across the borrows of self above

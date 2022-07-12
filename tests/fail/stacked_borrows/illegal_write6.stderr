@@ -1,8 +1,8 @@
-error: Undefined Behavior: not granting access to tag <TAG> because incompatible item is protected: [Unique for <TAG>] (call ID)
+error: Undefined Behavior: not granting access to tag <TAG> because incompatible item [Unique for <TAG>] is protected by call ID
   --> $DIR/illegal_write6.rs:LL:CC
    |
 LL |     unsafe { *y = 2 };
-   |              ^^^^^^ not granting access to tag <TAG> because incompatible item is protected: [Unique for <TAG>] (call ID)
+   |              ^^^^^^ not granting access to tag <TAG> because incompatible item [Unique for <TAG>] is protected by call ID
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information

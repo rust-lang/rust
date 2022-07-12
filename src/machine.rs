@@ -5,7 +5,6 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt;
-use std::num::NonZeroU64;
 use std::time::Instant;
 
 use rand::rngs::StdRng;
@@ -43,7 +42,7 @@ pub const NUM_CPUS: u64 = 1;
 /// Extra data stored with each stack frame
 pub struct FrameData<'tcx> {
     /// Extra data for Stacked Borrows.
-    pub call_id: stacked_borrows::CallId,
+    pub stacked_borrows: Option<stacked_borrows::FrameExtra>,
 
     /// If this is Some(), then this is a special "catch unwind" frame (the frame of `try_fn`
     /// called by `try`). When this frame is popped during unwinding a panic,
@@ -54,18 +53,15 @@ pub struct FrameData<'tcx> {
     /// for the start of this frame. When we finish executing this frame,
     /// we use this to register a completed event with `measureme`.
     pub timing: Option<measureme::DetachedTiming>,
-
-    pub protected_tags: Vec<SbTag>,
 }
 
 impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameData { call_id, catch_unwind, timing: _, protected_tags } = self;
+        let FrameData { stacked_borrows, catch_unwind, timing: _ } = self;
         f.debug_struct("FrameData")
-            .field("call_id", call_id)
+            .field("stacked_borrows", stacked_borrows)
             .field("catch_unwind", catch_unwind)
-            .field("protected_tags", protected_tags)
             .finish()
     }
 }
@@ -894,11 +890,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         };
 
         let stacked_borrows = ecx.machine.stacked_borrows.as_ref();
-        let call_id = stacked_borrows.map_or(NonZeroU64::new(1).unwrap(), |stacked_borrows| {
-            stacked_borrows.borrow_mut().new_call()
-        });
 
-        let extra = FrameData { call_id, catch_unwind: None, timing, protected_tags: Vec::new() };
+        let extra = FrameData {
+            stacked_borrows: stacked_borrows.map(|sb| sb.borrow_mut().new_frame()),
+            catch_unwind: None,
+            timing,
+        };
         Ok(frame.with_extra(extra))
     }
 

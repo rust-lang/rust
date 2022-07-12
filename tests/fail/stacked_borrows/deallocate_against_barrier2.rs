@@ -1,4 +1,4 @@
-//@error-pattern: deallocating while item is protected
+//@error-pattern: deallocating while item
 use std::marker::PhantomPinned;
 
 pub struct NotUnpin(i32, PhantomPinned);

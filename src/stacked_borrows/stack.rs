@@ -303,10 +303,11 @@ impl<'tcx> Stack {
                 if item.perm() == Permission::Unique {
                     log::trace!("access: disabling item {:?}", item);
                     visitor(*item)?;
-                    item.set_disabled();
-                    for t in &mut self.cache.items {
-                        if t.tag() == item.tag() {
-                            t.set_disabled();
+                    item.set_permission(Permission::Disabled);
+                    // Also update all copies of this item in the cache.
+                    for it in &mut self.cache.items {
+                        if it.tag() == item.tag() {
+                            it.set_permission(Permission::Disabled);
                         }
                     }
                 }
