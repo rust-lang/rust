@@ -36,9 +36,14 @@ impl ValidAlign {
     }
 
     #[inline]
+    pub(crate) const fn as_usize(self) -> usize {
+        self.0 as usize
+    }
+
+    #[inline]
     pub(crate) const fn as_nonzero(self) -> NonZeroUsize {
         // SAFETY: All the discriminants are non-zero.
-        unsafe { NonZeroUsize::new_unchecked(self.0 as usize) }
+        unsafe { NonZeroUsize::new_unchecked(self.as_usize()) }
     }
 
     /// Returns the base 2 logarithm of the alignment.
