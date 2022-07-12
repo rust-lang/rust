@@ -178,8 +178,6 @@ define_handles! {
     'owned:
     FreeFunctions,
     TokenStream,
-    TokenStreamBuilder,
-    TokenStreamIter,
     Group,
     Literal,
     SourceFile,
@@ -199,12 +197,6 @@ define_handles! {
 // instead of pattern matching on methods, here and in server decl.
 
 impl Clone for TokenStream {
-    fn clone(&self) -> Self {
-        self.clone()
-    }
-}
-
-impl Clone for TokenStreamIter {
     fn clone(&self) -> Self {
         self.clone()
     }

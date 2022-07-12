@@ -23,14 +23,14 @@ type Spacing = tt::Spacing;
 type Literal = tt::Literal;
 type Span = tt::TokenId;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct TokenStream {
     pub token_trees: Vec<TokenTree>,
 }
 
 impl TokenStream {
     pub fn new() -> Self {
-        TokenStream { token_trees: Default::default() }
+        TokenStream::default()
     }
 
     pub fn with_subtree(subtree: tt::Subtree) -> Self {
@@ -276,8 +276,6 @@ pub struct Rustc {
 impl server::Types for Rustc {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type TokenStreamBuilder = TokenStreamBuilder;
-    type TokenStreamIter = TokenStreamIter;
     type Group = Group;
     type Punct = Punct;
     type Ident = IdentId;
@@ -297,10 +295,6 @@ impl server::FreeFunctions for Rustc {
 }
 
 impl server::TokenStream for Rustc {
-    fn new(&mut self) -> Self::TokenStream {
-        Self::TokenStream::new()
-    }
-
     fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
@@ -344,41 +338,55 @@ impl server::TokenStream for Rustc {
         }
     }
 
-    fn into_iter(&mut self, stream: Self::TokenStream) -> Self::TokenStreamIter {
-        let trees: Vec<TokenTree> = stream.into_iter().collect();
-        TokenStreamIter { trees: trees.into_iter() }
-    }
-
     fn expand_expr(&mut self, self_: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
         Ok(self_.clone())
     }
-}
 
-impl server::TokenStreamBuilder for Rustc {
-    fn new(&mut self) -> Self::TokenStreamBuilder {
-        Self::TokenStreamBuilder::new()
-    }
-    fn push(&mut self, builder: &mut Self::TokenStreamBuilder, stream: Self::TokenStream) {
-        builder.push(stream)
-    }
-    fn build(&mut self, builder: Self::TokenStreamBuilder) -> Self::TokenStream {
+    fn concat_trees(
+        &mut self,
+        base: Option<Self::TokenStream>,
+        trees: Vec<bridge::TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>>,
+    ) -> Self::TokenStream {
+        let mut builder = TokenStreamBuilder::new();
+        if let Some(base) = base {
+            builder.push(base);
+        }
+        for tree in trees {
+            builder.push(self.from_token_tree(tree));
+        }
         builder.build()
     }
-}
 
-impl server::TokenStreamIter for Rustc {
-    fn next(
+    fn concat_streams(
         &mut self,
-        iter: &mut Self::TokenStreamIter,
-    ) -> Option<bridge::TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
-        iter.trees.next().map(|tree| match tree {
-            TokenTree::Subtree(group) => bridge::TokenTree::Group(group),
-            TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                bridge::TokenTree::Ident(IdentId(self.ident_interner.intern(&IdentData(ident))))
-            }
-            TokenTree::Leaf(tt::Leaf::Literal(literal)) => bridge::TokenTree::Literal(literal),
-            TokenTree::Leaf(tt::Leaf::Punct(punct)) => bridge::TokenTree::Punct(punct),
-        })
+        base: Option<Self::TokenStream>,
+        streams: Vec<Self::TokenStream>,
+    ) -> Self::TokenStream {
+        let mut builder = TokenStreamBuilder::new();
+        if let Some(base) = base {
+            builder.push(base);
+        }
+        for stream in streams {
+            builder.push(stream);
+        }
+        builder.build()
+    }
+
+    fn into_trees(
+        &mut self,
+        stream: Self::TokenStream,
+    ) -> Vec<bridge::TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
+        stream
+            .into_iter()
+            .map(|tree| match tree {
+                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
+                    bridge::TokenTree::Ident(IdentId(self.ident_interner.intern(&IdentData(ident))))
+                }
+                tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => bridge::TokenTree::Literal(lit),
+                tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => bridge::TokenTree::Punct(punct),
+                tt::TokenTree::Subtree(subtree) => bridge::TokenTree::Group(subtree),
+            })
+            .collect()
     }
 }
 
@@ -416,8 +424,15 @@ fn spacing_to_external(spacing: Spacing) -> bridge::Spacing {
 }
 
 impl server::Group for Rustc {
-    fn new(&mut self, delimiter: bridge::Delimiter, stream: Self::TokenStream) -> Self::Group {
-        Self::Group { delimiter: delim_to_internal(delimiter), token_trees: stream.token_trees }
+    fn new(
+        &mut self,
+        delimiter: bridge::Delimiter,
+        stream: Option<Self::TokenStream>,
+    ) -> Self::Group {
+        Self::Group {
+            delimiter: delim_to_internal(delimiter),
+            token_trees: stream.unwrap_or_default().token_trees,
+        }
     }
     fn delimiter(&mut self, group: &Self::Group) -> bridge::Delimiter {
         delim_to_external(group.delimiter)
