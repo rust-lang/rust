@@ -60,7 +60,6 @@ macro_rules! with_api {
             TokenStream {
                 fn drop($self: $S::TokenStream);
                 fn clone($self: &$S::TokenStream) -> $S::TokenStream;
-                fn new() -> $S::TokenStream;
                 fn is_empty($self: &$S::TokenStream) -> bool;
                 fn expand_expr($self: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
                 fn from_str(src: &str) -> $S::TokenStream;
@@ -68,25 +67,22 @@ macro_rules! with_api {
                 fn from_token_tree(
                     tree: TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>,
                 ) -> $S::TokenStream;
-                fn into_iter($self: $S::TokenStream) -> $S::TokenStreamIter;
-            },
-            TokenStreamBuilder {
-                fn drop($self: $S::TokenStreamBuilder);
-                fn new() -> $S::TokenStreamBuilder;
-                fn push($self: &mut $S::TokenStreamBuilder, stream: $S::TokenStream);
-                fn build($self: $S::TokenStreamBuilder) -> $S::TokenStream;
-            },
-            TokenStreamIter {
-                fn drop($self: $S::TokenStreamIter);
-                fn clone($self: &$S::TokenStreamIter) -> $S::TokenStreamIter;
-                fn next(
-                    $self: &mut $S::TokenStreamIter,
-                ) -> Option<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>;
+                fn concat_trees(
+                    base: Option<$S::TokenStream>,
+                    trees: Vec<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>,
+                ) -> $S::TokenStream;
+                fn concat_streams(
+                    base: Option<$S::TokenStream>,
+                    streams: Vec<$S::TokenStream>,
+                ) -> $S::TokenStream;
+                fn into_trees(
+                    $self: $S::TokenStream
+                ) -> Vec<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>;
             },
             Group {
                 fn drop($self: $S::Group);
                 fn clone($self: &$S::Group) -> $S::Group;
-                fn new(delimiter: Delimiter, stream: $S::TokenStream) -> $S::Group;
+                fn new(delimiter: Delimiter, stream: Option<$S::TokenStream>) -> $S::Group;
                 fn delimiter($self: &$S::Group) -> Delimiter;
                 fn stream($self: &$S::Group) -> $S::TokenStream;
                 fn span($self: &$S::Group) -> $S::Span;
@@ -311,29 +307,18 @@ impl<'a, T, M> Unmark for &'a mut Marked<T, M> {
     }
 }
 
-impl<T: Mark> Mark for Option<T> {
-    type Unmarked = Option<T::Unmarked>;
+impl<T: Mark> Mark for Vec<T> {
+    type Unmarked = Vec<T::Unmarked>;
     fn mark(unmarked: Self::Unmarked) -> Self {
-        unmarked.map(T::mark)
+        // Should be a no-op due to std's in-place collect optimizations.
+        unmarked.into_iter().map(T::mark).collect()
     }
 }
-impl<T: Unmark> Unmark for Option<T> {
-    type Unmarked = Option<T::Unmarked>;
+impl<T: Unmark> Unmark for Vec<T> {
+    type Unmarked = Vec<T::Unmarked>;
     fn unmark(self) -> Self::Unmarked {
-        self.map(T::unmark)
-    }
-}
-
-impl<T: Mark, E: Mark> Mark for Result<T, E> {
-    type Unmarked = Result<T::Unmarked, E::Unmarked>;
-    fn mark(unmarked: Self::Unmarked) -> Self {
-        unmarked.map(T::mark).map_err(E::mark)
-    }
-}
-impl<T: Unmark, E: Unmark> Unmark for Result<T, E> {
-    type Unmarked = Result<T::Unmarked, E::Unmarked>;
-    fn unmark(self) -> Self::Unmarked {
-        self.map(T::unmark).map_err(E::unmark)
+        // Should be a no-op due to std's in-place collect optimizations.
+        self.into_iter().map(T::unmark).collect()
     }
 }
 
@@ -367,7 +352,6 @@ mark_noop! {
     Level,
     LineColumn,
     Spacing,
-    Bound<usize>,
 }
 
 rpc_encode_decode!(
@@ -394,6 +378,61 @@ rpc_encode_decode!(
     }
 );
 
+macro_rules! mark_compound {
+    (enum $name:ident <$($T:ident),+> { $($variant:ident $(($field:ident))?),* $(,)? }) => {
+        impl<$($T: Mark),+> Mark for $name <$($T),+> {
+            type Unmarked = $name <$($T::Unmarked),+>;
+            fn mark(unmarked: Self::Unmarked) -> Self {
+                match unmarked {
+                    $($name::$variant $(($field))? => {
+                        $name::$variant $((Mark::mark($field)))?
+                    })*
+                }
+            }
+        }
+
+        impl<$($T: Unmark),+> Unmark for $name <$($T),+> {
+            type Unmarked = $name <$($T::Unmarked),+>;
+            fn unmark(self) -> Self::Unmarked {
+                match self {
+                    $($name::$variant $(($field))? => {
+                        $name::$variant $((Unmark::unmark($field)))?
+                    })*
+                }
+            }
+        }
+    }
+}
+
+macro_rules! compound_traits {
+    ($($t:tt)*) => {
+        rpc_encode_decode!($($t)*);
+        mark_compound!($($t)*);
+    };
+}
+
+compound_traits!(
+    enum Bound<T> {
+        Included(x),
+        Excluded(x),
+        Unbounded,
+    }
+);
+
+compound_traits!(
+    enum Option<T> {
+        Some(t),
+        None,
+    }
+);
+
+compound_traits!(
+    enum Result<T, E> {
+        Ok(t),
+        Err(e),
+    }
+);
+
 #[derive(Clone)]
 pub enum TokenTree<G, P, I, L> {
     Group(G),
@@ -402,30 +441,7 @@ pub enum TokenTree<G, P, I, L> {
     Literal(L),
 }
 
-impl<G: Mark, P: Mark, I: Mark, L: Mark> Mark for TokenTree<G, P, I, L> {
-    type Unmarked = TokenTree<G::Unmarked, P::Unmarked, I::Unmarked, L::Unmarked>;
-    fn mark(unmarked: Self::Unmarked) -> Self {
-        match unmarked {
-            TokenTree::Group(tt) => TokenTree::Group(G::mark(tt)),
-            TokenTree::Punct(tt) => TokenTree::Punct(P::mark(tt)),
-            TokenTree::Ident(tt) => TokenTree::Ident(I::mark(tt)),
-            TokenTree::Literal(tt) => TokenTree::Literal(L::mark(tt)),
-        }
-    }
-}
-impl<G: Unmark, P: Unmark, I: Unmark, L: Unmark> Unmark for TokenTree<G, P, I, L> {
-    type Unmarked = TokenTree<G::Unmarked, P::Unmarked, I::Unmarked, L::Unmarked>;
-    fn unmark(self) -> Self::Unmarked {
-        match self {
-            TokenTree::Group(tt) => TokenTree::Group(tt.unmark()),
-            TokenTree::Punct(tt) => TokenTree::Punct(tt.unmark()),
-            TokenTree::Ident(tt) => TokenTree::Ident(tt.unmark()),
-            TokenTree::Literal(tt) => TokenTree::Literal(tt.unmark()),
-        }
-    }
-}
-
-rpc_encode_decode!(
+compound_traits!(
     enum TokenTree<G, P, I, L> {
         Group(tt),
         Punct(tt),

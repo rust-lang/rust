@@ -8,8 +8,6 @@ use super::client::HandleStore;
 pub trait Types {
     type FreeFunctions: 'static;
     type TokenStream: 'static + Clone;
-    type TokenStreamBuilder: 'static;
-    type TokenStreamIter: 'static + Clone;
     type Group: 'static + Clone;
     type Punct: 'static + Copy + Eq + Hash;
     type Ident: 'static + Copy + Eq + Hash;
@@ -275,13 +273,17 @@ fn run_server<
 }
 
 impl client::Client<super::super::TokenStream, super::super::TokenStream> {
-    pub fn run<S: Server>(
+    pub fn run<S>(
         &self,
         strategy: &impl ExecutionStrategy,
         server: S,
         input: S::TokenStream,
         force_show_panics: bool,
-    ) -> Result<S::TokenStream, PanicMessage> {
+    ) -> Result<S::TokenStream, PanicMessage>
+    where
+        S: Server,
+        S::TokenStream: Default,
+    {
         let client::Client { get_handle_counters, run, _marker } = *self;
         run_server(
             strategy,
@@ -291,7 +293,7 @@ impl client::Client<super::super::TokenStream, super::super::TokenStream> {
             run,
             force_show_panics,
         )
-        .map(<MarkedTypes<S> as Types>::TokenStream::unmark)
+        .map(|s| <Option<<MarkedTypes<S> as Types>::TokenStream>>::unmark(s).unwrap_or_default())
     }
 }
 
@@ -301,14 +303,18 @@ impl
         super::super::TokenStream,
     >
 {
-    pub fn run<S: Server>(
+    pub fn run<S>(
         &self,
         strategy: &impl ExecutionStrategy,
         server: S,
         input: S::TokenStream,
         input2: S::TokenStream,
         force_show_panics: bool,
-    ) -> Result<S::TokenStream, PanicMessage> {
+    ) -> Result<S::TokenStream, PanicMessage>
+    where
+        S: Server,
+        S::TokenStream: Default,
+    {
         let client::Client { get_handle_counters, run, _marker } = *self;
         run_server(
             strategy,
@@ -321,6 +327,6 @@ impl
             run,
             force_show_panics,
         )
-        .map(<MarkedTypes<S> as Types>::TokenStream::unmark)
+        .map(|s| <Option<<MarkedTypes<S> as Types>::TokenStream>>::unmark(s).unwrap_or_default())
     }
 }
