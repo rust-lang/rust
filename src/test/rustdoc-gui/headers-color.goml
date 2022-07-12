@@ -5,11 +5,7 @@ goto: file://|DOC_PATH|/test_docs/struct.Foo.html
 show-text: true
 
 // Ayu theme
-local-storage: {
-    "rustdoc-theme": "ayu",
-    "rustdoc-preferred-dark-theme": "ayu",
-    "rustdoc-use-system-theme": "false",
-}
+local-storage: {"rustdoc-theme": "ayu"}
 reload:
 
 assert-css: (
@@ -44,11 +40,7 @@ goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
 assert-css: (".docblock > :not(p) > a", {"color": "rgb(57, 175, 215)"}, ALL)
 
 // Dark theme
-local-storage: {
-    "rustdoc-theme": "dark",
-    "rustdoc-preferred-dark-theme": "dark",
-    "rustdoc-use-system-theme": "false",
-}
+local-storage: {"rustdoc-theme": "dark"}
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html
 
 assert-css: (
@@ -83,7 +75,7 @@ goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
 assert-css: (".docblock > :not(p) > a", {"color": "rgb(210, 153, 29)"}, ALL)
 
 // Light theme
-local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+local-storage: {"rustdoc-theme": "light"}
 reload:
 
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html

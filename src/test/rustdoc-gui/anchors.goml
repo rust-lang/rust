@@ -5,7 +5,7 @@ goto: file://|DOC_PATH|/staged_api/struct.Foo.html
 show-text: true
 
 // Set the theme to light.
-local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+local-storage: {"rustdoc-theme": "light"}
 // We reload the page so the local storage settings are being used.
 reload:
 

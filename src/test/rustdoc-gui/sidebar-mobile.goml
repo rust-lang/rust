@@ -42,21 +42,21 @@ scroll-to: ".block.keyword li:nth-child(1)"
 compare-elements-position-near: (".block.keyword li:nth-child(1)", ".mobile-topbar", {"y": 543})
 
 // Now checking the background color of the sidebar.
-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "dark"}
+local-storage: {"rustdoc-theme": "dark"}
 reload:
 
 // Open the sidebar menu.
 click: ".sidebar-menu-toggle"
 assert-css: (".sidebar", {"background-color": "rgb(80, 80, 80)"})
 
-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "ayu"}
+local-storage: {"rustdoc-theme": "ayu"}
 reload:
 
 // Open the sidebar menu.
 click: ".sidebar-menu-toggle"
 assert-css: (".sidebar", {"background-color": "rgb(20, 25, 31)"})
 
-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "light"}
+local-storage: {"rustdoc-theme": "light"}
 reload:
 
 // Open the sidebar menu.

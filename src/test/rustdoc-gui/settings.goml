@@ -30,7 +30,7 @@ wait-for: "#alternative-display #search"
 assert: "#main-content.hidden"
 
 // Now let's check the content of the settings menu.
-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+local-storage: {"rustdoc-theme": "dark"}
 reload:
 click: "#settings-menu"
 wait-for: "#settings"

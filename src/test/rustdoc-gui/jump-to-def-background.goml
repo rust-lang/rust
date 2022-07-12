@@ -2,11 +2,7 @@
 goto: file://|DOC_PATH|/src/link_to_definition/lib.rs.html
 
 // Set the theme to dark.
-local-storage: {
-    "rustdoc-theme": "dark",
-    "rustdoc-preferred-dark-theme": "dark",
-    "rustdoc-use-system-theme": "false",
-}
+local-storage: {"rustdoc-theme": "dark"}
 // We reload the page so the local storage settings are being used.
 reload:
 
@@ -17,11 +13,7 @@ assert-css: (
 )
 
 // Set the theme to ayu.
-local-storage: {
-    "rustdoc-theme": "ayu",
-    "rustdoc-preferred-dark-theme": "ayu",
-    "rustdoc-use-system-theme": "false",
-}
+local-storage: {"rustdoc-theme": "ayu"}
 // We reload the page so the local storage settings are being used.
 reload:
 
@@ -32,7 +24,7 @@ assert-css: (
 )
 
 // Set the theme to light.
-local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+local-storage: {"rustdoc-theme": "light"}
 // We reload the page so the local storage settings are being used.
 reload:
 

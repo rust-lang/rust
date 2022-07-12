@@ -1,6 +1,6 @@
 // Ensures that the theme change is working as expected.
 goto: file://|DOC_PATH|/test_docs/index.html
-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "dark"}
+local-storage: {"rustdoc-theme": "dark"}
 reload:
 click: "#settings-menu"
 wait-for: "#theme-ayu"

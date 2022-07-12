@@ -32,10 +32,7 @@ assert-css: ("#settings-menu .popover", {"display": "none"})
 // We check the borders color now:
 
 // Ayu theme
-local-storage: {
-    "rustdoc-theme": "ayu",
-    "rustdoc-use-system-theme": "false",
-}
+local-storage: {"rustdoc-theme": "ayu"}
 reload:
 
 click: "#help-button"
@@ -47,10 +44,7 @@ compare-elements-css: ("#help-button .popover", "#help-button .top", ["border-co
 compare-elements-css: ("#help-button .popover", "#help-button .bottom", ["border-color"])
 
 // Dark theme
-local-storage: {
-    "rustdoc-theme": "dark",
-    "rustdoc-use-system-theme": "false",
-}
+local-storage: {"rustdoc-theme": "dark"}
 reload:
 
 click: "#help-button"
@@ -62,10 +56,7 @@ compare-elements-css: ("#help-button .popover", "#help-button .top", ["border-co
 compare-elements-css: ("#help-button .popover", "#help-button .bottom", ["border-color"])
 
 // Light theme
-local-storage: {
-    "rustdoc-theme": "light",
-    "rustdoc-use-system-theme": "false",
-}
+local-storage: {"rustdoc-theme": "light"}
 reload:
 
 click: "#help-button"
