@@ -249,8 +249,7 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
             | StatementKind::AscribeUserType(_, _)
             | StatementKind::Coverage(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::CopyNonOverlapping(_)
-            | StatementKind::Assume(_)
+            | StatementKind::Intrinsic(_)
             | StatementKind::Nop => {}
         }
     }
@@ -318,8 +317,7 @@ fn find_determining_place<'tcx>(
             | StatementKind::Retag(_, _)
             | StatementKind::AscribeUserType(_, _)
             | StatementKind::Coverage(_)
-            | StatementKind::CopyNonOverlapping(_)
-            | StatementKind::Assume(_)
+            | StatementKind::Intrinsic(_)
             | StatementKind::Nop => {}
 
             // If the discriminant is set, it is always set

@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     Body, CastKind, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    TerminatorKind, NonDivergingIntrinsic
 };
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
@@ -211,15 +211,19 @@ fn check_statement<'tcx>(
         StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
             check_place(tcx, **place, span, body)
         },
-        StatementKind::Assume(box op) => {
+
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
             check_operand(tcx, op, span, body)
         },
 
-        StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+            rustc_middle::mir::CopyNonOverlapping { dst, src, count },
+        )) => {
             check_operand(tcx, dst, span, body)?;
             check_operand(tcx, src, span, body)?;
             check_operand(tcx, count, span, body)
         },
+
         // These are all NOPs
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)

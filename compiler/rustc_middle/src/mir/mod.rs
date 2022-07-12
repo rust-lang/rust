@@ -1370,14 +1370,7 @@ impl Debug for Statement<'_> {
                 write!(fmt, "Coverage::{:?} for {:?}", kind, rgn)
             }
             Coverage(box ref coverage) => write!(fmt, "Coverage::{:?}", coverage.kind),
-            CopyNonOverlapping(box crate::mir::CopyNonOverlapping {
-                ref src,
-                ref dst,
-                ref count,
-            }) => {
-                write!(fmt, "copy_nonoverlapping(src={:?}, dst={:?}, count={:?})", src, dst, count)
-            }
-            Assume(box ref cond) => write!(fmt, "assume({:?})", cond),
+            Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
             Nop => write!(fmt, "nop"),
         }
     }

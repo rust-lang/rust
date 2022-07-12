@@ -270,8 +270,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
             | StatementKind::Retag(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
-            | StatementKind::CopyNonOverlapping(..)
-            | StatementKind::Assume(..)
+            | StatementKind::Intrinsic(..)
             | StatementKind::Nop => None,
         };
         if let Some(destination) = destination {

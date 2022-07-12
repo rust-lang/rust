@@ -51,7 +51,7 @@
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:90:9: 90:28
 -                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(*const i32, *mut i32, usize) {copy_nonoverlapping::<i32>}, val: Value(<ZST>) }
-+         copy_nonoverlapping(src=move _4, dst=move _8, count=const 0_usize); // scope 3 at $DIR/lower_intrinsics.rs:+4:9: +4:95
++         copy_nonoverlapping(dst = move _8, src = move _4, count = const 0_usize); // scope 3 at $DIR/lower_intrinsics.rs:+4:9: +4:95
 +         goto -> bb1;                     // scope 3 at $DIR/lower_intrinsics.rs:+4:9: +4:95
       }
   
