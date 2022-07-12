@@ -21,9 +21,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{
-    self, EarlyBinder, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitable,
-};
+use rustc_middle::ty::{self, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::lev_distance::{
@@ -713,7 +711,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
 
             let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-            let impl_ty = EarlyBinder(impl_ty).subst(self.tcx, impl_substs);
+            let impl_ty = impl_ty.subst(self.tcx, impl_substs);
 
             debug!("impl_ty: {:?}", impl_ty);
 
@@ -1811,9 +1809,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.erase_late_bound_regions(xform_fn_sig)
     }
 
-    /// Gets the type of an impl and generate substitutions with placeholders.
-    fn impl_ty_and_substs(&self, impl_def_id: DefId) -> (Ty<'tcx>, SubstsRef<'tcx>) {
-        (self.tcx.type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
+    /// Gets the type of an impl and generate substitutions with inference vars.
+    fn impl_ty_and_substs(
+        &self,
+        impl_def_id: DefId,
+    ) -> (ty::EarlyBinder<Ty<'tcx>>, SubstsRef<'tcx>) {
+        (self.tcx.bound_type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
     }
 
     fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
