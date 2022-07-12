@@ -4,7 +4,7 @@ use clippy_utils::{SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
 use if_chain::if_chain;
 use itertools::Itertools;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -238,31 +238,58 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
         return;
     }
 
-    let mut map = FxHashMap::<_, Vec<_>>::default();
-    for predicate in gen.predicates {
+    // Explanation:
+    // fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
+    // where T: Clone + Default, { unimplemented!(); }
+    //       ^^^^^^^^^^^^^^^^^^
+    //       |
+    // collects each of these where clauses into a set keyed by generic name and comparable trait
+    // eg. (T, Clone)
+    let where_predicates = gen
+        .predicates
+        .iter()
+        .filter_map(|pred| {
+            if_chain! {
+                if pred.in_where_clause();
+                if let WherePredicate::BoundPredicate(bound_predicate) = pred;
+                if let TyKind::Path(QPath::Resolved(_, path)) =  bound_predicate.bounded_ty.kind;
+                then {
+                    return Some(bound_predicate.bounds.iter().filter_map(|t| {
+                        Some((path.res, into_comparable_trait_ref(t.trait_ref()?)))
+                    }))
+                }
+            }
+            None
+        })
+        .flatten()
+        .collect::<FxHashSet<_>>();
+
+    // Explanation:
+    // fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z) ...
+    //            ^^^^^^^^^^^^^^^^^^  ^^^^^^^
+    //            |
+    // compare trait bounds keyed by generic name and comparable trait to collected where
+    // predicates eg. (T, Clone)
+    for predicate in gen.predicates.iter().filter(|pred| !pred.in_where_clause()) {
         if_chain! {
-            if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate;
+            if let WherePredicate::BoundPredicate(bound_predicate) = predicate;
             if bound_predicate.origin != PredicateOrigin::ImplTrait;
             if !bound_predicate.span.from_expansion();
-            if let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind;
-            if let Some(segment) = segments.first();
+            if let TyKind::Path(QPath::Resolved(_, path)) =  bound_predicate.bounded_ty.kind;
             then {
-                for (res_where, _, span_where) in bound_predicate.bounds.iter().filter_map(get_trait_info_from_bound) {
-                    let trait_resolutions_direct = map.entry(segment.ident).or_default();
-                    if let Some((_, span_direct)) = trait_resolutions_direct
-                                                .iter()
-                                                .find(|(res_direct, _)| *res_direct == res_where) {
-                        span_lint_and_help(
-                            cx,
-                            TRAIT_DUPLICATION_IN_BOUNDS,
-                            *span_direct,
-                            "this trait bound is already specified in the where clause",
-                            None,
-                            "consider removing this trait bound",
-                        );
-                    }
-                    else {
-                        trait_resolutions_direct.push((res_where, span_where));
+                for t in bound_predicate.bounds {
+                    if let Some(trait_ref) = t.trait_ref() {
+                        let key = (path.res, into_comparable_trait_ref(trait_ref));
+                        if where_predicates.contains(&key) {
+                            span_lint_and_help(
+                                cx,
+                                TRAIT_DUPLICATION_IN_BOUNDS,
+                                t.span(),
+                                "this trait bound is already specified in the where clause",
+                                None,
+                                "consider removing this trait bound",
+                                );
+                        }
                     }
                 }
             }
