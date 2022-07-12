@@ -155,14 +155,14 @@ where
             }
         }
 
-        // Promote the final query-region-constraints into a
-        // (optional) ref-counted vector:
-        let region_constraints = if region_constraints.is_empty() {
-            None
-        } else {
-            Some(&*infcx.tcx.arena.alloc(region_constraints))
-        };
-
-        Ok(TypeOpOutput { output, constraints: region_constraints, error_info })
+        Ok(TypeOpOutput {
+            output,
+            constraints: if region_constraints.is_empty() {
+                None
+            } else {
+                Some(infcx.tcx.arena.alloc(region_constraints))
+            },
+            error_info,
+        })
     }
 }
