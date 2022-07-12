@@ -2842,17 +2842,27 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // but we still conservatively report an error, see
                 // issues/33118#issuecomment-233962221 for one reason why.
                 let binding = binding.expect("no binding for a ctor or static");
-                self.report_error(
-                    ident.span,
-                    ResolutionError::BindingShadowsSomethingUnacceptable {
-                        shadowing_binding: pat_src,
-                        name: ident.name,
-                        participle: if binding.is_import() { "imported" } else { "defined" },
-                        article: binding.res().article(),
-                        shadowed_binding: binding.res(),
-                        shadowed_binding_span: binding.span,
-                    },
-                );
+                // To respect macro hygiene rules, we should not produce errors if
+                // the binding is from a scope outside of the macro the ident is from.
+                // This prevents problems like issues/99018. At the same time, we
+                // still want to have statics and consts defined inside macros to be
+                // properly visible, so we need to do an asymmetric check.
+                let ident_context = ident.span.ctxt().normalize_to_macro_rules();
+                let mut binding_context = binding.span.ctxt();
+                binding_context.normalize_to_macros_2_0_and_adjust(ident_context.outer_expn());
+                if ident_context == binding_context {
+                    self.report_error(
+                        ident.span,
+                        ResolutionError::BindingShadowsSomethingUnacceptable {
+                            shadowing_binding: pat_src,
+                            name: ident.name,
+                            participle: if binding.is_import() { "imported" } else { "defined" },
+                            article: binding.res().article(),
+                            shadowed_binding: binding.res(),
+                            shadowed_binding_span: binding.span,
+                        },
+                    );
+                }
                 None
             }
             Res::Def(DefKind::ConstParam, def_id) => {
