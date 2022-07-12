@@ -802,6 +802,7 @@ symbols! {
         impl_trait_in_bindings,
         implied_by,
         import,
+        import_name_type,
         import_shadowing,
         imported_main,
         in_band_lifetimes,
