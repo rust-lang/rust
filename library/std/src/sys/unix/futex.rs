@@ -251,6 +251,9 @@ pub mod zircon {
     pub const ZX_TIME_INFINITE: zx_time_t = zx_time_t::MAX;
 
     pub const ZX_OK: zx_status_t = 0;
+    pub const ZX_ERR_INVALID_ARGS: zx_status_t = -10;
+    pub const ZX_ERR_BAD_HANDLE: zx_status_t = -11;
+    pub const ZX_ERR_WRONG_TYPE: zx_status_t = -12;
     pub const ZX_ERR_BAD_STATE: zx_status_t = -20;
     pub const ZX_ERR_TIMED_OUT: zx_status_t = -21;
 
@@ -264,6 +267,7 @@ pub mod zircon {
         ) -> zx_status_t;
         pub fn zx_futex_wake(value_ptr: *const zx_futex_t, wake_count: u32) -> zx_status_t;
         pub fn zx_futex_wake_single_owner(value_ptr: *const zx_futex_t) -> zx_status_t;
+        pub fn zx_nanosleep(deadline: zx_time_t) -> zx_status_t;
         pub fn zx_thread_self() -> zx_handle_t;
     }
 }

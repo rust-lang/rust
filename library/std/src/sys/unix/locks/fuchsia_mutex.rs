@@ -42,8 +42,9 @@ use crate::sync::atomic::{
     Ordering::{Acquire, Relaxed, Release},
 };
 use crate::sys::futex::zircon::{
-    zx_futex_wait, zx_futex_wake_single_owner, zx_handle_t, zx_thread_self, ZX_ERR_BAD_STATE,
-    ZX_OK, ZX_TIME_INFINITE,
+    zx_futex_wait, zx_futex_wake_single_owner, zx_handle_t, zx_nanosleep, zx_thread_self,
+    ZX_ERR_BAD_HANDLE, ZX_ERR_BAD_STATE, ZX_ERR_INVALID_ARGS, ZX_ERR_TIMED_OUT, ZX_ERR_WRONG_TYPE,
+    ZX_OK, ZX_TIME_INFINITE, ZX_TIME_INFINITE,
 };
 
 // The lowest two bits of a `zx_handle_t` are always set, so the lowest bit is used to mark the
@@ -120,13 +121,19 @@ impl Mutex {
                         to_owner(state),
                         ZX_TIME_INFINITE,
                     ) {
-                        ZX_OK | ZX_ERR_BAD_STATE => (),
-                        // Deadlock even in the case of reentrant locking, as leaking a guard
-                        // could lead to the same condition if the thread id is reused, but
-                        // panicking is not expected in that situation. This makes things
-                        // quite a bit harder to debug, but encourages portable programming.
-                        _ if to_owner(state) == thread_self => loop {},
-                        error => panic!("futex operation failed with error code {error}"),
+                        ZX_OK | ZX_ERR_BAD_STATE | ZX_ERR_TIMED_OUT => (),
+                        // Either the current thread is trying to lock a mutex it has already locked,
+                        // or the previous owner did not unlock the mutex before exiting. Since it is
+                        // not possible to reliably detect which is the case, the current thread is
+                        // deadlocked. This makes debugging these cases quite a bit harder, but encourages
+                        // portable programming, since all other platforms do the same.
+                        //
+                        // Note that if the thread handle is reused, an arbitrary thread's priority could
+                        // be boosted by the wait, but there is currently no way to prevent that.
+                        ZX_ERR_INVALID_ARGS | ZX_ERR_BAD_HANDLE | ZX_ERR_WRONG_TYPE => loop {
+                            zx_nanosleep(ZX_TIME_INFINITE);
+                        },
+                        error => unreachable!("unexpected error code in futex wait: {error}"),
                     }
                 }
             }
