@@ -26,11 +26,23 @@ macro_rules! check_sizes {
     (check_one_specific_size: $ty:ty, $size:expr) => {
         const _: Size::<{$size}> = Size::<{size_of::<$ty>()}>;
     };
+    // Any tests run on `UnsafeCell` must be the same for `Cell`
+    (UnsafeCell<$ty:ty>: $size:expr => $optioned_size:expr) => {
+        check_sizes!(Cell<$ty>: $size => $optioned_size);
+        check_sizes!(@actual_check: UnsafeCell<$ty>: $size => $optioned_size);
+    };
     ($ty:ty: $size:expr => $optioned_size:expr) => {
+        check_sizes!(@actual_check: $ty: $size => $optioned_size);
+    };
+    // This branch does the actual checking logic, the `@actual_check` prefix is here to distinguish
+    // it from other branches and not accidentally match any.
+    (@actual_check: $ty:ty: $size:expr => $optioned_size:expr) => {
         check_sizes!(check_one_specific_size: $ty, $size);
         check_sizes!(check_one_specific_size: Option<$ty>, $optioned_size);
         check_sizes!(check_no_niche_opt: $size != $optioned_size, $ty);
     };
+    // only check that there is no niche (size goes up when wrapped in an option),
+    // don't check actual sizes
     ($ty:ty) => {
         check_sizes!(check_no_niche_opt: true, $ty);
     };
@@ -52,7 +64,6 @@ check_sizes!(UnsafeCell<u32>:  4 => 8);
 check_sizes!(UnsafeCell<N32>:  4 => 8);
 
 check_sizes!(UnsafeCell<&()>: PTR_SIZE => PTR_SIZE * 2);
-check_sizes!(      Cell<&()>: PTR_SIZE => PTR_SIZE * 2);
 check_sizes!(   RefCell<&()>: PTR_SIZE * 2 => PTR_SIZE * 3);
 
 check_sizes!(RwLock<&()>);
