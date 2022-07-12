@@ -6,7 +6,7 @@ use super::utils::*;
 
 #[derive(Debug)]
 pub struct ExplicitPredicatesMap<'tcx> {
-    map: FxHashMap<DefId, RequiredPredicates<'tcx>>,
+    map: FxHashMap<DefId, ty::EarlyBinder<RequiredPredicates<'tcx>>>,
 }
 
 impl<'tcx> ExplicitPredicatesMap<'tcx> {
@@ -14,11 +14,11 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
         ExplicitPredicatesMap { map: FxHashMap::default() }
     }
 
-    pub fn explicit_predicates_of(
+    pub(crate) fn explicit_predicates_of(
         &mut self,
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-    ) -> &RequiredPredicates<'tcx> {
+    ) -> &ty::EarlyBinder<RequiredPredicates<'tcx>> {
         self.map.entry(def_id).or_insert_with(|| {
             let predicates = if def_id.is_local() {
                 tcx.explicit_predicates_of(def_id)
@@ -63,7 +63,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                 }
             }
 
-            required_predicates
+            ty::EarlyBinder(required_predicates)
         })
     }
 }
