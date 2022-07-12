@@ -856,7 +856,6 @@ pub enum ReprAttr {
     ReprSimd,
     ReprTransparent,
     ReprAlign(u32),
-    ReprNoNiche,
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
@@ -904,7 +903,6 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     sym::packed => Some(ReprPacked(1)),
                     sym::simd => Some(ReprSimd),
                     sym::transparent => Some(ReprTransparent),
-                    sym::no_niche => Some(ReprNoNiche),
                     sym::align => {
                         let mut err = struct_span_err!(
                             diagnostic,
@@ -943,7 +941,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         Ok(literal) => acc.push(ReprPacked(literal)),
                         Err(message) => literal_error = Some(message),
                     };
-                } else if matches!(name, sym::C | sym::simd | sym::transparent | sym::no_niche)
+                } else if matches!(name, sym::C | sym::simd | sym::transparent)
                     || int_type_of_word(name).is_some()
                 {
                     recognised = true;
@@ -1001,7 +999,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     } else {
                         if matches!(
                             meta_item.name_or_empty(),
-                            sym::C | sym::simd | sym::transparent | sym::no_niche
+                            sym::C | sym::simd | sym::transparent
                         ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                         {
                             recognised = true;
@@ -1039,7 +1037,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         .emit();
                     } else if matches!(
                         meta_item.name_or_empty(),
-                        sym::C | sym::simd | sym::transparent | sym::no_niche
+                        sym::C | sym::simd | sym::transparent
                     ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                     {
                         recognised = true;

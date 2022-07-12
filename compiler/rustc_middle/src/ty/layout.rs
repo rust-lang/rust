@@ -542,14 +542,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             debug!("univariant offset: {:?} field: {:#?}", offset, field);
             offsets[i as usize] = offset;
 
-            if !repr.hide_niche() {
-                if let Some(mut niche) = field.largest_niche {
-                    let available = niche.available(dl);
-                    if available > largest_niche_available {
-                        largest_niche_available = available;
-                        niche.offset += offset;
-                        largest_niche = Some(niche);
-                    }
+            if let Some(mut niche) = field.largest_niche {
+                let available = niche.available(dl);
+                if available > largest_niche_available {
+                    largest_niche_available = available;
+                    niche.offset += offset;
+                    largest_niche = Some(niche);
                 }
             }
 
@@ -1078,6 +1076,29 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                     let mut st = self.univariant_uninterned(ty, &variants[v], &def.repr(), kind)?;
                     st.variants = Variants::Single { index: v };
+
+                    if def.is_unsafe_cell() {
+                        let hide_niches = |scalar: &mut _| match scalar {
+                            Scalar::Initialized { value, valid_range } => {
+                                *valid_range = WrappingRange::full(value.size(dl))
+                            }
+                            // Already doesn't have any niches
+                            Scalar::Union { .. } => {}
+                        };
+                        match &mut st.abi {
+                            Abi::Uninhabited => {}
+                            Abi::Scalar(scalar) => hide_niches(scalar),
+                            Abi::ScalarPair(a, b) => {
+                                hide_niches(a);
+                                hide_niches(b);
+                            }
+                            Abi::Vector { element, count: _ } => hide_niches(element),
+                            Abi::Aggregate { sized: _ } => {}
+                        }
+                        st.largest_niche = None;
+                        return Ok(tcx.intern_layout(st));
+                    }
+
                     let (start, end) = self.tcx.layout_scalar_valid_range(def.did());
                     match st.abi {
                         Abi::Scalar(ref mut scalar) | Abi::ScalarPair(ref mut scalar, _) => {
@@ -1106,11 +1127,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             }
 
                             // Update `largest_niche` if we have introduced a larger niche.
-                            let niche = if def.repr().hide_niche() {
-                                None
-                            } else {
-                                Niche::from_scalar(dl, Size::ZERO, *scalar)
-                            };
+                            let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
                             if let Some(niche) = niche {
                                 match st.largest_niche {
                                     Some(largest_niche) => {

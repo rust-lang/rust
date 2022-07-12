@@ -191,7 +191,6 @@
 #![feature(never_type)]
 #![feature(no_core)]
 #![feature(no_coverage)] // rust-lang/rust#84605
-#![feature(no_niche)] // rust-lang/rust#68303
 #![feature(platform_intrinsics)]
 #![feature(prelude_import)]
 #![feature(repr_simd)]
