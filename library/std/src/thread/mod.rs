@@ -272,6 +272,10 @@ pub struct Builder {
     pub(crate) native_options: imp::BuilderOptions,
 }
 
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for Builder {}
+
 impl Builder {
     /// Generates the base configuration for spawning a thread, from which
     /// configuration methods can be chained.

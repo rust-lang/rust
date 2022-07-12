@@ -21,10 +21,15 @@
 
 #![unstable(feature = "horizon_thread_ext", issue = "none")]
 
+use crate::sealed::Sealed;
+
 /// Extensions on [`std::thread::Builder`] for the Nintendo 3DS.
 ///
+/// This trait is sealed: it cannot be implemented outside the standard library.
+/// This is so that future additional methods are not breaking changes.
+///
 /// [`std::thread::Builder`]: crate::thread::Builder
-pub trait BuilderExt: Sized {
+pub trait BuilderExt: Sized + Sealed {
     /// Sets the priority level for the new thread.
     ///
     /// Low values gives the thread higher priority. For userland apps, this has
