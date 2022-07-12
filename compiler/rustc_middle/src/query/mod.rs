@@ -1566,6 +1566,9 @@ rustc_queries! {
         -> Option<NativeLibKind> {
         desc { |tcx| "native_library_kind({})", tcx.def_path_str(def_id) }
     }
+    query native_library(def_id: DefId) -> Option<&'tcx NativeLib> {
+        desc { |tcx| "native_library({})", tcx.def_path_str(def_id) }
+    }
 
     /// Does lifetime resolution, but does not descend into trait items. This
     /// should only be used for resolving lifetimes of on trait definitions,
