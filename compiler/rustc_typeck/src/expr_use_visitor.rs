@@ -498,12 +498,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         f(self);
         if let Some(els) = els {
             // borrowing because we need to test the descriminant
-            // self.borrow_expr(expr, ImmBorrow);
-            self.maybe_read_scrutinee(expr, expr_place, from_ref(pat).iter());
+            self.maybe_read_scrutinee(expr, expr_place.clone(), from_ref(pat).iter());
             self.walk_block(els)
-        } else {
-            self.walk_irrefutable_pat(&expr_place, &pat);
         }
+        self.walk_irrefutable_pat(&expr_place, &pat);
     }
 
     /// Indicates that the value of `blk` will be consumed, meaning either copied or moved
