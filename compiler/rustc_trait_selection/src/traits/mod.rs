@@ -847,7 +847,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         subst_and_check_impossible_predicates,
         try_unify_abstract_consts: |tcx, param_env_and| {
             let (param_env, (a, b)) = param_env_and.into_parts();
-            rustc_middle::ty::abstract_const::try_unify_abstract_consts(tcx, (a, b), param_env)
+            const_evaluatable::try_unify_abstract_consts(tcx, (a, b), param_env)
         },
         ..*providers
     };

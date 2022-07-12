@@ -218,7 +218,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
     /// Builds the abstract const by walking the thir and bailing out when
     /// encountering an unsupported operation.
     pub fn build(mut self) -> Result<&'tcx [Node<'tcx>], ErrorGuaranteed> {
-        debug!("Abstractconstbuilder::build: body={:?}", &*self.body);
+        debug!("AbstractConstBuilder::build: body={:?}", &*self.body);
         self.recurse_build(self.body_id)?;
 
         for n in self.nodes.iter() {
@@ -331,7 +331,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 // Skip reborrows for now until we allow Deref/Borrow/AddressOf
                 // expressions.
                 // FIXME(generic_const_exprs): Verify/explain why this is sound
-                if let ExprKind::Deref {arg} = arg_node.kind {
+                if let ExprKind::Deref { arg } = arg_node.kind {
                     self.recurse_build(arg)?
                 } else {
                     self.maybe_supported_error(
