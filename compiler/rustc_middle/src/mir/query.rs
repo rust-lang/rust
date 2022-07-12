@@ -35,7 +35,6 @@ pub enum UnsafetyViolationDetails {
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
-    AssignToDroppingUnionField,
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
@@ -77,11 +76,6 @@ impl UnsafetyViolationDetails {
                 "dereference of raw pointer",
                 "raw pointers may be null, dangling or unaligned; they can violate aliasing rules \
                  and cause data races: all of these are undefined behavior",
-            ),
-            AssignToDroppingUnionField => (
-                "assignment to union field that might need dropping",
-                "the previous content of the field will be dropped, which causes undefined \
-                 behavior if the field was not properly initialized",
             ),
             AccessToUnionField => (
                 "access to union field",

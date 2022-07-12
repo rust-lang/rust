@@ -13,13 +13,12 @@ use rustc_hir::{FieldDef, Generics, HirId, Item, ItemKind, TraitRef, Ty, TyKind,
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability::{AllowUnstable, DeprecationEntry, Index};
-use rustc_middle::ty::{self, query::Providers, TyCtxt};
+use rustc_middle::ty::{query::Providers, TyCtxt};
 use rustc_session::lint;
 use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPRECATED};
-use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use std::cmp::Ordering;
@@ -762,39 +761,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     if let Some(def_id) = impl_item.trait_item_def_id {
                         // Pass `None` to skip deprecation warnings.
                         self.tcx.check_stability(def_id, None, impl_item_ref.span, None);
-                    }
-                }
-            }
-
-            // There's no good place to insert stability check for non-Copy unions,
-            // so semi-randomly perform it here in stability.rs
-            hir::ItemKind::Union(..) if !self.tcx.features().untagged_unions => {
-                let ty = self.tcx.type_of(item.def_id);
-                let ty::Adt(adt_def, substs) = ty.kind() else { bug!() };
-
-                // Non-`Copy` fields are unstable, except for `ManuallyDrop`.
-                let param_env = self.tcx.param_env(item.def_id);
-                for field in &adt_def.non_enum_variant().fields {
-                    let field_ty = field.ty(self.tcx, substs);
-                    if !field_ty.ty_adt_def().map_or(false, |adt_def| adt_def.is_manually_drop())
-                        && !field_ty.is_copy_modulo_regions(self.tcx.at(DUMMY_SP), param_env)
-                    {
-                        if field_ty.needs_drop(self.tcx, param_env) {
-                            // Avoid duplicate error: This will error later anyway because fields
-                            // that need drop are not allowed.
-                            self.tcx.sess.delay_span_bug(
-                                item.span,
-                                "union should have been rejected due to potentially dropping field",
-                            );
-                        } else {
-                            feature_err(
-                                &self.tcx.sess.parse_sess,
-                                sym::untagged_unions,
-                                self.tcx.def_span(field.did),
-                                "unions with non-`Copy` fields other than `ManuallyDrop<T>` are unstable",
-                            )
-                            .emit();
-                        }
                     }
                 }
             }
