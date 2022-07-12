@@ -968,7 +968,7 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
                     }
                 },
                 ExprKind::Closure { .. } => {
-                    let closure_id = self.cx.tcx.hir().local_def_id(e.hir_id).to_def_id();
+                    let closure_id = self.cx.tcx.hir().local_def_id(e.hir_id);
                     for capture in self.cx.typeck_results().closure_min_captures_flattened(closure_id) {
                         let local_id = match capture.place.base {
                             PlaceBase::Local(id) => id,
