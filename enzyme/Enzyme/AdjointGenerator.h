@@ -1732,7 +1732,7 @@ public:
   template <typename Func, typename... Args>
   Value *applyChainRule(Type *diffType, IRBuilder<> &Builder, Func rule,
                         Args... args) {
-    return ((DiffeGradientUtils *)gutils)
+    return ((GradientUtils *)gutils)
         ->applyChainRule(diffType, Builder, rule, args...);
   }
 
@@ -1740,7 +1740,7 @@ public:
   /// function f to each element.
   template <typename Func, typename... Args>
   void applyChainRule(IRBuilder<> &Builder, Func rule, Args... args) {
-    ((DiffeGradientUtils *)gutils)->applyChainRule(Builder, rule, args...);
+    ((GradientUtils *)gutils)->applyChainRule(Builder, rule, args...);
   }
 
   /// Unwraps an collection of constant vector derivatives from their internal
@@ -1748,7 +1748,7 @@ public:
   template <typename Func>
   void applyChainRule(ArrayRef<Value *> diffs, IRBuilder<> &Builder,
                       Func rule) {
-    ((DiffeGradientUtils *)gutils)->applyChainRule(diffs, Builder, rule);
+    ((GradientUtils *)gutils)->applyChainRule(diffs, Builder, rule);
   }
 
   bool shouldFree() {
