@@ -411,8 +411,14 @@ LLVMRustInlineAsm(LLVMTypeRef Ty, char *AsmString, size_t AsmStringLen,
 
 extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty, char *Constraints,
                                         size_t ConstraintsLen) {
+#if LLVM_VERSION_LT(15, 0)
   return InlineAsm::Verify(unwrap<FunctionType>(Ty),
                            StringRef(Constraints, ConstraintsLen));
+#else
+  // llvm::Error converts to true if it is an error.
+  return !llvm::errorToBool(InlineAsm::verify(
+      unwrap<FunctionType>(Ty), StringRef(Constraints, ConstraintsLen)));
+#endif
 }
 
 extern "C" void LLVMRustAppendModuleInlineAsm(LLVMModuleRef M, const char *Asm,
