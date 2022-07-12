@@ -10,7 +10,6 @@ pub fn opts() -> TargetOptions {
         os: "hermit".into(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".into()),
-        executables: true,
         has_thread_local: true,
         pre_link_args,
         panic_strategy: PanicStrategy::Abort,

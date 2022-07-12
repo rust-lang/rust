@@ -7,7 +7,6 @@ pub fn opts() -> TargetOptions {
 
     TargetOptions {
         linker_flavor: LinkerFlavor::Msvc,
-        executables: true,
         is_like_windows: true,
         is_like_msvc: true,
         lld_flavor: LldFlavor::Link,

@@ -26,7 +26,6 @@ pub fn target() -> Target {
 
             // Needed to use `dylib` and `bin` crate types and the linker.
             dynamic_linking: true,
-            executables: true,
 
             // Avoid using dylib because it contain metadata not supported
             // by LLVM NVPTX backend.

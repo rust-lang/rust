@@ -1426,7 +1426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     GenericParamDefKind::Const { has_default } => {
                         if !infer_args && has_default {
-                            EarlyBinder(tcx.const_param_default(param.def_id))
+                            tcx.bound_const_param_default(param.def_id)
                                 .subst(tcx, substs.unwrap())
                                 .into()
                         } else {
