@@ -672,11 +672,13 @@ pub struct TypeId {
     t: u64,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for TypeId {
     fn eq(&self, other: &Self) -> bool {
         self.t == other.t
     }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for TypeId {}
 
 impl TypeId {
