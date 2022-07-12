@@ -431,16 +431,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 let lhs = &self.thir[lhs];
                 if let ty::Adt(adt_def, _) = lhs.ty.kind() && adt_def.is_union() {
                     if let Some((assigned_ty, assignment_span)) = self.assignment_info {
-                        // To avoid semver hazard, we only consider `Copy` and `ManuallyDrop` non-dropping.
-                        if !(assigned_ty
-                            .ty_adt_def()
-                            .map_or(false, |adt| adt.is_manually_drop())
-                            || assigned_ty
-                                .is_copy_modulo_regions(self.tcx.at(expr.span), self.param_env))
-                        {
-                            self.requires_unsafe(assignment_span, AssignToDroppingUnionField);
-                        } else {
-                            // write to non-drop union field, safe
+                        if assigned_ty.needs_drop(self.tcx, self.tcx.param_env(adt_def.did())) {
+                            // This would be unsafe, but should be outright impossible since we reject such unions.
+                            self.tcx.sess.delay_span_bug(assignment_span, "union fields that need dropping should be impossible");
                         }
                     } else {
                         self.requires_unsafe(expr.span, AccessToUnionField);
@@ -537,7 +530,6 @@ enum UnsafeOpKind {
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
-    AssignToDroppingUnionField,
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
@@ -555,7 +547,6 @@ impl UnsafeOpKind {
             UseOfMutableStatic => "use of mutable static",
             UseOfExternStatic => "use of extern static",
             DerefOfRawPointer => "dereference of raw pointer",
-            AssignToDroppingUnionField => "assignment to union field that might need dropping",
             AccessToUnionField => "access to union field",
             MutationOfLayoutConstrainedField => "mutation of layout constrained field",
             BorrowOfLayoutConstrainedField => {
@@ -599,11 +590,6 @@ impl UnsafeOpKind {
                 Cow::Borrowed(self.simple_description()),
                 "raw pointers may be null, dangling or unaligned; they can violate aliasing rules \
                  and cause data races: all of these are undefined behavior",
-            ),
-            AssignToDroppingUnionField => (
-                Cow::Borrowed(self.simple_description()),
-                "the previous content of the field will be dropped, which causes undefined \
-                 behavior if the field was not properly initialized",
             ),
             AccessToUnionField => (
                 Cow::Borrowed(self.simple_description()),

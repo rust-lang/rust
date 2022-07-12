@@ -1,7 +1,7 @@
 // compile-flags: -Zsave-analysis
 // This is also a regression test for #69415 and the above flag is needed.
 
-#![feature(untagged_unions)]
+use std::mem::ManuallyDrop;
 
 trait Tr1 { type As1: Copy; }
 trait Tr2 { type As2: Copy; }
@@ -36,9 +36,9 @@ enum _En1<T: Tr1<As1: Tr2>> {
 
 union _Un1<T: Tr1<As1: Tr2>> {
 //~^ ERROR associated type bounds are unstable
-    outest: std::mem::ManuallyDrop<T>,
-    outer: T::As1,
-    inner: <T::As1 as Tr2>::As2,
+    outest: ManuallyDrop<T>,
+    outer: ManuallyDrop<T::As1>,
+    inner: ManuallyDrop<<T::As1 as Tr2>::As2>,
 }
 
 type _TaWhere1<T> where T: Iterator<Item: Copy> = T;

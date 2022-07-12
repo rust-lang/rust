@@ -219,22 +219,15 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     // We have to check the actual type of the assignment, as that determines if the
                     // old value is being dropped.
                     let assigned_ty = place.ty(&self.body.local_decls, self.tcx).ty;
-                    // To avoid semver hazard, we only consider `Copy` and `ManuallyDrop` non-dropping.
-                    let manually_drop = assigned_ty
-                        .ty_adt_def()
-                        .map_or(false, |adt_def| adt_def.is_manually_drop());
-                    let nodrop = manually_drop
-                        || assigned_ty.is_copy_modulo_regions(
-                            self.tcx.at(self.source_info.span),
-                            self.param_env,
+                    if assigned_ty.needs_drop(
+                        self.tcx,
+                        self.tcx.param_env(base_ty.ty_adt_def().unwrap().did()),
+                    ) {
+                        // This would be unsafe, but should be outright impossible since we reject such unions.
+                        self.tcx.sess.delay_span_bug(
+                            self.source_info.span,
+                            "union fields that need dropping should be impossible",
                         );
-                    if !nodrop {
-                        self.require_unsafe(
-                            UnsafetyViolationKind::General,
-                            UnsafetyViolationDetails::AssignToDroppingUnionField,
-                        );
-                    } else {
-                        // write to non-drop union field, safe
                     }
                 } else {
                     self.require_unsafe(
