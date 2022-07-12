@@ -654,6 +654,8 @@ pub unsafe fn zeroed<T>() -> T {
 /// produce a value of type `T`, while doing nothing at all.
 ///
 /// **This function is deprecated.** Use [`MaybeUninit<T>`] instead.
+/// It also might be slower than using `MaybeUninit<T>` due to mitigations that were put in place to
+/// limit the potential harm caused by incorrect use of this function in legacy code.
 ///
 /// The reason for deprecation is that the function basically cannot be used
 /// correctly: it has the same effect as [`MaybeUninit::uninit().assume_init()`][uninit].
