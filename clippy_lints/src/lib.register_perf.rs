@@ -7,7 +7,6 @@ store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
     LintId::of(escape::BOXED_LOCAL),
     LintId::of(format_args::FORMAT_IN_FORMAT_ARGS),
     LintId::of(format_args::TO_STRING_IN_FORMAT_ARGS),
-    LintId::of(format_push_string::FORMAT_PUSH_STRING),
     LintId::of(large_const_arrays::LARGE_CONST_ARRAYS),
     LintId::of(large_enum_variant::LARGE_ENUM_VARIANT),
     LintId::of(loops::MANUAL_MEMCPY),
