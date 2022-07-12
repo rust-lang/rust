@@ -726,31 +726,58 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
         // Empty content so nothing to check in here...
         return true;
     }
-    rustc_span::create_session_if_not_set_then(edition, |_| {
-        let filename = FileName::anon_source_code(source);
-        let sess = ParseSess::with_silent_emitter(None);
-        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source.to_owned())
-        {
-            Ok(p) => p,
-            Err(_) => {
-                debug!("Cannot build a parser to check mod attr so skipping...");
-                return true;
+    rustc_driver::catch_fatal_errors(|| {
+        rustc_span::create_session_if_not_set_then(edition, |_| {
+            use rustc_errors::emitter::EmitterWriter;
+            use rustc_errors::Handler;
+            use rustc_span::source_map::FilePathMapping;
+
+            let filename = FileName::anon_source_code(source);
+            // Any errors in parsing should also appear when the doctest is compiled for real, so just
+            // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let fallback_bundle =
+                rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+
+            let emitter = EmitterWriter::new(
+                box io::sink(),
+                None,
+                None,
+                fallback_bundle,
+                false,
+                false,
+                false,
+                None,
+                false,
+            );
+
+            let handler = Handler::with_emitter(false, None, box emitter);
+            let sess = ParseSess::with_span_handler(handler, sm);
+            let mut parser =
+                match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {
+                    Ok(p) => p,
+                    Err(_) => {
+                        debug!("Cannot build a parser to check mod attr so skipping...");
+                        return true;
+                    }
+                };
+            // If a parsing error happened, it's very likely that the attribute is incomplete.
+            if let Err(e) = parser.parse_attribute(InnerAttrPolicy::Permitted) {
+                e.cancel();
+                return false;
             }
-        };
-        // If a parsing error happened, it's very likely that the attribute is incomplete.
-        if parser.parse_attribute(InnerAttrPolicy::Permitted).is_err() {
-            return false;
-        }
-        // We now check if there is an unclosed delimiter for the attribute. To do so, we look at
-        // the `unclosed_delims` and see if the opening square bracket was closed.
-        parser
-            .unclosed_delims()
-            .get(0)
-            .map(|unclosed| {
-                unclosed.unclosed_span.map(|s| s.lo()).unwrap_or(BytePos(0)) != BytePos(2)
-            })
-            .unwrap_or(true)
+            // We now check if there is an unclosed delimiter for the attribute. To do so, we look at
+            // the `unclosed_delims` and see if the opening square bracket was closed.
+            parser
+                .unclosed_delims()
+                .get(0)
+                .map(|unclosed| {
+                    unclosed.unclosed_span.map(|s| s.lo()).unwrap_or(BytePos(0)) != BytePos(2)
+                })
+                .unwrap_or(true)
+        })
     })
+    .unwrap_or(false)
 }
 
 fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
