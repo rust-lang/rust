@@ -668,8 +668,16 @@ impl dyn Any + Send + Sync {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
+    pad: u64,
     t: u64,
 }
+
+impl PartialEq for TypeId {
+    fn eq(&self, other: &Self) -> bool {
+        self.t == other.t
+    }
+}
+impl Eq for TypeId {}
 
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been
@@ -691,7 +699,7 @@ impl TypeId {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
-        TypeId { t: intrinsics::type_id::<T>() }
+        TypeId { pad: 0, t: intrinsics::type_id::<T>() }
     }
 }
 
