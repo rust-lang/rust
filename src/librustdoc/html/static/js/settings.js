@@ -1,7 +1,7 @@
 // Local js definitions:
 /* global getSettingValue, getVirtualKey, updateLocalStorage, updateSystemTheme */
 /* global addClass, removeClass, onEach, onEachLazy, blurHandler, elemIsInParent */
-/* global MAIN_ID, getVar, getSettingsButton */
+/* global MAIN_ID, getVar, getSettingsButton, isUsingSystemTheme */
 
 "use strict";
 
@@ -15,7 +15,6 @@
             case "theme":
             case "preferred-dark-theme":
             case "preferred-light-theme":
-            case "use-system-theme":
                 updateSystemTheme();
                 updateLightAndDark();
                 break;
@@ -38,7 +37,6 @@
     }
 
     function showLightAndDark() {
-        addClass(document.getElementById("theme").parentElement, "hidden");
         removeClass(document.getElementById("preferred-light-theme").parentElement, "hidden");
         removeClass(document.getElementById("preferred-dark-theme").parentElement, "hidden");
     }
@@ -46,11 +44,10 @@
     function hideLightAndDark() {
         addClass(document.getElementById("preferred-light-theme").parentElement, "hidden");
         addClass(document.getElementById("preferred-dark-theme").parentElement, "hidden");
-        removeClass(document.getElementById("theme").parentElement, "hidden");
     }
 
     function updateLightAndDark() {
-        if (getSettingValue("use-system-theme") !== "false") {
+        if (isUsingSystemTheme()) {
             showLightAndDark();
         } else {
             hideLightAndDark();
@@ -113,18 +110,19 @@
             const setting_name = setting["name"];
 
             if (setting["options"] !== undefined) {
-                // This is a select setting.
+                // This is a <select> setting.
                 output += `<div class="radio-line" id="${js_data_name}">\
                         <span class="setting-name">${setting_name}</span>\
                         <div class="choices">`;
                 onEach(setting["options"], option => {
-                    const checked = option === setting["default"] ? " checked" : "";
+                    const optionAttr = option.split(" ").join("-");
+                    const checked = optionAttr === setting["default"] ? " checked" : "";
 
-                    output += `<label for="${js_data_name}-${option}" class="choice">\
+                    output += `<label for="${js_data_name}-${optionAttr}" class="choice">\
                            <input type="radio" name="${js_data_name}" \
-                                id="${js_data_name}-${option}" value="${option}"${checked}>\
+                                id="${js_data_name}-${optionAttr}" value="${optionAttr}"${checked}>\
                            <span>${option}</span>\
-                         </label>`;
+                        </label>`;
                 });
                 output += "</div></div>";
             } else {
@@ -150,15 +148,10 @@
         const themes = getVar("themes").split(",");
         const settings = [
             {
-                "name": "Use system theme",
-                "js_name": "use-system-theme",
-                "default": true,
-            },
-            {
                 "name": "Theme",
                 "js_name": "theme",
-                "default": "light",
-                "options": themes,
+                "default": "",
+                "options": themes.concat("system preference"),
             },
             {
                 "name": "Preferred light theme",

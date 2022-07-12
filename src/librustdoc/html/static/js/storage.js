@@ -42,6 +42,11 @@ function getSettingValue(settingName) {
     return null;
 }
 
+function isUsingSystemTheme() {
+    const current = getSettingValue("theme");
+    return current === null || current === "system-preference";
+}
+
 const localStoredTheme = getSettingValue("theme");
 
 const savedHref = [];
@@ -157,22 +162,6 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
     }
 }
 
-// This function is called from "main.js".
-// eslint-disable-next-line no-unused-vars
-function useSystemTheme(value) {
-    if (value === undefined) {
-        value = true;
-    }
-
-    updateLocalStorage("use-system-theme", value);
-
-    // update the toggle if we're on the settings page
-    const toggle = document.getElementById("use-system-theme");
-    if (toggle && toggle instanceof HTMLInputElement) {
-        toggle.checked = value;
-    }
-}
-
 const updateSystemTheme = (function() {
     if (!window.matchMedia) {
         // fallback to the CSS computed value
@@ -193,25 +182,25 @@ const updateSystemTheme = (function() {
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
 
     function handlePreferenceChange(mql) {
-        const use = theme => {
-            switchTheme(window.currentTheme, window.mainTheme, theme, true);
+        const use = (theme, saveIt) => {
+            switchTheme(window.currentTheme, window.mainTheme, theme, saveIt);
         };
         // maybe the user has disabled the setting in the meantime!
-        if (getSettingValue("use-system-theme") !== "false") {
+        if (isUsingSystemTheme()) {
             const lightTheme = getSettingValue("preferred-light-theme") || "light";
             const darkTheme = getSettingValue("preferred-dark-theme") || "dark";
 
             if (mql.matches) {
-                use(darkTheme);
+                use(darkTheme, false);
             } else {
                 // prefers a light theme, or has no preference
-                use(lightTheme);
+                use(lightTheme, false);
             }
             // note: we save the theme so that it doesn't suddenly change when
             // the user disables "use-system-theme" and reloads the page or
             // navigates to another page
         } else {
-            use(getSettingValue("theme"));
+            use(getSettingValue("theme"), true);
         }
     }
 
@@ -231,10 +220,10 @@ function switchToSavedTheme() {
     );
 }
 
-if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
+if (isUsingSystemTheme() && window.matchMedia) {
     // update the preferred dark theme if the user is already using a dark theme
     // See https://github.com/rust-lang/rust/pull/77809#issuecomment-707875732
-    if (getSettingValue("use-system-theme") === null
+    if (getSettingValue("theme") === null
         && getSettingValue("preferred-dark-theme") === null
         && darkThemes.indexOf(localStoredTheme) >= 0) {
         updateLocalStorage("preferred-dark-theme", localStoredTheme);
