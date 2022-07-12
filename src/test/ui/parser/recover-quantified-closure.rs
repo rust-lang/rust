@@ -1,8 +1,7 @@
 fn main() {
     for<'a> |x: &'a u8| *x + 1;
-    //~^ ERROR use of undeclared lifetime name `'a`
-    //~^^ ERROR `for<...>` binders for closures are experimental
-    //~^^^ ERROR `for<...>` binders for closures are not yet supported
+    //~^ ERROR `for<...>` binders for closures are experimental
+    //~^^ ERROR implicit types in closure signatures are forbidden when `for<...>` is present
 }
 
 enum Foo { Bar }

@@ -609,6 +609,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `static |_task_context| -> <ret_ty> { body }`:
         let generator_kind = hir::ExprKind::Closure {
+            binder: &hir::ClosureBinder::Default,
             capture_clause,
             bound_generic_params: &[],
             fn_decl,
@@ -842,15 +843,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
-        // FIXME(waffle): lower binder
-        if let &ClosureBinder::For { span, .. } = binder {
-            self.sess
-                .struct_span_err(span, "`for<...>` binders for closures are not yet supported")
-                .help("consider removing `for<...>`")
-                .emit();
-        }
+        let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
-        let (body, generator_option) = self.with_new_scopes(move |this| {
+        let (body_id, generator_option) = self.with_new_scopes(move |this| {
             let prev = this.current_item;
             this.current_item = Some(fn_decl_span);
             let mut generator_kind = None;
@@ -865,15 +860,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (body_id, generator_option)
         });
 
-        self.with_lifetime_binder(closure_id, &[], |this, bound_generic_params| {
+        self.with_lifetime_binder(closure_id, generic_params, |this, bound_generic_params| {
             // Lower outside new scope to preserve `is_in_loop_condition`.
             let fn_decl = this.lower_fn_decl(decl, None, FnDeclKind::Closure, None);
 
             hir::ExprKind::Closure {
+                binder: binder_clause,
                 capture_clause,
                 bound_generic_params,
                 fn_decl,
-                body,
+                body: body_id,
                 fn_decl_span: this.lower_span(fn_decl_span),
                 movability: generator_option,
             }
@@ -918,6 +914,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    fn lower_closure_binder<'c>(
+        &mut self,
+        binder: &'c ClosureBinder,
+    ) -> (&'hir hir::ClosureBinder, &'c [GenericParam]) {
+        let (binder, params) = match binder {
+            ClosureBinder::NotPresent => (hir::ClosureBinder::Default, &[][..]),
+            &ClosureBinder::For { span, ref generic_params } => {
+                let span = self.lower_span(span);
+                (hir::ClosureBinder::For { span }, &**generic_params)
+            }
+        };
+
+        (self.arena.alloc(binder), params)
+    }
+
     fn lower_expr_async_closure(
         &mut self,
         binder: &ClosureBinder,
@@ -928,16 +939,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
-        // FIXME(waffle): lower binder
         if let &ClosureBinder::For { span, .. } = binder {
-            self.sess
-                .struct_span_err(
-                    span,
-                    "`for<...>` binders for async closures are not yet supported",
-                )
-                .help("consider removing `for<...>`")
-                .emit();
+            self.tcx.sess.span_err(
+                span,
+                "`for<...>` binders on `async` closures are not currently supported",
+            );
         }
+
+        let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
         let outer_decl =
             FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
@@ -976,13 +985,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body_id
         });
 
-        self.with_lifetime_binder(closure_id, &[], |this, bound_generic_params| {
+        self.with_lifetime_binder(closure_id, generic_params, |this, bound_generic_params| {
             // We need to lower the declaration outside the new scope, because we
             // have to conserve the state of being inside a loop condition for the
             // closure argument types.
             let fn_decl = this.lower_fn_decl(&outer_decl, None, FnDeclKind::Closure, None);
 
             hir::ExprKind::Closure {
+                binder: binder_clause,
                 capture_clause,
                 bound_generic_params,
                 fn_decl,

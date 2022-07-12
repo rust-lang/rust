@@ -642,7 +642,7 @@ pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics
 pub fn walk_closure_binder<'a, V: Visitor<'a>>(visitor: &mut V, binder: &'a ClosureBinder) {
     match binder {
         ClosureBinder::NotPresent => {}
-        ClosureBinder::For { span: _, generic_params } => {
+        ClosureBinder::For { generic_params, span: _ } => {
             walk_list!(visitor, visit_generic_param, generic_params)
         }
     }

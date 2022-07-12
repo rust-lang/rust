@@ -1,4 +1,4 @@
-error: implicit return type is forbidden when `for<...>` is present
+error: implicit types in closure signatures are forbidden when `for<...>` is present
   --> $DIR/implicit-return.rs:4:34
    |
 LL |     let _f = for<'a> |_: &'a ()| {};
