@@ -48,7 +48,7 @@ use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TypeVisitable};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
-use rustc_span::source_map::Span;
+use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
@@ -2162,14 +2162,55 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if !expr_t.is_primitive_ty() {
             self.ban_nonexisting_field(field, base, expr, expr_t);
         } else {
-            type_error_struct!(
+            let field_name = field.to_string();
+            let mut err = type_error_struct!(
                 self.tcx().sess,
                 field.span,
                 expr_t,
                 E0610,
                 "`{expr_t}` is a primitive type and therefore doesn't have fields",
-            )
-            .emit();
+            );
+            let is_valid_suffix = |field: String| {
+                if field == "f32" || field == "f64" {
+                    return true;
+                }
+                let mut chars = field.chars().peekable();
+                match chars.peek() {
+                    Some('e') | Some('E') => {
+                        chars.next();
+                        if let Some(c) = chars.peek()
+                            && !c.is_numeric() && *c != '-' && *c != '+'
+                        {
+                            return false;
+                        }
+                        while let Some(c) = chars.peek() {
+                            if !c.is_numeric() {
+                                break;
+                            }
+                            chars.next();
+                        }
+                    }
+                    _ => (),
+                }
+                let suffix = chars.collect::<String>();
+                suffix.is_empty() || suffix == "f32" || suffix == "f64"
+            };
+            if let ty::Infer(ty::IntVar(_)) = expr_t.kind()
+                && let ExprKind::Lit(Spanned {
+                    node: ast::LitKind::Int(_, ast::LitIntType::Unsuffixed),
+                    ..
+                }) = base.kind
+                && !base.span.from_expansion()
+                && is_valid_suffix(field_name)
+            {
+                err.span_suggestion_verbose(
+                    field.span.shrink_to_lo(),
+                    "If the number is meant to be a floating point number, consider adding a `0` after the period",
+                    '0',
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            err.emit();
         }
 
         self.tcx().ty_error()
