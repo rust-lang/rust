@@ -534,8 +534,8 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
 
     let mut template_strs = Vec::with_capacity(args.templates.len());
 
-    for template_expr in args.templates.into_iter() {
-        if !template.is_empty() {
+    for (i, template_expr) in args.templates.into_iter().enumerate() {
+        if i != 0 {
             template.push(ast::InlineAsmTemplatePiece::String("\n".to_string()));
         }
 
