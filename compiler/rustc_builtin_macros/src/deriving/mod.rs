@@ -106,6 +106,13 @@ fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> P<ast::Expr> {
     }))
 }
 
+/// Constructs an expression that calls the `abort` intrinsic.
+fn call_abort(cx: &ExtCtxt<'_>, span: Span) -> P<ast::Expr> {
+    let span = cx.with_def_site_ctxt(span);
+    let path = cx.std_path(&[sym::intrinsics, sym::abort]);
+    cx.expr_call_global(span, path, vec![])
+}
+
 // Injects `impl<...> Structural for ItemType<...> { }`. In particular,
 // does *not* add `where T: Structural` for parameters `T` in `...`.
 // (That's the main reason we cannot use TraitDef here.)

@@ -413,6 +413,12 @@ fn find_type_parameters(
     visitor.type_params
 }
 
+#[derive(Clone, Copy)]
+struct PackedStatus {
+    has_type_params: bool,
+    has_derive_copy: bool,
+}
+
 impl<'a> TraitDef<'a> {
     pub fn expand(
         self,
@@ -442,17 +448,22 @@ impl<'a> TraitDef<'a> {
                     }
                     false
                 });
-                let has_no_type_params = match item.kind {
-                    ast::ItemKind::Struct(_, ref generics)
-                    | ast::ItemKind::Enum(_, ref generics)
-                    | ast::ItemKind::Union(_, ref generics) => !generics
-                        .params
-                        .iter()
-                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })),
-                    _ => unreachable!(),
+                let packed_status = if !is_packed {
+                    None
+                } else {
+                    let has_type_params = match item.kind {
+                        ast::ItemKind::Struct(_, ref generics)
+                        | ast::ItemKind::Enum(_, ref generics)
+                        | ast::ItemKind::Union(_, ref generics) => generics
+                            .params
+                            .iter()
+                            .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })),
+                        _ => unreachable!(),
+                    };
+                    let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
+                    let has_derive_copy = cx.resolver.has_derive_copy(container_id);
+                    Some(PackedStatus { has_type_params, has_derive_copy })
                 };
-                let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
-                let always_copy = has_no_type_params && cx.resolver.has_derive_copy(container_id);
 
                 let newitem = match item.kind {
                     ast::ItemKind::Struct(ref struct_def, ref generics) => self.expand_struct_def(
@@ -461,11 +472,10 @@ impl<'a> TraitDef<'a> {
                         item.ident,
                         generics,
                         from_scratch,
-                        is_packed,
-                        always_copy,
+                        packed_status,
                     ),
                     ast::ItemKind::Enum(ref enum_def, ref generics) => {
-                        // We ignore `is_packed`/`always_copy` here, because
+                        // We ignore `packed_status` here, because
                         // `repr(packed)` enums cause an error later on.
                         //
                         // This can only cause further compilation errors
@@ -481,8 +491,7 @@ impl<'a> TraitDef<'a> {
                                 item.ident,
                                 generics,
                                 from_scratch,
-                                is_packed,
-                                always_copy,
+                                packed_status,
                             )
                         } else {
                             cx.span_err(mitem.span, "this trait cannot be derived for unions");
@@ -763,8 +772,7 @@ impl<'a> TraitDef<'a> {
         type_ident: Ident,
         generics: &Generics,
         from_scratch: bool,
-        is_packed: bool,
-        always_copy: bool,
+        packed_status: Option<PackedStatus>,
     ) -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> =
             struct_def.fields().iter().map(|field| field.ty.clone()).collect();
@@ -783,6 +791,7 @@ impl<'a> TraitDef<'a> {
                         struct_def,
                         type_ident,
                         &nonselflike_args,
+                        packed_status,
                     )
                 } else {
                     method_def.expand_struct_method_body(
@@ -792,8 +801,7 @@ impl<'a> TraitDef<'a> {
                         type_ident,
                         &selflike_args,
                         &nonselflike_args,
-                        is_packed,
-                        always_copy,
+                        packed_status,
                     )
                 };
 
@@ -1013,33 +1021,24 @@ impl<'a> MethodDef<'a> {
     /// }
     /// ```
     /// But if the struct is `repr(packed)`, we can't use something like
-    /// `&self.x` on a packed type (as required for e.g. `Debug` and `Hash`)
-    /// because that might cause an unaligned ref. If the struct impls `Copy`,
-    /// we use a local block to force a copy:
+    /// `&self.x` on a packed type because that might cause an unaligned ref.
+    /// So for any trait method that takes a reference we use a local block to
+    /// force a copy, which works because such structs must be `Copy`:
     /// ```
     /// # struct A { x: u8, y: u8 }
     /// impl PartialEq for A {
     ///     fn eq(&self, other: &A) -> bool {
+    ///         // Desugars to `{ self.x }.eq(&{ other.y }) && ...`
     ///         { self.x } == { other.y } && { self.y } == { other.y }
     ///     }
     /// }
-    /// ```
-    /// (The copy isn't necessary for `eq`, but it makes more sense for other
-    /// functions that use e.g. `&{ self.x }`.)
-    ///
-    /// If it doesn't impl `Copy`, we use let-destructuring with `ref`:
-    /// ```
-    /// # struct A { x: u8, y: u8 }
-    /// impl PartialEq for A {
-    ///     fn eq(&self, other: &A) -> bool {
-    ///         let Self { x: ref __self_0_0, y: ref __self_0_1 } = *self;
-    ///         let Self { x: ref __self_1_0, y: ref __self_1_1 } = *other;
-    ///         *__self_0_0 == *__self_1_0 && *__self_0_1 == *__self_1_1
+    /// impl Hash for A {
+    ///     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+    ///         ::core::hash::Hash::hash(&{ self.x }, state);
+    ///         ::core::hash::Hash::hash(&{ self.y }, state)
     ///     }
     /// }
     /// ```
-    /// This latter case only works if the fields match the alignment required
-    /// by the `packed(N)` attribute.
     fn expand_struct_method_body<'b>(
         &self,
         cx: &mut ExtCtxt<'_>,
@@ -1048,54 +1047,24 @@ impl<'a> MethodDef<'a> {
         type_ident: Ident,
         selflike_args: &[P<Expr>],
         nonselflike_args: &[P<Expr>],
-        is_packed: bool,
-        always_copy: bool,
+        packed_status: Option<PackedStatus>,
     ) -> BlockOrExpr {
         let span = trait_.span;
         assert!(selflike_args.len() == 1 || selflike_args.len() == 2);
 
-        let mk_body = |cx, selflike_fields| {
-            self.call_substructure_method(
-                cx,
-                trait_,
-                type_ident,
-                nonselflike_args,
-                &Struct(struct_def, selflike_fields),
-            )
-        };
-
-        if !is_packed {
-            let selflike_fields =
-                trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, false);
-            mk_body(cx, selflike_fields)
-        } else if always_copy {
-            let selflike_fields =
-                trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, true);
-            mk_body(cx, selflike_fields)
-        } else {
-            // Neither packed nor copy. Need to use ref patterns.
-            let prefixes: Vec<_> =
-                (0..selflike_args.len()).map(|i| format!("__self_{}", i)).collect();
-            let addr_of = always_copy;
-            let selflike_fields =
-                trait_.create_struct_pattern_fields(cx, struct_def, &prefixes, addr_of);
-            let mut body = mk_body(cx, selflike_fields);
-
-            let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
-            let use_ref_pat = is_packed && !always_copy;
-            let patterns =
-                trait_.create_struct_patterns(cx, struct_path, struct_def, &prefixes, use_ref_pat);
-
-            // Do the let-destructuring.
-            let mut stmts: Vec<_> = iter::zip(selflike_args, patterns)
-                .map(|(selflike_arg_expr, pat)| {
-                    let selflike_arg_expr = cx.expr_deref(span, selflike_arg_expr.clone());
-                    cx.stmt_let_pat(span, pat, selflike_arg_expr)
-                })
-                .collect();
-            stmts.extend(std::mem::take(&mut body.0));
-            BlockOrExpr(stmts, body.1)
+        if let Err(res) = Self::check_packed_status(cx, span, packed_status) {
+            return res;
         }
+
+        let selflike_fields =
+            trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, packed_status);
+        self.call_substructure_method(
+            cx,
+            trait_,
+            type_ident,
+            nonselflike_args,
+            &Struct(struct_def, selflike_fields),
+        )
     }
 
     fn expand_static_struct_method_body(
@@ -1105,9 +1074,15 @@ impl<'a> MethodDef<'a> {
         struct_def: &VariantData,
         type_ident: Ident,
         nonselflike_args: &[P<Expr>],
+        packed_status: Option<PackedStatus>,
     ) -> BlockOrExpr {
-        let summary = trait_.summarise_struct(cx, struct_def);
+        let span = trait_.span;
 
+        if Self::check_packed_status(cx, span, packed_status).is_err() {
+            return BlockOrExpr(vec![], Some(deriving::call_abort(cx, span)));
+        }
+
+        let summary = trait_.summarise_struct(cx, struct_def);
         self.call_substructure_method(
             cx,
             trait_,
@@ -1115,6 +1090,32 @@ impl<'a> MethodDef<'a> {
             nonselflike_args,
             &StaticStruct(struct_def, summary),
         )
+    }
+
+    fn check_packed_status(
+        cx: &ExtCtxt<'_>,
+        span: Span,
+        packed_status: Option<PackedStatus>,
+    ) -> Result<(), BlockOrExpr> {
+        let mut res = Ok(());
+        let err = || Err(BlockOrExpr(vec![], Some(deriving::call_abort(cx, span))));
+        if let Some(PackedStatus { has_type_params, has_derive_copy }) = packed_status {
+            // FIXME: when we make this a hard error, this should have its
+            // own error code.
+            if has_type_params {
+                let msg = "`#[derive]` can't be used on a `#[repr(packed)]` struct with \
+                          type or const parameters (error E0133)";
+                cx.sess.struct_span_err(span, msg).emit();
+                res = err();
+            }
+            if !has_derive_copy {
+                let msg = "`#[derive]` can't be used on a `#[repr(packed)]` struct that \
+                          does not derive Copy (error E0133)";
+                cx.sess.struct_span_err(span, msg).emit();
+                res = err();
+            }
+        }
+        res
     }
 
     /// ```
@@ -1542,7 +1543,7 @@ impl<'a> TraitDef<'a> {
         cx: &mut ExtCtxt<'_>,
         selflike_args: &[P<Expr>],
         struct_def: &'a VariantData,
-        copy: bool,
+        packed_status: Option<PackedStatus>,
     ) -> Vec<FieldInfo> {
         self.create_fields(struct_def, |i, struct_field, sp| {
             selflike_args
@@ -1561,7 +1562,7 @@ impl<'a> TraitDef<'a> {
                             }),
                         ),
                     );
-                    if copy {
+                    if packed_status.is_some() {
                         field_expr = cx.expr_block(
                             cx.block(struct_field.span, vec![cx.stmt_expr(field_expr)]),
                         );

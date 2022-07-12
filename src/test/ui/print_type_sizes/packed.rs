@@ -15,7 +15,7 @@
 #![allow(dead_code)]
 #![feature(start)]
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 #[repr(packed)]
 struct Packed1 {
     a: u8,
@@ -26,7 +26,7 @@ struct Packed1 {
     d: u8,
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 #[repr(packed(2))]
 struct Packed2 {
     a: u8,
@@ -37,7 +37,7 @@ struct Packed2 {
     d: u8,
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 #[repr(packed(2))]
 #[repr(C)]
 struct Packed2C {
