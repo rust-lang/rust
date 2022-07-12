@@ -189,7 +189,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         errors.set_tainted_by_errors();
     }
     let upvars: Vec<_> = tables
-        .closure_min_captures_flattened(def.did.to_def_id())
+        .closure_min_captures_flattened(def.did)
         .map(|captured_place| {
             let capture = captured_place.info.capture_kind;
             let by_ref = match capture {
@@ -1295,7 +1295,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 match **aggregate_kind {
                     AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) => {
                         let BorrowCheckResult { used_mut_upvars, .. } =
-                            self.infcx.tcx.mir_borrowck(def_id.expect_local());
+                            self.infcx.tcx.mir_borrowck(def_id);
                         debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);
                         for field in used_mut_upvars {
                             self.propagate_closure_used_mut_upvar(&operands[field.index()]);

@@ -8,7 +8,6 @@ use hir::def_id::LocalDefId;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
@@ -348,14 +347,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn eval_closure_size(&mut self) {
-        let mut res: FxHashMap<DefId, ClosureSizeProfileData<'tcx>> = Default::default();
-        for (closure_def_id, data) in self.fcx.typeck_results.borrow().closure_size_eval.iter() {
-            let closure_hir_id =
-                self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+        let mut res: FxHashMap<LocalDefId, ClosureSizeProfileData<'tcx>> = Default::default();
+        for (&closure_def_id, data) in self.fcx.typeck_results.borrow().closure_size_eval.iter() {
+            let closure_hir_id = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
 
             let data = self.resolve(*data, &closure_hir_id);
 
-            res.insert(*closure_def_id, data);
+            res.insert(closure_def_id, data);
         }
 
         self.typeck_results.closure_size_eval = res;
@@ -365,7 +363,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             self.fcx.typeck_results.borrow().closure_min_captures.len(),
             Default::default(),
         );
-        for (closure_def_id, root_min_captures) in
+        for (&closure_def_id, root_min_captures) in
             self.fcx.typeck_results.borrow().closure_min_captures.iter()
         {
             let mut root_var_map_wb = ty::RootVariableMinCaptureList::with_capacity_and_hasher(
@@ -377,7 +375,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     .iter()
                     .map(|captured_place| {
                         let locatable = captured_place.info.path_expr_id.unwrap_or_else(|| {
-                            self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local())
+                            self.tcx().hir().local_def_id_to_hir_id(closure_def_id)
                         });
 
                         self.resolve(captured_place.clone(), &locatable)
@@ -385,7 +383,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     .collect();
                 root_var_map_wb.insert(*var_hir_id, min_list_wb);
             }
-            min_captures_wb.insert(*closure_def_id, root_var_map_wb);
+            min_captures_wb.insert(closure_def_id, root_var_map_wb);
         }
 
         self.typeck_results.closure_min_captures = min_captures_wb;
@@ -393,21 +391,20 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_fake_reads_map(&mut self) {
         let mut resolved_closure_fake_reads: FxHashMap<
-            DefId,
+            LocalDefId,
             Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>,
         > = Default::default();
-        for (closure_def_id, fake_reads) in
+        for (&closure_def_id, fake_reads) in
             self.fcx.typeck_results.borrow().closure_fake_reads.iter()
         {
             let mut resolved_fake_reads = Vec::<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>::new();
             for (place, cause, hir_id) in fake_reads.iter() {
-                let locatable =
-                    self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+                let locatable = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
 
                 let resolved_fake_read = self.resolve(place.clone(), &locatable);
                 resolved_fake_reads.push((resolved_fake_read, *cause, *hir_id));
             }
-            resolved_closure_fake_reads.insert(*closure_def_id, resolved_fake_reads);
+            resolved_closure_fake_reads.insert(closure_def_id, resolved_fake_reads);
         }
         self.typeck_results.closure_fake_reads = resolved_closure_fake_reads;
     }

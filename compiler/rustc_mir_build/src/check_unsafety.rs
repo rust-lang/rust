@@ -408,7 +408,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 movability: _,
                 fake_reads: _,
             } => {
-                let closure_id = closure_id.expect_local();
                 let closure_def = if let Some((did, const_param_id)) =
                     ty::WithOptConstParam::try_lookup(closure_id, self.tcx)
                 {

@@ -27,6 +27,7 @@ use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::asm::InlineAsmRegOrRegClass;
 
+use rustc_span::def_id::LocalDefId;
 use std::fmt;
 use std::ops::Index;
 
@@ -405,7 +406,7 @@ pub enum ExprKind<'tcx> {
     },
     /// A closure definition.
     Closure {
-        closure_id: DefId,
+        closure_id: LocalDefId,
         substs: UpvarSubsts<'tcx>,
         upvars: Box<[ExprId]>,
         movability: Option<hir::Movability>,

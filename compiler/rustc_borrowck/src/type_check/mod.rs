@@ -1847,14 +1847,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let tcx = self.tcx();
                     let def_id = uv.def.def_id_for_type_of();
                     if tcx.def_kind(def_id) == DefKind::InlineConst {
-                        let predicates = self.prove_closure_bounds(
-                            tcx,
-                            def_id.expect_local(),
-                            uv.substs,
-                            location,
-                        );
+                        let def_id = def_id.expect_local();
+                        let predicates =
+                            self.prove_closure_bounds(tcx, def_id, uv.substs, location);
                         self.normalize_and_prove_instantiated_predicates(
-                            def_id,
+                            def_id.to_def_id(),
                             predicates,
                             location.to_locations(),
                         );
@@ -2514,9 +2511,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             aggregate_kind, location
         );
 
-        let (def_id, instantiated_predicates) = match aggregate_kind {
+        let (def_id, instantiated_predicates) = match *aggregate_kind {
             AggregateKind::Adt(adt_did, _, substs, _, _) => {
-                (*adt_did, tcx.predicates_of(*adt_did).instantiate(tcx, substs))
+                (adt_did, tcx.predicates_of(adt_did).instantiate(tcx, substs))
             }
 
             // For closures, we have some **extra requirements** we
@@ -2541,7 +2538,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // clauses on the struct.
             AggregateKind::Closure(def_id, substs)
             | AggregateKind::Generator(def_id, substs, _) => {
-                (*def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), substs, location))
+                (def_id.to_def_id(), self.prove_closure_bounds(tcx, def_id, substs, location))
             }
 
             AggregateKind::Array(_) | AggregateKind::Tuple => {

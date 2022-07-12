@@ -468,7 +468,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             self.borrow_expr(discr, ty::ImmBorrow);
         } else {
             let closure_def_id = match discr_place.place.base {
-                PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id.to_def_id()),
+                PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id),
                 _ => None,
             };
 
@@ -642,7 +642,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     fn walk_arm(&mut self, discr_place: &PlaceWithHirId<'tcx>, arm: &hir::Arm<'_>) {
         let closure_def_id = match discr_place.place.base {
-            PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id.to_def_id()),
+            PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id),
             _ => None,
         };
 
@@ -666,7 +666,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// let binding, and *not* a match arm or nested pat.)
     fn walk_irrefutable_pat(&mut self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>) {
         let closure_def_id = match discr_place.place.base {
-            PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id.to_def_id()),
+            PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id),
             _ => None,
         };
 
@@ -763,7 +763,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("walk_captures({:?})", closure_expr);
 
         let tcx = self.tcx();
-        let closure_def_id = tcx.hir().local_def_id(closure_expr.hir_id).to_def_id();
+        let closure_def_id = tcx.hir().local_def_id(closure_expr.hir_id);
         let upvars = tcx.upvars_mentioned(self.body_owner);
 
         // For purposes of this function, generator and closures are equivalent.

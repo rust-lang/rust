@@ -29,6 +29,7 @@ use rustc_middle::ty::{
     ToPredicate, Ty, UserType,
 };
 use rustc_session::lint;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
@@ -114,7 +115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn record_deferred_call_resolution(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         r: DeferredCallResolution<'tcx>,
     ) {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
@@ -123,7 +124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn remove_deferred_call_resolutions(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
     ) -> Vec<DeferredCallResolution<'tcx>> {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
         deferred_call_resolutions.remove(&closure_def_id).unwrap_or_default()
