@@ -26,7 +26,7 @@ macro_rules! check_sizes {
     (check_one_specific_size: $ty:ty, $size:expr) => {
         const _: Size::<{$size}> = Size::<{size_of::<$ty>()}>;
     };
-    ($ty:ty, $size:expr, $optioned_size:expr) => {
+    ($ty:ty: $size:expr => $optioned_size:expr) => {
         check_sizes!(check_one_specific_size: $ty, $size);
         check_sizes!(check_one_specific_size: Option<$ty>, $optioned_size);
         check_sizes!(check_no_niche_opt: $size != $optioned_size, $ty);
@@ -41,30 +41,30 @@ macro_rules! check_sizes {
 
 const PTR_SIZE: usize = std::mem::size_of::<*const ()>();
 
-check_sizes!(Wrapper<u32>,     4, 8);
-check_sizes!(Wrapper<N32>,     4, 4); // (✓ niche opt)
-check_sizes!(Transparent<u32>, 4, 8);
-check_sizes!(Transparent<N32>, 4, 4); // (✓ niche opt)
-check_sizes!(NoNiche<u32>,     4, 8);
-check_sizes!(NoNiche<N32>,     4, 8);
+check_sizes!(Wrapper<u32>:     4 => 8);
+check_sizes!(Wrapper<N32>:     4 => 4); // (✓ niche opt)
+check_sizes!(Transparent<u32>: 4 => 8);
+check_sizes!(Transparent<N32>: 4 => 4); // (✓ niche opt)
+check_sizes!(NoNiche<u32>:     4 => 8);
+check_sizes!(NoNiche<N32>:     4 => 8);
 
-check_sizes!(UnsafeCell<u32>,  4, 8);
-check_sizes!(UnsafeCell<N32>,  4, 8);
+check_sizes!(UnsafeCell<u32>:  4 => 8);
+check_sizes!(UnsafeCell<N32>:  4 => 8);
 
-check_sizes!(UnsafeCell<&()> , PTR_SIZE, PTR_SIZE * 2);
-check_sizes!(      Cell<&()> , PTR_SIZE, PTR_SIZE * 2);
-check_sizes!(   RefCell<&()> , PTR_SIZE * 2, PTR_SIZE * 3);
+check_sizes!(UnsafeCell<&()>: PTR_SIZE => PTR_SIZE * 2);
+check_sizes!(      Cell<&()>: PTR_SIZE => PTR_SIZE * 2);
+check_sizes!(   RefCell<&()>: PTR_SIZE * 2 => PTR_SIZE * 3);
 
 check_sizes!(RwLock<&()>);
 check_sizes!(Mutex<&()>);
 
-check_sizes!(UnsafeCell<&[i32]> , PTR_SIZE * 2, PTR_SIZE * 3);
-check_sizes!(UnsafeCell<(&(), &())> , PTR_SIZE * 2, PTR_SIZE * 3);
+check_sizes!(UnsafeCell<&[i32]>: PTR_SIZE * 2 => PTR_SIZE * 3);
+check_sizes!(UnsafeCell<(&(), &())>: PTR_SIZE * 2 => PTR_SIZE * 3);
 
 trait Trait {}
-check_sizes!(UnsafeCell<&dyn Trait> , PTR_SIZE * 2, PTR_SIZE * 3);
+check_sizes!(UnsafeCell<&dyn Trait>: PTR_SIZE * 2 => PTR_SIZE * 3);
 
 #[repr(simd)]
 pub struct Vec4<T>([T; 4]);
 
-check_sizes!(UnsafeCell<Vec4<N32>> , 16, 32);
+check_sizes!(UnsafeCell<Vec4<N32>>: 16 => 32);
