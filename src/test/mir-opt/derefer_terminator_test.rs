@@ -1,4 +1,6 @@
 // EMIT_MIR derefer_terminator_test.main.Derefer.diff
+// ignore-wasm32
+
 fn main() {
     let b = foo();
     let d = foo();
