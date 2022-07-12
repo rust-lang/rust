@@ -3012,7 +3012,7 @@ impl<'a> Parser<'a> {
                 }
             };
 
-            let is_shorthand = parsed_field.as_ref().map_or(false, |f| f.ident.span == f.expr.span);
+            let is_shorthand = parsed_field.as_ref().map_or(false, |f| f.is_shorthand);
             // A shorthand field can be turned into a full field with `:`.
             // We should point this out.
             self.check_or_expected(!is_shorthand, TokenType::Token(token::Colon));
