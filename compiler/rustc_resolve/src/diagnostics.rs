@@ -508,7 +508,7 @@ impl<'a> Resolver<'a> {
                     E0401,
                     "can't use generic parameters from outer function",
                 );
-                err.span_label(span, "use of generic parameter from outer function".to_string());
+                err.span_label(span, "use of generic parameter from outer function");
 
                 let sm = self.session.source_map();
                 match outer_res {
@@ -990,7 +990,7 @@ impl<'a> Resolver<'a> {
                     E0735,
                     "generic parameters cannot use `Self` in their defaults"
                 );
-                err.span_label(span, "`Self` in generic parameter default".to_string());
+                err.span_label(span, "`Self` in generic parameter default");
                 err
             }
             ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
