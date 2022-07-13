@@ -92,6 +92,7 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
         if_chain! {
             if !is_lint_allowed(cx, NO_EFFECT_UNDERSCORE_BINDING, local.hir_id);
             if let Some(init) = local.init;
+            if local.els.is_none();
             if !local.pat.span.from_expansion();
             if has_no_effect(cx, init);
             if let PatKind::Binding(_, _, ident, _) = local.pat.kind;
