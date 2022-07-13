@@ -2162,14 +2162,13 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 }
                 let subst = data.substs.iter().find(|g| g.has_infer_types_or_consts());
                 if let Some(subst) = subst {
-                    let mut err = self.emit_inference_failure_err(
+                    let err = self.emit_inference_failure_err(
                         body_id,
                         span,
                         subst,
                         ErrorCode::E0284,
                         true,
                     );
-                    err.note(&format!("cannot satisfy `{}`", predicate));
                     err
                 } else {
                     // If we can't find a substitution, just print a generic error
