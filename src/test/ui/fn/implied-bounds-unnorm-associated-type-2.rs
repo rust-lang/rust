@@ -1,4 +1,4 @@
-// check-pass
+// check-fail
 
 trait Trait {
     type Type;
@@ -17,6 +17,7 @@ where
 
 fn g<'a, 'b>() {
     f::<'a, 'b>(());
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

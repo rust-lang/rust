@@ -187,7 +187,7 @@ pub enum GenericKind<'tcx> {
 /// }
 /// ```
 /// This is described with an `AnyRegion('a, 'b)` node.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TypeFoldable, TypeVisitable)]
 pub enum VerifyBound<'tcx> {
     /// See [`VerifyIfEq`] docs
     IfEq(ty::Binder<'tcx, VerifyIfEq<'tcx>>),
