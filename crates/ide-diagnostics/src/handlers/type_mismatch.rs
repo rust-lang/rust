@@ -35,6 +35,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assi
     add_reference(ctx, d, &mut fixes);
     add_missing_ok_or_some(ctx, d, &mut fixes);
     remove_semicolon(ctx, d, &mut fixes);
+    str_ref_to_string(ctx, d, &mut fixes);
 
     if fixes.is_empty() {
         None
@@ -131,6 +132,32 @@ fn remove_semicolon(
         SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
 
     acc.push(fix("remove_semicolon", "Remove this semicolon", source_change, semicolon_range));
+    Some(())
+}
+
+fn str_ref_to_string(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::TypeMismatch,
+    acc: &mut Vec<Assist>,
+) -> Option<()> {
+    let expected = d.expected.display(ctx.sema.db);
+    let actual = d.actual.display(ctx.sema.db);
+
+    if expected.to_string() != "String" || actual.to_string() != "&str" {
+        return None;
+    }
+
+    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
+    let expr = d.expr.value.to_node(&root);
+    let expr_range = expr.syntax().text_range();
+
+    let to_string = format!(".to_string()");
+
+    let edit = TextEdit::insert(expr.syntax().text_range().end(), to_string);
+    let source_change =
+        SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
+    acc.push(fix("str_ref_to_string", "Add .to_string() here", source_change, expr_range));
+
     Some(())
 }
 
@@ -497,5 +524,25 @@ fn foo() -> SomeOtherEnum { 0$0 }
     #[test]
     fn remove_semicolon() {
         check_fix(r#"fn f() -> i32 { 92$0; }"#, r#"fn f() -> i32 { 92 }"#);
+    }
+
+    #[test]
+    fn str_ref_to_string() {
+        check_fix(
+            r#"
+struct String;
+
+fn test() -> String {
+    "a"$0
+}
+            "#,
+            r#"
+struct String;
+
+fn test() -> String {
+    "a".to_string()
+}
+            "#,
+        );
     }
 }
