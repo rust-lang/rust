@@ -165,6 +165,19 @@ exclude_labels = [
     "T-*",
 ]
 
+[autolabel."A-bootstrap"]
+trigger_files = [
+    "x.py",
+    "src/bootstrap",
+    "src/tools/rust-installer",
+]
+
+[autolabel."T-infra"]
+trigger_files = [
+    "src/ci",
+    "src/tools/bump-stage0",
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
