@@ -59,7 +59,7 @@ impl<'tcx, T> Backend<'tcx> for T where
 pub trait CodegenBackend {
     fn init(&self, _sess: &Session) {}
     fn print(&self, _req: PrintRequest, _sess: &Session) {}
-    fn target_features(&self, _sess: &Session) -> Vec<Symbol> {
+    fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<Symbol> {
         vec![]
     }
     fn print_passes(&self) {}
