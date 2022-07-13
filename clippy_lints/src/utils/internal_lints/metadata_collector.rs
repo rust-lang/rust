@@ -1018,7 +1018,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for LintResolver<'a, 'hir> {
 /// This visitor finds the highest applicability value in the visited expressions
 struct ApplicabilityResolver<'a, 'hir> {
     cx: &'a LateContext<'hir>,
-    /// This is the index of hightest `Applicability` for `paths::APPLICABILITY_VALUES`
+    /// This is the index of highest `Applicability` for `paths::APPLICABILITY_VALUES`
     applicability_index: Option<usize>,
 }
 

@@ -364,7 +364,7 @@ Released 2022-04-07
 
 * [`needless_borrow`]: Prevent mutable borrows being moved and suggest removing the borrow on method calls
   [#8217](https://github.com/rust-lang/rust-clippy/pull/8217)
-* [`chars_next_cmp`]: Correctly excapes the suggestion
+* [`chars_next_cmp`]: Correctly escapes the suggestion
   [#8376](https://github.com/rust-lang/rust-clippy/pull/8376)
 * [`explicit_write`]: Add suggestions for `write!`s with format arguments
   [#8365](https://github.com/rust-lang/rust-clippy/pull/8365)
@@ -2525,7 +2525,7 @@ Released 2019-09-26
   * [`inherent_to_string_shadow_display`] [#4259](https://github.com/rust-lang/rust-clippy/pull/4259)
   * [`type_repetition_in_bounds`] [#3766](https://github.com/rust-lang/rust-clippy/pull/3766)
   * [`try_err`] [#4222](https://github.com/rust-lang/rust-clippy/pull/4222)
-* Move `{unnnecessary,panicking}_unwrap` out of nursery [#4307](https://github.com/rust-lang/rust-clippy/pull/4307)
+* Move `{unnecessary,panicking}_unwrap` out of nursery [#4307](https://github.com/rust-lang/rust-clippy/pull/4307)
 * Extend the `use_self` lint to suggest uses of `Self::Variant` [#4308](https://github.com/rust-lang/rust-clippy/pull/4308)
 * Improve suggestion for needless return [#4262](https://github.com/rust-lang/rust-clippy/pull/4262)
 * Add auto-fixable suggestion for `let_unit` [#4337](https://github.com/rust-lang/rust-clippy/pull/4337)

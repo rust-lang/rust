@@ -30,7 +30,7 @@ impl Continue for () {
     }
 }
 
-/// Allows for controlled descent whe using visitor functions. Use `()` instead when always
+/// Allows for controlled descent when using visitor functions. Use `()` instead when always
 /// descending into child nodes.
 #[derive(Clone, Copy)]
 pub enum Descend {

@@ -59,7 +59,7 @@ fn issue8878() {
         .map(|_| {
 // we need some newlines
 // so that the span is big enough
-// for a splitted output of the diagnostic
+// for a split output of the diagnostic
             Some("")
  // whitespace beforehand is important as well
         })
