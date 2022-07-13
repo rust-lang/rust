@@ -2156,6 +2156,22 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
 
+            ty::PredicateKind::ConstEvaluatable(data) => {
+                let subst = data.substs.iter().find(|g| g.has_infer_types_or_consts());
+                if let Some(subst) = subst {
+                    let mut err = self.emit_inference_failure_err(
+                        body_id,
+                        span,
+                        subst,
+                        ErrorCode::E0284,
+                        true,
+                    );
+                    err.note(&format!("cannot satisfy `{}`", predicate));
+                    err
+                } else {
+                    todo!();
+                }
+            }
             _ => {
                 if self.tcx.sess.has_errors().is_some() || self.is_tainted_by_errors() {
                     return;
