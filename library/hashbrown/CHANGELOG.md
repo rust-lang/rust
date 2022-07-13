@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Added `Entry` API for `HashSet`. (#342)
 - Added `Extend<&'a (K, V)> for HashMap<K, V, S, A>`. (#340)
 - Added length-based short-circuiting for hash table iteration. (#338)
-  Added a function to access the `RawTable` of a `HashMap`. (#335)-
+- Added a function to access the `RawTable` of a `HashMap`. (#335)
 
 ## Changed
 
