@@ -95,7 +95,7 @@ use super::Completions;
 //
 // .Import configuration
 //
-// It is possible to configure how use-trees are merged with the `importMergeBehavior` setting.
+// It is possible to configure how use-trees are merged with the `imports.granularity.group` setting.
 // Mimics the corresponding behavior of the `Auto Import` feature.
 //
 // .LSP and performance implications

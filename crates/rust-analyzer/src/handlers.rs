@@ -1798,7 +1798,7 @@ fn run_rustfmt(
                         String::from(
                             "rustfmt range formatting is unstable. \
                             Opt-in by using a nightly build of rustfmt and setting \
-                            `rustfmt.enableRangeFormatting` to true in your LSP configuration",
+                            `rustfmt.rangeFormatting.enable` to true in your LSP configuration",
                         ),
                     )
                     .into());

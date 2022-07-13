@@ -737,7 +737,7 @@ fn handle_rustc_crates(
     let root_pkg =
         rustc_workspace.packages().find(|package| rustc_workspace[*package].name == "rustc_driver");
     // The rustc workspace might be incomplete (such as if rustc-dev is not
-    // installed for the current toolchain) and `rustcSource` is set to discover.
+    // installed for the current toolchain) and `rustc_source` is set to discover.
     if let Some(root_pkg) = root_pkg {
         // Iterate through every crate in the dependency subtree of rustc_driver using BFS
         let mut queue = VecDeque::new();
@@ -822,7 +822,7 @@ fn handle_rustc_crates(
                 for (from, _) in pkg_crates.get(&pkg).into_iter().flatten() {
                     // Avoid creating duplicate dependencies
                     // This avoids the situation where `from` depends on e.g. `arrayvec`, but
-                    // `rust_analyzer` thinks that it should use the one from the `rustcSource`
+                    // `rust_analyzer` thinks that it should use the one from the `rustc_source`
                     // instead of the one from `crates.io`
                     if !crate_graph[*from].dependencies.iter().any(|d| d.name == name) {
                         add_dep(crate_graph, *from, name.clone(), to);

@@ -308,12 +308,16 @@ nvim_lsp.rust_analyzer.setup({
     on_attach=on_attach,
     settings = {
         ["rust-analyzer"] = {
-            assist = {
-                importGranularity = "module",
-                importPrefix = "self",
+            imports = {
+                granularity = {
+                    group = "module",
+                },
+                prefix = "self",
             },
             cargo = {
-                loadOutDirsFromCheck = true
+                buildScripts = {
+                    enable = true,
+                },
             },
             procMacro = {
                 enable = true
@@ -364,7 +368,9 @@ if executable('rust-analyzer')
         \   'whitelist': ['rust'],
         \   'initialization_options': {
         \     'cargo': {
-        \       'loadOutDirsFromCheck': v:true,
+        \       'buildScripts': {
+        \         'enable': v:true,
+        \       },
         \     },
         \     'procMacro': {
         \       'enable': v:true,
@@ -527,7 +533,9 @@ For example, a very common configuration is to enable proc-macro support, can be
 ----
 {
   "cargo": {
-    "loadOutDirsFromCheck": true,
+    "buildScripts": {
+      "enable": true,
+    },
   },
   "procMacro": {
     "enable": true,
@@ -705,7 +713,7 @@ include::./generated_assists.adoc[]
 == Diagnostics
 
 While most errors and warnings provided by rust-analyzer come from the `cargo check` integration, there's a growing number of diagnostics implemented using rust-analyzer's own analysis.
-Some of these diagnostics don't respect `\#[allow]` or `\#[deny]` attributes yet, but can be turned off using the `rust-analyzer.diagnostics.enable`, `rust-analyzer.diagnostics.enableExperimental` or `rust-analyzer.diagnostics.disabled` settings.
+Some of these diagnostics don't respect `\#[allow]` or `\#[deny]` attributes yet, but can be turned off using the `rust-analyzer.diagnostics.enable`, `rust-analyzer.diagnostics.experimental.enable` or `rust-analyzer.diagnostics.disabled` settings.
 
 include::./generated_diagnostic.adoc[]
 

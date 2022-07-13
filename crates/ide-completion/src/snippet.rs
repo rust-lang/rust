@@ -6,12 +6,12 @@
 //
 // rust-analyzer allows the user to define custom (postfix)-snippets that may depend on items to be accessible for the current scope to be applicable.
 //
-// A custom snippet can be defined by adding it to the `rust-analyzer.completion.snippets` object respectively.
+// A custom snippet can be defined by adding it to the `rust-analyzer.completion.snippets.custom` object respectively.
 //
 // [source,json]
 // ----
 // {
-//   "rust-analyzer.completion.snippets": {
+//   "rust-analyzer.completion.snippets.custom": {
 //     "thread spawn": {
 //       "prefix": ["spawn", "tspawn"],
 //       "body": [
