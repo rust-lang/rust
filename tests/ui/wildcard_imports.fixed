@@ -199,7 +199,7 @@ mod super_imports {
         }
     }
 
-    mod should_be_replaced_futher_inside {
+    mod should_be_replaced_further_inside {
         fn insidefoo() {}
         mod inner {
             use super::insidefoo;

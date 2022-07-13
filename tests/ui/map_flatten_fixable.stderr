@@ -78,7 +78,7 @@ LL |           .map(|_| {
    |  __________^
 LL | | // we need some newlines
 LL | | // so that the span is big enough
-LL | | // for a splitted output of the diagnostic
+LL | | // for a split output of the diagnostic
 ...  |
 LL | |         })
 LL | |         .flatten();
@@ -89,7 +89,7 @@ help: try replacing `map` with `and_then` and remove the `.flatten()`
 LL ~         .and_then(|_| {
 LL + // we need some newlines
 LL + // so that the span is big enough
-LL + // for a splitted output of the diagnostic
+LL + // for a split output of the diagnostic
 LL +             Some("")
 LL +  // whitespace beforehand is important as well
 LL ~         });

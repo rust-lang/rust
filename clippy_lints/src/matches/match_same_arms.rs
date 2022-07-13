@@ -365,7 +365,7 @@ impl<'a> NormalizedPat<'a> {
             (Self::Slice(pats, None), Self::Slice(front, Some(back)))
             | (Self::Slice(front, Some(back)), Self::Slice(pats, None)) => {
                 // Here `pats` is an exact size match. If the combined lengths of `front` and `back` are greater
-                // then the minium length required will be greater than the length of `pats`.
+                // then the minimum length required will be greater than the length of `pats`.
                 if pats.len() < front.len() + back.len() {
                     return false;
                 }
