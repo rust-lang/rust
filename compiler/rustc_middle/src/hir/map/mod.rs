@@ -1238,6 +1238,10 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalDefId) -> Module
 pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
     let mut collector = ItemCollector::new(tcx, true);
 
+    // A "crate collector" and "module collector" start at a
+    // module item (the former starts at the crate root) but only
+    // the former needs to collect it. ItemCollector does not do this for us.
+    collector.submodules.push(CRATE_DEF_ID);
     tcx.hir().walk_toplevel_module(&mut collector);
 
     let ItemCollector {
@@ -1302,17 +1306,16 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
         self.items.push(item.item_id());
 
-        if !self.crate_collector && let ItemKind::Mod(..) = item.kind {
-            // If this declares another module, do not recurse inside it.
+        // Items that are modules are handled here instead of in visit_mod.
+        if let ItemKind::Mod(module) = &item.kind {
             self.submodules.push(item.def_id);
+            // A module collector does not recurse inside nested modules.
+            if self.crate_collector {
+                intravisit::walk_mod(self, module, item.hir_id());
+            }
         } else {
             intravisit::walk_item(self, item)
         }
-    }
-
-    fn visit_mod(&mut self, m: &'hir Mod<'hir>, _s: Span, n: HirId) {
-        self.submodules.push(n.owner);
-        intravisit::walk_mod(self, m, n);
     }
 
     fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
