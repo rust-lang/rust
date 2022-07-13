@@ -24,9 +24,6 @@ impl flags::Dist {
         sh.remove_path(&dist)?;
         sh.create_dir(&dist)?;
 
-        let release_channel = if stable { "stable" } else { "nightly" };
-        dist_server(sh, release_channel, &target)?;
-
         if let Some(patch_version) = self.client_patch_version {
             let version = if stable {
                 format!("{}.{}", VERSION_STABLE, patch_version)
@@ -34,8 +31,11 @@ impl flags::Dist {
                 // A hack to make VS Code prefer nightly over stable.
                 format!("{}.{}", VERSION_NIGHTLY, patch_version)
             };
+            dist_server(sh, &format!("{version}-standalone"), &target)?;
             let release_tag = if stable { date_iso(sh)? } else { "nightly".to_string() };
             dist_client(sh, &version, &release_tag, &target)?;
+        } else {
+            dist_server(sh, "0.0.0-standalone", &target)?;
         }
         Ok(())
     }
@@ -71,9 +71,8 @@ fn dist_client(
     Ok(())
 }
 
-fn dist_server(sh: &Shell, release_channel: &str, target: &Target) -> anyhow::Result<()> {
-    let _e = sh.push_env("CFG_RELEASE_CHANNEL", release_channel);
-    let _e = sh.push_env("CFG_RELEASE", "0.0.0");
+fn dist_server(sh: &Shell, release: &str, target: &Target) -> anyhow::Result<()> {
+    let _e = sh.push_env("CFG_RELEASE", release);
     let _e = sh.push_env("CARGO_PROFILE_RELEASE_LTO", "thin");
 
     // Uncomment to enable debug info for releases. Note that:
