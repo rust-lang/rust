@@ -18,10 +18,9 @@ LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/any.rs:LL:COL
    |
-LL | #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-   |                       ^^^^^^^^^
+LL | impl PartialEq for TypeId {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: overly complex generic constant
   --> $DIR/issue-90318.rs:22:8
@@ -43,10 +42,9 @@ LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
 note: impl defined here, but it is not `const`
   --> $SRC_DIR/core/src/any.rs:LL:COL
    |
-LL | #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-   |                       ^^^^^^^^^
+LL | impl PartialEq for TypeId {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

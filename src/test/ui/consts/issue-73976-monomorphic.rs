@@ -5,20 +5,9 @@
 // will be properly rejected. This test will ensure that monomorphic use of these
 // would not be wrongly rejected in patterns.
 
-#![feature(const_type_id)]
 #![feature(const_type_name)]
 
-use std::any::{self, TypeId};
-
-pub struct GetTypeId<T>(T);
-
-impl<T: 'static> GetTypeId<T> {
-    pub const VALUE: TypeId = TypeId::of::<T>();
-}
-
-const fn check_type_id<T: 'static>() -> bool {
-    matches!(GetTypeId::<T>::VALUE, GetTypeId::<usize>::VALUE)
-}
+use std::any;
 
 pub struct GetTypeNameLen<T>(T);
 
@@ -31,6 +20,5 @@ const fn check_type_name_len<T: 'static>() -> bool {
 }
 
 fn main() {
-    assert!(check_type_id::<usize>());
     assert!(check_type_name_len::<usize>());
 }

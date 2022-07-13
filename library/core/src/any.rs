@@ -668,6 +668,8 @@ impl dyn Any + Send + Sync {
 #[derive(Clone, Copy, PartialOrd, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
+    // This field is unused, and is intended solely
+    // to break invalid transmutes to `TypeId`.
     pad: u64,
     t: u64,
 }
