@@ -6,5 +6,5 @@ fn main() {
     let xraw = x as *mut _;
     let xref = unsafe { &mut *xraw };
     let _val = unsafe { *xraw }; // invalidate xref
-    foo(xref); //~ ERROR: borrow stack
+    foo(xref); //~ ERROR: /reborrow .* tag does not exist in the borrow stack/
 }

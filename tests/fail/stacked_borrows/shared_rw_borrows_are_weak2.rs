@@ -12,6 +12,6 @@ fn main() {
         let y: &i32 = mem::transmute(&*x.borrow()); // launder lifetime
         let shr_rw = &*x; // thanks to interior mutability this will be a SharedReadWrite
         shr_rw.replace(1);
-        let _val = *y; //~ ERROR: borrow stack
+        let _val = *y; //~ ERROR: /read access .* tag does not exist in the borrow stack/
     }
 }

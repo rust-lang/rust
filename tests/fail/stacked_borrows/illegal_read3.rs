@@ -18,7 +18,7 @@ fn main() {
     callee(xref1_sneaky);
     // ... though any use of it will invalidate our ref.
     let _val = *xref2;
-    //~^ ERROR: borrow stack
+    //~^ ERROR: /read access .* tag does not exist in the borrow stack/
 }
 
 fn callee(xref1: HiddenRef) {
