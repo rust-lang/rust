@@ -1,6 +1,4 @@
-// check-fail
-// See issue #91068. We check that the unnormalized associated types in
-// function signatures are implied
+// A regression test for #98543
 
 trait Trait {
     type Type;
@@ -10,7 +8,10 @@ impl<T> Trait for T {
     type Type = ();
 }
 
-fn f<'a, 'b>(s: &'b str, _: <&'a &'b () as Trait>::Type) -> &'a str {
+fn f<'a, 'b>(s: &'b str, _: <&'a &'b () as Trait>::Type) -> &'a str
+where
+    &'a &'b (): Trait, // <- adding this bound is the change from #91068
+{
     s
 }
 
