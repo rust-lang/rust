@@ -823,8 +823,9 @@ impl FunctionBody {
             });
 
         let parent = self.parent()?;
-        let generic_param_lists = parent_generic_param_lists(&parent);
-        let where_clauses = parent_where_clauses(&parent);
+        let parents = generic_parents(&parent);
+        let generic_param_lists = parents.iter().filter_map(|it| it.generic_param_list()).collect();
+        let where_clauses = parents.iter().filter_map(|it| it.where_clause()).collect();
 
         Some(ContainerInfo {
             is_in_tail,
@@ -990,24 +991,54 @@ impl FunctionBody {
     }
 }
 
-fn parent_where_clauses(parent: &SyntaxNode) -> Vec<ast::WhereClause> {
-    let mut where_clause: Vec<ast::WhereClause> = parent
-        .ancestors()
-        .filter_map(ast::AnyHasGenericParams::cast)
-        .filter_map(|it| it.where_clause())
-        .collect();
-    where_clause.reverse();
-    where_clause
+enum GenericParent {
+    Fn(ast::Fn),
+    Impl(ast::Impl),
+    Trait(ast::Trait),
 }
 
-fn parent_generic_param_lists(parent: &SyntaxNode) -> Vec<ast::GenericParamList> {
-    let mut generic_param_list: Vec<ast::GenericParamList> = parent
-        .ancestors()
-        .filter_map(ast::AnyHasGenericParams::cast)
-        .filter_map(|it| it.generic_param_list())
-        .collect();
-    generic_param_list.reverse();
-    generic_param_list
+impl GenericParent {
+    fn generic_param_list(&self) -> Option<ast::GenericParamList> {
+        match self {
+            GenericParent::Fn(fn_) => fn_.generic_param_list(),
+            GenericParent::Impl(impl_) => impl_.generic_param_list(),
+            GenericParent::Trait(trait_) => trait_.generic_param_list(),
+        }
+    }
+
+    fn where_clause(&self) -> Option<ast::WhereClause> {
+        match self {
+            GenericParent::Fn(fn_) => fn_.where_clause(),
+            GenericParent::Impl(impl_) => impl_.where_clause(),
+            GenericParent::Trait(trait_) => trait_.where_clause(),
+        }
+    }
+}
+
+/// Search `parent`'s ancestors for items with potentially applicable generic parameters
+fn generic_parents(parent: &SyntaxNode) -> Vec<GenericParent> {
+    let mut list = Vec::new();
+    if let Some(parent_item) = parent.ancestors().find_map(ast::Item::cast) {
+        match parent_item {
+            ast::Item::Fn(ref fn_) => {
+                if let Some(parent_parent) = parent_item
+                    .syntax()
+                    .parent()
+                    .and_then(|it| it.parent())
+                    .and_then(ast::Item::cast)
+                {
+                    match parent_parent {
+                        ast::Item::Impl(impl_) => list.push(GenericParent::Impl(impl_)),
+                        ast::Item::Trait(trait_) => list.push(GenericParent::Trait(trait_)),
+                        _ => (),
+                    }
+                }
+                list.push(GenericParent::Fn(fn_.clone()));
+            }
+            _ => (),
+        }
+    }
+    list
 }
 
 /// checks if relevant var is used with `&mut` access inside body
