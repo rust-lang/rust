@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/gate.rs:3:9
+  --> $DIR/gate.rs:4:9
    |
 LL |     match String::new() {
    |           ------------- this expression has type `String`
