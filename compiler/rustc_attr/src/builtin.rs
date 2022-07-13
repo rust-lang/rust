@@ -135,9 +135,22 @@ impl ConstStability {
 #[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub enum StabilityLevel {
-    // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
-    Stable { since: Symbol, allowed_through_unstable_modules: bool },
+    /// `#[unstable]`
+    Unstable {
+        /// Reason for the current stability level.
+        reason: Option<Symbol>,
+        /// Relevant `rust-lang/rust` issue.
+        issue: Option<NonZeroU32>,
+        is_soft: bool,
+    },
+    /// `#[stable]`
+    Stable {
+        /// Rust release which stabilized this feature.
+        since: Symbol,
+        /// Is this item allowed to be referred to on stable, despite being contained in unstable
+        /// modules?
+        allowed_through_unstable_modules: bool,
+    },
 }
 
 impl StabilityLevel {

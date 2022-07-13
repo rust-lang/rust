@@ -1,8 +1,8 @@
-// Detecting lib features (i.e., features that are not lang features).
-//
-// These are declared using stability attributes (e.g., `#[stable (..)]`
-// and `#[unstable (..)]`), but are not declared in one single location
-// (unlike lang features), which means we need to collect them instead.
+//! Detecting lib features (i.e., features that are not lang features).
+//!
+//! These are declared using stability attributes (e.g., `#[stable (..)]` and `#[unstable (..)]`),
+//! but are not declared in one single location (unlike lang features), which means we need to
+//! collect them instead.
 
 use rustc_ast::{Attribute, MetaItemKind};
 use rustc_errors::struct_span_err;

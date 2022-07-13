@@ -29,13 +29,13 @@ use std::num::NonZeroU32;
 
 #[derive(PartialEq)]
 enum AnnotationKind {
-    // Annotation is required if not inherited from unstable parents
+    /// Annotation is required if not inherited from unstable parents.
     Required,
-    // Annotation is useless, reject it
+    /// Annotation is useless, reject it.
     Prohibited,
-    // Deprecation annotation is useless, reject it. (Stability attribute is still required.)
+    /// Deprecation annotation is useless, reject it. (Stability attribute is still required.)
     DeprecationProhibited,
-    // Annotation itself is useless, but it can be propagated to children
+    /// Annotation itself is useless, but it can be propagated to children.
     Container,
 }
 
@@ -83,7 +83,7 @@ impl InheritStability {
     }
 }
 
-// A private tree-walker for producing an Index.
+/// A private tree-walker for producing an `Index`.
 struct Annotator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     index: &'a mut Index,
@@ -94,9 +94,9 @@ struct Annotator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Annotator<'a, 'tcx> {
-    // Determine the stability for a node based on its attributes and inherited
-    // stability. The stability is recorded in the index and used as the parent.
-    // If the node is a function, `fn_sig` is its signature
+    /// Determine the stability for a node based on its attributes and inherited stability. The
+    /// stability is recorded in the index and used as the parent. If the node is a function,
+    /// `fn_sig` is its signature.
     fn annotate<F>(
         &mut self,
         def_id: LocalDefId,
