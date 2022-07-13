@@ -1634,9 +1634,13 @@ rustc_queries! {
         storage(ArenaCacheSelector<'tcx>)
         desc { "calculating the lib features map" }
     }
-    query defined_lib_features(_: CrateNum)
-        -> &'tcx [(Symbol, Option<Symbol>)] {
+    query defined_lib_features(_: CrateNum) -> &'tcx [(Symbol, Option<Symbol>)] {
         desc { "calculating the lib features defined in a crate" }
+        separate_provide_extern
+    }
+    query stability_implications(_: CrateNum) -> FxHashMap<Symbol, Symbol> {
+        storage(ArenaCacheSelector<'tcx>)
+        desc { "calculating the implications between `#[unstable]` features defined in a crate" }
         separate_provide_extern
     }
     /// Whether the function is an intrinsic
