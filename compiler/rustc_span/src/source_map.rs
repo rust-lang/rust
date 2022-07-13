@@ -718,6 +718,11 @@ impl SourceMap {
         sp
     }
 
+    /// Extends the given `Span` to contain the entire line it is on.
+    pub fn span_extend_to_line(&self, sp: Span) -> Span {
+        self.span_extend_to_prev_char(self.span_extend_to_next_char(sp, '\n', true), '\n', true)
+    }
+
     /// Given a `Span`, tries to get a shorter span ending before the first occurrence of `char`
     /// `c`.
     pub fn span_until_char(&self, sp: Span, c: char) -> Span {
