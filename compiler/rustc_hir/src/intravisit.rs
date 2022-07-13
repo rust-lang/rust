@@ -472,6 +472,9 @@ pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local<'v>) {
     walk_list!(visitor, visit_expr, &local.init);
     visitor.visit_id(local.hir_id);
     visitor.visit_pat(&local.pat);
+    if let Some(els) = local.els {
+        visitor.visit_block(els);
+    }
     walk_list!(visitor, visit_ty, &local.ty);
 }
 

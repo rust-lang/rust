@@ -1615,7 +1615,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // those N possible outcomes, create a (initially empty)
         // vector of candidates. Those are the candidates that still
         // apply if the test has that particular outcome.
-        debug!("match_candidates: test={:?} match_pair={:?}", test, match_pair);
+        debug!("test_candidates: test={:?} match_pair={:?}", test, match_pair);
         let mut target_candidates: Vec<Vec<&mut Candidate<'pat, 'tcx>>> = vec![];
         target_candidates.resize_with(test.targets(), Default::default);
 
@@ -1635,8 +1635,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
         // at least the first candidate ought to be tested
         assert!(total_candidate_count > candidates.len());
-        debug!("tested_candidates: {}", total_candidate_count - candidates.len());
-        debug!("untested_candidates: {}", candidates.len());
+        debug!("test_candidates: tested_candidates: {}", total_candidate_count - candidates.len());
+        debug!("test_candidates: untested_candidates: {}", candidates.len());
 
         // HACK(matthewjasper) This is a closure so that we can let the test
         // create its blocks before the rest of the match. This currently
@@ -2273,5 +2273,76 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
         debug!("declare_binding: vars={:?}", locals);
         self.var_indices.insert(var_id, locals);
+    }
+
+    pub(crate) fn ast_let_else(
+        &mut self,
+        mut block: BasicBlock,
+        init: &Expr<'tcx>,
+        initializer_span: Span,
+        else_block: &Block,
+        visibility_scope: Option<SourceScope>,
+        remainder_span: Span,
+        pattern: &Pat<'tcx>,
+    ) -> BlockAnd<()> {
+        let scrutinee = unpack!(block = self.lower_scrutinee(block, init, initializer_span));
+        let pat = Pat { ty: init.ty, span: else_block.span, kind: Box::new(PatKind::Wild) };
+        let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false);
+        self.declare_bindings(
+            visibility_scope,
+            remainder_span,
+            pattern,
+            ArmHasGuard(false),
+            Some((None, initializer_span)),
+        );
+        let mut candidate = Candidate::new(scrutinee.clone(), pattern, false);
+        let fake_borrow_temps = self.lower_match_tree(
+            block,
+            initializer_span,
+            pattern.span,
+            false,
+            &mut [&mut candidate, &mut wildcard],
+        );
+        // This block is for the matching case
+        let matching = self.bind_pattern(
+            self.source_info(pattern.span),
+            candidate,
+            None,
+            &fake_borrow_temps,
+            initializer_span,
+            None,
+            None,
+            None,
+        );
+        // This block is for the failure case
+        let failure = self.bind_pattern(
+            self.source_info(else_block.span),
+            wildcard,
+            None,
+            &fake_borrow_temps,
+            initializer_span,
+            None,
+            None,
+            None,
+        );
+        // This place is not really used because this destination place
+        // should never be used to take values at the end of the failure
+        // block.
+        let dummy_place = Place { local: RETURN_PLACE, projection: ty::List::empty() };
+        let failure_block;
+        unpack!(
+            failure_block = self.ast_block(
+                dummy_place,
+                failure,
+                else_block,
+                self.source_info(else_block.span),
+            )
+        );
+        self.cfg.terminate(
+            failure_block,
+            self.source_info(else_block.span),
+            TerminatorKind::Unreachable,
+        );
+        matching.unit()
     }
 }

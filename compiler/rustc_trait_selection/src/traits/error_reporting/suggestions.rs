@@ -1311,7 +1311,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         visitor.visit_body(&body);
 
         let typeck_results = self.in_progress_typeck_results.map(|t| t.borrow()).unwrap();
-        let Some(liberated_sig) = typeck_results.liberated_fn_sigs().get(fn_hir_id) else { return false; };
+        let Some(liberated_sig) = typeck_results.liberated_fn_sigs().get(fn_hir_id).copied() else { return false; };
 
         let ret_types = visitor
             .returns

@@ -1215,6 +1215,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_pat_top(&decl.pat, decl_ty, ty_span, origin_expr);
         let pat_ty = self.node_ty(decl.pat.hir_id);
         self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, decl_ty, pat_ty);
+
+        if let Some(blk) = decl.els {
+            let previous_diverges = self.diverges.get();
+            let else_ty = self.check_block_with_expected(blk, NoExpectation);
+            let cause = self.cause(blk.span, ObligationCauseCode::LetElse);
+            if let Some(mut err) =
+                self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
+            {
+                err.emit();
+            }
+            self.diverges.set(previous_diverges);
+        }
     }
 
     /// Type check a `let` statement.
@@ -1236,8 +1248,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let old_has_errors = self.has_errors.replace(false);
 
         match stmt.kind {
-            hir::StmtKind::Local(ref l) => {
-                self.check_decl_local(&l);
+            hir::StmtKind::Local(l) => {
+                self.check_decl_local(l);
             }
             // Ignore for now.
             hir::StmtKind::Item(_) => {}
