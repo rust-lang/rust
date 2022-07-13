@@ -182,6 +182,9 @@ pub enum StmtKind<'tcx> {
         /// `let pat: ty = <INIT>`
         initializer: Option<ExprId>,
 
+        /// `let pat: ty = <INIT> else { <ELSE> }
+        else_block: Option<Block>,
+
         /// The lint level for this `let` statement.
         lint_level: LintLevel,
     },

@@ -3028,6 +3028,11 @@ impl<'a> Parser<'a> {
                 }
             };
 
+            let is_shorthand = parsed_field.as_ref().map_or(false, |f| f.is_shorthand);
+            // A shorthand field can be turned into a full field with `:`.
+            // We should point this out.
+            self.check_or_expected(!is_shorthand, TokenType::Token(token::Colon));
+
             match self.expect_one_of(&[token::Comma], &[token::CloseDelim(close_delim)]) {
                 Ok(_) => {
                     if let Some(f) = parsed_field.or(recovery_field) {
@@ -3047,6 +3052,19 @@ impl<'a> Parser<'a> {
                                 "try adding a comma",
                                 ",",
                                 Applicability::MachineApplicable,
+                            );
+                        } else if is_shorthand
+                            && (AssocOp::from_token(&self.token).is_some()
+                                || matches!(&self.token.kind, token::OpenDelim(_))
+                                || self.token.kind == token::Dot)
+                        {
+                            // Looks like they tried to write a shorthand, complex expression.
+                            let ident = parsed_field.expect("is_shorthand implies Some").ident;
+                            e.span_suggestion(
+                                ident.span.shrink_to_lo(),
+                                "try naming a field",
+                                &format!("{ident}: "),
+                                Applicability::HasPlaceholders,
                             );
                         }
                     }

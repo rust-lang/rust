@@ -1141,7 +1141,6 @@ pub enum DesugaringKind {
     Async,
     Await,
     ForLoop,
-    LetElse,
     WhileLoop,
 }
 
@@ -1157,7 +1156,6 @@ impl DesugaringKind {
             DesugaringKind::YeetExpr => "`do yeet` expression",
             DesugaringKind::OpaqueTy => "`impl Trait`",
             DesugaringKind::ForLoop => "`for` loop",
-            DesugaringKind::LetElse => "`let...else`",
             DesugaringKind::WhileLoop => "`while` loop",
         }
     }

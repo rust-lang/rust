@@ -1,8 +1,11 @@
 error[E0308]: `else` clause of `let...else` does not diverge
-  --> $DIR/let-else-non-diverging.rs:12:32
+  --> $DIR/let-else-non-diverging.rs:4:32
    |
-LL |     let Some(x) = Some(1) else { Some(2) };
-   |                                ^^^^^^^^^^^ expected `!`, found enum `Option`
+LL |       let Some(x) = Some(1) else {
+   |  ________________________________^
+LL | |         Some(2)
+LL | |     };
+   | |_____^ expected `!`, found enum `Option`
    |
    = note: expected type `!`
               found enum `Option<{integer}>`
@@ -26,13 +29,10 @@ LL | |     };
    = help: ...or use `match` instead of `let...else`
 
 error[E0308]: `else` clause of `let...else` does not diverge
-  --> $DIR/let-else-non-diverging.rs:4:32
+  --> $DIR/let-else-non-diverging.rs:12:32
    |
-LL |       let Some(x) = Some(1) else {
-   |  ________________________________^
-LL | |         Some(2)
-LL | |     };
-   | |_____^ expected `!`, found enum `Option`
+LL |     let Some(x) = Some(1) else { Some(2) };
+   |                                ^^^^^^^^^^^ expected `!`, found enum `Option`
    |
    = note: expected type `!`
               found enum `Option<{integer}>`

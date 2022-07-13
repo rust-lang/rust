@@ -821,7 +821,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // Special check preventing `UnsafeCell` in the inner part of constants
         if let Some(def) = op.layout.ty.ty_adt_def() {
             if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true, .. }))
-                && Some(def.did()) == self.ecx.tcx.lang_items().unsafe_cell_type()
+                && def.is_unsafe_cell()
             {
                 throw_validation_failure!(self.path, { "`UnsafeCell` in a `const`" });
             }

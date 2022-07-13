@@ -233,26 +233,29 @@ pub fn check_tied_features(
 
 // Used to generate cfg variables and apply features
 // Must express features in the way Rust understands them
-pub fn target_features(sess: &Session) -> Vec<Symbol> {
+pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     let target_machine = create_informational_target_machine(sess);
-    let mut features: Vec<Symbol> =
-        supported_target_features(sess)
-            .iter()
-            .filter_map(|&(feature, gate)| {
-                if sess.is_nightly_build() || gate.is_none() { Some(feature) } else { None }
-            })
-            .filter(|feature| {
-                // check that all features in a given smallvec are enabled
-                for llvm_feature in to_llvm_features(sess, feature) {
-                    let cstr = SmallCStr::new(llvm_feature);
-                    if !unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
-                        return false;
-                    }
+    let mut features: Vec<Symbol> = supported_target_features(sess)
+        .iter()
+        .filter_map(|&(feature, gate)| {
+            if sess.is_nightly_build() || allow_unstable || gate.is_none() {
+                Some(feature)
+            } else {
+                None
+            }
+        })
+        .filter(|feature| {
+            // check that all features in a given smallvec are enabled
+            for llvm_feature in to_llvm_features(sess, feature) {
+                let cstr = SmallCStr::new(llvm_feature);
+                if !unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
+                    return false;
                 }
-                true
-            })
-            .map(|feature| Symbol::intern(feature))
-            .collect();
+            }
+            true
+        })
+        .map(|feature| Symbol::intern(feature))
+        .collect();
 
     // LLVM 14 changed the ABI for i128 arguments to __float/__fix builtins on Win64
     // (see https://reviews.llvm.org/D110413). This unstable target feature is intended for use
