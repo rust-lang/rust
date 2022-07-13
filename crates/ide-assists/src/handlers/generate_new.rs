@@ -124,6 +124,97 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_generate_new_with_zst_fields() {
+        check_assist(
+            generate_new,
+            r#"
+struct Empty;
+
+struct Foo { empty: Empty $0}
+"#,
+            r#"
+struct Empty;
+
+struct Foo { empty: Empty }
+
+impl Foo {
+    fn $0new() -> Self { Self { empty: Empty } }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+struct Empty;
+
+struct Foo { baz: String, empty: Empty $0}
+"#,
+            r#"
+struct Empty;
+
+struct Foo { baz: String, empty: Empty }
+
+impl Foo {
+    fn $0new(baz: String) -> Self { Self { baz, empty: Empty } }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+enum Empty { Bar }
+
+struct Foo { empty: Empty $0}
+"#,
+            r#"
+enum Empty { Bar }
+
+struct Foo { empty: Empty }
+
+impl Foo {
+    fn $0new() -> Self { Self { empty: Empty::Bar } }
+}
+"#,
+        );
+
+        // make sure the assist only works on unit variants
+        check_assist(
+            generate_new,
+            r#"
+struct Empty {}
+
+struct Foo { empty: Empty $0}
+"#,
+            r#"
+struct Empty {}
+
+struct Foo { empty: Empty }
+
+impl Foo {
+    fn $0new(empty: Empty) -> Self { Self { empty } }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+enum Empty { Bar {} }
+
+struct Foo { empty: Empty $0}
+"#,
+            r#"
+enum Empty { Bar {} }
+
+struct Foo { empty: Empty }
+
+impl Foo {
+    fn $0new(empty: Empty) -> Self { Self { empty } }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_generate_new() {
         check_assist(
             generate_new,

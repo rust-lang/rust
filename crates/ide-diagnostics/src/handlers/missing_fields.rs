@@ -346,6 +346,92 @@ fn test_fn() {
     }
 
     #[test]
+    fn test_fill_struct_zst_fields() {
+        check_fix(
+            r#"
+struct Empty;
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct {$0};
+}
+"#,
+            r#"
+struct Empty;
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct { one: 0, two: Empty };
+}
+"#,
+        );
+        check_fix(
+            r#"
+enum Empty { Foo };
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct {$0};
+}
+"#,
+            r#"
+enum Empty { Foo };
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct { one: 0, two: Empty::Foo };
+}
+"#,
+        );
+
+        // make sure the assist doesn't fill non Unit variants
+        check_fix(
+            r#"
+struct Empty {};
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct {$0};
+}
+"#,
+            r#"
+struct Empty {};
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct { one: 0, two: todo!() };
+}
+"#,
+        );
+        check_fix(
+            r#"
+enum Empty { Foo {} };
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct {$0};
+}
+"#,
+            r#"
+enum Empty { Foo {} };
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct { one: 0, two: todo!() };
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_fill_struct_fields_self() {
         check_fix(
             r#"
