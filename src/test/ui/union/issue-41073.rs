@@ -1,5 +1,3 @@
-#![feature(untagged_unions)]
-
 union Test {
     a: A, //~ ERROR unions cannot contain fields that may need dropping
     b: B

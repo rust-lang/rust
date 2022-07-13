@@ -3,9 +3,9 @@
 // captures the behavior of how `_` bindings are handled with respect to how we
 // flag expressions that are meant to request unsafe blocks.
 
-#![feature(untagged_unions)]
-
+#[derive(Copy, Clone)]
 struct I(i64);
+#[derive(Copy, Clone)]
 struct F(f64);
 
 union U { a: I, b: F }
