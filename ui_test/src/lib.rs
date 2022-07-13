@@ -10,7 +10,7 @@ use std::sync::Mutex;
 pub use color_eyre;
 use color_eyre::eyre::Result;
 use colored::*;
-use parser::ErrorMatch;
+use parser::{ErrorMatch, Pattern};
 use regex::Regex;
 use rustc_stderr::{Level, Message};
 
@@ -177,7 +177,12 @@ pub fn run_tests(config: Config) -> Result<()> {
                 match error {
                     Error::ExitStatus(mode, exit_status) => eprintln!("{mode:?} got {exit_status}"),
                     Error::PatternNotFound { pattern, definition_line } => {
-                        eprintln!("`{pattern}` {} in stderr output", "not found".red());
+                        match pattern {
+                            Pattern::SubString(s) =>
+                                eprintln!("substring `{s}` {} in stderr output", "not found".red()),
+                            Pattern::Regex(r) =>
+                                eprintln!("`/{r}/` does {} stderr output", "not match".red()),
+                        }
                         eprintln!(
                             "expected because of pattern here: {}:{definition_line}",
                             path.display().to_string().bold()
@@ -257,7 +262,7 @@ enum Error {
     /// Got an invalid exit status for the given mode.
     ExitStatus(Mode, ExitStatus),
     PatternNotFound {
-        pattern: String,
+        pattern: Pattern,
         definition_line: usize,
     },
     /// A ui test checking for failure does not have any failure patterns
@@ -384,14 +389,11 @@ fn check_annotations(
         // in the messages.
         if let Some(i) = messages_from_unknown_file_or_line
             .iter()
-            .position(|msg| msg.message.contains(error_pattern))
+            .position(|msg| error_pattern.matches(&msg.message))
         {
             messages_from_unknown_file_or_line.remove(i);
         } else {
-            errors.push(Error::PatternNotFound {
-                pattern: error_pattern.to_string(),
-                definition_line,
-            });
+            errors.push(Error::PatternNotFound { pattern: error_pattern.clone(), definition_line });
         }
     }
 
@@ -399,7 +401,7 @@ fn check_annotations(
     // We will ensure that *all* diagnostics of level at least `lowest_annotation_level`
     // are matched.
     let mut lowest_annotation_level = Level::Error;
-    for &ErrorMatch { ref matched, revision: ref rev, definition_line, line, level } in
+    for &ErrorMatch { ref pattern, revision: ref rev, definition_line, line, level } in
         &comments.error_matches
     {
         if let Some(rev) = rev {
@@ -415,14 +417,14 @@ fn check_annotations(
 
         if let Some(msgs) = messages.get_mut(line) {
             let found =
-                msgs.iter().position(|msg| msg.message.contains(matched) && msg.level == level);
+                msgs.iter().position(|msg| pattern.matches(&msg.message) && msg.level == level);
             if let Some(found) = found {
                 msgs.remove(found);
                 continue;
             }
         }
 
-        errors.push(Error::PatternNotFound { pattern: matched.to_string(), definition_line });
+        errors.push(Error::PatternNotFound { pattern: pattern.clone(), definition_line });
     }
 
     let filter = |msgs: Vec<Message>| -> Vec<_> {

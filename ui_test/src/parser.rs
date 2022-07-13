@@ -29,7 +29,7 @@ pub(crate) struct Comments {
     /// Normalizations to apply to the stderr output before emitting it to disk
     pub normalize_stderr: Vec<(Regex, String)>,
     /// An arbitrary pattern to look for in the stderr.
-    pub error_pattern: Option<(String, usize)>,
+    pub error_pattern: Option<(Pattern, usize)>,
     pub error_matches: Vec<ErrorMatch>,
     /// Ignore diagnostics below this level.
     /// `None` means pick the lowest level from the `error_pattern`s.
@@ -45,9 +45,15 @@ pub(crate) enum Condition {
     Bitwidth(u8),
 }
 
+#[derive(Debug, Clone)]
+pub(crate) enum Pattern {
+    SubString(String),
+    Regex(Regex),
+}
+
 #[derive(Debug)]
 pub(crate) struct ErrorMatch {
-    pub matched: String,
+    pub pattern: Pattern,
     pub revision: Option<String>,
     pub level: Level,
     /// The line where the message was defined, for reporting issues with it (e.g. in case it wasn't found).
@@ -184,7 +190,7 @@ impl Comments {
                     "cannot specifiy error_pattern twice, previous: {:?}",
                     self.error_pattern
                 );
-                self.error_pattern = Some((args.trim().to_string(), l));
+                self.error_pattern = Some((Pattern::parse(args.trim())?, l));
             }
             "stderr-per-bitwidth" => {
                 // args are ignored (can be used as comment)
@@ -275,14 +281,16 @@ impl Comments {
         let pattern = &pattern[offset..];
         let pattern = pattern.strip_prefix(':').ok_or_else(|| eyre!("no `:` after level found"))?;
 
-        let matched = pattern.trim().to_string();
+        let pattern = pattern.trim();
 
-        ensure!(!matched.is_empty(), "no pattern specified");
+        ensure!(!pattern.is_empty(), "no pattern specified");
+
+        let pattern = Pattern::parse(pattern)?;
 
         *fallthrough_to = Some(match_line);
 
         self.error_matches.push(ErrorMatch {
-            matched,
+            pattern,
             revision,
             level,
             definition_line: l,
@@ -290,5 +298,24 @@ impl Comments {
         });
 
         Ok(())
+    }
+}
+
+impl Pattern {
+    pub(crate) fn matches(&self, message: &str) -> bool {
+        match self {
+            Pattern::SubString(s) => message.contains(s),
+            Pattern::Regex(r) => r.is_match(message),
+        }
+    }
+
+    pub(crate) fn parse(pattern: &str) -> Result<Self> {
+        if let Some(pattern) = pattern.strip_prefix('/') {
+            let regex =
+                pattern.strip_suffix('/').ok_or_else(|| eyre!("regex must end with `/`"))?;
+            Ok(Pattern::Regex(Regex::new(regex)?))
+        } else {
+            Ok(Pattern::SubString(pattern.to_string()))
+        }
     }
 }
