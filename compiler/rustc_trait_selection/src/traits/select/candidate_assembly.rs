@@ -38,7 +38,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Watch out for overflow. This intentionally bypasses (and does
         // not update) the cache.
         if let Err(err) = self.check_recursion_limit(&stack.obligation, &stack.obligation) {
-            return SelectionResult::Error(err.into());
+            return Err(err.into());
         }
 
         // Check the cache. Note that we freshen the trait-ref
@@ -95,7 +95,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     break;
                                 }
                             }
-                            Err(err) => return SelectionResult::Error(err.into()),
+                            Err(err) => return Err(err.into()),
                         }
                     }
 
@@ -121,19 +121,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
             }
-            return SelectionResult::Ambiguous;
+            return Err(Ambiguous(vec![]));
         }
 
         let candidate_set = match self.assemble_candidates(stack) {
             Ok(set) => {
                 if set.ambiguous {
                     debug!("candidate set contains ambig");
-                    return SelectionResult::Ambiguous;
+                    return Err(Ambiguous(vec![]));
                 } else {
                     set
                 }
             }
-            Err(e) => return SelectionResult::Error(e),
+            Err(e) => return Err(e),
         };
 
         let candidates = candidate_set.vec;
@@ -187,7 +187,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut candidates = match candidates_result {
             Ok(candidates) => candidates,
-            Err(e) => return SelectionResult::Error(e),
+            Err(e) => return Err(e),
         };
 
         debug!(?stack, ?candidates, "winnowed to {} candidates", candidates.len());
@@ -248,7 +248,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         })
                         .collect();
 
-                        return SelectionResult::Error(Ambiguous(
+                        return Err(Ambiguous(
                             candidates
                                 .into_iter()
                                 .filter_map(|c| match c.candidate {
@@ -285,9 +285,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // to have emitted at least one.
             if stack.obligation.predicate.references_error() {
                 debug!(?stack.obligation.predicate, "found error type in predicate, treating as ambiguous");
-                return SelectionResult::Ambiguous;
+                return Err(Ambiguous(vec![]));
             }
-            return SelectionResult::Error(Unimplemented);
+            return Err(Unimplemented);
         }
 
         // Just one candidate left.

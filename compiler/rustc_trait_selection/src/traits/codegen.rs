@@ -5,10 +5,9 @@
 
 use crate::infer::TyCtxtInferExt;
 use crate::traits::{
-    FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine,
-    Unimplemented,
+    Ambiguous, FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext,
+    TraitEngine, Unimplemented,
 };
-use rustc_infer::traits::SelectionResult;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -39,12 +38,12 @@ pub fn codegen_fulfill_obligation<'tcx>(
             Obligation::new(obligation_cause, param_env, trait_ref.to_poly_trait_predicate());
 
         let selection = match selcx.select(&obligation) {
-            SelectionResult::Success(selection) => selection,
-            SelectionResult::Ambiguous => return Err(CodegenObligationError::Ambiguity),
-            SelectionResult::Error(Unimplemented) => {
+            Ok(selection) => selection,
+            Err(Ambiguous(_)) => return Err(CodegenObligationError::Ambiguity),
+            Err(Unimplemented) => {
                 return Err(CodegenObligationError::Unimplemented);
             }
-            SelectionResult::Error(e) => {
+            Err(e) => {
                 bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
             }
         };

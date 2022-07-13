@@ -825,8 +825,8 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
     let implsrc = tcx.infer_ctxt().enter(|infcx| {
         let mut selcx = SelectionContext::new(&infcx);
         match selcx.select(&obligation) {
-            SelectionResult::Success(src) => src,
-            e => bug!("Expected SelectionResult::Success, got {e:?}"),
+            Ok(src) => src,
+            e => bug!("Expected Ok, got {e:?}"),
         }
     });
 

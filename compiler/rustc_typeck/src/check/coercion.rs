@@ -44,7 +44,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
-use rustc_infer::traits::{Obligation, SelectionResult, TraitEngine, TraitEngineExt};
+use rustc_infer::traits::{Obligation, TraitEngine, TraitEngineExt};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -652,7 +652,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             };
             match selcx.select(&obligation.with(trait_pred)) {
                 // Uncertain or unimplemented.
-                SelectionResult::Ambiguous => {
+                Err(traits::Ambiguous(_)) => {
                     if trait_pred.def_id() == unsize_did {
                         let trait_pred = self.resolve_vars_if_possible(trait_pred);
                         let self_ty = trait_pred.skip_binder().self_ty();
@@ -680,22 +680,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         return Err(TypeError::Mismatch);
                     }
                 }
-                SelectionResult::Error(traits::Unimplemented) => {
+                Err(traits::Unimplemented) => {
                     debug!("coerce_unsized: early return - can't prove obligation");
                     return Err(TypeError::Mismatch);
                 }
 
                 // Object safety violations or miscellaneous.
-                SelectionResult::Error(err) => {
+                Err(err) => {
                     self.report_selection_error(obligation.clone(), &obligation, &err, false);
                     // Treat this like an obligation and follow through
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.
                 }
 
-                SelectionResult::Success(impl_source) => {
-                    queue.extend(impl_source.nested_obligations())
-                }
+                Ok(impl_source) => queue.extend(impl_source.nested_obligations()),
             }
         }
 

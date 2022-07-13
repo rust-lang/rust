@@ -98,7 +98,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             ));
 
             match result {
-                SelectionResult::Success(ImplSource::UserDefined(_)) => {
+                Ok(ImplSource::UserDefined(_)) => {
                     debug!(
                         "find_auto_trait_generics({:?}): \
                          manual impl found, bailing out",
@@ -116,7 +116,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             ));
 
             match result {
-                SelectionResult::Success(ImplSource::UserDefined(_)) => {
+                Ok(ImplSource::UserDefined(_)) => {
                     debug!(
                         "find_auto_trait_generics({:?}): \
                          manual impl found, bailing out",
@@ -324,7 +324,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             let result = select.select(&obligation);
 
             match result {
-                SelectionResult::Success(ref impl_source) => {
+                Ok(ref impl_source) => {
                     // If we see an explicit negative impl (e.g., `impl !Send for MyStruct`),
                     // we immediately bail out, since it's impossible for us to continue.
 
@@ -357,8 +357,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         return None;
                     }
                 }
-                SelectionResult::Ambiguous => {}
-                SelectionResult::Error(SelectionError::Unimplemented) => {
+                Err(SelectionError::Ambiguous(_)) => {}
+                Err(SelectionError::Unimplemented) => {
                     if self.is_param_no_infer(pred.skip_binder().trait_ref.substs) {
                         already_visited.remove(&pred);
                         self.add_user_pred(&mut user_computed_preds, pred.to_predicate(self.tcx));

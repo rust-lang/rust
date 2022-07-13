@@ -301,30 +301,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         let candidate = match self.select_from_obligation(obligation) {
-            SelectionResult::Error(SelectionError::Overflow(OverflowError::Canonical)) => {
+            Err(SelectionError::Overflow(OverflowError::Canonical)) => {
                 // In standard mode, overflow must have been caught and reported
                 // earlier.
                 assert!(self.query_mode == TraitQueryMode::Canonical);
-                return SelectionResult::Error(SelectionError::Overflow(OverflowError::Canonical));
+                return Err(SelectionError::Overflow(OverflowError::Canonical));
             }
-            SelectionResult::Error(SelectionError::Ambiguous(_)) | SelectionResult::Ambiguous => {
-                return SelectionResult::Ambiguous;
+            Err(e) => {
+                return Err(e);
             }
-            SelectionResult::Error(e) => {
-                return SelectionResult::Error(e);
-            }
-            SelectionResult::Success(candidate) => candidate,
+            Ok(candidate) => candidate,
         };
 
         match self.confirm_candidate(obligation, candidate) {
             Err(SelectionError::Overflow(OverflowError::Canonical)) => {
                 assert!(self.query_mode == TraitQueryMode::Canonical);
-                SelectionResult::Error(SelectionError::Overflow(OverflowError::Canonical))
+                Err(SelectionError::Overflow(OverflowError::Canonical))
             }
-            Err(e) => SelectionResult::Error(e),
+            Err(e) => Err(e),
             Ok(candidate) => {
                 debug!(?candidate, "confirmed");
-                SelectionResult::Success(candidate)
+                Ok(candidate)
             }
         }
     }
@@ -980,15 +977,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match self.candidate_from_obligation(stack) {
-            SelectionResult::Success(c) => self.evaluate_candidate(stack, &c),
-            SelectionResult::Error(SelectionError::Ambiguous(_)) | SelectionResult::Ambiguous => {
-                Ok(EvaluatedToAmbig)
-            }
-            SelectionResult::Error(Overflow(OverflowError::Canonical)) => {
-                Err(OverflowError::Canonical)
-            }
-            SelectionResult::Error(ErrorReporting) => Err(OverflowError::ErrorReporting),
-            SelectionResult::Error(..) => Ok(EvaluatedToErr),
+            Ok(c) => self.evaluate_candidate(stack, &c),
+            Err(SelectionError::Ambiguous(_)) => Ok(EvaluatedToAmbig),
+            Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
+            Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
+            Err(..) => Ok(EvaluatedToErr),
         }
     }
 
@@ -1259,10 +1252,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         );
                     }
                 }
-                return SelectionResult::Ambiguous;
+                return Err(SelectionError::Ambiguous(vec![]));
             }
         }
-        SelectionResult::Success(candidate)
+        Ok(candidate)
     }
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Option<Conflict> {
@@ -1359,9 +1352,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return false;
         }
         match result {
-            SelectionResult::Success(SelectionCandidate::ParamCandidate(trait_ref)) => {
-                !trait_ref.needs_infer()
-            }
+            Ok(SelectionCandidate::ParamCandidate(trait_ref)) => !trait_ref.needs_infer(),
             _ => true,
         }
     }
@@ -1385,7 +1376,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if self.can_use_global_caches(param_env) {
-            if let SelectionResult::Error(Overflow(OverflowError::Canonical)) = candidate {
+            if let Err(Overflow(OverflowError::Canonical)) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
             } else if !pred.needs_infer() {
                 if !candidate.needs_infer() {

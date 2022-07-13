@@ -5,7 +5,7 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::{SelectionResult, TraitEngine};
+use rustc_infer::traits::TraitEngine;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
@@ -170,7 +170,7 @@ impl Qualif for NeedsNonConstDrop {
 
         cx.tcx.infer_ctxt().enter(|infcx| {
             let mut selcx = SelectionContext::new(&infcx);
-            let SelectionResult::Success(impl_src) = selcx.select(&obligation) else {
+            let Ok(impl_src) = selcx.select(&obligation) else {
                 // If we couldn't select a const destruct candidate, then it's bad
                 return true;
             };

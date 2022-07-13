@@ -3,7 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
-use rustc_infer::traits::{ProjectionCacheKey, SelectionResult};
+use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
@@ -17,6 +17,7 @@ use super::const_evaluatable;
 use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
 use super::wf;
+use super::Ambiguous;
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
@@ -666,11 +667,11 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         }
 
         match self.selcx.select(&trait_obligation) {
-            SelectionResult::Success(impl_source) => {
+            Ok(impl_source) => {
                 debug!("selecting trait at depth {} yielded Ok(Some)", obligation.recursion_depth);
                 ProcessResult::Changed(mk_pending(impl_source.nested_obligations()))
             }
-            SelectionResult::Ambiguous => {
+            Err(Ambiguous(_)) => {
                 debug!("selecting trait at depth {} yielded Ok(None)", obligation.recursion_depth);
 
                 // This is a bit subtle: for the most part, the
@@ -691,7 +692,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
                 ProcessResult::Unchanged
             }
-            SelectionResult::Error(selection_err) => {
+            Err(selection_err) => {
                 debug!("selecting trait at depth {} yielded Err", obligation.recursion_depth);
 
                 ProcessResult::Error(CodeSelectionError(selection_err))
