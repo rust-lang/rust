@@ -1,10 +1,10 @@
-error: Undefined Behavior: trying to reborrow <TAG> for Unique permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+error: Undefined Behavior: trying to reborrow from <TAG> for Unique permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
   --> $DIR/load_invalid_mut.rs:LL:CC
    |
 LL |     let _val = *xref_in_mem;
    |                ^^^^^^^^^^^^
    |                |
-   |                trying to reborrow <TAG> for Unique permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+   |                trying to reborrow from <TAG> for Unique permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
    |                this error occurs as part of a reborrow at ALLOC[0x0..0x4]
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
