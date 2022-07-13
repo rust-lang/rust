@@ -1598,21 +1598,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let return_ty = tcx.erase_regions(return_ty);
 
             // to avoid panics
-            if let Some(iter_trait) = tcx.get_diagnostic_item(sym::Iterator) {
-                if self
+            if let Some(iter_trait) = tcx.get_diagnostic_item(sym::Iterator)
+                && self
                     .infcx
                     .type_implements_trait(iter_trait, return_ty, ty_params, self.param_env)
                     .must_apply_modulo_regions()
-                {
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(return_span) {
-                        err.span_suggestion_hidden(
-                            return_span,
-                            "use `.collect()` to allocate the iterator",
-                            format!("{snippet}.collect::<Vec<_>>()"),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                }
+            {
+                err.span_suggestion_hidden(
+                    return_span.shrink_to_hi(),
+                    "use `.collect()` to allocate the iterator",
+                    ".collect::<Vec<_>>()",
+                    Applicability::MaybeIncorrect,
+                );
             }
         }
 
