@@ -5,6 +5,7 @@
 
 // check-pass
 // compile-flags: --crate-type=lib
+// only-x86
 
 #![feature(repr_simd)]
 
