@@ -141,6 +141,10 @@ h1, h2, h3, h4 {
 h1.fqn {
 	margin: 0;
 	padding: 0;
+	border-bottom-color: var(--headings-border-bottom-color);
+}
+h2, h3, h4 {
+	border-bottom-color: var(--headings-border-bottom-color);
 }
 .main-heading {
 	display: flex;
@@ -377,6 +381,10 @@ nav.sub {
 	object-fit: contain;
 }
 
+.sidebar, .mobile-topbar, .sidebar-menu-toggle {
+	background-color: var(--sidebar-background-color);
+}
+
 .sidebar {
 	font-size: 0.875rem;
 	width: 250px;
@@ -443,9 +451,11 @@ nav.sub {
 /* Improve the scrollbar display on firefox */
 * {
 	scrollbar-width: initial;
+	scrollbar-color: var(--scrollbar-color);
 }
 .sidebar {
 	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-color);
 }
 
 /* Improve the scrollbar display on webkit-based browsers */
@@ -457,6 +467,13 @@ nav.sub {
 }
 ::-webkit-scrollbar-track {
 	-webkit-box-shadow: inset 0;
+	background-color: var(--scrollbar-track-background-color);
+}
+.sidebar::-webkit-scrollbar-track {
+	background-color: var(--scrollbar-track-background-color);
+}
+::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb {
+	background-color: var(--scrollbar-thumb-background-color);
 }
 
 /* Everything else */
@@ -637,6 +654,9 @@ h2.location a {
 
 .docblock h5 { font-size: 1rem; }
 .docblock h6 { font-size: 0.875rem; }
+.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
+	border-bottom-color: var(--headings-border-bottom-color);
+}
 
 .docblock {
 	margin-left: 24px;
@@ -670,6 +690,11 @@ h2.location a {
 
 .in-band > code, .in-band > .code-header {
 	display: inline-block;
+}
+
+.docblock code, .docblock-short code,
+pre, .rustdoc.source .example-wrap {
+	background-color: var(--code-block-background-color);
 }
 
 #main-content {
@@ -1912,6 +1937,10 @@ in storage.js plus the media query with (min-width: 701px)
 		   as an icon, it's okay to specify its sizes in pixels. */
 		font-size: 32px;
 		border: none;
+	}
+
+	.sidebar-elems {
+		background-color: var(--sidebar-background-color);
 	}
 
 	.source nav:not(.sidebar).sub {
