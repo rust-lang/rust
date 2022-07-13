@@ -17,6 +17,7 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
+use rustc_lint::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
@@ -1318,7 +1319,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
         }
     }
 
-    // For each field, figure out if it's known to be a ZST and align(1)
+    // For each field, figure out if it's known to be a ZST and align(1), with "known"
+    // respecting #[non_exhaustive] attributes.
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, InternalSubsts::identity_for_item(tcx, field.did));
         let param_env = tcx.param_env(field.did);
@@ -1327,16 +1329,56 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
         let span = tcx.hir().span_if_local(field.did).unwrap();
         let zst = layout.map_or(false, |layout| layout.is_zst());
         let align1 = layout.map_or(false, |layout| layout.align.abi.bytes() == 1);
-        (span, zst, align1)
+        if !zst {
+            return (span, zst, align1, None);
+        }
+
+        fn check_non_exhaustive<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            t: Ty<'tcx>,
+        ) -> ControlFlow<(&'static str, DefId, SubstsRef<'tcx>, bool)> {
+            match t.kind() {
+                ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
+                ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
+                ty::Adt(def, subst) => {
+                    if !def.did().is_local() {
+                        let non_exhaustive = def.is_variant_list_non_exhaustive()
+                            || def
+                                .variants()
+                                .iter()
+                                .any(ty::VariantDef::is_field_list_non_exhaustive);
+                        let has_priv = def.all_fields().any(|f| !f.vis.is_public());
+                        if non_exhaustive || has_priv {
+                            return ControlFlow::Break((
+                                def.descr(),
+                                def.did(),
+                                subst,
+                                non_exhaustive,
+                            ));
+                        }
+                    }
+                    def.all_fields()
+                        .map(|field| field.ty(tcx, subst))
+                        .try_for_each(|t| check_non_exhaustive(tcx, t))
+                }
+                _ => ControlFlow::Continue(()),
+            }
+        }
+
+        (span, zst, align1, check_non_exhaustive(tcx, ty).break_value())
     });
 
-    let non_zst_fields =
-        field_infos.clone().filter_map(|(span, zst, _align1)| if !zst { Some(span) } else { None });
+    let non_zst_fields = field_infos
+        .clone()
+        .filter_map(|(span, zst, _align1, _non_exhaustive)| if !zst { Some(span) } else { None });
     let non_zst_count = non_zst_fields.clone().count();
     if non_zst_count >= 2 {
         bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, sp);
     }
-    for (span, zst, align1) in field_infos {
+    let incompatible_zst_fields =
+        field_infos.clone().filter(|(_, _, _, opt)| opt.is_some()).count();
+    let incompat = incompatible_zst_fields + non_zst_count >= 2 && non_zst_count < 2;
+    for (span, zst, align1, non_exhaustive) in field_infos {
         if zst && !align1 {
             struct_span_err!(
                 tcx.sess,
@@ -1347,6 +1389,25 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
             )
             .span_label(span, "has alignment larger than 1")
             .emit();
+        }
+        if incompat && let Some((descr, def_id, substs, non_exhaustive)) = non_exhaustive {
+            tcx.struct_span_lint_hir(
+                REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
+                tcx.hir().local_def_id_to_hir_id(adt.did().expect_local()),
+                span,
+                |lint| {
+                    let note = if non_exhaustive {
+                        "is marked with `#[non_exhaustive]`"
+                    } else {
+                        "contains private fields"
+                    };
+                    let field_ty = tcx.def_path_str_with_substs(def_id, substs);
+                    lint.build("zero-sized fields in repr(transparent) cannot contain external non-exhaustive types")
+                        .note(format!("this {descr} contains `{field_ty}`, which {note}, \
+                            and makes it not a breaking change to become non-zero-sized in the future."))
+                        .emit();
+                },
+            )
         }
     }
 }

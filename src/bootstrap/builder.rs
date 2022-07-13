@@ -697,6 +697,7 @@ impl<'a> Builder<'a> {
                 doc::RustcBook,
                 doc::CargoBook,
                 doc::Clippy,
+                doc::ClippyBook,
                 doc::Miri,
                 doc::EmbeddedBook,
                 doc::EditionGuide,

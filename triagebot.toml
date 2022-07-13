@@ -165,6 +165,19 @@ exclude_labels = [
     "T-*",
 ]
 
+[autolabel."A-bootstrap"]
+trigger_files = [
+    "x.py",
+    "src/bootstrap",
+    "src/tools/rust-installer",
+]
+
+[autolabel."T-infra"]
+trigger_files = [
+    "src/ci",
+    "src/tools/bump-stage0",
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
@@ -278,6 +291,9 @@ Examples of `T-libs-api` changes:
 * Changing public documentation in ways that create new stability guarantees
 * Changing observable runtime behavior of library APIs
 """
+
+[mentions."library/proc_macro/src/bridge"]
+cc = ["@rust-lang/wg-rls-2"]
 
 [mentions."src/librustdoc/clean/types.rs"]
 cc = ["@camelid"]
