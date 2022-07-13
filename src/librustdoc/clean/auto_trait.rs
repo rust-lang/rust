@@ -117,7 +117,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             attrs: Default::default(),
             visibility: Inherited,
             item_id: ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
-            kind: box ImplItem(Impl {
+            kind: Box::new(ImplItem(Impl {
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
                 trait_: Some(trait_ref.clean(self.cx)),
@@ -125,7 +125,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 items: Vec::new(),
                 polarity,
                 kind: ImplKind::Auto,
-            }),
+            })),
             cfg: None,
         })
     }

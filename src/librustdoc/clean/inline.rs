@@ -124,8 +124,14 @@ pub(crate) fn try_inline(
 
     let (attrs, cfg) = merge_attrs(cx, Some(parent_module), load_attrs(cx, did), attrs_clone);
     cx.inlined.insert(did.into());
-    let mut item =
-        clean::Item::from_def_id_and_attrs_and_parts(did, Some(name), kind, box attrs, cx, cfg);
+    let mut item = clean::Item::from_def_id_and_attrs_and_parts(
+        did,
+        Some(name),
+        kind,
+        Box::new(attrs),
+        cx,
+        cfg,
+    );
     if let Some(import_def_id) = import_def_id {
         // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
         item.visibility = cx.tcx.visibility(import_def_id).clean(cx);
@@ -506,7 +512,7 @@ pub(crate) fn build_impl(
                 ImplKind::Normal
             },
         }),
-        box merged_attrs,
+        Box::new(merged_attrs),
         cx,
         cfg,
     ));
@@ -535,7 +541,7 @@ fn build_module(
                 let prim_ty = clean::PrimitiveType::from(p);
                 items.push(clean::Item {
                     name: None,
-                    attrs: box clean::Attributes::default(),
+                    attrs: Box::new(clean::Attributes::default()),
                     item_id: ItemId::Primitive(prim_ty, did.krate),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(

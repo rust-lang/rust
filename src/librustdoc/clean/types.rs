@@ -477,7 +477,7 @@ impl Item {
             def_id,
             name,
             kind,
-            box ast_attrs.clean(cx),
+            Box::new(ast_attrs.clean(cx)),
             cx,
             ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
