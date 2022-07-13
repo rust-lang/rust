@@ -156,9 +156,6 @@ declare_features! (
     (active, intrinsics, "1.0.0", None, None),
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
     (active, lang_items, "1.0.0", None, None),
-    /// Allows `#[repr(no_niche)]` (an implementation detail of `rustc`,
-    /// it is not on path for eventual stabilization).
-    (active, no_niche, "1.42.0", None, None),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
     /// Allows using `#[prelude_import]` on glob `use` items.
