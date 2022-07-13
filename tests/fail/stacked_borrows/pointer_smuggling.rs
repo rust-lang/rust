@@ -8,7 +8,7 @@ fn fun1(x: &mut u8) {
 
 fn fun2() {
     // Now we use a pointer we are not allowed to use
-    let _x = unsafe { *PTR }; //~ ERROR: borrow stack
+    let _x = unsafe { *PTR }; //~ ERROR: /read access .* tag does not exist in the borrow stack/
 }
 
 fn main() {

@@ -1,6 +1,6 @@
 // Make sure we detect when the `Global` and `System` allocators are mixed
 // (even when the default `Global` uses `System`).
-//@error-pattern: which is Rust heap memory, using
+//@error-pattern: /deallocating .*, which is Rust heap memory, using .* heap deallocation operation/
 
 //@normalize-stderr-test: "using [A-Za-z]+ heap deallocation operation" -> "using PLATFORM heap deallocation operation"
 //@normalize-stderr-test: "\| +\^+" -> "| ^"

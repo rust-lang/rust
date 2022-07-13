@@ -5,6 +5,6 @@ fn main() {
         let raw = x as *mut _;
         let x = &mut *x; // kill `raw`
         let _y = &*x; // this should not activate `raw` again
-        let _val = *raw; //~ ERROR: borrow stack
+        let _val = *raw; //~ ERROR: /read access .* tag does not exist in the borrow stack/
     }
 }

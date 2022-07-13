@@ -25,6 +25,6 @@ fn main() {
         // stack: [c: SharedReadWrite]
 
         // now this does not work any more
-        let _val = *inner_shr.get(); //~ ERROR: borrow stack
+        let _val = *inner_shr.get(); //~ ERROR: /reborrow .* tag does not exist in the borrow stack/
     }
 }

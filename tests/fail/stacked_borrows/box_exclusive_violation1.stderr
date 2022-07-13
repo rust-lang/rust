@@ -21,7 +21,7 @@ LL |     *our = 5;
    |     ^^^^^^^^
    = note: backtrace:
    = note: inside `unknown_code_2` at $DIR/box_exclusive_violation1.rs:LL:CC
-note: inside `demo_mut_advanced_unique` at $DIR/box_exclusive_violation1.rs:LL:CC
+note: inside `demo_box_advanced_unique` at $DIR/box_exclusive_violation1.rs:LL:CC
   --> $DIR/box_exclusive_violation1.rs:LL:CC
    |
 LL |     unknown_code_2();
@@ -29,7 +29,7 @@ LL |     unknown_code_2();
 note: inside `main` at $DIR/box_exclusive_violation1.rs:LL:CC
   --> $DIR/box_exclusive_violation1.rs:LL:CC
    |
-LL |     demo_mut_advanced_unique(Box::new(0));
+LL |     demo_box_advanced_unique(Box::new(0));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

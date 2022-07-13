@@ -14,5 +14,5 @@ fn main() {
     let _val = *xref; // we can even still use our mutable reference
     mem::forget(unsafe { ptr::read(xshr) }); // but after reading through the shared ref
     let _val = *xref; // the mutable one is dead and gone
-    //~^ ERROR: borrow stack
+    //~^ ERROR: /read access .* tag does not exist in the borrow stack/
 }

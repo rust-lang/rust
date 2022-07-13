@@ -12,6 +12,6 @@ fn main() {
         // And we test that it has uniqueness by doing a conflicting write.
         *exposed_ptr = 0;
         // Stack: Unknown(<N)
-        let _val = *root2; //~ ERROR: borrow stack
+        let _val = *root2; //~ ERROR: /read access .* tag does not exist in the borrow stack/
     }
 }

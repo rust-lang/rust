@@ -8,5 +8,5 @@ fn main() {
     let xref = unsafe { &*xraw };
     let xref_in_mem = Box::new(xref);
     unsafe { *xraw = 42 }; // unfreeze
-    let _val = *xref_in_mem; //~ ERROR: borrow stack
+    let _val = *xref_in_mem; //~ ERROR: /reborrow .* tag does not exist in the borrow stack/
 }

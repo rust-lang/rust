@@ -1,4 +1,4 @@
-fn demo_mut_advanced_unique(mut our: Box<i32>) -> i32 {
+fn demo_box_advanced_unique(mut our: Box<i32>) -> i32 {
     unknown_code_1(&*our);
 
     // This "re-asserts" uniqueness of the reference: After writing, we know
@@ -24,10 +24,10 @@ fn unknown_code_1(x: &i32) {
 
 fn unknown_code_2() {
     unsafe {
-        *LEAK = 7; //~ ERROR: borrow stack
+        *LEAK = 7; //~ ERROR: /write access .* tag does not exist in the borrow stack/
     }
 }
 
 fn main() {
-    demo_mut_advanced_unique(Box::new(0));
+    demo_box_advanced_unique(Box::new(0));
 }

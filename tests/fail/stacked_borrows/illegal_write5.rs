@@ -8,7 +8,7 @@ fn main() {
     callee(xraw);
     // ... though any use of raw value will invalidate our ref.
     let _val = *xref;
-    //~^ ERROR: borrow stack
+    //~^ ERROR: /read access .* tag does not exist in the borrow stack/
 }
 
 fn callee(xraw: *mut i32) {

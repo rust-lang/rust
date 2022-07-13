@@ -11,5 +11,5 @@ fn main() {
     retarget(&mut target_alias, target);
     // now `target_alias` points to the same thing as `target`
     *target = 13;
-    let _val = *target_alias; //~ ERROR: borrow stack
+    let _val = *target_alias; //~ ERROR: /read access .* tag does not exist in the borrow stack/
 }
