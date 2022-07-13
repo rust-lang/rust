@@ -1014,6 +1014,62 @@ macro_rules! foo {
 
 See also [`format_macro_matchers`](#format_macro_matchers).
 
+## `skip_macro_invocations`
+
+Skip formatting the bodies of macro invocations with the following names.
+
+rustfmt will not format any macro invocation for macros with names set in this list.
+Including the special value "*" will prevent any macro invocations from being formatted.
+
+Note: This option does not have any impact on how rustfmt formats macro definitions.
+
+- **Default value**: `[]`
+- **Possible values**: a list of macro name idents, `["name_0", "name_1", ..., "*"]`
+- **Stable**: No (tracking issue: [#5346](https://github.com/rust-lang/rustfmt/issues/5346))
+
+#### `[]` (default):
+
+rustfmt will follow its standard approach to formatting macro invocations.
+
+No macro invocations will be skipped based on their name. More information about rustfmt's standard macro invocation formatting behavior can be found in [#5437](https://github.com/rust-lang/rustfmt/discussions/5437).
+
+```rust
+lorem!(
+    const _: u8 = 0;
+);
+
+ipsum!(
+    const _: u8 = 0;
+);
+```
+
+#### `["lorem"]`:
+
+The named macro invocations will be skipped.
+
+```rust
+lorem!(
+        const _: u8 = 0;
+);
+
+ipsum!(
+    const _: u8 = 0;
+);
+```
+
+#### `["*"]`:
+
+The special selector `*` will skip all macro invocations.
+
+```rust
+lorem!(
+        const _: u8 = 0;
+);
+
+ipsum!(
+        const _: u8 = 0;
+);
+```
 
 ## `format_strings`
 

@@ -7,6 +7,7 @@ use rustc_ast_pretty::pprust;
 /// by other context. Query this context to know if you need skip a block.
 #[derive(Default, Clone)]
 pub(crate) struct SkipContext {
+    pub(crate) all_macros: bool,
     macros: Vec<String>,
     attributes: Vec<String>,
 }
@@ -23,8 +24,15 @@ impl SkipContext {
         self.attributes.append(&mut other.attributes);
     }
 
+    pub(crate) fn update_macros<T>(&mut self, other: T)
+    where
+        T: IntoIterator<Item = String>,
+    {
+        self.macros.extend(other.into_iter());
+    }
+
     pub(crate) fn skip_macro(&self, name: &str) -> bool {
-        self.macros.iter().any(|n| n == name)
+        self.all_macros || self.macros.iter().any(|n| n == name)
     }
 
     pub(crate) fn skip_attribute(&self, name: &str) -> bool {

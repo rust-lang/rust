@@ -27,8 +27,13 @@ impl ConfigurationSection {
         lazy_static! {
             static ref CONFIG_NAME_REGEX: regex::Regex =
                 regex::Regex::new(r"^## `([^`]+)`").expect("failed creating configuration pattern");
+            // Configuration values, which will be passed to `from_str`:
+            //
+            // - must be prefixed with `####`
+            // - must be wrapped in backticks
+            // - may by wrapped in double quotes (which will be stripped)
             static ref CONFIG_VALUE_REGEX: regex::Regex =
-                regex::Regex::new(r#"^#### `"?([^`"]+)"?`"#)
+                regex::Regex::new(r#"^#### `"?([^`]+?)"?`"#)
                     .expect("failed creating configuration value pattern");
         }
 
