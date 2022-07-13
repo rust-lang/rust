@@ -1856,7 +1856,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 #[lang = "unsafe_cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
-#[repr(no_niche)] // rust-lang/rust#68303.
 pub struct UnsafeCell<T: ?Sized> {
     value: T,
 }

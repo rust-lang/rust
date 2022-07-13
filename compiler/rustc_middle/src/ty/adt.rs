@@ -52,6 +52,8 @@ bitflags! {
         /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
         /// (i.e., this flag is never set unless this ADT is an enum).
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
+        /// Indicates whether the type is `UnsafeCell`.
+        const IS_UNSAFE_CELL              = 1 << 9;
     }
 }
 
@@ -247,6 +249,9 @@ impl AdtDefData {
         if Some(did) == tcx.lang_items().manually_drop() {
             flags |= AdtFlags::IS_MANUALLY_DROP;
         }
+        if Some(did) == tcx.lang_items().unsafe_cell_type() {
+            flags |= AdtFlags::IS_UNSAFE_CELL;
+        }
 
         AdtDefData { did, variants, flags, repr }
     }
@@ -331,6 +336,12 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_box(self) -> bool {
         self.flags().contains(AdtFlags::IS_BOX)
+    }
+
+    /// Returns `true` if this is UnsafeCell<T>.
+    #[inline]
+    pub fn is_unsafe_cell(self) -> bool {
+        self.flags().contains(AdtFlags::IS_UNSAFE_CELL)
     }
 
     /// Returns `true` if this is `ManuallyDrop<T>`.

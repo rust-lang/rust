@@ -148,7 +148,7 @@ fn is_value_unfrozen_raw<'tcx>(
         match val.ty().kind() {
             // the fact that we have to dig into every structs to search enums
             // leads us to the point checking `UnsafeCell` directly is the only option.
-            ty::Adt(ty_def, ..) if Some(ty_def.did()) == cx.tcx.lang_items().unsafe_cell_type() => true,
+            ty::Adt(ty_def, ..) if ty_def.is_unsafe_cell() => true,
             ty::Array(..) | ty::Adt(..) | ty::Tuple(..) => {
                 let val = cx.tcx.destructure_mir_constant(cx.param_env, val);
                 val.fields.iter().any(|field| inner(cx, *field))
