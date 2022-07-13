@@ -57,3 +57,6 @@ default = ["stack-cache"]
 # Will be enabled on CI via `--all-features`.
 expensive-debug-assertions = []
 stack-cache = []
+
+[profile.dev]
+opt-level = 2 # because it's too slow otherwise

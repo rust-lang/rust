@@ -108,9 +108,7 @@ if [ -z "$CARGO_TARGET_DIR" ]; then
     export CARGO_TARGET_DIR="$MIRIDIR/target"
 fi
 # We set the rpath so that Miri finds the private rustc libraries it needs.
-# We enable debug-assertions to get tracing.
-# We enable line-only debuginfo for backtraces.
-export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR -C debug-assertions -C debuginfo=1 $RUSTFLAGS"
+export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR $RUSTFLAGS"
 # Determine flags passed to all cargo invocations.
 # This is a bit more annoying that one would hope due to
 # <https://github.com/rust-lang/cargo/issues/6992>.

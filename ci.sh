@@ -3,7 +3,7 @@ set -euo pipefail
 set -x
 
 # Determine configuration
-export RUSTFLAGS="-D warnings"
+export RUSTFLAGS="-D warnings -C debug-assertions -C debuginfo=1"
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--all-features" # in particular, expensive-debug-assertions
 
