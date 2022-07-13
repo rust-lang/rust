@@ -99,7 +99,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArgKin
             }
             ty::subst::GenericArgKind::Constness(constness) => {
                 0xFFu8.hash_stable(hcx, hasher);
-                mem::discriminant(self).hash_stable(hcx, hasher);
                 constness.hash_stable(hcx, hasher);
             }
         }
