@@ -95,7 +95,72 @@ trait FooIter: Iterator<Item = Foo> {
     }
 }
 
-// This should not lint
+// The below should not lint and exist to guard against false positives
 fn impl_trait(_: impl AsRef<str>, _: impl AsRef<str>) {}
+
+pub mod one {
+    #[derive(Clone, Debug)]
+    struct MultiProductIter<I>
+    where
+        I: Iterator + Clone,
+        I::Item: Clone,
+    {
+        _marker: I,
+    }
+
+    pub struct MultiProduct<I>(Vec<MultiProductIter<I>>)
+    where
+        I: Iterator + Clone,
+        I::Item: Clone;
+
+    pub fn multi_cartesian_product<H>(_: H) -> MultiProduct<<H::Item as IntoIterator>::IntoIter>
+    where
+        H: Iterator,
+        H::Item: IntoIterator,
+        <H::Item as IntoIterator>::IntoIter: Clone,
+        <H::Item as IntoIterator>::Item: Clone,
+    {
+        todo!()
+    }
+}
+
+pub mod two {
+    use std::iter::Peekable;
+
+    pub struct MergeBy<I, J, F>
+    where
+        I: Iterator,
+        J: Iterator<Item = I::Item>,
+    {
+        _i: Peekable<I>,
+        _j: Peekable<J>,
+        _f: F,
+    }
+
+    impl<I, J, F> Clone for MergeBy<I, J, F>
+    where
+        I: Iterator,
+        J: Iterator<Item = I::Item>,
+        std::iter::Peekable<I>: Clone,
+        std::iter::Peekable<J>: Clone,
+        F: Clone,
+    {
+        fn clone(&self) -> Self {
+            Self {
+                _i: self._i.clone(),
+                _j: self._j.clone(),
+                _f: self._f.clone(),
+            }
+        }
+    }
+}
+
+pub trait Trait {}
+
+pub fn f(_a: impl Trait, _b: impl Trait) {}
+
+pub trait ImplTrait<T> {}
+
+impl<A, B> ImplTrait<(A, B)> for Foo where Foo: ImplTrait<A> + ImplTrait<B> {}
 
 fn main() {}
