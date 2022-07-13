@@ -800,6 +800,7 @@ symbols! {
         impl_lint_pass,
         impl_macros,
         impl_trait_in_bindings,
+        implied_by,
         import,
         import_shadowing,
         imported_main,

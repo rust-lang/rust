@@ -423,13 +423,22 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(Stability {
-                level: attr::Unstable { reason, issue, is_soft }, feature, ..
+                level: attr::Unstable { reason, issue, is_soft, implied_by },
+                feature,
+                ..
             }) => {
                 if span.allows_unstable(feature) {
                     debug!("stability: skipping span={:?} since it is internal", span);
                     return EvalResult::Allow;
                 }
                 if self.features().active(feature) {
+                    return EvalResult::Allow;
+                }
+
+                // If this item was previously part of a now-stabilized feature which is still
+                // active (i.e. the user hasn't removed the attribute for the stabilized feature
+                // yet) then allow use of this item.
+                if let Some(implied_by) = implied_by && self.features().active(implied_by) {
                     return EvalResult::Allow;
                 }
 

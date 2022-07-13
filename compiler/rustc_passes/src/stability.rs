@@ -637,6 +637,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
                     reason: Some(Symbol::intern(reason)),
                     issue: NonZeroU32::new(27812),
                     is_soft: false,
+                    implied_by: None,
                 },
                 feature: sym::rustc_private,
             };
