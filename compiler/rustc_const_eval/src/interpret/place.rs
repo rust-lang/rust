@@ -2,17 +2,14 @@
 //! into a place.
 //! All high-level functions to write to memory work on places as destinations.
 
-use std::convert::TryFrom;
 use std::hash::Hash;
 
 use rustc_ast::Mutability;
 use rustc_macros::HashStable;
 use rustc_middle::mir;
+use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
-use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{
-    Abi, Align, FieldsShape, HasDataLayout, Size, TagEncoding, VariantIdx, Variants,
-};
+use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, TagEncoding, VariantIdx};
 
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
@@ -46,7 +43,7 @@ impl<Tag: Provenance> MemPlaceMeta<Tag> {
             }
         }
     }
-    fn has_meta(self) -> bool {
+    pub fn has_meta(self) -> bool {
         match self {
             Self::Meta(_) => true,
             Self::None | Self::Poison => false,
@@ -188,6 +185,7 @@ impl<Tag: Provenance> Place<Tag> {
     /// Asserts that this points to some local variable.
     /// Returns the frame idx and the variable idx.
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn assert_local(&self) -> (usize, mir::Local) {
         match self {
             Place::Local { frame, local } => (*frame, *local),
@@ -250,7 +248,7 @@ impl<'tcx, Tag: Provenance> MPlaceTy<'tcx, Tag> {
             // Go through the layout.  There are lots of types that support a length,
             // e.g., SIMD types. (But not all repr(simd) types even have FieldsShape::Array!)
             match self.layout.fields {
-                FieldsShape::Array { count, .. } => Ok(count),
+                abi::FieldsShape::Array { count, .. } => Ok(count),
                 _ => bug!("len not supported on sized type {:?}", self.layout.ty),
             }
         }
@@ -281,6 +279,7 @@ impl<'tcx, Tag: Provenance> OpTy<'tcx, Tag> {
     }
 
     #[inline(always)]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     /// Note: do not call `as_ref` on the resulting place. This function should only be used to
     /// read from the resulting mplace, not to get its address back.
     pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Tag> {
@@ -298,16 +297,16 @@ impl<'tcx, Tag: Provenance> PlaceTy<'tcx, Tag> {
         }
     }
 
-    #[inline]
-    pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Tag> {
+    #[inline(always)]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
+    pub fn assert_mem_place(self) -> MPlaceTy<'tcx, Tag> {
         self.try_as_mplace().unwrap()
     }
 }
 
-// separating the pointer tag for `impl Trait`, see https://github.com/rust-lang/rust/issues/54385
+// FIXME: Working around https://github.com/rust-lang/rust/issues/54385
 impl<'mir, 'tcx: 'mir, Tag, M> InterpCx<'mir, 'tcx, M>
 where
-    // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
     Tag: Provenance + Eq + Hash + 'static,
     M: Machine<'mir, 'tcx, PointerTag = Tag>,
 {
@@ -392,276 +391,29 @@ where
         Ok(())
     }
 
-    /// Offset a pointer to project to a field of a struct/union. Unlike `place_field`, this is
-    /// always possible without allocating, so it can take `&self`. Also return the field's layout.
-    /// This supports both struct and array fields.
-    ///
-    /// This also works for arrays, but then the `usize` index type is restricting.
-    /// For indexing into arrays, use `mplace_index`.
-    #[inline(always)]
-    pub fn mplace_field(
-        &self,
-        base: &MPlaceTy<'tcx, M::PointerTag>,
-        field: usize,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        let offset = base.layout.fields.offset(field);
-        let field_layout = base.layout.field(self, field);
-
-        // Offset may need adjustment for unsized fields.
-        let (meta, offset) = if field_layout.is_unsized() {
-            // Re-use parent metadata to determine dynamic field layout.
-            // With custom DSTS, this *will* execute user-defined code, but the same
-            // happens at run-time so that's okay.
-            match self.size_and_align_of(&base.meta, &field_layout)? {
-                Some((_, align)) => (base.meta, offset.align_to(align)),
-                None => {
-                    // For unsized types with an extern type tail we perform no adjustments.
-                    // NOTE: keep this in sync with `PlaceRef::project_field` in the codegen backend.
-                    assert!(matches!(base.meta, MemPlaceMeta::None));
-                    (base.meta, offset)
-                }
-            }
-        } else {
-            // base.meta could be present; we might be accessing a sized field of an unsized
-            // struct.
-            (MemPlaceMeta::None, offset)
-        };
-
-        // We do not look at `base.layout.align` nor `field_layout.align`, unlike
-        // codegen -- mostly to see if we can get away with that
-        base.offset(offset, meta, field_layout, self)
-    }
-
-    /// Index into an array.
-    #[inline(always)]
-    pub fn mplace_index(
-        &self,
-        base: &MPlaceTy<'tcx, M::PointerTag>,
-        index: u64,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        // Not using the layout method because we want to compute on u64
-        match base.layout.fields {
-            FieldsShape::Array { stride, .. } => {
-                let len = base.len(self)?;
-                if index >= len {
-                    // This can only be reached in ConstProp and non-rustc-MIR.
-                    throw_ub!(BoundsCheckFailed { len, index });
-                }
-                let offset = stride * index; // `Size` multiplication
-                // All fields have the same layout.
-                let field_layout = base.layout.field(self, 0);
-
-                assert!(!field_layout.is_unsized());
-                base.offset(offset, MemPlaceMeta::None, field_layout, self)
-            }
-            _ => span_bug!(
-                self.cur_span(),
-                "`mplace_index` called on non-array type {:?}",
-                base.layout.ty
-            ),
-        }
-    }
-
-    // Iterates over all fields of an array. Much more efficient than doing the
-    // same by repeatedly calling `mplace_array`.
-    pub(super) fn mplace_array_fields<'a>(
-        &self,
-        base: &'a MPlaceTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>> + 'a>
-    {
-        let len = base.len(self)?; // also asserts that we have a type where this makes sense
-        let FieldsShape::Array { stride, .. } = base.layout.fields else {
-            span_bug!(self.cur_span(), "mplace_array_fields: expected an array layout");
-        };
-        let layout = base.layout.field(self, 0);
-        let dl = &self.tcx.data_layout;
-        // `Size` multiplication
-        Ok((0..len).map(move |i| base.offset(stride * i, MemPlaceMeta::None, layout, dl)))
-    }
-
-    fn mplace_subslice(
-        &self,
-        base: &MPlaceTy<'tcx, M::PointerTag>,
-        from: u64,
-        to: u64,
-        from_end: bool,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        let len = base.len(self)?; // also asserts that we have a type where this makes sense
-        let actual_to = if from_end {
-            if from.checked_add(to).map_or(true, |to| to > len) {
-                // This can only be reached in ConstProp and non-rustc-MIR.
-                throw_ub!(BoundsCheckFailed { len: len, index: from.saturating_add(to) });
-            }
-            len.checked_sub(to).unwrap()
-        } else {
-            to
-        };
-
-        // Not using layout method because that works with usize, and does not work with slices
-        // (that have count 0 in their layout).
-        let from_offset = match base.layout.fields {
-            FieldsShape::Array { stride, .. } => stride * from, // `Size` multiplication is checked
-            _ => {
-                span_bug!(self.cur_span(), "unexpected layout of index access: {:#?}", base.layout)
-            }
-        };
-
-        // Compute meta and new layout
-        let inner_len = actual_to.checked_sub(from).unwrap();
-        let (meta, ty) = match base.layout.ty.kind() {
-            // It is not nice to match on the type, but that seems to be the only way to
-            // implement this.
-            ty::Array(inner, _) => (MemPlaceMeta::None, self.tcx.mk_array(*inner, inner_len)),
-            ty::Slice(..) => {
-                let len = Scalar::from_machine_usize(inner_len, self);
-                (MemPlaceMeta::Meta(len), base.layout.ty)
-            }
-            _ => {
-                span_bug!(self.cur_span(), "cannot subslice non-array type: `{:?}`", base.layout.ty)
-            }
-        };
-        let layout = self.layout_of(ty)?;
-        base.offset(from_offset, meta, layout, self)
-    }
-
-    pub(crate) fn mplace_downcast(
-        &self,
-        base: &MPlaceTy<'tcx, M::PointerTag>,
-        variant: VariantIdx,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        // Downcasts only change the layout.
-        // (In particular, no check about whether this is even the active variant -- that's by design,
-        // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
-        assert!(!base.meta.has_meta());
-        Ok(MPlaceTy { layout: base.layout.for_variant(self, variant), ..*base })
-    }
-
-    /// Project into an mplace
-    #[instrument(skip(self), level = "debug")]
-    pub(super) fn mplace_projection(
-        &self,
-        base: &MPlaceTy<'tcx, M::PointerTag>,
-        proj_elem: mir::PlaceElem<'tcx>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        use rustc_middle::mir::ProjectionElem::*;
-        Ok(match proj_elem {
-            Field(field, _) => self.mplace_field(base, field.index())?,
-            Downcast(_, variant) => self.mplace_downcast(base, variant)?,
-            Deref => self.deref_operand(&base.into())?,
-
-            Index(local) => {
-                let layout = self.layout_of(self.tcx.types.usize)?;
-                let n = self.local_to_op(self.frame(), local, Some(layout))?;
-                let n = self.read_scalar(&n)?;
-                let n = n.to_machine_usize(self)?;
-                self.mplace_index(base, n)?
-            }
-
-            ConstantIndex { offset, min_length, from_end } => {
-                let n = base.len(self)?;
-                if n < min_length {
-                    // This can only be reached in ConstProp and non-rustc-MIR.
-                    throw_ub!(BoundsCheckFailed { len: min_length, index: n });
-                }
-
-                let index = if from_end {
-                    assert!(0 < offset && offset <= min_length);
-                    n.checked_sub(offset).unwrap()
-                } else {
-                    assert!(offset < min_length);
-                    offset
-                };
-
-                self.mplace_index(base, index)?
-            }
-
-            Subslice { from, to, from_end } => self.mplace_subslice(base, from, to, from_end)?,
-        })
-    }
-
     /// Converts a repr(simd) place into a place where `place_index` accesses the SIMD elements.
     /// Also returns the number of elements.
     pub fn mplace_to_simd(
         &self,
-        base: &MPlaceTy<'tcx, M::PointerTag>,
+        mplace: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, u64)> {
         // Basically we just transmute this place into an array following simd_size_and_type.
         // (Transmuting is okay since this is an in-memory place. We also double-check the size
         // stays the same.)
-        let (len, e_ty) = base.layout.ty.simd_size_and_type(*self.tcx);
+        let (len, e_ty) = mplace.layout.ty.simd_size_and_type(*self.tcx);
         let array = self.tcx.mk_array(e_ty, len);
         let layout = self.layout_of(array)?;
-        assert_eq!(layout.size, base.layout.size);
-        Ok((MPlaceTy { layout, ..*base }, len))
-    }
-
-    /// Gets the place of a field inside the place, and also the field's type.
-    /// Just a convenience function, but used quite a bit.
-    /// This is the only projection that might have a side-effect: We cannot project
-    /// into the field of a local `ScalarPair`, we have to first allocate it.
-    #[instrument(skip(self), level = "debug")]
-    pub fn place_field(
-        &mut self,
-        base: &PlaceTy<'tcx, M::PointerTag>,
-        field: usize,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        // FIXME: We could try to be smarter and avoid allocation for fields that span the
-        // entire place.
-        let mplace = self.force_allocation(base)?;
-        Ok(self.mplace_field(&mplace, field)?.into())
-    }
-
-    pub fn place_index(
-        &mut self,
-        base: &PlaceTy<'tcx, M::PointerTag>,
-        index: u64,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        let mplace = self.force_allocation(base)?;
-        Ok(self.mplace_index(&mplace, index)?.into())
-    }
-
-    pub fn place_downcast(
-        &self,
-        base: &PlaceTy<'tcx, M::PointerTag>,
-        variant: VariantIdx,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        // Downcast just changes the layout
-        Ok(match base.try_as_mplace() {
-            Ok(mplace) => self.mplace_downcast(&mplace, variant)?.into(),
-            Err(..) => {
-                let layout = base.layout.for_variant(self, variant);
-                PlaceTy { layout, ..*base }
-            }
-        })
-    }
-
-    /// Projects into a place.
-    pub fn place_projection(
-        &mut self,
-        base: &PlaceTy<'tcx, M::PointerTag>,
-        &proj_elem: &mir::ProjectionElem<mir::Local, Ty<'tcx>>,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        use rustc_middle::mir::ProjectionElem::*;
-        Ok(match proj_elem {
-            Field(field, _) => self.place_field(base, field.index())?,
-            Downcast(_, variant) => self.place_downcast(base, variant)?,
-            Deref => self.deref_operand(&self.place_to_op(base)?)?.into(),
-            // For the other variants, we have to force an allocation.
-            // This matches `operand_projection`.
-            Subslice { .. } | ConstantIndex { .. } | Index(_) => {
-                let mplace = self.force_allocation(base)?;
-                self.mplace_projection(&mplace, proj_elem)?.into()
-            }
-        })
+        assert_eq!(layout.size, mplace.layout.size);
+        Ok((MPlaceTy { layout, ..*mplace }, len))
     }
 
     /// Converts a repr(simd) place into a place where `place_index` accesses the SIMD elements.
     /// Also returns the number of elements.
     pub fn place_to_simd(
         &mut self,
-        base: &PlaceTy<'tcx, M::PointerTag>,
+        place: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, u64)> {
-        let mplace = self.force_allocation(base)?;
+        let mplace = self.force_allocation(place)?;
         self.mplace_to_simd(&mplace)
     }
 
@@ -680,30 +432,30 @@ where
     #[instrument(skip(self), level = "debug")]
     pub fn eval_place(
         &mut self,
-        place: mir::Place<'tcx>,
+        mir_place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        let mut place_ty = self.local_to_place(self.frame_idx(), place.local)?;
-
-        for elem in place.projection.iter() {
-            place_ty = self.place_projection(&place_ty, &elem)?
+        let mut place = self.local_to_place(self.frame_idx(), mir_place.local)?;
+        // Using `try_fold` turned out to be bad for performance, hence the loop.
+        for elem in mir_place.projection.iter() {
+            place = self.place_projection(&place, elem)?
         }
 
-        trace!("{:?}", self.dump_place(place_ty.place));
+        trace!("{:?}", self.dump_place(place.place));
         // Sanity-check the type we ended up with.
         debug_assert!(
             mir_assign_valid_types(
                 *self.tcx,
                 self.param_env,
                 self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
-                    place.ty(&self.frame().body.local_decls, *self.tcx).ty
+                    mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty
                 )?)?,
-                place_ty.layout,
+                place.layout,
             ),
-            "eval_place of a MIR place with type {:?} produced an interpret place with type {:?}",
-            place.ty(&self.frame().body.local_decls, *self.tcx).ty,
-            place_ty.layout.ty,
+            "eval_place of a MIR place with type {:?} produced an interpreter place with type {:?}",
+            mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
+            place.layout.ty,
         );
-        Ok(place_ty)
+        Ok(place)
     }
 
     /// Write an immediate to a place
@@ -1058,10 +810,10 @@ where
         }
 
         match dest.layout.variants {
-            Variants::Single { index } => {
+            abi::Variants::Single { index } => {
                 assert_eq!(index, variant_index);
             }
-            Variants::Multiple {
+            abi::Variants::Multiple {
                 tag_encoding: TagEncoding::Direct,
                 tag: tag_layout,
                 tag_field,
@@ -1082,7 +834,7 @@ where
                 let tag_dest = self.place_field(dest, tag_field)?;
                 self.write_scalar(Scalar::from_uint(tag_val, size), &tag_dest)?;
             }
-            Variants::Multiple {
+            abi::Variants::Multiple {
                 tag_encoding:
                     TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start },
                 tag: tag_layout,

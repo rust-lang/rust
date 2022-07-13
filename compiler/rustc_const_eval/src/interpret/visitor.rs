@@ -21,8 +21,10 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     fn to_op(&self, ecx: &InterpCx<'mir, 'tcx, M>)
     -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
 
-    /// Creates this from an `MPlaceTy`.
-    fn from_mem_place(mplace: MPlaceTy<'tcx, M::PointerTag>) -> Self;
+    /// Creates this from an `OpTy`.
+    ///
+    /// If `to_op` only ever produces `Indirect` operands, then this one is definitely `Indirect`.
+    fn from_op(mplace: OpTy<'tcx, M::PointerTag>) -> Self;
 
     /// Projects to the given enum variant.
     fn project_downcast(
@@ -56,8 +58,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tc
     }
 
     #[inline(always)]
-    fn from_mem_place(mplace: MPlaceTy<'tcx, M::PointerTag>) -> Self {
-        mplace.into()
+    fn from_op(op: OpTy<'tcx, M::PointerTag>) -> Self {
+        op
     }
 
     #[inline(always)]
@@ -96,8 +98,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
     }
 
     #[inline(always)]
-    fn from_mem_place(mplace: MPlaceTy<'tcx, M::PointerTag>) -> Self {
-        mplace
+    fn from_op(op: OpTy<'tcx, M::PointerTag>) -> Self {
+        // assert is justified because our `to_op` only ever produces `Indirect` operands.
+        op.assert_mem_place()
     }
 
     #[inline(always)]
@@ -218,13 +221,13 @@ macro_rules! make_value_visitor {
                 match *v.layout().ty.kind() {
                     // If it is a trait object, switch to the real type that was used to create it.
                     ty::Dynamic(..) => {
-                        // immediate trait objects are not a thing
+                        // unsized values are never immediate, so we can assert_mem_place
                         let op = v.to_op(self.ecx())?;
                         let dest = op.assert_mem_place();
                         let inner = self.ecx().unpack_dyn_trait(&dest)?.1;
                         trace!("walk_value: dyn object layout: {:#?}", inner.layout);
                         // recurse with the inner type
-                        return self.visit_field(&v, 0, &Value::from_mem_place(inner));
+                        return self.visit_field(&v, 0, &Value::from_op(inner.into()));
                     },
                     // Slices do not need special handling here: they have `Array` field
                     // placement with length 0, so we enter the `Array` case below which
@@ -292,13 +295,12 @@ macro_rules! make_value_visitor {
                     FieldsShape::Array { .. } => {
                         // Let's get an mplace first.
                         let op = v.to_op(self.ecx())?;
-                        let mplace = op.assert_mem_place();
                         // Now we can go over all the fields.
                         // This uses the *run-time length*, i.e., if we are a slice,
                         // the dynamic info from the metadata is used.
-                        let iter = self.ecx().mplace_array_fields(&mplace)?
+                        let iter = self.ecx().operand_array_fields(&op)?
                             .map(|f| f.and_then(|f| {
-                                Ok(Value::from_mem_place(f))
+                                Ok(Value::from_op(f))
                             }));
                         self.visit_aggregate(v, iter)?;
                     }
