@@ -103,6 +103,6 @@ pub use super::common::cvt::{
     cvt_r
 };
 
-fn err2io(err: wasi::Errno) -> std_io::Error {
+pub(crate) fn err2io(err: wasi::Errno) -> std_io::Error {
     std_io::Error::from_raw_os_error(err.raw().into())
 }
