@@ -211,6 +211,7 @@ impl<'tcx> Rvalue<'tcx> {
                 }
             },
             Rvalue::ShallowInitBox(_, ty) => tcx.mk_box(ty),
+            Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
         }
     }
 

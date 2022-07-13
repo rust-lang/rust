@@ -2269,6 +2269,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::Use(operand) | Rvalue::UnaryOp(_, operand) => {
                 self.check_operand(operand, location);
             }
+            Rvalue::CopyForDeref(place) => {
+                let op = &Operand::Copy(*place);
+                self.check_operand(op, location);
+            }
 
             Rvalue::BinaryOp(_, box (left, right))
             | Rvalue::CheckedBinaryOp(_, box (left, right)) => {
@@ -2299,6 +2303,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::BinaryOp(..)
             | Rvalue::CheckedBinaryOp(..)
             | Rvalue::NullaryOp(..)
+            | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..) => None,
 
