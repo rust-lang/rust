@@ -281,6 +281,10 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         &mut self.threads[self.active_thread].stack
     }
 
+    pub fn all_stacks(&self) -> impl Iterator<Item = &[Frame<'mir, 'tcx, Tag, FrameData<'tcx>>]> {
+        self.threads.iter().map(|t| &t.stack[..])
+    }
+
     /// Create a new thread and returns its id.
     fn create_thread(&mut self) -> ThreadId {
         let new_thread_id = ThreadId::new(self.threads.len());

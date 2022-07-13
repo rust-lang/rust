@@ -16,6 +16,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::Size;
+use smallvec::SmallVec;
 use std::collections::HashSet;
 
 use crate::*;
@@ -23,8 +24,10 @@ use crate::*;
 pub mod diagnostics;
 use diagnostics::{AllocHistory, TagHistory};
 
-pub mod stack;
-use stack::Stack;
+mod item;
+pub use item::{Item, Permission};
+mod stack;
+pub use stack::Stack;
 
 pub type CallId = NonZeroU64;
 
@@ -78,40 +81,20 @@ impl SbTagExtra {
     }
 }
 
-/// Indicates which permission is granted (by this item to some pointers)
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Permission {
-    /// Grants unique mutable access.
-    Unique,
-    /// Grants shared mutable access.
-    SharedReadWrite,
-    /// Grants shared read-only access.
-    SharedReadOnly,
-    /// Grants no access, but separates two groups of SharedReadWrite so they are not
-    /// all considered mutually compatible.
-    Disabled,
-}
+#[derive(Debug)]
+pub struct FrameExtra {
+    /// The ID of the call this frame corresponds to.
+    call_id: CallId,
 
-/// An item in the per-location borrow stack.
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
-pub struct Item {
-    /// The permission this item grants.
-    perm: Permission,
-    /// The pointers the permission is granted to.
-    tag: SbTag,
-    /// An optional protector, ensuring the item cannot get popped until `CallId` is over.
-    protector: Option<CallId>,
-}
-
-impl fmt::Debug for Item {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{:?} for {:?}", self.perm, self.tag)?;
-        if let Some(call) = self.protector {
-            write!(f, " (call {})", call)?;
-        }
-        write!(f, "]")?;
-        Ok(())
-    }
+    /// If this frame is protecting any tags, they are listed here. We use this list to do
+    /// incremental updates of the global list of protected tags stored in the
+    /// `stacked_borrows::GlobalState` upon function return, and if we attempt to pop a protected
+    /// tag, to identify which call is responsible for protecting the tag.
+    /// See `Stack::item_popped` for more explanation.
+    ///
+    /// This will contain one tag per reference passed to the function, so
+    /// a size of 2 is enough for the vast majority of functions.
+    protected_tags: SmallVec<[SbTag; 2]>,
 }
 
 /// Extra per-allocation state.
@@ -136,8 +119,12 @@ pub struct GlobalStateInner {
     base_ptr_tags: FxHashMap<AllocId, SbTag>,
     /// Next unused call ID (for protectors).
     next_call_id: CallId,
-    /// Those call IDs corresponding to functions that are still running.
-    active_calls: FxHashSet<CallId>,
+    /// All currently protected tags.
+    /// An item is protected if its tag is in this set, *and* it has the "protected" bit set.
+    /// We add tags to this when they are created with a protector in `reborrow`, and
+    /// we remove tags from this when the call which is protecting them returns, in
+    /// `GlobalStateInner::end_call`. See `Stack::item_popped` for more details.
+    protected_tags: FxHashSet<SbTag>,
     /// The pointer ids to trace
     tracked_pointer_tags: HashSet<SbTag>,
     /// The call ids to trace
@@ -201,7 +188,7 @@ impl GlobalStateInner {
             next_ptr_tag: SbTag(NonZeroU64::new(1).unwrap()),
             base_ptr_tags: FxHashMap::default(),
             next_call_id: NonZeroU64::new(1).unwrap(),
-            active_calls: FxHashSet::default(),
+            protected_tags: FxHashSet::default(),
             tracked_pointer_tags,
             tracked_call_ids,
             retag_fields,
@@ -215,23 +202,25 @@ impl GlobalStateInner {
         id
     }
 
-    pub fn new_call(&mut self) -> CallId {
-        let id = self.next_call_id;
-        trace!("new_call: Assigning ID {}", id);
-        if self.tracked_call_ids.contains(&id) {
-            register_diagnostic(NonHaltingDiagnostic::CreatedCallId(id));
+    pub fn new_frame(&mut self) -> FrameExtra {
+        let call_id = self.next_call_id;
+        trace!("new_frame: Assigning call ID {}", call_id);
+        if self.tracked_call_ids.contains(&call_id) {
+            register_diagnostic(NonHaltingDiagnostic::CreatedCallId(call_id));
         }
-        assert!(self.active_calls.insert(id));
-        self.next_call_id = NonZeroU64::new(id.get() + 1).unwrap();
-        id
+        self.next_call_id = NonZeroU64::new(call_id.get() + 1).unwrap();
+        FrameExtra { call_id, protected_tags: SmallVec::new() }
     }
 
-    pub fn end_call(&mut self, id: CallId) {
-        assert!(self.active_calls.remove(&id));
-    }
-
-    fn is_active(&self, id: CallId) -> bool {
-        self.active_calls.contains(&id)
+    pub fn end_call(&mut self, frame: &machine::FrameData<'_>) {
+        for tag in &frame
+            .stacked_borrows
+            .as_ref()
+            .expect("we should have Stacked Borrows data")
+            .protected_tags
+        {
+            self.protected_tags.remove(tag);
+        }
     }
 
     pub fn base_ptr_tag(&mut self, id: AllocId) -> SbTag {
@@ -287,7 +276,7 @@ impl<'tcx> Stack {
     /// Find the first write-incompatible item above the given one --
     /// i.e, find the height to which the stack will be truncated when writing to `granting`.
     fn find_first_write_incompatible(&self, granting: usize) -> usize {
-        let perm = self.get(granting).unwrap().perm;
+        let perm = self.get(granting).unwrap().perm();
         match perm {
             Permission::SharedReadOnly => bug!("Cannot use SharedReadOnly for writing"),
             Permission::Disabled => bug!("Cannot use Disabled for anything"),
@@ -299,7 +288,7 @@ impl<'tcx> Stack {
                 // The SharedReadWrite *just* above us are compatible, to skip those.
                 let mut idx = granting + 1;
                 while let Some(item) = self.get(idx) {
-                    if item.perm == Permission::SharedReadWrite {
+                    if item.perm() == Permission::SharedReadWrite {
                         // Go on.
                         idx += 1;
                     } else {
@@ -325,32 +314,67 @@ impl<'tcx> Stack {
         provoking_access: Option<(SbTagExtra, AllocRange, Size, AccessKind)>, // just for debug printing and error messages
         global: &GlobalStateInner,
         alloc_history: &mut AllocHistory,
+        threads: &ThreadManager<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
-        if global.tracked_pointer_tags.contains(&item.tag) {
+        if global.tracked_pointer_tags.contains(&item.tag()) {
             register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(
                 *item,
                 provoking_access.map(|(tag, _alloc_range, _size, access)| (tag, access)),
             ));
         }
 
-        if let Some(call) = item.protector {
-            if global.is_active(call) {
-                if let Some((tag, _alloc_range, _offset, _access)) = provoking_access {
-                    Err(err_sb_ub(
-                        format!(
-                            "not granting access to tag {:?} because incompatible item is protected: {:?}",
-                            tag, item
-                        ),
-                        None,
-                        tag.and_then(|tag| alloc_history.get_logs_relevant_to(tag, Some(item.tag))),
-                    ))?
-                } else {
-                    Err(err_sb_ub(
-                        format!("deallocating while item is protected: {:?}", item),
-                        None,
-                        None,
-                    ))?
-                }
+        if !item.protected() {
+            return Ok(());
+        }
+
+        // We store tags twice, once in global.protected_tags and once in each call frame.
+        // We do this because consulting a single global set in this function is faster
+        // than attempting to search all call frames in the program for the `FrameExtra`
+        // (if any) which is protecting the popped tag.
+        //
+        // This duplication trades off making `end_call` slower to make this function faster. This
+        // trade-off is profitable in practice for a combination of two reasons.
+        // 1. A single protected tag can (and does in some programs) protect thousands of `Item`s.
+        //    Therefore, adding overhead to in function call/return is profitable even if it only
+        //    saves a little work in this function.
+        // 2. Most frames protect only one or two tags. So this duplicative global turns a search
+        //    which ends up about linear in the number of protected tags in the program into a
+        //    constant time check (and a slow linear, because the tags in the frames aren't contiguous).
+        if global.protected_tags.contains(&item.tag()) {
+            // This path is cold because it is fatal to the program. So here it is fine to do the
+            // more expensive search to figure out which call is responsible for protecting this
+            // tag.
+            let call_id = threads
+                .all_stacks()
+                .flatten()
+                .map(|frame| {
+                    frame
+                        .extra
+                        .stacked_borrows
+                        .as_ref()
+                        .expect("we should have Stacked Borrows data")
+                })
+                .find(|frame| frame.protected_tags.contains(&item.tag()))
+                .map(|frame| frame.call_id)
+                .unwrap(); // FIXME: Surely we should find something, but a panic seems wrong here?
+            if let Some((tag, _alloc_range, _offset, _access)) = provoking_access {
+                Err(err_sb_ub(
+                    format!(
+                        "not granting access to tag {:?} because incompatible item {:?} is protected by call {:?}",
+                        tag, item, call_id
+                    ),
+                    None,
+                    tag.and_then(|tag| alloc_history.get_logs_relevant_to(tag, Some(item.tag()))),
+                ))?
+            } else {
+                Err(err_sb_ub(
+                    format!(
+                        "deallocating while item {:?} is protected by call {:?}",
+                        item, call_id
+                    ),
+                    None,
+                    None,
+                ))?
             }
         }
         Ok(())
@@ -369,6 +393,7 @@ impl<'tcx> Stack {
         current_span: &mut CurrentSpan<'_, '_, 'tcx>,
         alloc_history: &mut AllocHistory,
         exposed_tags: &FxHashSet<SbTag>,
+        threads: &ThreadManager<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         // Two main steps: Find granting item, remove incompatible items above.
 
@@ -399,8 +424,9 @@ impl<'tcx> Stack {
                     Some((tag, alloc_range, offset, access)),
                     global,
                     alloc_history,
+                    threads,
                 )?;
-                alloc_history.log_invalidation(item.tag, alloc_range, current_span);
+                alloc_history.log_invalidation(item.tag(), alloc_range, current_span);
                 Ok(())
             })?;
         } else {
@@ -425,8 +451,9 @@ impl<'tcx> Stack {
                     Some((tag, alloc_range, offset, access)),
                     global,
                     alloc_history,
+                    threads,
                 )?;
-                alloc_history.log_invalidation(item.tag, alloc_range, current_span);
+                alloc_history.log_invalidation(item.tag(), alloc_range, current_span);
                 Ok(())
             })?;
         }
@@ -439,9 +466,9 @@ impl<'tcx> Stack {
             for i in 0..self.len() {
                 let item = self.get(i).unwrap();
                 // Skip disabled items, they cannot be matched anyway.
-                if !matches!(item.perm, Permission::Disabled) {
+                if !matches!(item.perm(), Permission::Disabled) {
                     // We are looking for a strict upper bound, so add 1 to this tag.
-                    max = cmp::max(item.tag.0.checked_add(1).unwrap(), max);
+                    max = cmp::max(item.tag().0.checked_add(1).unwrap(), max);
                 }
             }
             if let Some(unk) = self.unknown_bottom() {
@@ -467,6 +494,7 @@ impl<'tcx> Stack {
         global: &GlobalStateInner,
         alloc_history: &mut AllocHistory,
         exposed_tags: &FxHashSet<SbTag>,
+        threads: &ThreadManager<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         // Step 1: Make sure there is a granting item.
         self.find_granting(AccessKind::Write, tag, exposed_tags).map_err(|_| {
@@ -482,7 +510,7 @@ impl<'tcx> Stack {
         // Step 2: Consider all items removed. This checks for protectors.
         for idx in (0..self.len()).rev() {
             let item = self.get(idx).unwrap();
-            Stack::item_popped(&item, None, global, alloc_history)?;
+            Stack::item_popped(&item, None, global, alloc_history, threads)?;
         }
         Ok(())
     }
@@ -502,10 +530,11 @@ impl<'tcx> Stack {
         current_span: &mut CurrentSpan<'_, '_, 'tcx>,
         alloc_history: &mut AllocHistory,
         exposed_tags: &FxHashSet<SbTag>,
+        threads: &ThreadManager<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         // Figure out which access `perm` corresponds to.
         let access =
-            if new.perm.grants(AccessKind::Write) { AccessKind::Write } else { AccessKind::Read };
+            if new.perm().grants(AccessKind::Write) { AccessKind::Write } else { AccessKind::Read };
 
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
@@ -517,7 +546,7 @@ impl<'tcx> Stack {
         // Compute where to put the new item.
         // Either way, we ensure that we insert the new item in a way such that between
         // `derived_from` and the new one, there are only items *compatible with* `derived_from`.
-        let new_idx = if new.perm == Permission::SharedReadWrite {
+        let new_idx = if new.perm() == Permission::SharedReadWrite {
             assert!(
                 access == AccessKind::Write,
                 "this case only makes sense for stack-like accesses"
@@ -550,6 +579,7 @@ impl<'tcx> Stack {
                 current_span,
                 alloc_history,
                 exposed_tags,
+                threads,
             )?;
 
             // We insert "as far up as possible": We know only compatible items are remaining
@@ -571,7 +601,7 @@ impl<'tcx> Stack {
 impl<'tcx> Stacks {
     /// Creates new stack with initial tag.
     fn new(size: Size, perm: Permission, tag: SbTag) -> Self {
-        let item = Item { perm, tag, protector: None };
+        let item = Item::new(tag, perm, false);
         let stack = Stack::new(item);
 
         Stacks {
@@ -637,6 +667,7 @@ impl Stacks {
         range: AllocRange,
         state: &GlobalState,
         mut current_span: CurrentSpan<'_, '_, 'tcx>,
+        threads: &ThreadManager<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!(
             "read access with tag {:?}: {:?}, size {}",
@@ -654,6 +685,7 @@ impl Stacks {
                 &mut current_span,
                 history,
                 exposed_tags,
+                threads,
             )
         })
     }
@@ -666,6 +698,7 @@ impl Stacks {
         range: AllocRange,
         state: &GlobalState,
         mut current_span: CurrentSpan<'_, '_, 'tcx>,
+        threads: &ThreadManager<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!(
             "write access with tag {:?}: {:?}, size {}",
@@ -683,6 +716,7 @@ impl Stacks {
                 &mut current_span,
                 history,
                 exposed_tags,
+                threads,
             )
         })
     }
@@ -694,11 +728,12 @@ impl Stacks {
         tag: SbTagExtra,
         range: AllocRange,
         state: &GlobalState,
+        threads: &ThreadManager<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
         let state = state.borrow();
         self.for_each(range, |offset, stack, history, exposed_tags| {
-            stack.dealloc(tag, (alloc_id, range, offset), &state, history, exposed_tags)
+            stack.dealloc(tag, (alloc_id, range, offset), &state, history, exposed_tags, threads)
         })?;
         Ok(())
     }
@@ -801,7 +836,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             });
         }
 
-        let protector = if protect { Some(this.frame().extra.call_id) } else { None };
         trace!(
             "reborrow: {} reference {:?} derived from {:?} (pointee {}): {:?}, size {}",
             kind,
@@ -811,6 +845,13 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Pointer::new(alloc_id, base_offset),
             size.bytes()
         );
+
+        if protect {
+            this.frame_mut().extra.stacked_borrows.as_mut().unwrap().protected_tags.push(new_tag);
+            this.machine.stacked_borrows.as_mut().unwrap().get_mut().protected_tags.insert(new_tag);
+        }
+        // FIXME: can't hold the current span handle across the borrows of self above
+        let current_span = &mut this.machine.current_span();
 
         // Update the stacks.
         // Make sure that raw pointers and mutable shared references are reborrowed "weak":
@@ -848,15 +889,16 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     } else {
                         Permission::SharedReadWrite
                     };
-                    let protector = if frozen {
-                        protector
+                    let protected = if frozen {
+                        protect
                     } else {
                         // We do not protect inside UnsafeCell.
                         // This fixes https://github.com/rust-lang/rust/issues/55005.
-                        None
+                        false
                     };
-                    let item = Item { perm, tag: new_tag, protector };
+                    let item = Item::new(new_tag, perm, protected);
                     let mut global = this.machine.stacked_borrows.as_ref().unwrap().borrow_mut();
+                    let threads = &this.machine.threads;
                     stacked_borrows.for_each(range, |offset, stack, history, exposed_tags| {
                         stack.grant(
                             orig_tag,
@@ -866,6 +908,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             current_span,
                             history,
                             exposed_tags,
+                            threads,
                         )
                     })
                 })?;
@@ -881,9 +924,10 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .as_mut()
             .expect("we should have Stacked Borrows data")
             .borrow_mut();
-        let item = Item { perm, tag: new_tag, protector };
+        let item = Item::new(new_tag, perm, protect);
         let range = alloc_range(base_offset, size);
         let mut global = machine.stacked_borrows.as_ref().unwrap().borrow_mut();
+        let threads = &machine.threads;
         let current_span = &mut machine.current_span(); // `get_alloc_extra_mut` invalidated our old `current_span`
         stacked_borrows.for_each(range, |offset, stack, history, exposed_tags| {
             stack.grant(
@@ -894,6 +938,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 current_span,
                 history,
                 exposed_tags,
+                threads,
             )
         })?;
 

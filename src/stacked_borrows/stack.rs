@@ -37,7 +37,7 @@ pub struct Stack {
 }
 
 /// A very small cache of searches of the borrow stack
-/// This maps tags to locations in the borrow stack. Any use of this still needs to do a
+/// This maps items to locations in the borrow stack. Any use of this still needs to do a
 /// probably-cold random access into the borrow stack to figure out what `Permission` an
 /// `SbTag` grants. We could avoid this by also storing the `Permission` in the cache, but
 /// most lookups into the cache are immediately followed by access of the full borrow stack anyway.
@@ -48,7 +48,7 @@ pub struct Stack {
 #[cfg(feature = "stack-cache")]
 #[derive(Clone, Debug)]
 struct StackCache {
-    tags: [SbTag; CACHE_LEN], // Hot in find_granting
+    items: [Item; CACHE_LEN], // Hot in find_granting
     idx: [usize; CACHE_LEN],  // Hot in grant
 }
 
@@ -59,11 +59,11 @@ impl StackCache {
     /// We use the position in the cache to represent how recently a tag was used; the first position
     /// is the most recently used tag. So an add shifts every element towards the end, and inserts
     /// the new element at the start. We lose the last element.
-    /// This strategy is effective at keeping the most-accessed tags in the cache, but it costs a
+    /// This strategy is effective at keeping the most-accessed items in the cache, but it costs a
     /// linear shift across the entire cache when we add a new tag.
-    fn add(&mut self, idx: usize, tag: SbTag) {
-        self.tags.copy_within(0..CACHE_LEN - 1, 1);
-        self.tags[0] = tag;
+    fn add(&mut self, idx: usize, item: Item) {
+        self.items.copy_within(0..CACHE_LEN - 1, 1);
+        self.items[0] = item;
         self.idx.copy_within(0..CACHE_LEN - 1, 1);
         self.idx[0] = idx;
     }
@@ -80,20 +80,20 @@ impl Eq for Stack {}
 
 impl<'tcx> Stack {
     /// Panics if any of the caching mechanisms have broken,
-    /// - The StackCache indices don't refer to the parallel tags,
-    /// - There are no Unique tags outside of first_unique..last_unique
+    /// - The StackCache indices don't refer to the parallel items,
+    /// - There are no Unique items outside of first_unique..last_unique
     #[cfg(feature = "expensive-debug-assertions")]
     fn verify_cache_consistency(&self) {
         // Only a full cache needs to be valid. Also see the comments in find_granting_cache
         // and set_unknown_bottom.
         if self.borrows.len() >= CACHE_LEN {
-            for (tag, stack_idx) in self.cache.tags.iter().zip(self.cache.idx.iter()) {
-                assert_eq!(self.borrows[*stack_idx].tag, *tag);
+            for (tag, stack_idx) in self.cache.items.iter().zip(self.cache.idx.iter()) {
+                assert_eq!(self.borrows[*stack_idx], *tag);
             }
         }
 
         for (idx, item) in self.borrows.iter().enumerate() {
-            if item.perm == Permission::Unique {
+            if item.perm() == Permission::Unique {
                 assert!(
                     self.unique_range.contains(&idx),
                     "{:?} {:?}",
@@ -128,7 +128,7 @@ impl<'tcx> Stack {
                     .rev() // search top-to-bottom
                     .find_map(|(idx, item)| {
                         // If the item fits and *might* be this wildcard, use it.
-                        if item.perm.grants(access) && exposed_tags.contains(&item.tag) {
+                        if item.perm().grants(access) && exposed_tags.contains(&item.tag()) {
                             Some(idx)
                         } else {
                             None
@@ -161,9 +161,9 @@ impl<'tcx> Stack {
         // If we didn't find the tag in the cache, fall back to a linear search of the
         // whole stack, and add the tag to the cache.
         for (stack_idx, item) in self.borrows.iter().enumerate().rev() {
-            if tag == item.tag && item.perm.grants(access) {
+            if tag == item.tag() && item.perm().grants(access) {
                 #[cfg(feature = "stack-cache")]
-                self.cache.add(stack_idx, tag);
+                self.cache.add(stack_idx, *item);
                 return Some(stack_idx);
             }
         }
@@ -175,7 +175,7 @@ impl<'tcx> Stack {
         // This looks like a common-sense optimization; we're going to do a linear search of the
         // cache or the borrow stack to scan the shorter of the two. This optimization is miniscule
         // and this check actually ensures we do not access an invalid cache.
-        // When a stack is created and when tags are removed from the top of the borrow stack, we
+        // When a stack is created and when items are removed from the top of the borrow stack, we
         // need some valid value to populate the cache. In both cases, we try to use the bottom
         // item. But when the stack is cleared in `set_unknown_bottom` there is nothing we could
         // place in the cache that is correct. But due to the way we populate the cache in
@@ -185,21 +185,23 @@ impl<'tcx> Stack {
             return None;
         }
         // Search the cache for the tag we're looking up
-        let cache_idx = self.cache.tags.iter().position(|t| *t == tag)?;
+        let cache_idx = self.cache.items.iter().position(|t| t.tag() == tag)?;
         let stack_idx = self.cache.idx[cache_idx];
         // If we found the tag, look up its position in the stack to see if it grants
         // the required permission
-        if self.borrows[stack_idx].perm.grants(access) {
+        if self.cache.items[cache_idx].perm().grants(access) {
             // If it does, and it's not already in the most-recently-used position, re-insert it at
             // the most-recently-used position. This technically reduces the efficiency of the
             // cache by duplicating elements, but current benchmarks do not seem to benefit from
             // avoiding this duplication.
             // But if the tag is in position 1, avoiding the duplicating add is trivial.
+            // If it does, and it's not already in the most-recently-used position, move it there.
+            // Except if the tag is in position 1, this is equivalent to just a swap, so do that.
             if cache_idx == 1 {
-                self.cache.tags.swap(0, 1);
+                self.cache.items.swap(0, 1);
                 self.cache.idx.swap(0, 1);
             } else if cache_idx > 1 {
-                self.cache.add(stack_idx, tag);
+                self.cache.add(stack_idx, self.cache.items[cache_idx]);
             }
             Some(stack_idx)
         } else {
@@ -224,7 +226,7 @@ impl<'tcx> Stack {
         if self.unique_range.end >= new_idx {
             self.unique_range.end += 1;
         }
-        if new.perm == Permission::Unique {
+        if new.perm() == Permission::Unique {
             // Make sure the possibly-unique range contains the new borrow
             self.unique_range.start = self.unique_range.start.min(new_idx);
             self.unique_range.end = self.unique_range.end.max(new_idx + 1);
@@ -233,7 +235,7 @@ impl<'tcx> Stack {
         // The above insert changes the meaning of every index in the cache >= new_idx, so now
         // we need to find every one of those indexes and increment it.
         // But if the insert is at the end (equivalent to a push), we can skip this step because
-        // it didn't change the position of any other tags.
+        // it didn't change the position of any other items.
         if new_idx != self.borrows.len() - 1 {
             for idx in &mut self.cache.idx {
                 if *idx >= new_idx {
@@ -243,7 +245,7 @@ impl<'tcx> Stack {
         }
 
         // This primes the cache for the next access, which is almost always the just-added tag.
-        self.cache.add(new_idx, new.tag);
+        self.cache.add(new_idx, new);
 
         #[cfg(feature = "expensive-debug-assertions")]
         self.verify_cache_consistency();
@@ -255,9 +257,9 @@ impl<'tcx> Stack {
             borrows: vec![item],
             unknown_bottom: None,
             #[cfg(feature = "stack-cache")]
-            cache: StackCache { idx: [0; CACHE_LEN], tags: [item.tag; CACHE_LEN] },
+            cache: StackCache { idx: [0; CACHE_LEN], items: [item; CACHE_LEN] },
             #[cfg(feature = "stack-cache")]
-            unique_range: if item.perm == Permission::Unique { 0..1 } else { 0..0 },
+            unique_range: if item.perm() == Permission::Unique { 0..1 } else { 0..0 },
         }
     }
 
@@ -298,10 +300,16 @@ impl<'tcx> Stack {
             let lower = unique_range.start.max(disable_start);
             let upper = (unique_range.end + 1).min(self.borrows.len());
             for item in &mut self.borrows[lower..upper] {
-                if item.perm == Permission::Unique {
+                if item.perm() == Permission::Unique {
                     log::trace!("access: disabling item {:?}", item);
                     visitor(*item)?;
-                    item.perm = Permission::Disabled;
+                    item.set_permission(Permission::Disabled);
+                    // Also update all copies of this item in the cache.
+                    for it in &mut self.cache.items {
+                        if it.tag() == item.tag() {
+                            it.set_permission(Permission::Disabled);
+                        }
+                    }
                 }
             }
         }
@@ -341,7 +349,7 @@ impl<'tcx> Stack {
             // also possible that the whole cache is still valid. So we call this method to repair what
             // aspects of the cache are now invalid, instead of resetting the whole thing to a trivially
             // valid default state.
-            let base_tag = self.borrows[0].tag;
+            let base_tag = self.borrows[0];
             let mut removed = 0;
             let mut cursor = 0;
             // Remove invalid entries from the cache by rotating them to the end of the cache, then
@@ -350,7 +358,7 @@ impl<'tcx> Stack {
             for _ in 0..CACHE_LEN - 1 {
                 if self.cache.idx[cursor] >= start {
                     self.cache.idx[cursor..CACHE_LEN - removed].rotate_left(1);
-                    self.cache.tags[cursor..CACHE_LEN - removed].rotate_left(1);
+                    self.cache.items[cursor..CACHE_LEN - removed].rotate_left(1);
                     removed += 1;
                 } else {
                     cursor += 1;
@@ -358,7 +366,7 @@ impl<'tcx> Stack {
             }
             for i in CACHE_LEN - removed - 1..CACHE_LEN {
                 self.cache.idx[i] = 0;
-                self.cache.tags[i] = base_tag;
+                self.cache.items[i] = base_tag;
             }
 
             if start < self.unique_range.start.saturating_sub(1) {

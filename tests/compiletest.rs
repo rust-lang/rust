@@ -97,7 +97,7 @@ regexes! {
     // erase specific alignments
     "alignment [0-9]+"               => "alignment ALIGN",
     // erase thread caller ids
-    r"\(call [0-9]+\)"              => "(call ID)",
+    r"call [0-9]+"                  => "call ID",
     // erase platform module paths
     "sys::[a-z]+::"                  => "sys::PLATFORM::",
     // Windows file paths

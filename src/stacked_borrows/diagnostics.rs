@@ -141,7 +141,7 @@ impl AllocHistory {
     ) -> InterpError<'tcx> {
         let action = format!(
             "trying to reborrow {derived_from:?} for {new_perm:?} permission at {alloc_id:?}[{offset:#x}]",
-            new_perm = new.perm,
+            new_perm = new.perm(),
             offset = error_offset.bytes(),
         );
         err_sb_ub(
@@ -185,7 +185,7 @@ fn error_cause(stack: &Stack, tag: SbTagExtra) -> &'static str {
     if let SbTagExtra::Concrete(tag) = tag {
         if (0..stack.len())
             .map(|i| stack.get(i).unwrap())
-            .any(|item| item.tag == tag && item.perm != Permission::Disabled)
+            .any(|item| item.tag() == tag && item.perm() != Permission::Disabled)
         {
             ", but that tag only grants SharedReadOnly permission for this location"
         } else {

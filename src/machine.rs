@@ -5,7 +5,6 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt;
-use std::num::NonZeroU64;
 use std::time::Instant;
 
 use rand::rngs::StdRng;
@@ -43,7 +42,7 @@ pub const NUM_CPUS: u64 = 1;
 /// Extra data stored with each stack frame
 pub struct FrameData<'tcx> {
     /// Extra data for Stacked Borrows.
-    pub call_id: stacked_borrows::CallId,
+    pub stacked_borrows: Option<stacked_borrows::FrameExtra>,
 
     /// If this is Some(), then this is a special "catch unwind" frame (the frame of `try_fn`
     /// called by `try`). When this frame is popped during unwinding a panic,
@@ -59,9 +58,9 @@ pub struct FrameData<'tcx> {
 impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameData { call_id, catch_unwind, timing: _ } = self;
+        let FrameData { stacked_borrows, catch_unwind, timing: _ } = self;
         f.debug_struct("FrameData")
-            .field("call_id", call_id)
+            .field("stacked_borrows", stacked_borrows)
             .field("catch_unwind", catch_unwind)
             .finish()
     }
@@ -788,6 +787,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
                 machine.current_span(),
+                &machine.threads,
             )?;
         }
         if let Some(weak_memory) = &alloc_extra.weak_memory {
@@ -819,6 +819,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
                 machine.current_span(),
+                &machine.threads,
             )?;
         }
         if let Some(weak_memory) = &alloc_extra.weak_memory {
@@ -852,6 +853,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 tag,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
+                &machine.threads,
             )
         } else {
             Ok(())
@@ -888,11 +890,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         };
 
         let stacked_borrows = ecx.machine.stacked_borrows.as_ref();
-        let call_id = stacked_borrows.map_or(NonZeroU64::new(1).unwrap(), |stacked_borrows| {
-            stacked_borrows.borrow_mut().new_call()
-        });
 
-        let extra = FrameData { call_id, catch_unwind: None, timing };
+        let extra = FrameData {
+            stacked_borrows: stacked_borrows.map(|sb| sb.borrow_mut().new_frame()),
+            catch_unwind: None,
+            timing,
+        };
         Ok(frame.with_extra(extra))
     }
 
@@ -936,7 +939,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     ) -> InterpResult<'tcx, StackPopJump> {
         let timing = frame.extra.timing.take();
         if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
-            stacked_borrows.borrow_mut().end_call(frame.extra.call_id);
+            stacked_borrows.borrow_mut().end_call(&frame.extra);
         }
         let res = ecx.handle_stack_pop_unwind(frame.extra, unwinding);
         if let Some(profiler) = ecx.machine.profiler.as_ref() {

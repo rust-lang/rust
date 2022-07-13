@@ -1,4 +1,4 @@
-//@error-pattern: deallocating while item is protected
+//@error-pattern: deallocating while item
 
 fn inner(x: &mut i32, f: fn(&mut i32)) {
     // `f` may mutate, but it may not deallocate!
