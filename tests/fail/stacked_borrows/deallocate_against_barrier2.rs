@@ -1,4 +1,4 @@
-//@error-pattern: deallocating while item
+//@error-pattern: /deallocating while item \[SharedReadWrite for .*\] is protected/
 use std::marker::PhantomPinned;
 
 pub struct NotUnpin(i32, PhantomPinned);

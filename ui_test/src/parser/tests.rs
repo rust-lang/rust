@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use crate::parser::Pattern;
+
 use super::Comments;
 
 #[test]
@@ -15,10 +17,11 @@ fn main() {
     println!("parsed comments: {:#?}", comments);
     assert_eq!(comments.error_matches[0].definition_line, 5);
     assert_eq!(comments.error_matches[0].revision, None);
-    assert_eq!(
-        comments.error_matches[0].matched,
-        "encountered a dangling reference (address $HEX is unallocated)"
-    );
+    match &comments.error_matches[0].pattern {
+        Pattern::SubString(s) =>
+            assert_eq!(s, "encountered a dangling reference (address $HEX is unallocated)"),
+        other => panic!("expected substring, got {other:?}"),
+    }
 }
 
 #[test]
@@ -42,7 +45,23 @@ use std::mem;
     ";
     let comments = Comments::parse(Path::new("<dummy>"), s).unwrap();
     println!("parsed comments: {:#?}", comments);
-    assert_eq!(comments.error_pattern, Some(("foomp".to_string(), 2)));
+    let pat = comments.error_pattern.unwrap();
+    assert_eq!(format!("{:?}", pat.0), r#"SubString("foomp")"#);
+    assert_eq!(pat.1, 2);
+}
+
+#[test]
+fn parse_regex_error_pattern() {
+    let s = r"
+//@  error-pattern:  /foomp/
+use std::mem;
+
+    ";
+    let comments = Comments::parse(Path::new("<dummy>"), s).unwrap();
+    println!("parsed comments: {:#?}", comments);
+    let pat = comments.error_pattern.unwrap();
+    assert_eq!(format!("{:?}", pat.0), r#"Regex(foomp)"#);
+    assert_eq!(pat.1, 2);
 }
 
 #[test]

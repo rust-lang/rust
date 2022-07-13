@@ -17,6 +17,7 @@ to make sure that the test will always keep failing with a specific message at t
 * If the all caps note is left out, a message of any level is matched. Leaving it out is not allowed for `ERROR` levels.
 * This checks the output *before* normalization, so you can check things that get normalized away, but need to
     be careful not to accidentally have a pattern that differs between platforms.
+* if `XXX` is of the form `/XXX/` it is treated as a regex instead of a substring and will succeed if the regex matches.
 
 In order to change how a single test is tested, you can add various `//@` comments to the test.
 Any other comments will be ignored, and all `//@` comments must be formatted precisely as
