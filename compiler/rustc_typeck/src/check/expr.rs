@@ -997,26 +997,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         coerce.coerce(self, &self.misc(sp), then_expr, then_ty);
 
         if let Some(else_expr) = opt_else_expr {
-            let else_ty = if sp.desugaring_kind() == Some(DesugaringKind::LetElse) {
-                // todo introduce `check_expr_with_expectation(.., Expectation::LetElse)`
-                //   for errors that point to the offending expression rather than the entire block.
-                //   We could use `check_expr_eq_type(.., tcx.types.never)`, but then there is no
-                //   way to detect that the expected type originated from let-else and provide
-                //   a customized error.
-                let else_ty = self.check_expr(else_expr);
-                let cause = self.cause(else_expr.span, ObligationCauseCode::LetElse);
-
-                if let Some(mut err) =
-                    self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
-                {
-                    err.emit();
-                    self.tcx.ty_error()
-                } else {
-                    else_ty
-                }
-            } else {
-                self.check_expr_with_expectation(else_expr, expected)
-            };
+            let else_ty = self.check_expr_with_expectation(else_expr, expected);
             let else_diverges = self.diverges.get();
 
             let opt_suggest_box_span = self.opt_suggest_box_span(else_ty, orig_expected);

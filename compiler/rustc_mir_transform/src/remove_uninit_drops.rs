@@ -102,7 +102,7 @@ fn is_needs_drop_and_init<'tcx>(
     let field_needs_drop_and_init = |(f, f_ty, mpi)| {
         let child = move_path_children_matching(move_data, mpi, |x| x.is_field_to(f));
         let Some(mpi) = child else {
-            return f_ty.needs_drop(tcx, param_env);
+            return Ty::needs_drop(f_ty, tcx, param_env);
         };
 
         is_needs_drop_and_init(tcx, param_env, maybe_inits, move_data, f_ty, mpi)
