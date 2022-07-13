@@ -1280,14 +1280,11 @@ impl Build {
         // Figure out how many merge commits happened since we branched off master.
         // That's our beta number!
         // (Note that we use a `..` range, not the `...` symmetric difference.)
-        let count = output(
-            self.config
-                .git()
-                .arg("rev-list")
-                .arg("--count")
-                .arg("--merges")
-                .arg("refs/remotes/origin/master..HEAD"),
-        );
+        let count =
+            output(self.config.git().arg("rev-list").arg("--count").arg("--merges").arg(format!(
+                "refs/remotes/origin/{}..HEAD",
+                self.config.stage0_metadata.config.nightly_branch
+            )));
         let n = count.trim().parse().unwrap();
         self.prerelease_version.set(Some(n));
         n

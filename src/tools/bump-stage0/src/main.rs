@@ -198,9 +198,12 @@ struct Stage0 {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Config {
     dist_server: String,
-    artifacts_server: String,
-    artifacts_with_llvm_assertions_server: String,
-    git_merge_commit_email: String,
+    // There are other fields in the configuration, which will be read by src/bootstrap or other
+    // tools consuming stage0.json. To avoid the need to update bump-stage0 every time a new field
+    // is added, we collect all the fields in an untyped Value and serialize them back with the
+    // same order and structure they were deserialized in.
+    #[serde(flatten)]
+    other: serde_json::Value,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
