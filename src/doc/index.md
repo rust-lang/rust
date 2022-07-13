@@ -93,6 +93,10 @@ accomplishing various tasks.
 
 [The Rustdoc Book](rustdoc/index.html) describes our documentation tool, `rustdoc`.
 
+## The Clippy Book
+
+[The Clippy Book](clippy/index.html) describes our static analyzer, Clippy.
+
 ## Extended Error Listing
 
 Many of Rust's errors come with error codes, and you can request extended
