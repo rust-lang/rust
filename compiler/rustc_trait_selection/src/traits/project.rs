@@ -756,6 +756,10 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
             _ => ct.super_fold_with(self),
         }
     }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
+    }
 }
 
 // The inverse of `BoundVarReplacer`: replaces placeholders with the bound vars from which they came.
