@@ -6,6 +6,7 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
+use rustc_hir::LifetimeParamKind;
 use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node, Term};
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::SourceMap;
@@ -1452,15 +1453,16 @@ impl<'a> State<'a> {
                 }
                 self.bclose(expr.span);
             }
-            hir::ExprKind::Closure {
+            hir::ExprKind::Closure(&hir::Closure {
+                binder,
                 capture_clause,
                 bound_generic_params,
                 fn_decl,
                 body,
                 fn_decl_span: _,
                 movability: _,
-            } => {
-                self.print_formal_generic_params(bound_generic_params);
+            }) => {
+                self.print_closure_binder(binder, bound_generic_params);
                 self.print_capture_clause(capture_clause);
 
                 self.print_closure_params(fn_decl, body);
@@ -2042,6 +2044,42 @@ impl<'a> State<'a> {
         match capture_clause {
             hir::CaptureBy::Value => self.word_space("move"),
             hir::CaptureBy::Ref => {}
+        }
+    }
+
+    pub fn print_closure_binder(
+        &mut self,
+        binder: hir::ClosureBinder,
+        generic_params: &[GenericParam<'_>],
+    ) {
+        let generic_params = generic_params
+            .iter()
+            .filter(|p| {
+                matches!(
+                    p,
+                    GenericParam {
+                        kind: GenericParamKind::Lifetime { kind: LifetimeParamKind::Explicit },
+                        ..
+                    }
+                )
+            })
+            .collect::<Vec<_>>();
+
+        match binder {
+            hir::ClosureBinder::Default => {}
+            // we need to distinguish `|...| {}` from `for<> |...| {}` as `for<>` adds additional restrictions
+            hir::ClosureBinder::For { .. } if generic_params.is_empty() => self.word("for<>"),
+            hir::ClosureBinder::For { .. } => {
+                self.word("for");
+                self.word("<");
+
+                self.commasep(Inconsistent, &generic_params, |s, param| {
+                    s.print_generic_param(param)
+                });
+
+                self.word(">");
+                self.nbsp();
+            }
         }
     }
 

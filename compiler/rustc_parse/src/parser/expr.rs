@@ -15,10 +15,10 @@ use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast::visit::Visitor;
-use rustc_ast::StmtKind;
 use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, Lit, UnOp, DUMMY_NODE_ID};
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
+use rustc_ast::{ClosureBinder, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, PResult};
@@ -1343,11 +1343,7 @@ impl<'a> Parser<'a> {
             self.parse_if_expr(attrs)
         } else if self.check_keyword(kw::For) {
             if self.choose_generics_over_qpath(1) {
-                // NOTE(Centril, eddyb): DO NOT REMOVE! Beyond providing parser recovery,
-                // this is an insurance policy in case we allow qpaths in (tuple-)struct patterns.
-                // When `for <Foo as Bar>::Proj in $expr $block` is wanted,
-                // you can disambiguate in favor of a pattern with `(...)`.
-                self.recover_quantified_closure_expr(attrs)
+                self.parse_closure_expr(attrs)
             } else {
                 assert!(self.eat_keyword(kw::For));
                 self.parse_for_expr(None, self.prev_token.span, attrs)
@@ -2096,29 +2092,21 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()))
     }
 
-    /// Recover on an explicitly quantified closure expression, e.g., `for<'a> |x: &'a u8| *x + 1`.
-    fn recover_quantified_closure_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
-        let lo = self.token.span;
-        let _ = self.parse_late_bound_lifetime_defs()?;
-        let span_for = lo.to(self.prev_token.span);
-        let closure = self.parse_closure_expr(attrs)?;
-
-        self.struct_span_err(span_for, "cannot introduce explicit parameters for a closure")
-            .span_label(closure.span, "the parameters are attached to this closure")
-            .span_suggestion(
-                span_for,
-                "remove the parameters",
-                "",
-                Applicability::MachineApplicable,
-            )
-            .emit();
-
-        Ok(self.mk_expr_err(lo.to(closure.span)))
-    }
-
     /// Parses a closure expression (e.g., `move |args| expr`).
     fn parse_closure_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
+
+        let binder = if self.check_keyword(kw::For) {
+            let lo = self.token.span;
+            let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
+            let span = lo.to(self.prev_token.span);
+
+            self.sess.gated_spans.gate(sym::closure_lifetime_binder, span);
+
+            ClosureBinder::For { span, generic_params: P::from_vec(lifetime_defs) }
+        } else {
+            ClosureBinder::NotPresent
+        };
 
         let movability =
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
@@ -2162,7 +2150,15 @@ impl<'a> Parser<'a> {
 
         let closure = self.mk_expr(
             lo.to(body.span),
-            ExprKind::Closure(capture_clause, asyncness, movability, decl, body, lo.to(decl_hi)),
+            ExprKind::Closure(
+                binder,
+                capture_clause,
+                asyncness,
+                movability,
+                decl,
+                body,
+                lo.to(decl_hi),
+            ),
             attrs,
         );
 

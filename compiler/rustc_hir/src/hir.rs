@@ -922,6 +922,17 @@ pub struct Crate<'hir> {
     pub hir_hash: Fingerprint,
 }
 
+#[derive(Debug, HashStable_Generic)]
+pub struct Closure<'hir> {
+    pub binder: ClosureBinder,
+    pub capture_clause: CaptureBy,
+    pub bound_generic_params: &'hir [GenericParam<'hir>],
+    pub fn_decl: &'hir FnDecl<'hir>,
+    pub body: BodyId,
+    pub fn_decl_span: Span,
+    pub movability: Option<Movability>,
+}
+
 /// A block of statements `{ .. }`, which may have a label (in this case the
 /// `targeted_by_break` field will be `true`) and may be `unsafe` by means of
 /// the `rules` being anything but `DefaultBlock`.
@@ -1915,14 +1926,7 @@ pub enum ExprKind<'hir> {
     ///
     /// This may also be a generator literal or an `async block` as indicated by the
     /// `Option<Movability>`.
-    Closure {
-        capture_clause: CaptureBy,
-        bound_generic_params: &'hir [GenericParam<'hir>],
-        fn_decl: &'hir FnDecl<'hir>,
-        body: BodyId,
-        fn_decl_span: Span,
-        movability: Option<Movability>,
-    },
+    Closure(&'hir Closure<'hir>),
     /// A block (e.g., `'label: { ... }`).
     Block(&'hir Block<'hir>, Option<Label>),
 
@@ -2700,6 +2704,17 @@ impl FnRetTy<'_> {
     }
 }
 
+/// Represents `for<...>` binder before a closure
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
+pub enum ClosureBinder {
+    /// Binder is not specified.
+    Default,
+    /// Binder is specified.
+    ///
+    /// Span points to the whole `for<...>`.
+    For { span: Span },
+}
+
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct Mod<'hir> {
     pub spans: ModSpans,
@@ -3464,7 +3479,7 @@ impl<'hir> Node<'hir> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Block<'static>, 48);
-    rustc_data_structures::static_assert_size!(super::Expr<'static>, 64);
+    rustc_data_structures::static_assert_size!(super::Expr<'static>, 56);
     rustc_data_structures::static_assert_size!(super::Pat<'static>, 88);
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);

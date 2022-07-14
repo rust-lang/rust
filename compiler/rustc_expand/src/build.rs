@@ -520,6 +520,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr(
             span,
             ast::ExprKind::Closure(
+                ast::ClosureBinder::NotPresent,
                 ast::CaptureBy::Ref,
                 ast::Async::No,
                 ast::Movability::Movable,
