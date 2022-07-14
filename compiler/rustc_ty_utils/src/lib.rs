@@ -7,6 +7,8 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(control_flow_enum)]
 #![feature(let_else)]
+#![feature(never_type)]
+#![feature(box_patterns)]
 #![recursion_limit = "256"]
 
 #[macro_use]

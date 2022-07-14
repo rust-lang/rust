@@ -9,7 +9,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, interpret};
-use rustc_middle::thir;
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
@@ -766,7 +765,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [thir::abstract_const::Node<'tcx>] {
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [ty::abstract_const::Node<'tcx>] {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
