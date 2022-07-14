@@ -5,18 +5,15 @@ use crate::util;
 use ast::CRATE_NODE_ID;
 use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
-use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
-use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
-use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
+use rustc_hir::def_id::StableCrateId;
 use rustc_hir::definitions::Definitions;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
-use rustc_metadata::{encode_metadata, EncodedMetadata};
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::query::{ExternProviders, Providers};
@@ -29,14 +26,13 @@ use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
 use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn};
-use rustc_session::output::{filename_for_input, filename_for_metadata};
+use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
-use tempfile::Builder as TempFileBuilder;
 use tracing::{info, warn};
 
 use std::any::Any;
@@ -993,69 +989,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     Ok(())
 }
 
-fn encode_and_write_metadata(
-    tcx: TyCtxt<'_>,
-    outputs: &OutputFilenames,
-) -> (EncodedMetadata, bool) {
-    #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    enum MetadataKind {
-        None,
-        Uncompressed,
-        Compressed,
-    }
-
-    let metadata_kind = tcx
-        .sess
-        .crate_types()
-        .iter()
-        .map(|ty| match *ty {
-            CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => MetadataKind::None,
-
-            CrateType::Rlib => MetadataKind::Uncompressed,
-
-            CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
-        })
-        .max()
-        .unwrap_or(MetadataKind::None);
-
-    let metadata = match metadata_kind {
-        MetadataKind::None => EncodedMetadata::new(),
-        MetadataKind::Uncompressed | MetadataKind::Compressed => encode_metadata(tcx),
-    };
-
-    let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");
-
-    let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
-    if need_metadata_file {
-        let crate_name = tcx.crate_name(LOCAL_CRATE);
-        let out_filename = filename_for_metadata(tcx.sess, crate_name.as_str(), outputs);
-        // To avoid races with another rustc process scanning the output directory,
-        // we need to write the file somewhere else and atomically move it to its
-        // final destination, with an `fs::rename` call. In order for the rename to
-        // always succeed, the temporary file needs to be on the same filesystem,
-        // which is why we create it inside the output directory specifically.
-        let metadata_tmpdir = TempFileBuilder::new()
-            .prefix("rmeta")
-            .tempdir_in(out_filename.parent().unwrap())
-            .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
-        let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
-        let metadata_filename = emit_metadata(tcx.sess, metadata.raw_data(), &metadata_tmpdir);
-        if let Err(e) = util::non_durable_rename(&metadata_filename, &out_filename) {
-            tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
-        }
-        if tcx.sess.opts.json_artifact_notifications {
-            tcx.sess
-                .parse_sess
-                .span_diagnostic
-                .emit_artifact_notification(&out_filename, "metadata");
-        }
-    }
-
-    let need_metadata_module = metadata_kind == MetadataKind::Compressed;
-
-    (metadata, need_metadata_module)
-}
-
 /// Runs the codegen backend, after which the AST and analysis can
 /// be discarded.
 pub fn start_codegen<'tcx>(
@@ -1065,7 +998,8 @@ pub fn start_codegen<'tcx>(
 ) -> Box<dyn Any> {
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
-    let (metadata, need_metadata_module) = encode_and_write_metadata(tcx, outputs);
+    let (metadata, need_metadata_module) =
+        rustc_metadata::fs::encode_and_write_metadata(tcx, outputs);
 
     let codegen = tcx.sess.time("codegen_crate", move || {
         codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)

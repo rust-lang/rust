@@ -3969,7 +3969,6 @@ dependencies = [
  "rustc_ty_utils",
  "rustc_typeck",
  "smallvec",
- "tempfile",
  "tracing",
  "winapi",
 ]
@@ -4080,6 +4079,7 @@ dependencies = [
  "rustc_type_ir",
  "smallvec",
  "snap",
+ "tempfile",
  "tracing",
 ]
 

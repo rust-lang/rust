@@ -6,6 +6,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
+use rustc_metadata::fs::{emit_metadata, METADATA_FILENAME};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
@@ -28,10 +29,7 @@ use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{create_rmeta_file, MetadataPosition};
 use super::rpath::{self, RPathConfig};
-use crate::{
-    looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
-    METADATA_FILENAME,
-};
+use crate::{looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib};
 
 use cc::windows_registry;
 use regex::Regex;
@@ -239,22 +237,6 @@ pub fn each_linked_rlib(
         }
     }
     Ok(())
-}
-
-/// We use a temp directory here to avoid races between concurrent rustc processes,
-/// such as builds in the same directory using the same filename for metadata while
-/// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
-/// directory being searched for `extern crate` (observing an incomplete file).
-/// The returned path is the temporary file containing the complete metadata.
-pub fn emit_metadata(sess: &Session, metadata: &[u8], tmpdir: &MaybeTempDir) -> PathBuf {
-    let out_filename = tmpdir.as_ref().join(METADATA_FILENAME);
-    let result = fs::write(&out_filename, metadata);
-
-    if let Err(e) = result {
-        sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
-    }
-
-    out_filename
 }
 
 /// Create an 'rlib'.
