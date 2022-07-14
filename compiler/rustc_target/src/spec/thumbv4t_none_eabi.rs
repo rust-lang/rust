@@ -46,6 +46,13 @@ pub fn target() -> Target {
 
             // minimum extra features, these cannot be disabled via -C
             features: "+soft-float,+strict-align".into(),
+            
+            panic_strategy: PanicStrategy::Abort,
+            relocation_model: RelocModel::Static,
+            // suggested from thumb_base, rust-lang/rust#44993.
+            emit_debug_gdb_scripts: false,
+            // suggested from thumb_base, with no-os gcc/clang use 8-bit enums
+            c_enum_min_bits: 8,
 
             main_needs_argc_argv: false,
 
@@ -53,7 +60,7 @@ pub fn target() -> Target {
             atomic_cas: false,
             has_thumb_interworking: true,
 
-            ..super::thumb_base::opts()
+            ..Default::default()
         },
     }
 }
