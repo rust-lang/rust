@@ -1191,6 +1191,7 @@ symbols! {
         rustc_allocator_nounwind,
         rustc_allow_const_fn_unstable,
         rustc_allow_incoherent_impl,
+        rustc_allowed_through_unstable_modules,
         rustc_attrs,
         rustc_box,
         rustc_builtin_macro,

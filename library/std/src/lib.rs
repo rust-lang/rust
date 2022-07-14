@@ -214,7 +214,7 @@
 #![cfg_attr(not(bootstrap), deny(ffi_unwind_calls))]
 // std may use features in a platform-specific way
 #![allow(unused_features)]
-#![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count))]
+#![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
@@ -297,6 +297,7 @@
 // Library features (alloc):
 #![feature(alloc_layout_extra)]
 #![feature(alloc_c_string)]
+#![feature(alloc_ffi)]
 #![feature(allocator_api)]
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]

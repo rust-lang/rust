@@ -644,4 +644,5 @@ E0788: include_str!("./error_codes/E0788.md"),
 //  E0721, // `await` keyword
 //  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
+    E0789, // rustc_allowed_through_unstable_modules without stability attribute
 }
