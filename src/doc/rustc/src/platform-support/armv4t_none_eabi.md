@@ -11,7 +11,7 @@ specific with this target, so any ARMv4T device should work fine.
 
 ## Target Maintainers
 
-* [@Lokathor](https://github.com/lokathor) 
+* [@Lokathor](https://github.com/lokathor)
 
 ## Requirements
 
