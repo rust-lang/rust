@@ -1408,7 +1408,7 @@ pub trait Iterator {
     ///     *state = *state * x;
     ///
     ///     // ... and terminate if the state exceeds 6
-    ///     if (*state > 6) {
+    ///     if *state > 6 {
     ///         return None;
     ///     }
     ///     // ... else yield the negation of the state
