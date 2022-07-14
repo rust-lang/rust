@@ -340,4 +340,4 @@ cc = ["@rust-lang/rustfmt"]
 
 [mentions."compiler/rustc_middle/src/mir/syntax.rs"]
 message = "This PR changes MIR"
-cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval"]
+cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval", "@vakaras"]
