@@ -46,7 +46,7 @@ pub fn target() -> Target {
 
             // minimum extra features, these cannot be disabled via -C
             features: "+soft-float,+strict-align".into(),
-            
+
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             // suggested from thumb_base, rust-lang/rust#44993.
