@@ -188,8 +188,10 @@ impl<Tag: Provenance> Place<Tag> {
 
 impl<'tcx, Tag: Provenance> MPlaceTy<'tcx, Tag> {
     /// Produces a MemPlace that works for ZST but nothing else.
+    /// Conceptually this is a new allocation, but it doesn't actually create an allocation so you
+    /// don't need to worry about memory leaks.
     #[inline]
-    pub fn dangling(layout: TyAndLayout<'tcx>) -> Self {
+    pub fn fake_alloc_zst(layout: TyAndLayout<'tcx>) -> Self {
         assert!(layout.is_zst());
         let align = layout.align.abi;
         let ptr = Pointer::from_addr(align.bytes()); // no provenance, absolute address
