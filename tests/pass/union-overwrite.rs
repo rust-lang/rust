@@ -1,5 +1,3 @@
-#![feature(untagged_unions)]
-
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct Pair<T, U>(T, U);
