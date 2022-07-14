@@ -219,10 +219,8 @@ fn park_unpark() {
     // know Miri's timed synchronization primitives do not do that.
 
     assert!((200..1000).contains(&start.elapsed().as_millis()));
-}
 
-fn check_condvar() {
-    let _ = std::sync::Condvar::new();
+    t2.join().unwrap();
 }
 
 fn main() {
@@ -236,5 +234,4 @@ fn main() {
     check_once();
     park_timeout();
     park_unpark();
-    check_condvar();
 }
