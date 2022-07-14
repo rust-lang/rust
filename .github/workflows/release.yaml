@@ -55,16 +55,11 @@ jobs:
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
-      # We need to disable the existing toolchain to avoid updating rust-docs
-      # which takes a long time. The fastest way to do this is to rename the
-      # existing folder, as deleting it takes about as much time as not doing
-      # anything and just updating rust-docs.
-      - name: Rename existing Rust toolchain
-        if: matrix.os == 'windows-latest'
-        run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
-
       - name: Install Rust toolchain
-        run: rustup update stable && rustup target add ${{ matrix.target }} && rustup component add rust-src
+        run: |
+          rustup update stable
+          rustup target add ${{ matrix.target }}
+          rustup component add rust-src
 
       - name: Install Node.js
         uses: actions/setup-node@v1
