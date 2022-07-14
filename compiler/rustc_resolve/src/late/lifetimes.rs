@@ -1677,13 +1677,28 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     break None;
                 }
 
-                Scope::Binder { ref lifetimes, scope_type, s, .. } => {
+                Scope::Binder { ref lifetimes, scope_type, s, where_bound_origin, .. } => {
                     if let Some(&def) = lifetimes.get(&region_def_id) {
                         break Some(def.shifted(late_depth));
                     }
                     match scope_type {
                         BinderScopeType::Normal => late_depth += 1,
                         BinderScopeType::Concatenating => {}
+                    }
+                    // Fresh lifetimes in APIT used to be allowed in async fns and forbidden in
+                    // regular fns.
+                    if let Some(hir::PredicateOrigin::ImplTrait) = where_bound_origin
+                        && let hir::LifetimeName::Param(_, hir::ParamName::Fresh) = lifetime_ref.name
+                        && let hir::IsAsync::NotAsync = self.tcx.asyncness(lifetime_ref.hir_id.owner)
+                        && !self.tcx.features().anonymous_lifetime_in_impl_trait
+                    {
+                        rustc_session::parse::feature_err(
+                            &self.tcx.sess.parse_sess,
+                            sym::anonymous_lifetime_in_impl_trait,
+                            lifetime_ref.span,
+                            "anonymous lifetimes in `impl Trait` are unstable",
+                        ).emit();
+                        return;
                     }
                     scope = s;
                 }

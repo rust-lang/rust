@@ -148,6 +148,8 @@ declare_features! (
     /// below (it has to be checked before expansion possibly makes
     /// macros disappear).
     (active, allow_internal_unstable, "1.0.0", None, None),
+    /// Allows using anonymous lifetimes in argument-position impl-trait.
+    (active, anonymous_lifetime_in_impl_trait, "1.63.0", None, None),
     /// Allows identifying the `compiler_builtins` crate.
     (active, compiler_builtins, "1.13.0", None, None),
     /// Outputs useful `assert!` messages
