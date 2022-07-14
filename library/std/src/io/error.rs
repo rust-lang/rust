@@ -808,7 +808,7 @@ impl Error {
     /// # Examples
     ///
     /// ```
-    /// #![feature(io_error_try_downcast_inner)]
+    /// #![feature(io_error_downcast)]
     ///
     /// use std::fmt;
     /// use std::io;
@@ -829,14 +829,14 @@ impl Error {
     ///
     /// impl From<io::Error> for E {
     ///     fn from(err: io::Error) -> E {
-    ///         err.try_downcast_inner::<E>()
+    ///         err.downcast::<E>()
     ///             .map(|b| *b)
     ///             .unwrap_or_else(E::Io)
     ///     }
     /// }
     /// ```
-    #[unstable(feature = "io_error_try_downcast_inner", issue = "none")]
-    pub fn try_downcast_inner<E>(self) -> result::Result<Box<E>, Self>
+    #[unstable(feature = "io_error_downcast", issue = "none")]
+    pub fn downcast<E>(self) -> result::Result<Box<E>, Self>
     where
         E: error::Error + Send + Sync + 'static,
     {
