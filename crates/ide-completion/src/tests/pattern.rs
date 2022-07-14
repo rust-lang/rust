@@ -414,7 +414,6 @@ fn foo() {
             st Bar
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
     check_empty(
@@ -430,7 +429,6 @@ fn foo() {
             st Foo
             kw crate::
             kw self::
-            kw super::
         "#]],
     );
     check_empty(

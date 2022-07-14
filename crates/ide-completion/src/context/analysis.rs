@@ -899,10 +899,25 @@ impl<'a> CompletionContext<'a> {
                         Qualified::Infer
                     } else {
                         let res = sema.resolve_path(&path);
-                        let is_super_chain =
-                            iter::successors(Some(path.clone()), |p| p.qualifier())
-                                .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
-                        Qualified::With { path, resolution: res, is_super_chain }
+
+                        // For understanding how and why super_chain_len is calculated the way it
+                        // is check the documentation at it's definition
+                        let mut segment_count = 0;
+                        let super_count = iter::successors(Some(path.clone()), |p| p.qualifier())
+                            .take_while(|p| {
+                                p.segment()
+                                    .and_then(|s| {
+                                        segment_count += 1;
+                                        s.super_token()
+                                    })
+                                    .is_some()
+                            })
+                            .count();
+
+                        let super_chain_len =
+                            if segment_count > super_count { None } else { Some(super_count) };
+
+                        Qualified::With { path, resolution: res, super_chain_len }
                     }
                 };
             }

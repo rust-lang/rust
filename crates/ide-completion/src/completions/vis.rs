@@ -14,7 +14,7 @@ pub(crate) fn complete_vis_path(
     match qualified {
         Qualified::With {
             resolution: Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))),
-            is_super_chain,
+            super_chain_len,
             ..
         } => {
             // Try completing next child module of the path that is still a parent of the current module
@@ -27,9 +27,7 @@ pub(crate) fn complete_vis_path(
                 }
             }
 
-            if *is_super_chain {
-                acc.add_keyword(ctx, "super::");
-            }
+            acc.add_super_keyword(ctx, *super_chain_len);
         }
         Qualified::Absolute | Qualified::Infer | Qualified::With { .. } => {}
         Qualified::No => {

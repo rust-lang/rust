@@ -36,7 +36,7 @@ pub(crate) fn complete_item_list(
     match qualified {
         Qualified::With {
             resolution: Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))),
-            is_super_chain,
+            super_chain_len,
             ..
         } => {
             for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
@@ -51,9 +51,7 @@ pub(crate) fn complete_item_list(
                 }
             }
 
-            if *is_super_chain {
-                acc.add_keyword(ctx, "super::");
-            }
+            acc.add_super_keyword(ctx, *super_chain_len);
         }
         Qualified::Absolute => acc.add_crate_roots(ctx, path_ctx),
         Qualified::No if ctx.qualifier_ctx.none() => {
