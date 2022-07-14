@@ -93,7 +93,7 @@ enum PatBoundCtx {
 /// Does this the item (from the item rib scope) allow generic parameters?
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum HasGenericParams {
-    Yes,
+    Yes(Span),
     No,
 }
 
@@ -758,7 +758,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
                     this.with_generic_param_rib(
                         &generics.params,
-                        ItemRibKind(HasGenericParams::Yes),
+                        ItemRibKind(HasGenericParams::Yes(generics.span)),
                         LifetimeRibKind::Generics {
                             binder: foreign_item.id,
                             kind: LifetimeBinderKind::Item,
@@ -772,7 +772,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
                     this.with_generic_param_rib(
                         &generics.params,
-                        ItemRibKind(HasGenericParams::Yes),
+                        ItemRibKind(HasGenericParams::Yes(generics.span)),
                         LifetimeRibKind::Generics {
                             binder: foreign_item.id,
                             kind: LifetimeBinderKind::Function,
@@ -2078,7 +2078,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_current_self_item(item, |this| {
             this.with_generic_param_rib(
                 &generics.params,
-                ItemRibKind(HasGenericParams::Yes),
+                ItemRibKind(HasGenericParams::Yes(generics.span)),
                 LifetimeRibKind::Generics {
                     binder: item.id,
                     kind: LifetimeBinderKind::Item,
@@ -2148,7 +2148,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Item,
@@ -2161,7 +2161,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::Fn(box Fn { ref generics, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Function,
@@ -2193,7 +2193,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Item,
@@ -2217,7 +2217,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Item,
@@ -2605,7 +2605,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(
             &generics.params,
-            ItemRibKind(HasGenericParams::Yes),
+            ItemRibKind(HasGenericParams::Yes(generics.span)),
             LifetimeRibKind::Generics {
                 span: generics.span,
                 binder: item_id,

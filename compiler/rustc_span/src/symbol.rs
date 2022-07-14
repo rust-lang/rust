@@ -280,6 +280,7 @@ symbols! {
         StructuralPartialEq,
         SubdiagnosticMessage,
         Sync,
+        T,
         Target,
         ToOwned,
         ToString,

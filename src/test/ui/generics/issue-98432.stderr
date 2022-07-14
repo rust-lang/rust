@@ -5,9 +5,9 @@ LL | impl<T> Struct<T> {
    |      - type parameter from outer function
 LL |     const CONST: fn() = || {
 LL |         struct _Obligation where T:;
-   |                                  ^ use of generic parameter from outer function
-   |
-   = help: try using a local generic parameter instead
+   |                           -      ^ use of generic parameter from outer function
+   |                           |
+   |                           help: try using a local generic parameter instead: `<T>`
 
 error: aborting due to previous error
 

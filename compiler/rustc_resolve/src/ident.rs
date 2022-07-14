@@ -1170,10 +1170,11 @@ impl<'a> Resolver<'a> {
                     let has_generic_params: HasGenericParams = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
-                        | AssocItemRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
                         | InlineAsmSymRibKind
+                        | FnItemRibKind
+                        | AssocItemRibKind
                         | ForwardGenericParamBanRibKind => {
                             // Nothing to do. Continue.
                             continue;
@@ -1211,7 +1212,6 @@ impl<'a> Resolver<'a> {
 
                         // This was an attempt to use a type parameter outside its scope.
                         ItemRibKind(has_generic_params) => has_generic_params,
-                        FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
                             if let Some(span) = finalize {
                                 self.report_error(
@@ -1248,10 +1248,11 @@ impl<'a> Resolver<'a> {
                     let has_generic_params = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
-                        | AssocItemRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
                         | InlineAsmSymRibKind
+                        | FnItemRibKind
+                        | AssocItemRibKind
                         | ForwardGenericParamBanRibKind => continue,
 
                         ConstantItemRibKind(trivial, _) => {
@@ -1278,7 +1279,6 @@ impl<'a> Resolver<'a> {
                         }
 
                         ItemRibKind(has_generic_params) => has_generic_params,
-                        FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
                             if let Some(span) = finalize {
                                 self.report_error(
