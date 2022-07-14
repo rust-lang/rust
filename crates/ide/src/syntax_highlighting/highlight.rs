@@ -328,8 +328,8 @@ fn highlight_def(sema: &Semantics<RootDatabase>, krate: hir::Crate, def: Definit
         Definition::Field(_) => Highlight::new(HlTag::Symbol(SymbolKind::Field)),
         Definition::Module(module) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
-            if module.parent(db).is_none() {
-                h |= HlMod::CrateRoot
+            if module.is_crate_root(db) {
+                h |= HlMod::CrateRoot;
             }
             h
         }

@@ -419,9 +419,9 @@ mod m {
     pub use super::p::WrongType as RightType;
 }
 mod p {
-    fn wrong_fn() {}
-    const WRONG_CONST: u32 = 1;
-    struct WrongType {};
+    pub fn wrong_fn() {}
+    pub const WRONG_CONST: u32 = 1;
+    pub struct WrongType {};
 }
 "#,
         expect![[r#"
@@ -442,9 +442,9 @@ mod m {
     pub use super::p::WrongType as RightType;
 }
 mod p {
-    fn wrong_fn() {}
-    const WRONG_CONST: u32 = 1;
-    struct WrongType {};
+    pub fn wrong_fn() {}
+    pub const WRONG_CONST: u32 = 1;
+    pub struct WrongType {};
 }
 "#,
         r#"
@@ -456,9 +456,9 @@ mod m {
     pub use super::p::WrongType as RightType;
 }
 mod p {
-    fn wrong_fn() {}
-    const WRONG_CONST: u32 = 1;
-    struct WrongType {};
+    pub fn wrong_fn() {}
+    pub const WRONG_CONST: u32 = 1;
+    pub struct WrongType {};
 }
 "#,
     );
@@ -627,7 +627,6 @@ fn main() {
 
 #[test]
 fn respects_doc_hidden2() {
-    cov_mark::check!(qualified_path_doc_hidden);
     check(
         r#"
 //- /lib.rs crate:lib deps:dep

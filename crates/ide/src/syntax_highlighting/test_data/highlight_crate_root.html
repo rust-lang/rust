@@ -49,18 +49,18 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 <span class="keyword">use</span> <span class="module crate_root library">foo</span> <span class="keyword">as</span> <span class="module crate_root declaration library">foooo</span><span class="semicolon">;</span>
 
-<span class="keyword">pub</span><span class="parenthesis">(</span><span class="keyword crate_root">crate</span><span class="parenthesis">)</span> <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+<span class="keyword">pub</span><span class="parenthesis">(</span><span class="keyword crate_root public">crate</span><span class="parenthesis">)</span> <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="module default_library library">iter</span><span class="operator">::</span><span class="function default_library library">repeat</span><span class="parenthesis">(</span><span class="numeric_literal">92</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
 <span class="keyword">mod</span> <span class="module declaration">bar</span> <span class="brace">{</span>
-    <span class="keyword">pub</span><span class="parenthesis">(</span><span class="keyword control">in</span> <span class="keyword crate_root">super</span><span class="parenthesis">)</span> <span class="keyword">const</span> <span class="constant declaration">FORTY_TWO</span><span class="colon">:</span> <span class="builtin_type">u8</span> <span class="operator">=</span> <span class="numeric_literal">42</span><span class="semicolon">;</span>
+    <span class="keyword">pub</span><span class="parenthesis">(</span><span class="keyword control">in</span> <span class="keyword crate_root public">super</span><span class="parenthesis">)</span> <span class="keyword">const</span> <span class="constant declaration">FORTY_TWO</span><span class="colon">:</span> <span class="builtin_type">u8</span> <span class="operator">=</span> <span class="numeric_literal">42</span><span class="semicolon">;</span>
 
     <span class="keyword">mod</span> <span class="module declaration">baz</span> <span class="brace">{</span>
-        <span class="keyword">use</span> <span class="keyword">super</span><span class="operator">::</span><span class="keyword crate_root">super</span><span class="operator">::</span><span class="constant public">NINETY_TWO</span><span class="semicolon">;</span>
-        <span class="keyword">use</span> <span class="keyword crate_root">crate</span><span class="operator">::</span><span class="module crate_root library">foooo</span><span class="operator">::</span><span class="struct library">Point</span><span class="semicolon">;</span>
+        <span class="keyword">use</span> <span class="keyword">super</span><span class="operator">::</span><span class="keyword crate_root public">super</span><span class="operator">::</span><span class="constant public">NINETY_TWO</span><span class="semicolon">;</span>
+        <span class="keyword">use</span> <span class="keyword crate_root public">crate</span><span class="operator">::</span><span class="module crate_root library">foooo</span><span class="operator">::</span><span class="struct library">Point</span><span class="semicolon">;</span>
 
-        <span class="keyword">pub</span><span class="parenthesis">(</span><span class="keyword control">in</span> <span class="keyword">super</span><span class="operator">::</span><span class="keyword crate_root">super</span><span class="parenthesis">)</span> <span class="keyword">const</span> <span class="constant declaration">TWENTY_NINE</span><span class="colon">:</span> <span class="builtin_type">u8</span> <span class="operator">=</span> <span class="numeric_literal">29</span><span class="semicolon">;</span>
+        <span class="keyword">pub</span><span class="parenthesis">(</span><span class="keyword control">in</span> <span class="keyword">super</span><span class="operator">::</span><span class="keyword crate_root public">super</span><span class="parenthesis">)</span> <span class="keyword">const</span> <span class="constant declaration">TWENTY_NINE</span><span class="colon">:</span> <span class="builtin_type">u8</span> <span class="operator">=</span> <span class="numeric_literal">29</span><span class="semicolon">;</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 </code></pre>

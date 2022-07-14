@@ -33,6 +33,7 @@ pub(crate) enum PatternRefutability {
     Irrefutable,
 }
 
+#[derive(Debug)]
 pub(crate) enum Visible {
     Yes,
     Editable,
@@ -355,10 +356,11 @@ pub(crate) struct CompletionContext<'a> {
 
     pub(super) locals: FxHashMap<Name, Local>,
 
+    /// The module depth of the current module of the cursor position.
     /// - crate-root
     ///  - mod foo
     ///   - mod bar
-    /// Here depth will be 2: {[bar<->foo], [foo<->crate-root]}
+    /// Here depth will be 2
     pub(super) depth_from_crate_root: usize,
 }
 
@@ -384,6 +386,30 @@ impl<'a> CompletionContext<'a> {
     }
 
     /// Checks if an item is visible and not `doc(hidden)` at the completion site.
+    pub(crate) fn def_is_visible(&self, item: &ScopeDef) -> Visible {
+        match item {
+            ScopeDef::ModuleDef(def) => match def {
+                hir::ModuleDef::Module(it) => self.is_visible(it),
+                hir::ModuleDef::Function(it) => self.is_visible(it),
+                hir::ModuleDef::Adt(it) => self.is_visible(it),
+                hir::ModuleDef::Variant(it) => self.is_visible(it),
+                hir::ModuleDef::Const(it) => self.is_visible(it),
+                hir::ModuleDef::Static(it) => self.is_visible(it),
+                hir::ModuleDef::Trait(it) => self.is_visible(it),
+                hir::ModuleDef::TypeAlias(it) => self.is_visible(it),
+                hir::ModuleDef::Macro(it) => self.is_visible(it),
+                hir::ModuleDef::BuiltinType(_) => Visible::Yes,
+            },
+            ScopeDef::GenericParam(_)
+            | ScopeDef::ImplSelfType(_)
+            | ScopeDef::AdtSelfType(_)
+            | ScopeDef::Local(_)
+            | ScopeDef::Label(_)
+            | ScopeDef::Unknown => Visible::Yes,
+        }
+    }
+
+    /// Checks if an item is visible and not `doc(hidden)` at the completion site.
     pub(crate) fn is_visible<I>(&self, item: &I) -> Visible
     where
         I: hir::HasVisibility + hir::HasAttrs + hir::HasCrate + Copy,
@@ -391,14 +417,6 @@ impl<'a> CompletionContext<'a> {
         let vis = item.visibility(self.db);
         let attrs = item.attrs(self.db);
         self.is_visible_impl(&vis, &attrs, item.krate(self.db))
-    }
-
-    pub(crate) fn is_scope_def_hidden(&self, scope_def: ScopeDef) -> bool {
-        if let (Some(attrs), Some(krate)) = (scope_def.attrs(self.db), scope_def.krate(self.db)) {
-            return self.is_doc_hidden(&attrs, krate);
-        }
-
-        false
     }
 
     /// Check if an item is `#[doc(hidden)]`.
@@ -466,6 +484,14 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn process_all_names_raw(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
         let _p = profile::span("CompletionContext::process_all_names_raw");
         self.scope.process_all_names(&mut |name, def| f(name, def));
+    }
+
+    fn is_scope_def_hidden(&self, scope_def: ScopeDef) -> bool {
+        if let (Some(attrs), Some(krate)) = (scope_def.attrs(self.db), scope_def.krate(self.db)) {
+            return self.is_doc_hidden(&attrs, krate);
+        }
+
+        false
     }
 
     fn is_visible_impl(

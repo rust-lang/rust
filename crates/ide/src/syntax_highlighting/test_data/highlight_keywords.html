@@ -42,12 +42,12 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
-<pre><code><span class="keyword">extern</span> <span class="keyword">crate</span> <span class="self_keyword crate_root">self</span><span class="semicolon">;</span>
+<pre><code><span class="keyword">extern</span> <span class="keyword">crate</span> <span class="self_keyword crate_root public">self</span><span class="semicolon">;</span>
 
-<span class="keyword">use</span> <span class="keyword crate_root">crate</span><span class="semicolon">;</span>
-<span class="keyword">use</span> <span class="self_keyword crate_root">self</span><span class="semicolon">;</span>
+<span class="keyword">use</span> <span class="keyword crate_root public">crate</span><span class="semicolon">;</span>
+<span class="keyword">use</span> <span class="self_keyword crate_root public">self</span><span class="semicolon">;</span>
 <span class="keyword">mod</span> <span class="module declaration">__</span> <span class="brace">{</span>
-    <span class="keyword">use</span> <span class="keyword crate_root">super</span><span class="operator">::</span><span class="punctuation">*</span><span class="semicolon">;</span>
+    <span class="keyword">use</span> <span class="keyword crate_root public">super</span><span class="operator">::</span><span class="punctuation">*</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
 <span class="keyword">macro_rules</span><span class="macro_bang">!</span> <span class="macro declaration">void</span> <span class="brace">{</span>

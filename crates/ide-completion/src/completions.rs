@@ -174,13 +174,19 @@ impl Completions {
         local_name: hir::Name,
         resolution: hir::ScopeDef,
     ) {
-        if ctx.is_scope_def_hidden(resolution) {
-            cov_mark::hit!(qualified_path_doc_hidden);
-            return;
-        }
+        let is_private_editable = match ctx.def_is_visible(&resolution) {
+            Visible::Yes => false,
+            Visible::Editable => true,
+            Visible::No => return,
+        };
         self.add(
-            render_path_resolution(RenderContext::new(ctx), path_ctx, local_name, resolution)
-                .build(),
+            render_path_resolution(
+                RenderContext::new(ctx).private_editable(is_private_editable),
+                path_ctx,
+                local_name,
+                resolution,
+            )
+            .build(),
         );
     }
 
@@ -191,13 +197,19 @@ impl Completions {
         local_name: hir::Name,
         resolution: hir::ScopeDef,
     ) {
-        if ctx.is_scope_def_hidden(resolution) {
-            cov_mark::hit!(qualified_path_doc_hidden);
-            return;
-        }
+        let is_private_editable = match ctx.def_is_visible(&resolution) {
+            Visible::Yes => false,
+            Visible::Editable => true,
+            Visible::No => return,
+        };
         self.add(
-            render_pattern_resolution(RenderContext::new(ctx), pattern_ctx, local_name, resolution)
-                .build(),
+            render_pattern_resolution(
+                RenderContext::new(ctx).private_editable(is_private_editable),
+                pattern_ctx,
+                local_name,
+                resolution,
+            )
+            .build(),
         );
     }
 
