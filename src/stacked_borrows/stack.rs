@@ -82,7 +82,7 @@ impl<'tcx> Stack {
     /// Panics if any of the caching mechanisms have broken,
     /// - The StackCache indices don't refer to the parallel items,
     /// - There are no Unique items outside of first_unique..last_unique
-    #[cfg(feature = "expensive-debug-assertions")]
+    #[cfg(debug_assertions)]
     fn verify_cache_consistency(&self) {
         // Only a full cache needs to be valid. Also see the comments in find_granting_cache
         // and set_unknown_bottom.
@@ -115,7 +115,7 @@ impl<'tcx> Stack {
         tag: SbTagExtra,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> Result<Option<usize>, ()> {
-        #[cfg(feature = "expensive-debug-assertions")]
+        #[cfg(debug_assertions)]
         self.verify_cache_consistency();
 
         let SbTagExtra::Concrete(tag) = tag else {
@@ -247,7 +247,7 @@ impl<'tcx> Stack {
         // This primes the cache for the next access, which is almost always the just-added tag.
         self.cache.add(new_idx, new);
 
-        #[cfg(feature = "expensive-debug-assertions")]
+        #[cfg(debug_assertions)]
         self.verify_cache_consistency();
     }
 
@@ -325,7 +325,7 @@ impl<'tcx> Stack {
             self.unique_range.end = self.unique_range.end.min(disable_start + 1);
         }
 
-        #[cfg(feature = "expensive-debug-assertions")]
+        #[cfg(debug_assertions)]
         self.verify_cache_consistency();
 
         Ok(())
@@ -380,7 +380,7 @@ impl<'tcx> Stack {
             self.unique_range = 0..0;
         }
 
-        #[cfg(feature = "expensive-debug-assertions")]
+        #[cfg(debug_assertions)]
         self.verify_cache_consistency();
         Ok(())
     }

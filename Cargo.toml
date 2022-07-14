@@ -54,8 +54,6 @@ harness = false
 
 [features]
 default = ["stack-cache"]
-# Will be enabled on CI via `--all-features`.
-expensive-debug-assertions = []
 stack-cache = []
 
 [profile.dev]
