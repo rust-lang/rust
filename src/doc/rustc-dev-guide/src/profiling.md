@@ -108,5 +108,6 @@ The llvm-lines output is affected by several options.
 
 MIR optimizations have little impact. Compared to the default `RUSTFLAGS="-Z
 mir-opt-level=1"`, level 0 adds 0.3GB and level 2 removes 0.2GB.
-As of <!-- date: 2021-01 --> January 2021, inlining currently only happens in
-LLVM but this might change in the future.
+As of <!-- date: 2022-07 --> July 2022,
+inlining currently only happens in LLVM,
+but this might change in the future.
