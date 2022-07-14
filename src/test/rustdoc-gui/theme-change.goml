@@ -1,9 +1,12 @@
 // Ensures that the theme change is working as expected.
 goto: file://|DOC_PATH|/test_docs/index.html
-local-storage: {"rustdoc-theme": "dark"}
 reload:
 click: "#settings-menu"
 wait-for: "#theme-ayu"
+
+// First, we check that the default theme is "system theme".
+assert-property: ("#theme-system-preference", {"checked": "true"})
+
 click: "#theme-ayu"
 // should be the ayu theme so let's check the color.
 wait-for-css: ("body", { "background-color": "rgb(15, 20, 25)" })
