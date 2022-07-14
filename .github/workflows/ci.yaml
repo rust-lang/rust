@@ -37,21 +37,8 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 20
 
-    # We need to disable the existing toolchain to avoid updating rust-docs
-    # which takes a long time. The fastest way to do this is to rename the
-    # existing folder, as deleting it takes about as much time as not doing
-    # anything and just updating rust-docs.
-    - name: Rename existing rust toolchain (Windows)
-      if: matrix.os == 'windows-latest'
-      run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
-
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
-        components: rustfmt, rust-src
+      run: rustup update stable && rustup component add rustfmt rust-src
 
     - name: Cache Dependencies
       uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
@@ -79,11 +66,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
+      run: rustup update stable
 
     - name: Install Rust targets
       run: rustup target add ${{ env.targets }} ${{ env.targets_ide }}
