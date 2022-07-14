@@ -33,11 +33,13 @@ extern crate rustc_middle;
 pub mod const_eval;
 mod errors;
 pub mod interpret;
+mod might_permit_raw_init;
 pub mod transform;
 pub mod util;
 
 use rustc_middle::ty;
 use rustc_middle::ty::query::Providers;
+use rustc_target::abi::InitKind;
 
 pub fn provide(providers: &mut Providers) {
     const_eval::provide(providers);
@@ -59,4 +61,8 @@ pub fn provide(providers: &mut Providers) {
         let (param_env, value) = param_env_and_value.into_parts();
         const_eval::deref_mir_constant(tcx, param_env, value)
     };
+    providers.permits_uninit_init =
+        |tcx, ty| might_permit_raw_init::might_permit_raw_init(tcx, ty, InitKind::Uninit);
+    providers.permits_zero_init =
+        |tcx, ty| might_permit_raw_init::might_permit_raw_init(tcx, ty, InitKind::Zero);
 }
