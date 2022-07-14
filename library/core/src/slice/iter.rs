@@ -710,18 +710,17 @@ where
             return None;
         }
 
-        let idx_opt = {
-            // work around borrowck limitations
-            let pred = &mut self.pred;
-            self.v.iter().position(|x| (*pred)(x))
-        };
-        match idx_opt {
+        match self.v.iter().position(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let tmp = mem::replace(&mut self.v, &mut []);
-                let (head, tail) = tmp.split_at_mut(idx);
-                self.v = &mut tail[1..];
-                Some(head)
+                let tmp = mem::take(&mut self.v);
+                // idx is the index of the element we are splitting on. We want to set self to the
+                // region after idx, and return the subslice before and not including idx.
+                // So first we split after idx
+                let (head, tail) = tmp.split_at_mut(idx + 1);
+                self.v = tail;
+                // Then return the subslice up to but not including the found element
+                Some(&mut head[..idx])
             }
         }
     }
