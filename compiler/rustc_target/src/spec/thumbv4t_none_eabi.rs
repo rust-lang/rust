@@ -4,9 +4,17 @@
 //!
 //! Please ping @Lokathor if changes are needed.
 //!
-//! This target profile assumes that you have the ARM binutils in your path (specifically the linker, `arm-none-eabi-ld`). They can be obtained for free for all major OSes from the ARM developer's website, and they may also be available in your system's package manager. Unfortunately, the standard linker that Rust uses (`lld`) only supports as far back as `ARMv5TE`, so we must use the GNU `ld` linker.
+//! This target profile assumes that you have the ARM binutils in your path
+//! (specifically the linker, `arm-none-eabi-ld`). They can be obtained for free
+//! for all major OSes from the ARM developer's website, and they may also be
+//! available in your system's package manager. Unfortunately, the standard
+//! linker that Rust uses (`lld`) only supports as far back as `ARMv5TE`, so we
+//! must use the GNU `ld` linker.
 //!
-//! **Important:** This target profile **does not** specify a linker script. You just get the default link script when you build a binary for this target. The default link script is very likely wrong, so you should use `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
+//! **Important:** This target profile **does not** specify a linker script. You
+//! just get the default link script when you build a binary for this target.
+//! The default link script is very likely wrong, so you should use
+//! `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
 
 use crate::spec::{cvs, LinkerFlavor, Target, TargetOptions};
 
