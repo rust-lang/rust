@@ -13,7 +13,7 @@
 #![feature(const_default_impls)]
 #![feature(const_trait_impl)]
 #![feature(if_let_guard)]
-#![feature(label_break_value)]
+#![cfg_attr(bootstrap, feature(label_break_value))]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(slice_internals)]

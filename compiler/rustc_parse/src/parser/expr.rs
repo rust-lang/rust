@@ -2075,10 +2075,6 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if let Some(label) = opt_label {
-            self.sess.gated_spans.gate(sym::label_break_value, label.ident.span);
-        }
-
         if self.token.is_whole_block() {
             self.struct_span_err(self.token.span, "cannot use a `block` macro fragment here")
                 .span_label(lo.to(self.token.span), "the `block` fragment is within this context")

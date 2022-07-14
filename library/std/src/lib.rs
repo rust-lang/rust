@@ -252,7 +252,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(exhaustive_patterns)]
 #![feature(intra_doc_pointers)]
-#![feature(label_break_value)]
+#![cfg_attr(bootstrap, feature(label_break_value))]
 #![feature(lang_items)]
 #![feature(let_else)]
 #![feature(linkage)]

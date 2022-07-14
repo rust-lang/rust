@@ -1,7 +1,6 @@
 // run-pass
 #![allow(dead_code)]
 #![allow(unused_assignments)]
-#![feature(label_break_value)]
 
 // Test control flow to follow label_break_value semantics
 fn label_break(a: bool, b: bool) -> u32 {
