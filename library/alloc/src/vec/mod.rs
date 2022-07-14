@@ -664,7 +664,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///   alignment, [`dealloc`] must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
     /// * The first `length` values must be properly initialized values of type `T`.
-    /// * `capacity` needs to [fit] the layout size that the pointer was allocated with.
+    /// * `capacity` needs to [*fit*] the layout size that the pointer was allocated with.
     /// * The allocated size in bytes must be no larger than `isize::MAX`.
     ///   See the safety documentation of [`pointer::offset`].
     ///
