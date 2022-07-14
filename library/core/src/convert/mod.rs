@@ -93,6 +93,8 @@ pub use num::FloatToInt;
 ///
 /// let iter = [Some(1), None, Some(3)].into_iter();
 /// let filtered = iter.filter_map(identity).collect::<Vec<_>>();
+/// // Equivalent, since Option is also a Iterator itself:
+/// // let filtered = iter.flatten().collect::<Vec<_>>();
 /// assert_eq!(vec![1, 3], filtered);
 /// ```
 #[stable(feature = "convert_id", since = "1.33.0")]
