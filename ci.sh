@@ -3,13 +3,13 @@ set -euo pipefail
 set -x
 
 # Determine configuration
-export RUSTFLAGS="-D warnings -C debug-assertions -C debuginfo=1"
+export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--all-features"
 
 # Prepare
 echo "Build and install miri"
-RUSTFLAGS="" ./miri install # implicitly locked, and explicitly without debug assertions
+./miri install # implicitly locked
 ./miri build --all-targets --locked # the build that all the `./miri test` below will use
 echo
 
