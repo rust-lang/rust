@@ -550,7 +550,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
 
-                if has_generic_params == HasGenericParams::Yes {
+                if let HasGenericParams::Yes = has_generic_params {
                     // Try to retrieve the span of the function signature and generate a new
                     // message with a local type or const parameter.
                     let sugg_msg = "try using a local generic parameter instead";

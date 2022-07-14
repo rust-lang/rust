@@ -13,7 +13,9 @@ use rustc_span::{Span, DUMMY_SP};
 
 use std::ptr;
 
-use crate::late::{ConstantItemKind, HasGenericParams, PathSource, Rib, RibKind};
+use crate::late::{
+    ConstantHasGenerics, ConstantItemKind, HasGenericParams, PathSource, Rib, RibKind,
+};
 use crate::macros::{sub_namespace_match, MacroRulesScope};
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
 use crate::{ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
@@ -1180,7 +1182,9 @@ impl<'a> Resolver<'a> {
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !(trivial == HasGenericParams::Yes || features.generic_const_exprs) {
+                            if !(trivial == ConstantHasGenerics::Yes
+                                || features.generic_const_exprs)
+                            {
                                 // HACK(min_const_generics): If we encounter `Self` in an anonymous constant
                                 // we can't easily tell if it's generic at this stage, so we instead remember
                                 // this and then enforce the self type to be concrete later on.
@@ -1253,7 +1257,9 @@ impl<'a> Resolver<'a> {
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !(trivial == HasGenericParams::Yes || features.generic_const_exprs) {
+                            if !(trivial == ConstantHasGenerics::Yes
+                                || features.generic_const_exprs)
+                            {
                                 if let Some(span) = finalize {
                                     self.report_error(
                                         span,

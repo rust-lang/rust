@@ -91,13 +91,20 @@ enum PatBoundCtx {
 }
 
 /// Does this the item (from the item rib scope) allow generic parameters?
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum HasGenericParams {
     Yes,
     No,
 }
 
-impl HasGenericParams {
+/// May this constant have generics?
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub(crate) enum ConstantHasGenerics {
+    Yes,
+    No,
+}
+
+impl ConstantHasGenerics {
     fn force_yes_if(self, b: bool) -> Self {
         if b { Self::Yes } else { self }
     }
@@ -136,7 +143,7 @@ pub(crate) enum RibKind<'a> {
     ///
     /// The item may reference generic parameters in trivial constant expressions.
     /// All other constants aren't allowed to use generic params at all.
-    ConstantItemRibKind(HasGenericParams, Option<(Ident, ConstantItemKind)>),
+    ConstantItemRibKind(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>),
 
     /// We passed through a module.
     ModuleRibKind(Module<'a>),
@@ -995,7 +1002,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             // non-trivial constants this is doesn't matter.
                             self.with_constant_rib(
                                 IsRepeatExpr::No,
-                                HasGenericParams::Yes,
+                                ConstantHasGenerics::Yes,
                                 None,
                                 |this| {
                                     this.smart_resolve_path(
@@ -2251,7 +2258,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             // so it doesn't matter whether this is a trivial constant.
                             this.with_constant_rib(
                                 IsRepeatExpr::No,
-                                HasGenericParams::Yes,
+                                ConstantHasGenerics::Yes,
                                 Some((item.ident, constant_item_kind)),
                                 |this| this.visit_expr(expr),
                             );
@@ -2450,7 +2457,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn with_constant_rib(
         &mut self,
         is_repeat: IsRepeatExpr,
-        may_use_generics: HasGenericParams,
+        may_use_generics: ConstantHasGenerics,
         item: Option<(Ident, ConstantItemKind)>,
         f: impl FnOnce(&mut Self),
     ) {
@@ -2517,7 +2524,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             |this| {
                                 this.with_constant_rib(
                                     IsRepeatExpr::No,
-                                    HasGenericParams::Yes,
+                                    ConstantHasGenerics::Yes,
                                     None,
                                     |this| this.visit_expr(expr),
                                 )
@@ -2689,7 +2696,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
                         this.with_constant_rib(
                             IsRepeatExpr::No,
-                            HasGenericParams::Yes,
+                            ConstantHasGenerics::Yes,
                             None,
                             |this| this.visit_expr(expr),
                         )
@@ -3696,9 +3703,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_constant_rib(
             is_repeat,
             if constant.value.is_potential_trivial_const_param() {
-                HasGenericParams::Yes
+                ConstantHasGenerics::Yes
             } else {
-                HasGenericParams::No
+                ConstantHasGenerics::No
             },
             None,
             |this| visit::walk_anon_const(this, constant),
@@ -3707,8 +3714,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     fn resolve_inline_const(&mut self, constant: &'ast AnonConst) {
         debug!("resolve_anon_const {constant:?}");
-        self.with_constant_rib(IsRepeatExpr::No, HasGenericParams::Yes, None, |this| {
-            visit::walk_anon_const(this, constant);
+        self.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, None, |this| {
+            visit::walk_anon_const(this, constant)
         });
     }
 
@@ -3814,9 +3821,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         self.with_constant_rib(
                             IsRepeatExpr::No,
                             if argument.is_potential_trivial_const_param() {
-                                HasGenericParams::Yes
+                                ConstantHasGenerics::Yes
                             } else {
-                                HasGenericParams::No
+                                ConstantHasGenerics::No
                             },
                             None,
                             |this| {
