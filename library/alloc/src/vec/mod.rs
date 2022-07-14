@@ -557,6 +557,32 @@ impl<T> Vec<T> {
     ///     assert_eq!(rebuilt, [4, 5, 6]);
     /// }
     /// ```
+    ///
+    /// Using memory that was allocated elsewhere:
+    ///
+    /// ```rust
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::{AllocError, Allocator, Global, Layout};
+    ///
+    /// fn main() {
+    ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
+    ///
+    ///     let vec = unsafe {
+    ///         let mem = match Global.allocate(layout) {
+    ///             Ok(mem) => mem.cast::<u32>().as_ptr(),
+    ///             Err(AllocError) => return,
+    ///         };
+    ///
+    ///         mem.write(1_000_000);
+    ///
+    ///         Vec::from_raw_parts_in(mem, 1, 16, Global)
+    ///     };
+    ///
+    ///     assert_eq!(vec, &[1_000_000]);
+    ///     assert_eq!(vec.capacity(), 16);
+    /// }
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {
@@ -669,7 +695,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///   See the safety documentation of [`pointer::offset`].
     ///
     /// These requirements are always upheld by any `ptr` that has been allocated
-    /// via `Vec<T>`. Other allocation sources are allowed if the invariants are
+    /// via `Vec<T, A>`. Other allocation sources are allowed if the invariants are
     /// upheld.
     ///
     /// Violating these may cause problems like corrupting the allocator's
@@ -725,6 +751,29 @@ impl<T, A: Allocator> Vec<T, A> {
     ///     // Put everything back together into a Vec
     ///     let rebuilt = Vec::from_raw_parts_in(p, len, cap, alloc.clone());
     ///     assert_eq!(rebuilt, [4, 5, 6]);
+    /// }
+    /// ```
+    ///
+    /// Using memory that was allocated elsewhere:
+    ///
+    /// ```rust
+    /// use std::alloc::{alloc, Layout};
+    ///
+    /// fn main() {
+    ///     let layout = Layout::array::<u32>(16).expect("overflow cannot happen");
+    ///     let vec = unsafe {
+    ///         let mem = alloc(layout).cast::<u32>();
+    ///         if mem.is_null() {
+    ///             return;
+    ///         }
+    ///
+    ///         mem.write(1_000_000);
+    ///
+    ///         Vec::from_raw_parts(mem, 1, 16)
+    ///     };
+    ///
+    ///     assert_eq!(vec, &[1_000_000]);
+    ///     assert_eq!(vec.capacity(), 16);
     /// }
     /// ```
     #[inline]
