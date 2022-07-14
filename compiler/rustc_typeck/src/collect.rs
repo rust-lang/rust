@@ -1717,8 +1717,10 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
-    if let Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { movability: gen, .. }, .. }) =
-        node
+    if let Node::Expr(&hir::Expr {
+        kind: hir::ExprKind::Closure(hir::Closure { movability: gen, .. }),
+        ..
+    }) = node
     {
         let dummy_args = if gen.is_some() {
             &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
@@ -2564,7 +2566,7 @@ fn is_foreign_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 fn generator_kind(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::GeneratorKind> {
     match tcx.hir().get_if_local(def_id) {
         Some(Node::Expr(&rustc_hir::Expr {
-            kind: rustc_hir::ExprKind::Closure { body, .. },
+            kind: rustc_hir::ExprKind::Closure(&rustc_hir::Closure { body, .. }),
             ..
         })) => tcx.hir().body(body).generator_kind(),
         Some(_) => None,

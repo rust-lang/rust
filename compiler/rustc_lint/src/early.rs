@@ -154,6 +154,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
                 self.check_id(closure_id);
             }
         }
+
         run_early_pass!(self, check_fn_post, fk, span, id);
     }
 
@@ -218,7 +219,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // Explicitly check for lints associated with 'closure_id', since
         // it does not have a corresponding AST node
         match e.kind {
-            ast::ExprKind::Closure(_, ast::Async::Yes { closure_id, .. }, ..)
+            ast::ExprKind::Closure(_, _, ast::Async::Yes { closure_id, .. }, ..)
             | ast::ExprKind::Async(_, closure_id, ..) => self.check_id(closure_id),
             _ => {}
         }

@@ -148,6 +148,8 @@ declare_features! (
     /// below (it has to be checked before expansion possibly makes
     /// macros disappear).
     (active, allow_internal_unstable, "1.0.0", None, None),
+    /// Allows using anonymous lifetimes in argument-position impl-trait.
+    (active, anonymous_lifetime_in_impl_trait, "1.63.0", None, None),
     /// Allows identifying the `compiler_builtins` crate.
     (active, compiler_builtins, "1.13.0", None, None),
     /// Outputs useful `assert!` messages
@@ -328,6 +330,8 @@ declare_features! (
     (active, cfg_target_thread_local, "1.7.0", Some(29594), None),
     /// Allow conditional compilation depending on rust version
     (active, cfg_version, "1.45.0", Some(64796), None),
+    /// Allows `for<...>` on closures and generators.
+    (active, closure_lifetime_binder, "1.64.0", Some(97362), None),
     /// Allows `#[track_caller]` on closures and generators.
     (active, closure_track_caller, "1.57.0", Some(87417), None),
     /// Allows to use the `#[cmse_nonsecure_entry]` attribute.

@@ -41,7 +41,7 @@ pub(super) fn check<'tcx>(
             let mut applicability = Applicability::MachineApplicable;
             let any_search_snippet = if_chain! {
                 if search_method == "find";
-                if let hir::ExprKind::Closure { body, .. } = search_arg.kind;
+                if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = search_arg.kind;
                 let closure_body = cx.tcx.hir().body(body);
                 if let Some(closure_arg) = closure_body.params.get(0);
                 then {

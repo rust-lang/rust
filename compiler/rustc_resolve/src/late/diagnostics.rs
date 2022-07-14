@@ -70,6 +70,8 @@ pub(crate) enum ForLifetimeSpanType {
     BoundTail,
     TypeEmpty,
     TypeTail,
+    ClosureEmpty,
+    ClosureTail,
 }
 
 impl ForLifetimeSpanType {
@@ -77,13 +79,15 @@ impl ForLifetimeSpanType {
         match self {
             Self::BoundEmpty | Self::BoundTail => "bound",
             Self::TypeEmpty | Self::TypeTail => "type",
+            Self::ClosureEmpty | Self::ClosureTail => "closure",
         }
     }
 
     pub(crate) fn suggestion(&self, sugg: &str) -> String {
         match self {
             Self::BoundEmpty | Self::TypeEmpty => format!("for<{}> ", sugg),
-            Self::BoundTail | Self::TypeTail => format!(", {}", sugg),
+            Self::ClosureEmpty => format!("for<{}>", sugg),
+            Self::BoundTail | Self::TypeTail | Self::ClosureTail => format!(", {}", sugg),
         }
     }
 }

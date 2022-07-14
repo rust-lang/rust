@@ -268,6 +268,7 @@ enum LifetimeBinderKind {
     WhereBound,
     Item,
     Function,
+    Closure,
     ImplBlock,
 }
 
@@ -281,6 +282,7 @@ impl LifetimeBinderKind {
             Item => "item",
             ImplBlock => "impl block",
             Function => "function",
+            Closure => "closure",
         }
     }
 }
@@ -758,7 +760,10 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 // We don't need to deal with patterns in parameters, because
                 // they are not possible for foreign or bodiless functions.
                 self.with_lifetime_rib(
-                    LifetimeRibKind::AnonymousPassThrough(fn_id, false),
+                    LifetimeRibKind::AnonymousCreateParameter {
+                        binder: fn_id,
+                        report_in_path: false,
+                    },
                     |this| walk_list!(this, visit_param, &sig.decl.inputs),
                 );
                 self.with_lifetime_rib(
@@ -792,18 +797,13 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         // generic parameters.  This is especially useful for `async fn`, where
                         // these fresh generic parameters can be applied to the opaque `impl Trait`
                         // return type.
-                        let rib = if async_node_id.is_some() {
-                            // Only emit a hard error for `async fn`, since this kind of
-                            // elision has always been allowed in regular `fn`s.
+                        this.with_lifetime_rib(
                             LifetimeRibKind::AnonymousCreateParameter {
                                 binder: fn_id,
-                                report_in_path: true,
-                            }
-                        } else {
-                            LifetimeRibKind::AnonymousPassThrough(fn_id, false)
-                        };
-                        this.with_lifetime_rib(
-                            rib,
+                                // Only emit a hard error for `async fn`, since this kind of
+                                // elision has always been allowed in regular `fn`s.
+                                report_in_path: async_node_id.is_some(),
+                            },
                             // Add each argument to the rib.
                             |this| this.resolve_params(&declaration.inputs),
                         );
@@ -868,19 +868,30 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             this.in_func_body = previous_state;
                         }
                     }
-                    FnKind::Closure(declaration, body) => {
-                        // We do not have any explicit generic lifetime parameter.
-                        // FIXME(rfc3216): Change when implementing `for<>` bounds on closures.
+                    FnKind::Closure(binder, declaration, body) => {
+                        this.visit_closure_binder(binder);
+
                         this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousCreateParameter {
-                                binder: fn_id,
-                                report_in_path: false,
+                            match binder {
+                                // We do not have any explicit generic lifetime parameter.
+                                ClosureBinder::NotPresent => {
+                                    LifetimeRibKind::AnonymousCreateParameter {
+                                        binder: fn_id,
+                                        report_in_path: false,
+                                    }
+                                }
+                                ClosureBinder::For { .. } => LifetimeRibKind::AnonymousReportError,
                             },
                             // Add each argument to the rib.
                             |this| this.resolve_params(&declaration.inputs),
                         );
                         this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousPassThrough(fn_id, true),
+                            match binder {
+                                ClosureBinder::NotPresent => {
+                                    LifetimeRibKind::AnonymousPassThrough(fn_id, true)
+                                }
+                                ClosureBinder::For { .. } => LifetimeRibKind::AnonymousReportError,
+                            },
                             |this| visit::walk_fn_ret_ty(this, &declaration.output),
                         );
 
@@ -912,6 +923,18 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         );
         for p in &generics.where_clause.predicates {
             self.visit_where_predicate(p);
+        }
+    }
+
+    fn visit_closure_binder(&mut self, b: &'ast ClosureBinder) {
+        match b {
+            ClosureBinder::NotPresent => {}
+            ClosureBinder::For { generic_params, .. } => {
+                self.visit_generic_params(
+                    &generic_params,
+                    self.diagnostic_metadata.current_self_item.is_some(),
+                );
+            }
         }
     }
 
@@ -3519,7 +3542,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // `async |x| ...` gets desugared to `|x| future_from_generator(|| ...)`, so we need to
             // resolve the arguments within the proper scopes so that usages of them inside the
             // closure are detected as upvars rather than normal closure arg usages.
-            ExprKind::Closure(_, Async::Yes { .. }, _, ref fn_decl, ref body, _span) => {
+            ExprKind::Closure(_, _, Async::Yes { .. }, _, ref fn_decl, ref body, _span) => {
                 self.with_rib(ValueNS, NormalRibKind, |this| {
                     this.with_label_rib(ClosureOrAsyncRibKind, |this| {
                         // Resolve arguments:
@@ -3539,6 +3562,18 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
             // For closures, ClosureOrAsyncRibKind is added in visit_fn
+            ExprKind::Closure(ClosureBinder::For { ref generic_params, span }, ..) => {
+                self.with_generic_param_rib(
+                    &generic_params,
+                    NormalRibKind,
+                    LifetimeRibKind::Generics {
+                        binder: expr.id,
+                        kind: LifetimeBinderKind::Closure,
+                        span,
+                    },
+                    |this| visit::walk_expr(this, expr),
+                );
+            }
             ExprKind::Closure(..) => visit::walk_expr(self, expr),
             ExprKind::Async(..) => {
                 self.with_label_rib(ClosureOrAsyncRibKind, |this| visit::walk_expr(this, expr));

@@ -26,7 +26,7 @@ macro_rules! type_alias_no_nz {
     } => {
         #[doc = include_str!($Docfile)]
         $( $Cfg )*
-        #[unstable(feature = "core_ffi_c", issue = "94501")]
+        #[stable(feature = "core_ffi_c", since = "1.64.0")]
         pub type $Alias = $Real;
     }
 }

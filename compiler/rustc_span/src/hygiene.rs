@@ -644,7 +644,10 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
                 let expn_data = expn_data.as_ref().expect("no expansion data for an expansion ID");
                 debug_expn_data((&id.to_expn_id(), expn_data))
             });
+
             // Sort the hash map for more reproducible output.
+            // Because of this, it is fine to rely on the unstable iteration order of the map.
+            #[allow(rustc::potential_query_instability)]
             let mut foreign_expn_data: Vec<_> = data.foreign_expn_data.iter().collect();
             foreign_expn_data.sort_by_key(|(id, _)| (id.krate, id.local_id));
             foreign_expn_data.into_iter().for_each(debug_expn_data);
@@ -1208,6 +1211,7 @@ impl HygieneEncodeContext {
             // It's fine to iterate over a HashMap, because the serialization
             // of the table that we insert data into doesn't depend on insertion
             // order
+            #[allow(rustc::potential_query_instability)]
             for_all_ctxts_in(latest_ctxts.into_iter(), |index, ctxt, data| {
                 if self.serialized_ctxts.lock().insert(ctxt) {
                     encode_ctxt(encoder, index, data);
@@ -1216,6 +1220,8 @@ impl HygieneEncodeContext {
 
             let latest_expns = { std::mem::take(&mut *self.latest_expns.lock()) };
 
+            // Same as above, this is fine as we are inserting into a order-independent hashset
+            #[allow(rustc::potential_query_instability)]
             for_all_expns_in(latest_expns.into_iter(), |expn, data, hash| {
                 if self.serialized_expns.lock().insert(expn) {
                     encode_expn(encoder, expn, data, hash);

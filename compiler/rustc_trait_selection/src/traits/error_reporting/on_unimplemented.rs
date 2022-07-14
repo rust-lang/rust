@@ -103,7 +103,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 })
             }),
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { body, movability, .. },
+                kind: hir::ExprKind::Closure(hir::Closure { body, movability, .. }),
                 ..
             }) => self.describe_generator(*body).or_else(|| {
                 Some(if movability.is_some() { "an async closure" } else { "a closure" })

@@ -1597,6 +1597,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 .emit();
         }
 
+        if let FnKind::Closure(ClosureBinder::For { generic_params, .. }, ..) = fk {
+            self.check_late_bound_lifetime_defs(generic_params);
+        }
+
         if let FnKind::Fn(
             _,
             _,

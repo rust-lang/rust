@@ -389,6 +389,7 @@ impl<'a> State<'a> {
                 self.bclose(expr.span, empty);
             }
             ast::ExprKind::Closure(
+                ref binder,
                 capture_clause,
                 asyncness,
                 movability,
@@ -396,6 +397,7 @@ impl<'a> State<'a> {
                 ref body,
                 _,
             ) => {
+                self.print_closure_binder(binder);
                 self.print_movability(movability);
                 self.print_asyncness(asyncness);
                 self.print_capture_clause(capture_clause);
@@ -592,6 +594,15 @@ impl<'a> State<'a> {
             }
         }
         self.end(); // Close enclosing cbox.
+    }
+
+    fn print_closure_binder(&mut self, binder: &ast::ClosureBinder) {
+        match binder {
+            ast::ClosureBinder::NotPresent => {}
+            ast::ClosureBinder::For { generic_params, .. } => {
+                self.print_formal_generic_params(&generic_params)
+            }
+        }
     }
 
     fn print_movability(&mut self, movability: ast::Movability) {
