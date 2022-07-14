@@ -9,7 +9,7 @@ doctest = false
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
 ena = "0.14"
-indexmap = { version = "1.8.2" }
+indexmap = { version = "1.9.1" }
 tracing = "0.1"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 rustc_serialize = { path = "../rustc_serialize" }

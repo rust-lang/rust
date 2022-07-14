@@ -1649,15 +1649,6 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
-dependencies = [
- "ahash",
-]
-
-[[package]]
-name = "hashbrown"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c21d40587b92fa6a6c6e3c1bdbf87d75511db5672f9c93175574b3a00df1758"
@@ -1822,12 +1813,12 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.8.2"
+version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6012d540c5baa3589337a98ce73408de9b5a25ec9fc2c6fd6be8f0d39e0ca5a"
+checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
 dependencies = [
  "autocfg",
- "hashbrown 0.11.2",
+ "hashbrown",
  "rustc-rayon",
  "serde",
 ]
@@ -2496,25 +2487,13 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.28.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e42c982f2d955fac81dd7e1d0e1426a7d702acd9c98d19ab01083a6a0328c424"
-dependencies = [
- "crc32fast",
- "flate2",
- "hashbrown 0.11.2",
- "indexmap",
- "memchr",
-]
-
-[[package]]
-name = "object"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
 dependencies = [
  "crc32fast",
- "hashbrown 0.12.0",
+ "flate2",
+ "hashbrown",
  "indexmap",
  "memchr",
 ]
@@ -4978,7 +4957,7 @@ dependencies = [
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
- "hashbrown 0.12.0",
+ "hashbrown",
  "hermit-abi 0.2.0",
  "libc",
  "miniz_oxide",
@@ -5207,13 +5186,13 @@ dependencies = [
 
 [[package]]
 name = "thorin-dwp"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd95b4559c196987c8451b4e14d08a4c796c2844f9adf4d2a2dbc9b3142843be"
+checksum = "e6cb0c7868d7f90407531108ab03263d9452a8811b7cdd87675343a40d4aa254"
 dependencies = [
  "gimli 0.26.1",
- "hashbrown 0.11.2",
- "object 0.28.4",
+ "hashbrown",
+ "object 0.29.0",
  "tracing",
 ]
 
