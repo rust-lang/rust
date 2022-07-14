@@ -64,7 +64,7 @@ jobs:
         run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
 
       - name: Install Rust toolchain
-        run: rustup update stable && rustup target add ${{ matrix.target }} && rustup component add  rust-src
+        run: rustup update stable && rustup target add ${{ matrix.target }} && rustup component add rust-src
 
       - name: Install Node.js
         uses: actions/setup-node@v1
