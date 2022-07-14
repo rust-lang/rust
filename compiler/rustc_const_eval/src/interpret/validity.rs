@@ -853,7 +853,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 self.visit_scalar(scalar, scalar_layout)?;
             }
             Abi::ScalarPair(a_layout, b_layout) => {
-                // We would validate these things as we descend into the fields,
+                // There is no `rustc_layout_scalar_valid_range_start` for pairs, so
+                // we would validate these things as we descend into the fields,
                 // but that can miss bugs in layout computation. Layout computation
                 // is subtle due to enums having ScalarPair layout, where one field
                 // is the discriminant.
@@ -867,7 +868,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             }
             Abi::Vector { .. } => {
                 // No checks here, we assume layout computation gets this right.
-                // (This is harder to check since Miri does not represent these as `Immediate`.)
+                // (This is harder to check since Miri does not represent these as `Immediate`. We
+                // also cannot use field projections since this might be a newtype around a vector.)
             }
             Abi::Aggregate { .. } => {
                 // Nothing to do.
