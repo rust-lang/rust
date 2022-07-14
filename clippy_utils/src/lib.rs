@@ -79,10 +79,10 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
-    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr, ExprKind, FnDecl,
-    HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Mutability, Node,
-    Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
-    UnOp,
+    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Constness, Destination, Expr,
+    ExprKind, FnDecl, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource,
+    Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
+    TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
@@ -1699,7 +1699,7 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
         _,
         &[
             Expr {
-                kind: ExprKind::Closure { body, .. },
+                kind: ExprKind::Closure(&Closure { body, .. }),
                 ..
             },
         ],
@@ -1786,7 +1786,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
     }
 
     match expr.kind {
-        ExprKind::Closure { body, .. } => is_body_identity_function(cx, cx.tcx.hir().body(body)),
+        ExprKind::Closure(&Closure { body, .. }) => is_body_identity_function(cx, cx.tcx.hir().body(body)),
         _ => path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
     }
 }

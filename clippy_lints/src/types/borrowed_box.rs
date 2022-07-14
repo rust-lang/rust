@@ -31,7 +31,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                         return false;
                     }
 
-                    let ltopt = if lt.is_elided() {
+                    let ltopt = if lt.name.is_anonymous() {
                         String::new()
                     } else {
                         format!("{} ", lt.name.ident().as_str())
