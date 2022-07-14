@@ -2179,6 +2179,33 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
 
+            ty::PredicateKind::ConstEvaluatable(data) => {
+                if predicate.references_error() || self.is_tainted_by_errors() {
+                    return;
+                }
+                let subst = data.substs.iter().find(|g| g.has_infer_types_or_consts());
+                if let Some(subst) = subst {
+                    let err = self.emit_inference_failure_err(
+                        body_id,
+                        span,
+                        subst,
+                        ErrorCode::E0284,
+                        true,
+                    );
+                    err
+                } else {
+                    // If we can't find a substitution, just print a generic error
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        span,
+                        E0284,
+                        "type annotations needed: cannot satisfy `{}`",
+                        predicate,
+                    );
+                    err.span_label(span, &format!("cannot satisfy `{}`", predicate));
+                    err
+                }
+            }
             _ => {
                 if self.tcx.sess.has_errors().is_some() || self.is_tainted_by_errors() {
                     return;
