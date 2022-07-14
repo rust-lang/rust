@@ -1733,13 +1733,12 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 	display: none;
 }
 
-details.undocumented[open] > summary::before,
 details.rustdoc-toggle[open] > summary::before,
 details.rustdoc-toggle[open] > summary.hideme::before {
 	background-image: /* AUTOREPLACE: */url("toggle-minus.svg");
 }
 
-details.undocumented > summary::before, details.rustdoc-toggle > summary::before {
+details.rustdoc-toggle > summary::before {
 	background-image: /* AUTOREPLACE: */url("toggle-plus.svg");
 }
 
