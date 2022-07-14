@@ -1,13 +1,17 @@
-error: expected one of `move`, `static`, `|`, or `||`, found `::`
-  --> $DIR/recover-quantified-closure.rs:9:14
+error[E0658]: `for<...>` binders for closures are experimental
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:2:5
    |
-LL |     for <Foo>::Bar in x {}
-   |              ^^ expected one of `move`, `static`, `|`, or `||`
+LL |     for<> || -> () {};
+   |     ^^^^^
+   |
+   = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
+   = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
+   = help: consider removing `for<...>`
 
 error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/recover-quantified-closure.rs:2:5
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:4:5
    |
-LL |     for<'a> |x: &'a u8| *x + 1;
+LL |     for<'a> || -> () {};
    |     ^^^^^^^
    |
    = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
@@ -15,23 +19,15 @@ LL |     for<'a> |x: &'a u8| *x + 1;
    = help: consider removing `for<...>`
 
 error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/recover-quantified-closure.rs:9:5
+  --> $DIR/feature-gate-closure_lifetime_binder.rs:6:5
    |
-LL |     for <Foo>::Bar in x {}
-   |     ^^^^^^^^^
+LL |     for<'a, 'b> |_: &'a ()| -> () {};
+   |     ^^^^^^^^^^^
    |
    = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
    = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
    = help: consider removing `for<...>`
 
-error: implicit types in closure signatures are forbidden when `for<...>` is present
-  --> $DIR/recover-quantified-closure.rs:2:25
-   |
-LL |     for<'a> |x: &'a u8| *x + 1;
-   |     -------             ^
-   |     |
-   |     `for<...>` is here
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

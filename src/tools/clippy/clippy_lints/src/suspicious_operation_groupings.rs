@@ -582,7 +582,7 @@ fn ident_difference_expr_with_base_location(
         | (Await(_), Await(_))
         | (Async(_, _, _), Async(_, _, _))
         | (Block(_, _), Block(_, _))
-        | (Closure(_, _, _, _, _, _), Closure(_, _, _, _, _, _))
+        | (Closure(_, _, _, _, _, _, _), Closure(_, _, _, _, _, _, _))
         | (Match(_, _), Match(_, _))
         | (Loop(_, _), Loop(_, _))
         | (ForLoop(_, _, _, _), ForLoop(_, _, _, _))

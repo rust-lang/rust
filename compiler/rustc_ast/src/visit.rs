@@ -56,14 +56,14 @@ pub enum FnKind<'a> {
     Fn(FnCtxt, Ident, &'a FnSig, &'a Visibility, &'a Generics, Option<&'a Block>),
 
     /// E.g., `|x, y| body`.
-    Closure(&'a FnDecl, &'a Expr),
+    Closure(&'a ClosureBinder, &'a FnDecl, &'a Expr),
 }
 
 impl<'a> FnKind<'a> {
     pub fn header(&self) -> Option<&'a FnHeader> {
         match *self {
             FnKind::Fn(_, _, sig, _, _, _) => Some(&sig.header),
-            FnKind::Closure(_, _) => None,
+            FnKind::Closure(_, _, _) => None,
         }
     }
 
@@ -77,7 +77,7 @@ impl<'a> FnKind<'a> {
     pub fn decl(&self) -> &'a FnDecl {
         match self {
             FnKind::Fn(_, _, sig, _, _, _) => &sig.decl,
-            FnKind::Closure(decl, _) => decl,
+            FnKind::Closure(_, decl, _) => decl,
         }
     }
 
@@ -154,6 +154,9 @@ pub trait Visitor<'ast>: Sized {
     }
     fn visit_generics(&mut self, g: &'ast Generics) {
         walk_generics(self, g)
+    }
+    fn visit_closure_binder(&mut self, b: &'ast ClosureBinder) {
+        walk_closure_binder(self, b)
     }
     fn visit_where_predicate(&mut self, p: &'ast WherePredicate) {
         walk_where_predicate(self, p)
@@ -636,6 +639,15 @@ pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics
     walk_list!(visitor, visit_where_predicate, &generics.where_clause.predicates);
 }
 
+pub fn walk_closure_binder<'a, V: Visitor<'a>>(visitor: &mut V, binder: &'a ClosureBinder) {
+    match binder {
+        ClosureBinder::NotPresent => {}
+        ClosureBinder::For { generic_params, span: _ } => {
+            walk_list!(visitor, visit_generic_param, generic_params)
+        }
+    }
+}
+
 pub fn walk_where_predicate<'a, V: Visitor<'a>>(visitor: &mut V, predicate: &'a WherePredicate) {
     match *predicate {
         WherePredicate::BoundPredicate(WhereBoundPredicate {
@@ -682,7 +694,8 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>, _span: Spa
             walk_fn_decl(visitor, &sig.decl);
             walk_list!(visitor, visit_block, body);
         }
-        FnKind::Closure(decl, body) => {
+        FnKind::Closure(binder, decl, body) => {
+            visitor.visit_closure_binder(binder);
             walk_fn_decl(visitor, decl);
             visitor.visit_expr(body);
         }
@@ -856,8 +869,8 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprKind::Closure(_, _, _, ref decl, ref body, _decl_span) => {
-            visitor.visit_fn(FnKind::Closure(decl, body), expression.span, expression.id)
+        ExprKind::Closure(ref binder, _, _, _, ref decl, ref body, _decl_span) => {
+            visitor.visit_fn(FnKind::Closure(binder, decl, body), expression.span, expression.id)
         }
         ExprKind::Block(ref block, ref opt_label) => {
             walk_list!(visitor, visit_label, opt_label);

@@ -8,7 +8,7 @@ use rustc_ast::{ast, token};
 use rustc_ast_pretty::pprust::token_kind_to_string;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{ExprKind, HirId, MutTy, TyKind};
+use rustc_hir::{Closure, ExprKind, HirId, MutTy, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::hir::place::ProjectionKind;
@@ -790,7 +790,7 @@ pub struct DerefClosure {
 ///
 /// note: this only works on single line immutable closures with exactly one input parameter.
 pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'_>) -> Option<DerefClosure> {
-    if let hir::ExprKind::Closure { fn_decl, body, .. } = closure.kind {
+    if let hir::ExprKind::Closure(&Closure { fn_decl, body, .. }) = closure.kind {
         let closure_body = cx.tcx.hir().body(body);
         // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
         // a type annotation is present if param `kind` is different from `TyKind::Infer`

@@ -15,7 +15,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericArg, GenericParam, LifetimeName, Node};
-use rustc_hir::{GenericParamKind, HirIdMap};
+use rustc_hir::{GenericParamKind, HirIdMap, LifetimeParamKind};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
@@ -571,7 +571,54 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure { bound_generic_params, .. } = e.kind {
+        if let hir::ExprKind::Closure(hir::Closure {
+            binder, bound_generic_params, fn_decl, ..
+        }) = e.kind
+        {
+            if let &hir::ClosureBinder::For { span: for_sp, .. } = binder {
+                fn span_of_infer(ty: &hir::Ty<'_>) -> Option<Span> {
+                    struct V(Option<Span>);
+
+                    impl<'v> Visitor<'v> for V {
+                        fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
+                            match t.kind {
+                                _ if self.0.is_some() => (),
+                                hir::TyKind::Infer => {
+                                    self.0 = Some(t.span);
+                                }
+                                _ => intravisit::walk_ty(self, t),
+                            }
+                        }
+                    }
+
+                    let mut v = V(None);
+                    v.visit_ty(ty);
+                    v.0
+                }
+
+                let infer_in_rt_sp = match fn_decl.output {
+                    hir::FnRetTy::DefaultReturn(sp) => Some(sp),
+                    hir::FnRetTy::Return(ty) => span_of_infer(ty),
+                };
+
+                let infer_spans = fn_decl
+                    .inputs
+                    .into_iter()
+                    .filter_map(span_of_infer)
+                    .chain(infer_in_rt_sp)
+                    .collect::<Vec<_>>();
+
+                if !infer_spans.is_empty() {
+                    self.tcx.sess
+                        .struct_span_err(
+                            infer_spans,
+                            "implicit types in closure signatures are forbidden when `for<...>` is present",
+                        )
+                        .span_label(for_sp, "`for<...>` is here")
+                        .emit();
+                }
+            }
+
             let next_early_index = self.next_early_index();
             let (lifetimes, binders): (FxIndexMap<LocalDefId, Region>, Vec<_>) =
                 bound_generic_params
@@ -584,6 +631,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         (pair, r)
                     })
                     .unzip();
+
             self.map.late_bound_vars.insert(e.hir_id, binders);
             let scope = Scope::Binder {
                 hir_id: e.hir_id,
@@ -595,11 +643,41 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 allow_late_bound: true,
                 where_bound_origin: None,
             };
+
+            if let &hir::ClosureBinder::For { span, .. } = binder {
+                let last_lt = bound_generic_params
+                    .iter()
+                    .filter(|p| {
+                        matches!(
+                            p,
+                            GenericParam {
+                                kind: GenericParamKind::Lifetime {
+                                    kind: LifetimeParamKind::Explicit
+                                },
+                                ..
+                            }
+                        )
+                    })
+                    .last();
+                let (span, span_type) = match last_lt {
+                    Some(GenericParam { span: last_sp, .. }) => {
+                        (last_sp.shrink_to_hi(), ForLifetimeSpanType::ClosureTail)
+                    }
+                    None => (span, ForLifetimeSpanType::ClosureEmpty),
+                };
+                self.missing_named_lifetime_spots
+                    .push(MissingLifetimeSpot::HigherRanked { span, span_type });
+            }
+
             self.with(scope, |this| {
                 // a closure has no bounds, so everything
                 // contained within is scoped within its binder.
                 intravisit::walk_expr(this, e)
             });
+
+            if let hir::ClosureBinder::For { .. } = binder {
+                self.missing_named_lifetime_spots.pop();
+            }
         } else {
             intravisit::walk_expr(self, e)
         }

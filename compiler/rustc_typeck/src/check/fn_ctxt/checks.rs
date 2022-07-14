@@ -1825,7 +1825,7 @@ fn label_fn_like<'tcx>(
     } else {
         match tcx.hir().get_if_local(def_id) {
             Some(hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { fn_decl_span, .. },
+                kind: hir::ExprKind::Closure(hir::Closure { fn_decl_span, .. }),
                 ..
             })) => {
                 let spans: MultiSpan = (*fn_decl_span).into();
