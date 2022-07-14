@@ -20,8 +20,8 @@
 // "Mathematizing C++ concurrency", ACM SIGPLAN Notices, vol. 46, no. 1, pp. 55-66, 2011.
 // Available: https://ss265.host.cs.st-andrews.ac.uk/papers/n3132.pdf.
 
-use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::*;
+use std::sync::atomic::{fence, AtomicBool, AtomicI32};
 use std::thread::spawn;
 
 #[derive(Copy, Clone)]
@@ -32,13 +32,17 @@ unsafe impl<T> Sync for EvilSend<T> {}
 
 // We can't create static items because we need to run each test
 // multiple times
-fn static_atomic(val: usize) -> &'static AtomicUsize {
-    let ret = Box::leak(Box::new(AtomicUsize::new(val)));
+fn static_atomic(val: i32) -> &'static AtomicI32 {
+    let ret = Box::leak(Box::new(AtomicI32::new(val)));
+    ret
+}
+fn static_atomic_bool(val: bool) -> &'static AtomicBool {
+    let ret = Box::leak(Box::new(AtomicBool::new(val)));
     ret
 }
 
 // Spins until it acquires a pre-determined value.
-fn acquires_value(loc: &AtomicUsize, val: usize) -> usize {
+fn acquires_value(loc: &AtomicI32, val: i32) -> i32 {
     while loc.load(Acquire) != val {
         std::hint::spin_loop();
     }
@@ -207,13 +211,49 @@ fn test_sc_store_buffering() {
 }
 
 fn test_single_thread() {
-    let x = AtomicUsize::new(42);
+    let x = AtomicI32::new(42);
 
     assert_eq!(x.load(Relaxed), 42);
 
     x.store(43, Relaxed);
 
     assert_eq!(x.load(Relaxed), 43);
+}
+
+fn test_sync_through_rmw_and_fences() {
+    // Example from https://github.com/llvm/llvm-project/issues/56450#issuecomment-1183695905
+    #[no_mangle]
+    pub fn rdmw(storing: &AtomicI32, sync: &AtomicI32, loading: &AtomicI32) -> i32 {
+        storing.store(1, Relaxed);
+        fence(Release);
+        sync.fetch_add(0, Relaxed);
+        fence(Acquire);
+        loading.load(Relaxed)
+    }
+
+    let x = static_atomic(0);
+    let y = static_atomic(0);
+    let z = static_atomic(0);
+
+    // Since each thread is so short, we need to make sure that they truely run at the same time
+    // Otherwise t1 will finish before t2 even starts
+    let go = static_atomic_bool(false);
+
+    let t1 = spawn(move || {
+        while !go.load(Relaxed) {}
+        rdmw(y, x, z)
+    });
+
+    let t2 = spawn(move || {
+        while !go.load(Relaxed) {}
+        rdmw(z, x, y)
+    });
+
+    go.store(true, Relaxed);
+
+    let a = t1.join().unwrap();
+    let b = t2.join().unwrap();
+    assert_ne!((a, b), (0, 0));
 }
 
 pub fn main() {
@@ -225,5 +265,6 @@ pub fn main() {
         test_wrc();
         test_corr();
         test_sc_store_buffering();
+        test_sync_through_rmw_and_fences();
     }
 }
