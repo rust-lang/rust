@@ -503,7 +503,7 @@ impl<T> Vec<T> {
     /// * The allocated size in bytes must be no larger than `isize::MAX`.
     ///   See the safety documentation of [`pointer::offset`].
     ///
-    /// These requirements are always uphead by any `ptr` that has been allocated
+    /// These requirements are always upheld by any `ptr` that has been allocated
     /// via `Vec<T>`. Other allocation sources are allowed if the invariants are
     /// upheld.
     ///
@@ -668,7 +668,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// * The allocated size in bytes must be no larger than `isize::MAX`.
     ///   See the safety documentation of [`pointer::offset`].
     ///
-    /// These requirements are always uphead by any `ptr` that has been allocated
+    /// These requirements are always upheld by any `ptr` that has been allocated
     /// via `Vec<T>`. Other allocation sources are allowed if the invariants are
     /// upheld.
     ///
