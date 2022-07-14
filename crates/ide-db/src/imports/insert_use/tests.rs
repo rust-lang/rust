@@ -441,6 +441,19 @@ fn inserts_after_single_line_inner_comments() {
 
 use foo::bar::Baz;"#,
     );
+    check_none(
+        "foo::bar::Baz",
+        r"mod foo {
+    //! Single line inner comments do not allow any code before them.
+$0
+}",
+        r"mod foo {
+    //! Single line inner comments do not allow any code before them.
+
+    use foo::bar::Baz;
+
+}",
+    );
 }
 
 #[test]

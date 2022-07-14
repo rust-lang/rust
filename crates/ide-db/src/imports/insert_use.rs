@@ -396,10 +396,19 @@ fn insert_use_(
         }
     }
 
+    let l_curly = match scope {
+        ImportScope::File(_) => None,
+        // don't insert the imports before the item list/block expr's opening curly brace
+        ImportScope::Module(item_list) => item_list.l_curly_token(),
+        // don't insert the imports before the item list's opening curly brace
+        ImportScope::Block(block) => block.l_curly_token(),
+    };
     // there are no imports in this file at all
     // so put the import after all inner module attributes and possible license header comments
     if let Some(last_inner_element) = scope_syntax
         .children_with_tokens()
+        // skip the curly brace
+        .skip(l_curly.is_some() as usize)
         .take_while(|child| match child {
             NodeOrToken::Node(node) => is_inner_attribute(node.clone()),
             NodeOrToken::Token(token) => {
@@ -413,30 +422,21 @@ fn insert_use_(
         cov_mark::hit!(insert_empty_inner_attr);
         ted::insert(ted::Position::after(&last_inner_element), use_item.syntax());
         ted::insert(ted::Position::after(last_inner_element), make::tokens::single_newline());
-        return;
-    }
-    let l_curly = match scope {
-        ImportScope::File(_) => {
-            cov_mark::hit!(insert_empty_file);
-            ted::insert(ted::Position::first_child_of(scope_syntax), make::tokens::blank_line());
-            ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
-            return;
-        }
-        // don't insert the imports before the item list/block expr's opening curly brace
-        ImportScope::Module(item_list) => item_list.l_curly_token(),
-        // don't insert the imports before the item list's opening curly brace
-        ImportScope::Block(block) => block.l_curly_token(),
-    };
-    match l_curly {
-        Some(b) => {
-            cov_mark::hit!(insert_empty_module);
-            ted::insert(ted::Position::after(&b), make::tokens::single_newline());
-            ted::insert(ted::Position::after(&b), use_item.syntax());
-        }
-        None => {
-            // This should never happens, broken module syntax node
-            ted::insert(ted::Position::first_child_of(scope_syntax), make::tokens::blank_line());
-            ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
+    } else {
+        match l_curly {
+            Some(b) => {
+                cov_mark::hit!(insert_empty_module);
+                ted::insert(ted::Position::after(&b), make::tokens::single_newline());
+                ted::insert(ted::Position::after(&b), use_item.syntax());
+            }
+            None => {
+                cov_mark::hit!(insert_empty_file);
+                ted::insert(
+                    ted::Position::first_child_of(scope_syntax),
+                    make::tokens::blank_line(),
+                );
+                ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
+            }
         }
     }
 }
