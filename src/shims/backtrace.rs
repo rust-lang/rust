@@ -48,7 +48,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let mut span = frame.current_span();
             // Match the behavior of runtime backtrace spans
             // by using a non-macro span in our backtrace. See `FunctionCx::debug_loc`.
-            if span.from_expansion() && !tcx.sess.opts.debugging_opts.debug_macros {
+            if span.from_expansion() && !tcx.sess.opts.unstable_opts.debug_macros {
                 span = rustc_span::hygiene::walk_chain(span, frame.body.span.ctxt())
             }
             data.push((frame.instance, span.lo()));
