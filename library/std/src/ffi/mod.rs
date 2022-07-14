@@ -168,6 +168,12 @@ pub type FromBytesWithNulError = core::ffi::FromBytesWithNulError;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::os_str::{OsStr, OsString};
 
+#[stable(feature = "core_ffi_c", since = "1.64.0")]
+pub use core::ffi::{
+    c_char, c_double, c_float, c_int, c_long, c_longlong, c_schar, c_short, c_uchar, c_uint,
+    c_ulong, c_ulonglong, c_ushort,
+};
+
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub use core::ffi::c_void;
 
