@@ -21,6 +21,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(exhaustive_items::EXHAUSTIVE_STRUCTS),
     LintId::of(exit::EXIT),
     LintId::of(float_literal::LOSSY_FLOAT_LITERAL),
+    LintId::of(format_push_string::FORMAT_PUSH_STRING),
     LintId::of(if_then_some_else_none::IF_THEN_SOME_ELSE_NONE),
     LintId::of(implicit_return::IMPLICIT_RETURN),
     LintId::of(indexing_slicing::INDEXING_SLICING),

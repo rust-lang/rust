@@ -71,7 +71,6 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(format_args::TO_STRING_IN_FORMAT_ARGS),
     LintId::of(format_impl::PRINT_IN_FORMAT_IMPL),
     LintId::of(format_impl::RECURSIVE_FORMAT_IMPL),
-    LintId::of(format_push_string::FORMAT_PUSH_STRING),
     LintId::of(formatting::POSSIBLE_MISSING_COMMA),
     LintId::of(formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING),
     LintId::of(formatting::SUSPICIOUS_ELSE_FORMATTING),
