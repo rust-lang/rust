@@ -2029,9 +2029,9 @@ impl InnerSpan {
 pub trait HashStableContext {
     fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
     fn hash_spans(&self) -> bool;
-    /// Accesses `sess.opts.debugging_opts.incremental_ignore_spans` since
+    /// Accesses `sess.opts.unstable_opts.incremental_ignore_spans` since
     /// we don't have easy access to a `Session`
-    fn debug_opts_incremental_ignore_spans(&self) -> bool;
+    fn unstable_opts_incremental_ignore_spans(&self) -> bool;
     fn def_span(&self, def_id: LocalDefId) -> Span;
     fn span_data_to_lines_and_cols(
         &mut self,

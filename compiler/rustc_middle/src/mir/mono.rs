@@ -90,7 +90,7 @@ impl<'tcx> MonoItem<'tcx> {
         let generate_cgu_internal_copies = tcx
             .sess
             .opts
-            .debugging_opts
+            .unstable_opts
             .inline_in_all_cgus
             .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
             && !tcx.sess.link_dead_code();
@@ -459,7 +459,7 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
     {
         let cgu_name = self.build_cgu_name_no_mangle(cnum, components, special_suffix);
 
-        if self.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
+        if self.tcx.sess.opts.unstable_opts.human_readable_cgu_names {
             cgu_name
         } else {
             Symbol::intern(&CodegenUnit::mangle_name(cgu_name.as_str()))

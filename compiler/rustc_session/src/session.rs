@@ -544,10 +544,10 @@ impl Session {
     /// warnings or errors are emitted. If no messages are emitted ("good path"), then
     /// it's likely a bug.
     pub fn delay_good_path_bug(&self, msg: impl Into<DiagnosticMessage>) {
-        if self.opts.debugging_opts.print_type_sizes
-            || self.opts.debugging_opts.query_dep_graph
-            || self.opts.debugging_opts.dump_mir.is_some()
-            || self.opts.debugging_opts.unpretty.is_some()
+        if self.opts.unstable_opts.print_type_sizes
+            || self.opts.unstable_opts.query_dep_graph
+            || self.opts.unstable_opts.dump_mir.is_some()
+            || self.opts.unstable_opts.unpretty.is_some()
             || self.opts.output_types.contains_key(&OutputType::Mir)
             || std::env::var_os("RUSTC_LOG").is_some()
         {
@@ -584,31 +584,31 @@ impl Session {
         self.parse_sess.source_map()
     }
     pub fn verbose(&self) -> bool {
-        self.opts.debugging_opts.verbose
+        self.opts.unstable_opts.verbose
     }
     pub fn time_passes(&self) -> bool {
-        self.opts.debugging_opts.time_passes || self.opts.debugging_opts.time
+        self.opts.unstable_opts.time_passes || self.opts.unstable_opts.time
     }
     pub fn instrument_mcount(&self) -> bool {
-        self.opts.debugging_opts.instrument_mcount
+        self.opts.unstable_opts.instrument_mcount
     }
     pub fn time_llvm_passes(&self) -> bool {
-        self.opts.debugging_opts.time_llvm_passes
+        self.opts.unstable_opts.time_llvm_passes
     }
     pub fn meta_stats(&self) -> bool {
-        self.opts.debugging_opts.meta_stats
+        self.opts.unstable_opts.meta_stats
     }
     pub fn asm_comments(&self) -> bool {
-        self.opts.debugging_opts.asm_comments
+        self.opts.unstable_opts.asm_comments
     }
     pub fn verify_llvm_ir(&self) -> bool {
-        self.opts.debugging_opts.verify_llvm_ir || option_env!("RUSTC_VERIFY_LLVM_IR").is_some()
+        self.opts.unstable_opts.verify_llvm_ir || option_env!("RUSTC_VERIFY_LLVM_IR").is_some()
     }
     pub fn print_llvm_passes(&self) -> bool {
-        self.opts.debugging_opts.print_llvm_passes
+        self.opts.unstable_opts.print_llvm_passes
     }
     pub fn binary_dep_depinfo(&self) -> bool {
-        self.opts.debugging_opts.binary_dep_depinfo
+        self.opts.unstable_opts.binary_dep_depinfo
     }
     pub fn mir_opt_level(&self) -> usize {
         self.opts.mir_opt_level()
@@ -675,7 +675,7 @@ impl Session {
 
         // If `-Z thinlto` specified process that, but note that this is mostly
         // a deprecated option now that `-C lto=thin` exists.
-        if let Some(enabled) = self.opts.debugging_opts.thinlto {
+        if let Some(enabled) = self.opts.unstable_opts.thinlto {
             if enabled {
                 return config::Lto::ThinLocal;
             } else {
@@ -703,25 +703,25 @@ impl Session {
         self.opts.cg.panic.unwrap_or(self.target.panic_strategy)
     }
     pub fn fewer_names(&self) -> bool {
-        if let Some(fewer_names) = self.opts.debugging_opts.fewer_names {
+        if let Some(fewer_names) = self.opts.unstable_opts.fewer_names {
             fewer_names
         } else {
             let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly)
                 || self.opts.output_types.contains_key(&OutputType::Bitcode)
                 // AddressSanitizer and MemorySanitizer use alloca name when reporting an issue.
-                || self.opts.debugging_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY);
+                || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY);
             !more_names
         }
     }
 
     pub fn unstable_options(&self) -> bool {
-        self.opts.debugging_opts.unstable_options
+        self.opts.unstable_opts.unstable_options
     }
     pub fn is_nightly_build(&self) -> bool {
         self.opts.unstable_features.is_nightly_build()
     }
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
-        self.opts.debugging_opts.sanitizer.contains(SanitizerSet::CFI)
+        self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
     }
     pub fn overflow_checks(&self) -> bool {
         self.opts.cg.overflow_checks.unwrap_or(self.opts.debug_assertions)
@@ -761,13 +761,13 @@ impl Session {
     }
 
     pub fn tls_model(&self) -> TlsModel {
-        self.opts.debugging_opts.tls_model.unwrap_or(self.target.tls_model)
+        self.opts.unstable_opts.tls_model.unwrap_or(self.target.tls_model)
     }
 
     pub fn is_wasi_reactor(&self) -> bool {
         self.target.options.os == "wasi"
             && matches!(
-                self.opts.debugging_opts.wasi_exec_model,
+                self.opts.unstable_opts.wasi_exec_model,
                 Some(config::WasiExecModel::Reactor)
             )
     }
@@ -778,7 +778,7 @@ impl Session {
 
     pub fn stack_protector(&self) -> StackProtector {
         if self.target.options.supports_stack_protector {
-            self.opts.debugging_opts.stack_protector
+            self.opts.unstable_opts.stack_protector
         } else {
             StackProtector::None
         }
@@ -933,7 +933,7 @@ impl Session {
     /// This expends fuel if applicable, and records fuel if applicable.
     pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
         let mut ret = true;
-        if let Some((ref c, _)) = self.opts.debugging_opts.fuel {
+        if let Some((ref c, _)) = self.opts.unstable_opts.fuel {
             if c == crate_name {
                 assert_eq!(self.threads(), 1);
                 let mut fuel = self.optimization_fuel.lock();
@@ -951,7 +951,7 @@ impl Session {
                 }
             }
         }
-        if let Some(ref c) = self.opts.debugging_opts.print_fuel {
+        if let Some(ref c) = self.opts.unstable_opts.print_fuel {
             if c == crate_name {
                 assert_eq!(self.threads(), 1);
                 self.print_fuel.fetch_add(1, SeqCst);
@@ -963,7 +963,7 @@ impl Session {
     /// Returns the number of query threads that should be used for this
     /// compilation
     pub fn threads(&self) -> usize {
-        self.opts.debugging_opts.threads
+        self.opts.unstable_opts.threads
     }
 
     /// Returns the number of codegen units that should be used for this
@@ -1037,7 +1037,7 @@ impl Session {
     }
 
     pub fn teach(&self, code: &DiagnosticId) -> bool {
-        self.opts.debugging_opts.teach && self.diagnostic().must_teach(code)
+        self.opts.unstable_opts.teach && self.diagnostic().must_teach(code)
     }
 
     pub fn rust_2015(&self) -> bool {
@@ -1069,7 +1069,7 @@ impl Session {
         // The user can use the command line flag to override it.
         let needs_plt = self.target.needs_plt;
 
-        let dbg_opts = &self.opts.debugging_opts;
+        let dbg_opts = &self.opts.unstable_opts;
 
         let relro_level = dbg_opts.relro_level.unwrap_or(self.target.relro_level);
 
@@ -1089,7 +1089,7 @@ impl Session {
         // AddressSanitizer uses lifetimes to detect use after scope bugs.
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
         // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
-        || self.opts.debugging_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
+        || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
     }
 
     pub fn link_dead_code(&self) -> bool {
@@ -1151,7 +1151,7 @@ fn default_emitter(
     fallback_bundle: LazyFallbackBundle,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
-    let macro_backtrace = sopts.debugging_opts.macro_backtrace;
+    let macro_backtrace = sopts.unstable_opts.macro_backtrace;
     match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(kind), dst) => {
             let (short, color_config) = kind.unzip();
@@ -1164,7 +1164,7 @@ fn default_emitter(
                     short,
                     macro_backtrace,
                 );
-                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+                Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
                 let emitter = match dst {
                     None => EmitterWriter::stderr(
@@ -1173,7 +1173,7 @@ fn default_emitter(
                         bundle,
                         fallback_bundle,
                         short,
-                        sopts.debugging_opts.teach,
+                        sopts.unstable_opts.teach,
                         sopts.diagnostic_width,
                         macro_backtrace,
                     ),
@@ -1189,7 +1189,7 @@ fn default_emitter(
                         macro_backtrace,
                     ),
                 };
-                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+                Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         }
         (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
@@ -1203,7 +1203,7 @@ fn default_emitter(
                 sopts.diagnostic_width,
                 macro_backtrace,
             )
-            .ui_testing(sopts.debugging_opts.ui_testing),
+            .ui_testing(sopts.unstable_opts.ui_testing),
         ),
         (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
             JsonEmitter::new(
@@ -1217,7 +1217,7 @@ fn default_emitter(
                 sopts.diagnostic_width,
                 macro_backtrace,
             )
-            .ui_testing(sopts.debugging_opts.ui_testing),
+            .ui_testing(sopts.unstable_opts.ui_testing),
         ),
     }
 }
@@ -1270,7 +1270,7 @@ pub fn build_session(
     }
 
     let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
-    let hash_kind = sopts.debugging_opts.src_hash_algorithm.unwrap_or_else(|| {
+    let hash_kind = sopts.unstable_opts.src_hash_algorithm.unwrap_or_else(|| {
         if target_cfg.is_like_msvc {
             SourceFileHashAlgorithm::Sha1
         } else {
@@ -1285,17 +1285,17 @@ pub fn build_session(
 
     let fallback_bundle = fallback_fluent_bundle(
         rustc_errors::DEFAULT_LOCALE_RESOURCES,
-        sopts.debugging_opts.translate_directionality_markers,
+        sopts.unstable_opts.translate_directionality_markers,
     );
     let emitter =
         default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle, write_dest);
 
     let span_diagnostic = rustc_errors::Handler::with_emitter_and_flags(
         emitter,
-        sopts.debugging_opts.diagnostic_handler_flags(can_emit_warnings),
+        sopts.unstable_opts.diagnostic_handler_flags(can_emit_warnings),
     );
 
-    let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.debugging_opts.self_profile
+    let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
     {
         let directory =
             if let Some(ref directory) = d { directory } else { std::path::Path::new(".") };
@@ -1303,8 +1303,8 @@ pub fn build_session(
         let profiler = SelfProfiler::new(
             directory,
             sopts.crate_name.as_deref(),
-            sopts.debugging_opts.self_profile_events.as_ref().map(|xs| &xs[..]),
-            &sopts.debugging_opts.self_profile_counter,
+            sopts.unstable_opts.self_profile_events.as_ref().map(|xs| &xs[..]),
+            &sopts.unstable_opts.self_profile_counter,
         );
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
@@ -1318,7 +1318,7 @@ pub fn build_session(
     };
 
     let mut parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
-    parse_sess.assume_incomplete_release = sopts.debugging_opts.assume_incomplete_release;
+    parse_sess.assume_incomplete_release = sopts.unstable_opts.assume_incomplete_release;
 
     let host_triple = config::host_triple();
     let target_triple = sopts.target_triple.triple();
@@ -1337,12 +1337,12 @@ pub fn build_session(
         local_crate_source_file.map(|path| file_path_mapping.map_prefix(path).0);
 
     let optimization_fuel = Lock::new(OptimizationFuel {
-        remaining: sopts.debugging_opts.fuel.as_ref().map_or(0, |i| i.1),
+        remaining: sopts.unstable_opts.fuel.as_ref().map_or(0, |i| i.1),
         out_of_fuel: false,
     });
     let print_fuel = AtomicU64::new(0);
 
-    let cgu_reuse_tracker = if sopts.debugging_opts.query_dep_graph {
+    let cgu_reuse_tracker = if sopts.unstable_opts.query_dep_graph {
         CguReuseTracker::new()
     } else {
         CguReuseTracker::new_disabled()
@@ -1350,8 +1350,8 @@ pub fn build_session(
 
     let prof = SelfProfilerRef::new(
         self_profiler,
-        sopts.debugging_opts.time_passes || sopts.debugging_opts.time,
-        sopts.debugging_opts.time_passes,
+        sopts.unstable_opts.time_passes || sopts.unstable_opts.time,
+        sopts.unstable_opts.time_passes,
     );
 
     let ctfe_backtrace = Lock::new(match env::var("RUSTC_CTFE_BACKTRACE") {
@@ -1433,7 +1433,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Do the same for sample profile data.
-    if let Some(ref path) = sess.opts.debugging_opts.profile_sample_use {
+    if let Some(ref path) = sess.opts.unstable_opts.profile_sample_use {
         if !path.exists() {
             sess.err(&format!(
                 "File `{}` passed to `-C profile-sample-use` does not exist.",
@@ -1454,7 +1454,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // Sanitizers can only be used on platforms that we know have working sanitizer codegen.
     let supported_sanitizers = sess.target.options.supported_sanitizers;
-    let unsupported_sanitizers = sess.opts.debugging_opts.sanitizer - supported_sanitizers;
+    let unsupported_sanitizers = sess.opts.unstable_opts.sanitizer - supported_sanitizers;
     match unsupported_sanitizers.into_iter().count() {
         0 => {}
         1 => {
@@ -1471,13 +1471,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
     // Cannot mix and match sanitizers.
-    let mut sanitizer_iter = sess.opts.debugging_opts.sanitizer.into_iter();
+    let mut sanitizer_iter = sess.opts.unstable_opts.sanitizer.into_iter();
     if let (Some(first), Some(second)) = (sanitizer_iter.next(), sanitizer_iter.next()) {
         sess.err(&format!("`-Zsanitizer={first}` is incompatible with `-Zsanitizer={second}`"));
     }
 
     // Cannot enable crt-static with sanitizers on Linux
-    if sess.crt_static(None) && !sess.opts.debugging_opts.sanitizer.is_empty() {
+    if sess.crt_static(None) && !sess.opts.unstable_opts.sanitizer.is_empty() {
         sess.err(
             "sanitizer is incompatible with statically linked libc, \
                                 disable it using `-C target-feature=-crt-static`",
@@ -1489,21 +1489,21 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if sess.is_sanitizer_cfi_enabled() {
             sess.err("`-Zsanitizer=cfi` requires `-Clto`");
         }
-        if sess.opts.debugging_opts.virtual_function_elimination {
+        if sess.opts.unstable_opts.virtual_function_elimination {
             sess.err("`-Zvirtual-function-elimination` requires `-Clto`");
         }
     }
 
-    if sess.opts.debugging_opts.stack_protector != StackProtector::None {
+    if sess.opts.unstable_opts.stack_protector != StackProtector::None {
         if !sess.target.options.supports_stack_protector {
             sess.warn(&format!(
                 "`-Z stack-protector={}` is not supported for target {} and will be ignored",
-                sess.opts.debugging_opts.stack_protector, sess.opts.target_triple
+                sess.opts.unstable_opts.stack_protector, sess.opts.target_triple
             ))
         }
     }
 
-    if let Some(dwarf_version) = sess.opts.debugging_opts.dwarf_version {
+    if let Some(dwarf_version) = sess.opts.unstable_opts.dwarf_version {
         if dwarf_version > 5 {
             sess.err(&format!("requested DWARF version {} is greater than 5", dwarf_version));
         }

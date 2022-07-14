@@ -884,7 +884,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
 
                     ty::PredicateKind::WellFormed(ty) => {
-                        if !self.tcx.sess.opts.debugging_opts.chalk {
+                        if !self.tcx.sess.opts.unstable_opts.chalk {
                             // WF predicates cannot themselves make
                             // errors. They can only block due to
                             // ambiguity; otherwise, they always

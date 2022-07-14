@@ -627,7 +627,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
         // compiling `librustc_*` crates themselves so we can leverage crates.io
         // while maintaining the invariant that all sysroot crates are unstable
         // by default and are unable to be used.
-        if tcx.sess.opts.debugging_opts.force_unstable_if_unmarked {
+        if tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
             let reason = "this crate is being loaded from the sysroot, an \
                           unstable location; did you mean to load this crate \
                           from crates.io via `Cargo.toml` instead?";
@@ -850,7 +850,7 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let is_staged_api =
-        tcx.sess.opts.debugging_opts.force_unstable_if_unmarked || tcx.features().staged_api;
+        tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api;
     if is_staged_api {
         let access_levels = &tcx.privacy_access_levels(());
         let mut missing = MissingStabilityAnnotations { tcx, access_levels };

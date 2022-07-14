@@ -467,7 +467,7 @@ where
 
         if let Some(result) = result {
             if std::intrinsics::unlikely(
-                tcx.dep_context().sess().opts.debugging_opts.query_dep_graph,
+                tcx.dep_context().sess().opts.unstable_opts.query_dep_graph,
             ) {
                 dep_graph.mark_debug_loaded_from_disk(*dep_node)
             }
@@ -486,7 +486,7 @@ where
             // give us some coverage of potential bugs though.
             let try_verify = prev_fingerprint.as_value().1 % 32 == 0;
             if std::intrinsics::unlikely(
-                try_verify || tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich,
+                try_verify || tcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
             ) {
                 incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
             }

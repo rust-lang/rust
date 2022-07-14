@@ -355,7 +355,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             .join(sess);
 
         sess.time("llvm_dump_timing_file", || {
-            if sess.opts.debugging_opts.llvm_time_trace {
+            if sess.opts.unstable_opts.llvm_time_trace {
                 let file_name = outputs.with_extension("llvm_timings.json");
                 llvm_util::time_trace_profiler_finish(&file_name);
             }

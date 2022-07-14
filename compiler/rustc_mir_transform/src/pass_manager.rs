@@ -76,8 +76,8 @@ pub fn run_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, passes: &[&dyn
     let start_phase = body.phase;
     let mut cnt = 0;
 
-    let validate = tcx.sess.opts.debugging_opts.validate_mir;
-    let overridden_passes = &tcx.sess.opts.debugging_opts.mir_enable_passes;
+    let validate = tcx.sess.opts.unstable_opts.validate_mir;
+    let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
 
     if validate {

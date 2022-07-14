@@ -122,7 +122,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             // `-Zunleash-the-miri-inside-of-you` only works for expressions that don't have a
             // corresponding feature gate. This encourages nightly users to use feature gates when
             // possible.
-            None if tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you => {
+            None if tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you => {
                 tcx.sess.span_warn(span, "skipping const checks");
                 return;
             }

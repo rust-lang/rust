@@ -11,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 pub fn check_crate(tcx: TyCtxt<'_>) {
     tcx.dep_graph.assert_ignored();
 
-    if tcx.sess.opts.debugging_opts.hir_stats {
+    if tcx.sess.opts.unstable_opts.hir_stats {
         crate::hir_stats::print_hir_stats(tcx);
     }
 

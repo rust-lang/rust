@@ -312,7 +312,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             Status::Forbidden => None,
         };
 
-        if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+        if self.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
             self.tcx.sess.miri_unleashed_feature(span, gate);
             return;
         }

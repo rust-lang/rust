@@ -275,7 +275,7 @@ pub unsafe fn create_module<'ll>(
         }
     }
 
-    if let Some(BranchProtection { bti, pac_ret }) = sess.opts.debugging_opts.branch_protection {
+    if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
         if sess.target.arch != "aarch64" {
             sess.err("-Zbranch-protection is only supported on aarch64");
         } else {
@@ -308,7 +308,7 @@ pub unsafe fn create_module<'ll>(
     }
 
     // Pass on the control-flow protection flags to LLVM (equivalent to `-fcf-protection` in Clang).
-    if let CFProtection::Branch | CFProtection::Full = sess.opts.debugging_opts.cf_protection {
+    if let CFProtection::Branch | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
@@ -316,7 +316,7 @@ pub unsafe fn create_module<'ll>(
             1,
         )
     }
-    if let CFProtection::Return | CFProtection::Full = sess.opts.debugging_opts.cf_protection {
+    if let CFProtection::Return | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
@@ -325,7 +325,7 @@ pub unsafe fn create_module<'ll>(
         )
     }
 
-    if sess.opts.debugging_opts.virtual_function_elimination {
+    if sess.opts.unstable_opts.virtual_function_elimination {
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Error,

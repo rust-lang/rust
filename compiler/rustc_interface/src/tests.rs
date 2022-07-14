@@ -629,14 +629,14 @@ fn test_top_level_options_tracked_no_crate() {
 }
 
 #[test]
-fn test_debugging_options_tracking_hash() {
+fn test_unstable_options_tracking_hash() {
     let reference = Options::default();
     let mut opts = Options::default();
 
     macro_rules! untracked {
         ($name: ident, $non_default_value: expr) => {
-            assert_ne!(opts.debugging_opts.$name, $non_default_value);
-            opts.debugging_opts.$name = $non_default_value;
+            assert_ne!(opts.unstable_opts.$name, $non_default_value);
+            opts.unstable_opts.$name = $non_default_value;
             assert_same_hash(&reference, &opts);
         };
     }
@@ -705,8 +705,8 @@ fn test_debugging_options_tracking_hash() {
     macro_rules! tracked {
         ($name: ident, $non_default_value: expr) => {
             opts = reference.clone();
-            assert_ne!(opts.debugging_opts.$name, $non_default_value);
-            opts.debugging_opts.$name = $non_default_value;
+            assert_ne!(opts.unstable_opts.$name, $non_default_value);
+            opts.unstable_opts.$name = $non_default_value;
             assert_different_hash(&reference, &opts);
         };
     }
@@ -804,8 +804,8 @@ fn test_debugging_options_tracking_hash() {
     macro_rules! tracked_no_crate_hash {
         ($name: ident, $non_default_value: expr) => {
             opts = reference.clone();
-            assert_ne!(opts.debugging_opts.$name, $non_default_value);
-            opts.debugging_opts.$name = $non_default_value;
+            assert_ne!(opts.unstable_opts.$name, $non_default_value);
+            opts.unstable_opts.$name = $non_default_value;
             assert_non_crate_hash_different(&reference, &opts);
         };
     }

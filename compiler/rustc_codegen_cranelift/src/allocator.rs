@@ -24,7 +24,7 @@ pub(crate) fn codegen(
             unwind_context,
             kind,
             tcx.lang_items().oom().is_some(),
-            tcx.sess.opts.debugging_opts.oom,
+            tcx.sess.opts.unstable_opts.oom,
         );
         true
     } else {

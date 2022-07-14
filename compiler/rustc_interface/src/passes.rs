@@ -58,16 +58,16 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
         }
     })?;
 
-    if sess.opts.debugging_opts.input_stats {
+    if sess.opts.unstable_opts.input_stats {
         eprintln!("Lines of code:             {}", sess.source_map().count_lines());
         eprintln!("Pre-expansion node count:  {}", count_nodes(&krate));
     }
 
-    if let Some(ref s) = sess.opts.debugging_opts.show_span {
+    if let Some(ref s) = sess.opts.unstable_opts.show_span {
         rustc_ast_passes::show_span::run(sess.diagnostic(), s, &krate);
     }
 
-    if sess.opts.debugging_opts.hir_stats {
+    if sess.opts.unstable_opts.hir_stats {
         hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS");
     }
 
@@ -181,7 +181,7 @@ pub fn register_plugins<'a>(
         rustc_builtin_macros::cmdline_attrs::inject(
             krate,
             &sess.parse_sess,
-            &sess.opts.debugging_opts.crate_attr,
+            &sess.opts.unstable_opts.crate_attr,
         )
     });
 
@@ -213,7 +213,7 @@ pub fn register_plugins<'a>(
     }
 
     let mut lint_store = rustc_lint::new_lint_store(
-        sess.opts.debugging_opts.no_interleave_lints,
+        sess.opts.unstable_opts.no_interleave_lints,
         sess.unstable_options(),
     );
     register_lints(sess, &mut lint_store);
@@ -327,10 +327,10 @@ pub fn configure_and_expand(
         let cfg = rustc_expand::expand::ExpansionConfig {
             features: Some(features),
             recursion_limit,
-            trace_mac: sess.opts.debugging_opts.trace_macros,
+            trace_mac: sess.opts.unstable_opts.trace_macros,
             should_test: sess.opts.test,
-            span_debug: sess.opts.debugging_opts.span_debug,
-            proc_macro_backtrace: sess.opts.debugging_opts.proc_macro_backtrace,
+            span_debug: sess.opts.unstable_opts.span_debug,
+            proc_macro_backtrace: sess.opts.unstable_opts.proc_macro_backtrace,
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
@@ -413,11 +413,11 @@ pub fn configure_and_expand(
 
     // Done with macro expansion!
 
-    if sess.opts.debugging_opts.input_stats {
+    if sess.opts.unstable_opts.input_stats {
         eprintln!("Post-expansion node count: {}", count_nodes(&krate));
     }
 
-    if sess.opts.debugging_opts.hir_stats {
+    if sess.opts.unstable_opts.hir_stats {
         hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS");
     }
 
@@ -500,7 +500,7 @@ fn generated_output_paths(
                     out_filenames.push(p);
                 }
             }
-            OutputType::DepInfo if sess.opts.debugging_opts.dep_info_omit_d_target => {
+            OutputType::DepInfo if sess.opts.unstable_opts.dep_info_omit_d_target => {
                 // Don't add the dep-info output when omitting it from dep-info targets
             }
             _ => {
@@ -598,7 +598,7 @@ fn write_out_deps(
         files.extend(extra_tracked_files);
 
         if sess.binary_dep_depinfo() {
-            if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {
+            if let Some(ref backend) = sess.opts.unstable_opts.codegen_backend {
                 if backend.contains('.') {
                     // If the backend name contain a `.`, it is the path to an external dynamic
                     // library. If not, it is not a path.
@@ -928,7 +928,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     sess.time("MIR_effect_checking", || {
         for def_id in tcx.hir().body_owners() {
             tcx.ensure().thir_check_unsafety(def_id);
-            if !tcx.sess.opts.debugging_opts.thir_unsafeck {
+            if !tcx.sess.opts.unstable_opts.thir_unsafeck {
                 rustc_mir_transform::check_unsafety::check_unsafety(tcx, def_id);
             }
             tcx.ensure().has_ffi_unwind_calls(def_id);

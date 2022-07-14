@@ -303,7 +303,7 @@ impl<'a> GccLinker<'a> {
             config::OptLevel::Aggressive => "O3",
         };
 
-        if let Some(path) = &self.sess.opts.debugging_opts.profile_sample_use {
+        if let Some(path) = &self.sess.opts.unstable_opts.profile_sample_use {
             self.linker_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
         };
         self.linker_args(&[
@@ -325,7 +325,7 @@ impl<'a> GccLinker<'a> {
             // purely to support rustbuild right now, we should get a more
             // principled solution at some point to force the compiler to pass
             // the right `-Wl,-install_name` with an `@rpath` in it.
-            if self.sess.opts.cg.rpath || self.sess.opts.debugging_opts.osx_rpath_install_name {
+            if self.sess.opts.cg.rpath || self.sess.opts.unstable_opts.osx_rpath_install_name {
                 let mut rpath = OsString::from("@rpath/");
                 rpath.push(out_filename.file_name().unwrap());
                 self.linker_args(&[OsString::from("-install_name"), rpath]);

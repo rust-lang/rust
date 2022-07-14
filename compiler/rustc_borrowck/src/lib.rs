@@ -231,7 +231,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let borrow_set =
         Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
-    let use_polonius = return_body_with_facts || infcx.tcx.sess.opts.debugging_opts.polonius;
+    let use_polonius = return_body_with_facts || infcx.tcx.sess.opts.unstable_opts.polonius;
 
     // Compute non-lexical lifetimes.
     let nll::NllOutput {

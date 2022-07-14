@@ -402,7 +402,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx>>(
     module_def_id: LocalDefId,
     builtin_lints: T,
 ) {
-    if tcx.sess.opts.debugging_opts.no_interleave_lints {
+    if tcx.sess.opts.unstable_opts.no_interleave_lints {
         // These passes runs in late_lint_crate with -Z no_interleave_lints
         return;
     }
@@ -448,7 +448,7 @@ fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T)
 fn late_lint_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
     let mut passes = unerased_lint_store(tcx).late_passes.iter().map(|p| (p)()).collect::<Vec<_>>();
 
-    if !tcx.sess.opts.debugging_opts.no_interleave_lints {
+    if !tcx.sess.opts.unstable_opts.no_interleave_lints {
         if !passes.is_empty() {
             late_lint_pass_crate(tcx, LateLintPassObjects { lints: &mut passes[..] });
         }

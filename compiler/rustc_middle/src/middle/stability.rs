@@ -443,7 +443,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // compiling a compiler crate), then let this missing feature
                 // annotation slide.
                 if feature == sym::rustc_private && issue == NonZeroU32::new(27812) {
-                    if self.sess.opts.debugging_opts.force_unstable_if_unmarked {
+                    if self.sess.opts.unstable_opts.force_unstable_if_unmarked {
                         return EvalResult::Allow;
                     }
                 }

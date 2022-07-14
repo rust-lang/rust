@@ -68,7 +68,8 @@ Options:
                         doc with your own theme. However, your theme might
                         break if the rustdoc's generated HTML changes, so be
                         careful!
-    -Z FLAG             internal and debugging options (only on nightly build)
+    -Z FLAG             unstable / perma-unstable options (only on nightly
+                        build)
         --sysroot PATH  Override the system root
         --playground-url URL
                         URL to send code snippets to, may be reset by

@@ -347,7 +347,7 @@ impl<K: DepKind> DepGraph<K> {
         let current_fingerprint =
             hash_result.map(|f| dcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, &result)));
 
-        let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
+        let print_status = cfg!(debug_assertions) && dcx.sess().opts.unstable_opts.dep_tasks;
 
         // Intern the new `DepNode`.
         let (dep_node_index, prev_and_color) = data.current.intern_node(

@@ -416,7 +416,7 @@ pub fn check_ast_node<'a>(
     let mut passes: Vec<_> = passes.iter().map(|p| (p)()).collect();
     let mut buffered = lint_buffer.unwrap_or_default();
 
-    if sess.opts.debugging_opts.no_interleave_lints {
+    if sess.opts.unstable_opts.no_interleave_lints {
         for (i, pass) in passes.iter_mut().enumerate() {
             buffered =
                 sess.prof.extra_verbose_generic_activity("run_lint", pass.name()).run(|| {

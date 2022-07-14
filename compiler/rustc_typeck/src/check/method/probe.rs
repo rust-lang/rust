@@ -1065,7 +1065,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let pick = self.pick_all_method(Some(&mut unstable_candidates));
 
         // In this case unstable picking is done by `pick_method`.
-        if !self.tcx.sess.opts.debugging_opts.pick_stable_methods_before_any_unstable {
+        if !self.tcx.sess.opts.unstable_opts.pick_stable_methods_before_any_unstable {
             return pick;
         }
 
@@ -1269,7 +1269,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
-        if !self.tcx.sess.opts.debugging_opts.pick_stable_methods_before_any_unstable {
+        if !self.tcx.sess.opts.unstable_opts.pick_stable_methods_before_any_unstable {
             return self.pick_method_with_unstable(self_ty);
         }
 

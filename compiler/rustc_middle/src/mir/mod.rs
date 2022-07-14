@@ -1884,7 +1884,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                 // When printing regions, add trailing space if necessary.
                 let print_region = ty::tls::with(|tcx| {
-                    tcx.sess.verbose() || tcx.sess.opts.debugging_opts.identify_regions
+                    tcx.sess.verbose() || tcx.sess.opts.unstable_opts.identify_regions
                 });
                 let region = if print_region {
                     let mut region = region.to_string();
@@ -1954,7 +1954,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                     AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
                         if let Some(def_id) = def_id.as_local() {
-                            let name = if tcx.sess.opts.debugging_opts.span_free_formats {
+                            let name = if tcx.sess.opts.unstable_opts.span_free_formats {
                                 let substs = tcx.lift(substs).unwrap();
                                 format!(
                                     "[closure@{}]",

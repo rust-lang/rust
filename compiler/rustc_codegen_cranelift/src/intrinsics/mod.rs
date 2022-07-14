@@ -676,7 +676,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 && !layout.might_permit_raw_init(
                     fx,
                     InitKind::Zero,
-                    fx.tcx.sess.opts.debugging_opts.strict_init_checks) {
+                    fx.tcx.sess.opts.unstable_opts.strict_init_checks) {
 
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic(
@@ -692,7 +692,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 && !layout.might_permit_raw_init(
                     fx,
                     InitKind::Uninit,
-                    fx.tcx.sess.opts.debugging_opts.strict_init_checks) {
+                    fx.tcx.sess.opts.unstable_opts.strict_init_checks) {
 
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic(

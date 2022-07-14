@@ -278,9 +278,9 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     // Dump facts if requested.
     let polonius_output = all_facts.as_ref().and_then(|all_facts| {
-        if infcx.tcx.sess.opts.debugging_opts.nll_facts {
+        if infcx.tcx.sess.opts.unstable_opts.nll_facts {
             let def_path = infcx.tcx.def_path(def_id);
-            let dir_path = PathBuf::from(&infcx.tcx.sess.opts.debugging_opts.nll_facts_dir)
+            let dir_path = PathBuf::from(&infcx.tcx.sess.opts.unstable_opts.nll_facts_dir)
                 .join(def_path.to_filename_friendly_no_crate());
             all_facts.write_to_dir(dir_path, location_table).unwrap();
         }

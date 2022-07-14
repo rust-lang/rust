@@ -145,7 +145,7 @@ pub(crate) unsafe fn codegen(
     if tcx.sess.target.default_hidden_visibility {
         llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
     }
-    let val = tcx.sess.opts.debugging_opts.oom.should_panic();
+    let val = tcx.sess.opts.unstable_opts.oom.should_panic();
     let llval = llvm::LLVMConstInt(i8, val as u64, False);
     llvm::LLVMSetInitializer(ll_g, llval);
 

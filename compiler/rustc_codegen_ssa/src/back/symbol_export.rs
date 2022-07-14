@@ -232,15 +232,15 @@ fn exported_symbols_provider_local<'tcx>(
         }));
     }
 
-    if tcx.sess.opts.debugging_opts.sanitizer.contains(SanitizerSet::MEMORY) {
+    if tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {
         let mut msan_weak_symbols = Vec::new();
 
         // Similar to profiling, preserve weak msan symbol during LTO.
-        if tcx.sess.opts.debugging_opts.sanitizer_recover.contains(SanitizerSet::MEMORY) {
+        if tcx.sess.opts.unstable_opts.sanitizer_recover.contains(SanitizerSet::MEMORY) {
             msan_weak_symbols.push("__msan_keep_going");
         }
 
-        if tcx.sess.opts.debugging_opts.sanitizer_memory_track_origins != 0 {
+        if tcx.sess.opts.unstable_opts.sanitizer_memory_track_origins != 0 {
             msan_weak_symbols.push("__msan_track_origins");
         }
 

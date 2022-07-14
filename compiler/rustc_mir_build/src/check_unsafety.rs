@@ -618,7 +618,7 @@ impl UnsafeOpKind {
 
 pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) {
     // THIR unsafeck is gated under `-Z thir-unsafeck`
-    if !tcx.sess.opts.debugging_opts.thir_unsafeck {
+    if !tcx.sess.opts.unstable_opts.thir_unsafeck {
         return;
     }
 

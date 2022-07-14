@@ -67,7 +67,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     for &crate_type in sess.crate_types().iter() {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
-        if (sess.opts.debugging_opts.no_codegen || !sess.opts.output_types.should_codegen())
+        if (sess.opts.unstable_opts.no_codegen || !sess.opts.output_types.should_codegen())
             && !output_metadata
             && crate_type == CrateType::Executable
         {
@@ -595,7 +595,7 @@ fn link_dwarf_object<'a>(
         let mut package = thorin::DwarfPackage::new(&thorin_sess);
 
         // Input objs contain .o/.dwo files from the current crate.
-        match sess.opts.debugging_opts.split_dwarf_kind {
+        match sess.opts.unstable_opts.split_dwarf_kind {
             SplitDwarfKind::Single => {
                 for input_obj in cg_results.modules.iter().filter_map(|m| m.object.as_ref()) {
                     package.add_input_object(input_obj)?;
@@ -1022,7 +1022,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 
 // Temporarily support both -Z strip and -C strip
 fn strip_value(sess: &Session) -> Strip {
-    match (sess.opts.debugging_opts.strip, sess.opts.cg.strip) {
+    match (sess.opts.unstable_opts.strip, sess.opts.cg.strip) {
         (s, Strip::None) => s,
         (_, s) => s,
     }
@@ -1074,7 +1074,7 @@ fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut d
         return;
     }
 
-    let sanitizer = sess.opts.debugging_opts.sanitizer;
+    let sanitizer = sess.opts.unstable_opts.sanitizer;
     if sanitizer.contains(SanitizerSet::ADDRESS) {
         link_sanitizer_runtime(sess, linker, "asan");
     }
@@ -1253,7 +1253,7 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> (bool, bool) {
         return (false, false);
     }
 
-    match (sess.split_debuginfo(), sess.opts.debugging_opts.split_dwarf_kind) {
+    match (sess.split_debuginfo(), sess.opts.unstable_opts.split_dwarf_kind) {
         // If there is no split debuginfo then do not preserve objects.
         (SplitDebuginfo::Off, _) => (false, false),
         // If there is packed split debuginfo, then the debuginfo in the objects
@@ -1601,7 +1601,7 @@ fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor)
     if let Some(args) = sess.target.pre_link_args.get(&flavor) {
         cmd.args(args.iter().map(Deref::deref));
     }
-    cmd.args(&sess.opts.debugging_opts.pre_link_args);
+    cmd.args(&sess.opts.unstable_opts.pre_link_args);
 }
 
 /// Add a link script embedded in the target, if applicable.
@@ -1809,7 +1809,7 @@ fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session, self_contained:
 /// Add options making relocation sections in the produced ELF files read-only
 /// and suppressing lazy binding.
 fn add_relro_args(cmd: &mut dyn Linker, sess: &Session) {
-    match sess.opts.debugging_opts.relro_level.unwrap_or(sess.target.relro_level) {
+    match sess.opts.unstable_opts.relro_level.unwrap_or(sess.target.relro_level) {
         RelroLevel::Full => cmd.full_relro(),
         RelroLevel::Partial => cmd.partial_relro(),
         RelroLevel::Off => cmd.no_relro(),
@@ -1957,7 +1957,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // (or alternatively link all native libraries after their respective crates).
     // This change is somewhat breaking in practice due to local static libraries being linked
     // as whole-archive (#85144), so removing whole-archive may be a pre-requisite.
-    if sess.opts.debugging_opts.link_native_libraries {
+    if sess.opts.unstable_opts.link_native_libraries {
         add_local_native_libraries(cmd, sess, codegen_results);
     }
 
@@ -1969,7 +1969,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // If -Zlink-native-libraries=false is set, then the assumption is that an
     // external build system already has the native dependencies defined, and it
     // will provide them to the linker itself.
-    if sess.opts.debugging_opts.link_native_libraries {
+    if sess.opts.unstable_opts.link_native_libraries {
         add_upstream_native_libraries(cmd, sess, codegen_results);
     }
 
@@ -2037,7 +2037,7 @@ fn add_order_independent_options(
     add_link_script(cmd, sess, tmpdir, crate_type);
 
     if sess.target.os == "fuchsia" && crate_type == CrateType::Executable {
-        let prefix = if sess.opts.debugging_opts.sanitizer.contains(SanitizerSet::ADDRESS) {
+        let prefix = if sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::ADDRESS) {
             "asan/"
         } else {
             ""
@@ -2362,7 +2362,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                 // If -Zlink-native-libraries=false is set, then the assumption is that an
                 // external build system already has the native dependencies defined, and it
                 // will provide them to the linker itself.
-                if sess.opts.debugging_opts.link_native_libraries {
+                if sess.opts.unstable_opts.link_native_libraries {
                     let mut last = (None, NativeLibKind::Unspecified, None);
                     for lib in &codegen_results.crate_info.native_libraries[&cnum] {
                         let Some(name) = lib.name else {
@@ -2709,7 +2709,7 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
 }
 
 fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
-    if let Some(ld_impl) = sess.opts.debugging_opts.gcc_ld {
+    if let Some(ld_impl) = sess.opts.unstable_opts.gcc_ld {
         if let LinkerFlavor::Gcc = flavor {
             match ld_impl {
                 LdImpl::Lld => {
