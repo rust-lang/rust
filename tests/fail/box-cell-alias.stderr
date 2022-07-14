@@ -1,10 +1,10 @@
-error: Undefined Behavior: trying to reborrow <TAG> for SharedReadWrite permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+error: Undefined Behavior: trying to reborrow from <TAG> for SharedReadWrite permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
   --> $DIR/box-cell-alias.rs:LL:CC
    |
 LL |     unsafe { (*ptr).set(20) };
    |              ^^^^^^^^^^^^^^
    |              |
-   |              trying to reborrow <TAG> for SharedReadWrite permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+   |              trying to reborrow from <TAG> for SharedReadWrite permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
    |              this error occurs as part of a reborrow at ALLOC[0x0..0x1]
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental

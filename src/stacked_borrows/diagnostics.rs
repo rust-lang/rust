@@ -140,7 +140,7 @@ impl AllocHistory {
         stack: &Stack,
     ) -> InterpError<'tcx> {
         let action = format!(
-            "trying to reborrow {derived_from:?} for {new_perm:?} permission at {alloc_id:?}[{offset:#x}]",
+            "trying to reborrow from {derived_from:?} for {new_perm:?} permission at {alloc_id:?}[{offset:#x}]",
             new_perm = new.perm(),
             offset = error_offset.bytes(),
         );
