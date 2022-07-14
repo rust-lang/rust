@@ -209,7 +209,8 @@ details.rustdoc-toggle > summary::before {
 .stab.unstable,
 .stab.deprecated,
 .stab.portability,
-.stab.empty-impl {
+.stab.empty-impl,
+.stab.must_implement {
 	color: #c5c5c5;
 	background: #314559 !important;
 	border-style: none !important;
