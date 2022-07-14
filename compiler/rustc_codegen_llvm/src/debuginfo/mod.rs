@@ -97,23 +97,26 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
         unsafe {
             llvm::LLVMRustDIBuilderFinalize(self.builder);
 
-            // Debuginfo generation in LLVM by default uses a higher
-            // version of dwarf than macOS currently understands. We can
-            // instruct LLVM to emit an older version of dwarf, however,
-            // for macOS to understand. For more info see #11352
-            // This can be overridden using --llvm-opts -dwarf-version,N.
-            // Android has the same issue (#22398)
-            let dwarf_version =
-                sess.opts.unstable_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
-            llvm::LLVMRustAddModuleFlag(
-                self.llmod,
-                llvm::LLVMModFlagBehavior::Warning,
-                "Dwarf Version\0".as_ptr().cast(),
-                dwarf_version,
-            );
-
-            // Indicate that we want CodeView debug information on MSVC
-            if sess.target.is_like_msvc {
+            if !sess.target.is_like_msvc {
+                // Debuginfo generation in LLVM by default uses a higher
+                // version of dwarf than macOS currently understands. We can
+                // instruct LLVM to emit an older version of dwarf, however,
+                // for macOS to understand. For more info see #11352
+                // This can be overridden using --llvm-opts -dwarf-version,N.
+                // Android has the same issue (#22398)
+                let dwarf_version = sess
+                    .opts
+                    .unstable_opts
+                    .dwarf_version
+                    .unwrap_or(sess.target.default_dwarf_version);
+                llvm::LLVMRustAddModuleFlag(
+                    self.llmod,
+                    llvm::LLVMModFlagBehavior::Warning,
+                    "Dwarf Version\0".as_ptr().cast(),
+                    dwarf_version,
+                );
+            } else {
+                // Indicate that we want CodeView debug information on MSVC
                 llvm::LLVMRustAddModuleFlag(
                     self.llmod,
                     llvm::LLVMModFlagBehavior::Warning,
