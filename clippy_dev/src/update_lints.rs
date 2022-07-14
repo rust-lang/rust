@@ -824,10 +824,12 @@ macro_rules! match_tokens {
     }
 }
 
-struct LintDeclSearchResult<'a> {
-    token_kind: TokenKind,
-    content: &'a str,
-    range: Range<usize>,
+pub(crate) use match_tokens;
+
+pub(crate) struct LintDeclSearchResult<'a> {
+    pub token_kind: TokenKind,
+    pub content: &'a str,
+    pub range: Range<usize>,
 }
 
 /// Parse a source file looking for `declare_clippy_lint` macro invocations.
