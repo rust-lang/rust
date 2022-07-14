@@ -445,8 +445,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
                 let ct = (self.fld_c)(bound_const, ct.ty());
                 ty::fold::shift_vars(self.tcx, ct, self.current_index.as_u32())
             }
-            _ if ct.has_vars_bound_at_or_above(self.current_index) => ct.super_fold_with(self),
-            _ => ct,
+            _ => ct.super_fold_with(self),
         }
     }
 }

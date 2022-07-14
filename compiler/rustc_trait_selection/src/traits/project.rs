@@ -753,8 +753,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
                     .tcx
                     .mk_const(ty::ConstS { kind: ty::ConstKind::Placeholder(p), ty: ct.ty() })
             }
-            _ if ct.has_vars_bound_at_or_above(self.current_index) => ct.super_fold_with(self),
-            _ => ct,
+            _ => ct.super_fold_with(self),
         }
     }
 }
