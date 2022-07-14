@@ -2,7 +2,6 @@
 #![feature(rustc_private)]
 
 /// Test that destroying a pthread_mutex twice fails, even without a check for number validity
-extern crate libc;
 
 fn main() {
     unsafe {

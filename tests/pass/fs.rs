@@ -4,8 +4,6 @@
 #![feature(rustc_private)]
 #![feature(io_error_more)]
 
-extern crate libc;
-
 use std::ffi::CString;
 use std::fs::{
     create_dir, read_dir, read_link, remove_dir, remove_dir_all, remove_file, rename, File,

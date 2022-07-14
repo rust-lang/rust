@@ -3,6 +3,7 @@
 
 mod version;
 
+use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fmt::Write as _;
@@ -114,10 +115,14 @@ fn show_error(msg: String) -> ! {
     std::process::exit(1)
 }
 
-// Determines whether a `--flag` is present.
+/// Determines whether a `--flag` is present.
 fn has_arg_flag(name: &str) -> bool {
-    let mut args = std::env::args().take_while(|val| val != "--");
-    args.any(|val| val == name)
+    num_arg_flag(name) > 0
+}
+
+/// Determines how many times a `--flag` is present.
+fn num_arg_flag(name: &str) -> usize {
+    std::env::args().take_while(|val| val != "--").filter(|val| val == name).count()
 }
 
 /// Yields all values of command line flag `name` as `Ok(arg)`, and all other arguments except
@@ -588,7 +593,7 @@ fn phase_cargo_miri(mut args: env::Args) {
                 "`cargo miri` supports the following subcommands: `run`, `test`, and `setup`."
             )),
     };
-    let verbose = has_arg_flag("-v");
+    let verbose = num_arg_flag("-v");
 
     // We always setup.
     setup(&subcommand);
@@ -685,7 +690,7 @@ fn phase_cargo_miri(mut args: env::Args) {
     cmd.env("MIRI_LOCAL_CRATES", local_crates(&metadata));
 
     // Run cargo.
-    if verbose {
+    if verbose > 0 {
         eprintln!("[cargo-miri miri] RUSTC_WRAPPER={:?}", cargo_miri_path);
         eprintln!("[cargo-miri miri] {}={:?}", target_runner_env_name, cargo_miri_path);
         if *target != host {
@@ -693,7 +698,7 @@ fn phase_cargo_miri(mut args: env::Args) {
         }
         eprintln!("[cargo-miri miri] RUSTDOC={:?}", cargo_miri_path);
         eprintln!("[cargo-miri miri] {:?}", cmd);
-        cmd.env("MIRI_VERBOSE", ""); // This makes the other phases verbose.
+        cmd.env("MIRI_VERBOSE", verbose.to_string()); // This makes the other phases verbose.
     }
     exec(cmd)
 }
@@ -752,7 +757,8 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
         }
     }
 
-    let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
+    let verbose = std::env::var("MIRI_VERBOSE")
+        .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
     let target_crate = is_target_crate();
     let print = get_arg_flag_value("--print").is_some() || has_arg_flag("-vV"); // whether this is cargo/xargo invoking rustc to get some infos
 
@@ -761,13 +767,13 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
         // https://github.com/rust-lang/miri/issues/1724#issuecomment-787115693
         // As we store a JSON file instead of building the crate here, an empty file is fine.
         let dep_info_name = out_filename("", ".d");
-        if verbose {
+        if verbose > 0 {
             eprintln!("[cargo-miri rustc] writing stub dep-info to `{}`", dep_info_name.display());
         }
         File::create(dep_info_name).expect("failed to create fake .d file");
 
         let filename = out_filename("", "");
-        if verbose {
+        if verbose > 0 {
             eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
         }
         info.store(&filename);
@@ -810,7 +816,7 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
             cmd.args(&env.args);
             cmd.env("MIRI_BE_RUSTC", "target");
 
-            if verbose {
+            if verbose > 0 {
                 eprintln!(
                     "[cargo-miri rustc] captured input:\n{}",
                     std::str::from_utf8(&env.stdin).unwrap()
@@ -877,6 +883,15 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
             cmd.arg("-C").arg("panic=abort");
         }
     } else {
+        // For host crates (but not when we are printing), we might still have to set the sysroot.
+        if !print {
+            // When we're running `cargo-miri` from `x.py` we need to pass the sysroot explicitly as rustc
+            // can't figure out the sysroot on its own unless it's from rustup.
+            if let Some(sysroot) = std::env::var_os("SYSROOT") {
+                cmd.arg("--sysroot").arg(sysroot);
+            }
+        }
+
         // For host crates or when we are printing, just forward everything.
         cmd.args(args);
     }
@@ -888,8 +903,14 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
     cmd.env("MIRI_BE_RUSTC", if target_crate { "target" } else { "host" });
 
     // Run it.
-    if verbose {
-        eprintln!("[cargo-miri rustc] {:?}", cmd);
+    if verbose > 0 {
+        eprint!("[cargo-miri rustc] ");
+        if verbose > 1 {
+            for (key, value) in env_vars_from_cmd(&cmd) {
+                eprintln!("{key}={value:?} \\");
+            }
+        }
+        eprintln!("{:?}", cmd);
     }
     exec(cmd);
 
@@ -906,6 +927,23 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
         File::create(out_filename("", ".dll")).expect("failed to create fake .dll file");
         File::create(out_filename("", ".lib")).expect("failed to create fake .lib file");
     }
+}
+
+fn env_vars_from_cmd(cmd: &Command) -> Vec<(String, String)> {
+    let mut envs = HashMap::new();
+    for (key, value) in std::env::vars() {
+        envs.insert(key, value);
+    }
+    for (key, value) in cmd.get_envs() {
+        if let Some(value) = value {
+            envs.insert(key.to_str().unwrap().into(), value.to_str().unwrap().to_owned());
+        } else {
+            envs.remove(key.to_str().unwrap());
+        }
+    }
+    let mut envs: Vec<_> = envs.into_iter().collect();
+    envs.sort();
+    envs
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]

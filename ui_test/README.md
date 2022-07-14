@@ -47,3 +47,5 @@ their command specifies, or the test will fail without even being run.
 
 * `ignore-target-*` and `only-target-*` opereate solely on the triple, instead of supporting things like `macos`
 * only `//~` comments can be individualized per revision
+* only supports `ui` tests
+* tests are run in named order, so you can prefix slow tests with `0` in order to make them get run first

@@ -6,8 +6,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 use std::{ptr, thread};
 
 fn main() {

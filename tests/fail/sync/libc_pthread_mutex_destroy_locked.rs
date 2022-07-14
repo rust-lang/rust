@@ -2,8 +2,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 fn main() {
     unsafe {
         let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();

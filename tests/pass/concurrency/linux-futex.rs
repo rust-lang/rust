@@ -2,7 +2,6 @@
 //@compile-flags: -Zmiri-disable-isolation
 
 #![feature(rustc_private)]
-extern crate libc;
 
 use std::mem::MaybeUninit;
 use std::ptr;

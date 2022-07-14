@@ -4,8 +4,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 use std::thread;
 use std::{mem, ptr};
 

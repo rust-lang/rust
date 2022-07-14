@@ -1,8 +1,6 @@
 //ignore-windows: Uses POSIX APIs
 #![feature(rustc_private)]
 
-extern crate libc;
-
 use std::ffi::CString;
 
 mod mlibc {

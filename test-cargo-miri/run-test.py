@@ -5,7 +5,7 @@ Assumes the `MIRI_SYSROOT` env var to be set appropriately,
 and the working directory to contain the cargo-miri-test project.
 '''
 
-import sys, subprocess, os, re
+import sys, subprocess, os, re, difflib
 
 CGREEN  = '\33[32m'
 CBOLD   = '\33[1m'
@@ -27,6 +27,17 @@ def normalize_stdout(str):
     str = str.replace("src\\", "src/") # normalize paths across platforms
     return re.sub("finished in \d+\.\d\ds", "finished in $TIME", str)
 
+def check_output(actual, path, name):
+    expected = open(path).read()
+    if expected == actual:
+        return True
+    print(f"{path} did not match reference!")
+    print(f"--- BEGIN diff {name} ---")
+    for text in difflib.unified_diff(expected.split("\n"), actual.split("\n")):
+        print(text)
+    print(f"--- END diff {name} ---")
+    return False
+
 def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
     print("Testing {}...".format(name))
     ## Call `cargo miri`, capture all output
@@ -42,17 +53,14 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
     (stdout, stderr) = p.communicate(input=stdin)
     stdout = stdout.decode("UTF-8")
     stderr = stderr.decode("UTF-8")
-    if p.returncode == 0 and normalize_stdout(stdout) == open(stdout_ref).read() and stderr == open(stderr_ref).read():
+    stdout = normalize_stdout(stdout)
+
+    stdout_matches = check_output(stdout, stdout_ref, "stdout")
+    stderr_matches = check_output(stderr, stderr_ref, "stderr")
+    
+    if p.returncode == 0 and stdout_matches and stderr_matches:
         # All good!
         return
-    # Show output
-    print("Test stdout or stderr did not match reference!")
-    print("--- BEGIN test stdout ---")
-    print(stdout, end="")
-    print("--- END test stdout ---")
-    print("--- BEGIN test stderr ---")
-    print(stderr, end="")
-    print("--- END test stderr ---")
     fail("exit code was {}".format(p.returncode))
 
 def test_no_rebuild(name, cmd, env={}):

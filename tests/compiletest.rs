@@ -1,8 +1,8 @@
 use colored::*;
 use regex::Regex;
-use std::env;
-use std::path::PathBuf;
-use ui_test::{color_eyre::Result, Config, Mode, OutputConflictHandling};
+use std::path::{Path, PathBuf};
+use std::{env, ffi::OsString};
+use ui_test::{color_eyre::Result, Config, DependencyBuilder, Mode, OutputConflictHandling};
 
 fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
@@ -12,31 +12,31 @@ fn run_tests(mode: Mode, path: &str, target: Option<String>) -> Result<()> {
     let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
 
     // Add some flags we always want.
-    let mut flags = Vec::new();
-    flags.push("--edition".to_owned());
-    flags.push("2018".to_owned());
+    let mut flags: Vec<OsString> = Vec::new();
+    flags.push("--edition".into());
+    flags.push("2018".into());
     if in_rustc_test_suite {
         // Less aggressive warnings to make the rustc toolstate management less painful.
         // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
-        flags.push("-Astable-features".to_owned());
-        flags.push("-Aunused".to_owned());
+        flags.push("-Astable-features".into());
+        flags.push("-Aunused".into());
     } else {
-        flags.push("-Dwarnings".to_owned());
-        flags.push("-Dunused".to_owned());
+        flags.push("-Dwarnings".into());
+        flags.push("-Dunused".into());
     }
-    if let Ok(sysroot) = env::var("MIRI_SYSROOT") {
-        flags.push("--sysroot".to_string());
+    if let Some(sysroot) = env::var_os("MIRI_SYSROOT") {
+        flags.push("--sysroot".into());
         flags.push(sysroot);
     }
     if let Ok(extra_flags) = env::var("MIRIFLAGS") {
         for flag in extra_flags.split_whitespace() {
-            flags.push(flag.to_string());
+            flags.push(flag.into());
         }
     }
-    flags.push("-Zui-testing".to_string());
+    flags.push("-Zui-testing".into());
     if let Some(target) = &target {
-        flags.push("--target".to_string());
-        flags.push(target.clone());
+        flags.push("--target".into());
+        flags.push(target.into());
     }
 
     let skip_ui_checks = env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
@@ -51,6 +51,8 @@ fn run_tests(mode: Mode, path: &str, target: Option<String>) -> Result<()> {
     // Pass on all arguments as filters.
     let path_filter = std::env::args().skip(1);
 
+    let use_std = env::var_os("MIRI_NO_STD").is_none();
+
     let config = Config {
         args: flags,
         target,
@@ -61,6 +63,19 @@ fn run_tests(mode: Mode, path: &str, target: Option<String>) -> Result<()> {
         path_filter: path_filter.collect(),
         program: miri_path(),
         output_conflict_handling,
+        dependencies_crate_manifest_path: use_std
+            .then(|| Path::new("test_dependencies").join("Cargo.toml")),
+        dependency_builder: Some(DependencyBuilder {
+            program: std::env::var_os("CARGO").unwrap().into(),
+            args: vec![
+                "run".into(),
+                "--manifest-path".into(),
+                "cargo-miri/Cargo.toml".into(),
+                "--".into(),
+                "miri".into(),
+            ],
+            envs: vec![],
+        }),
     };
     ui_test::run_tests(config)
 }
@@ -107,6 +122,8 @@ regexes! {
     "[^ `]*/(rust[^/]*|checkout)/library/" => "RUSTLIB/",
     // erase platform file paths
     "sys/[a-z]+/"                    => "sys/PLATFORM/",
+    // erase paths into the crate registry
+    r"[^ ]*/\.cargo/registry/.*/(.*\.rs)"  => "CARGO_REGISTRY/$1",
 }
 
 fn ui(mode: Mode, path: &str) -> Result<()> {

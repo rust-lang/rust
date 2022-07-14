@@ -1,7 +1,6 @@
 //@only-target-linux
 //@compile-flags: -Zmiri-disable-isolation
 #![feature(rustc_private)]
-extern crate libc;
 
 use std::ptr;
 

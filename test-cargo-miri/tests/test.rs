@@ -20,15 +20,9 @@ fn does_not_work_on_miri() {
     assert!(&x as *const _ as usize % 4 < 4);
 }
 
-// We also use this to test some external crates, that we cannot depend on in the compiletest suite.
-
+// Make sure integration tests can access dev-dependencies
 #[test]
 fn entropy_rng() {
-    // Test `getrandom` directly (in multiple different versions).
-    let mut data = vec![0; 16];
-    getrandom_1::getrandom(&mut data).unwrap();
-    getrandom_2::getrandom(&mut data).unwrap();
-
     // Try seeding with "real" entropy.
     let mut rng = SmallRng::from_entropy();
     let _val = rng.gen::<i32>();
