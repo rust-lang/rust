@@ -72,7 +72,7 @@ fn seq_cst() -> bool {
 
 fn initialization_write() -> bool {
     let x = static_atomic(11);
-    assert_eq!(x.load(Relaxed), 11);
+    assert_eq!(x.load(Relaxed), 11); // work around https://github.com/rust-lang/miri/issues/2164
 
     let wait = static_atomic(0);
 
@@ -94,15 +94,13 @@ fn initialization_write() -> bool {
     r2 == 11
 }
 
-// Asserts that the function returns true at least once in 100 runs
-macro_rules! assert_once {
-    ($f:ident) => {
-        assert!(std::iter::repeat_with(|| $f()).take(100).any(|x| x));
-    };
+/// Asserts that the function returns true at least once in 100 runs
+fn assert_once(f: fn() -> bool) {
+    assert!(std::iter::repeat_with(|| f()).take(100).any(|x| x));
 }
 
 pub fn main() {
-    assert_once!(relaxed);
-    assert_once!(seq_cst);
-    assert_once!(initialization_write);
+    assert_once(relaxed);
+    assert_once(seq_cst);
+    assert_once(initialization_write);
 }
