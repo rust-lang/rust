@@ -132,10 +132,6 @@ pub(crate) enum RibKind<'a> {
     /// We passed through a closure. Disallow labels.
     ClosureOrAsyncRibKind,
 
-    /// We passed through a function definition. Disallow upvars.
-    /// Permit only those const parameters that are specified in the function's generics.
-    FnItemRibKind,
-
     /// We passed through an item scope. Disallow upvars.
     ItemRibKind(HasGenericParams),
 
@@ -172,7 +168,6 @@ impl RibKind<'_> {
         match self {
             NormalRibKind
             | ClosureOrAsyncRibKind
-            | FnItemRibKind
             | ConstantItemRibKind(..)
             | ModuleRibKind(_)
             | MacroDefinition(_)
@@ -189,7 +184,6 @@ impl RibKind<'_> {
 
             AssocItemRibKind
             | ClosureOrAsyncRibKind
-            | FnItemRibKind
             | ItemRibKind(..)
             | ConstantItemRibKind(..)
             | ModuleRibKind(..)
@@ -793,7 +787,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
     fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, fn_id: NodeId) {
-        let rib_kind = match fn_kind {
+        let previous_value = self.diagnostic_metadata.current_function;
+        match fn_kind {
             // Bail if the function is foreign, and thus cannot validly have
             // a body, or if there's no body for some other reason.
             FnKind::Fn(FnCtxt::Foreign, _, sig, _, generics, _)
@@ -816,20 +811,18 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 );
                 return;
             }
-            FnKind::Fn(FnCtxt::Free, ..) => FnItemRibKind,
-            FnKind::Fn(FnCtxt::Assoc(_), ..) => NormalRibKind,
-            FnKind::Closure(..) => ClosureOrAsyncRibKind,
+            FnKind::Fn(..) => {
+                self.diagnostic_metadata.current_function = Some((fn_kind, sp));
+            }
+            // Do not update `current_function` for closures: it suggests `self` parameters.
+            FnKind::Closure(..) => {}
         };
-        let previous_value = self.diagnostic_metadata.current_function;
-        if matches!(fn_kind, FnKind::Fn(..)) {
-            self.diagnostic_metadata.current_function = Some((fn_kind, sp));
-        }
         debug!("(resolving function) entering function");
 
         // Create a value rib for the function.
-        self.with_rib(ValueNS, rib_kind, |this| {
+        self.with_rib(ValueNS, ClosureOrAsyncRibKind, |this| {
             // Create a label rib for the function.
-            this.with_label_rib(FnItemRibKind, |this| {
+            this.with_label_rib(ClosureOrAsyncRibKind, |this| {
                 match fn_kind {
                     FnKind::Fn(_, _, sig, _, generics, body) => {
                         this.visit_generics(generics);

@@ -1105,7 +1105,7 @@ impl<'a> Resolver<'a> {
                         | ForwardGenericParamBanRibKind => {
                             // Nothing to do. Continue.
                         }
-                        ItemRibKind(_) | FnItemRibKind | AssocItemRibKind => {
+                        ItemRibKind(_) | AssocItemRibKind => {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
@@ -1173,7 +1173,6 @@ impl<'a> Resolver<'a> {
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
                         | InlineAsmSymRibKind
-                        | FnItemRibKind
                         | AssocItemRibKind
                         | ForwardGenericParamBanRibKind => {
                             // Nothing to do. Continue.
@@ -1236,14 +1235,6 @@ impl<'a> Resolver<'a> {
                 }
             }
             Res::Def(DefKind::ConstParam, _) => {
-                let mut ribs = ribs.iter().peekable();
-                if let Some(Rib { kind: FnItemRibKind, .. }) = ribs.peek() {
-                    // When declaring const parameters inside function signatures, the first rib
-                    // is always a `FnItemRibKind`. In this case, we can skip it, to avoid it
-                    // (spuriously) conflicting with the const param.
-                    ribs.next();
-                }
-
                 for rib in ribs {
                     let has_generic_params = match rib.kind {
                         NormalRibKind
@@ -1251,7 +1242,6 @@ impl<'a> Resolver<'a> {
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
                         | InlineAsmSymRibKind
-                        | FnItemRibKind
                         | AssocItemRibKind
                         | ForwardGenericParamBanRibKind => continue,
 
