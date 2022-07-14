@@ -467,6 +467,7 @@ pub enum BuiltinLintDiagnostics {
         /// If true, the lifetime will be fully elided.
         use_span: Option<(Span, bool)>,
     },
+    NamedArgumentUsedPositionally(Span, Span, String),
 }
 
 /// Lints that are buffered up early on in the `Session` before the

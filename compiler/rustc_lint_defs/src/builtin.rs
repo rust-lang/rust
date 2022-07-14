@@ -3292,6 +3292,7 @@ declare_lint_pass! {
         TEST_UNSTABLE_LINT,
         FFI_UNWIND_CALLS,
         REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
+        NAMED_ARGUMENTS_USED_POSITIONALLY,
     ]
 }
 
@@ -3995,4 +3996,34 @@ declare_lint! {
     Allow,
     "call to foreign functions or function pointers with FFI-unwind ABI",
     @feature_gate = sym::c_unwind;
+}
+
+declare_lint! {
+    /// The `named_arguments_used_positionally` lint detects cases where named arguments are only
+    /// used positionally in format strings. This usage is valid but potentially very confusing.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(named_arguments_used_positionally)]
+    /// fn main() {
+    ///     let _x = 5;
+    ///     println!("{}", _x = 1); // Prints 1, will trigger lint
+    ///
+    ///     println!("{}", _x); // Prints 5, no lint emitted
+    ///     println!("{_x}", _x = _x); // Prints 5, no lint emitted
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust formatting strings can refer to named arguments by their position, but this usage is
+    /// potentially confusing. In particular, readers can incorrectly assume that the declaration
+    /// of named arguments is an assignment (which would produce the unit type).
+    /// For backwards compatibility, this is not a hard error.
+    pub NAMED_ARGUMENTS_USED_POSITIONALLY,
+    Warn,
+    "named arguments in format used positionally"
 }

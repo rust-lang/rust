@@ -14,7 +14,7 @@ use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
-use rustc_lint::{EarlyCheckNode, LintStore};
+use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_metadata::{encode_metadata, EncodedMetadata};
 use rustc_middle::arena::Arena;
@@ -336,11 +336,14 @@ pub fn configure_and_expand(
 
         let lint_store = LintStoreExpandImpl(lint_store);
         let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&lint_store));
-
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
 
         // The rest is error reporting
+
+        sess.parse_sess.buffered_lints.with_lock(|buffered_lints: &mut Vec<BufferedEarlyLint>| {
+            buffered_lints.append(&mut ecx.buffered_early_lint);
+        });
 
         sess.time("check_unused_macros", || {
             ecx.check_unused_macros();

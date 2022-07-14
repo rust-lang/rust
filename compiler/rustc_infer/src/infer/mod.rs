@@ -21,6 +21,7 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
+use rustc_middle::ty::abstract_const::AbstractConst;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
@@ -1651,14 +1652,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         unevaluated: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
-        let substs = self.resolve_vars_if_possible(unevaluated.substs);
+        let mut substs = self.resolve_vars_if_possible(unevaluated.substs);
         debug!(?substs);
 
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
         if substs.has_infer_types_or_consts() {
-            debug!("substs have infer types or consts: {:?}", substs);
-            return Err(ErrorHandled::TooGeneric);
+            let ac = AbstractConst::new(self.tcx, unevaluated.shrink());
+            if let Ok(None) = ac {
+                substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);
+            } else {
+                return Err(ErrorHandled::TooGeneric);
+            }
         }
 
         let param_env_erased = self.tcx.erase_regions(param_env);
