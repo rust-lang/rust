@@ -1,5 +1,3 @@
-#![feature(untagged_unions)]
-
 fn main() {
     a();
     b();
@@ -22,6 +20,7 @@ fn a() {
 }
 
 fn b() {
+    #[derive(Copy, Clone)]
     struct S {
         x: u32,
         y: u32,
