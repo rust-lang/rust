@@ -997,7 +997,7 @@ fn lint_named_arguments_used_positionally(
     for (symbol, (index, span)) in names {
         if !used_argument_names.contains(symbol.as_str()) {
             let msg = format!("named argument `{}` is not used by name", symbol.as_str());
-            let arg_span = cx.arg_spans.get(index).copied().unwrap_or(span);
+            let arg_span = cx.arg_spans.get(index).copied();
             cx.ecx.buffered_early_lint.push(BufferedEarlyLint {
                 span: MultiSpan::from_span(span),
                 msg: msg.clone(),
