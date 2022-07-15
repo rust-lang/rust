@@ -9,7 +9,7 @@ struct Bravery {
 fn main() {
     let guts = "mettle";
     let _ = Bravery {
-        guts, //~ ERROR mismatched types
-        brains: guts.clone(), //~ ERROR mismatched types
+        guts: guts.to_string(), //~ ERROR mismatched types
+        brains: guts.to_string(), //~ ERROR mismatched types
     };
 }
