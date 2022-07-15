@@ -1,3 +1,21 @@
+Version 1.62.1 (2022-07-19)
+==========================
+
+Rust 1.62.1 addresses a few recent regressions in the compiler and standard
+library, and also mitigates a CPU vulnerability on Intel SGX.
+
+* [The compiler fixed unsound function coercions involving `impl Trait` return types.][98608]
+* [The compiler fixed an incremental compilation bug with `async fn` lifetimes.][98890]
+* [Windows added a fallback for overlapped I/O in synchronous reads and writes.][98950]
+* [The `x86_64-fortanix-unknown-sgx` target added a mitigation for the
+  MMIO stale data vulnerability][98126], advisory [INTEL-SA-00615].
+
+[98608]: https://github.com/rust-lang/rust/issues/98608
+[98890]: https://github.com/rust-lang/rust/issues/98890
+[98950]: https://github.com/rust-lang/rust/pull/98950
+[98126]: https://github.com/rust-lang/rust/pull/98126
+[INTEL-SA-00615]: https://www.intel.com/content/www/us/en/security-center/advisory/intel-sa-00615.html
+
 Version 1.62.0 (2022-06-30)
 ==========================
 
