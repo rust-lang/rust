@@ -31,15 +31,21 @@ In contrast, `ty::Ty` represents the semantics of a type, that is, the *meaning*
 wrote. For example, `rustc_hir::Ty` would record the fact that a user used the name `u32` twice
 in their program, but the `ty::Ty` would record the fact that both usages refer to the same type.
 
-**Example: `fn foo(x: u32) → u32 { x }`** In this function we see that `u32` appears twice. We know
-that that is the same type, i.e. the function takes an argument and returns an argument of the same
-type, but from the point of view of the HIR there would be two distinct type instances because these
-are occurring in two different places in the program. That is, they have two
-different [`Span`s][span] (locations).
+**Example: `fn foo(x: u32) → u32 { x }`**
+
+In this function, we see that `u32` appears twice. We know
+that that is the same type,
+i.e. the function takes an argument and returns an argument of the same type,
+but from the point of view of the HIR,
+there would be two distinct type instances because these
+are occurring in two different places in the program.
+That is, they have two different [`Span`s][span] (locations).
 
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 
-**Example: `fn foo(x: &u32) -> &u32`** In addition, HIR might have information left out. This type
+**Example: `fn foo(x: &u32) -> &u32`**
+
+In addition, HIR might have information left out. This type
 `&u32` is incomplete, since in the full Rust type there is actually a lifetime, but we didn’t need
 to write those lifetimes. There are also some elision rules that insert information. The result may
 look like  `fn foo<'a>(x: &'a u32) -> &'a u32`.
@@ -56,15 +62,17 @@ Here is a summary:
 | Describe the *syntax* of a type: what the user wrote (with some desugaring).  | Describe the *semantics* of a type: the meaning of what the user wrote. |
 | Each `rustc_hir::Ty` has its own spans corresponding to the appropriate place in the program. | Doesn’t correspond to a single place in the user’s program. |
 | `rustc_hir::Ty` has generics and lifetimes; however, some of those lifetimes are special markers like [`LifetimeName::Implicit`][implicit]. | `ty::Ty` has the full type, including generics and lifetimes, even if the user left them out |
-| `fn foo(x: u32) → u32 { }` - Two `rustc_hir::Ty` representing each usage of `u32`. Each has its own `Span`s, etc.- `rustc_hir::Ty` doesn’t tell us that both are the same type | `fn foo(x: u32) → u32 { }` - One `ty::Ty` for all instances of `u32` throughout the program.- `ty::Ty` tells us that both usages of `u32` mean the same type. |
-| `fn foo(x: &u32) -> &u32)`- Two `rustc_hir::Ty` again.- Lifetimes for the references show up in the `rustc_hir::Ty`s using a special marker, [`LifetimeName::Implicit`][implicit]. | `fn foo(x: &u32) -> &u32)`- A single `ty::Ty`.- The `ty::Ty` has the hidden lifetime param |
+| `fn foo(x: u32) → u32 { }` - Two `rustc_hir::Ty` representing each usage of `u32`, each has its own `Span`s, and `rustc_hir::Ty` doesn’t tell us that both are the same type | `fn foo(x: u32) → u32 { }` - One `ty::Ty` for all instances of `u32` throughout the program, and `ty::Ty` tells us that both usages of `u32` mean the same type. |
+| `fn foo(x: &u32) -> &u32)` - Two `rustc_hir::Ty` again. Lifetimes for the references show up in the `rustc_hir::Ty`s using a special marker, [`LifetimeName::Implicit`][implicit]. | `fn foo(x: &u32) -> &u32)`- A single `ty::Ty`. The `ty::Ty` has the hidden lifetime param. |
 
 [implicit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/enum.LifetimeName.html#variant.Implicit
 
-**Order** HIR is built directly from the AST, so it happens before any `ty::Ty` is produced. After
+**Order**
+
+HIR is built directly from the AST, so it happens before any `ty::Ty` is produced. After
 HIR is built, some basic type inference and type checking is done. During the type inference, we
 figure out what the `ty::Ty` of everything is and we also check if the type of something is
-ambiguous. The `ty::Ty` then, is used for type checking while making sure everything has the
+ambiguous. The `ty::Ty` is then used for type checking while making sure everything has the
 expected type. The [`astconv` module][astconv] is where the code responsible for converting a
 `rustc_hir::Ty` into a `ty::Ty` is located. This occurs during the type-checking phase,
 but also in other parts of the compiler that want to ask questions like "what argument types does
@@ -72,7 +80,9 @@ this function expect?"
 
 [astconv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/astconv/index.html
 
-**How semantics drive the two instances of `Ty`** You can think of HIR as the perspective
+**How semantics drive the two instances of `Ty`**
+
+You can think of HIR as the perspective
 of the type information that assumes the least. We assume two things are distinct until they are
 proven to be the same thing. In other words, we know less about them, so we should assume less about
 them.
