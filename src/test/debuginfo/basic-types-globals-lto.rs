@@ -2,6 +2,7 @@
 // rust char as only its numerical value.
 
 // min-lldb-version: 310
+// min-gdb-version: 8.0
 
 // no-prefer-dynamic
 // compile-flags:-g -C lto
