@@ -297,7 +297,7 @@ impl<'tcx, Tag: Provenance> OpTy<'tcx, Tag> {
         }
     }
 
-    pub fn offset(
+    pub fn offset_with_meta(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Tag>,
@@ -305,7 +305,7 @@ impl<'tcx, Tag: Provenance> OpTy<'tcx, Tag> {
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
         match self.try_as_mplace() {
-            Ok(mplace) => Ok(mplace.offset(offset, meta, layout, cx)?.into()),
+            Ok(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, cx)?.into()),
             Err(imm) => {
                 assert!(
                     matches!(*imm, Immediate::Uninit),
@@ -316,6 +316,16 @@ impl<'tcx, Tag: Provenance> OpTy<'tcx, Tag> {
                 Ok(ImmTy::uninit(layout).into())
             }
         }
+    }
+
+    pub fn offset(
+        &self,
+        offset: Size,
+        layout: TyAndLayout<'tcx>,
+        cx: &impl HasDataLayout,
+    ) -> InterpResult<'tcx, Self> {
+        assert!(!layout.is_unsized());
+        self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
     }
 }
 

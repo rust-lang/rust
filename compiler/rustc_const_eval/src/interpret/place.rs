@@ -171,7 +171,7 @@ impl<Tag: Provenance> MemPlace<Tag> {
     }
 
     #[inline]
-    pub fn offset<'tcx>(
+    pub fn offset_with_meta<'tcx>(
         self,
         offset: Size,
         meta: MemPlaceMeta<Tag>,
@@ -205,7 +205,7 @@ impl<'tcx, Tag: Provenance> MPlaceTy<'tcx, Tag> {
     }
 
     #[inline]
-    pub fn offset(
+    pub fn offset_with_meta(
         &self,
         offset: Size,
         meta: MemPlaceMeta<Tag>,
@@ -213,10 +213,20 @@ impl<'tcx, Tag: Provenance> MPlaceTy<'tcx, Tag> {
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
         Ok(MPlaceTy {
-            mplace: self.mplace.offset(offset, meta, cx)?,
+            mplace: self.mplace.offset_with_meta(offset, meta, cx)?,
             align: self.align.restrict_for_offset(offset),
             layout,
         })
+    }
+
+    pub fn offset(
+        &self,
+        offset: Size,
+        layout: TyAndLayout<'tcx>,
+        cx: &impl HasDataLayout,
+    ) -> InterpResult<'tcx, Self> {
+        assert!(!layout.is_unsized());
+        self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
     }
 
     #[inline]

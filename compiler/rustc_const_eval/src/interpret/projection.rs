@@ -63,7 +63,7 @@ where
 
         // We do not look at `base.layout.align` nor `field_layout.align`, unlike
         // codegen -- mostly to see if we can get away with that
-        base.offset(offset, meta, field_layout, self)
+        base.offset_with_meta(offset, meta, field_layout, self)
     }
 
     /// Gets the place of a field inside the place, and also the field's type.
@@ -193,9 +193,7 @@ where
                 let offset = stride * index; // `Size` multiplication
                 // All fields have the same layout.
                 let field_layout = base.layout.field(self, 0);
-                assert!(!field_layout.is_unsized());
-
-                base.offset(offset, MemPlaceMeta::None, field_layout, self)
+                base.offset(offset, field_layout, self)
             }
             _ => span_bug!(
                 self.cur_span(),
@@ -215,10 +213,10 @@ where
         let abi::FieldsShape::Array { stride, .. } = base.layout.fields else {
             span_bug!(self.cur_span(), "operand_array_fields: expected an array layout");
         };
-        let layout = base.layout.field(self, 0);
+        let field_layout = base.layout.field(self, 0);
         let dl = &self.tcx.data_layout;
         // `Size` multiplication
-        Ok((0..len).map(move |i| base.offset(stride * i, MemPlaceMeta::None, layout, dl)))
+        Ok((0..len).map(move |i| base.offset(stride * i, field_layout, dl)))
     }
 
     /// Index into an array.
@@ -326,7 +324,7 @@ where
             }
         };
         let layout = self.layout_of(ty)?;
-        base.offset(from_offset, meta, layout, self)
+        base.offset_with_meta(from_offset, meta, layout, self)
     }
 
     pub fn place_subslice(
