@@ -836,7 +836,7 @@ impl Error {
     ///     }
     /// }
     /// ```
-    #[unstable(feature = "io_error_downcast", issue = "none")]
+    #[unstable(feature = "io_error_downcast", issue = "99262")]
     pub fn downcast<E>(self) -> result::Result<Box<E>, Self>
     where
         E: error::Error + Send + Sync + 'static,
