@@ -28,11 +28,6 @@ install that exact version of rustc as a toolchain:
 This will set up a rustup toolchain called `miri` and set it as an override for
 the current directory.
 
-If you want to also have `clippy` installed, you need to run this:
-```
-./rustup-toolchain "" -c clippy
-```
-
 [`rustup-toolchain-install-master`]: https://github.com/kennytm/rustup-toolchain-install-master
 
 ## Building and testing Miri
@@ -131,6 +126,8 @@ development version of Miri using
 
 and then you can use it as if it was installed by `rustup`.  Make sure you use
 the same toolchain when calling `cargo miri` that you used when installing Miri!
+Usually this means you have to write `cargo +miri miri ...` to select the `miri`
+toolchain that was installed by `./rustup-toolchain`.
 
 There's a test for the cargo wrapper in the `test-cargo-miri` directory; run
 `./run-test.py` in there to execute it. Like `./miri test`, this respects the
