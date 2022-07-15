@@ -14,11 +14,9 @@ use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_infer::traits;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Binder, IsSuggestable, Subst, ToPredicate, Ty};
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-
-use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn suggest_semicolon_at_end(&self, span: Span, err: &mut Diagnostic) {
@@ -187,54 +185,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(self.tcx.def_span(def_id), &format!("{} defined here", found));
             }
         } else if !self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
-            let struct_pat_shorthand_field = self.maybe_get_struct_pattern_shorthand_field(expr);
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
             if !methods.is_empty() {
-                let mut suggestions = iter::zip(iter::repeat(&expr), &methods)
-                    .filter_map(|(receiver_expr, method)| {
-                        let method_call = format!(".{}()", method.name);
-                        fn method_ident(expr: &hir::Expr<'_>) -> Option<Ident> {
-                            match expr.kind {
-                                ExprKind::MethodCall(receiver_method, ..) => Some(receiver_method.ident),
-                                ExprKind::Unary(_, expr) | ExprKind::AddrOf(.., expr) => method_ident(expr),
-                                _ => None
-                            }
-                        }
-                        let method_ident = method_ident(&receiver_expr);
-                        if let Some(method_ident) = method_ident
-                            && method_ident.name == method.name
+                let mut suggestions = methods.iter()
+                    .filter_map(|conversion_method| {
+                        let receiver_method_ident = expr.method_ident();
+                        if let Some(method_ident) = receiver_method_ident
+                            && method_ident.name == conversion_method.name
                         {
-                            None // do not suggest code that is already there (#53348)
-                        } else {
-                            let method_call_list = [".to_vec()", ".to_string()"];
-                            let mut sugg = if let ExprKind::MethodCall(receiver_method, ..) = receiver_expr.kind
-                                && receiver_method.ident.name == sym::clone
-                                && method_call_list.contains(&method_call.as_str())
-                            {
-                                vec![(
-                                    receiver_method.ident.span,
-                                    method.name.to_string()
-                                )]
-                            } else {
-                                if expr.precedence().order()
-                                    < ExprPrecedence::MethodCall.order()
-                                {
-                                    vec![
-                                        (expr.span.shrink_to_lo(), "(".to_string()),
-                                        (expr.span.shrink_to_hi(), format!("){}", method_call)),
-                                    ]
-                                } else {
-                                    vec![(expr.span.shrink_to_hi(), method_call)]
-                                }
-                            };
-                            if let Some(name) = struct_pat_shorthand_field {
-                                sugg.insert(
-                                    0,
-                                    (expr.span.shrink_to_lo(), format!("{}: ", name)),
-                                );
-                            }
-                            Some(sugg)
+                            return None // do not suggest code that is already there (#53348)
                         }
+
+                        let method_call_list = [sym::to_vec, sym::to_string];
+                        let mut sugg = if let ExprKind::MethodCall(receiver_method, ..) = expr.kind
+                            && receiver_method.ident.name == sym::clone
+                            && method_call_list.contains(&conversion_method.name)
+                            // If receiver is `.clone()` and found type has one of those methods,
+                            // we guess that the user wants to convert from a slice type (`&[]` or `&str`)
+                            // to an owned type (`Vec` or `String`).  These conversions clone internally,
+                            // so we remove the user's `clone` call.
+                        {
+                            vec![(
+                                receiver_method.ident.span,
+                                conversion_method.name.to_string()
+                            )]
+                        } else if expr.precedence().order()
+                            < ExprPrecedence::MethodCall.order()
+                        {
+                            vec![
+                                (expr.span.shrink_to_lo(), "(".to_string()),
+                                (expr.span.shrink_to_hi(), format!(").{}()", conversion_method.name)),
+                            ]
+                        } else {
+                            vec![(expr.span.shrink_to_hi(), format!(".{}()", conversion_method.name))]
+                        };
+                        let struct_pat_shorthand_field = self.maybe_get_struct_pattern_shorthand_field(expr);
+                        if let Some(name) = struct_pat_shorthand_field {
+                            sugg.insert(
+                                0,
+                                (expr.span.shrink_to_lo(), format!("{}: ", name)),
+                            );
+                        }
+                        Some(sugg)
                     })
                     .peekable();
                 if suggestions.peek().is_some() {
