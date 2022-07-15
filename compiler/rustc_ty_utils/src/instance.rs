@@ -280,6 +280,11 @@ fn resolve_associated_item<'tcx>(
                 return Ok(None);
             }
 
+            // If the item does not have a value, then we cannot return an instance.
+            if !leaf_def.item.defaultness.has_value() {
+                return Ok(None);
+            }
+
             let substs = tcx.erase_regions(substs);
 
             // Check if we just resolved an associated `const` declaration from
