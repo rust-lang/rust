@@ -1,6 +1,6 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::{self, path_std, pathvec_std};
+use crate::deriving::{path_std, pathvec_std};
 
 use rustc_ast::{MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -52,39 +52,29 @@ fn hash_substructure(
     let [state_expr] = substr.nonselflike_args else {
         cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };
-    let call_hash = |span, thing_expr| {
+    let call_hash = |span, expr| {
         let hash_path = {
             let strs = cx.std_path(&[sym::hash, sym::Hash, sym::hash]);
 
             cx.expr_path(cx.path_global(span, strs))
         };
-        let ref_thing = cx.expr_addr_of(span, thing_expr);
-        let expr = cx.expr_call(span, hash_path, vec![ref_thing, state_expr.clone()]);
+        let expr = cx.expr_call(span, hash_path, vec![expr, state_expr.clone()]);
         cx.stmt_expr(expr)
     };
-    let mut stmts = Vec::new();
 
-    let fields = match substr.fields {
-        Struct(_, fs) | EnumMatching(_, 1, .., fs) => fs,
-        EnumMatching(.., fs) => {
-            let variant_value = deriving::call_intrinsic(
-                cx,
-                trait_span,
-                sym::discriminant_value,
-                vec![cx.expr_self(trait_span)],
-            );
-
-            stmts.push(call_hash(trait_span, variant_value));
-
-            fs
+    let (stmts, match_expr) = match substr.fields {
+        Struct(_, fields) | EnumMatching(.., fields) => {
+            let stmts =
+                fields.iter().map(|field| call_hash(field.span, field.self_expr.clone())).collect();
+            (stmts, None)
+        }
+        EnumTag(tag_field, match_expr) => {
+            assert!(tag_field.other_selflike_exprs.is_empty());
+            let stmts = vec![call_hash(tag_field.span, tag_field.self_expr.clone())];
+            (stmts, match_expr.clone())
         }
         _ => cx.span_bug(trait_span, "impossible substructure in `derive(Hash)`"),
     };
 
-    stmts.extend(
-        fields
-            .iter()
-            .map(|FieldInfo { ref self_expr, span, .. }| call_hash(*span, self_expr.clone())),
-    );
-    BlockOrExpr::new_stmts(stmts)
+    BlockOrExpr::new_mixed(stmts, match_expr)
 }

@@ -367,65 +367,112 @@ impl ::core::cmp::Ord for Big {
     }
 }
 
-// A packed tuple struct.
-#[repr(packed)]
-struct Packed(u32);
+// A struct with an unsized field. Some derives are not usable in this case.
+struct Unsized([u32]);
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::clone::Clone for Packed {
+impl ::core::fmt::Debug for Unsized {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Unsized",
+            &&self.0)
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::hash::Hash for Unsized {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        ::core::hash::Hash::hash(&self.0, state)
+    }
+}
+impl ::core::marker::StructuralPartialEq for Unsized {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialEq for Unsized {
     #[inline]
-    fn clone(&self) -> Packed {
+    fn eq(&self, other: &Unsized) -> bool { self.0 == other.0 }
+    #[inline]
+    fn ne(&self, other: &Unsized) -> bool { self.0 != other.0 }
+}
+impl ::core::marker::StructuralEq for Unsized {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Eq for Unsized {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<[u32]>;
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialOrd for Unsized {
+    #[inline]
+    fn partial_cmp(&self, other: &Unsized)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        ::core::cmp::PartialOrd::partial_cmp(&self.0, &other.0)
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Ord for Unsized {
+    #[inline]
+    fn cmp(&self, other: &Unsized) -> ::core::cmp::Ordering {
+        ::core::cmp::Ord::cmp(&self.0, &other.0)
+    }
+}
+
+// A packed tuple struct that impls `Copy`.
+#[repr(packed)]
+struct PackedCopy(u32);
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::clone::Clone for PackedCopy {
+    #[inline]
+    fn clone(&self) -> PackedCopy {
         let _: ::core::clone::AssertParamIsClone<u32>;
         *self
     }
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::marker::Copy for Packed { }
+impl ::core::marker::Copy for PackedCopy { }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::fmt::Debug for Packed {
+impl ::core::fmt::Debug for PackedCopy {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        let Self(__self_0_0) = *self;
-        ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Packed",
-            &&__self_0_0)
+        ::core::fmt::Formatter::debug_tuple_field1_finish(f, "PackedCopy",
+            &&{ self.0 })
     }
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::default::Default for Packed {
+impl ::core::default::Default for PackedCopy {
     #[inline]
-    fn default() -> Packed { Packed(::core::default::Default::default()) }
+    fn default() -> PackedCopy {
+        PackedCopy(::core::default::Default::default())
+    }
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::hash::Hash for Packed {
+impl ::core::hash::Hash for PackedCopy {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        let Self(__self_0_0) = *self;
-        ::core::hash::Hash::hash(&__self_0_0, state)
+        ::core::hash::Hash::hash(&{ self.0 }, state)
     }
 }
-impl ::core::marker::StructuralPartialEq for Packed {}
+impl ::core::marker::StructuralPartialEq for PackedCopy {}
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::cmp::PartialEq for Packed {
+impl ::core::cmp::PartialEq for PackedCopy {
     #[inline]
-    fn eq(&self, other: &Packed) -> bool {
-        let Self(__self_0_0) = *self;
-        let Self(__self_1_0) = *other;
-        __self_0_0 == __self_1_0
-    }
+    fn eq(&self, other: &PackedCopy) -> bool { { self.0 } == { other.0 } }
     #[inline]
-    fn ne(&self, other: &Packed) -> bool {
-        let Self(__self_0_0) = *self;
-        let Self(__self_1_0) = *other;
-        __self_0_0 != __self_1_0
-    }
+    fn ne(&self, other: &PackedCopy) -> bool { { self.0 } != { other.0 } }
 }
-impl ::core::marker::StructuralEq for Packed {}
+impl ::core::marker::StructuralEq for PackedCopy {}
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::cmp::Eq for Packed {
+impl ::core::cmp::Eq for PackedCopy {
     #[inline]
     #[doc(hidden)]
     #[no_coverage]
@@ -435,23 +482,110 @@ impl ::core::cmp::Eq for Packed {
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::cmp::PartialOrd for Packed {
+impl ::core::cmp::PartialOrd for PackedCopy {
     #[inline]
-    fn partial_cmp(&self, other: &Packed)
+    fn partial_cmp(&self, other: &PackedCopy)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        let Self(__self_0_0) = *self;
-        let Self(__self_1_0) = *other;
-        ::core::cmp::PartialOrd::partial_cmp(&__self_0_0, &__self_1_0)
+        ::core::cmp::PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
     }
 }
 #[automatically_derived]
 #[allow(unused_qualifications)]
-impl ::core::cmp::Ord for Packed {
+impl ::core::cmp::Ord for PackedCopy {
     #[inline]
-    fn cmp(&self, other: &Packed) -> ::core::cmp::Ordering {
-        let Self(__self_0_0) = *self;
-        let Self(__self_1_0) = *other;
-        ::core::cmp::Ord::cmp(&__self_0_0, &__self_1_0)
+    fn cmp(&self, other: &PackedCopy) -> ::core::cmp::Ordering {
+        ::core::cmp::Ord::cmp(&{ self.0 }, &{ other.0 })
+    }
+}
+
+// A packed tuple struct that does not impl `Copy`. Note that the alignment of
+// the field must be 1 for this code to be valid. Otherwise it triggers an
+// error "`#[derive]` can't be used on a `#[repr(packed)]` struct that does not
+// derive Copy (error E0133)" at MIR building time. This is a weird case and
+// it's possible that this struct is not supposed to work, but for now it does.
+#[repr(packed)]
+struct PackedNonCopy(u8);
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::clone::Clone for PackedNonCopy {
+    #[inline]
+    fn clone(&self) -> PackedNonCopy {
+        let Self(ref __self_0_0) = *self;
+        PackedNonCopy(::core::clone::Clone::clone(__self_0_0))
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::fmt::Debug for PackedNonCopy {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        let Self(ref __self_0_0) = *self;
+        ::core::fmt::Formatter::debug_tuple_field1_finish(f, "PackedNonCopy",
+            &__self_0_0)
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::default::Default for PackedNonCopy {
+    #[inline]
+    fn default() -> PackedNonCopy {
+        PackedNonCopy(::core::default::Default::default())
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::hash::Hash for PackedNonCopy {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        let Self(ref __self_0_0) = *self;
+        ::core::hash::Hash::hash(__self_0_0, state)
+    }
+}
+impl ::core::marker::StructuralPartialEq for PackedNonCopy {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialEq for PackedNonCopy {
+    #[inline]
+    fn eq(&self, other: &PackedNonCopy) -> bool {
+        let Self(ref __self_0_0) = *self;
+        let Self(ref __self_1_0) = *other;
+        *__self_0_0 == *__self_1_0
+    }
+    #[inline]
+    fn ne(&self, other: &PackedNonCopy) -> bool {
+        let Self(ref __self_0_0) = *self;
+        let Self(ref __self_1_0) = *other;
+        *__self_0_0 != *__self_1_0
+    }
+}
+impl ::core::marker::StructuralEq for PackedNonCopy {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Eq for PackedNonCopy {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u8>;
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialOrd for PackedNonCopy {
+    #[inline]
+    fn partial_cmp(&self, other: &PackedNonCopy)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        let Self(ref __self_0_0) = *self;
+        let Self(ref __self_1_0) = *other;
+        ::core::cmp::PartialOrd::partial_cmp(__self_0_0, __self_1_0)
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Ord for PackedNonCopy {
+    #[inline]
+    fn cmp(&self, other: &PackedNonCopy) -> ::core::cmp::Ordering {
+        let Self(ref __self_0_0) = *self;
+        let Self(ref __self_1_0) = *other;
+        ::core::cmp::Ord::cmp(__self_0_0, __self_1_0)
     }
 }
 
@@ -527,9 +661,9 @@ enum Enum1 {
 impl ::core::clone::Clone for Enum1 {
     #[inline]
     fn clone(&self) -> Enum1 {
-        match &*self {
-            &Enum1::Single { x: ref __self_0 } =>
-                Enum1::Single { x: ::core::clone::Clone::clone(&*__self_0) },
+        match self {
+            Enum1::Single { x: __self_0 } =>
+                Enum1::Single { x: ::core::clone::Clone::clone(__self_0) },
         }
     }
 }
@@ -537,10 +671,10 @@ impl ::core::clone::Clone for Enum1 {
 #[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Enum1 {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match &*self {
-            &Enum1::Single { x: ref __self_0 } =>
+        match self {
+            Enum1::Single { x: __self_0 } =>
                 ::core::fmt::Formatter::debug_struct_field1_finish(f,
-                    "Single", "x", &&*__self_0),
+                    "Single", "x", &__self_0),
         }
     }
 }
@@ -548,10 +682,9 @@ impl ::core::fmt::Debug for Enum1 {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Enum1 {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        match &*self {
-            &Enum1::Single { x: ref __self_0 } => {
-                ::core::hash::Hash::hash(&*__self_0, state)
-            }
+        match self {
+            Enum1::Single { x: __self_0 } =>
+                ::core::hash::Hash::hash(__self_0, state),
         }
     }
 }
@@ -561,16 +694,16 @@ impl ::core::marker::StructuralPartialEq for Enum1 {}
 impl ::core::cmp::PartialEq for Enum1 {
     #[inline]
     fn eq(&self, other: &Enum1) -> bool {
-        match (&*self, &*other) {
-            (&Enum1::Single { x: ref __self_0 }, &Enum1::Single {
-                x: ref __arg_1_0 }) => *__self_0 == *__arg_1_0,
+        match (self, other) {
+            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+                *__self_0 == *__arg1_0,
         }
     }
     #[inline]
     fn ne(&self, other: &Enum1) -> bool {
-        match (&*self, &*other) {
-            (&Enum1::Single { x: ref __self_0 }, &Enum1::Single {
-                x: ref __arg_1_0 }) => *__self_0 != *__arg_1_0,
+        match (self, other) {
+            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+                *__self_0 != *__arg1_0,
         }
     }
 }
@@ -591,10 +724,9 @@ impl ::core::cmp::PartialOrd for Enum1 {
     #[inline]
     fn partial_cmp(&self, other: &Enum1)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        match (&*self, &*other) {
-            (&Enum1::Single { x: ref __self_0 }, &Enum1::Single {
-                x: ref __arg_1_0 }) =>
-                ::core::cmp::PartialOrd::partial_cmp(&*__self_0, &*__arg_1_0),
+        match (self, other) {
+            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+                ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
         }
     }
 }
@@ -603,11 +735,74 @@ impl ::core::cmp::PartialOrd for Enum1 {
 impl ::core::cmp::Ord for Enum1 {
     #[inline]
     fn cmp(&self, other: &Enum1) -> ::core::cmp::Ordering {
-        match (&*self, &*other) {
-            (&Enum1::Single { x: ref __self_0 }, &Enum1::Single {
-                x: ref __arg_1_0 }) =>
-                ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
+        match (self, other) {
+            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
         }
+    }
+}
+
+// A C-like, fieldless enum with a single variant.
+enum Fieldless1 {
+
+    #[default]
+    A,
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::clone::Clone for Fieldless1 {
+    #[inline]
+    fn clone(&self) -> Fieldless1 { Fieldless1::A }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::fmt::Debug for Fieldless1 {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::write_str(f, "A")
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::default::Default for Fieldless1 {
+    #[inline]
+    fn default() -> Fieldless1 { Self::A }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::hash::Hash for Fieldless1 {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
+}
+impl ::core::marker::StructuralPartialEq for Fieldless1 {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialEq for Fieldless1 {
+    #[inline]
+    fn eq(&self, other: &Fieldless1) -> bool { true }
+}
+impl ::core::marker::StructuralEq for Fieldless1 {}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Eq for Fieldless1 {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {}
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::PartialOrd for Fieldless1 {
+    #[inline]
+    fn partial_cmp(&self, other: &Fieldless1)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+    }
+}
+#[automatically_derived]
+#[allow(unused_qualifications)]
+impl ::core::cmp::Ord for Fieldless1 {
+    #[inline]
+    fn cmp(&self, other: &Fieldless1) -> ::core::cmp::Ordering {
+        ::core::cmp::Ordering::Equal
     }
 }
 
@@ -632,10 +827,10 @@ impl ::core::marker::Copy for Fieldless { }
 #[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Fieldless {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match &*self {
-            &Fieldless::A => ::core::fmt::Formatter::write_str(f, "A"),
-            &Fieldless::B => ::core::fmt::Formatter::write_str(f, "B"),
-            &Fieldless::C => ::core::fmt::Formatter::write_str(f, "C"),
+        match self {
+            Fieldless::A => ::core::fmt::Formatter::write_str(f, "A"),
+            Fieldless::B => ::core::fmt::Formatter::write_str(f, "B"),
+            Fieldless::C => ::core::fmt::Formatter::write_str(f, "C"),
         }
     }
 }
@@ -649,12 +844,8 @@ impl ::core::default::Default for Fieldless {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Fieldless {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        match &*self {
-            _ => {
-                ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
-                    state)
-            }
-        }
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        ::core::hash::Hash::hash(&__self_tag, state)
     }
 }
 impl ::core::marker::StructuralPartialEq for Fieldless {}
@@ -663,11 +854,9 @@ impl ::core::marker::StructuralPartialEq for Fieldless {}
 impl ::core::cmp::PartialEq for Fieldless {
     #[inline]
     fn eq(&self, other: &Fieldless) -> bool {
-        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-        if __self_vi == __arg_1_vi {
-                match (&*self, &*other) { _ => true, }
-            } else { false }
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        __self_tag == __arg1_tag
     }
 }
 impl ::core::marker::StructuralEq for Fieldless {}
@@ -685,16 +874,9 @@ impl ::core::cmp::PartialOrd for Fieldless {
     #[inline]
     fn partial_cmp(&self, other: &Fieldless)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-        if __self_vi == __arg_1_vi {
-                match (&*self, &*other) {
-                    _ =>
-                        ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                }
-            } else {
-               ::core::cmp::PartialOrd::partial_cmp(&__self_vi, &__arg_1_vi)
-           }
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        ::core::cmp::PartialOrd::partial_cmp(&__self_tag, &__arg1_tag)
     }
 }
 #[automatically_derived]
@@ -702,11 +884,9 @@ impl ::core::cmp::PartialOrd for Fieldless {
 impl ::core::cmp::Ord for Fieldless {
     #[inline]
     fn cmp(&self, other: &Fieldless) -> ::core::cmp::Ordering {
-        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-        if __self_vi == __arg_1_vi {
-                match (&*self, &*other) { _ => ::core::cmp::Ordering::Equal, }
-            } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        ::core::cmp::Ord::cmp(&__self_tag, &__arg1_tag)
     }
 }
 
@@ -738,15 +918,15 @@ impl ::core::marker::Copy for Mixed { }
 #[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Mixed {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match &*self {
-            &Mixed::P => ::core::fmt::Formatter::write_str(f, "P"),
-            &Mixed::Q => ::core::fmt::Formatter::write_str(f, "Q"),
-            &Mixed::R(ref __self_0) =>
+        match self {
+            Mixed::P => ::core::fmt::Formatter::write_str(f, "P"),
+            Mixed::Q => ::core::fmt::Formatter::write_str(f, "Q"),
+            Mixed::R(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "R",
-                    &&*__self_0),
-            &Mixed::S { d1: ref __self_0, d2: ref __self_1 } =>
+                    &__self_0),
+            Mixed::S { d1: __self_0, d2: __self_1 } =>
                 ::core::fmt::Formatter::debug_struct_field2_finish(f, "S",
-                    "d1", &&*__self_0, "d2", &&*__self_1),
+                    "d1", &__self_0, "d2", &__self_1),
         }
     }
 }
@@ -760,22 +940,15 @@ impl ::core::default::Default for Mixed {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Mixed {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        match &*self {
-            &Mixed::R(ref __self_0) => {
-                ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
-                    state);
-                ::core::hash::Hash::hash(&*__self_0, state)
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        ::core::hash::Hash::hash(&__self_tag, state);
+        match self {
+            Mixed::R(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+            Mixed::S { d1: __self_0, d2: __self_1 } => {
+                ::core::hash::Hash::hash(__self_0, state);
+                ::core::hash::Hash::hash(__self_1, state)
             }
-            &Mixed::S { d1: ref __self_0, d2: ref __self_1 } => {
-                ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
-                    state);
-                ::core::hash::Hash::hash(&*__self_0, state);
-                ::core::hash::Hash::hash(&*__self_1, state)
-            }
-            _ => {
-                ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
-                    state)
-            }
+            _ => {}
         }
     }
 }
@@ -785,33 +958,31 @@ impl ::core::marker::StructuralPartialEq for Mixed {}
 impl ::core::cmp::PartialEq for Mixed {
     #[inline]
     fn eq(&self, other: &Mixed) -> bool {
-        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-        if __self_vi == __arg_1_vi {
-                match (&*self, &*other) {
-                    (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
-                        *__self_0 == *__arg_1_0,
-                    (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
-                        &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
-                        *__self_0 == *__arg_1_0 && *__self_1 == *__arg_1_1,
-                    _ => true,
-                }
-            } else { false }
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        __self_tag == __arg1_tag &&
+            match (self, other) {
+                (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                    *__self_0 == *__arg1_0,
+                (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
+                    d1: __arg1_0, d2: __arg1_1 }) =>
+                    *__self_0 == *__arg1_0 && *__self_1 == *__arg1_1,
+                _ => true,
+            }
     }
     #[inline]
     fn ne(&self, other: &Mixed) -> bool {
-        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-        if __self_vi == __arg_1_vi {
-                match (&*self, &*other) {
-                    (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
-                        *__self_0 != *__arg_1_0,
-                    (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
-                        &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
-                        *__self_0 != *__arg_1_0 || *__self_1 != *__arg_1_1,
-                    _ => false,
-                }
-            } else { true }
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        __self_tag != __arg1_tag ||
+            match (self, other) {
+                (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                    *__self_0 != *__arg1_0,
+                (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
+                    d1: __arg1_0, d2: __arg1_1 }) =>
+                    *__self_0 != *__arg1_0 || *__self_1 != *__arg1_1,
+                _ => false,
+            }
     }
 }
 impl ::core::marker::StructuralEq for Mixed {}
@@ -831,29 +1002,26 @@ impl ::core::cmp::PartialOrd for Mixed {
     #[inline]
     fn partial_cmp(&self, other: &Mixed)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-        if __self_vi == __arg_1_vi {
-                match (&*self, &*other) {
-                    (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                            &*__arg_1_0),
-                    (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
-                        &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
-                        match ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                                &*__arg_1_0) {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        match ::core::cmp::PartialOrd::partial_cmp(&__self_tag, &__arg1_tag) {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                match (self, other) {
+                    (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+                    (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
+                        d1: __arg1_0, d2: __arg1_1 }) =>
+                        match ::core::cmp::PartialOrd::partial_cmp(__self_0,
+                                __arg1_0) {
                             ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                =>
-                                ::core::cmp::PartialOrd::partial_cmp(&*__self_1,
-                                    &*__arg_1_1),
+                                => ::core::cmp::PartialOrd::partial_cmp(__self_1, __arg1_1),
                             cmp => cmp,
                         },
                     _ =>
                         ::core::option::Option::Some(::core::cmp::Ordering::Equal),
-                }
-            } else {
-               ::core::cmp::PartialOrd::partial_cmp(&__self_vi, &__arg_1_vi)
-           }
+                },
+            cmp => cmp,
+        }
     }
 }
 #[automatically_derived]
@@ -861,22 +1029,24 @@ impl ::core::cmp::PartialOrd for Mixed {
 impl ::core::cmp::Ord for Mixed {
     #[inline]
     fn cmp(&self, other: &Mixed) -> ::core::cmp::Ordering {
-        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-        if __self_vi == __arg_1_vi {
-                match (&*self, &*other) {
-                    (&Mixed::R(ref __self_0), &Mixed::R(ref __arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
-                    (&Mixed::S { d1: ref __self_0, d2: ref __self_1 },
-                        &Mixed::S { d1: ref __arg_1_0, d2: ref __arg_1_1 }) =>
-                        match ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0) {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        match ::core::cmp::Ord::cmp(&__self_tag, &__arg1_tag) {
+            ::core::cmp::Ordering::Equal =>
+                match (self, other) {
+                    (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
+                        d1: __arg1_0, d2: __arg1_1 }) =>
+                        match ::core::cmp::Ord::cmp(__self_0, __arg1_0) {
                             ::core::cmp::Ordering::Equal =>
-                                ::core::cmp::Ord::cmp(&*__self_1, &*__arg_1_1),
+                                ::core::cmp::Ord::cmp(__self_1, __arg1_1),
                             cmp => cmp,
                         },
                     _ => ::core::cmp::Ordering::Equal,
-                }
-            } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
+                },
+            cmp => cmp,
+        }
     }
 }
 
@@ -888,13 +1058,13 @@ enum Fielded { X(u32), Y(bool), Z(Option<i32>), }
 impl ::core::clone::Clone for Fielded {
     #[inline]
     fn clone(&self) -> Fielded {
-        match &*self {
-            &Fielded::X(ref __self_0) =>
-                Fielded::X(::core::clone::Clone::clone(&*__self_0)),
-            &Fielded::Y(ref __self_0) =>
-                Fielded::Y(::core::clone::Clone::clone(&*__self_0)),
-            &Fielded::Z(ref __self_0) =>
-                Fielded::Z(::core::clone::Clone::clone(&*__self_0)),
+        match self {
+            Fielded::X(__self_0) =>
+                Fielded::X(::core::clone::Clone::clone(__self_0)),
+            Fielded::Y(__self_0) =>
+                Fielded::Y(::core::clone::Clone::clone(__self_0)),
+            Fielded::Z(__self_0) =>
+                Fielded::Z(::core::clone::Clone::clone(__self_0)),
         }
     }
 }
@@ -902,16 +1072,16 @@ impl ::core::clone::Clone for Fielded {
 #[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Fielded {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        match &*self {
-            &Fielded::X(ref __self_0) =>
+        match self {
+            Fielded::X(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "X",
-                    &&*__self_0),
-            &Fielded::Y(ref __self_0) =>
+                    &__self_0),
+            Fielded::Y(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Y",
-                    &&*__self_0),
-            &Fielded::Z(ref __self_0) =>
+                    &__self_0),
+            Fielded::Z(__self_0) =>
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Z",
-                    &&*__self_0),
+                    &__self_0),
         }
     }
 }
@@ -919,22 +1089,12 @@ impl ::core::fmt::Debug for Fielded {
 #[allow(unused_qualifications)]
 impl ::core::hash::Hash for Fielded {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
-        match &*self {
-            &Fielded::X(ref __self_0) => {
-                ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
-                    state);
-                ::core::hash::Hash::hash(&*__self_0, state)
-            }
-            &Fielded::Y(ref __self_0) => {
-                ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
-                    state);
-                ::core::hash::Hash::hash(&*__self_0, state)
-            }
-            &Fielded::Z(ref __self_0) => {
-                ::core::hash::Hash::hash(&::core::intrinsics::discriminant_value(self),
-                    state);
-                ::core::hash::Hash::hash(&*__self_0, state)
-            }
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        ::core::hash::Hash::hash(&__self_tag, state);
+        match self {
+            Fielded::X(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+            Fielded::Y(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+            Fielded::Z(__self_0) => ::core::hash::Hash::hash(__self_0, state),
         }
     }
 }
@@ -944,35 +1104,33 @@ impl ::core::marker::StructuralPartialEq for Fielded {}
 impl ::core::cmp::PartialEq for Fielded {
     #[inline]
     fn eq(&self, other: &Fielded) -> bool {
-        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-        if __self_vi == __arg_1_vi {
-                match (&*self, &*other) {
-                    (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
-                        *__self_0 == *__arg_1_0,
-                    (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
-                        *__self_0 == *__arg_1_0,
-                    (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
-                        *__self_0 == *__arg_1_0,
-                    _ => unsafe { ::core::intrinsics::unreachable() }
-                }
-            } else { false }
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        __self_tag == __arg1_tag &&
+            match (self, other) {
+                (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                    *__self_0 == *__arg1_0,
+                (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                    *__self_0 == *__arg1_0,
+                (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                    *__self_0 == *__arg1_0,
+                _ => unsafe { ::core::intrinsics::unreachable() }
+            }
     }
     #[inline]
     fn ne(&self, other: &Fielded) -> bool {
-        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-        if __self_vi == __arg_1_vi {
-                match (&*self, &*other) {
-                    (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
-                        *__self_0 != *__arg_1_0,
-                    (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
-                        *__self_0 != *__arg_1_0,
-                    (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
-                        *__self_0 != *__arg_1_0,
-                    _ => unsafe { ::core::intrinsics::unreachable() }
-                }
-            } else { true }
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        __self_tag != __arg1_tag ||
+            match (self, other) {
+                (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                    *__self_0 != *__arg1_0,
+                (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                    *__self_0 != *__arg1_0,
+                (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                    *__self_0 != *__arg1_0,
+                _ => unsafe { ::core::intrinsics::unreachable() }
+            }
     }
 }
 impl ::core::marker::StructuralEq for Fielded {}
@@ -994,24 +1152,21 @@ impl ::core::cmp::PartialOrd for Fielded {
     #[inline]
     fn partial_cmp(&self, other: &Fielded)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-        if __self_vi == __arg_1_vi {
-                match (&*self, &*other) {
-                    (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                            &*__arg_1_0),
-                    (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                            &*__arg_1_0),
-                    (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
-                        ::core::cmp::PartialOrd::partial_cmp(&*__self_0,
-                            &*__arg_1_0),
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        match ::core::cmp::PartialOrd::partial_cmp(&__self_tag, &__arg1_tag) {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                match (self, other) {
+                    (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+                    (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+                    (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
                     _ => unsafe { ::core::intrinsics::unreachable() }
-                }
-            } else {
-               ::core::cmp::PartialOrd::partial_cmp(&__self_vi, &__arg_1_vi)
-           }
+                },
+            cmp => cmp,
+        }
     }
 }
 #[automatically_derived]
@@ -1019,19 +1174,21 @@ impl ::core::cmp::PartialOrd for Fielded {
 impl ::core::cmp::Ord for Fielded {
     #[inline]
     fn cmp(&self, other: &Fielded) -> ::core::cmp::Ordering {
-        let __self_vi = ::core::intrinsics::discriminant_value(&*self);
-        let __arg_1_vi = ::core::intrinsics::discriminant_value(&*other);
-        if __self_vi == __arg_1_vi {
-                match (&*self, &*other) {
-                    (&Fielded::X(ref __self_0), &Fielded::X(ref __arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
-                    (&Fielded::Y(ref __self_0), &Fielded::Y(ref __arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
-                    (&Fielded::Z(ref __self_0), &Fielded::Z(ref __arg_1_0)) =>
-                        ::core::cmp::Ord::cmp(&*__self_0, &*__arg_1_0),
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        match ::core::cmp::Ord::cmp(&__self_tag, &__arg1_tag) {
+            ::core::cmp::Ordering::Equal =>
+                match (self, other) {
+                    (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
                     _ => unsafe { ::core::intrinsics::unreachable() }
-                }
-            } else { ::core::cmp::Ord::cmp(&__self_vi, &__arg_1_vi) }
+                },
+            cmp => cmp,
+        }
     }
 }
 
