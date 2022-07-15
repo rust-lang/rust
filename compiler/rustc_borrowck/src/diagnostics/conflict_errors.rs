@@ -7,7 +7,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
@@ -1504,8 +1504,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let mut suggested = false;
                 let msg = "consider using a `let` binding to create a longer lived value";
 
-                use rustc_hir::intravisit::Visitor;
-
                 /// We check that there's a single level of block nesting to ensure always correct
                 /// suggestions. If we don't, then we only provide a free-form message to avoid
                 /// misleading users in cases like `src/test/ui/nll/borrowed-temporary-error.rs`.
@@ -1520,14 +1518,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 impl<'tcx> Visitor<'tcx> for NestedStatementVisitor {
                     fn visit_block(&mut self, block: &hir::Block<'tcx>) {
                         self.current += 1;
-                        rustc_hir::intravisit::walk_block(self, block);
+                        walk_block(self, block);
                         self.current -= 1;
                     }
                     fn visit_expr(&mut self, expr: &hir::Expr<'tcx>) {
                         if self.span == expr.span {
                             self.found = self.current;
                         }
-                        rustc_hir::intravisit::walk_expr(self, expr);
+                        walk_expr(self, expr);
                     }
                 }
                 let source_info = self.body.source_info(location);
