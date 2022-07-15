@@ -12,6 +12,35 @@ fn main() {
 
     // is_ok(), unwrap_or()
     let _ = (0..).find_map(|a| to_res(a).ok());
+
+    let _ = (1..5)
+        .find_map(|y| *to_ref(to_opt(y)));
+    let _ = (1..5)
+        .find_map(|y| *to_ref(to_opt(y)));
+
+    let _ = (1..5)
+        .find_map(|y| to_ref(to_res(y)).ok());
+    let _ = (1..5)
+        .find_map(|y| to_ref(to_res(y)).ok());
+}
+
+#[rustfmt::skip]
+fn simple_equal() {
+    iter::<Option<u8>>().find_map(|x| x);
+    iter::<&Option<u8>>().find_map(|x| *x);
+    iter::<&&Option<u8>>().find_map(|x| **x);
+    iter::<Option<&u8>>().find_map(|x| x.cloned());
+    iter::<&Option<&u8>>().find_map(|x| x.cloned());
+    iter::<&Option<String>>().find_map(|x| x.as_deref());
+    iter::<Option<&String>>().find_map(|y| to_ref(y).cloned());
+
+    iter::<Result<u8, ()>>().find_map(|x| x.ok());
+    iter::<&Result<u8, ()>>().find_map(|x| x.ok());
+    iter::<&&Result<u8, ()>>().find_map(|x| x.ok());
+    iter::<Result<&u8, ()>>().find_map(|x| x.cloned().ok());
+    iter::<&Result<&u8, ()>>().find_map(|x| x.cloned().ok());
+    iter::<&Result<String, ()>>().find_map(|x| x.as_deref().ok());
+    iter::<Result<&String, ()>>().find_map(|y| to_ref(y).cloned().ok());
 }
 
 fn no_lint() {
@@ -28,11 +57,19 @@ fn no_lint() {
         .map(|a| to_opt(a).unwrap());
 }
 
+fn iter<T>() -> impl Iterator<Item = T> {
+    std::iter::empty()
+}
+
 fn to_opt<T>(_: T) -> Option<T> {
     unimplemented!()
 }
 
 fn to_res<T>(_: T) -> Result<T, ()> {
+    unimplemented!()
+}
+
+fn to_ref<'a, T>(_: T) -> &'a T {
     unimplemented!()
 }
 

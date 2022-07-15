@@ -20,8 +20,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{
-    BinOpKind, Block, Expr, ExprKind, HirId, Item, Local, MutTy, Mutability, Node, Path, Stmt, StmtKind, Ty, TyKind,
-    UnOp,
+    BinOpKind, Block, Closure, Expr, ExprKind, HirId, Item, Local, MutTy, Mutability, Node, Path, Stmt, StmtKind, Ty,
+    TyKind, UnOp,
 };
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
@@ -730,8 +730,8 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             if let ExprKind::Call(func, and_then_args) = expr.kind;
             if is_expr_path_def_path(cx, func, &["clippy_utils", "diagnostics", "span_lint_and_then"]);
             if and_then_args.len() == 5;
-            if let ExprKind::Closure { body, .. } = &and_then_args[4].kind;
-            let body = cx.tcx.hir().body(*body);
+            if let ExprKind::Closure(&Closure { body, .. }) = &and_then_args[4].kind;
+            let body = cx.tcx.hir().body(body);
             let only_expr = peel_blocks_with_stmt(&body.value);
             if let ExprKind::MethodCall(ps, span_call_args, _) = &only_expr.kind;
             if let ExprKind::Path(..) = span_call_args[0].kind;

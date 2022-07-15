@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// ```
     /// let x = &12;
     /// let addr_x = &x as *const _ as usize;
-    /// let addr_y = &&*x as *const _ as usize; // assert ok now, and lint triggerd.
+    /// let addr_y = &&*x as *const _ as usize; // assert ok now, and lint triggered.
     ///                                         // But if we fix it, assert will fail.
     /// assert_ne!(addr_x, addr_y);
     /// ```

@@ -29,6 +29,7 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(infinite_iter::INFINITE_ITER),
     LintId::of(inherent_to_string::INHERENT_TO_STRING_SHADOW_DISPLAY),
     LintId::of(inline_fn_without_body::INLINE_FN_WITHOUT_BODY),
+    LintId::of(invalid_utf8_in_unchecked::INVALID_UTF8_IN_UNCHECKED),
     LintId::of(let_underscore::LET_UNDERSCORE_LOCK),
     LintId::of(literal_representation::MISTYPED_LITERAL_SUFFIXES),
     LintId::of(loops::ITER_NEXT_LOOP),

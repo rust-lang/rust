@@ -105,7 +105,7 @@ fn check<'tcx>(
 
     // Determine which binding mode to use.
     let explicit_ref = some_pat.contains_explicit_ref_binding();
-    let binding_ref = explicit_ref.or_else(|| (ty_ref_count != pat_ref_count).then(|| ty_mutability));
+    let binding_ref = explicit_ref.or_else(|| (ty_ref_count != pat_ref_count).then_some(ty_mutability));
 
     let as_ref_str = match binding_ref {
         Some(Mutability::Mut) => ".as_mut()",

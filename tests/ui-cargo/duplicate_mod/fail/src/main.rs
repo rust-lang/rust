@@ -1,4 +1,4 @@
-#[feature(lint_reasons)]
+#![feature(lint_reasons)]
 
 mod a;
 
@@ -24,6 +24,5 @@ mod d3;
 #[path = "d.rs"]
 #[allow(clippy::duplicate_mod)]
 mod d4;
-
 
 fn main() {}

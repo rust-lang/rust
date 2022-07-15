@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// #[allow(clippy::crate_in_macro_def)]
     /// macro_rules! ok { ... crate::foo ... }
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub CRATE_IN_MACRO_DEF,
     suspicious,
     "using `crate` in a macro definition"

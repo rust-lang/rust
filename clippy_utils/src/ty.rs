@@ -147,7 +147,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
 /// * [`get_trait_def_id`](super::get_trait_def_id) to get a trait [`DefId`].
 /// * [Common tools for writing lints] for an example how to use this function and other options.
 ///
-/// [Common tools for writing lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/common_tools_writing_lints.md#checking-if-a-type-implements-a-specific-trait
+/// [Common tools for writing lints]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/common_tools_writing_lints.md#checking-if-a-type-implements-a-specific-trait
 pub fn implements_trait<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
@@ -501,7 +501,7 @@ pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(P
 /// A signature for a function like type.
 #[derive(Clone, Copy)]
 pub enum ExprFnSig<'tcx> {
-    Sig(Binder<'tcx, FnSig<'tcx>>),
+    Sig(Binder<'tcx, FnSig<'tcx>>, Option<DefId>),
     Closure(Option<&'tcx FnDecl<'tcx>>, Binder<'tcx, FnSig<'tcx>>),
     Trait(Binder<'tcx, Ty<'tcx>>, Option<Binder<'tcx, Ty<'tcx>>>),
 }
@@ -510,7 +510,7 @@ impl<'tcx> ExprFnSig<'tcx> {
     /// bounds only for variadic functions, otherwise this will panic.
     pub fn input(self, i: usize) -> Option<Binder<'tcx, Ty<'tcx>>> {
         match self {
-            Self::Sig(sig) => {
+            Self::Sig(sig, _) => {
                 if sig.c_variadic() {
                     sig.inputs().map_bound(|inputs| inputs.get(i).copied()).transpose()
                 } else {
@@ -527,7 +527,7 @@ impl<'tcx> ExprFnSig<'tcx> {
     /// functions, otherwise this will panic.
     pub fn input_with_hir(self, i: usize) -> Option<(Option<&'tcx hir::Ty<'tcx>>, Binder<'tcx, Ty<'tcx>>)> {
         match self {
-            Self::Sig(sig) => {
+            Self::Sig(sig, _) => {
                 if sig.c_variadic() {
                     sig.inputs()
                         .map_bound(|inputs| inputs.get(i).copied())
@@ -549,22 +549,29 @@ impl<'tcx> ExprFnSig<'tcx> {
     /// specified.
     pub fn output(self) -> Option<Binder<'tcx, Ty<'tcx>>> {
         match self {
-            Self::Sig(sig) | Self::Closure(_, sig) => Some(sig.output()),
+            Self::Sig(sig, _) | Self::Closure(_, sig) => Some(sig.output()),
             Self::Trait(_, output) => output,
         }
+    }
+
+    pub fn predicates_id(&self) -> Option<DefId> {
+        if let ExprFnSig::Sig(_, id) = *self { id } else { None }
     }
 }
 
 /// If the expression is function like, get the signature for it.
 pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnSig<'tcx>> {
     if let Res::Def(DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn, id) = path_res(cx, expr) {
-        Some(ExprFnSig::Sig(cx.tcx.fn_sig(id)))
+        Some(ExprFnSig::Sig(cx.tcx.fn_sig(id), Some(id)))
     } else {
         ty_sig(cx, cx.typeck_results().expr_ty_adjusted(expr).peel_refs())
     }
 }
 
 fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
+    if ty.is_box() {
+        return ty_sig(cx, ty.boxed_ty());
+    }
     match *ty.kind() {
         ty::Closure(id, subs) => {
             let decl = id
@@ -572,8 +579,9 @@ fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>>
                 .and_then(|id| cx.tcx.hir().fn_decl_by_hir_id(cx.tcx.hir().local_def_id_to_hir_id(id)));
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
-        ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs))),
-        ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig)),
+        ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs), Some(id))),
+        ty::Opaque(id, _) => ty_sig(cx, cx.tcx.type_of(id)),
+        ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
         ty::Dynamic(bounds, _) => {
             let lang_items = cx.tcx.lang_items();
             match bounds.principal() {
@@ -788,4 +796,34 @@ pub fn variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<&'tcx Va
         Res::SelfCtor(id) => Some(cx.tcx.type_of(id).ty_adt_def().unwrap().non_enum_variant()),
         _ => None,
     }
+}
+
+/// Checks if the type is a type parameter implementing `FnOnce`, but not `FnMut`.
+pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tcx [Predicate<'_>]) -> bool {
+    let ty::Param(ty) = *ty.kind() else {
+        return false;
+    };
+    let lang = tcx.lang_items();
+    let (Some(fn_once_id), Some(fn_mut_id), Some(fn_id))
+        = (lang.fn_once_trait(), lang.fn_mut_trait(), lang.fn_trait())
+    else {
+        return false;
+    };
+    predicates
+        .iter()
+        .try_fold(false, |found, p| {
+            if let PredicateKind::Trait(p) = p.kind().skip_binder()
+            && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
+            && ty.index == self_ty.index
+        {
+            // This should use `super_traits_of`, but that's a private function.
+            if p.trait_ref.def_id == fn_once_id {
+                return Some(true);
+            } else if p.trait_ref.def_id == fn_mut_id || p.trait_ref.def_id == fn_id {
+                return None;
+            }
+        }
+            Some(found)
+        })
+        .unwrap_or(false)
 }
