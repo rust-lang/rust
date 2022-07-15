@@ -2721,7 +2721,6 @@ macro_rules! int_impl {
         /// Returns the smallest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline(always)]
-        #[rustc_promotable]
         #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
         #[deprecated(since = "TBD", note = "replaced by the `MIN` associated constant on this type")]
         pub const fn min_value() -> Self {
@@ -2734,7 +2733,6 @@ macro_rules! int_impl {
         /// Returns the largest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline(always)]
-        #[rustc_promotable]
         #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
         #[deprecated(since = "TBD", note = "replaced by the `MAX` associated constant on this type")]
         pub const fn max_value() -> Self {
