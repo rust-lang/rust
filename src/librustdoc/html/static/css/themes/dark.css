@@ -148,13 +148,11 @@ body.source .example-wrap pre.rust a {
 }
 
 details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
+details.rustdoc-toggle > summary::before {
 	color: #999;
 }
 
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
+details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
@@ -178,20 +176,6 @@ details.undocumented > summary::before {
 .stab.deprecated { background: #ffc4c4; border-color: #db7b7b; color: #2f2f2f; }
 .stab.portability { background: #F3DFFF; border-color: #b07bdb; color: #2f2f2f; }
 .stab.portability > code { background: none; }
-
-#help > div {
-	background: #4d4d4d;
-	border-color: #bfbfbf;
-}
-
-#help span.bottom, #help span.top {
-	border-color: #bfbfbf;
-}
-
-#help dt {
-	border-color: #bfbfbf;
-	background: rgba(0,0,0,0);
-}
 
 .rightside,
 .out-of-band {

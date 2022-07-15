@@ -140,8 +140,7 @@ body.source .example-wrap pre.rust a {
 }
 
 details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
+details.rustdoc-toggle > summary::before {
 	color: #999;
 }
 
@@ -160,15 +159,6 @@ details.undocumented > summary::before {
 .stab.deprecated { background: #ffc4c4; border-color: #db7b7b; }
 .stab.portability { background: #F3DFFF; border-color: #b07bdb; }
 .stab.portability > code { background: none; }
-
-#help > div {
-	background: #e9e9e9;
-	border-color: #bfbfbf;
-}
-
-#help span.bottom, #help span.top {
-	border-color: #bfbfbf;
-}
 
 .rightside,
 .out-of-band {
