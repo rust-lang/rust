@@ -11,8 +11,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::intravisit::{walk_expr, walk_stmt, FnKind, Visitor};
 use rustc_hir::{
-    Arm, Block, Body, Expr, ExprKind, Guard, HirId, ImplicitSelfKind, Let, Local, Pat, PatKind, Path, PathSegment,
-    QPath, Stmt, StmtKind, TyKind, UnOp,
+    Arm, Block, Body, Closure, Expr, ExprKind, Guard, HirId, ImplicitSelfKind, Let, Local, Pat, PatKind, Path,
+    PathSegment, QPath, Stmt, StmtKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -298,7 +298,7 @@ impl<'tcx> Visitor<'tcx> for SideEffectVisit<'tcx> {
             },
             ExprKind::Match(expr, arms, _) => self.visit_match(expr, arms),
             // since analysing the closure is not easy, just set all variables in it to side-effect
-            ExprKind::Closure { body, .. } => {
+            ExprKind::Closure(&Closure { body, .. }) => {
                 let body = self.tcx.hir().body(body);
                 self.visit_body(body);
                 let vars = std::mem::take(&mut self.ret_vars);

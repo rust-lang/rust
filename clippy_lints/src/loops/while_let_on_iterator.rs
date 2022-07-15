@@ -9,7 +9,7 @@ use clippy_utils::{
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, UnOp};
+use rustc_hir::{def::Res, Closure, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::adjustment::Adjust;
@@ -222,7 +222,7 @@ fn uses_iter<'tcx>(cx: &LateContext<'tcx>, iter_expr: &IterExpr, container: &'tc
                 if let Some(e) = e {
                     self.visit_expr(e);
                 }
-            } else if let ExprKind::Closure { body: id, .. } = e.kind {
+            } else if let ExprKind::Closure(&Closure { body: id, .. }) = e.kind {
                 if is_res_used(self.cx, self.iter_expr.path, id) {
                     self.uses_iter = true;
                 }
@@ -267,7 +267,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
                     if let Some(e) = e {
                         self.visit_expr(e);
                     }
-                } else if let ExprKind::Closure { body: id, .. } = e.kind {
+                } else if let ExprKind::Closure(&Closure { body: id, .. }) = e.kind {
                     self.used_iter = is_res_used(self.cx, self.iter_expr.path, id);
                 } else {
                     walk_expr(self, e);
@@ -319,7 +319,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
                     if let Some(e) = e {
                         self.visit_expr(e);
                     }
-                } else if let ExprKind::Closure { body: id, .. } = e.kind {
+                } else if let ExprKind::Closure(&Closure { body: id, .. }) = e.kind {
                     self.used_after = is_res_used(self.cx, self.iter_expr.path, id);
                 } else {
                     walk_expr(self, e);

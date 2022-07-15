@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{get_trait_def_id, paths, return_ty, trait_ref_of_method};
 use if_chain::if_chain;
-use rustc_hir::{ImplItem, ImplItemKind};
+use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             let decl = &signature.decl;
             if decl.implicit_self.has_implicit_self();
             if decl.inputs.len() == 1;
-            if impl_item.generics.params.is_empty();
+            if impl_item.generics.params.iter().all(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }));
 
             // Check if return type is String
             if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::String);

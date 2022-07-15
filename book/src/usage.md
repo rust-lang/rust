@@ -148,4 +148,4 @@ clippy-driver --edition 2018 -Cpanic=abort foo.rs
 > that are not optimized as expected, for example.
 
 [Installation]: installation.md
-[CI]: continuous_integration
+[CI]: continuous_integration/index.md

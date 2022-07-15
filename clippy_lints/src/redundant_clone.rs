@@ -14,7 +14,7 @@ use rustc_middle::mir::{
     visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},
     Mutability,
 };
-use rustc_middle::ty::{self, fold::TypeVisitor, Ty};
+use rustc_middle::ty::{self, visit::TypeVisitor, Ty};
 use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces, GenKill, GenKillAnalysis, ResultsCursor};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
@@ -161,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 // `arg` is a reference as it is `.deref()`ed in the previous block.
                 // Look into the predecessor block and find out the source of deref.
 
-                let ps = &mir.predecessors()[bb];
+                let ps = &mir.basic_blocks.predecessors()[bb];
                 if ps.len() != 1 {
                     continue;
                 }

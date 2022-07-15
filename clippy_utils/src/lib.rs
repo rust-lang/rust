@@ -79,10 +79,10 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
-    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr, ExprKind, FnDecl,
-    HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Mutability, Node,
-    Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
-    UnOp,
+    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Constness, Destination, Expr,
+    ExprKind, FnDecl, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource,
+    Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
+    TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
@@ -94,7 +94,7 @@ use rustc_middle::ty::fast_reject::SimplifiedTypeGen::{
     PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
 };
 use rustc_middle::ty::{
-    layout::IntegerExt, BorrowKind, ClosureKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeFoldable, UpvarCapture,
+    layout::IntegerExt, BorrowKind, ClosureKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeVisitable, UpvarCapture,
 };
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_semver::RustcVersion;
@@ -185,7 +185,7 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
     let hir = cx.tcx.hir();
     if_chain! {
-        if let Some(Node::Binding(pat)) = hir.find(hir_id);
+        if let Some(Node::Pat(pat)) = hir.find(hir_id);
         if matches!(pat.kind, PatKind::Binding(BindingAnnotation::Unannotated, ..));
         let parent = hir.get_parent_node(hir_id);
         if let Some(Node::Local(local)) = hir.find(parent);
@@ -1739,7 +1739,7 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
         _,
         &[
             Expr {
-                kind: ExprKind::Closure { body, .. },
+                kind: ExprKind::Closure(&Closure { body, .. }),
                 ..
             },
         ],
@@ -1826,7 +1826,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
     }
 
     match expr.kind {
-        ExprKind::Closure { body, .. } => is_body_identity_function(cx, cx.tcx.hir().body(body)),
+        ExprKind::Closure(&Closure { body, .. }) => is_body_identity_function(cx, cx.tcx.hir().body(body)),
         _ => path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
     }
 }

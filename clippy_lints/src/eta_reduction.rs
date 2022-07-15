@@ -7,12 +7,12 @@ use clippy_utils::{higher, is_adjusted, path_to_local, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind, Param, PatKind, Unsafety};
+use rustc_hir::{Closure, Expr, ExprKind, Param, PatKind, Unsafety};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, ClosureKind, Ty, TypeFoldable};
+use rustc_middle::ty::{self, ClosureKind, Ty, TypeVisitable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             return;
         }
         let body = match expr.kind {
-            ExprKind::Closure { body, .. } => cx.tcx.hir().body(body),
+            ExprKind::Closure(&Closure { body, .. }) => cx.tcx.hir().body(body),
             _ => return,
         };
         if body.value.span.from_expansion() {

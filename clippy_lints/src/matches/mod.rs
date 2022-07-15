@@ -1041,7 +1041,8 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
-        self.infallible_destructuring_match_linted |= infallible_destructuring_match::check(cx, local);
+        self.infallible_destructuring_match_linted |=
+            local.els.is_none() && infallible_destructuring_match::check(cx, local);
     }
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {

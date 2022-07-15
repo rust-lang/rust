@@ -1,4 +1,3 @@
-#![feature(untagged_unions)]
 #![allow(dead_code)]
 #![warn(clippy::expl_impl_clone_on_copy)]
 

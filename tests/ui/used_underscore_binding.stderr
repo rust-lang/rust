@@ -31,7 +31,7 @@ LL |     s._underscore_field += 1;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: used binding `_i` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
-  --> $DIR/used_underscore_binding.rs:99:16
+  --> $DIR/used_underscore_binding.rs:105:16
    |
 LL |         uses_i(_i);
    |                ^^

@@ -17,7 +17,7 @@ use if_chain::if_chain;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
-    self as hir, def::DefKind, intravisit, intravisit::Visitor, ExprKind, Item, ItemKind, Mutability, QPath,
+    self as hir, def::DefKind, intravisit, intravisit::Visitor, Closure, ExprKind, Item, ItemKind, Mutability, QPath,
 };
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
 use rustc_middle::hir::nested_filter;
@@ -958,7 +958,7 @@ fn resolve_applicability<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hi
 }
 
 fn check_is_multi_part<'hir>(cx: &LateContext<'hir>, closure_expr: &'hir hir::Expr<'hir>) -> bool {
-    if let ExprKind::Closure { body, .. } = closure_expr.kind {
+    if let ExprKind::Closure(&Closure { body, .. }) = closure_expr.kind {
         let mut scanner = IsMultiSpanScanner::new(cx);
         intravisit::walk_body(&mut scanner, cx.tcx.hir().body(body));
         return scanner.is_multi_part();

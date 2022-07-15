@@ -8,14 +8,14 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
-    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Expr, ExprKind, FnRetTy, GenericArg, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
+    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Closure, Expr, ExprKind, FnRetTy, GenericArg, HirId,
+    ImplItem, ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
     TraitItemKind, TyKind, UnOp,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -720,7 +720,7 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                     let owner_id = cx.tcx.hir().body_owner(cx.enclosing_body.unwrap());
                     Some(
                         if let Node::Expr(Expr {
-                            kind: ExprKind::Closure { fn_decl, .. },
+                            kind: ExprKind::Closure(&Closure { fn_decl, .. }),
                             ..
                         }) = cx.tcx.hir().get(owner_id)
                         {

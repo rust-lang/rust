@@ -23,7 +23,6 @@ const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal");
 
 /// All crates used in UI tests are listed here
 static TEST_DEPENDENCIES: &[&str] = &[
-    "clap",
     "clippy_lints",
     "clippy_utils",
     "derive_new",
@@ -42,8 +41,6 @@ static TEST_DEPENDENCIES: &[&str] = &[
 
 // Test dependencies may need an `extern crate` here to ensure that they show up
 // in the depinfo file (otherwise cargo thinks they are unused)
-#[allow(unused_extern_crates)]
-extern crate clap;
 #[allow(unused_extern_crates)]
 extern crate clippy_lints;
 #[allow(unused_extern_crates)]
