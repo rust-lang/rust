@@ -44,3 +44,11 @@ mod isolated5 {
 
     impl stable_in_unstable_std::old_stable_module::OldTrait for LocalType {}
 }
+
+mod isolated6 {
+    use stable_in_unstable_core::new_unstable_module::{OldTrait}; //~ ERROR use of unstable library feature 'unstable_test_feature'
+}
+
+mod isolated7 {
+    use stable_in_unstable_core::new_unstable_module::*; //~ ERROR use of unstable library feature 'unstable_test_feature'
+}
