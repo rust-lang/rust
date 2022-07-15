@@ -1503,15 +1503,49 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let sm = self.infcx.tcx.sess.source_map();
                 let mut suggested = false;
                 let msg = "consider using a `let` binding to create a longer lived value";
-                if let Some(scope) =
-                    self.body.source_scopes.get(self.body.source_info(location).scope)
+
+                use rustc_hir::intravisit::Visitor;
+
+                /// We check that there's a single level of block nesting to ensure always correct
+                /// suggestions. If we don't, then we only provide a free-form message to avoid
+                /// misleading users in cases like `src/test/ui/nll/borrowed-temporary-error.rs`.
+                /// We could expand the analysis to suggest hoising all of the relevant parts of
+                /// the users' code to make the code compile, but that could be too much.
+                struct NestedStatementVisitor {
+                    span: Span,
+                    current: usize,
+                    found: usize,
+                }
+
+                impl<'tcx> Visitor<'tcx> for NestedStatementVisitor {
+                    fn visit_block(&mut self, block: &hir::Block<'tcx>) {
+                        self.current += 1;
+                        rustc_hir::intravisit::walk_block(self, block);
+                        self.current -= 1;
+                    }
+                    fn visit_expr(&mut self, expr: &hir::Expr<'tcx>) {
+                        if self.span == expr.span {
+                            self.found = self.current;
+                        }
+                        rustc_hir::intravisit::walk_expr(self, expr);
+                    }
+                }
+                let source_info = self.body.source_info(location);
+                if let Some(scope) = self.body.source_scopes.get(source_info.scope)
                     && let ClearCrossCrate::Set(scope_data) = &scope.local_data
                     && let Some(node) = self.infcx.tcx.hir().find(scope_data.lint_root)
                     && let Some(id) = node.body_id()
                     && let hir::ExprKind::Block(block, _) = self.infcx.tcx.hir().body(id).value.kind
                 {
                     for stmt in block.stmts {
-                        if stmt.span.contains(proper_span)
+                        let mut visitor = NestedStatementVisitor {
+                            span: proper_span,
+                            current: 0,
+                            found: 0,
+                        };
+                        visitor.visit_stmt(stmt);
+                        if visitor.found == 0
+                            && stmt.span.contains(proper_span)
                             && let Some(p) = sm.span_to_margin(stmt.span)
                             && let Ok(s) = sm.span_to_snippet(proper_span)
                         {
