@@ -76,7 +76,7 @@ use crate::str;
 /// [str]: prim@str "str"
 #[derive(Hash)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "CStr")]
-#[unstable(feature = "core_c_str", issue = "94079")]
+#[stable(feature = "core_c_str", since = "1.64.0")]
 #[rustc_has_incoherent_inherent_impls]
 // FIXME:
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
@@ -108,7 +108,7 @@ pub struct CStr {
 /// let _: FromBytesWithNulError = CStr::from_bytes_with_nul(b"f\0oo").unwrap_err();
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "core_c_str", issue = "94079")]
+#[stable(feature = "core_c_str", since = "1.64.0")]
 pub struct FromBytesWithNulError {
     kind: FromBytesWithNulErrorKind,
 }
