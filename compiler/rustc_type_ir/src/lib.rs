@@ -310,6 +310,7 @@ impl DebruijnIndex {
     ///    for<'a> fn(for<'b> fn(&'a x))
     ///
     /// you would need to shift the index for `'a` into a new binder.
+    #[inline]
     #[must_use]
     pub fn shifted_in(self, amount: u32) -> DebruijnIndex {
         DebruijnIndex::from_u32(self.as_u32() + amount)
@@ -317,18 +318,21 @@ impl DebruijnIndex {
 
     /// Update this index in place by shifting it "in" through
     /// `amount` number of binders.
+    #[inline]
     pub fn shift_in(&mut self, amount: u32) {
         *self = self.shifted_in(amount);
     }
 
     /// Returns the resulting index when this value is moved out from
     /// `amount` number of new binders.
+    #[inline]
     #[must_use]
     pub fn shifted_out(self, amount: u32) -> DebruijnIndex {
         DebruijnIndex::from_u32(self.as_u32() - amount)
     }
 
     /// Update in place by shifting out from `amount` binders.
+    #[inline]
     pub fn shift_out(&mut self, amount: u32) {
         *self = self.shifted_out(amount);
     }
@@ -353,6 +357,7 @@ impl DebruijnIndex {
     /// If we invoke `shift_out_to_binder` and the region is in fact
     /// bound by one of the binders we are shifting out of, that is an
     /// error (and should fail an assertion failure).
+    #[inline]
     pub fn shifted_out_to_binder(self, to_binder: DebruijnIndex) -> Self {
         self.shifted_out(to_binder.as_u32() - INNERMOST.as_u32())
     }
