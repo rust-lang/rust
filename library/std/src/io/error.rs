@@ -821,9 +821,10 @@ impl Error {
     /// }
     ///
     /// impl fmt::Display for E {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         todo!()
-    ///     }
+    ///    // ...
+    /// #    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #        todo!()
+    /// #    }
     /// }
     /// impl Error for E {}
     ///
