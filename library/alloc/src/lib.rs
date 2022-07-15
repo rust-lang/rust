@@ -124,6 +124,7 @@
 #![cfg_attr(test, feature(new_uninit))]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(pattern)]
+#![feature(pointer_byte_offsets)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
 #![feature(ptr_sub_ptr)]
