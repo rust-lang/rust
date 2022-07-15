@@ -171,14 +171,7 @@ fn compare_predicate_entailment<'tcx>(
     let trait_m_predicates = tcx.predicates_of(trait_m.def_id);
 
     // Check region bounds.
-    check_region_bounds_on_impl_item(
-        tcx,
-        impl_m_span,
-        impl_m,
-        trait_m,
-        &trait_m_generics,
-        &impl_m_generics,
-    )?;
+    check_region_bounds_on_impl_item(tcx, impl_m, trait_m, &trait_m_generics, &impl_m_generics)?;
 
     // Create obligations for each predicate declared by the impl
     // definition in the context of the trait's parameter
@@ -410,7 +403,6 @@ fn compare_predicate_entailment<'tcx>(
 
 fn check_region_bounds_on_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
-    span: Span,
     impl_m: &ty::AssocItem,
     trait_m: &ty::AssocItem,
     trait_generics: &ty::Generics,
@@ -436,23 +428,25 @@ fn check_region_bounds_on_impl_item<'tcx>(
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
-        let item_kind = assoc_item_kind_str(impl_m);
-        let span = impl_m
-            .def_id
-            .as_local()
-            .and_then(|did| tcx.hir().get_generics(did))
-            .map_or(span, |g| g.span);
-        let generics_span = tcx.hir().span_if_local(trait_m.def_id).map(|sp| {
-            trait_m
-                .def_id
-                .as_local()
-                .and_then(|did| tcx.hir().get_generics(did))
-                .map_or(sp, |g| g.span)
-        });
+        let span = tcx
+            .hir()
+            .get_generics(impl_m.def_id.expect_local())
+            .expect("expected impl item to have generics or else we can't compare them")
+            .span;
+        let generics_span = if let Some(local_def_id) = trait_m.def_id.as_local() {
+            Some(
+                tcx.hir()
+                    .get_generics(local_def_id)
+                    .expect("expected trait item to have generics or else we can't compare them")
+                    .span,
+            )
+        } else {
+            None
+        };
 
         let reported = tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
             span,
-            item_kind,
+            item_kind: assoc_item_kind_str(impl_m),
             ident: impl_m.ident(tcx),
             generics_span,
         });
@@ -1201,7 +1195,6 @@ fn compare_type_predicate_entailment<'tcx>(
 
     check_region_bounds_on_impl_item(
         tcx,
-        impl_ty_span,
         impl_ty,
         trait_ty,
         &trait_ty_generics,
