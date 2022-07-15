@@ -63,7 +63,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, Mul
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{Item, ItemKind, Node};
+use rustc_hir::Node;
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -348,7 +348,11 @@ pub fn same_type_modulo_infer<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub fn report_region_errors(&self, errors: &[RegionResolutionError<'tcx>]) {
+    pub fn report_region_errors(
+        &self,
+        generic_param_scope: LocalDefId,
+        errors: &[RegionResolutionError<'tcx>],
+    ) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
         // try to pre-process the errors, which will group some of them
@@ -379,6 +383,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                     RegionResolutionError::GenericBoundFailure(origin, param_ty, sub) => {
                         self.report_generic_bound_failure(
+                            generic_param_scope,
                             origin.span(),
                             Some(origin),
                             param_ty,
@@ -2269,56 +2274,30 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn report_generic_bound_failure(
         &self,
+        generic_param_scope: LocalDefId,
         span: Span,
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
     ) {
-        let owner =
-            self.in_progress_typeck_results.map(|typeck_results| typeck_results.borrow().hir_owner);
-        self.construct_generic_bound_failure(span, origin, bound_kind, sub, owner).emit();
+        self.construct_generic_bound_failure(generic_param_scope, span, origin, bound_kind, sub)
+            .emit();
     }
 
     pub fn construct_generic_bound_failure(
         &self,
+        generic_param_scope: LocalDefId,
         span: Span,
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
-        owner: Option<LocalDefId>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let hir = self.tcx.hir();
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
-        let generics = owner.map(|owner| {
-            let hir_id = hir.local_def_id_to_hir_id(owner);
-            let parent_id = hir.get_parent_item(hir_id);
-            (
-                // Parent item could be a `mod`, so we check the HIR before calling:
-                if let Some(Node::Item(Item {
-                    kind: ItemKind::Trait(..) | ItemKind::Impl { .. },
-                    ..
-                })) = hir.find_by_def_id(parent_id)
-                {
-                    Some(self.tcx.generics_of(parent_id))
-                } else {
-                    None
-                },
-                self.tcx.generics_of(owner.to_def_id()),
-                hir.span(hir_id),
-            )
-        });
-
-        let span = match generics {
-            // This is to get around the trait identity obligation, that has a `DUMMY_SP` as signal
-            // for other diagnostics, so we need to recover it here.
-            Some((_, _, node)) if span.is_dummy() => node,
-            _ => span,
-        };
-
+        let generics = self.tcx.generics_of(generic_param_scope);
         // type_param_span is (span, has_bounds)
-        let type_param_span = match (generics, bound_kind) {
-            (Some((_, ref generics, _)), GenericKind::Param(ref param)) => {
+        let type_param_span = match bound_kind {
+            GenericKind::Param(ref param) => {
                 // Account for the case where `param` corresponds to `Self`,
                 // which doesn't have the expected type argument.
                 if !(generics.has_self && param.index == 0) {
@@ -2346,30 +2325,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             _ => None,
         };
-        let new_lt = generics
-            .as_ref()
-            .and_then(|(parent_g, g, _)| {
-                let mut possible = (b'a'..=b'z').map(|c| format!("'{}", c as char));
-                let mut lts_names = g
-                    .params
-                    .iter()
+
+        let new_lt = {
+            let mut possible = (b'a'..=b'z').map(|c| format!("'{}", c as char));
+            let lts_names =
+                iter::successors(Some(generics), |g| g.parent.map(|p| self.tcx.generics_of(p)))
+                    .flat_map(|g| &g.params)
                     .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
                     .map(|p| p.name.as_str())
                     .collect::<Vec<_>>();
-                if let Some(g) = parent_g {
-                    lts_names.extend(
-                        g.params
-                            .iter()
-                            .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
-                            .map(|p| p.name.as_str()),
-                    );
-                }
-                possible.find(|candidate| !lts_names.contains(&&candidate[..]))
-            })
-            .unwrap_or("'lt".to_string());
+            possible
+                .find(|candidate| !lts_names.contains(&&candidate[..]))
+                .unwrap_or("'lt".to_string())
+        };
+
         let add_lt_sugg = generics
-            .as_ref()
-            .and_then(|(_, g, _)| g.params.first())
+            .params
+            .first()
             .and_then(|param| param.def_id.as_local())
             .map(|def_id| (self.tcx.def_span(def_id).shrink_to_lo(), format!("{}, ", new_lt)));
 
@@ -2571,7 +2543,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 if let Some(infer::RelateParamBound(_, t, _)) = origin {
                     let return_impl_trait =
-                        owner.and_then(|owner| self.tcx.return_type_impl_trait(owner)).is_some();
+                        self.tcx.return_type_impl_trait(generic_param_scope).is_some();
                     let t = self.resolve_vars_if_possible(t);
                     match t.kind() {
                         // We've got:

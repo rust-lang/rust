@@ -37,7 +37,6 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, StatementAsExpression, TraitEngine, TraitEngineExt,
-    WellFormedLoc,
 };
 
 use std::collections::hash_map::Entry;
@@ -373,29 +372,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             bounds, substs, result, spans,
         );
         (result, spans)
-    }
-
-    /// Convenience method which tracks extra diagnostic information for normalization
-    /// that occurs as a result of WF checking. The `hir_id` is the `HirId` of the hir item
-    /// whose type is being wf-checked - this is used to construct a more precise span if
-    /// an error occurs.
-    ///
-    /// It is never necessary to call this method - calling `normalize_associated_types_in` will
-    /// just result in a slightly worse diagnostic span, and will still be sound.
-    pub(in super::super) fn normalize_associated_types_in_wf<T>(
-        &self,
-        span: Span,
-        value: T,
-        loc: WellFormedLoc,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        self.inh.normalize_associated_types_in_with_cause(
-            ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(Some(loc))),
-            self.param_env,
-            value,
-        )
     }
 
     pub(in super::super) fn normalize_associated_types_in<T>(&self, span: Span, value: T) -> T

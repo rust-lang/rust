@@ -181,11 +181,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         let generic_ty = type_test.generic_kind.to_ty(self.infcx.tcx);
                         let origin = RelateParamBound(type_test_span, generic_ty, None);
                         self.buffer_error(self.infcx.construct_generic_bound_failure(
+                            self.body.source.def_id().expect_local(),
                             type_test_span,
                             Some(origin),
                             type_test.generic_kind,
                             lower_bound_region,
-                            self.body.source.def_id().as_local(),
                         ));
                     } else {
                         // FIXME. We should handle this case better. It

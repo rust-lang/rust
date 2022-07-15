@@ -1301,7 +1301,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
-    pub fn resolve_regions_and_report_errors(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
+    pub fn resolve_regions_and_report_errors(
+        &self,
+        generic_param_scope: LocalDefId,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+    ) {
         let errors = self.resolve_regions(outlives_env);
 
         if !self.is_tainted_by_errors() {
@@ -1310,7 +1314,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(&errors);
+            self.report_region_errors(generic_param_scope, &errors);
         }
     }
 

@@ -1,10 +1,9 @@
-use crate::check::wfcheck::for_item;
+use crate::check::intrinsicck::InlineAsmCtxt;
 
 use super::coercion::CoerceMany;
 use super::compare_method::check_type_bounds;
 use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
 use super::*;
-
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
@@ -29,8 +28,8 @@ use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVE
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::{self, ObligationCtxt};
 use rustc_ty_utils::representability::{self, Representability};
 
 use std::iter;
@@ -733,14 +732,13 @@ fn check_opaque_meets_bounds<'tcx>(
     let param_env = tcx.param_env(defining_use_anchor);
 
     tcx.infer_ctxt().with_opaque_type_inference(defining_use_anchor).enter(move |infcx| {
-        let inh = Inherited::new(infcx, def_id);
-        let infcx = &inh.infcx;
+        let ocx = ObligationCtxt::new(&infcx);
         let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
 
         let misc_cause = traits::ObligationCause::misc(span, hir_id);
 
         match infcx.at(&misc_cause, param_env).eq(opaque_ty, hidden_type) {
-            Ok(infer_ok) => inh.register_infer_ok_obligations(infer_ok),
+            Ok(infer_ok) => ocx.register_infer_ok_obligations(infer_ok),
             Err(ty_err) => {
                 tcx.sess.delay_span_bug(
                     span,
@@ -754,11 +752,11 @@ fn check_opaque_meets_bounds<'tcx>(
         // hidden type is well formed even without those bounds.
         let predicate =
             ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_type.into())).to_predicate(tcx);
-        inh.register_predicate(Obligation::new(misc_cause, param_env, predicate));
+        ocx.register_obligation(Obligation::new(misc_cause, param_env, predicate));
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
             infcx.report_fulfillment_errors(&errors, None, false);
         }
@@ -769,7 +767,10 @@ fn check_opaque_meets_bounds<'tcx>(
             // Can have different predicates to their defining use
             hir::OpaqueTyOrigin::TyAlias => {
                 let outlives_environment = OutlivesEnvironment::new(param_env);
-                infcx.check_region_obligations_and_report_errors(&outlives_environment);
+                infcx.check_region_obligations_and_report_errors(
+                    defining_use_anchor,
+                    &outlives_environment,
+                );
             }
         }
 
@@ -940,10 +941,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
         DefKind::GlobalAsm => {
             let it = tcx.hir().item(id);
             let hir::ItemKind::GlobalAsm(asm) = it.kind else { span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it) };
-            for_item(tcx, it).with_fcx(|fcx| {
-                fcx.check_asm(asm, it.hir_id());
-                Default::default()
-            })
+            InlineAsmCtxt::new_global_asm(tcx).check_asm(asm, id.hir_id());
         }
         _ => {}
     }
