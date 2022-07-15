@@ -128,29 +128,19 @@ pub fn check(build: &mut Build) {
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("gdb"));
 
-    // We're gonna build some custom C code here and there, host triples
-    // also build some C++ shims for LLVM so we need a C++ compiler.
-    for target in &build.targets {
-        // On emscripten we don't actually need the C compiler to just
-        // build the target artifacts, only for testing. For the sake
-        // of easier bot configuration, just skip detection.
-        if target.contains("emscripten") {
-            continue;
-        }
-
-        // We don't use a C compiler on wasm32
-        if target.contains("wasm32") {
-            continue;
-        }
-
-        if !build.config.dry_run {
-            cmd_finder.must_have(build.cc(*target));
-            if let Some(ar) = build.ar(*target) {
-                cmd_finder.must_have(ar);
+    // We need a target C compiler for some tests.
+    if build.test_stage.is_some() {
+        for target in &build.targets {
+            if !build.config.dry_run {
+                cmd_finder.must_have(build.cc(*target));
+                if let Some(ar) = build.ar(*target) {
+                    cmd_finder.must_have(ar);
+                }
             }
         }
     }
 
+    // We build some C++ shims for LLVM on the host triples.
     for host in &build.hosts {
         if !build.config.dry_run {
             cmd_finder.must_have(build.cxx(*host).unwrap());
