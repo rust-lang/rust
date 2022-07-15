@@ -1582,11 +1582,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     //
     //     type OpaqueTy<generics_from_parent_fn> = impl Future<Output = T>;
     //
-    // `inputs`: lowered types of parameters to the function (used to collect lifetimes)
     // `output`: unlowered output type (`T` in `-> T`)
     // `fn_def_id`: `DefId` of the parent function (used to create child impl trait definition)
     // `opaque_ty_node_id`: `NodeId` of the opaque `impl Trait` type that should be created
-    // `elided_lt_replacement`: replacement for elided lifetimes in the return type
     #[tracing::instrument(level = "debug", skip(self))]
     fn lower_async_fn_ret_ty(
         &mut self,
