@@ -9,7 +9,13 @@ LL |     });
 LL |     println!("{:?}", x);
    |                      - borrow later used here
    |
-   = note: consider using a `let` binding to create a longer lived value
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = (v,);
+LL ~     let x = gimme({
+LL |         let v = 22;
+LL ~         &binding
+   |
 
 error: aborting due to previous error
 

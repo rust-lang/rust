@@ -20,9 +20,9 @@ fn f() {
     //~^ ERROR temporary value dropped while borrowed
     //~| NOTE creates a temporary which is freed while still in use
     //~| NOTE temporary value is freed at the end of this statement
-    //~| NOTE consider using a `let` binding to create a longer lived value
+    //~| HELP consider using a `let` binding to create a longer lived value
 
-    {
+    { //~ HELP consider using a `let` binding to create a longer lived value
 
         let mut v4 = Vec::new(); // (sub) statement 0
 
@@ -30,7 +30,6 @@ fn f() {
         //~^ ERROR temporary value dropped while borrowed
         //~| NOTE creates a temporary which is freed while still in use
         //~| NOTE temporary value is freed at the end of this statement
-        //~| NOTE consider using a `let` binding to create a longer lived value
         v4.use_ref();
         //~^ NOTE borrow later used here
     }                       // (statement 7)
@@ -41,7 +40,7 @@ fn f() {
     //~^ ERROR temporary value dropped while borrowed
     //~| NOTE creates a temporary which is freed while still in use
     //~| NOTE temporary value is freed at the end of this statement
-    //~| NOTE consider using a `let` binding to create a longer lived value
+    //~| HELP consider using a `let` binding to create a longer lived value
 
     v1.push(&old[0]);
 

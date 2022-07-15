@@ -6,7 +6,8 @@ fn main() {
     let s = 0;
     let x = RefCell::new((&mut r,s));
 
-    let val: &_ = x.borrow().0;
+    let binding = x.borrow();
+    let val: &_ = binding.0;
     //~^ ERROR temporary value dropped while borrowed [E0716]
     //~| NOTE temporary value is freed at the end of this statement
     //~| NOTE creates a temporary which is freed while still in use

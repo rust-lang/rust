@@ -1500,7 +1500,38 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             | BorrowExplanation::UsedLaterInLoop(..)
             | BorrowExplanation::UsedLaterWhenDropped { .. } => {
                 // Only give this note and suggestion if it could be relevant.
-                err.note("consider using a `let` binding to create a longer lived value");
+                let sm = self.infcx.tcx.sess.source_map();
+                let mut suggested = false;
+                let msg = "consider using a `let` binding to create a longer lived value";
+                if let Some(scope) =
+                    self.body.source_scopes.get(self.body.source_info(location).scope)
+                    && let ClearCrossCrate::Set(scope_data) = &scope.local_data
+                    && let Some(node) = self.infcx.tcx.hir().find(scope_data.lint_root)
+                    && let Some(id) = node.body_id()
+                    && let hir::ExprKind::Block(block, _) = self.infcx.tcx.hir().body(id).value.kind
+                {
+                    for stmt in block.stmts {
+                        if stmt.span.contains(proper_span)
+                            && let Some(p) = sm.span_to_margin(stmt.span)
+                            && let Ok(s) = sm.span_to_snippet(proper_span)
+                        {
+                            let addition = format!("let binding = {};\n{}", s, " ".repeat(p));
+                            err.multipart_suggestion_verbose(
+                                msg,
+                                vec![
+                                    (stmt.span.shrink_to_lo(), addition),
+                                    (proper_span, "binding".to_string()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                            suggested = true;
+                            break;
+                        }
+                    }
+                }
+                if !suggested {
+                    err.note(msg);
+                }
             }
             _ => {}
         }
