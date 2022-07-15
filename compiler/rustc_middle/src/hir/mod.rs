@@ -44,6 +44,7 @@ pub struct ModuleItems {
     trait_items: Box<[TraitItemId]>,
     impl_items: Box<[ImplItemId]>,
     foreign_items: Box<[ForeignItemId]>,
+    body_owners: Box<[LocalDefId]>,
 }
 
 impl ModuleItems {
