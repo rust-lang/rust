@@ -43,7 +43,16 @@ impl JsonRenderer<'_> {
         let span = item.span(self.tcx);
         let clean::Item { name, attrs: _, kind: _, visibility, item_id, cfg: _ } = item;
         let inner = match *item.kind {
-            clean::StrippedItem(_) | clean::KeywordItem(_) => return None,
+            clean::KeywordItem(_) => return None,
+            clean::StrippedItem(ref inner) => {
+                match &**inner {
+                    // We document non-empty stripped modules as with `Module::is_stripped` set to
+                    // `true`, to prevent contained items from being orphaned for downstream users,
+                    // as JSON does no inlining.
+                    clean::ModuleItem(m) if !m.items.is_empty() => from_clean_item(item, self.tcx),
+                    _ => return None,
+                }
+            }
             _ => from_clean_item(item, self.tcx),
         };
         Some(Item {
@@ -220,7 +229,9 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
     let header = item.fn_header(tcx);
 
     match *item.kind {
-        ModuleItem(m) => ItemEnum::Module(Module { is_crate, items: ids(m.items, tcx) }),
+        ModuleItem(m) => {
+            ItemEnum::Module(Module { is_crate, items: ids(m.items, tcx), is_stripped: false })
+        }
         ImportItem(i) => ItemEnum::Import(i.into_tcx(tcx)),
         StructItem(s) => ItemEnum::Struct(s.into_tcx(tcx)),
         UnionItem(u) => ItemEnum::Union(u.into_tcx(tcx)),
@@ -257,8 +268,19 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
             bounds: b.into_iter().map(|x| x.into_tcx(tcx)).collect(),
             default: Some(t.item_type.unwrap_or(t.type_).into_tcx(tcx)),
         },
-        // `convert_item` early returns `None` for striped items and keywords.
-        StrippedItem(_) | KeywordItem(_) => unreachable!(),
+        // `convert_item` early returns `None` for stripped items and keywords.
+        KeywordItem(_) => unreachable!(),
+        StrippedItem(inner) => {
+            match *inner {
+                ModuleItem(m) => ItemEnum::Module(Module {
+                    is_crate,
+                    items: ids(m.items, tcx),
+                    is_stripped: true,
+                }),
+                // `convert_item` early returns `None` for stripped items we're not including
+                _ => unreachable!(),
+            }
+        }
         ExternCrateItem { ref src } => ItemEnum::ExternCrate {
             name: name.as_ref().unwrap().to_string(),
             rename: src.map(|x| x.to_string()),
