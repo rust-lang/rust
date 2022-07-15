@@ -204,4 +204,13 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         self.pattern_depth.shift_out(1);
         result
     }
+
+    fn constness_args(
+        &mut self,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg> {
+        // TODO
+        relate::super_relate_constness(self, a, b)
+    }
 }

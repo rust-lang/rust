@@ -210,6 +210,10 @@ pub trait TypeVisitor<'tcx>: Sized {
     fn visit_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> ControlFlow<Self::BreakTy> {
         c.super_visit_with(self)
     }
+
+    fn visit_constness_arg(&mut self, c: ty::ConstnessArg) -> ControlFlow<Self::BreakTy> {
+        c.super_visit_with(self)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -1155,7 +1155,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.next_region_var_in_universe(RegionVariableOrigin::Nll(origin), universe)
     }
 
-    pub fn var_for_def(&self, span: Span, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
+    pub fn var_for_def(&self, span: Span, param: &ty::GenericParamDef, constness: Option<ty::ConstnessArg>) -> GenericArg<'tcx> {
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // Create a region inference variable for the given
@@ -1206,7 +1206,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
     /// type/region parameter to a fresh inference variable.
     pub fn fresh_substs_for_item(&self, span: Span, def_id: DefId) -> SubstsRef<'tcx> {
-        InternalSubsts::for_item(self.tcx, def_id, |param, _| self.var_for_def(span, param))
+        InternalSubsts::for_item(self.tcx, def_id, |param, _| self.var_for_def(span, param, None))
     }
 
     /// Returns `true` if errors have been reported since this infcx was
