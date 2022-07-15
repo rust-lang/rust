@@ -117,11 +117,11 @@ impl<T> RangeObjectMap<T> {
         self.v.insert(pos, Elem { range, data });
         // If we aren't the first element, then our start must be greater than the preivous element's end
         if pos > 0 {
-            debug_assert!(self.v[pos - 1].range.end() <= range.start);
+            assert!(self.v[pos - 1].range.end() <= range.start);
         }
         // If we aren't the last element, then our end must be smaller than next element's start
         if pos < self.v.len() - 1 {
-            debug_assert!(range.end() <= self.v[pos + 1].range.start);
+            assert!(range.end() <= self.v[pos + 1].range.start);
         }
     }
 
