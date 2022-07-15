@@ -183,8 +183,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if let (ty::FnDef(def_id, ..), true) =
             (&found.kind(), self.suggest_fn_call(err, expr, expected, found))
         {
-            if def_id.is_local() {
-                err.span_label(self.tcx.def_span(def_id), &format!("{} defined here", found));
+            if let Some(sp) = self.tcx.hir().span_if_local(*def_id) {
+                err.span_label(sp, format!("{found} defined here"));
             }
         } else if !self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
             let is_struct_pat_shorthand_field =
