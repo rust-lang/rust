@@ -373,6 +373,11 @@ where
         substs: SubstsRef<'tcx>,
         filter: impl Fn(Ty<'tcx>) -> (DefId, SubstsRef<'tcx>),
     ) {
+        // An optimization for a common case with opaque types.
+        if substs.is_empty() {
+            return;
+        }
+
         // This case is thorny for inference. The fundamental problem is
         // that there are many cases where we have choice, and inference
         // doesn't like choice (the current region inference in
