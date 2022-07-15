@@ -228,24 +228,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [timeout] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
 
-                this.check_no_isolation("`Sleep`")?;
-
-                let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
-
-                let duration = Duration::from_millis(timeout_ms as u64);
-                let timeout_time = Time::Monotonic(Instant::now().checked_add(duration).unwrap());
-
-                let active_thread = this.get_active_thread();
-                this.block_thread(active_thread);
-
-                this.register_timeout_callback(
-                    active_thread,
-                    timeout_time,
-                    Box::new(move |ecx| {
-                        ecx.unblock_thread(active_thread);
-                        Ok(())
-                    }),
-                );
+                this.Sleep(timeout)?;
             }
 
             // Synchronization primitives

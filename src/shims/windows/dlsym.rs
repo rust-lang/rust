@@ -5,7 +5,7 @@ use rustc_target::spec::abi::Abi;
 use log::trace;
 
 use crate::helpers::check_arg_count;
-use crate::shims::windows::handle::Handle;
+use crate::shims::windows::handle::{EvalContextExt as _, Handle};
 use crate::*;
 
 #[derive(Debug, Copy, Clone)]
@@ -118,7 +118,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     match Handle::from_scalar(this.read_scalar(handle)?.check_init()?, this)? {
                         Some(Handle::Thread(thread)) => thread,
                         Some(Handle::CurrentThread) => this.get_active_thread(),
-                        _ => throw_ub_format!("invalid handle"),
+                        _ => this.invalid_handle("SetThreadDescription")?,
                     };
 
                 this.set_thread_name_wide(thread, name);

@@ -233,4 +233,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         Ok(0)
     }
+
+    #[allow(non_snake_case)]
+    fn Sleep(&mut self, timeout: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("`Sleep`")?;
+
+        let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
+
+        let duration = Duration::from_millis(timeout_ms.into());
+        let timeout_time = Time::Monotonic(Instant::now().checked_add(duration).unwrap());
+
+        let active_thread = this.get_active_thread();
+        this.block_thread(active_thread);
+
+        this.register_timeout_callback(
+            active_thread,
+            timeout_time,
+            Box::new(move |ecx| {
+                ecx.unblock_thread(active_thread);
+                Ok(())
+            }),
+        );
+
+        Ok(())
+    }
 }

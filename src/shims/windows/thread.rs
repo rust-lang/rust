@@ -1,11 +1,8 @@
-use std::time::{Duration, Instant};
-
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::spec::abi::Abi;
 
-use crate::thread::Time;
 use crate::*;
-use shims::windows::handle::Handle;
+use shims::windows::handle::{EvalContextExt as _, Handle};
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 
@@ -59,25 +56,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let thread = match Handle::from_scalar(this.read_scalar(handle)?.check_init()?, this)? {
             Some(Handle::Thread(thread)) => thread,
-            Some(Handle::CurrentThread) => throw_ub_format!("trying to wait on itself"),
-            _ => throw_ub_format!("invalid handle"),
+            // Unlike on posix, joining the current thread is not UB on windows.
+            // It will just deadlock.
+            Some(Handle::CurrentThread) => this.get_active_thread(),
+            _ => this.invalid_handle("WaitForSingleObject")?,
         };
 
         if this.read_scalar(timeout)?.to_u32()? != this.eval_windows("c", "INFINITE")?.to_u32()? {
-            this.check_no_isolation("`WaitForSingleObject` with non-infinite timeout")?;
+            throw_unsup_format!("`WaitForSingleObject` with non-infinite timeout");
         }
 
-        let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
-
-        let timeout_time = if timeout_ms == this.eval_windows("c", "INFINITE")?.to_u32()? {
-            None
-        } else {
-            let duration = Duration::from_millis(timeout_ms as u64);
-
-            Some(Time::Monotonic(Instant::now().checked_add(duration).unwrap()))
-        };
-
-        this.wait_on_thread(timeout_time, thread)?;
+        this.join_thread(thread)?;
 
         Ok(())
     }

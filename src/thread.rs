@@ -405,6 +405,31 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         Ok(())
     }
 
+    /// Mark that the active thread tries to exclusively join the thread with `joined_thread_id`.
+    /// If the thread is already joined by another thread
+    fn join_thread_exclusive(
+        &mut self,
+        joined_thread_id: ThreadId,
+        data_race: Option<&mut data_race::GlobalState>,
+    ) -> InterpResult<'tcx> {
+        if self.threads[joined_thread_id].join_status == ThreadJoinStatus::Joined {
+            throw_ub_format!("trying to join an already joined thread");
+        }
+
+        if joined_thread_id == self.active_thread {
+            throw_ub_format!("trying to join itself");
+        }
+
+        assert!(
+            self.threads
+                .iter()
+                .all(|thread| thread.state != ThreadState::BlockedOnJoin(joined_thread_id)),
+            "a joinable thread already has threads waiting for its termination"
+        );
+
+        self.join_thread(joined_thread_id, data_race)
+    }
+
     /// Set the name of the given thread.
     pub fn set_thread_name(&mut self, thread: ThreadId, new_thread_name: Vec<u8>) {
         self.threads[thread].thread_name = Some(new_thread_name);
@@ -697,6 +722,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn join_thread(&mut self, joined_thread_id: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.machine.threads.join_thread(joined_thread_id, this.machine.data_race.as_mut())?;
+        Ok(())
+    }
+
+    #[inline]
+    fn join_thread_exclusive(&mut self, joined_thread_id: ThreadId) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.machine
+            .threads
+            .join_thread_exclusive(joined_thread_id, this.machine.data_race.as_mut())?;
         Ok(())
     }
 

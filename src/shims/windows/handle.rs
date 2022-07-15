@@ -146,16 +146,19 @@ impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tc
 
 #[allow(non_snake_case)]
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    fn invalid_handle(&mut self, function_name: &str) -> InterpResult<'tcx, !> {
+        throw_machine_stop!(TerminationInfo::Abort(format!(
+            "invalid handle passed to `{function_name}`"
+        )))
+    }
+
     fn CloseHandle(&mut self, handle_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         match Handle::from_scalar(this.read_scalar(handle_op)?.check_init()?, this)? {
-            Some(Handle::Thread(thread)) => this.detach_thread(thread)?,
-            _ =>
-                throw_machine_stop!(TerminationInfo::Abort(
-                    "invalid handle passed to `CloseHandle`".into()
-                )),
-        };
+            Some(Handle::Thread(thread)) => this.detach_thread(thread, true)?,
+            _ => this.invalid_handle("CloseHandle")?,
+        }
 
         Ok(())
     }
