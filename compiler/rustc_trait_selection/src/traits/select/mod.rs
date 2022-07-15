@@ -32,7 +32,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::thir::abstract_const::NotConstEvaluatable;
+use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -742,7 +742,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         | (_, Err(ErrorHandled::Reported(_))) => Ok(EvaluatedToErr),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
-                                obligation.cause.span(self.tcx()),
+                                obligation.cause.span(),
                                 "ConstEquate: const_eval_resolve returned an unexpected error"
                             )
                         }

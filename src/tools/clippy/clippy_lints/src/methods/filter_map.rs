@@ -6,7 +6,7 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
+use rustc_hir::{Closure, Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Symbol};
@@ -22,8 +22,8 @@ fn is_method<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Sy
         hir::ExprKind::Path(QPath::Resolved(_, segments)) => {
             segments.segments.last().unwrap().ident.name == method_name
         },
-        hir::ExprKind::Closure { body, .. } => {
-            let body = cx.tcx.hir().body(*body);
+        hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
+            let body = cx.tcx.hir().body(body);
             let closure_expr = peel_blocks(&body.value);
             let arg_id = body.params[0].pat.hir_id;
             match closure_expr.kind {
@@ -106,7 +106,7 @@ pub(super) fn check<'tcx>(
             if is_trait_method(cx, map_recv, sym::Iterator);
 
             // filter(|x| ...is_some())...
-            if let ExprKind::Closure { body: filter_body_id, .. } = filter_arg.kind;
+            if let ExprKind::Closure(&Closure { body: filter_body_id, .. }) = filter_arg.kind;
             let filter_body = cx.tcx.hir().body(filter_body_id);
             if let [filter_param] = filter_body.params;
             // optional ref pattern: `filter(|&x| ..)`
@@ -129,7 +129,7 @@ pub(super) fn check<'tcx>(
             if path.ident.name.as_str() == if is_result { "is_ok" } else { "is_some" };
 
             // ...map(|x| ...unwrap())
-            if let ExprKind::Closure { body: map_body_id, .. } = map_arg.kind;
+            if let ExprKind::Closure(&Closure { body: map_body_id, .. }) = map_arg.kind;
             let map_body = cx.tcx.hir().body(map_body_id);
             if let [map_param] = map_body.params;
             if let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind;

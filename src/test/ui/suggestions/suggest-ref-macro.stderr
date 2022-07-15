@@ -1,4 +1,26 @@
 error[E0308]: mismatched types
+  --> $DIR/suggest-ref-macro.rs:8:1
+   |
+LL | #[hello]
+   | ^^^^^^^^
+   | |
+   | expected `&mut i32`, found integer
+   | arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/suggest-ref-macro.rs:8:1
+   |
+LL |   #[hello]
+   |  _-^^^^^^^
+LL | | fn abc() {}
+LL | |
+LL | | fn x(_: &mut i32) {}
+LL | |
+LL | | macro_rules! bla {
+   | |_____________-
+   = note: this error originates in the attribute macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
   --> $DIR/suggest-ref-macro.rs:15:11
    |
 LL |         x(123);
@@ -35,28 +57,6 @@ note: function defined here
    |
 LL | fn x(_: &mut i32) {}
    |    ^ -----------
-
-error[E0308]: mismatched types
-  --> $DIR/suggest-ref-macro.rs:8:1
-   |
-LL | #[hello]
-   | ^^^^^^^^
-   | |
-   | expected `&mut i32`, found integer
-   | arguments to this function are incorrect
-   |
-note: function defined here
-  --> $DIR/suggest-ref-macro.rs:8:1
-   |
-LL |   #[hello]
-   |  _-^^^^^^^
-LL | | fn abc() {}
-LL | |
-LL | | fn x(_: &mut i32) {}
-LL | |
-LL | | macro_rules! bla {
-   | |_____________-
-   = note: this error originates in the attribute macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

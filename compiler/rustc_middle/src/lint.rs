@@ -300,7 +300,7 @@ pub fn struct_lint_level<'s, 'd>(
 
         let has_future_breakage = future_incompatible.map_or(
             // Default allow lints trigger too often for testing.
-            sess.opts.debugging_opts.future_incompat_test && lint.default_level != Level::Allow,
+            sess.opts.unstable_opts.future_incompat_test && lint.default_level != Level::Allow,
             |incompat| {
                 matches!(incompat.reason, FutureIncompatibilityReason::FutureReleaseErrorReportNow)
             },

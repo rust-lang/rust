@@ -908,8 +908,7 @@ impl<T: ?Sized> Arc<T> {
             let offset = data_offset(ptr);
 
             // Reverse the offset to find the original ArcInner.
-            let arc_ptr =
-                (ptr as *mut u8).offset(-offset).with_metadata_of(ptr as *mut ArcInner<T>);
+            let arc_ptr = ptr.byte_sub(offset) as *mut ArcInner<T>;
 
             Self::from_ptr(arc_ptr)
         }
@@ -1942,7 +1941,7 @@ impl<T: ?Sized> Weak<T> {
             let offset = unsafe { data_offset(ptr) };
             // Thus, we reverse the offset to get the whole RcBox.
             // SAFETY: the pointer originated from a Weak, so this offset is safe.
-            unsafe { (ptr as *mut u8).offset(-offset).with_metadata_of(ptr as *mut ArcInner<T>) }
+            unsafe { ptr.byte_sub(offset) as *mut ArcInner<T> }
         };
 
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
@@ -2749,7 +2748,7 @@ impl<T: ?Sized> Unpin for Arc<T> {}
 ///
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
-unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
+unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
     // Align the unsized value to the end of the ArcInner.
     // Because RcBox is repr(C), it will always be the last field in memory.
     // SAFETY: since the only unsized types possible are slices, trait objects,
@@ -2760,7 +2759,7 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
 }
 
 #[inline]
-fn data_offset_align(align: usize) -> isize {
+fn data_offset_align(align: usize) -> usize {
     let layout = Layout::new::<ArcInner<()>>();
-    (layout.size() + layout.padding_needed_for(align)) as isize
+    layout.size() + layout.padding_needed_for(align)
 }

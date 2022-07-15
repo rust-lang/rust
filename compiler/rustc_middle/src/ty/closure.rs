@@ -128,6 +128,14 @@ impl<'tcx> ClosureKind {
             None
         }
     }
+
+    pub fn to_def_id(&self, tcx: TyCtxt<'_>) -> DefId {
+        match self {
+            ClosureKind::Fn => tcx.lang_items().fn_once_trait().unwrap(),
+            ClosureKind::FnMut => tcx.lang_items().fn_mut_trait().unwrap(),
+            ClosureKind::FnOnce => tcx.lang_items().fn_trait().unwrap(),
+        }
+    }
 }
 
 /// A composite describing a `Place` that is captured by a closure.

@@ -168,8 +168,8 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (AssignOp(lo, lp, lv), AssignOp(ro, rp, rv)) => lo.node == ro.node && eq_expr(lp, rp) && eq_expr(lv, rv),
         (Field(lp, lf), Field(rp, rf)) => eq_id(*lf, *rf) && eq_expr(lp, rp),
         (Match(ls, la), Match(rs, ra)) => eq_expr(ls, rs) && over(la, ra, eq_arm),
-        (Closure(lc, la, lm, lf, lb, _), Closure(rc, ra, rm, rf, rb, _)) => {
-            lc == rc && la.is_async() == ra.is_async() && lm == rm && eq_fn_decl(lf, rf) && eq_expr(lb, rb)
+        (Closure(lb, lc, la, lm, lf, le, _), Closure(rb, rc, ra, rm, rf, re, _)) => {
+            eq_closure_binder(lb, rb) && lc == rc && la.is_async() == ra.is_async() && lm == rm && eq_fn_decl(lf, rf) && eq_expr(le, re)
         },
         (Async(lc, _, lb), Async(rc, _, rb)) => lc == rc && eq_block(lb, rb),
         (Range(lf, lt, ll), Range(rf, rt, rl)) => ll == rl && eq_expr_opt(lf, rf) && eq_expr_opt(lt, rt),
@@ -559,6 +559,15 @@ pub fn eq_fn_decl(l: &FnDecl, r: &FnDecl) -> bool {
                 && eq_ty(&l.ty, &r.ty)
                 && over(&l.attrs, &r.attrs, eq_attr)
         })
+}
+
+pub fn eq_closure_binder(l: &ClosureBinder, r: &ClosureBinder) -> bool {
+    match (l, r) {
+        (ClosureBinder::NotPresent, ClosureBinder::NotPresent) => true,
+        (ClosureBinder::For { generic_params: lp, .. }, ClosureBinder::For { generic_params: rp, .. }) => 
+            lp.len() == rp.len() && std::iter::zip(lp.iter(), rp.iter()).all(|(l, r)| eq_generic_param(l, r)),
+        _ => false,
+    }
 }
 
 pub fn eq_fn_ret_ty(l: &FnRetTy, r: &FnRetTy) -> bool {

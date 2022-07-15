@@ -21,15 +21,18 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::error_reporting::{FailureCode, ObligationCauseExt};
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
-use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpression};
+use rustc_trait_selection::traits::{
+    self, ObligationCauseCode, SelectionContext, StatementAsExpression,
+};
 
 use std::iter;
 use std::slice;
@@ -89,7 +92,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 args_no_rcvr,
                 false,
                 tuple_arguments,
-                None,
+                method.ok().map(|method| method.def_id),
             );
             return self.tcx.ty_error();
         }
@@ -393,41 +396,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if !call_appears_satisfied {
-            // Next, let's construct the error
-            let (error_span, full_call_span, ctor_of) = match &call_expr.kind {
-                hir::ExprKind::Call(
-                    hir::Expr {
-                        span,
-                        kind:
-                            hir::ExprKind::Path(hir::QPath::Resolved(
-                                _,
-                                hir::Path { res: Res::Def(DefKind::Ctor(of, _), _), .. },
-                            )),
-                        ..
-                    },
-                    _,
-                ) => (call_span, *span, Some(of)),
-                hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, None),
-                hir::ExprKind::MethodCall(path_segment, _, span) => {
-                    let ident_span = path_segment.ident.span;
-                    let ident_span = if let Some(args) = path_segment.args {
-                        ident_span.with_hi(args.span_ext.hi())
-                    } else {
-                        ident_span
-                    };
-                    (
-                        *span, ident_span, None, // methods are never ctors
-                    )
-                }
-                k => span_bug!(call_span, "checking argument types on a non-call: `{:?}`", k),
-            };
-            let args_span = error_span.trim_start(full_call_span).unwrap_or(error_span);
-            let call_name = match ctor_of {
-                Some(CtorOf::Struct) => "struct",
-                Some(CtorOf::Variant) => "enum variant",
-                None => "function",
-            };
-
             let compatibility_diagonal = IndexVec::from_raw(compatibility_diagonal);
             let provided_args = IndexVec::from_iter(provided_args.iter().take(if c_variadic {
                 minimum_input_count
@@ -451,13 +419,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 compatibility_diagonal,
                 formal_and_expected_inputs,
                 provided_args,
-                full_call_span,
-                error_span,
-                args_span,
-                call_name,
                 c_variadic,
                 err_code,
                 fn_def_id,
+                call_span,
+                call_expr,
             );
         }
     }
@@ -467,14 +433,47 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
-        full_call_span: Span,
-        error_span: Span,
-        args_span: Span,
-        call_name: &str,
         c_variadic: bool,
         err_code: &str,
         fn_def_id: Option<DefId>,
+        call_span: Span,
+        call_expr: &hir::Expr<'tcx>,
     ) {
+        // Next, let's construct the error
+        let (error_span, full_call_span, ctor_of) = match &call_expr.kind {
+            hir::ExprKind::Call(
+                hir::Expr {
+                    span,
+                    kind:
+                        hir::ExprKind::Path(hir::QPath::Resolved(
+                            _,
+                            hir::Path { res: Res::Def(DefKind::Ctor(of, _), _), .. },
+                        )),
+                    ..
+                },
+                _,
+            ) => (call_span, *span, Some(of)),
+            hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, None),
+            hir::ExprKind::MethodCall(path_segment, _, span) => {
+                let ident_span = path_segment.ident.span;
+                let ident_span = if let Some(args) = path_segment.args {
+                    ident_span.with_hi(args.span_ext.hi())
+                } else {
+                    ident_span
+                };
+                (
+                    *span, ident_span, None, // methods are never ctors
+                )
+            }
+            k => span_bug!(call_span, "checking argument types on a non-call: `{:?}`", k),
+        };
+        let args_span = error_span.trim_start(full_call_span).unwrap_or(error_span);
+        let call_name = match ctor_of {
+            Some(CtorOf::Struct) => "struct",
+            Some(CtorOf::Variant) => "enum variant",
+            None => "function",
+        };
+
         // Don't print if it has error types or is just plain `_`
         fn has_error_or_infer<'tcx>(tys: impl IntoIterator<Item = Ty<'tcx>>) -> bool {
             tys.into_iter().any(|ty| ty.references_error() || ty.is_ty_var())
@@ -495,6 +494,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (self.resolve_vars_if_possible(ty), expr.span)
             })
             .collect();
+        let callee_expr = match &call_expr.peel_blocks().kind {
+            hir::ExprKind::Call(callee, _) => Some(*callee),
+            hir::ExprKind::MethodCall(_, callee, _) => {
+                if let Some((DefKind::AssocFn, def_id)) =
+                    self.typeck_results.borrow().type_dependent_def(call_expr.hir_id)
+                    && let Some(assoc) = tcx.opt_associated_item(def_id)
+                    && assoc.fn_has_self_parameter
+                {
+                    Some(&callee[0])
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+        let callee_ty = callee_expr
+            .and_then(|callee_expr| self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr));
 
         // A "softer" version of the `demand_compatible`, which checks types without persisting them,
         // and treats error types differently
@@ -631,7 +647,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                     };
-                    label_fn_like(tcx, &mut err, fn_def_id);
+                    self.label_fn_like(&mut err, fn_def_id, callee_ty);
                     err.emit();
                     return;
                 }
@@ -721,7 +737,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!("arguments to this {} are incorrect", call_name),
             );
             // Call out where the function is defined
-            label_fn_like(tcx, &mut err, fn_def_id);
+            self.label_fn_like(&mut err, fn_def_id, callee_ty);
             err.emit();
             return;
         }
@@ -1003,7 +1019,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Call out where the function is defined
-        label_fn_like(tcx, &mut err, fn_def_id);
+        self.label_fn_like(&mut err, fn_def_id, callee_ty);
 
         // And add a suggestion block for all of the parameters
         let suggestion_text = match suggestion_text {
@@ -1795,47 +1811,126 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
     }
-}
 
-fn label_fn_like<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    err: &mut rustc_errors::DiagnosticBuilder<'tcx, rustc_errors::ErrorGuaranteed>,
-    def_id: Option<DefId>,
-) {
-    let Some(def_id) = def_id else {
-        return;
-    };
+    fn label_fn_like(
+        &self,
+        err: &mut rustc_errors::DiagnosticBuilder<'tcx, rustc_errors::ErrorGuaranteed>,
+        callable_def_id: Option<DefId>,
+        callee_ty: Option<Ty<'tcx>>,
+    ) {
+        let Some(mut def_id) = callable_def_id else {
+            return;
+        };
 
-    if let Some(def_span) = tcx.def_ident_span(def_id) {
-        let mut spans: MultiSpan = def_span.into();
-
-        let params = tcx
-            .hir()
-            .get_if_local(def_id)
-            .and_then(|node| node.body_id())
-            .into_iter()
-            .flat_map(|id| tcx.hir().body(id).params);
-
-        for param in params {
-            spans.push_span_label(param.span, "");
+        if let Some(assoc_item) = self.tcx.opt_associated_item(def_id)
+            // Possibly points at either impl or trait item, so try to get it
+            // to point to trait item, then get the parent.
+            // This parent might be an impl in the case of an inherent function,
+            // but the next check will fail.
+            && let maybe_trait_item_def_id = assoc_item.trait_item_def_id.unwrap_or(def_id)
+            && let maybe_trait_def_id = self.tcx.parent(maybe_trait_item_def_id)
+            // Just an easy way to check "trait_def_id == Fn/FnMut/FnOnce"
+            && let Some(call_kind) = ty::ClosureKind::from_def_id(self.tcx, maybe_trait_def_id)
+            && let Some(callee_ty) = callee_ty
+        {
+            let callee_ty = callee_ty.peel_refs();
+            match *callee_ty.kind() {
+                ty::Param(param) => {
+                    let param =
+                        self.tcx.generics_of(self.body_id.owner).type_param(&param, self.tcx);
+                    if param.kind.is_synthetic() {
+                        // if it's `impl Fn() -> ..` then just fall down to the def-id based logic
+                        def_id = param.def_id;
+                    } else {
+                        // Otherwise, find the predicate that makes this generic callable,
+                        // and point at that.
+                        let instantiated = self
+                            .tcx
+                            .explicit_predicates_of(self.body_id.owner)
+                            .instantiate_identity(self.tcx);
+                        // FIXME(compiler-errors): This could be problematic if something has two
+                        // fn-like predicates with different args, but callable types really never
+                        // do that, so it's OK.
+                        for (predicate, span) in
+                            std::iter::zip(instantiated.predicates, instantiated.spans)
+                        {
+                            if let ty::PredicateKind::Trait(pred) = predicate.kind().skip_binder()
+                                && pred.self_ty().peel_refs() == callee_ty
+                                && ty::ClosureKind::from_def_id(self.tcx, pred.def_id()).is_some()
+                            {
+                                err.span_note(span, "callable defined here");
+                                return;
+                            }
+                        }
+                    }
+                }
+                ty::Opaque(new_def_id, _)
+                | ty::Closure(new_def_id, _)
+                | ty::FnDef(new_def_id, _) => {
+                    def_id = new_def_id;
+                }
+                _ => {
+                    // Look for a user-provided impl of a `Fn` trait, and point to it.
+                    let new_def_id = self.probe(|_| {
+                        let trait_ref = ty::TraitRef::new(
+                            call_kind.to_def_id(self.tcx),
+                            self.tcx.mk_substs([
+                                ty::GenericArg::from(callee_ty),
+                                self.next_ty_var(TypeVariableOrigin {
+                                    kind: TypeVariableOriginKind::MiscVariable,
+                                    span: rustc_span::DUMMY_SP,
+                                })
+                                .into(),
+                            ].into_iter()),
+                        );
+                        let obligation = traits::Obligation::new(
+                            traits::ObligationCause::dummy(),
+                            self.param_env,
+                            ty::Binder::dummy(ty::TraitPredicate {
+                                trait_ref,
+                                constness: ty::BoundConstness::NotConst,
+                                polarity: ty::ImplPolarity::Positive,
+                            }),
+                        );
+                        match SelectionContext::new(&self).select(&obligation) {
+                            Ok(Some(traits::ImplSource::UserDefined(impl_source))) => {
+                                Some(impl_source.impl_def_id)
+                            }
+                            _ => None
+                        }
+                    });
+                    if let Some(new_def_id) = new_def_id {
+                        def_id = new_def_id;
+                    } else {
+                        return;
+                    }
+                }
+            }
         }
 
-        let def_kind = tcx.def_kind(def_id);
-        err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
-    } else {
-        match tcx.hir().get_if_local(def_id) {
-            Some(hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { fn_decl_span, .. },
-                ..
-            })) => {
-                let spans: MultiSpan = (*fn_decl_span).into();
+        if let Some(def_span) = self.tcx.def_ident_span(def_id) && !def_span.is_dummy() {
+            let mut spans: MultiSpan = def_span.into();
 
-                // Note: We don't point to param spans here because they overlap
-                // with the closure span itself
+            let params = self
+                .tcx
+                .hir()
+                .get_if_local(def_id)
+                .and_then(|node| node.body_id())
+                .into_iter()
+                .flat_map(|id| self.tcx.hir().body(id).params);
 
-                err.span_note(spans, "closure defined here");
+            for param in params {
+                spans.push_span_label(param.span, "");
             }
-            _ => {}
+
+            let def_kind = self.tcx.def_kind(def_id);
+            err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
+        } else {
+            let def_kind = self.tcx.def_kind(def_id);
+            err.span_note(
+                self.tcx.def_span(def_id),
+                &format!("{} defined here", def_kind.descr(def_id)),
+            );
         }
     }
 }

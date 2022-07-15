@@ -46,7 +46,6 @@ rustc_query_impl = { path = "../rustc_query_impl" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
-tempfile = "3.2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

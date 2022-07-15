@@ -427,7 +427,7 @@ pub fn lower_to_hir<'hir>(tcx: TyCtxt<'hir>, (): ()) -> hir::Crate<'hir> {
     sess.time("drop_ast", || std::mem::drop(krate));
 
     // Discard hygiene data, which isn't required after lowering to HIR.
-    if !sess.opts.debugging_opts.keep_hygiene_data {
+    if !sess.opts.unstable_opts.keep_hygiene_data {
         rustc_span::hygiene::clear_syntax_context_map();
     }
 
@@ -699,7 +699,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Intercept all spans entering HIR.
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
-        if self.tcx.sess.opts.debugging_opts.incremental_relative_spans {
+        if self.tcx.sess.opts.unstable_opts.incremental_relative_spans {
             span.with_parent(Some(self.current_hir_id_owner))
         } else {
             // Do not make spans relative when not using incremental compilation.

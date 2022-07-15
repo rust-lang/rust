@@ -21,7 +21,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::thir;
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::GeneratorDiagnosticData;
@@ -638,7 +637,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [thir::abstract_const::Node<'tcx>] {
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [ty::abstract_const::Node<'tcx>] {
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
         ty::codec::RefDecodable::decode(d)
     }
@@ -1475,14 +1474,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
         let virtual_rust_source_base_dir = [
             option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from),
-            sess.opts.debugging_opts.simulate_remapped_rust_src_base.clone(),
+            sess.opts.unstable_opts.simulate_remapped_rust_src_base.clone(),
         ]
         .into_iter()
         .filter(|_| {
             // Only spend time on further checks if we have what to translate *to*.
             sess.opts.real_rust_source_base_dir.is_some()
                 // Some tests need the translation to be always skipped.
-                && sess.opts.debugging_opts.translate_remapped_path_to_local_path
+                && sess.opts.unstable_opts.translate_remapped_path_to_local_path
         })
         .flatten()
         .filter(|virtual_dir| {
@@ -1584,7 +1583,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     // `try_to_translate_virtual_to_real` don't have to worry about how the
                     // compiler is bootstrapped.
                     if let Some(virtual_dir) =
-                        &sess.opts.debugging_opts.simulate_remapped_rust_src_base
+                        &sess.opts.unstable_opts.simulate_remapped_rust_src_base
                     {
                         if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
                             if let rustc_span::FileName::Real(ref mut old_name) = name {

@@ -1838,7 +1838,7 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
             if let Some(hir::Generics { predicates, .. }) =
                 hir_node.and_then(|node| node.generics())
             {
-                let obligation_span = obligation.cause.span(fcx.tcx);
+                let obligation_span = obligation.cause.span();
 
                 span = predicates
                     .iter()

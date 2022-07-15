@@ -1764,6 +1764,7 @@ impl<'a> Builder<'a> {
 
         if !target.contains("windows") {
             let needs_unstable_opts = target.contains("linux")
+                || target.contains("solaris")
                 || target.contains("windows")
                 || target.contains("bsd")
                 || target.contains("dragonfly")

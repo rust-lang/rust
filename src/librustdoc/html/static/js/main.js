@@ -479,23 +479,20 @@ function loadCss(cssFileName) {
         }
 
         if (sidebar) {
-            const isModule = hasClass(document.body, "mod");
-            if (!isModule) {
-                block("primitive", "primitives", "Primitive Types");
-                block("mod", "modules", "Modules");
-                block("macro", "macros", "Macros");
-                block("struct", "structs", "Structs");
-                block("enum", "enums", "Enums");
-                block("union", "unions", "Unions");
-                block("constant", "constants", "Constants");
-                block("static", "static", "Statics");
-                block("trait", "traits", "Traits");
-                block("fn", "functions", "Functions");
-                block("type", "types", "Type Definitions");
-                block("foreigntype", "foreign-types", "Foreign Types");
-                block("keyword", "keywords", "Keywords");
-                block("traitalias", "trait-aliases", "Trait Aliases");
-            }
+            block("primitive", "primitives", "Primitive Types");
+            block("mod", "modules", "Modules");
+            block("macro", "macros", "Macros");
+            block("struct", "structs", "Structs");
+            block("enum", "enums", "Enums");
+            block("union", "unions", "Unions");
+            block("constant", "constants", "Constants");
+            block("static", "static", "Statics");
+            block("trait", "traits", "Traits");
+            block("fn", "functions", "Functions");
+            block("type", "types", "Type Definitions");
+            block("foreigntype", "foreign-types", "Foreign Types");
+            block("keyword", "keywords", "Keywords");
+            block("traitalias", "trait-aliases", "Trait Aliases");
         }
     }
 

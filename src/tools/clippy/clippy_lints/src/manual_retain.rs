@@ -148,7 +148,7 @@ fn check_to_owned(
 
 fn suggest(cx: &LateContext<'_>, parent_expr: &hir::Expr<'_>, left_expr: &hir::Expr<'_>, filter_expr: &hir::Expr<'_>) {
     if let hir::ExprKind::MethodCall(_, [_, closure], _) = filter_expr.kind
-        && let hir::ExprKind::Closure{ body, ..} = closure.kind
+        && let hir::ExprKind::Closure(&hir::Closure { body, ..}) = closure.kind
         && let filter_body = cx.tcx.hir().body(body)
         && let [filter_params] = filter_body.params
         && let Some(sugg) = match filter_params.pat.kind {

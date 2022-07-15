@@ -24,11 +24,6 @@ pub enum MemPlaceMeta<Tag: Provenance = AllocId> {
     Meta(Scalar<Tag>),
     /// `Sized` types or unsized `extern type`
     None,
-    /// The address of this place may not be taken. This protects the `MemPlace` from coming from
-    /// a ZST Operand without a backing allocation and being converted to an integer address. This
-    /// should be impossible, because you can't take the address of an operand, but this is a second
-    /// protection layer ensuring that we don't mess up.
-    Poison,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
@@ -38,15 +33,16 @@ impl<Tag: Provenance> MemPlaceMeta<Tag> {
     pub fn unwrap_meta(self) -> Scalar<Tag> {
         match self {
             Self::Meta(s) => s,
-            Self::None | Self::Poison => {
+            Self::None => {
                 bug!("expected wide pointer extra data (e.g. slice length or trait object vtable)")
             }
         }
     }
+
     pub fn has_meta(self) -> bool {
         match self {
             Self::Meta(_) => true,
-            Self::None | Self::Poison => false,
+            Self::None => false,
         }
     }
 }
@@ -163,10 +159,6 @@ impl<Tag: Provenance> MemPlace<Tag> {
             MemPlaceMeta::Meta(meta) => {
                 Immediate::ScalarPair(Scalar::from_maybe_pointer(self.ptr, cx).into(), meta.into())
             }
-            MemPlaceMeta::Poison => bug!(
-                "MPlaceTy::dangling may never be used to produce a \
-                place that will have the address of its pointee taken"
-            ),
         }
     }
 
@@ -195,13 +187,15 @@ impl<Tag: Provenance> Place<Tag> {
 }
 
 impl<'tcx, Tag: Provenance> MPlaceTy<'tcx, Tag> {
-    /// Produces a MemPlace that works for ZST but nothing else
+    /// Produces a MemPlace that works for ZST but nothing else.
+    /// Conceptually this is a new allocation, but it doesn't actually create an allocation so you
+    /// don't need to worry about memory leaks.
     #[inline]
-    pub fn dangling(layout: TyAndLayout<'tcx>) -> Self {
+    pub fn fake_alloc_zst(layout: TyAndLayout<'tcx>) -> Self {
+        assert!(layout.is_zst());
         let align = layout.align.abi;
         let ptr = Pointer::from_addr(align.bytes()); // no provenance, absolute address
-        // `Poison` this to make sure that the pointer value `ptr` is never observable by the program.
-        MPlaceTy { mplace: MemPlace { ptr, meta: MemPlaceMeta::Poison }, layout, align }
+        MPlaceTy { mplace: MemPlace { ptr, meta: MemPlaceMeta::None }, layout, align }
     }
 
     #[inline]
@@ -273,7 +267,6 @@ impl<'tcx, Tag: Provenance> OpTy<'tcx, Tag> {
             Operand::Indirect(mplace) => {
                 Ok(MPlaceTy { mplace, layout: self.layout, align: self.align.unwrap() })
             }
-            Operand::Immediate(_) if self.layout.is_zst() => Ok(MPlaceTy::dangling(self.layout)),
             Operand::Immediate(imm) => Err(ImmTy::from_immediate(imm, self.layout)),
         }
     }

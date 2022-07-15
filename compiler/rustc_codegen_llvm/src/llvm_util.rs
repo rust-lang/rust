@@ -87,7 +87,7 @@ unsafe fn configure_llvm(sess: &Session) {
             add("-debug-pass=Structure", false);
         }
         if sess.target.generate_arange_section
-            && !sess.opts.debugging_opts.no_generate_arange_section
+            && !sess.opts.unstable_opts.no_generate_arange_section
         {
             add("-generate-arange-section", false);
         }
@@ -102,7 +102,7 @@ unsafe fn configure_llvm(sess: &Session) {
             add("-enable-machine-outliner=never", false);
         }
 
-        match sess.opts.debugging_opts.merge_functions.unwrap_or(sess.target.merge_functions) {
+        match sess.opts.unstable_opts.merge_functions.unwrap_or(sess.target.merge_functions) {
             MergeFunctions::Disabled | MergeFunctions::Trampolines => {}
             MergeFunctions::Aliases => {
                 add("-mergefunc-use-aliases", false);
@@ -125,7 +125,7 @@ unsafe fn configure_llvm(sess: &Session) {
         }
     }
 
-    if sess.opts.debugging_opts.llvm_time_trace {
+    if sess.opts.unstable_opts.llvm_time_trace {
         llvm::LLVMTimeTraceProfilerInitialize();
     }
 
@@ -133,11 +133,11 @@ unsafe fn configure_llvm(sess: &Session) {
 
     // Use the legacy plugin registration if we don't use the new pass manager
     if !should_use_new_llvm_pass_manager(
-        &sess.opts.debugging_opts.new_llvm_pass_manager,
+        &sess.opts.unstable_opts.new_llvm_pass_manager,
         &sess.target.arch,
     ) {
         // Register LLVM plugins by loading them into the compiler process.
-        for plugin in &sess.opts.debugging_opts.llvm_plugins {
+        for plugin in &sess.opts.unstable_opts.llvm_plugins {
             let lib = Library::new(plugin).unwrap_or_else(|e| bug!("couldn't load plugin: {}", e));
             debug!("LLVM plugin loaded successfully {:?} ({})", lib, plugin);
 
@@ -541,7 +541,7 @@ fn backend_feature_name(s: &str) -> Option<&str> {
 }
 
 pub fn tune_cpu(sess: &Session) -> Option<&str> {
-    let name = sess.opts.debugging_opts.tune_cpu.as_ref()?;
+    let name = sess.opts.unstable_opts.tune_cpu.as_ref()?;
     Some(handle_native(name))
 }
 

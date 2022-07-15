@@ -19,7 +19,6 @@
 #![feature(const_ptr_write)]
 #![feature(const_trait_impl)]
 #![feature(const_likely)]
-#![feature(core_ffi_c)]
 #![feature(core_intrinsics)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]

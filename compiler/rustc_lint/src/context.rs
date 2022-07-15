@@ -694,9 +694,8 @@ pub trait LintContext: Sized {
                     }
 
                     if let Some(span) = in_test_module {
-                        let def_span = self.sess().source_map().guess_head_span(span);
                         db.span_help(
-                            span.shrink_to_lo().to(def_span),
+                            self.sess().source_map().guess_head_span(span),
                             "consider adding a `#[cfg(test)]` to the containing module",
                         );
                     }
@@ -857,6 +856,18 @@ pub trait LintContext: Sized {
                         Applicability::MachineApplicable,
                     );
                 },
+                BuiltinLintDiagnostics::NamedArgumentUsedPositionally(positional_arg, named_arg, name) => {
+                    db.span_label(named_arg, "this named argument is only referred to by position in formatting string");
+                    let msg = format!("this formatting argument uses named argument `{}` by position", name);
+                    db.span_label(positional_arg, msg);
+                    db.span_suggestion_verbose(
+                        positional_arg,
+                        "use the named argument by name to avoid ambiguity",
+                        format!("{{{}}}", name),
+                        Applicability::MaybeIncorrect,
+                    );
+
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));

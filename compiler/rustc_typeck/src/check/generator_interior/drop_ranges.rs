@@ -38,7 +38,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
     def_id: DefId,
     body: &'tcx Body<'tcx>,
 ) -> DropRanges {
-    if fcx.sess().opts.debugging_opts.drop_tracking {
+    if fcx.sess().opts.unstable_opts.drop_tracking {
         let consumed_borrowed_places = find_consumed_and_borrowed(fcx, def_id, body);
 
         let typeck_results = &fcx.typeck_results.borrow();

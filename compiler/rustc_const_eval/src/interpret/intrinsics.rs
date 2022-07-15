@@ -132,8 +132,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Some(p) => p,
         };
 
-        // Keep the patterns in this match ordered the same as the list in
-        // `src/librustc_middle/ty/constness.rs`
         match intrinsic_name {
             sym::caller_location => {
                 let span = self.find_closest_untracked_caller_location();
@@ -417,7 +415,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     && !layout.might_permit_raw_init(
                         self,
                         InitKind::Zero,
-                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
+                        self.tcx.sess.opts.unstable_opts.strict_init_checks,
                     )
                 {
                     M::abort(
@@ -432,7 +430,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     && !layout.might_permit_raw_init(
                         self,
                         InitKind::Uninit,
-                        self.tcx.sess.opts.debugging_opts.strict_init_checks,
+                        self.tcx.sess.opts.unstable_opts.strict_init_checks,
                     )
                 {
                     M::abort(

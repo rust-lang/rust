@@ -357,8 +357,8 @@ fn run_test(
     for codegen_options_str in &rustdoc_options.codegen_options_strs {
         compiler.arg("-C").arg(&codegen_options_str);
     }
-    for debugging_option_str in &rustdoc_options.debugging_opts_strs {
-        compiler.arg("-Z").arg(&debugging_option_str);
+    for unstable_option_str in &rustdoc_options.unstable_opts_strs {
+        compiler.arg("-Z").arg(&unstable_option_str);
     }
     if no_run && !lang_string.compile_fail && rustdoc_options.persist_doctests.is_none() {
         compiler.arg("--emit=metadata");

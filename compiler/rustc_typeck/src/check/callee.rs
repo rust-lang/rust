@@ -285,29 +285,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let parent_node = hir.get(parent_hir_id);
         if let (
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { fn_decl_span, body, .. },
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, body, .. }),
                 ..
             }),
             hir::ExprKind::Block(..),
         ) = (parent_node, callee_node)
         {
-            let fn_decl_span = if hir.body(*body).generator_kind
+            let fn_decl_span = if hir.body(body).generator_kind
                 == Some(hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Closure))
             {
                 // Actually need to unwrap a few more layers of HIR to get to
                 // the _real_ closure...
                 let async_closure = hir.get_parent_node(hir.get_parent_node(parent_hir_id));
                 if let hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Closure { fn_decl_span, .. },
+                    kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                     ..
                 }) = hir.get(async_closure)
                 {
-                    *fn_decl_span
+                    fn_decl_span
                 } else {
                     return;
                 }
             } else {
-                *fn_decl_span
+                fn_decl_span
             };
 
             let start = fn_decl_span.shrink_to_lo();

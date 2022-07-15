@@ -72,7 +72,7 @@ fn may_contain_reference<'tcx>(ty: Ty<'tcx>, depth: u32, tcx: TyCtxt<'tcx>) -> b
 
 impl<'tcx> MirPass<'tcx> for AddRetag {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.opts.debugging_opts.mir_emit_retag
+        sess.opts.unstable_opts.mir_emit_retag
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

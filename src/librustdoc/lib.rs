@@ -366,7 +366,7 @@ fn opts() -> Vec<RustcOptGroup> {
             )
         }),
         unstable("Z", |o| {
-            o.optmulti("Z", "", "internal and debugging options (only on nightly build)", "FLAG")
+            o.optmulti("Z", "", "unstable / perma-unstable options (only on nightly build)", "FLAG")
         }),
         stable("sysroot", |o| o.optopt("", "sysroot", "Override the system root", "PATH")),
         unstable("playground-url", |o| {
@@ -745,7 +745,7 @@ fn main_options(options: config::Options) -> MainResult {
         options.error_format,
         None,
         options.diagnostic_width,
-        &options.debugging_opts,
+        &options.unstable_opts,
     );
 
     match (options.should_test, options.markdown_input()) {
@@ -787,7 +787,7 @@ fn main_options(options: config::Options) -> MainResult {
 
         if sess.opts.describe_lints {
             let mut lint_store = rustc_lint::new_lint_store(
-                sess.opts.debugging_opts.no_interleave_lints,
+                sess.opts.unstable_opts.no_interleave_lints,
                 sess.unstable_options(),
             );
             let registered_lints = if let Some(register_lints) = compiler.register_lints() {

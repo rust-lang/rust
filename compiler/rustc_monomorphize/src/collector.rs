@@ -1141,8 +1141,7 @@ fn create_fn_mono_item<'tcx>(
     debug!("create_fn_mono_item(instance={})", instance);
 
     let def_id = instance.def_id();
-    if tcx.sess.opts.debugging_opts.profile_closures && def_id.is_local() && tcx.is_closure(def_id)
-    {
+    if tcx.sess.opts.unstable_opts.profile_closures && def_id.is_local() && tcx.is_closure(def_id) {
         crate::util::dump_closure_profile(tcx, instance);
     }
 

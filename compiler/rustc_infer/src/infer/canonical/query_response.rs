@@ -714,10 +714,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
     }
 
     fn const_equate(&mut self, _a: Const<'tcx>, _b: Const<'tcx>) {
-        span_bug!(
-            self.cause.span(self.infcx.tcx),
-            "generic_const_exprs: unreachable `const_equate`"
-        );
+        span_bug!(self.cause.span(), "generic_const_exprs: unreachable `const_equate`");
     }
 
     fn normalization() -> NormalizationStrategy {

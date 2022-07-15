@@ -25,7 +25,7 @@ impl<'a, 'tcx> VirtualIndex {
         let llty = bx.fn_ptr_backend_type(fn_abi);
         let llvtable = bx.pointercast(llvtable, bx.type_ptr_to(llty));
 
-        if bx.cx().sess().opts.debugging_opts.virtual_function_elimination
+        if bx.cx().sess().opts.unstable_opts.virtual_function_elimination
             && bx.cx().sess().lto() == Lto::Fat
         {
             let typeid =

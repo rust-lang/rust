@@ -12,7 +12,6 @@
 #![feature(const_ptr_write)]
 #![feature(const_try)]
 #![feature(core_c_str)]
-#![feature(core_ffi_c)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]

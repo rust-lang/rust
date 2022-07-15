@@ -23,7 +23,7 @@ use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
 use rustc_middle::span_bug;
-use rustc_middle::thir::abstract_const::Node as ACNode;
+use rustc_middle::ty::abstract_const::{walk_abstract_const, AbstractConst, Node as ACNode};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Const, DefIdTree, GenericParamDefKind};
@@ -32,7 +32,6 @@ use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
-use rustc_trait_selection::traits::const_evaluatable::{self, AbstractConst};
 
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
@@ -164,7 +163,7 @@ where
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
     ) -> ControlFlow<V::BreakTy> {
-        const_evaluatable::walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
+        walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
             ACNode::Leaf(leaf) => self.visit_const(leaf),
             ACNode::Cast(_, _, ty) => self.visit_ty(ty),
             ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
@@ -1760,8 +1759,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 || self.tcx.resolutions(()).has_pub_restricted
             {
                 let descr = descr.to_string();
-                let vis_span =
-                    self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id));
+                let vis_span = self.tcx.def_span(def_id);
                 if kind == "trait" {
                     self.tcx.sess.emit_err(InPublicInterfaceTraits {
                         span,

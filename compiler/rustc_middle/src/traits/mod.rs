@@ -10,7 +10,7 @@ mod structural_impls;
 pub mod util;
 
 use crate::infer::canonical::Canonical;
-use crate::thir::abstract_const::NotConstEvaluatable;
+use crate::ty::abstract_const::NotConstEvaluatable;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
@@ -139,13 +139,8 @@ impl<'tcx> ObligationCause<'tcx> {
         ObligationCause { span, body_id: hir::CRATE_HIR_ID, code: Default::default() }
     }
 
-    pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
+    pub fn span(&self) -> Span {
         match *self.code() {
-            ObligationCauseCode::CompareImplMethodObligation { .. }
-            | ObligationCauseCode::MainFunctionType
-            | ObligationCauseCode::StartFunctionType => {
-                tcx.sess.source_map().guess_head_span(self.span)
-            }
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                 arm_span,
                 ..

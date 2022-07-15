@@ -1457,6 +1457,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
     #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
     #[rustc_diagnostic_item = "transmute"]
     pub fn transmute<T, U>(e: T) -> U;
@@ -2649,6 +2650,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 /// Here is an example of how this could cause a problem:
 /// ```no_run
 /// #![feature(const_eval_select)]
+/// #![feature(core_intrinsics)]
 /// use std::hint::unreachable_unchecked;
 /// use std::intrinsics::const_eval_select;
 ///

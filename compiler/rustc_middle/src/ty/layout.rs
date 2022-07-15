@@ -1914,7 +1914,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     fn record_layout_for_printing(&self, layout: TyAndLayout<'tcx>) {
         // If we are running with `-Zprint-type-sizes`, maybe record layouts
         // for dumping later.
-        if self.tcx.sess.opts.debugging_opts.print_type_sizes {
+        if self.tcx.sess.opts.unstable_opts.print_type_sizes {
             self.record_layout_for_printing_outlined(layout)
         }
     }
@@ -2916,7 +2916,7 @@ pub fn fn_can_unwind<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: Option<DefId>, abi: Spe
         //
         // This is not part of `codegen_fn_attrs` as it can differ between crates
         // and therefore cannot be computed in core.
-        if tcx.sess.opts.debugging_opts.panic_in_drop == PanicStrategy::Abort {
+        if tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Abort {
             if Some(did) == tcx.lang_items().drop_in_place_fn() {
                 return false;
             }

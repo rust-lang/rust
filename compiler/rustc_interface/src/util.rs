@@ -79,7 +79,7 @@ pub fn create_session(
     } else {
         get_codegen_backend(
             &sopts.maybe_sysroot,
-            sopts.debugging_opts.codegen_backend.as_ref().map(|name| &name[..]),
+            sopts.unstable_opts.codegen_backend.as_ref().map(|name| &name[..]),
         )
     };
 
@@ -89,9 +89,9 @@ pub fn create_session(
     let bundle = match rustc_errors::fluent_bundle(
         sopts.maybe_sysroot.clone(),
         sysroot_candidates(),
-        sopts.debugging_opts.translate_lang.clone(),
-        sopts.debugging_opts.translate_additional_ftl.as_deref(),
-        sopts.debugging_opts.translate_directionality_markers,
+        sopts.unstable_opts.translate_lang.clone(),
+        sopts.unstable_opts.translate_additional_ftl.as_deref(),
+        sopts.unstable_opts.translate_directionality_markers,
     ) {
         Ok(bundle) => bundle,
         Err(e) => {
@@ -648,24 +648,6 @@ pub fn build_output_filenames(
             )
         }
     }
-}
-
-#[cfg(not(target_os = "linux"))]
-pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
-    std::fs::rename(src, dst)
-}
-
-/// This function attempts to bypass the auto_da_alloc heuristic implemented by some filesystems
-/// such as btrfs and ext4. When renaming over a file that already exists then they will "helpfully"
-/// write back the source file before committing the rename in case a developer forgot some of
-/// the fsyncs in the open/write/fsync(file)/rename/fsync(dir) dance for atomic file updates.
-///
-/// To avoid triggering this heuristic we delete the destination first, if it exists.
-/// The cost of an extra syscall is much lower than getting descheduled for the sync IO.
-#[cfg(target_os = "linux")]
-pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
-    let _ = std::fs::remove_file(dst);
-    std::fs::rename(src, dst)
 }
 
 /// Returns a version string such as "1.46.0 (04488afe3 2020-08-24)"

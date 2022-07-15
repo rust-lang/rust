@@ -37,7 +37,7 @@ fn should_use_mutable_noalias(cx: &CodegenCx<'_, '_>) -> bool {
     // LLVM prior to version 12 had known miscompiles in the presence of
     // noalias attributes (see #54878), but we don't support earlier
     // versions at all anymore. We now enable mutable noalias by default.
-    cx.tcx.sess.opts.debugging_opts.mutable_noalias.unwrap_or(true)
+    cx.tcx.sess.opts.unstable_opts.mutable_noalias.unwrap_or(true)
 }
 
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =

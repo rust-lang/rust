@@ -176,7 +176,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     if ty.is_some() {
         // The first argument (index 0), but add 1 for the return value.
         let dropee_ptr = Place::from(Local::new(1 + 0));
-        if tcx.sess.opts.debugging_opts.mir_emit_retag {
+        if tcx.sess.opts.unstable_opts.mir_emit_retag {
             // Function arguments should be retagged, and we make this one raw.
             body.basic_blocks_mut()[START_BLOCK].statements.insert(
                 0,

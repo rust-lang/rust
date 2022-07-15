@@ -589,7 +589,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // In Polonius mode, the errors about missing universal region relations are in the output
         // and need to be emitted or propagated. Otherwise, we need to check whether the
         // constraints were too strong, and if so, emit or propagate those errors.
-        if infcx.tcx.sess.opts.debugging_opts.polonius {
+        if infcx.tcx.sess.opts.unstable_opts.polonius {
             self.check_polonius_subset_errors(
                 body,
                 outlives_requirements.as_mut(),

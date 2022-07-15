@@ -987,7 +987,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                             " by {} ref {:?}:",
                             match mplace.meta {
                                 MemPlaceMeta::Meta(meta) => format!(" meta({:?})", meta),
-                                MemPlaceMeta::Poison | MemPlaceMeta::None => String::new(),
+                                MemPlaceMeta::None => String::new(),
                             },
                             mplace.ptr,
                         )?;

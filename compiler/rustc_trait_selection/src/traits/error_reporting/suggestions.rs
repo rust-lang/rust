@@ -786,7 +786,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // Get the name of the callable and the arguments to be used in the suggestion.
         let (snippet, sugg) = match hir.get_if_local(def_id) {
             Some(hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { fn_decl, fn_decl_span, .. },
+                kind: hir::ExprKind::Closure(hir::Closure { fn_decl, fn_decl_span, .. }),
                 ..
             })) => {
                 err.span_label(*fn_decl_span, "consider calling this closure");
@@ -1543,7 +1543,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ty::Generator(..) => "generator",
             _ => "function",
         };
-        let span = self.tcx.sess.source_map().guess_head_span(span);
         let mut err = struct_span_err!(
             self.tcx.sess,
             span,

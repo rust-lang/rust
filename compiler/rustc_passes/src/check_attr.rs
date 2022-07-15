@@ -139,6 +139,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_const_stable
                 | sym::unstable
                 | sym::stable
+                | sym::rustc_allowed_through_unstable_modules
                 | sym::rustc_promotable => self.check_stability_promotable(&attr, span, target),
                 _ => true,
             };
@@ -1625,7 +1626,7 @@ impl CheckAttrVisitor<'_> {
     /// Checks that the dep-graph debugging attributes are only present when the query-dep-graph
     /// option is passed to the compiler.
     fn check_rustc_dirty_clean(&self, attr: &Attribute) -> bool {
-        if self.tcx.sess.opts.debugging_opts.query_dep_graph {
+        if self.tcx.sess.opts.unstable_opts.query_dep_graph {
             true
         } else {
             self.tcx

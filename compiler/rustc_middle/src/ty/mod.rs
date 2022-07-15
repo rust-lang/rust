@@ -92,6 +92,7 @@ pub use self::sty::{
 pub use self::trait_def::TraitDef;
 
 pub mod _match;
+pub mod abstract_const;
 pub mod adjustment;
 pub mod binding;
 pub mod cast;
@@ -1761,7 +1762,7 @@ impl ReprOptions {
         // If the user defined a custom seed for layout randomization, xor the item's
         // path hash with the user defined seed, this will allowing determinism while
         // still allowing users to further randomize layout generation for e.g. fuzzing
-        if let Some(user_seed) = tcx.sess.opts.debugging_opts.layout_seed {
+        if let Some(user_seed) = tcx.sess.opts.unstable_opts.layout_seed {
             field_shuffle_seed ^= user_seed;
         }
 
@@ -1794,7 +1795,7 @@ impl ReprOptions {
 
         // If `-Z randomize-layout` was enabled for the type definition then we can
         // consider performing layout randomization
-        if tcx.sess.opts.debugging_opts.randomize_layout {
+        if tcx.sess.opts.unstable_opts.randomize_layout {
             flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
         }
 

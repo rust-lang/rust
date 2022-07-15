@@ -35,7 +35,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, HirId, QPath};
+use rustc_hir::{Closure, ExprKind, HirId, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
@@ -319,7 +319,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Match(discrim, arms, match_src) => {
                 self.check_match(expr, &discrim, arms, expected, match_src)
             }
-            ExprKind::Closure { capture_clause, fn_decl, body, movability, .. } => {
+            ExprKind::Closure(&Closure { capture_clause, fn_decl, body, movability, .. }) => {
                 self.check_expr_closure(expr, capture_clause, &fn_decl, body, movability, expected)
             }
             ExprKind::Block(body, _) => self.check_block_with_expected(&body, expected),
