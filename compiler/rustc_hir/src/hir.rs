@@ -1824,6 +1824,14 @@ impl Expr<'_> {
             _ => false,
         }
     }
+
+    pub fn method_ident(&self) -> Option<Ident> {
+        match self.kind {
+            ExprKind::MethodCall(receiver_method, ..) => Some(receiver_method.ident),
+            ExprKind::Unary(_, expr) | ExprKind::AddrOf(.., expr) => expr.method_ident(),
+            _ => None,
+        }
+    }
 }
 
 /// Checks if the specified expression is a built-in range literal.

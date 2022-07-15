@@ -1958,11 +1958,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         );
                     }
 
-                    if adt_def.did().is_local() {
-                        err.span_label(
-                            tcx.def_span(adt_def.did()),
-                            format!("variant `{assoc_ident}` not found for this enum"),
-                        );
+                    if let Some(sp) = tcx.hir().span_if_local(adt_def.did()) {
+                        err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
                     }
 
                     err.emit()

@@ -1435,7 +1435,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         swap_secondary_and_primary: bool,
         force_label: bool,
     ) {
-        let span = cause.span(self.tcx);
+        let span = cause.span();
 
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
@@ -2085,7 +2085,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
-        let span = trace.cause.span(self.tcx);
+        let span = trace.cause.span();
         let failure_code = trace.cause.as_failure_code(terr);
         let mut diag = match failure_code {
             FailureCode::Error0038(did) => {

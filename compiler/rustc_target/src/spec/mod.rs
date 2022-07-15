@@ -1035,6 +1035,8 @@ supported_targets! {
 
     ("armv6k-nintendo-3ds", armv6k_nintendo_3ds),
 
+    ("aarch64-nintendo-switch-freestanding", aarch64_nintendo_switch_freestanding),
+
     ("armv7-unknown-linux-uclibceabi", armv7_unknown_linux_uclibceabi),
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
 
