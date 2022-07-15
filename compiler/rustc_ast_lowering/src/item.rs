@@ -545,7 +545,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let ident = *ident;
                     let mut path = path.clone();
                     for seg in &mut path.segments {
-                        seg.id = self.next_node_id();
+                        // Give the cloned segment the same resolution information
+                        // as the old one (this is needed for stability checking).
+                        let new_id = self.next_node_id();
+                        self.resolver.clone_res(seg.id, new_id);
+                        seg.id = new_id;
                     }
                     let span = path.span;
 
@@ -614,7 +618,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     // Give the segments new node-ids since they are being cloned.
                     for seg in &mut prefix.segments {
-                        seg.id = self.next_node_id();
+                        // Give the cloned segment the same resolution information
+                        // as the old one (this is needed for stability checking).
+                        let new_id = self.next_node_id();
+                        self.resolver.clone_res(seg.id, new_id);
+                        seg.id = new_id;
                     }
 
                     // Each `use` import is an item and thus are owners of the
