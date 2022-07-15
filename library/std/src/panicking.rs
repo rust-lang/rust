@@ -366,6 +366,35 @@ pub mod panic_count {
         });
     }
 
+    // Decrease the panic count only if the thread is already panicking.
+    // Allows running code nested within a wind that may itself unwind.
+    #[inline]
+    #[must_use]
+    pub fn try_decrease() -> bool {
+        if GLOBAL_PANIC_COUNT.load(Ordering::Relaxed) & !ALWAYS_ABORT_FLAG == 0 {
+            // Fast path: see count_is_zero.
+            false
+        } else {
+            try_decrease_slow_path()
+        }
+    }
+
+    // We consider unwinding to be rare, so mark this function as cold.
+    // However, leave the inlining decision entirely to the optimizer.
+    #[cold]
+    fn try_decrease_slow_path() -> bool {
+        LOCAL_PANIC_COUNT.with(|c| {
+            let panic_count = c.get();
+            if panic_count > 0 {
+                GLOBAL_PANIC_COUNT.fetch_sub(1, Ordering::Relaxed);
+                c.set(panic_count - 1);
+                true
+            } else {
+                false
+            }
+        })
+    }
+
     pub fn set_always_abort() {
         GLOBAL_PANIC_COUNT.fetch_or(ALWAYS_ABORT_FLAG, Ordering::Relaxed);
     }
@@ -453,7 +482,12 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // - `do_catch`, the second argument, can be called with the `data_ptr` as well.
     // See their safety preconditions for more information
     unsafe {
-        return if intrinsics::r#try(do_call::<F, R>, data_ptr, do_catch::<F, R>) == 0 {
+        let is_panicking = panic_count::try_decrease();
+        let success = intrinsics::r#try(do_call::<F, R>, data_ptr, do_catch::<F, R>) == 0;
+        if is_panicking {
+            panic_count::increase();
+        }
+        return if success {
             Ok(ManuallyDrop::into_inner(data.r))
         } else {
             Err(ManuallyDrop::into_inner(data.p))
@@ -705,10 +739,10 @@ fn rust_panic_with_hook(
     }
 
     if panics > 1 || !can_unwind {
-        // If a thread panics while it's already unwinding then we
-        // have limited options. Currently our preference is to
-        // just abort. In the future we may consider resuming
-        // unwinding or otherwise exiting the thread cleanly.
+        // If the thread was already panicking, then the closest catch_unwind
+        // has already been claimed by the existing panic. If a new catch_unwind
+        // had been registered, it would have cleared the panicking flag. Since
+        // this panic is not well-nested, we just abort the process.
         rtprintpanic!("thread panicked while panicking. aborting.\n");
         crate::sys::abort_internal();
     }
