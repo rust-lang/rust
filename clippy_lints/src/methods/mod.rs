@@ -33,6 +33,7 @@ mod iter_count;
 mod iter_next_slice;
 mod iter_nth;
 mod iter_nth_zero;
+mod iter_once_empty;
 mod iter_overeager_cloned;
 mod iter_skip_next;
 mod iter_with_drain;
@@ -2304,6 +2305,83 @@ declare_clippy_lint! {
     more clearly with `if .. else ..`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for usage of:
+    ///
+    /// - `[foo].iter()`
+    /// - `[foo].iter_mut()`
+    /// - `[foo].into_iter()`
+    /// - `Some(foo).iter()`
+    /// - `Some(foo).iter_mut()`
+    /// - `Some(foo).into_iter()`
+    ///
+    /// ### Why is this bad?
+    ///
+    /// It is simpler to use the once function from the standard library:
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let a = [123].iter();
+    /// let b = Some(123).into_iter();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// use std::iter;
+    /// let a = iter::once(&123);
+    /// let b = iter::once(123);
+    /// ```
+    ///
+    /// ### Known problems
+    ///
+    /// The type of the resulting iterator might become incompatible with its usage
+    #[clippy::version = "1.64.0"]
+    pub ITER_ONCE,
+    nursery,
+    "Iterator for array of length 1"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for usage of:
+    ///
+    /// - `[].iter()`
+    /// - `[].iter_mut()`
+    /// - `[].into_iter()`
+    /// - `None.iter()`
+    /// - `None.iter_mut()`
+    /// - `None.into_iter()`
+    ///
+    /// ### Why is this bad?
+    ///
+    /// It is simpler to use the empty function from the standard library:
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// use std::{slice, option};
+    /// let a: slice::Iter<i32> = [].iter();
+    /// let f: option::IntoIter<i32> = None.into_iter();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// use std::iter;
+    /// let a: iter::Empty<i32> = iter::empty();
+    /// let b: iter::Empty<i32> = iter::empty();
+    /// ```
+    ///
+    /// ### Known problems
+    ///
+    /// The type of the resulting iterator might become incompatible with its usage
+    #[clippy::version = "1.64.0"]
+    pub ITER_EMPTY,
+    nursery,
+    "Iterator for empty array"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2406,6 +2484,8 @@ impl_lint_pass!(Methods => [
     NEEDLESS_OPTION_TAKE,
     NO_EFFECT_REPLACE,
     OBFUSCATED_IF_ELSE,
+    ITER_ONCE,
+    ITER_EMPTY
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2708,6 +2788,7 @@ impl Methods {
                 ("is_digit", [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, self.msrv),
                 ("is_none", []) => check_is_some_is_none(cx, expr, recv, false),
                 ("is_some", []) => check_is_some_is_none(cx, expr, recv, true),
+                ("iter" | "iter_mut" | "into_iter", []) => iter_once_empty::check(cx, expr, name, recv),
                 ("join", [join_arg]) => {
                     if let Some(("collect", _, span)) = method_call(recv) {
                         unnecessary_join::check(cx, expr, recv, join_arg, span);

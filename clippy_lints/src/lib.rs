@@ -258,7 +258,6 @@ mod invalid_upcast_comparisons;
 mod invalid_utf8_in_unchecked;
 mod items_after_statements;
 mod iter_not_returning_iterator;
-mod iter_once_empty;
 mod large_const_arrays;
 mod large_enum_variant;
 mod large_include_file;
@@ -932,7 +931,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(invalid_utf8_in_unchecked::InvalidUtf8InUnchecked));
     store.register_late_pass(|| Box::new(std_instead_of_core::StdReexports::default()));
     store.register_late_pass(|| Box::new(manual_instant_elapsed::ManualInstantElapsed));
-    store.register_early_pass(|| Box::new(iter_once_empty::IterOnceEmpty));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

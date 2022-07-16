@@ -41,8 +41,6 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS),
     LintId::of(items_after_statements::ITEMS_AFTER_STATEMENTS),
     LintId::of(iter_not_returning_iterator::ITER_NOT_RETURNING_ITERATOR),
-    LintId::of(iter_once_empty::ITER_EMPTY),
-    LintId::of(iter_once_empty::ITER_ONCE),
     LintId::of(large_stack_arrays::LARGE_STACK_ARRAYS),
     LintId::of(let_underscore::LET_UNDERSCORE_DROP),
     LintId::of(literal_representation::LARGE_DIGIT_GROUPS),

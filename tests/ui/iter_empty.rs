@@ -26,7 +26,30 @@ macro_rules! in_macros {
     };
 }
 
+// Don't trigger on a `None` that isn't std's option
+mod custom_option {
+    #[allow(unused)]
+    enum CustomOption {
+        Some(i32),
+        None,
+    }
+
+    impl CustomOption {
+        fn iter(&self) {}
+        fn iter_mut(&mut self) {}
+        fn into_iter(self) {}
+    }
+    use CustomOption::*;
+
+    pub fn custom_option() {
+        None.iter();
+        None.iter_mut();
+        None.into_iter();
+    }
+}
+
 fn main() {
     array();
+    custom_option::custom_option();
     in_macros!();
 }
