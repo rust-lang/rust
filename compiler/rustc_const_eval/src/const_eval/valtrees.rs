@@ -436,7 +436,7 @@ fn valtree_into_mplace<'tcx>(
 
                         let offset = place_adjusted.layout.fields.offset(i);
                         place
-                            .offset(
+                            .offset_with_meta(
                                 offset,
                                 MemPlaceMeta::Meta(Scalar::from_machine_usize(
                                     num_elems as u64,
