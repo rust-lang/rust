@@ -11,7 +11,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::edition::Edition;
 use rustc_span::source_map::FileName;
 
 use std::ffi::OsStr;
@@ -213,11 +212,10 @@ impl SourceCollector<'_, '_> {
                 print_src(
                     buf,
                     contents,
-                    cx.shared.edition(),
                     file_span,
                     cx,
                     &root_path,
-                    None,
+                    highlight::DecorationInfo::default(),
                     SourceContext::Standalone,
                 )
             },
@@ -266,11 +264,10 @@ pub(crate) enum SourceContext {
 pub(crate) fn print_src(
     buf: &mut Buffer,
     s: &str,
-    edition: Edition,
     file_span: rustc_span::Span,
     context: &Context<'_>,
     root_path: &str,
-    decoration_info: Option<highlight::DecorationInfo>,
+    decoration_info: highlight::DecorationInfo,
     source_context: SourceContext,
 ) {
     let lines = s.lines().count();
@@ -289,15 +286,11 @@ pub(crate) fn print_src(
         }
     }
     line_numbers.write_str("</pre>");
-    highlight::render_with_highlighting(
+    highlight::render_source_with_highlighting(
         s,
         buf,
-        None,
-        None,
-        None,
-        edition,
-        Some(line_numbers),
-        Some(highlight::HrefContext { context, file_span, root_path }),
+        line_numbers,
+        highlight::HrefContext { context, file_span, root_path },
         decoration_info,
     );
 }
