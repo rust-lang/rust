@@ -190,6 +190,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     ) -> bool {
         debug!("maybe_inline_local res: {:?}", res);
 
+        if self.cx.output_format.is_json() {
+            return false;
+        }
+
         let tcx = self.cx.tcx;
         let Some(res_did) = res.opt_def_id() else {
             return false;

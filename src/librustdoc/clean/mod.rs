@@ -2120,8 +2120,9 @@ fn clean_use_statement<'tcx>(
     // forcefully don't inline if this is not public or if the
     // #[doc(no_inline)] attribute is present.
     // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-    let mut denied = !(visibility.is_public()
-        || (cx.render_options.document_private && is_visible_from_parent_mod))
+    let mut denied = cx.output_format.is_json()
+        || !(visibility.is_public()
+            || (cx.render_options.document_private && is_visible_from_parent_mod))
         || pub_underscore
         || attrs.iter().any(|a| {
             a.has_name(sym::doc)

@@ -81,6 +81,8 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) inlined: FxHashSet<ItemId>,
     /// Used by `calculate_doc_coverage`.
     pub(crate) output_format: OutputFormat,
+    /// Used by `strip_private`.
+    pub(crate) show_coverage: bool,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -381,6 +383,7 @@ pub(crate) fn run_global_ctxt(
         inlined: FxHashSet::default(),
         output_format,
         render_options,
+        show_coverage,
     };
 
     // Small hack to force the Sized trait to be present.
