@@ -553,3 +553,14 @@ fn zip_unzip_roundtrip() {
     let a = z.unzip();
     assert_eq!(a, (x, y));
 }
+
+#[test]
+fn from_residual_option_result() {
+    fn test<F: FnOnce() -> Result<u8, u16>>(f: F) -> Option<Result<u8, u32>> {
+        let x: u8 = f()?;
+        Some(Ok(x * 2))
+    }
+
+    assert_eq!(test(|| Ok(2)), Some(Ok(4)));
+    assert_eq!(test(|| Err(2)), Some(Err(2)));
+}

@@ -2306,6 +2306,19 @@ impl<T> const ops::FromResidual for Option<T> {
     }
 }
 
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible, E>>
+    for Option<Result<T, F>>
+{
+    #[inline]
+    fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
+        match residual {
+            Err(e) => Some(Err(From::from(e))),
+        }
+    }
+}
+
 #[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
 impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
     #[inline]
