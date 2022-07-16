@@ -57,11 +57,43 @@ impl<'tcx> Clean<'tcx, Item> for DocModule<'tcx> {
                 .map(|(item, renamed)| clean_maybe_renamed_foreign_item(cx, item, *renamed)),
         );
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
-        items.extend(
-            self.items
-                .iter()
-                .flat_map(|(item, renamed)| clean_maybe_renamed_item(cx, item, *renamed)),
-        );
+
+        // Split up imports from all other items.
+        //
+        // This covers the case where somebody does an import which should pull in an item,
+        // but there's already an item with the same namespace and same name. Rust gives
+        // priority to the not-imported one, so we should, too.
+        let mut inserted = FxHashSet::default();
+        items.extend(self.items.iter().flat_map(|(item, renamed)| {
+            // First, lower everything other than imports.
+            if matches!(item.kind, hir::ItemKind::Use(..)) {
+                return Vec::new();
+            }
+            let v = clean_maybe_renamed_item(cx, item, *renamed);
+            for item in &v {
+                if let Some(name) = item.name {
+                    inserted.insert((item.type_(), name));
+                }
+            }
+            v
+        }));
+        items.extend(self.items.iter().flat_map(|(item, renamed)| {
+            // Now we actually lower the imports, skipping everything else.
+            if !matches!(item.kind, hir::ItemKind::Use(..)) {
+                return Vec::new();
+            }
+            let mut v = clean_maybe_renamed_item(cx, item, *renamed);
+            v.drain_filter(|item| {
+                if let Some(name) = item.name {
+                    // If an item with the same type and name already exists,
+                    // it takes priority over the inlined stuff.
+                    !inserted.insert((item.type_(), name))
+                } else {
+                    false
+                }
+            });
+            v
+        }));
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
