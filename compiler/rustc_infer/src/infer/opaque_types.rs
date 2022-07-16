@@ -99,7 +99,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
         let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
-            ty::Opaque(def_id, substs) => {
+            ty::Opaque(def_id, substs) if def_id.is_local() => {
                 let origin = if self.defining_use_anchor.is_some() {
                     // Check that this is `impl Trait` type is
                     // declared by `parent_def_id` -- i.e., one whose

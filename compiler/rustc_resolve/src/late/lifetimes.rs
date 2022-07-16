@@ -8,7 +8,7 @@
 
 use crate::late::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
 use rustc_ast::walk_list;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -482,6 +482,11 @@ fn convert_named_region_map(tcx: TyCtxt<'_>, named_region_map: NamedRegionMap) -
         let def_id = tcx.hir().local_def_id(hir_id);
         map.insert(def_id);
     }
+    for (_, late_bound) in &mut rl.late_bound {
+        late_bound.sort_by(|&a, &b| {
+            tcx.def_path_hash(a.to_def_id()).cmp(&tcx.def_path_hash(b.to_def_id()))
+        });
+    }
     for (hir_id, v) in named_region_map.late_bound_vars {
         let map = rl.late_bound_vars.entry(hir_id.owner).or_default();
         map.insert(hir_id.local_id, v);
@@ -540,7 +545,7 @@ fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
 fn is_late_bound_map<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> Option<(LocalDefId, &'tcx FxHashSet<LocalDefId>)> {
+) -> Option<(LocalDefId, &'tcx FxIndexSet<LocalDefId>)> {
     match tcx.def_kind(def_id) {
         DefKind::AnonConst | DefKind::InlineConst => {
             let mut def_id = tcx.local_parent(def_id);

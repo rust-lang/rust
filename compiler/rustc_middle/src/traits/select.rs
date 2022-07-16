@@ -176,6 +176,10 @@ pub enum EvaluationResult {
     EvaluatedToOk,
     /// Evaluation successful, but there were unevaluated region obligations.
     EvaluatedToOkModuloRegions,
+    /// Evaluation successful, but need to rerun because opaque types got
+    /// hidden types assigned without it being known whether the opaque types
+    /// are within their defining scope
+    EvaluatedToOkModuloOpaqueTypes,
     /// Evaluation is known to be ambiguous -- it *might* hold for some
     /// assignment of inference variables, but it might not.
     ///
@@ -252,9 +256,11 @@ impl EvaluationResult {
 
     pub fn may_apply(self) -> bool {
         match self {
-            EvaluatedToOk | EvaluatedToOkModuloRegions | EvaluatedToAmbig | EvaluatedToUnknown => {
-                true
-            }
+            EvaluatedToOkModuloOpaqueTypes
+            | EvaluatedToOk
+            | EvaluatedToOkModuloRegions
+            | EvaluatedToAmbig
+            | EvaluatedToUnknown => true,
 
             EvaluatedToErr | EvaluatedToRecur => false,
         }
@@ -264,7 +270,11 @@ impl EvaluationResult {
         match self {
             EvaluatedToUnknown | EvaluatedToRecur => true,
 
-            EvaluatedToOk | EvaluatedToOkModuloRegions | EvaluatedToAmbig | EvaluatedToErr => false,
+            EvaluatedToOkModuloOpaqueTypes
+            | EvaluatedToOk
+            | EvaluatedToOkModuloRegions
+            | EvaluatedToAmbig
+            | EvaluatedToErr => false,
         }
     }
 }

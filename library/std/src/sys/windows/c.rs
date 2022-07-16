@@ -325,7 +325,9 @@ union IO_STATUS_BLOCK_union {
 }
 impl Default for IO_STATUS_BLOCK_union {
     fn default() -> Self {
-        Self { Pointer: ptr::null_mut() }
+        let mut this = Self { Pointer: ptr::null_mut() };
+        this.Status = STATUS_PENDING;
+        this
     }
 }
 #[repr(C)]
@@ -333,6 +335,16 @@ impl Default for IO_STATUS_BLOCK_union {
 pub struct IO_STATUS_BLOCK {
     u: IO_STATUS_BLOCK_union,
     pub Information: usize,
+}
+impl IO_STATUS_BLOCK {
+    pub fn status(&self) -> NTSTATUS {
+        // SAFETY: If `self.u.Status` was set then this is obviously safe.
+        // If `self.u.Pointer` was set then this is the equivalent to converting
+        // the pointer to an integer, which is also safe.
+        // Currently the only safe way to construct `IO_STATUS_BLOCK` outside of
+        // this module is to call the `default` method, which sets the `Status`.
+        unsafe { self.u.Status }
+    }
 }
 
 pub type LPOVERLAPPED_COMPLETION_ROUTINE = unsafe extern "system" fn(

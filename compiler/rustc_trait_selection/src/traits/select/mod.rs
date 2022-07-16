@@ -388,6 +388,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Err(_) => return Ok(EvaluatedToErr),
             }
 
+            if self.infcx.opaque_types_added_in_snapshot(snapshot) {
+                return Ok(result.max(EvaluatedToOkModuloOpaqueTypes));
+            }
+
             match self.infcx.region_constraints_added_in_snapshot(snapshot) {
                 None => Ok(result),
                 Some(_) => Ok(result.max(EvaluatedToOkModuloRegions)),
