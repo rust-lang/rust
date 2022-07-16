@@ -1,0 +1,40 @@
+error: this `into_iter` call can be replaced with std::iter::empty
+  --> $DIR/iter_empty.rs:6:16
+   |
+LL |     assert_eq!([].into_iter().next(), Option::<i32>::None);
+   |                ^^^^^^^^^^^^^^ help: try: `std::iter::empty()`
+   |
+   = note: `-D clippy::iter-empty` implied by `-D warnings`
+
+error: this `iter_mut` call can be replaced with std::iter::empty
+  --> $DIR/iter_empty.rs:7:16
+   |
+LL |     assert_eq!([].iter_mut().next(), Option::<&mut i32>::None);
+   |                ^^^^^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: this `iter call` can be replaced with std::iter::empty
+  --> $DIR/iter_empty.rs:8:16
+   |
+LL |     assert_eq!([].iter().next(), Option::<&i32>::None);
+   |                ^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: this `into_iter` call can be replaced with std::iter::empty
+  --> $DIR/iter_empty.rs:9:16
+   |
+LL |     assert_eq!(None.into_iter().next(), Option::<i32>::None);
+   |                ^^^^^^^^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: this `iter_mut` call can be replaced with std::iter::empty
+  --> $DIR/iter_empty.rs:10:16
+   |
+LL |     assert_eq!(None.iter_mut().next(), Option::<&mut i32>::None);
+   |                ^^^^^^^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: this `iter call` can be replaced with std::iter::empty
+  --> $DIR/iter_empty.rs:11:16
+   |
+LL |     assert_eq!(None.iter().next(), Option::<&i32>::None);
+   |                ^^^^^^^^^^^ help: try: `std::iter::empty()`
+
+error: aborting due to 6 previous errors
+

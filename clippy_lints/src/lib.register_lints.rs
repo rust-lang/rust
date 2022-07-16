@@ -200,6 +200,8 @@ store.register_lints(&[
     invalid_utf8_in_unchecked::INVALID_UTF8_IN_UNCHECKED,
     items_after_statements::ITEMS_AFTER_STATEMENTS,
     iter_not_returning_iterator::ITER_NOT_RETURNING_ITERATOR,
+    iter_once_empty::ITER_EMPTY,
+    iter_once_empty::ITER_ONCE,
     large_const_arrays::LARGE_CONST_ARRAYS,
     large_enum_variant::LARGE_ENUM_VARIANT,
     large_include_file::LARGE_INCLUDE_FILE,

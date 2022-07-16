@@ -1,0 +1,40 @@
+error: this `into_iter` call can be replaced with std::iter::once
+  --> $DIR/iter_once.rs:6:16
+   |
+LL |     assert_eq!([123].into_iter().next(), Some(123));
+   |                ^^^^^^^^^^^^^^^^^ help: try: `std::iter::once(123)`
+   |
+   = note: `-D clippy::iter-once` implied by `-D warnings`
+
+error: this `iter_mut` call can be replaced with std::iter::once
+  --> $DIR/iter_once.rs:7:16
+   |
+LL |     assert_eq!([123].iter_mut().next(), Some(&mut 123));
+   |                ^^^^^^^^^^^^^^^^ help: try: `std::iter::once(&mut 123)`
+
+error: this `iter` call can be replaced with std::iter::once
+  --> $DIR/iter_once.rs:8:16
+   |
+LL |     assert_eq!([123].iter().next(), Some(&123));
+   |                ^^^^^^^^^^^^ help: try: `std::iter::once(&123)`
+
+error: this `into_iter` call can be replaced with std::iter::once
+  --> $DIR/iter_once.rs:9:16
+   |
+LL |     assert_eq!(Some(123).into_iter().next(), Some(123));
+   |                ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::iter::once(123)`
+
+error: this `iter_mut` call can be replaced with std::iter::once
+  --> $DIR/iter_once.rs:10:16
+   |
+LL |     assert_eq!(Some(123).iter_mut().next(), Some(&mut 123));
+   |                ^^^^^^^^^^^^^^^^^^^^ help: try: `std::iter::once(&mut 123)`
+
+error: this `iter` call can be replaced with std::iter::once
+  --> $DIR/iter_once.rs:11:16
+   |
+LL |     assert_eq!(Some(123).iter().next(), Some(&123));
+   |                ^^^^^^^^^^^^^^^^ help: try: `std::iter::once(&123)`
+
+error: aborting due to 6 previous errors
+
