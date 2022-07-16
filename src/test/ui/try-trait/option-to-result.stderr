@@ -27,6 +27,7 @@ LL | | }
    |
    = help: the trait `FromResidual<Result<Infallible, i32>>` is not implemented for `Option<i32>`
    = help: the following other types implement trait `FromResidual<R>`:
+             <Option<Result<T, F>> as FromResidual<Result<Infallible, E>>>
              <Option<T> as FromResidual<Yeet<()>>>
              <Option<T> as FromResidual>
 
