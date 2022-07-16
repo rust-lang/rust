@@ -19,6 +19,7 @@ use rustc_target::abi::call::ArgAbi;
 pub use rustc_target::abi::call::*;
 use rustc_target::abi::{self, HasDataLayout, Int};
 pub use rustc_target::spec::abi::Abi;
+use rustc_target::spec::SanitizerSet;
 
 use libc::c_uint;
 use smallvec::SmallVec;
@@ -89,6 +90,13 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
         }
         if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
             attrs.push(llvm::AttributeKind::NoAlias.create_attr(cx.llcx));
+        }
+    } else if cx.tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {
+        // If we're not optimising, *but* memory sanitizer is on, emit noundef, since it affects
+        // memory sanitizer's behavior.
+
+        if regular.contains(ArgAttribute::NoUndef) {
+            attrs.push(llvm::AttributeKind::NoUndef.create_attr(cx.llcx));
         }
     }
 

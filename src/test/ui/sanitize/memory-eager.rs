@@ -2,7 +2,10 @@
 // needs-sanitizer-memory
 // min-llvm-version: 14.0.0
 //
-// compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins -O
+// revisions: unoptimized optimized
+//
+// [optimized]compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins -O
+// [unoptimized]compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins
 //
 // run-fail
 // error-pattern: MemorySanitizer: use-of-uninitialized-value
