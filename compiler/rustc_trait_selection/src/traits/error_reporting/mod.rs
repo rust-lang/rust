@@ -1998,10 +1998,17 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 let subst = data.trait_ref.substs.iter().find(|s| s.has_infer_types_or_consts());
 
                 let mut err = if let Some(subst) = subst {
-                    let mut err =
-                        struct_span_err!(self.tcx.sess, span, E0283, "type annotations needed",);
-                    err.span_label(span, "cannot call trait method as a free function");
-                    err.emit();
+                    if matches!(obligation.cause.code(), ObligationCauseCode::ItemObligation(..)) {
+                        let mut err = struct_span_err!(
+                            self.tcx.sess,
+                            span,
+                            E0283,
+                            "type annotations needed",
+                        );
+                        err.span_label(span, "cannot call trait method as a free function");
+                        err.emit();
+                        return;
+                    }
 
                     self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0283, true)
                 } else {
