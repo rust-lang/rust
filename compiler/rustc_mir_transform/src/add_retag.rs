@@ -28,6 +28,7 @@ fn is_stable(place: PlaceRef<'_>) -> bool {
             ProjectionElem::Field { .. } |
             ProjectionElem::ConstantIndex { .. } |
             ProjectionElem::Subslice { .. } |
+            ProjectionElem::OpaqueCast { .. } |
             ProjectionElem::Downcast { .. } => true,
         }
     })

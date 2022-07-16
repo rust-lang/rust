@@ -2093,7 +2093,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                             StorageDeadOrDrop::Destructor(_) => kind,
                         },
-                        ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
+                        ProjectionElem::OpaqueCast { .. }
+                        | ProjectionElem::Field(..)
+                        | ProjectionElem::Downcast(..) => {
                             match place_ty.ty.kind() {
                                 ty::Adt(def, _) if def.has_dtor(tcx) => {
                                     // Report the outermost adt with a destructor

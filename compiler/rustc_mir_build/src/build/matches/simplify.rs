@@ -37,12 +37,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// only generates a single switch. If this happens this method returns
     /// `true`.
+    #[instrument(skip(self, candidate), level = "debug")]
     pub(super) fn simplify_candidate<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> bool {
         // repeatedly simplify match pairs until fixed point is reached
-        debug!(?candidate, "simplify_candidate");
+        debug!("{:#?}", candidate);
 
         // existing_bindings and new_bindings exists to keep the semantics in order.
         // Reversing the binding order for bindings after `@` changes the binding order in places
@@ -155,12 +156,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ascription: thir::Ascription { ref annotation, variance },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
-                if let Ok(place_resolved) =
-                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-                {
+                if let Ok(place_resolved) = match_pair.place.clone().try_upvars_resolved(self) {
                     candidate.ascriptions.push(Ascription {
                         annotation: annotation.clone(),
-                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        source: place_resolved.into_place(self),
                         variance,
                     });
                 }
@@ -184,12 +183,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ref subpattern,
                 is_primary: _,
             } => {
-                if let Ok(place_resolved) =
-                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-                {
+                if let Ok(place_resolved) = match_pair.place.clone().try_upvars_resolved(self) {
                     candidate.bindings.push(Binding {
                         span: match_pair.pattern.span,
-                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        source: place_resolved.into_place(self),
                         var_id: var,
                         binding_mode: mode,
                     });
