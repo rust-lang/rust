@@ -1998,7 +1998,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 let subst = data.trait_ref.substs.iter().find(|s| s.has_infer_types_or_consts());
 
                 let mut err = if let Some(subst) = subst {
-                    if matches!(obligation.cause.code(), ObligationCauseCode::ItemObligation(..)) {
+                    if matches!(obligation.cause.code(), ObligationCauseCode::ItemObligation(..))
+                        && !obligation.param_env.is_const()
+                    {
                         let mut err = struct_span_err!(
                             self.tcx.sess,
                             span,
