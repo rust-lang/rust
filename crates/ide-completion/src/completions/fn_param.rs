@@ -5,11 +5,11 @@ use ide_db::FxHashMap;
 use syntax::{
     algo,
     ast::{self, HasModuleItem},
-    match_ast, AstNode, Direction, SyntaxKind, TextRange,
+    match_ast, AstNode, Direction, SyntaxKind, TextRange, TextSize,
 };
 
 use crate::{
-    context::{ParamKind, PatternContext},
+    context::{ParamContext, ParamKind, PatternContext},
     CompletionContext, CompletionItem, CompletionItemKind, Completions,
 };
 
@@ -24,7 +24,7 @@ pub(crate) fn complete_fn_param(
     ctx: &CompletionContext,
     pattern_ctx: &PatternContext,
 ) -> Option<()> {
-    let ((param_list, _, param_kind), impl_) = match pattern_ctx {
+    let (ParamContext { param_list, kind, .. }, impl_) = match pattern_ctx {
         PatternContext { param_ctx: Some(kind), impl_, .. } => (kind, impl_),
         _ => return None,
     };
@@ -43,7 +43,7 @@ pub(crate) fn complete_fn_param(
         item.add_to(acc)
     };
 
-    match param_kind {
+    match kind {
         ParamKind::Function(function) => {
             fill_fn_params(ctx, function, param_list, impl_, add_new_item_to_acc);
         }
@@ -105,7 +105,7 @@ fn fill_fn_params(
     }
     remove_duplicated(&mut file_params, param_list.params());
     let self_completion_items = ["self", "&self", "mut self", "&mut self"];
-    if should_add_self_completions(param_list, impl_) {
+    if should_add_self_completions(ctx.token.text_range().start(), param_list, impl_) {
         self_completion_items.into_iter().for_each(|self_item| add_new_item_to_acc(self_item));
     }
 
@@ -156,10 +156,18 @@ fn remove_duplicated(
     })
 }
 
-fn should_add_self_completions(param_list: &ast::ParamList, impl_: &Option<ast::Impl>) -> bool {
-    let no_params = param_list.params().next().is_none() && param_list.self_param().is_none();
-
-    impl_.is_some() && no_params
+fn should_add_self_completions(
+    cursor: TextSize,
+    param_list: &ast::ParamList,
+    impl_: &Option<ast::Impl>,
+) -> bool {
+    if impl_.is_none() || param_list.self_param().is_some() {
+        return false;
+    }
+    match param_list.params().next() {
+        Some(first) => first.pat().map_or(false, |pat| pat.syntax().text_range().contains(cursor)),
+        None => true,
+    }
 }
 
 fn comma_wrapper(ctx: &CompletionContext) -> Option<(impl Fn(&str) -> String, TextRange)> {

@@ -438,6 +438,10 @@ impl Test for T {
             expect![[r#"
                 sp Self
                 st T
+                bn &mut self
+                bn &self
+                bn mut self
+                bn self
             "#]],
         );
 

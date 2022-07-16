@@ -13,8 +13,9 @@ use syntax::{
 use crate::context::{
     AttrCtx, CompletionAnalysis, CompletionContext, DotAccess, DotAccessKind, ExprCtx,
     ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind, NameRefContext,
-    NameRefKind, ParamKind, PathCompletionCtx, PathKind, PatternContext, PatternRefutability,
-    Qualified, QualifierCtx, TypeAscriptionTarget, TypeLocation, COMPLETION_MARKER,
+    NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathKind, PatternContext,
+    PatternRefutability, Qualified, QualifierCtx, TypeAscriptionTarget, TypeLocation,
+    COMPLETION_MARKER,
 };
 
 impl<'a> CompletionContext<'a> {
@@ -990,7 +991,7 @@ fn pattern_context_for(
     original_file: &SyntaxNode,
     pat: ast::Pat,
 ) -> PatternContext {
-    let mut is_param = None;
+    let mut param_ctx = None;
     let (refutability, has_type_ascription) =
     pat
         .syntax()
@@ -1003,7 +1004,7 @@ fn pattern_context_for(
                     ast::LetStmt(let_) => return (PatternRefutability::Irrefutable, let_.ty().is_some()),
                     ast::Param(param) => {
                         let has_type_ascription = param.ty().is_some();
-                        is_param = (|| {
+                        param_ctx = (|| {
                             let fake_param_list = param.syntax().parent().and_then(ast::ParamList::cast)?;
                             let param_list = find_node_in_file_compensated(sema, original_file, &fake_param_list)?;
                             let param_list_owner = param_list.syntax().parent()?;
@@ -1014,7 +1015,9 @@ fn pattern_context_for(
                                     _ => return None,
                                 }
                             };
-                            Some((param_list, param, kind))
+                            Some(ParamContext {
+                                param_list, param, kind
+                            })
                         })();
                         return (PatternRefutability::Irrefutable, has_type_ascription)
                     },
@@ -1033,7 +1036,7 @@ fn pattern_context_for(
 
     PatternContext {
         refutability,
-        param_ctx: is_param,
+        param_ctx,
         has_type_ascription,
         parent_pat: pat.syntax().parent().and_then(ast::Pat::cast),
         mut_token,

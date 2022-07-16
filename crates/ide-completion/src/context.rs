@@ -199,7 +199,7 @@ pub(super) enum Qualified {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct PatternContext {
     pub(super) refutability: PatternRefutability,
-    pub(super) param_ctx: Option<(ast::ParamList, ast::Param, ParamKind)>,
+    pub(super) param_ctx: Option<ParamContext>,
     pub(super) has_type_ascription: bool,
     pub(super) parent_pat: Option<ast::Pat>,
     pub(super) ref_token: Option<SyntaxToken>,
@@ -207,6 +207,13 @@ pub(super) struct PatternContext {
     /// The record pattern this name or ref is a field of
     pub(super) record_pat: Option<ast::RecordPat>,
     pub(super) impl_: Option<ast::Impl>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct ParamContext {
+    pub(super) param_list: ast::ParamList,
+    pub(super) param: ast::Param,
+    pub(super) kind: ParamKind,
 }
 
 /// The state of the lifetime we are completing.
