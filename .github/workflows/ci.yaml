@@ -39,7 +39,7 @@ jobs:
 
     - name: Install Rust toolchain
       run: |
-        rustup update stable
+        rustup update --no-self-update stable
         rustup component add rustfmt rust-src
 
     - name: Cache Dependencies
@@ -69,7 +69,7 @@ jobs:
 
     - name: Install Rust toolchain
       run: |
-        rustup update stable
+        rustup update --no-self-update stable
         rustup target add ${{ env.targets }} ${{ env.targets_ide }}
 
     - name: Cache Dependencies
