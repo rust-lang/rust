@@ -6,7 +6,7 @@ use mbe::{SyntheticToken, SyntheticTokenId, TokenMap};
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, AstNode},
-    match_ast, SyntaxKind, SyntaxNode, TextRange,
+    match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
 };
 use tt::Subtree;
 
@@ -15,8 +15,8 @@ use tt::Subtree;
 /// reverse those changes afterwards, and a token map.
 #[derive(Debug)]
 pub(crate) struct SyntaxFixups {
-    pub(crate) append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
-    pub(crate) replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+    pub(crate) append: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
+    pub(crate) replace: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
     pub(crate) undo_info: SyntaxFixupUndoInfo,
     pub(crate) token_map: TokenMap,
     pub(crate) next_id: u32,
@@ -31,8 +31,8 @@ pub struct SyntaxFixupUndoInfo {
 const EMPTY_ID: SyntheticTokenId = SyntheticTokenId(!0);
 
 pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
-    let mut append = FxHashMap::default();
-    let mut replace = FxHashMap::default();
+    let mut append = FxHashMap::<SyntaxElement, _>::default();
+    let mut replace = FxHashMap::<SyntaxElement, _>::default();
     let mut preorder = node.preorder();
     let mut original = Vec::new();
     let mut token_map = TokenMap::default();
@@ -63,7 +63,7 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                 range: node.text_range(),
                 id: SyntheticTokenId(idx),
             };
-            replace.insert(node.clone(), vec![replacement]);
+            replace.insert(node.clone().into(), vec![replacement]);
             preorder.skip_subtree();
             continue;
         }
@@ -75,7 +75,7 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                 ast::FieldExpr(it) => {
                     if it.name_ref().is_none() {
                         // incomplete field access: some_expr.|
-                        append.insert(node.clone(), vec![
+                        append.insert(node.clone().into(), vec![
                             SyntheticToken {
                                 kind: SyntaxKind::IDENT,
                                 text: "__ra_fixup".into(),
@@ -87,7 +87,7 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                 },
                 ast::ExprStmt(it) => {
                     if it.semicolon_token().is_none() {
-                        append.insert(node.clone(), vec![
+                        append.insert(node.clone().into(), vec![
                             SyntheticToken {
                                 kind: SyntaxKind::SEMICOLON,
                                 text: ";".into(),
@@ -99,7 +99,7 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                 },
                 ast::LetStmt(it) => {
                     if it.semicolon_token().is_none() {
-                        append.insert(node.clone(), vec![
+                        append.insert(node.clone().into(), vec![
                             SyntheticToken {
                                 kind: SyntaxKind::SEMICOLON,
                                 text: ";".into(),
@@ -109,6 +109,41 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                         ]);
                     }
                 },
+                ast::IfExpr(it) => {
+                    if it.condition().is_none() {
+                        // insert placeholder token after the if token
+                        let if_token = match it.if_token() {
+                            Some(t) => t,
+                            None => continue,
+                        };
+                        append.insert(if_token.into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::IDENT,
+                                text: "__ra_fixup".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                        ]);
+                    }
+                    if it.then_branch().is_none() {
+                        append.insert(node.clone().into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::L_CURLY,
+                                text: "{".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::R_CURLY,
+                                text: "}".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                        ]);
+                    }
+                },
+                // FIXME: foo::
+                // FIXME: for, loop, match etc.
                 _ => (),
             }
         }
@@ -144,7 +179,10 @@ pub(crate) fn reverse_fixups(
             token_map.synthetic_token_id(leaf.id()).is_none()
                 || token_map.synthetic_token_id(leaf.id()) != Some(EMPTY_ID)
         }
-        _ => true,
+        tt::TokenTree::Subtree(st) => st.delimiter.map_or(true, |d| {
+            token_map.synthetic_token_id(d.id).is_none()
+                || token_map.synthetic_token_id(d.id) != Some(EMPTY_ID)
+        }),
     });
     tt.token_trees.iter_mut().for_each(|tt| match tt {
         tt::TokenTree::Subtree(tt) => reverse_fixups(tt, token_map, undo_info),
@@ -295,6 +333,49 @@ fn foo() {
 "#,
             expect![[r#"
 fn foo () {__ra_fixup ;}
+"#]],
+        )
+    }
+
+    #[test]
+    fn fixup_if_1() {
+        check(
+            r#"
+fn foo() {
+    if a
+}
+"#,
+            expect![[r#"
+fn foo () {if a {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn fixup_if_2() {
+        check(
+            r#"
+fn foo() {
+    if
+}
+"#,
+            expect![[r#"
+fn foo () {if __ra_fixup {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn fixup_if_3() {
+        check(
+            r#"
+fn foo() {
+    if {}
+}
+"#,
+            // the {} gets parsed as the condition, I think?
+            expect![[r#"
+fn foo () {if {} {}}
 "#]],
         )
     }
