@@ -395,9 +395,8 @@ impl DefCollector<'_> {
         // As some of the macros will expand newly import shadowing partial resolved imports
         // FIXME: We maybe could skip this, if we handle the indeterminate imports in `resolve_imports`
         // correctly
-        let partial_resolved = self.indeterminate_imports.drain(..).filter_map(|mut directive| {
-            directive.status = PartialResolvedImport::Unresolved;
-            Some(directive)
+        let partial_resolved = self.indeterminate_imports.drain(..).map(|directive| {
+            ImportDirective { status: PartialResolvedImport::Unresolved, ..directive }
         });
         self.unresolved_imports.extend(partial_resolved);
         self.resolve_imports();
@@ -434,50 +433,48 @@ impl DefCollector<'_> {
     fn reseed_with_unresolved_attribute(&mut self) -> ReachedFixedPoint {
         cov_mark::hit!(unresolved_attribute_fallback);
 
-        let mut unresolved_macros = mem::take(&mut self.unresolved_macros);
-        let pos = unresolved_macros.iter().position(|directive| {
-            if let MacroDirectiveKind::Attr { ast_id, mod_item, attr, tree } = &directive.kind {
-                self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
-                    directive.module_id,
-                    MacroCallKind::Attr {
-                        ast_id: ast_id.ast_id,
-                        attr_args: Default::default(),
-                        invoc_attr_index: attr.id.ast_index,
-                        is_derive: false,
-                    },
-                    attr.path().clone(),
-                ));
+        let unresolved_attr =
+            self.unresolved_macros.iter().enumerate().find_map(|(idx, directive)| match &directive
+                .kind
+            {
+                MacroDirectiveKind::Attr { ast_id, mod_item, attr, tree } => {
+                    self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
+                        directive.module_id,
+                        MacroCallKind::Attr {
+                            ast_id: ast_id.ast_id,
+                            attr_args: Default::default(),
+                            invoc_attr_index: attr.id.ast_index,
+                            is_derive: false,
+                        },
+                        attr.path().clone(),
+                    ));
 
-                self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), attr.id);
+                    self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), attr.id);
 
-                let item_tree = tree.item_tree(self.db);
-                let mod_dir = self.mod_dirs[&directive.module_id].clone();
+                    Some((idx, directive, *mod_item, *tree))
+                }
+                _ => None,
+            });
+
+        match unresolved_attr {
+            Some((pos, &MacroDirective { module_id, depth, container, .. }, mod_item, tree_id)) => {
+                let item_tree = &tree_id.item_tree(self.db);
+                let mod_dir = self.mod_dirs[&module_id].clone();
                 ModCollector {
                     def_collector: self,
-                    macro_depth: directive.depth,
-                    module_id: directive.module_id,
-                    tree_id: *tree,
-                    item_tree: &item_tree,
+                    macro_depth: depth,
+                    module_id,
+                    tree_id,
+                    item_tree,
                     mod_dir,
                 }
-                .collect(&[*mod_item], directive.container);
-                true
-            } else {
-                false
+                .collect(&[mod_item], container);
+
+                self.unresolved_macros.swap_remove(pos);
+                // Continue name resolution with the new data.
+                ReachedFixedPoint::No
             }
-        });
-
-        if let Some(pos) = pos {
-            unresolved_macros.swap_remove(pos);
-        }
-
-        self.unresolved_macros.extend(unresolved_macros);
-
-        if pos.is_some() {
-            // Continue name resolution with the new data.
-            ReachedFixedPoint::No
-        } else {
-            ReachedFixedPoint::Yes
+            None => ReachedFixedPoint::Yes,
         }
     }
 
@@ -722,7 +719,8 @@ impl DefCollector<'_> {
     fn resolve_imports(&mut self) -> ReachedFixedPoint {
         let mut res = ReachedFixedPoint::Yes;
         let imports = mem::take(&mut self.unresolved_imports);
-        let imports = imports
+
+        self.unresolved_imports = imports
             .into_iter()
             .filter_map(|mut directive| {
                 directive.status = self.resolve_import(directive.module_id, &directive.import);
@@ -742,7 +740,6 @@ impl DefCollector<'_> {
                 }
             })
             .collect();
-        self.unresolved_imports = imports;
         res
     }
 
@@ -1034,7 +1031,7 @@ impl DefCollector<'_> {
             .glob_imports
             .get(&module_id)
             .into_iter()
-            .flat_map(|v| v.iter())
+            .flatten()
             .filter(|(glob_importing_module, _)| {
                 // we know all resolutions have the same visibility (`vis`), so we
                 // just need to check that once

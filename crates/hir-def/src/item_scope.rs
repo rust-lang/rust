@@ -270,35 +270,33 @@ impl ItemScope {
                 $glob_imports:ident [ $lookup:ident ],
                 $def_import_type:ident
             ) => {{
-                let existing = $this.$field.entry($lookup.1.clone());
-                match (existing, $def.$field) {
-                    (Entry::Vacant(entry), Some(_)) => {
-                        match $def_import_type {
-                            ImportType::Glob => {
-                                $glob_imports.$field.insert($lookup.clone());
+                if let Some(fld) = $def.$field {
+                    let existing = $this.$field.entry($lookup.1.clone());
+                    match existing {
+                        Entry::Vacant(entry) => {
+                            match $def_import_type {
+                                ImportType::Glob => {
+                                    $glob_imports.$field.insert($lookup.clone());
+                                }
+                                ImportType::Named => {
+                                    $glob_imports.$field.remove(&$lookup);
+                                }
                             }
-                            ImportType::Named => {
-                                $glob_imports.$field.remove(&$lookup);
-                            }
-                        }
 
-                        if let Some(fld) = $def.$field {
                             entry.insert(fld);
+                            $changed = true;
                         }
-                        $changed = true;
-                    }
-                    (Entry::Occupied(mut entry), Some(_))
-                        if $glob_imports.$field.contains(&$lookup)
-                            && matches!($def_import_type, ImportType::Named) =>
-                    {
-                        cov_mark::hit!(import_shadowed);
-                        $glob_imports.$field.remove(&$lookup);
-                        if let Some(fld) = $def.$field {
+                        Entry::Occupied(mut entry)
+                            if $glob_imports.$field.contains(&$lookup)
+                                && matches!($def_import_type, ImportType::Named) =>
+                        {
+                            cov_mark::hit!(import_shadowed);
+                            $glob_imports.$field.remove(&$lookup);
                             entry.insert(fld);
+                            $changed = true;
                         }
-                        $changed = true;
+                        _ => {}
                     }
-                    _ => {}
                 }
             }};
         }
