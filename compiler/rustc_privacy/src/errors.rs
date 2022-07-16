@@ -1,4 +1,4 @@
-use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(SessionDiagnostic)]
@@ -72,4 +72,20 @@ pub struct InPublicInterface<'a> {
     pub descr: String,
     #[label(privacy::visibility_label)]
     pub vis_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(privacy::from_private_dep_in_public_interface)]
+pub struct FromPrivateDependencyInPublicInterface<'a> {
+    pub kind: &'a str,
+    pub descr: String,
+    pub krate: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(privacy::private_in_public_lint)]
+pub struct PrivateInPublicLint<'a> {
+    pub vis_descr: &'static str,
+    pub kind: &'a str,
+    pub descr: String,
 }
