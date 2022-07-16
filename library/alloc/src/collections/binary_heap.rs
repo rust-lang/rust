@@ -292,14 +292,14 @@ pub struct PeekMut<
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: Ord + fmt::Debug, A: Allocator> fmt::Debug for PeekMut<'_, T, A> {
+impl<'a, T: Ord + fmt::Debug, A: Allocator + 'a> fmt::Debug for PeekMut<'a, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("PeekMut").field(&self.heap.data[0]).finish()
     }
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-impl<T: Ord, A: Allocator> Drop for PeekMut<'_, T, A> {
+impl<'a, T: Ord, A: Allocator + 'a> Drop for PeekMut<'a, T, A> {
     fn drop(&mut self) {
         if self.sift {
             // SAFETY: PeekMut is only instantiated for non-empty heaps.
@@ -309,7 +309,7 @@ impl<T: Ord, A: Allocator> Drop for PeekMut<'_, T, A> {
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-impl<T: Ord, A: Allocator> Deref for PeekMut<'_, T, A> {
+impl<'a, T: Ord, A: Allocator + 'a> Deref for PeekMut<'a, T, A> {
     type Target = T;
     fn deref(&self) -> &T {
         debug_assert!(!self.heap.is_empty());
@@ -319,7 +319,7 @@ impl<T: Ord, A: Allocator> Deref for PeekMut<'_, T, A> {
 }
 
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
-impl<T: Ord, A: Allocator> DerefMut for PeekMut<'_, T, A> {
+impl<'a, T: Ord, A: Allocator + 'a> DerefMut for PeekMut<'a, T, A> {
     fn deref_mut(&mut self) -> &mut T {
         debug_assert!(!self.heap.is_empty());
         self.sift = true;
@@ -328,10 +328,10 @@ impl<T: Ord, A: Allocator> DerefMut for PeekMut<'_, T, A> {
     }
 }
 
-impl<'a, T: Ord> PeekMut<'a, T> {
+impl<'a, T: Ord, A: Allocator + 'a> PeekMut<'a, T, A> {
     /// Removes the peeked value from the heap and returns it.
     #[stable(feature = "binary_heap_peek_mut_pop", since = "1.18.0")]
-    pub fn pop(mut this: PeekMut<'a, T>) -> T {
+    pub fn pop(mut this: PeekMut<'a, T, A>) -> T {
         let value = this.heap.pop().unwrap();
         this.sift = false;
         value
@@ -1611,7 +1611,7 @@ impl<'a, T: Ord, A: Allocator + 'a> Drop for DrainSorted<'a, T, A> {
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-impl<T: Ord, A: Allocator> Iterator for DrainSorted<'_, T, A> {
+impl<'a, T: Ord, A: Allocator + 'a> Iterator for DrainSorted<'a, T, A> {
     type Item = T;
 
     #[inline]
@@ -1627,13 +1627,13 @@ impl<T: Ord, A: Allocator> Iterator for DrainSorted<'_, T, A> {
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-impl<T: Ord, A: Allocator> ExactSizeIterator for DrainSorted<'_, T, A> {}
+impl<'a, T: Ord, A: Allocator + 'a> ExactSizeIterator for DrainSorted<'a, T, A> {}
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-impl<T: Ord, A: Allocator> FusedIterator for DrainSorted<'_, T, A> {}
+impl<'a, T: Ord, A: Allocator + 'a> FusedIterator for DrainSorted<'a, T, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T: Ord, A: Allocator> TrustedLen for DrainSorted<'_, T, A> {}
+unsafe impl<'a, T: Ord, A: Allocator + 'a> TrustedLen for DrainSorted<'a, T, A> {}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 impl<T: Ord, A: Allocator> From<Vec<T, A>> for BinaryHeap<T, A> {
