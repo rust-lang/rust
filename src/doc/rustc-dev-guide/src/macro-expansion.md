@@ -88,7 +88,7 @@ iteration, this represents a compile error.  Here is the [algorithm][original]:
         0. Put the macro back in the queue
         1. Continue to next iteration...
 
-[defpath]: https://rustc-dev-guide.rust-lang.org/hir.html?highlight=def,path#identifiers-in-the-hir
+[defpath]: hir.md#identifiers-in-the-hir
 [`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html
 [`InvocationCollector`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.InvocationCollector.html
 [`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html

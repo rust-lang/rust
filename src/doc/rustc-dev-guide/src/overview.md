@@ -136,21 +136,21 @@ binary.
 
 [String interning]: https://en.wikipedia.org/wiki/String_interning
 [`rustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
-[`rustc_driver`]: https://rustc-dev-guide.rust-lang.org/rustc-driver.html
+[`rustc_driver`]: rustc-driver.md
 [`rustc_interface::Config`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Config.html
-[lex]: https://rustc-dev-guide.rust-lang.org/the-parser.html
+[lex]: the-parser.md
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
 [`rustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html
-[*type inference*]: https://rustc-dev-guide.rust-lang.org/type-inference.html
-[*trait solving*]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
-[*type checking*]: https://rustc-dev-guide.rust-lang.org/type-checking.html
-[mir]: https://rustc-dev-guide.rust-lang.org/mir/index.html
-[borrow checking]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
-[mir-opt]: https://rustc-dev-guide.rust-lang.org/mir/optimizations.html
+[*type inference*]: type-inference.md
+[*trait solving*]: traits/resolution.md
+[*type checking*]: type-checking.md
+[mir]: mir/index.md
+[borrow checking]: borrow_check.md
+[mir-opt]: mir/optimizations.md
 [`simplify_try`]: https://github.com/rust-lang/rust/pull/66282
-[codegen]: https://rustc-dev-guide.rust-lang.org/backend/codegen.html
+[codegen]: backend/codegen.md
 [parse_nonterminal]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_nonterminal
 [parse_crate_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_crate_mod
 [parse_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_mod
@@ -364,21 +364,21 @@ For more details on bootstrapping, see
 - Where do phases diverge for cross-compilation to machine code across
   different platforms?
 -->
-  
+
 # References
 
 - Command line parsing
-  - Guide: [The Rustc Driver and Interface](https://rustc-dev-guide.rust-lang.org/rustc-driver.html)
+  - Guide: [The Rustc Driver and Interface](rustc-driver.md)
   - Driver definition: [`rustc_driver`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/)
   - Main entry point: [`rustc_session::config::build_session_options`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/config/fn.build_session_options.html)
 - Lexical Analysis: Lex the user program to a stream of tokens
-  - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
+  - Guide: [Lexing and Parsing](the-parser.md)
   - Lexer definition: [`rustc_lexer`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html)
   - Main entry point: [`rustc_lexer::first_token`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/fn.first_token.html)
 - Parsing: Parse the stream of tokens to an Abstract Syntax Tree (AST)
-  - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
-  - Guide: [Macro Expansion](https://rustc-dev-guide.rust-lang.org/macro-expansion.html)
-  - Guide: [Name Resolution](https://rustc-dev-guide.rust-lang.org/name-resolution.html)
+  - Guide: [Lexing and Parsing](the-parser.md)
+  - Guide: [Macro Expansion](macro-expansion.md)
+  - Guide: [Name Resolution](name-resolution.md)
   - Parser definition: [`rustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
   - Main entry points:
     - [Entry point for first file in crate](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/passes/fn.parse.html)
@@ -388,34 +388,34 @@ For more details on bootstrapping, see
   - Feature gating: **TODO**
   - Early linting: **TODO**
 - The High Level Intermediate Representation (HIR)
-  - Guide: [The HIR](https://rustc-dev-guide.rust-lang.org/hir.html)
-  - Guide: [Identifiers in the HIR](https://rustc-dev-guide.rust-lang.org/hir.html#identifiers-in-the-hir)
-  - Guide: [The HIR Map](https://rustc-dev-guide.rust-lang.org/hir.html#the-hir-map)
-  - Guide: [Lowering AST to HIR](https://rustc-dev-guide.rust-lang.org/lowering.html)
+  - Guide: [The HIR](hir.md)
+  - Guide: [Identifiers in the HIR](hir.md#identifiers-in-the-hir)
+  - Guide: [The HIR Map](hir.md#the-hir-map)
+  - Guide: [Lowering AST to HIR](lowering.md)
   - How to view HIR representation for your code `cargo rustc -- -Z unpretty=hir-tree`
   - Rustc HIR definition: [`rustc_hir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html)
   - Main entry point: **TODO**
   - Late linting: **TODO**
 - Type Inference
-  - Guide: [Type Inference](https://rustc-dev-guide.rust-lang.org/type-inference.html)
-  - Guide: [The ty Module: Representing Types](https://rustc-dev-guide.rust-lang.org/ty.html) (semantics)
+  - Guide: [Type Inference](type-inference.md)
+  - Guide: [The ty Module: Representing Types](ty.md) (semantics)
   - Main entry point (type inference): [`InferCtxtBuilder::enter`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxtBuilder.html#method.enter)
   - Main entry point (type checking bodies): [the `typeck` query](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.typeck)
     - These two functions can't be decoupled.
 - The Mid Level Intermediate Representation (MIR)
-  - Guide: [The MIR (Mid level IR)](https://rustc-dev-guide.rust-lang.org/mir/index.html)
+  - Guide: [The MIR (Mid level IR)](mir/index.md)
   - Definition: [`rustc_middle/src/mir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html)
   - Definition of sources that manipulates the MIR: [`rustc_mir_build`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/index.html), [`rustc_mir_dataflow`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/index.html), [`rustc_mir_transform`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/index.html)
 - The Borrow Checker
-  - Guide: [MIR Borrow Check](https://rustc-dev-guide.rust-lang.org/borrow_check.html)
+  - Guide: [MIR Borrow Check](borrow_check.md)
   - Definition: [`rustc_borrowck`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/index.html)
   - Main entry point: [`mir_borrowck` query](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/fn.mir_borrowck.html)
 - MIR Optimizations
-  - Guide: [MIR Optimizations](https://rustc-dev-guide.rust-lang.org/mir/optimizations.html)
+  - Guide: [MIR Optimizations](mir/optimizations.md)
   - Definition: [`rustc_mir_transform`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/index.html)
   - Main entry point: [`optimized_mir` query](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.optimized_mir.html)
 - Code Generation
-  - Guide: [Code Generation](https://rustc-dev-guide.rust-lang.org/backend/codegen.html)
+  - Guide: [Code Generation](backend/codegen.md)
   - Generating Machine Code from LLVM IR with LLVM - **TODO: reference?**
   - Main entry point: [`rustc_codegen_ssa::base::codegen_crate`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html)
     - This monomorphizes and produces LLVM IR for one codegen unit. It then

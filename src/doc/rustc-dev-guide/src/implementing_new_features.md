@@ -105,8 +105,8 @@ for stabilization in a checklist, e.g.,
 
 - [ ] Implement the RFC. (CC @rust-lang/compiler -- can anyone write
       up mentoring instructions?)
-- [ ] Adjust the documentation. ([See instructions on rustc-dev-guide.](https://rustc-dev-guide.rust-lang.org/stabilization_guide.html#documentation-prs))
-- [ ] Stabilize the feature. ([See instructions on rustc-dev-guide.](https://rustc-dev-guide.rust-lang.org/stabilization_guide.html#stabilization-pr))
+- [ ] Adjust the documentation. ([See instructions on rustc-dev-guide.](stabilization_guide.md#documentation-prs))
+- [ ] Stabilize the feature. ([See instructions on rustc-dev-guide.](stabilization_guide.md#stabilization-pr))
 ```
 
 ##  Stability in code

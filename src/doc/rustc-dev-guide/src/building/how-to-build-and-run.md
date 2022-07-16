@@ -66,7 +66,7 @@ If you set `download-ci-llvm = true`, in some circumstances, such as when
 updating the version of LLVM used by `rustc`, you may want to temporarily
 disable this feature. See the ["Updating LLVM" section] for more.
 
-["Updating LLVM" section]: https://rustc-dev-guide.rust-lang.org/backend/updating-llvm.html?highlight=download-ci-llvm#feature-updates
+["Updating LLVM" section]: /backend/updating-llvm.md#feature-updates
 
 If you have already built `rustc` and you change settings related to LLVM, then you may have to
 execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x.py

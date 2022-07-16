@@ -583,7 +583,7 @@ are:
   page!
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
-[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
+[rustc dev guide]: about-this-guide.md
 [gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [stddocs]: https://doc.rust-lang.org/std
@@ -592,5 +592,5 @@ are:
 [rustforge]: https://forge.rust-lang.org/
 [tlgba]: https://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: https://www.rustaceans.org/
-[rctd]: https://rustc-dev-guide.rust-lang.org/tests/intro.html
+[rctd]: tests/intro.md
 [cheatsheet]: https://bors.rust-lang.org/

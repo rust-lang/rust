@@ -29,7 +29,7 @@ independent instances of LLVM running in parallel. At the end, the linker
 is run to combine all the codegen units together into one binary. This process
 occurs in the `rustc_codegen_ssa::base` module.
 
-## Query System 
+## Query System
 
 The query model has some properties that make it actually feasible to evaluate
 multiple queries in parallel without too much of an effort:
@@ -54,7 +54,7 @@ When a query `foo` is evaluated, the cache table for `foo` is locked.
 
 ## Rustdoc
 
-As of <!-- date: 2022-05--> May 2022, there are still a number of steps 
+As of <!-- date: 2022-05--> May 2022, there are still a number of steps
 to complete before rustdoc rendering can be made parallel. More details on
 this issue can be found [here][parallel-rustdoc].
 
@@ -99,8 +99,8 @@ are a bit out of date):
 [imlist]: https://github.com/nikomatsakis/rustc-parallelization/blob/master/interior-mutability-list.md
 [irlo1]: https://internals.rust-lang.org/t/help-test-parallel-rustc/11503
 [tracking]: https://github.com/rust-lang/rust/issues/48685
-[monomorphization]:https://rustc-dev-guide.rust-lang.org/backend/monomorph.html
-[parallel-rustdoc]:https://github.com/rust-lang/rust/issues/82741
-[Arc]:https://doc.rust-lang.org/std/sync/struct.Arc.html
-[Rc]:https://doc.rust-lang.org/std/rc/struct.Rc.html
-[OwningRef]:https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/owning_ref/index.html
+[monomorphization]: backend/monomorph.md
+[parallel-rustdoc]: https://github.com/rust-lang/rust/issues/82741
+[Arc]: https://doc.rust-lang.org/std/sync/struct.Arc.html
+[Rc]: https://doc.rust-lang.org/std/rc/struct.Rc.html
+[OwningRef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/owning_ref/index.html
