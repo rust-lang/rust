@@ -16,7 +16,7 @@ use smallvec::SmallVec;
 
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
-use rustc_parse_format::{Count, FormatSpec};
+use rustc_parse_format::Count;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
@@ -985,20 +985,19 @@ fn lint_named_arguments_used_positionally(
                 }
                 _ => {}
             };
-            match a.format {
-                FormatSpec { width: Count::CountIsName(s, _), .. }
-                | FormatSpec { precision: Count::CountIsName(s, _), .. } => {
-                    used_argument_names.insert(s);
-                }
-                _ => {}
-            };
+            if let Count::CountIsName(s, _) = a.format.width {
+                used_argument_names.insert(s);
+            }
+            if let Count::CountIsName(s, _) = a.format.precision {
+                used_argument_names.insert(s);
+            }
         }
     }
 
     for (symbol, (index, span)) in names {
         if !used_argument_names.contains(symbol.as_str()) {
             let msg = format!("named argument `{}` is not used by name", symbol.as_str());
-            let arg_span = cx.arg_spans[index];
+            let arg_span = cx.arg_spans.get(index).copied();
             cx.ecx.buffered_early_lint.push(BufferedEarlyLint {
                 span: MultiSpan::from_span(span),
                 msg: msg.clone(),

@@ -858,15 +858,16 @@ pub trait LintContext: Sized {
                 },
                 BuiltinLintDiagnostics::NamedArgumentUsedPositionally(positional_arg, named_arg, name) => {
                     db.span_label(named_arg, "this named argument is only referred to by position in formatting string");
-                    let msg = format!("this formatting argument uses named argument `{}` by position", name);
-                    db.span_label(positional_arg, msg);
-                    db.span_suggestion_verbose(
-                        positional_arg,
-                        "use the named argument by name to avoid ambiguity",
-                        format!("{{{}}}", name),
-                        Applicability::MaybeIncorrect,
-                    );
-
+                    if let Some(positional_arg) = positional_arg {
+                        let msg = format!("this formatting argument uses named argument `{}` by position", name);
+                        db.span_label(positional_arg, msg);
+                            db.span_suggestion_verbose(
+                            positional_arg,
+                            "use the named argument by name to avoid ambiguity",
+                            format!("{{{}}}", name),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
             }
             // Rewrap `db`, and pass control to the user.
