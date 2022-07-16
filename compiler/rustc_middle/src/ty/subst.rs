@@ -525,6 +525,7 @@ struct SubstFolder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
+    #[inline]
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
