@@ -108,7 +108,7 @@ use crate::sync::Arc;
 /// and other memory errors.
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "cstring_type")]
-#[unstable(feature = "alloc_c_string", issue = "94079")]
+#[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub struct CString {
     // Invariant 1: the slice ends with a zero byte and has a length of at least one.
     // Invariant 2: the slice contains only one zero byte.
@@ -132,7 +132,7 @@ pub struct CString {
 /// let _: NulError = CString::new(b"f\0oo".to_vec()).unwrap_err();
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "alloc_c_string", issue = "94079")]
+#[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub struct NulError(usize, Vec<u8>);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -157,7 +157,7 @@ enum FromBytesWithNulErrorKind {
 /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"f\0oo".to_vec()).unwrap_err();
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "alloc_c_string", issue = "94079")]
+#[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub struct FromVecWithNulError {
     error_kind: FromBytesWithNulErrorKind,
     bytes: Vec<u8>,
@@ -223,7 +223,7 @@ impl FromVecWithNulError {
 /// This `struct` is created by [`CString::into_string()`]. See
 /// its documentation for more.
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "alloc_c_string", issue = "94079")]
+#[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub struct IntoStringError {
     inner: CString,
     error: Utf8Error,
