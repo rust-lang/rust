@@ -63,6 +63,13 @@ macro_rules! noop {
     }
 }
 
+/// textually shadow previous definition
+macro_rules! noop {
+    ($expr:expr) => {
+        $expr
+    }
+}
+
 macro_rules! keyword_frag {
     ($type:ty) => ($type)
 }

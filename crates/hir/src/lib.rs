@@ -560,7 +560,7 @@ impl Module {
     pub fn legacy_macros(self, db: &dyn HirDatabase) -> Vec<Macro> {
         let def_map = self.id.def_map(db.upcast());
         let scope = &def_map[self.id.local_id].scope;
-        scope.legacy_macros().map(|(_, it)| MacroId::from(it).into()).collect()
+        scope.legacy_macros().flat_map(|(_, it)| it).map(|&it| MacroId::from(it).into()).collect()
     }
 
     pub fn impl_defs(self, db: &dyn HirDatabase) -> Vec<Impl> {
