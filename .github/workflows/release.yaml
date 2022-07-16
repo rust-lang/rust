@@ -57,7 +57,7 @@ jobs:
 
       - name: Install Rust toolchain
         run: |
-          rustup update stable
+          rustup update --no-self-update stable
           rustup target add ${{ matrix.target }}
           rustup component add rust-src
 

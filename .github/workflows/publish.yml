@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain
-        run: rustup update stable
+        run: rustup update --no-self-update stable
 
       - name: Install cargo-workspaces
         run: cargo install cargo-workspaces
