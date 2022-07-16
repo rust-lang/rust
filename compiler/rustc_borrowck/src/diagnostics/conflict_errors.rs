@@ -7,7 +7,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
@@ -23,7 +23,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::TraitEngineExt as _;
 
@@ -1227,8 +1227,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     from_closure: false,
                     region_name:
                         RegionName {
-                            source:
-                                RegionNameSource::AnonRegionFromUpvar(upvar_span, ref upvar_name),
+                            source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name),
                             ..
                         },
                     span,
@@ -1500,7 +1499,70 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             | BorrowExplanation::UsedLaterInLoop(..)
             | BorrowExplanation::UsedLaterWhenDropped { .. } => {
                 // Only give this note and suggestion if it could be relevant.
-                err.note("consider using a `let` binding to create a longer lived value");
+                let sm = self.infcx.tcx.sess.source_map();
+                let mut suggested = false;
+                let msg = "consider using a `let` binding to create a longer lived value";
+
+                /// We check that there's a single level of block nesting to ensure always correct
+                /// suggestions. If we don't, then we only provide a free-form message to avoid
+                /// misleading users in cases like `src/test/ui/nll/borrowed-temporary-error.rs`.
+                /// We could expand the analysis to suggest hoising all of the relevant parts of
+                /// the users' code to make the code compile, but that could be too much.
+                struct NestedStatementVisitor {
+                    span: Span,
+                    current: usize,
+                    found: usize,
+                }
+
+                impl<'tcx> Visitor<'tcx> for NestedStatementVisitor {
+                    fn visit_block(&mut self, block: &hir::Block<'tcx>) {
+                        self.current += 1;
+                        walk_block(self, block);
+                        self.current -= 1;
+                    }
+                    fn visit_expr(&mut self, expr: &hir::Expr<'tcx>) {
+                        if self.span == expr.span {
+                            self.found = self.current;
+                        }
+                        walk_expr(self, expr);
+                    }
+                }
+                let source_info = self.body.source_info(location);
+                if let Some(scope) = self.body.source_scopes.get(source_info.scope)
+                    && let ClearCrossCrate::Set(scope_data) = &scope.local_data
+                    && let Some(node) = self.infcx.tcx.hir().find(scope_data.lint_root)
+                    && let Some(id) = node.body_id()
+                    && let hir::ExprKind::Block(block, _) = self.infcx.tcx.hir().body(id).value.kind
+                {
+                    for stmt in block.stmts {
+                        let mut visitor = NestedStatementVisitor {
+                            span: proper_span,
+                            current: 0,
+                            found: 0,
+                        };
+                        visitor.visit_stmt(stmt);
+                        if visitor.found == 0
+                            && stmt.span.contains(proper_span)
+                            && let Some(p) = sm.span_to_margin(stmt.span)
+                            && let Ok(s) = sm.span_to_snippet(proper_span)
+                        {
+                            let addition = format!("let binding = {};\n{}", s, " ".repeat(p));
+                            err.multipart_suggestion_verbose(
+                                msg,
+                                vec![
+                                    (stmt.span.shrink_to_lo(), addition),
+                                    (proper_span, "binding".to_string()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                            suggested = true;
+                            break;
+                        }
+                    }
+                }
+                if !suggested {
+                    err.note(msg);
+                }
             }
             _ => {}
         }
@@ -1699,7 +1761,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow_span: Span,
         name: &Option<String>,
         upvar_span: Span,
-        upvar_name: &str,
+        upvar_name: Symbol,
         escape_span: Span,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         let tcx = self.infcx.tcx;
@@ -2093,7 +2155,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                             StorageDeadOrDrop::Destructor(_) => kind,
                         },
-                        ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
+                        ProjectionElem::OpaqueCast { .. }
+                        | ProjectionElem::Field(..)
+                        | ProjectionElem::Downcast(..) => {
                             match place_ty.ty.kind() {
                                 ty::Adt(def, _) if def.has_dtor(tcx) => {
                                     // Report the outermost adt with a destructor

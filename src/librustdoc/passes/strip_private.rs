@@ -24,6 +24,7 @@ pub(crate) fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) ->
             retained: &mut retained,
             access_levels: &cx.cache.access_levels,
             update_retained: true,
+            is_json_output: cx.output_format.is_json() && !cx.show_coverage,
         };
         krate = ImportStripper.fold_crate(stripper.fold_crate(krate));
     }

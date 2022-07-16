@@ -8,23 +8,33 @@ use rustc_target::abi::{FieldsShape, VariantIdx, Variants};
 
 use std::num::NonZeroUsize;
 
-use super::{InterpCx, MPlaceTy, Machine, OpTy};
+use super::{InterpCx, MPlaceTy, Machine, OpTy, PlaceTy};
 
-// A thing that we can project into, and that has a layout.
-// This wouldn't have to depend on `Machine` but with the current type inference,
-// that's just more convenient to work with (avoids repeating all the `Machine` bounds).
+/// A thing that we can project into, and that has a layout.
+/// This wouldn't have to depend on `Machine` but with the current type inference,
+/// that's just more convenient to work with (avoids repeating all the `Machine` bounds).
 pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     /// Gets this value's layout.
     fn layout(&self) -> TyAndLayout<'tcx>;
 
-    /// Makes this into an `OpTy`.
-    fn to_op(&self, ecx: &InterpCx<'mir, 'tcx, M>)
-    -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
+    /// Makes this into an `OpTy`, in a cheap way that is good for reading.
+    fn to_op_for_read(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
+
+    /// Makes this into an `OpTy`, in a potentially more expensive way that is good for projections.
+    fn to_op_for_proj(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        self.to_op_for_read(ecx)
+    }
 
     /// Creates this from an `OpTy`.
     ///
-    /// If `to_op` only ever produces `Indirect` operands, then this one is definitely `Indirect`.
-    fn from_op(mplace: OpTy<'tcx, M::PointerTag>) -> Self;
+    /// If `to_op_for_proj` only ever produces `Indirect` operands, then this one is definitely `Indirect`.
+    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self;
 
     /// Projects to the given enum variant.
     fn project_downcast(
@@ -41,8 +51,50 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     ) -> InterpResult<'tcx, Self>;
 }
 
-// Operands and memory-places are both values.
-// Places in general are not due to `place_field` having to do `force_allocation`.
+/// A thing that we can project into given *mutable* access to `ecx`, and that has a layout.
+/// This wouldn't have to depend on `Machine` but with the current type inference,
+/// that's just more convenient to work with (avoids repeating all the `Machine` bounds).
+pub trait ValueMut<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
+    /// Gets this value's layout.
+    fn layout(&self) -> TyAndLayout<'tcx>;
+
+    /// Makes this into an `OpTy`, in a cheap way that is good for reading.
+    fn to_op_for_read(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
+
+    /// Makes this into an `OpTy`, in a potentially more expensive way that is good for projections.
+    fn to_op_for_proj(
+        &self,
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
+
+    /// Creates this from an `OpTy`.
+    ///
+    /// If `to_op_for_proj` only ever produces `Indirect` operands, then this one is definitely `Indirect`.
+    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self;
+
+    /// Projects to the given enum variant.
+    fn project_downcast(
+        &self,
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        variant: VariantIdx,
+    ) -> InterpResult<'tcx, Self>;
+
+    /// Projects to the n-th field.
+    fn project_field(
+        &self,
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        field: usize,
+    ) -> InterpResult<'tcx, Self>;
+}
+
+// We cannot have a general impl which shows that Value implies ValueMut. (When we do, it says we
+// cannot `impl ValueMut for PlaceTy` because some downstream crate could `impl Value for PlaceTy`.)
+// So we have some copy-paste here. (We could have a macro but since we only have 2 types with this
+// double-impl, that would barely make the code shorter, if at all.)
+
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::PointerTag> {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
@@ -50,7 +102,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tc
     }
 
     #[inline(always)]
-    fn to_op(
+    fn to_op_for_read(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
@@ -58,8 +110,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tc
     }
 
     #[inline(always)]
-    fn from_op(op: OpTy<'tcx, M::PointerTag>) -> Self {
-        op
+    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self {
+        *op
     }
 
     #[inline(always)]
@@ -81,6 +133,54 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tc
     }
 }
 
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
+    for OpTy<'tcx, M::PointerTag>
+{
+    #[inline(always)]
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        self.layout
+    }
+
+    #[inline(always)]
+    fn to_op_for_read(
+        &self,
+        _ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        Ok(*self)
+    }
+
+    #[inline(always)]
+    fn to_op_for_proj(
+        &self,
+        _ecx: &mut InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        Ok(*self)
+    }
+
+    #[inline(always)]
+    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self {
+        *op
+    }
+
+    #[inline(always)]
+    fn project_downcast(
+        &self,
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        variant: VariantIdx,
+    ) -> InterpResult<'tcx, Self> {
+        ecx.operand_downcast(self, variant)
+    }
+
+    #[inline(always)]
+    fn project_field(
+        &self,
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        field: usize,
+    ) -> InterpResult<'tcx, Self> {
+        ecx.operand_field(self, field)
+    }
+}
+
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
     for MPlaceTy<'tcx, M::PointerTag>
 {
@@ -90,7 +190,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
     }
 
     #[inline(always)]
-    fn to_op(
+    fn to_op_for_read(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
@@ -98,8 +198,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
     }
 
     #[inline(always)]
-    fn from_op(op: OpTy<'tcx, M::PointerTag>) -> Self {
-        // assert is justified because our `to_op` only ever produces `Indirect` operands.
+    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self {
+        // assert is justified because our `to_op_for_read` only ever produces `Indirect` operands.
         op.assert_mem_place()
     }
 
@@ -122,11 +222,111 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
     }
 }
 
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
+    for MPlaceTy<'tcx, M::PointerTag>
+{
+    #[inline(always)]
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        self.layout
+    }
+
+    #[inline(always)]
+    fn to_op_for_read(
+        &self,
+        _ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        Ok(self.into())
+    }
+
+    #[inline(always)]
+    fn to_op_for_proj(
+        &self,
+        _ecx: &mut InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        Ok(self.into())
+    }
+
+    #[inline(always)]
+    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self {
+        // assert is justified because our `to_op_for_proj` only ever produces `Indirect` operands.
+        op.assert_mem_place()
+    }
+
+    #[inline(always)]
+    fn project_downcast(
+        &self,
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        variant: VariantIdx,
+    ) -> InterpResult<'tcx, Self> {
+        ecx.mplace_downcast(self, variant)
+    }
+
+    #[inline(always)]
+    fn project_field(
+        &self,
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        field: usize,
+    ) -> InterpResult<'tcx, Self> {
+        ecx.mplace_field(self, field)
+    }
+}
+
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
+    for PlaceTy<'tcx, M::PointerTag>
+{
+    #[inline(always)]
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        self.layout
+    }
+
+    #[inline(always)]
+    fn to_op_for_read(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        // We `force_allocation` here so that `from_op` below can work.
+        ecx.place_to_op(self)
+    }
+
+    #[inline(always)]
+    fn to_op_for_proj(
+        &self,
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        // We `force_allocation` here so that `from_op` below can work.
+        Ok(ecx.force_allocation(self)?.into())
+    }
+
+    #[inline(always)]
+    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self {
+        // assert is justified because our `to_op` only ever produces `Indirect` operands.
+        op.assert_mem_place().into()
+    }
+
+    #[inline(always)]
+    fn project_downcast(
+        &self,
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        variant: VariantIdx,
+    ) -> InterpResult<'tcx, Self> {
+        ecx.place_downcast(self, variant)
+    }
+
+    #[inline(always)]
+    fn project_field(
+        &self,
+        ecx: &mut InterpCx<'mir, 'tcx, M>,
+        field: usize,
+    ) -> InterpResult<'tcx, Self> {
+        ecx.place_field(self, field)
+    }
+}
+
 macro_rules! make_value_visitor {
-    ($visitor_trait_name:ident, $($mutability:ident)?) => {
+    ($visitor_trait:ident, $value_trait:ident, $($mutability:ident)?) => {
         // How to traverse a value and what to do when we are at the leaves.
-        pub trait $visitor_trait_name<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
-            type V: Value<'mir, 'tcx, M>;
+        pub trait $visitor_trait<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
+            type V: $value_trait<'mir, 'tcx, M>;
 
             /// The visitor must have an `InterpCx` in it.
             fn ecx(&$($mutability)? self)
@@ -215,19 +415,20 @@ macro_rules! make_value_visitor {
             }
             fn walk_value(&mut self, v: &Self::V) -> InterpResult<'tcx>
             {
-                trace!("walk_value: type: {}", v.layout().ty);
+                let ty = v.layout().ty;
+                trace!("walk_value: type: {ty}");
 
                 // Special treatment for special types, where the (static) layout is not sufficient.
-                match *v.layout().ty.kind() {
+                match *ty.kind() {
                     // If it is a trait object, switch to the real type that was used to create it.
                     ty::Dynamic(..) => {
                         // unsized values are never immediate, so we can assert_mem_place
-                        let op = v.to_op(self.ecx())?;
+                        let op = v.to_op_for_read(self.ecx())?;
                         let dest = op.assert_mem_place();
-                        let inner = self.ecx().unpack_dyn_trait(&dest)?.1;
-                        trace!("walk_value: dyn object layout: {:#?}", inner.layout);
+                        let inner_mplace = self.ecx().unpack_dyn_trait(&dest)?.1;
+                        trace!("walk_value: dyn object layout: {:#?}", inner_mplace.layout);
                         // recurse with the inner type
-                        return self.visit_field(&v, 0, &Value::from_op(inner.into()));
+                        return self.visit_field(&v, 0, &$value_trait::from_op(&inner_mplace.into()));
                     },
                     // Slices do not need special handling here: they have `Array` field
                     // placement with length 0, so we enter the `Array` case below which
@@ -278,10 +479,10 @@ macro_rules! make_value_visitor {
 
                 // Visit the fields of this value.
                 match v.layout().fields {
-                    FieldsShape::Primitive => {},
+                    FieldsShape::Primitive => {}
                     FieldsShape::Union(fields) => {
                         self.visit_union(v, fields)?;
-                    },
+                    }
                     FieldsShape::Arbitrary { ref offsets, .. } => {
                         // FIXME: We collect in a vec because otherwise there are lifetime
                         // errors: Projecting to a field needs access to `ecx`.
@@ -291,16 +492,17 @@ macro_rules! make_value_visitor {
                             })
                             .collect();
                         self.visit_aggregate(v, fields.into_iter())?;
-                    },
+                    }
                     FieldsShape::Array { .. } => {
-                        // Let's get an mplace first.
-                        let op = v.to_op(self.ecx())?;
+                        // Let's get an mplace (or immediate) first.
+                        // This might `force_allocate` if `v` is a `PlaceTy`, but `place_index` does that anyway.
+                        let op = v.to_op_for_proj(self.ecx())?;
                         // Now we can go over all the fields.
                         // This uses the *run-time length*, i.e., if we are a slice,
                         // the dynamic info from the metadata is used.
                         let iter = self.ecx().operand_array_fields(&op)?
                             .map(|f| f.and_then(|f| {
-                                Ok(Value::from_op(f))
+                                Ok($value_trait::from_op(&f))
                             }));
                         self.visit_aggregate(v, iter)?;
                     }
@@ -310,7 +512,7 @@ macro_rules! make_value_visitor {
                     // If this is a multi-variant layout, find the right variant and proceed
                     // with *its* fields.
                     Variants::Multiple { .. } => {
-                        let op = v.to_op(self.ecx())?;
+                        let op = v.to_op_for_read(self.ecx())?;
                         let idx = self.read_discriminant(&op)?;
                         let inner = v.project_downcast(self.ecx(), idx)?;
                         trace!("walk_value: variant layout: {:#?}", inner.layout());
@@ -325,5 +527,5 @@ macro_rules! make_value_visitor {
     }
 }
 
-make_value_visitor!(ValueVisitor,);
-make_value_visitor!(MutValueVisitor, mut);
+make_value_visitor!(ValueVisitor, Value,);
+make_value_visitor!(MutValueVisitor, ValueMut, mut);

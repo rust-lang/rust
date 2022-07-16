@@ -544,7 +544,7 @@ fn compare_self_type<'tcx>(
             if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("trait method declared without `{self_descr}`"));
             } else {
-                err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
             }
             let reported = err.emit();
             return Err(reported);
@@ -564,7 +564,7 @@ fn compare_self_type<'tcx>(
             if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("`{self_descr}` used in trait"));
             } else {
-                err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
             }
             let reported = err.emit();
             return Err(reported);
@@ -803,7 +803,7 @@ fn compare_number_of_method_arguments<'tcx>(
                 ),
             );
         } else {
-            err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
+            err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
         }
         err.span_label(
             impl_span,

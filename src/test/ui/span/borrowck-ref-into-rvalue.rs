@@ -1,3 +1,4 @@
+// run-rustfix
 fn main() {
     let msg;
     match Some("Hello".to_string()) {

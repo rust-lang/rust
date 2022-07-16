@@ -25,7 +25,7 @@ can be broken down into several distinct phases:
 
 - regionck: after main is complete, the regionck pass goes over all
   types looking for regions and making sure that they did not escape
-  into places they are not in scope.  This may also influence the
+  into places where they are not in scope.  This may also influence the
   final assignments of the various region variables if there is some
   flexibility.
 

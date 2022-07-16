@@ -3,7 +3,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::middle::privacy::AccessLevels;
 use std::mem;
 
-use crate::clean::{self, Item, ItemIdSet};
+use crate::clean::{self, Item, ItemId, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
 use crate::formats::cache::Cache;
 
@@ -11,6 +11,21 @@ pub(crate) struct Stripper<'a> {
     pub(crate) retained: &'a mut ItemIdSet,
     pub(crate) access_levels: &'a AccessLevels<DefId>,
     pub(crate) update_retained: bool,
+    pub(crate) is_json_output: bool,
+}
+
+impl<'a> Stripper<'a> {
+    // We need to handle this differently for the JSON output because some non exported items could
+    // be used in public API. And so, we need these items as well. `is_exported` only checks if they
+    // are in the public API, which is not enough.
+    #[inline]
+    fn is_item_reachable(&self, item_id: ItemId) -> bool {
+        if self.is_json_output {
+            self.access_levels.is_reachable(item_id.expect_def_id())
+        } else {
+            self.access_levels.is_exported(item_id.expect_def_id())
+        }
+    }
 }
 
 impl<'a> DocFolder for Stripper<'a> {
@@ -45,9 +60,8 @@ impl<'a> DocFolder for Stripper<'a> {
             | clean::TraitAliasItem(..)
             | clean::MacroItem(..)
             | clean::ForeignTypeItem => {
-                if i.item_id.is_local()
-                    && !self.access_levels.is_exported(i.item_id.expect_def_id())
-                {
+                let item_id = i.item_id;
+                if item_id.is_local() && !self.is_item_reachable(item_id) {
                     debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
                     return None;
                 }

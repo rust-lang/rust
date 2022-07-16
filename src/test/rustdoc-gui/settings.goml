@@ -20,6 +20,8 @@ wait-for-css: ("#settings", {"display": "none"})
 // Let's click on it when the search results are displayed.
 focus: ".search-input"
 write: "test"
+// To be SURE that the search will be run.
+press-key: 'Enter'
 wait-for: "#alternative-display #search"
 click: "#settings-menu"
 wait-for-css: ("#settings", {"display": "block"})

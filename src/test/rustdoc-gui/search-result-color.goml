@@ -89,6 +89,8 @@ show-text: true
 // We reload the page so the local storage settings are being used.
 reload:
 write: (".search-input", "thisisanalias")
+// To be SURE that the search will be run.
+press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#titles"
 // Checking that the colors for the alias element are the ones expected.
