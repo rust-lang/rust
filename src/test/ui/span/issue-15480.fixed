@@ -2,8 +2,9 @@
 fn id<T>(x: T) -> T { x }
 
 fn main() {
+    let binding = id(3);
     let v = vec![
-        &id(3)
+        &binding
     ];
     //~^^ ERROR temporary value dropped while borrowed
 

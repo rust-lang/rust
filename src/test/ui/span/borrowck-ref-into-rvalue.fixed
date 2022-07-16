@@ -1,7 +1,8 @@
 // run-rustfix
 fn main() {
     let msg;
-    match Some("Hello".to_string()) {
+    let binding = Some("Hello".to_string());
+    match binding {
         //~^ ERROR temporary value dropped while borrowed
         Some(ref m) => {
             msg = m;
