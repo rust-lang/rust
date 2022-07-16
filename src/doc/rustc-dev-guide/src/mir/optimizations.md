@@ -107,9 +107,10 @@ the pass. To enable working with slow or otherwise experimental optimization pas
 you can specify the `-Z mir-opt-level` debug flag. You can find the
 definitions of the levels in the [compiler MCP]. If you are developing a MIR pass and
 want to query whether your optimization pass should run, you can check the
-current level using `tcx.sess.opts.debugging_opts.mir_opt_level`.
+current level using [`tcx.sess.opts.unstable_opts.mir_opt_level`][mir_opt_level].
 
 [compiler MCP]: https://github.com/rust-lang/compiler-team/issues/319
+[mir_opt_level]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/config/struct.UnstableOptions.html#structfield.mir_opt_level
 
 ## Optimization fuel
 
