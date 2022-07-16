@@ -124,6 +124,7 @@ target | std | notes
 -------|:---:|-------
 `aarch64-apple-ios` | ✓ | ARM64 iOS
 [`aarch64-apple-ios-sim`](platform-support/aarch64-apple-ios-sim.md) | ✓ | Apple iOS Simulator on ARM64
+`x86_64-apple-ios-sim` | ✓ | Apple iOS Simulator on X86_64
 `aarch64-fuchsia` | ✓ | ARM64 Fuchsia
 `aarch64-linux-android` | ✓ | ARM64 Android
 `aarch64-unknown-none-softfloat` | * | Bare ARM64, softfloat

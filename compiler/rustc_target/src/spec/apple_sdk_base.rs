@@ -14,6 +14,7 @@ pub enum Arch {
     X86_64,
     X86_64_macabi,
     Arm64_macabi,
+    X86_64_sim,
     Arm64_sim,
 }
 
@@ -21,7 +22,7 @@ fn target_abi(arch: Arch) -> &'static str {
     match arch {
         Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | X86_64 => "",
         X86_64_macabi | Arm64_macabi => "macabi",
-        Arm64_sim => "sim",
+        X86_64_sim | Arm64_sim => "sim",
     }
 }
 
@@ -36,13 +37,14 @@ fn target_cpu(arch: Arch) -> &'static str {
         X86_64 => "core2",
         X86_64_macabi => "core2",
         Arm64_macabi => "apple-a12",
+        X86_64_sim => "core2",
         Arm64_sim => "apple-a12",
     }
 }
 
 fn link_env_remove(arch: Arch) -> Cow<'static, [Cow<'static, str>]> {
     match arch {
-        Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | X86_64 | Arm64_sim => {
+        Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | X86_64 | X86_64_sim | Arm64_sim => {
             cvs!["MACOSX_DEPLOYMENT_TARGET"]
         }
         X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
