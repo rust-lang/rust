@@ -338,7 +338,12 @@ impl Definitions {
 
     /// Adds a definition with a parent definition.
     pub fn create_def(&mut self, parent: LocalDefId, data: DefPathData) -> LocalDefId {
-        debug!("create_def(parent={:?}, data={:?})", parent, data);
+        // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
+        // reference to `Definitions` and we're already holding a mutable reference.
+        debug!(
+            "create_def(parent={}, data={data:?})",
+            self.def_path(parent).to_string_no_crate_verbose(),
+        );
 
         // The root node must be created with `create_root_def()`.
         assert!(data != DefPathData::CrateRoot);
