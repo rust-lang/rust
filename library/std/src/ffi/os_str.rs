@@ -615,7 +615,7 @@ impl Hash for OsString {
     }
 }
 
-#[stable(feature = "os_string_fmt_write", since = "1.63.0")]
+#[stable(feature = "os_string_fmt_write", since = "1.64.0")]
 impl fmt::Write for OsString {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.push(s);
