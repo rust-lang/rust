@@ -150,7 +150,7 @@ pub fn expand_speculative(
     // Build the subtree and token mapping for the speculative args
     let censor = censor_for_macro_input(&loc, speculative_args);
     let mut fixups = fixup::fixup_syntax(speculative_args);
-    fixups.replace.extend(censor.into_iter().map(|node| (node, Vec::new())));
+    fixups.replace.extend(censor.into_iter().map(|node| (node.into(), Vec::new())));
     let (mut tt, spec_args_tmap, _) = mbe::syntax_node_to_token_tree_with_modifications(
         speculative_args,
         fixups.token_map,
@@ -295,7 +295,7 @@ fn macro_arg(
     let node = SyntaxNode::new_root(arg);
     let censor = censor_for_macro_input(&loc, &node);
     let mut fixups = fixup::fixup_syntax(&node);
-    fixups.replace.extend(censor.into_iter().map(|node| (node, Vec::new())));
+    fixups.replace.extend(censor.into_iter().map(|node| (node.into(), Vec::new())));
     let (mut tt, tmap, _) = mbe::syntax_node_to_token_tree_with_modifications(
         &node,
         fixups.token_map,

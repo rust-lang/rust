@@ -31,8 +31,8 @@ pub fn syntax_node_to_token_tree_with_modifications(
     node: &SyntaxNode,
     existing_token_map: TokenMap,
     next_id: u32,
-    replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
-    append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+    replace: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
+    append: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
 ) -> (tt::Subtree, TokenMap, u32) {
     let global_offset = node.text_range().start();
     let mut c = Convertor::new(node, global_offset, existing_token_map, next_id, replace, append);
@@ -221,7 +221,7 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
 
             if let Some(kind) = delim {
                 let mut subtree = tt::Subtree::default();
-                let (id, idx) = conv.id_alloc().open_delim(range);
+                let (id, idx) = conv.id_alloc().open_delim(range, synth_id);
                 subtree.delimiter = Some(tt::Delimiter { id, kind });
                 stack.push(StackEntry { subtree, idx, open_range: range });
                 continue;
@@ -404,7 +404,11 @@ impl TokenIdAlloc {
         token_id
     }
 
-    fn open_delim(&mut self, open_abs_range: TextRange) -> (tt::TokenId, usize) {
+    fn open_delim(
+        &mut self,
+        open_abs_range: TextRange,
+        synthetic_id: Option<SyntheticTokenId>,
+    ) -> (tt::TokenId, usize) {
         let token_id = tt::TokenId(self.next_id);
         self.next_id += 1;
         let idx = self.map.insert_delim(
@@ -412,6 +416,9 @@ impl TokenIdAlloc {
             open_abs_range - self.global_offset,
             open_abs_range - self.global_offset,
         );
+        if let Some(id) = synthetic_id {
+            self.map.insert_synthetic(token_id, id);
+        }
         (token_id, idx)
     }
 
@@ -511,8 +518,8 @@ struct Convertor {
     current: Option<SyntaxToken>,
     current_synthetic: Vec<SyntheticToken>,
     preorder: PreorderWithTokens,
-    replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
-    append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+    replace: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
+    append: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
     range: TextRange,
     punct_offset: Option<(SyntaxToken, TextSize)>,
 }
@@ -523,8 +530,8 @@ impl Convertor {
         global_offset: TextSize,
         existing_token_map: TokenMap,
         next_id: u32,
-        mut replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
-        mut append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+        mut replace: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
+        mut append: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
     ) -> Convertor {
         let range = node.text_range();
         let mut preorder = node.preorder_with_tokens();
@@ -543,14 +550,14 @@ impl Convertor {
 
     fn next_token(
         preorder: &mut PreorderWithTokens,
-        replace: &mut FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
-        append: &mut FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+        replace: &mut FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
+        append: &mut FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
     ) -> (Option<SyntaxToken>, Vec<SyntheticToken>) {
         while let Some(ev) = preorder.next() {
             let ele = match ev {
                 WalkEvent::Enter(ele) => ele,
-                WalkEvent::Leave(SyntaxElement::Node(node)) => {
-                    if let Some(mut v) = append.remove(&node) {
+                WalkEvent::Leave(ele) => {
+                    if let Some(mut v) = append.remove(&ele) {
                         if !v.is_empty() {
                             v.reverse();
                             return (None, v);
@@ -558,19 +565,17 @@ impl Convertor {
                     }
                     continue;
                 }
-                _ => continue,
             };
+            if let Some(mut v) = replace.remove(&ele) {
+                preorder.skip_subtree();
+                if !v.is_empty() {
+                    v.reverse();
+                    return (None, v);
+                }
+            }
             match ele {
                 SyntaxElement::Token(t) => return (Some(t), Vec::new()),
-                SyntaxElement::Node(node) => {
-                    if let Some(mut v) = replace.remove(&node) {
-                        preorder.skip_subtree();
-                        if !v.is_empty() {
-                            v.reverse();
-                            return (None, v);
-                        }
-                    }
-                }
+                _ => {}
             }
         }
         (None, Vec::new())
