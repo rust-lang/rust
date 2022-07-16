@@ -101,7 +101,7 @@ pub enum InlineAsmOperand {
 
 The `asm!` macro is implemented in `rustc_builtin_macros` and outputs an `InlineAsm` AST node. The
 template string is parsed using `fmt_macros`, positional and named operands are resolved to
-explicit operand indicies. Since target information is not available to macro invocations,
+explicit operand indices. Since target information is not available to macro invocations,
 validation of the registers and register classes is deferred to AST lowering.
 
 ## HIR

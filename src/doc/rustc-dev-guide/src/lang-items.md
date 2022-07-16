@@ -6,7 +6,7 @@ exists. The marker is the attribute `#[lang = "..."]`, and there are various dif
 `...`, i.e. various different 'lang items'.
 
 Many such lang items can be implemented only in one sensible way, such as `add` (`trait
-core::ops::Add`) or `future_trait` (`trait core::future::Future`). Others can be overriden to
+core::ops::Add`) or `future_trait` (`trait core::future::Future`). Others can be overridden to
 achieve some specific goals; for example, you can control your binary's entrypoint.
 
 Features provided by lang items include:
@@ -45,7 +45,7 @@ if let Some(sized_trait_def_id) = tcx.lang_items().sized_trait() {
 ```
 
 Note that `sized_trait()` returns an `Option`, not the `DefId` itself.
-That's because language items are defined in the standard libray, so if someone compiles with
+That's because language items are defined in the standard library, so if someone compiles with
 `#![no_core]` (or for some lang items, `#![no_std]`), the lang item may not be present.
 You can either:
 

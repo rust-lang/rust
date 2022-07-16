@@ -63,7 +63,7 @@ For better incremental build times, the CGU partitioner creates two CGU for each
 modules. One is for "stable" i.e. non-generic code and the other is more volatile code i.e.
 monomorphized/specialized instances.
 
-For depenencies, consider Crate A and Crate B, such that Crate B depends on Crate A.
+For dependencies, consider Crate A and Crate B, such that Crate B depends on Crate A.
 The following table lists different scenarios for a function in Crate A that might be used by one
 or more modules in Crate B.
 

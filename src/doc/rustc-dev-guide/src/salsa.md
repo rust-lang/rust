@@ -196,7 +196,7 @@ struct MyDatabase {
     runtime : salsa::Runtime<MyDatabase>,
 }
 ///And this trait has to be implemented
-impl salsa::Databse for MyDatabase {
+impl salsa::Database for MyDatabase {
     fn salsa_runtime(&self) -> &salsa::Runtime<MyDatabase> {
         &self.runtime
     }

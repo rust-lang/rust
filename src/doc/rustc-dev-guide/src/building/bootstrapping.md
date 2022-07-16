@@ -231,7 +231,7 @@ artifacts into the appropriate place, skipping the cargo invocation.
 
 ### Cross-compiling rustc
 
-*Cross-compiling* is the process of compiling code that will run on another archicture.
+*Cross-compiling* is the process of compiling code that will run on another architecture.
 For instance, you might want to build an ARM version of rustc using an x86 machine.
 Building stage2 `std` is different when you are cross-compiling.
 
