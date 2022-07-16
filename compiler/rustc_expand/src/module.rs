@@ -218,10 +218,9 @@ pub fn default_submod_path<'a>(
         ""
     };
 
-    let mod_name = ident.name.to_string();
-    let default_path_str = format!("{}{}.rs", relative_prefix, mod_name);
+    let default_path_str = format!("{}{}.rs", relative_prefix, ident.name);
     let secondary_path_str =
-        format!("{}{}{}mod.rs", relative_prefix, mod_name, path::MAIN_SEPARATOR);
+        format!("{}{}{}mod.rs", relative_prefix, ident.name, path::MAIN_SEPARATOR);
     let default_path = dir_path.join(&default_path_str);
     let secondary_path = dir_path.join(&secondary_path_str);
     let default_exists = sess.source_map().file_exists(&default_path);
