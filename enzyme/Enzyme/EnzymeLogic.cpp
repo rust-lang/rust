@@ -4612,7 +4612,7 @@ llvm::Function *EnzymeLogic::CreateBatch(Function *tobatch, unsigned width,
 
         if (Instruction *cur_inst = dyn_cast<Instruction>(cur)) {
           if (!isa<CallInst>(cur_inst) && !cur_inst->mayReadOrWriteMemory()) {
-            for (auto &op : todo_inst->operands())
+            for (auto &op : cur_inst->operands())
               toCheck.insert(op);
             continue;
           }

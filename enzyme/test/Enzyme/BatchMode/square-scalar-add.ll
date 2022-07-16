@@ -26,10 +26,13 @@ entry:
 ; CHECK-NEXT:   %mul1 = fmul double %unwrap.x1, %unwrap.x1
 ; CHECK-NEXT:   %mul2 = fmul double %unwrap.x2, %unwrap.x2
 ; CHECK-NEXT:   %mul3 = fmul double %unwrap.x3, %unwrap.x3
-; CHECK-NEXT:   %add = fadd double %mul0, %y
-; CHECK-NEXT:   %mrv = insertvalue [4 x double] undef, double %add, 0
-; CHECK-NEXT:   %mrv1 = insertvalue [4 x double] %mrv, double %add, 1
-; CHECK-NEXT:   %mrv2 = insertvalue [4 x double] %mrv1, double %add, 2
-; CHECK-NEXT:   %mrv3 = insertvalue [4 x double] %mrv2, double %add, 3
+; CHECK-NEXT:   %add0 = fadd double %mul0, %y
+; CHECK-NEXT:   %add1 = fadd double %mul1, %y
+; CHECK-NEXT:   %add2 = fadd double %mul2, %y
+; CHECK-NEXT:   %add3 = fadd double %mul3, %y
+; CHECK-NEXT:   %mrv = insertvalue [4 x double] undef, double %add0, 0
+; CHECK-NEXT:   %mrv1 = insertvalue [4 x double] %mrv, double %add1, 1
+; CHECK-NEXT:   %mrv2 = insertvalue [4 x double] %mrv1, double %add2, 2
+; CHECK-NEXT:   %mrv3 = insertvalue [4 x double] %mrv2, double %add3, 3
 ; CHECK-NEXT:   ret [4 x double] %mrv3
 ; CHECK-NEXT: }
