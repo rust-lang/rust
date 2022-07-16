@@ -2141,7 +2141,8 @@ mod tests {
 
         let edition = db.crate_graph()[krate].edition;
         let module_origin = ModuleOrigin::CrateRoot { definition: file_id };
-        let def_map = DefMap::empty(krate, edition, module_origin);
+        let def_map =
+            DefMap::empty(krate, edition, ModuleData::new(module_origin, Visibility::Public));
         do_collect_defs(&db, def_map)
     }
 

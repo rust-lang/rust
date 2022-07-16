@@ -219,7 +219,7 @@ impl DefMap {
 
         let edition = crate_graph[krate].edition;
         let origin = ModuleOrigin::CrateRoot { definition: crate_graph[krate].root_file_id };
-        let def_map = DefMap::empty(krate, edition, origin);
+        let def_map = DefMap::empty(krate, edition, ModuleData::new(origin, Visibility::Public));
         let def_map = collector::collect_defs(
             db,
             def_map,
@@ -241,30 +241,26 @@ impl DefMap {
             return None;
         }
 
-        let block_info = BlockInfo { block: block_id, parent: block.module };
-
         let parent_map = block.module.def_map(db);
-        let mut def_map = DefMap::empty(
-            block.module.krate,
-            parent_map.edition,
-            ModuleOrigin::BlockExpr { block: block.ast_id },
-        );
-        def_map.block = Some(block_info);
-
-        let def_map = collector::collect_defs(db, def_map, tree_id);
-        Some(Arc::new(def_map))
-    }
-
-    fn empty(krate: CrateId, edition: Edition, root_module_origin: ModuleOrigin) -> DefMap {
-        let mut modules: Arena<ModuleData> = Arena::default();
-
+        let krate = block.module.krate;
         let local_id = LocalModuleId::from_raw(la_arena::RawIdx::from(0));
         // NB: we use `None` as block here, which would be wrong for implicit
         // modules declared by blocks with items. At the moment, we don't use
         // this visibility for anything outside IDE, so that's probably OK.
         let visibility = Visibility::Module(ModuleId { krate, local_id, block: None });
-        let root = modules.alloc(ModuleData::new(root_module_origin, visibility));
-        assert_eq!(local_id, root);
+        let module_data =
+            ModuleData::new(ModuleOrigin::BlockExpr { block: block.ast_id }, visibility);
+
+        let mut def_map = DefMap::empty(krate, parent_map.edition, module_data);
+        def_map.block = Some(BlockInfo { block: block_id, parent: block.module });
+
+        let def_map = collector::collect_defs(db, def_map, tree_id);
+        Some(Arc::new(def_map))
+    }
+
+    fn empty(krate: CrateId, edition: Edition, module_data: ModuleData) -> DefMap {
+        let mut modules: Arena<ModuleData> = Arena::default();
+        let root = modules.alloc(module_data);
 
         DefMap {
             _c: Count::new(),
