@@ -4,7 +4,7 @@ use crate::type_error_struct;
 
 use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
-use rustc_hir::def::{Namespace, Res};
+use rustc_hir::def::{self, Namespace, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::{
     infer,
@@ -390,17 +390,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (fn_sig, Some(def_id))
             }
             ty::FnPtr(sig) => (sig, None),
-            ref t => {
+            _ => {
                 let mut unit_variant = None;
-                let mut removal_span = call_expr.span;
-                if let ty::Adt(adt_def, ..) = t
-                    && adt_def.is_enum()
-                    && let hir::ExprKind::Call(expr, _) = call_expr.kind
+                if let hir::ExprKind::Path(qpath) = &callee_expr.kind
+                    && let Res::Def(def::DefKind::Ctor(kind, def::CtorKind::Const), _)
+                        = self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
+                    // Only suggest removing parens if there are no arguments
+                    && arg_exprs.is_empty()
+                    && let Ok(path) = self.tcx.sess.source_map().span_to_snippet(callee_expr.span)
                 {
-                    removal_span =
-                        expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
+                    let descr = match kind {
+                        def::CtorOf::Struct => "struct",
+                        def::CtorOf::Variant => "enum variant",
+                    };
+                    let removal_span =
+                        callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
                     unit_variant =
-                        self.tcx.sess.source_map().span_to_snippet(expr.span).ok();
+                        Some((removal_span, descr, path));
                 }
 
                 let callee_ty = self.resolve_vars_if_possible(callee_ty);
@@ -410,8 +416,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     callee_ty,
                     E0618,
                     "expected function, found {}",
-                    match unit_variant {
-                        Some(ref path) => format!("enum variant `{path}`"),
+                    match &unit_variant {
+                        Some((_, kind, path)) => format!("{kind} `{path}`"),
                         None => format!("`{callee_ty}`"),
                     }
                 );
@@ -423,11 +429,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     callee_expr.span,
                 );
 
-                if let Some(ref path) = unit_variant {
+                if let Some((removal_span, kind, path)) = &unit_variant {
                     err.span_suggestion_verbose(
-                        removal_span,
+                        *removal_span,
                         &format!(
-                            "`{path}` is a unit variant, you need to write it without the parentheses",
+                            "`{path}` is a unit {kind}, and does not take parentheses to be constructed",
                         ),
                         "",
                         Applicability::MachineApplicable,
@@ -470,7 +476,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(span) = self.tcx.hir().res_span(def) {
                     let callee_ty = callee_ty.to_string();
                     let label = match (unit_variant, inner_callee_path) {
-                        (Some(path), _) => Some(format!("`{path}` defined here")),
+                        (Some((_, kind, path)), _) => Some(format!("{kind} `{path}` defined here")),
                         (_, Some(hir::QPath::Resolved(_, path))) => self
                             .tcx
                             .sess
