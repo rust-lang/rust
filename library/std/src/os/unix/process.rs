@@ -148,7 +148,7 @@ pub trait CommandExt: Sealed {
     where
         S: AsRef<OsStr>;
 
-    /// Sets the process group ID of the child process. Equivalent to a
+    /// Sets the process group ID (PGID) of the child process. Equivalent to a
     /// `setpgid` call in the child process, but may be more efficient.
     ///
     /// Process groups determine which processes receive signals.
@@ -162,6 +162,8 @@ pub trait CommandExt: Sealed {
     ///
     /// The parent process could install a signal handler and manage the
     /// subprocess on its own terms.
+    ///
+    /// A process group ID of 0 will use the process ID as the PGID.
     ///
     /// ```no_run
     /// use std::process::Command;
