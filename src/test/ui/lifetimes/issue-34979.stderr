@@ -4,13 +4,7 @@ error[E0283]: type annotations needed: cannot satisfy `&'a (): Foo`
 LL |     &'a (): Foo,
    |             ^^^
    |
-note: multiple `impl`s or `where` clauses satisfying `&'a (): Foo` found
-  --> $DIR/issue-34979.rs:6:13
-   |
-LL |     &'a (): Foo,
-   |             ^^^
-LL |     &'static (): Foo;
-   |                  ^^^
+   = note: cannot satisfy `&'a (): Foo`
 
 error: aborting due to previous error
 
