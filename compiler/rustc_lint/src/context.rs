@@ -861,10 +861,10 @@ pub trait LintContext: Sized {
                     if let Some(positional_arg) = positional_arg {
                         let msg = format!("this formatting argument uses named argument `{}` by position", name);
                         db.span_label(positional_arg, msg);
-                            db.span_suggestion_verbose(
+                        db.span_suggestion_verbose(
                             positional_arg,
                             "use the named argument by name to avoid ambiguity",
-                            format!("{{{}}}", name),
+                            name,
                             Applicability::MaybeIncorrect,
                         );
                     }

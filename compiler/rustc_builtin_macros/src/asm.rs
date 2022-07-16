@@ -656,7 +656,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                     let span = arg_spans.next().unwrap_or(template_sp);
 
                     let operand_idx = match arg.position {
-                        parse::ArgumentIs(idx) | parse::ArgumentImplicitlyIs(idx) => {
+                        parse::ArgumentIs(idx, _) | parse::ArgumentImplicitlyIs(idx) => {
                             if idx >= args.operands.len()
                                 || named_pos.contains_key(&idx)
                                 || args.reg_args.contains(&idx)

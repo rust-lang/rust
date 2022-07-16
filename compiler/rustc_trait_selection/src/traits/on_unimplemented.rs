@@ -337,7 +337,7 @@ impl<'tcx> OnUnimplementedFormatString {
                         }
                     }
                     // `{:1}` and `{}` are not to be used
-                    Position::ArgumentIs(_) | Position::ArgumentImplicitlyIs(_) => {
+                    Position::ArgumentIs(..) | Position::ArgumentImplicitlyIs(_) => {
                         let reported = struct_span_err!(
                             tcx.sess,
                             span,

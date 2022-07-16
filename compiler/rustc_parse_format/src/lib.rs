@@ -104,8 +104,8 @@ pub struct FormatSpec<'a> {
 pub enum Position<'a> {
     /// The argument is implied to be located at an index
     ArgumentImplicitlyIs(usize),
-    /// The argument is located at a specific index given in the format
-    ArgumentIs(usize),
+    /// The argument is located at a specific index given in the format,
+    ArgumentIs(usize, Option<InnerSpan>),
     /// The argument has a name.
     ArgumentNamed(&'a str, InnerSpan),
 }
@@ -113,7 +113,7 @@ pub enum Position<'a> {
 impl Position<'_> {
     pub fn index(&self) -> Option<usize> {
         match self {
-            ArgumentIs(i) | ArgumentImplicitlyIs(i) => Some(*i),
+            ArgumentIs(i, ..) | ArgumentImplicitlyIs(i) => Some(*i),
             _ => None,
         }
     }
@@ -502,8 +502,15 @@ impl<'a> Parser<'a> {
     /// Returns `Some(parsed_position)` if the position is not implicitly
     /// consuming a macro argument, `None` if it's the case.
     fn position(&mut self) -> Option<Position<'a>> {
+        let start_position = self.cur.peek().map(|item| item.0);
         if let Some(i) = self.integer() {
-            Some(ArgumentIs(i))
+            let inner_span = start_position.and_then(|start| {
+                self.cur
+                    .peek()
+                    .cloned()
+                    .and_then(|item| Some(self.to_span_index(start).to(self.to_span_index(item.0))))
+            });
+            Some(ArgumentIs(i, inner_span))
         } else {
             match self.cur.peek() {
                 Some(&(start, c)) if rustc_lexer::is_id_start(c) => {
@@ -574,6 +581,10 @@ impl<'a> Parser<'a> {
             // no '0' flag and '0$' as the width instead.
             if let Some(end) = self.consume_pos('$') {
                 spec.width = CountIsParam(0);
+
+                if let Some((pos, _)) = self.cur.peek().cloned() {
+                    spec.width_span = Some(self.to_span_index(pos - 2).to(self.to_span_index(pos)));
+                }
                 havewidth = true;
                 spec.width_span = Some(self.to_span_index(end - 1).to(self.to_span_index(end + 1)));
             } else {
@@ -586,6 +597,7 @@ impl<'a> Parser<'a> {
             spec.width = w;
             spec.width_span = sp;
         }
+
         if let Some(start) = self.consume_pos('.') {
             if let Some(end) = self.consume_pos('*') {
                 // Resolve `CountIsNextParam`.
