@@ -3,7 +3,10 @@ use hir::{
     db::{AstDatabase, HirDatabase},
     known, AssocItem, HirDisplay, InFile, Type,
 };
-use ide_db::{assists::Assist, famous_defs::FamousDefs, source_change::SourceChange, FxHashMap};
+use ide_db::{
+    assists::Assist, famous_defs::FamousDefs, imports::import_assets::item_for_path_search,
+    source_change::SourceChange, use_trivial_contructor::use_trivial_constructor, FxHashMap,
+};
 use stdx::format_to;
 use syntax::{
     algo,
@@ -54,6 +57,11 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     }
 
     let root = ctx.sema.db.parse_or_expand(d.file)?;
+
+    let current_module = match &d.field_list_parent {
+        Either::Left(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).map(|it| it.module()),
+        Either::Right(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).map(|it| it.module()),
+    };
 
     let build_text_edit = |parent_syntax, new_syntax: &SyntaxNode, old_syntax| {
         let edit = {
@@ -110,7 +118,26 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                         Some(generate_fill_expr(ty))
                     }
                 } else {
-                    Some(generate_fill_expr(ty))
+                    let expr = (|| -> Option<ast::Expr> {
+                        let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
+
+                        let type_path = current_module?.find_use_path(
+                            ctx.sema.db,
+                            item_for_path_search(ctx.sema.db, item_in_ns)?,
+                        )?;
+
+                        use_trivial_constructor(
+                            &ctx.sema.db,
+                            ide_db::helpers::mod_path_to_ast(&type_path),
+                            &ty,
+                        )
+                    })();
+
+                    if expr.is_some() {
+                        expr
+                    } else {
+                        Some(generate_fill_expr(ty))
+                    }
                 };
                 let field = make::record_expr_field(
                     make::name_ref(&f.name(ctx.sema.db).to_smol_str()),
@@ -313,6 +340,92 @@ struct TestStruct { one: i32, two: i64, three: Option<i32>, four: bool }
 
 fn test_fn() {
     let s = TestStruct { one: 0, two: 0, three: None, four: false };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_fill_struct_zst_fields() {
+        check_fix(
+            r#"
+struct Empty;
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct {$0};
+}
+"#,
+            r#"
+struct Empty;
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct { one: 0, two: Empty };
+}
+"#,
+        );
+        check_fix(
+            r#"
+enum Empty { Foo };
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct {$0};
+}
+"#,
+            r#"
+enum Empty { Foo };
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct { one: 0, two: Empty::Foo };
+}
+"#,
+        );
+
+        // make sure the assist doesn't fill non Unit variants
+        check_fix(
+            r#"
+struct Empty {};
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct {$0};
+}
+"#,
+            r#"
+struct Empty {};
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct { one: 0, two: todo!() };
+}
+"#,
+        );
+        check_fix(
+            r#"
+enum Empty { Foo {} };
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct {$0};
+}
+"#,
+            r#"
+enum Empty { Foo {} };
+
+struct TestStruct { one: i32, two: Empty }
+
+fn test_fn() {
+    let s = TestStruct { one: 0, two: todo!() };
 }
 "#,
         );

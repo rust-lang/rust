@@ -1,3 +1,6 @@
+use ide_db::{
+    imports::import_assets::item_for_path_search, use_trivial_contructor::use_trivial_constructor,
+};
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::ast::{self, AstNode, HasName, HasVisibility, StructKind};
@@ -38,6 +41,8 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     // Return early if we've found an existing new fn
     let impl_def = find_struct_impl(ctx, &ast::Adt::Struct(strukt.clone()), "new")?;
 
+    let current_module = ctx.sema.scope(strukt.syntax())?.module();
+
     let target = strukt.syntax().text_range();
     acc.add(AssistId("generate_new", AssistKind::Generate), "Generate `new`", target, |builder| {
         let mut buf = String::with_capacity(512);
@@ -48,11 +53,50 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
         let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
 
+        let trivial_constructors = field_list
+            .fields()
+            .map(|f| {
+                let ty = ctx.sema.resolve_type(&f.ty()?)?;
+
+                let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
+
+                let type_path = current_module
+                    .find_use_path(ctx.sema.db, item_for_path_search(ctx.sema.db, item_in_ns)?)?;
+
+                let expr = use_trivial_constructor(
+                    &ctx.sema.db,
+                    ide_db::helpers::mod_path_to_ast(&type_path),
+                    &ty,
+                )?;
+
+                Some(format!("{}: {}", f.name()?.syntax(), expr))
+            })
+            .collect::<Vec<_>>();
+
         let params = field_list
             .fields()
-            .filter_map(|f| Some(format!("{}: {}", f.name()?.syntax(), f.ty()?.syntax())))
+            .enumerate()
+            .filter_map(|(i, f)| {
+                if trivial_constructors[i].is_none() {
+                    Some(format!("{}: {}", f.name()?.syntax(), f.ty()?.syntax()))
+                } else {
+                    None
+                }
+            })
             .format(", ");
-        let fields = field_list.fields().filter_map(|f| f.name()).format(", ");
+
+        let fields = field_list
+            .fields()
+            .enumerate()
+            .filter_map(|(i, f)| {
+                let contructor = trivial_constructors[i].clone();
+                if contructor.is_some() {
+                    contructor
+                } else {
+                    Some(f.name()?.to_string())
+                }
+            })
+            .format(", ");
 
         format_to!(buf, "    {}fn new({}) -> Self {{ Self {{ {} }} }}", vis, params, fields);
 
@@ -78,6 +122,97 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
+
+    #[test]
+    fn test_generate_new_with_zst_fields() {
+        check_assist(
+            generate_new,
+            r#"
+struct Empty;
+
+struct Foo { empty: Empty $0}
+"#,
+            r#"
+struct Empty;
+
+struct Foo { empty: Empty }
+
+impl Foo {
+    fn $0new() -> Self { Self { empty: Empty } }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+struct Empty;
+
+struct Foo { baz: String, empty: Empty $0}
+"#,
+            r#"
+struct Empty;
+
+struct Foo { baz: String, empty: Empty }
+
+impl Foo {
+    fn $0new(baz: String) -> Self { Self { baz, empty: Empty } }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+enum Empty { Bar }
+
+struct Foo { empty: Empty $0}
+"#,
+            r#"
+enum Empty { Bar }
+
+struct Foo { empty: Empty }
+
+impl Foo {
+    fn $0new() -> Self { Self { empty: Empty::Bar } }
+}
+"#,
+        );
+
+        // make sure the assist only works on unit variants
+        check_assist(
+            generate_new,
+            r#"
+struct Empty {}
+
+struct Foo { empty: Empty $0}
+"#,
+            r#"
+struct Empty {}
+
+struct Foo { empty: Empty }
+
+impl Foo {
+    fn $0new(empty: Empty) -> Self { Self { empty } }
+}
+"#,
+        );
+        check_assist(
+            generate_new,
+            r#"
+enum Empty { Bar {} }
+
+struct Foo { empty: Empty $0}
+"#,
+            r#"
+enum Empty { Bar {} }
+
+struct Foo { empty: Empty }
+
+impl Foo {
+    fn $0new(empty: Empty) -> Self { Self { empty } }
+}
+"#,
+        );
+    }
 
     #[test]
     fn test_generate_new() {
