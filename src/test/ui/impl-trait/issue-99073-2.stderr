@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-99073-2.rs:9:22
+   |
+LL | fn test<T: Display>(t: T, recurse: bool) -> impl Display {
+   |                                             ------------ the expected opaque type
+LL |     let f = || {
+LL |         let i: u32 = test::<i32>(-1, false);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^ types differ
+   |
+   = note: expected opaque type `impl std::fmt::Display`
+                     found type `u32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
