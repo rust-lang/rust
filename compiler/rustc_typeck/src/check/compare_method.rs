@@ -1513,7 +1513,7 @@ pub fn check_type_bounds<'tcx>(
                         value.hidden_type.span,
                         tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local()),
                     ),
-                    tcx.mk_opaque(key.def_id, key.substs),
+                    tcx.mk_opaque(key.def_id.to_def_id(), key.substs),
                     value.hidden_type.ty,
                     TypeError::Mismatch,
                 )

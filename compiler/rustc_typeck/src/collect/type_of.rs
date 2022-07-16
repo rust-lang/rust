@@ -342,7 +342,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     let concrete_ty = tcx
                         .mir_borrowck(owner)
                         .concrete_opaque_types
-                        .get(&def_id.to_def_id())
+                        .get(&def_id)
                         .copied()
                         .map(|concrete| concrete.ty)
                         .unwrap_or_else(|| {
@@ -353,7 +353,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 // the `concrete_opaque_types` table.
                                 tcx.ty_error()
                             } else {
-                                table.concrete_opaque_types.get(&def_id.to_def_id()).copied().unwrap_or_else(|| {
+                                table.concrete_opaque_types.get(&def_id).copied().unwrap_or_else(|| {
                                     // We failed to resolve the opaque type or it
                                     // resolves to itself. We interpret this as the
                                     // no values of the hidden type ever being constructed,
@@ -526,7 +526,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
         tcx: TyCtxt<'tcx>,
 
         /// def_id of the opaque type whose defining uses are being checked
-        def_id: DefId,
+        def_id: LocalDefId,
 
         /// as we walk the defining uses, we are checking that all of them
         /// define the same hidden type. This variable is set to `Some`
@@ -602,7 +602,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
         fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
             trace!(?it.def_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id.to_def_id() != self.def_id {
+            if it.def_id != self.def_id {
                 self.check(it.def_id);
                 intravisit::walk_item(self, it);
             }
@@ -610,7 +610,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
         fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
             trace!(?it.def_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id.to_def_id() != self.def_id {
+            if it.def_id != self.def_id {
                 self.check(it.def_id);
                 intravisit::walk_impl_item(self, it);
             }
@@ -624,7 +624,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let scope = tcx.hir().get_defining_scope(hir_id);
-    let mut locator = ConstraintLocator { def_id: def_id.to_def_id(), tcx, found: None };
+    let mut locator = ConstraintLocator { def_id: def_id, tcx, found: None };
 
     debug!(?scope);
 
