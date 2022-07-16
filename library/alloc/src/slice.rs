@@ -836,14 +836,14 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Borrow<[T]> for Vec<T> {
+impl<T, A: Allocator> Borrow<[T]> for Vec<T, A> {
     fn borrow(&self) -> &[T] {
         &self[..]
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> BorrowMut<[T]> for Vec<T> {
+impl<T, A: Allocator> BorrowMut<[T]> for Vec<T, A> {
     fn borrow_mut(&mut self) -> &mut [T] {
         &mut self[..]
     }
