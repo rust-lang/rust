@@ -132,6 +132,15 @@ unsafe impl Send for Repr {}
 unsafe impl Sync for Repr {}
 
 impl Repr {
+    pub(super) fn new(dat: ErrorData<Box<Custom>>) -> Self {
+        match dat {
+            ErrorData::Os(code) => Self::new_os(code),
+            ErrorData::Simple(kind) => Self::new_simple(kind),
+            ErrorData::SimpleMessage(simple_message) => Self::new_simple_message(simple_message),
+            ErrorData::Custom(b) => Self::new_custom(b),
+        }
+    }
+
     pub(super) fn new_custom(b: Box<Custom>) -> Self {
         let p = Box::into_raw(b).cast::<u8>();
         // Should only be possible if an allocator handed out a pointer with
