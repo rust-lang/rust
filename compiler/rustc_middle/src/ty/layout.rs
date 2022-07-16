@@ -1958,7 +1958,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         min_size = field_end;
                     }
                     FieldInfo {
-                        name: name.to_string(),
+                        name,
                         offset: offset.bytes(),
                         size: field_layout.size.bytes(),
                         align: field_layout.align.abi.bytes(),
@@ -1967,7 +1967,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 .collect();
 
             VariantInfo {
-                name: n.map(|n| n.to_string()),
+                name: n,
                 kind: if layout.is_unsized() { SizeKind::Min } else { SizeKind::Exact },
                 align: layout.align.abi.bytes(),
                 size: if min_size.bytes() == 0 { layout.size.bytes() } else { min_size.bytes() },

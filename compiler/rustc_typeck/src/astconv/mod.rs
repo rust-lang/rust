@@ -2489,7 +2489,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                         concrete type's name `{type_name}` instead if you want to \
                                         specify its type parameters"
                                     ),
-                                    type_name.to_string(),
+                                    type_name,
                                     Applicability::MaybeIncorrect,
                                 );
                             }

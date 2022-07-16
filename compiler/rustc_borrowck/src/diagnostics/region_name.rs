@@ -34,13 +34,13 @@ pub(crate) enum RegionNameSource {
     /// The `'static` region.
     Static,
     /// The free region corresponding to the environment of a closure.
-    SynthesizedFreeEnvRegion(Span, String),
+    SynthesizedFreeEnvRegion(Span, &'static str),
     /// The region corresponding to an argument.
     AnonRegionFromArgument(RegionNameHighlight),
     /// The region corresponding to a closure upvar.
-    AnonRegionFromUpvar(Span, String),
+    AnonRegionFromUpvar(Span, Symbol),
     /// The region corresponding to the return type of a closure.
-    AnonRegionFromOutput(RegionNameHighlight, String),
+    AnonRegionFromOutput(RegionNameHighlight, &'static str),
     /// The region from a type yielded by a generator.
     AnonRegionFromYieldTy(Span, String),
     /// An anonymous region from an async fn.
@@ -110,7 +110,7 @@ impl RegionName {
             }
             RegionNameSource::SynthesizedFreeEnvRegion(span, note) => {
                 diag.span_label(*span, format!("lifetime `{self}` represents this closure's body"));
-                diag.note(note);
+                diag.note(*note);
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::CannotMatchHirTy(
                 span,
@@ -350,10 +350,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
                     Some(RegionName {
                         name: region_name,
-                        source: RegionNameSource::SynthesizedFreeEnvRegion(
-                            fn_decl_span,
-                            note.to_string(),
-                        ),
+                        source: RegionNameSource::SynthesizedFreeEnvRegion(fn_decl_span, note),
                     })
                 }
 
@@ -678,7 +675,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         Some(RegionName {
             name: region_name,
-            source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name.to_string()),
+            source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name),
         })
     }
 
@@ -756,7 +753,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         Some(RegionName {
             name: self.synthesize_region_name(),
-            source: RegionNameSource::AnonRegionFromOutput(highlight, mir_description.to_string()),
+            source: RegionNameSource::AnonRegionFromOutput(highlight, mir_description),
         })
     }
 

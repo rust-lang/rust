@@ -12,7 +12,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
 
 use crate::region_infer::BlameConstraint;
@@ -282,7 +282,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
     ) {
         if let ConstraintCategory::OpaqueType = category {
             let suggestable_name =
-                if region_name.was_named() { region_name.to_string() } else { "'_".to_string() };
+                if region_name.was_named() { region_name.name } else { kw::UnderscoreLifetime };
 
             let msg = format!(
                 "you can add a bound to the {}to make it last less than `'static` and match `{}`",

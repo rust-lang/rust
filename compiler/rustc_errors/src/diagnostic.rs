@@ -496,7 +496,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn note_trait_signature(&mut self, name: String, signature: String) -> &mut Self {
+    pub fn note_trait_signature(&mut self, name: Symbol, signature: String) -> &mut Self {
         self.highlighted_note(vec![
             (format!("`{}` from trait: `", name), Style::NoStyle),
             (signature, Style::Highlight),

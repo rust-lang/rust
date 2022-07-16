@@ -23,7 +23,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::TraitEngineExt as _;
 
@@ -1227,8 +1227,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     from_closure: false,
                     region_name:
                         RegionName {
-                            source:
-                                RegionNameSource::AnonRegionFromUpvar(upvar_span, ref upvar_name),
+                            source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name),
                             ..
                         },
                     span,
@@ -1702,7 +1701,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow_span: Span,
         name: &Option<String>,
         upvar_span: Span,
-        upvar_name: &str,
+        upvar_name: Symbol,
         escape_span: Span,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         let tcx = self.infcx.tcx;
