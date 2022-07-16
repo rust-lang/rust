@@ -1,0 +1,10 @@
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `=>`
+  --> $DIR/unexpected-fat-arrow.rs:3:26
+   |
+LL |     let _lambda = (a, b) => { println!(); a + b };
+   |                          ^^ expected one of `.`, `;`, `?`, `else`, or an operator
+   |
+   = help: closures are written `|a, b| a + b` and greater-than-or-equal is `>=`.
+
+error: aborting due to previous error
+
