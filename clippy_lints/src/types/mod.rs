@@ -490,6 +490,7 @@ impl Types {
                         }
                     }
                 }
+                #[allow(clippy::iter_empty)]
                 match *qpath {
                     QPath::Resolved(Some(ty), p) => {
                         context.is_nested_call = true;
