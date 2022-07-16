@@ -4,6 +4,7 @@
 
 mod errors;
 mod impl_restriction;
+mod mut_restriction;
 
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
@@ -13,4 +14,5 @@ fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     impl_restriction::provide(providers);
+    mut_restriction::provide(providers);
 }
