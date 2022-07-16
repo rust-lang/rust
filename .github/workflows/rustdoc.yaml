@@ -20,12 +20,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
-        components: rustfmt, rust-src
+      run: rustup update stable
 
     - name: Build Documentation
       run: cargo doc --all --no-deps
