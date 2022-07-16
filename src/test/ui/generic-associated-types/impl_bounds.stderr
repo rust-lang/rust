@@ -1,20 +1,22 @@
-error: `impl` associated type signature for `A` doesn't match `trait` associated type signature
-  --> $DIR/impl_bounds.rs:15:5
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/impl_bounds.rs:15:39
    |
-LL |     type A<'a> where Self: 'a;
-   |     ---------- expected
-...
 LL |     type A<'a> = (&'a ()) where Self: 'static;
-   |     ^^^^^^^^^^ found
+   |                                       ^^^^^^^ ...so that the definition in impl matches the definition from the trait
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL | impl<T: 'static> Foo for Fooy<T> {
+   |       +++++++++
 
-error: `impl` associated type signature for `B` doesn't match `trait` associated type signature
-  --> $DIR/impl_bounds.rs:17:5
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/impl_bounds.rs:17:48
    |
 LL |     type B<'a, 'b> where 'a: 'b;
-   |     -------------- expected
+   |     -------------- definition of `B` from trait
 ...
 LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
-   |     ^^^^^^^^^^^^^^ found
+   |                                                ^^ impl has extra requirement `'b: 'a`
 
 error[E0478]: lifetime bound not satisfied
   --> $DIR/impl_bounds.rs:17:22
@@ -37,10 +39,10 @@ LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |                ^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/impl_bounds.rs:20:5
+  --> $DIR/impl_bounds.rs:20:33
    |
 LL |     type C = String where Self: Copy;
-   |     ^^^^^^ the trait `Copy` is not implemented for `T`
+   |                                 ^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
   --> $DIR/impl_bounds.rs:11:10
@@ -88,5 +90,5 @@ LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0277, E0478.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0276, E0277, E0310, E0478.
+For more information about an error, try `rustc --explain E0276`.
