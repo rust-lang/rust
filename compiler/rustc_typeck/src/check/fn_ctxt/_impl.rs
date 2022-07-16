@@ -413,6 +413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     rhs_span: opt_input_expr.map(|expr| expr.span),
                     is_lit: opt_input_expr
                         .map_or(false, |expr| matches!(expr.kind, ExprKind::Lit(_))),
+                    output_pred: None,
                 },
             ),
             self.param_env,
