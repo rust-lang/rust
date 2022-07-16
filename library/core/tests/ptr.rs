@@ -359,7 +359,7 @@ fn align_offset_zst() {
 }
 
 #[test]
-fn align_offset_stride1() {
+fn align_offset_stride_one() {
     // For pointers of stride = 1, the pointer can always be aligned. The offset is equal to
     // number of bytes.
     let mut align = 1;
@@ -380,24 +380,8 @@ fn align_offset_stride1() {
 }
 
 #[test]
-fn align_offset_weird_strides() {
-    #[repr(packed)]
-    struct A3(u16, u8);
-    struct A4(u32);
-    #[repr(packed)]
-    struct A5(u32, u8);
-    #[repr(packed)]
-    struct A6(u32, u16);
-    #[repr(packed)]
-    struct A7(u32, u16, u8);
-    #[repr(packed)]
-    struct A8(u32, u32);
-    #[repr(packed)]
-    struct A9(u32, u32, u8);
-    #[repr(packed)]
-    struct A10(u32, u32, u16);
-
-    unsafe fn test_weird_stride<T>(ptr: *const T, align: usize) -> bool {
+fn align_offset_various_strides() {
+    unsafe fn test_stride<T>(ptr: *const T, align: usize) -> bool {
         let numptr = ptr as usize;
         let mut expected = usize::MAX;
         // Naive but definitely correct way to find the *first* aligned element of stride::<T>.
@@ -431,14 +415,39 @@ fn align_offset_weird_strides() {
     while align < limit {
         for ptr in 1usize..4 * align {
             unsafe {
-                x |= test_weird_stride::<A3>(ptr::invalid::<A3>(ptr), align);
-                x |= test_weird_stride::<A4>(ptr::invalid::<A4>(ptr), align);
-                x |= test_weird_stride::<A5>(ptr::invalid::<A5>(ptr), align);
-                x |= test_weird_stride::<A6>(ptr::invalid::<A6>(ptr), align);
-                x |= test_weird_stride::<A7>(ptr::invalid::<A7>(ptr), align);
-                x |= test_weird_stride::<A8>(ptr::invalid::<A8>(ptr), align);
-                x |= test_weird_stride::<A9>(ptr::invalid::<A9>(ptr), align);
-                x |= test_weird_stride::<A10>(ptr::invalid::<A10>(ptr), align);
+                #[repr(packed)]
+                struct A3(u16, u8);
+                x |= test_stride::<A3>(ptr::invalid::<A3>(ptr), align);
+
+                struct A4(u32);
+                x |= test_stride::<A4>(ptr::invalid::<A4>(ptr), align);
+
+                #[repr(packed)]
+                struct A5(u32, u8);
+                x |= test_stride::<A5>(ptr::invalid::<A5>(ptr), align);
+
+                #[repr(packed)]
+                struct A6(u32, u16);
+                x |= test_stride::<A6>(ptr::invalid::<A6>(ptr), align);
+
+                #[repr(packed)]
+                struct A7(u32, u16, u8);
+                x |= test_stride::<A7>(ptr::invalid::<A7>(ptr), align);
+
+                #[repr(packed)]
+                struct A8(u32, u32);
+                x |= test_stride::<A8>(ptr::invalid::<A8>(ptr), align);
+
+                #[repr(packed)]
+                struct A9(u32, u32, u8);
+                x |= test_stride::<A9>(ptr::invalid::<A9>(ptr), align);
+
+                #[repr(packed)]
+                struct A10(u32, u32, u16);
+                x |= test_stride::<A10>(ptr::invalid::<A10>(ptr), align);
+
+                x |= test_stride::<u32>(ptr::invalid::<u32>(ptr), align);
+                x |= test_stride::<u128>(ptr::invalid::<u128>(ptr), align);
             }
         }
         align = (align + 1).next_power_of_two();
