@@ -443,17 +443,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Next, let's construct the error
         let (error_span, full_call_span, ctor_of) = match &call_expr.kind {
             hir::ExprKind::Call(
-                hir::Expr {
-                    span,
-                    kind:
-                        hir::ExprKind::Path(hir::QPath::Resolved(
-                            _,
-                            hir::Path { res: Res::Def(DefKind::Ctor(of, _), _), .. },
-                        )),
-                    ..
-                },
+                hir::Expr { hir_id, span, kind: hir::ExprKind::Path(qpath), .. },
                 _,
-            ) => (call_span, *span, Some(of)),
+            ) => {
+                if let Res::Def(DefKind::Ctor(of, _), _) =
+                    self.typeck_results.borrow().qpath_res(qpath, *hir_id)
+                {
+                    (call_span, *span, Some(of))
+                } else {
+                    (call_span, *span, None)
+                }
+            }
             hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, None),
             hir::ExprKind::MethodCall(path_segment, _, span) => {
                 let ident_span = path_segment.ident.span;
