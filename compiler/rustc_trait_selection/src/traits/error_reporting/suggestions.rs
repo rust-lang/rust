@@ -599,7 +599,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     if let Some(proj_pred) = proj_pred {
                         let ProjectionPredicate { projection_ty, term } = proj_pred.skip_binder();
                         let item = self.tcx.associated_item(projection_ty.item_def_id);
-                        constraint.push_str(&format!("<{}={}>", item.name, term.to_string()));
+
+                        // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
+                        // That should be extracted into a helper function.
+                        if constraint.ends_with('>') {
+                            constraint = format!(
+                                "{}, {}={}>",
+                                &constraint[..constraint.len() - 1],
+                                item.name,
+                                term.to_string()
+                            );
+                        } else {
+                            constraint.push_str(&format!("<{}={}>", item.name, term.to_string()));
+                        }
                     }
 
                     if suggest_constraining_type_param(
