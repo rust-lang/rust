@@ -5,7 +5,6 @@
 #![feature(rustc_private)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 

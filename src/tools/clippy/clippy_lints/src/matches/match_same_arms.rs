@@ -8,11 +8,10 @@ use rustc_arena::DroplessArena;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdMap, HirIdSet, Pat, PatKind, RangeEnd};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatKind, RangeEnd};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Symbol;
-use std::collections::hash_map::Entry;
 
 use super::MATCH_SAME_ARMS;
 
@@ -71,9 +70,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                 if let Some(a_id) = path_to_local(a);
                 if let Some(b_id) = path_to_local(b);
                 let entry = match local_map.entry(a_id) {
-                    Entry::Vacant(entry) => entry,
+                    HirIdMapEntry::Vacant(entry) => entry,
                     // check if using the same bindings as before
-                    Entry::Occupied(entry) => return *entry.get() == b_id,
+                    HirIdMapEntry::Occupied(entry) => return *entry.get() == b_id,
                 };
                 // the names technically don't have to match; this makes the lint more conservative
                 if cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id);

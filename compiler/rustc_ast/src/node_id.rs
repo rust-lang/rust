@@ -13,7 +13,7 @@ rustc_index::newtype_index! {
     }
 }
 
-rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeId);
+rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeMapEntry, NodeId);
 
 /// The [`NodeId`] used to represent the root of the crate.
 pub const CRATE_NODE_ID: NodeId = NodeId::from_u32(0);
