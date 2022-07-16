@@ -2,7 +2,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use shims::windows::handle::{EvalContextExt as _, Handle};
+use shims::windows::handle::{EvalContextExt as _, Handle, PseudoHandle};
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 
@@ -58,7 +58,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Some(Handle::Thread(thread)) => thread,
             // Unlike on posix, joining the current thread is not UB on windows.
             // It will just deadlock.
-            Some(Handle::CurrentThread) => this.get_active_thread(),
+            Some(Handle::Pseudo(PseudoHandle::CurrentThread)) => this.get_active_thread(),
             _ => this.invalid_handle("WaitForSingleObject")?,
         };
 

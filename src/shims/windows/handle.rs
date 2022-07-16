@@ -3,44 +3,79 @@ use std::mem::variant_count;
 
 use crate::*;
 
-/// A Windows `HANDLE` that represents a resource instead of being null or a pseudohandle.
-///
-/// This is a seperate type from [`Handle`] to simplify the packing and unpacking code.
-#[derive(Clone, Copy)]
-enum RealHandle {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PseudoHandle {
+    CurrentThread,
+}
+
+impl PseudoHandle {
+    const CURRENT_THREAD_VALUE: u32 = 0;
+
+    fn value(self) -> u32 {
+        match self {
+            Self::CurrentThread => Self::CURRENT_THREAD_VALUE,
+        }
+    }
+
+    fn from_value(value: u32) -> Option<Self> {
+        match value {
+            Self::CURRENT_THREAD_VALUE => Some(Self::CurrentThread),
+            _ => None,
+        }
+    }
+}
+
+/// Miri representation of a Windows `HANDLE`
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Handle {
+    Null,
+    Pseudo(PseudoHandle),
     Thread(ThreadId),
 }
 
-impl RealHandle {
-    const USABLE_BITS: u32 = 31;
-
-    const THREAD_DISCRIMINANT: u32 = 1;
+impl Handle {
+    const NULL_DISCRIMINANT: u32 = 0;
+    const PSEUDO_DISCRIMINANT: u32 = 1;
+    const THREAD_DISCRIMINANT: u32 = 2;
 
     fn discriminant(self) -> u32 {
         match self {
-            // can't use zero here because all zero handle is invalid
+            Self::Null => Self::NULL_DISCRIMINANT,
+            Self::Pseudo(_) => Self::PSEUDO_DISCRIMINANT,
             Self::Thread(_) => Self::THREAD_DISCRIMINANT,
         }
     }
 
     fn data(self) -> u32 {
         match self {
+            Self::Null => 0,
+            Self::Pseudo(pseudo_handle) => pseudo_handle.value(),
             Self::Thread(thread) => thread.to_u32(),
         }
     }
 
     fn packed_disc_size() -> u32 {
-        // log2(x) + 1 is how many bits it takes to store x
-        // because the discriminants start at 1, the variant count is equal to the highest discriminant
-        variant_count::<Self>().ilog2() + 1
+        // ceil(log2(x)) is how many bits it takes to store x numbers
+        let variant_count = variant_count::<Self>();
+
+        // however, std's ilog2 is floor(log2(x))
+        let floor_log2 = variant_count.ilog2();
+
+        // we need to add one for non powers of two to compensate for the difference
+        let ceil_log2 = if variant_count.is_power_of_two() { floor_log2 } else { floor_log2 + 1 };
+
+        ceil_log2
     }
 
-    /// This function packs the discriminant and data values into a 31-bit space.
+    /// Converts a handle into its machine representation.
+    ///
+    /// The upper [`Self::packed_disc_size()`] bits are used to store a discriminant corresponding to the handle variant.
+    /// The remaining bits are used for the variant's field.
+    ///
     /// None of this layout is guaranteed to applications by Windows or Miri.
-    /// The sign bit is not used to avoid overlapping any pseudo-handles.
-    fn to_packed(self) -> i32 {
+    fn to_packed(self) -> u32 {
         let disc_size = Self::packed_disc_size();
-        let data_size = Self::USABLE_BITS - disc_size;
+        let data_size = u32::BITS - disc_size;
 
         let discriminant = self.discriminant();
         let data = self.data();
@@ -53,90 +88,54 @@ impl RealHandle {
 
         // packs the data into the lower `data_size` bits
         // and packs the discriminant right above the data
-        (discriminant << data_size | data) as i32
+        discriminant << data_size | data
     }
 
     fn new(discriminant: u32, data: u32) -> Option<Self> {
         match discriminant {
+            Self::NULL_DISCRIMINANT if data == 0 => Some(Self::Null),
+            Self::PSEUDO_DISCRIMINANT => Some(Self::Pseudo(PseudoHandle::from_value(data)?)),
             Self::THREAD_DISCRIMINANT => Some(Self::Thread(data.into())),
             _ => None,
         }
     }
 
     /// see docs for `to_packed`
-    fn from_packed(handle: i32) -> Option<Self> {
-        let handle_bits = handle as u32;
-
+    fn from_packed(handle: u32) -> Option<Self> {
         let disc_size = Self::packed_disc_size();
-        let data_size = Self::USABLE_BITS - disc_size;
+        let data_size = u32::BITS - disc_size;
 
         // the lower `data_size` bits of this mask are 1
         let data_mask = 2u32.pow(data_size) - 1;
 
         // the discriminant is stored right above the lower `data_size` bits
-        let discriminant = handle_bits >> data_size;
+        let discriminant = handle >> data_size;
 
         // the data is stored in the lower `data_size` bits
-        let data = handle_bits & data_mask;
+        let data = handle & data_mask;
 
         Self::new(discriminant, data)
-    }
-}
-
-/// Miri representation of a Windows `HANDLE`
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Handle {
-    Null, // = 0
-
-    // pseudo-handles
-    // The lowest real windows pseudo-handle is -6, so miri pseduo-handles start at -7 to break code hardcoding these values
-    CurrentThread, // = -7
-
-    // real handles
-    Thread(ThreadId),
-}
-
-impl Handle {
-    const CURRENT_THREAD_VALUE: i32 = -7;
-
-    fn to_packed(self) -> i32 {
-        match self {
-            Self::Null => 0,
-            Self::CurrentThread => Self::CURRENT_THREAD_VALUE,
-            Self::Thread(thread) => RealHandle::Thread(thread).to_packed(),
-        }
     }
 
     pub fn to_scalar(self, cx: &impl HasDataLayout) -> Scalar<Provenance> {
         // 64-bit handles are sign extended 32-bit handles
         // see https://docs.microsoft.com/en-us/windows/win32/winprog64/interprocess-communication
-        let handle = self.to_packed().into();
-
-        Scalar::from_machine_isize(handle, cx)
-    }
-
-    fn from_packed(handle: i64) -> Option<Self> {
-        let current_thread_val = Self::CURRENT_THREAD_VALUE as i64;
-
-        if handle == 0 {
-            Some(Self::Null)
-        } else if handle == current_thread_val {
-            Some(Self::CurrentThread)
-        } else if let Ok(handle) = handle.try_into() {
-            match RealHandle::from_packed(handle)? {
-                RealHandle::Thread(id) => Some(Self::Thread(id)),
-            }
-        } else {
-            // if a handle doesn't fit in an i32, it isn't valid.
-            None
-        }
+        let signed_handle = self.to_packed() as i32;
+        Scalar::from_machine_isize(signed_handle.into(), cx)
     }
 
     pub fn from_scalar<'tcx>(
         handle: Scalar<Provenance>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Option<Self>> {
-        let handle = handle.to_machine_isize(cx)?;
+        let sign_extended_handle = handle.to_machine_isize(cx)?;
+
+        let handle = if let Ok(signed_handle) = i32::try_from(sign_extended_handle) {
+            signed_handle as u32
+        } else {
+            // if a handle doesn't fit in an i32, it isn't valid.
+            return Ok(None);
+        };
 
         Ok(Self::from_packed(handle))
     }

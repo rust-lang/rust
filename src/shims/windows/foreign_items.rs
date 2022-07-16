@@ -1,14 +1,12 @@
 use std::iter;
-use std::time::{Duration, Instant};
 
 use rustc_span::Symbol;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
-use crate::thread::Time;
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
-use shims::windows::handle::{EvalContextExt as _, Handle};
+use shims::windows::handle::{EvalContextExt as _, Handle, PseudoHandle};
 use shims::windows::sync::EvalContextExt as _;
 use shims::windows::thread::EvalContextExt as _;
 
@@ -373,7 +371,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "GetCurrentThread" => {
                 let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
 
-                this.write_scalar(Handle::CurrentThread.to_scalar(this), dest)?;
+                this.write_scalar(
+                    Handle::Pseudo(PseudoHandle::CurrentThread).to_scalar(this),
+                    dest,
+                )?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.

@@ -7,7 +7,7 @@
 use std::thread;
 
 extern "system" {
-    fn WaitForSingleObject(handle: usize, timeout: u32) -> u32;
+    fn WaitForSingleObject(handle: isize, timeout: u32) -> u32;
 }
 
 const INFINITE: u32 = u32::MAX;
@@ -15,7 +15,7 @@ const INFINITE: u32 = u32::MAX;
 // This is how miri represents the handle for thread 0.
 // This value can be "legitimately" obtained by using `GetCurrentThread` with `DuplicateHandle`
 // but miri does not implement `DuplicateHandle` yet.
-const MAIN_THREAD: usize = 1 << 30;
+const MAIN_THREAD: isize = (2i32 << 30) as isize;
 
 fn main() {
     thread::spawn(|| {
