@@ -589,7 +589,7 @@ doesn't get ignored when aligning.
 #### `0` (default):
 
 ```rust
-enum Bar {
+enum Foo {
     A = 0,
     Bb = 1,
     RandomLongVariantGoesHere = 10,
