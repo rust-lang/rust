@@ -630,3 +630,87 @@ fn f(v: u32) {
         "#]],
     );
 }
+
+#[test]
+fn in_method_param() {
+    check_empty(
+        r#"
+struct Ty(u8);
+
+impl Ty {
+    fn foo($0)
+}
+"#,
+        expect![[r#"
+            sp Self
+            st Ty
+            bn &mut self
+            bn &self
+            bn Self(…)   Self($1): Self$0
+            bn Ty(…)     Ty($1): Ty$0
+            bn mut self
+            bn self
+            kw mut
+            kw ref
+        "#]],
+    );
+    check_empty(
+        r#"
+struct Ty(u8);
+
+impl Ty {
+    fn foo(s$0)
+}
+"#,
+        expect![[r#"
+            sp Self
+            st Ty
+            bn &mut self
+            bn &self
+            bn Self(…)   Self($1): Self$0
+            bn Ty(…)     Ty($1): Ty$0
+            bn mut self
+            bn self
+            kw mut
+            kw ref
+        "#]],
+    );
+    check_empty(
+        r#"
+struct Ty(u8);
+
+impl Ty {
+    fn foo(s$0, foo: u8)
+}
+"#,
+        expect![[r#"
+            sp Self
+            st Ty
+            bn &mut self
+            bn &self
+            bn Self(…)   Self($1): Self$0
+            bn Ty(…)     Ty($1): Ty$0
+            bn mut self
+            bn self
+            kw mut
+            kw ref
+        "#]],
+    );
+    check_empty(
+        r#"
+struct Ty(u8);
+
+impl Ty {
+    fn foo(foo: u8, b$0)
+}
+"#,
+        expect![[r#"
+            sp Self
+            st Ty
+            bn Self(…) Self($1): Self$0
+            bn Ty(…)   Ty($1): Ty$0
+            kw mut
+            kw ref
+        "#]],
+    );
+}

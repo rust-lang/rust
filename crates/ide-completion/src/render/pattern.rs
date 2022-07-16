@@ -6,7 +6,7 @@ use itertools::Itertools;
 use syntax::SmolStr;
 
 use crate::{
-    context::{ParamKind, PatternContext},
+    context::{ParamContext, ParamKind, PatternContext},
     render::{
         variant::{format_literal_label, visible_fields},
         RenderContext,
@@ -102,7 +102,7 @@ fn render_pat(
     let needs_ascription = matches!(
         pattern_ctx,
         PatternContext {
-            param_ctx: Some((.., ParamKind::Function(_))),
+            param_ctx: Some(ParamContext { kind: ParamKind::Function(_), .. }),
             has_type_ascription: false,
             ..
         }
