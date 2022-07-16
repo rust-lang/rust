@@ -91,10 +91,10 @@ LL | fn assert_copy<T:Copy>() { }
    |                  ^^^^ required by this bound in `assert_copy`
 
 error[E0277]: the trait bound `Box<dyn Dummy>: Copy` is not satisfied
-  --> $DIR/kindck-copy.rs:42:5
+  --> $DIR/kindck-copy.rs:42:19
    |
 LL |     assert_copy::<Box<dyn Dummy>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Box<dyn Dummy>`
+   |                   ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Box<dyn Dummy>`
    |
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
@@ -103,10 +103,10 @@ LL | fn assert_copy<T:Copy>() { }
    |                  ^^^^ required by this bound in `assert_copy`
 
 error[E0277]: the trait bound `Box<dyn Dummy + Send>: Copy` is not satisfied
-  --> $DIR/kindck-copy.rs:43:5
+  --> $DIR/kindck-copy.rs:43:19
    |
 LL |     assert_copy::<Box<dyn Dummy + Send>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Box<dyn Dummy + Send>`
+   |                   ^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Box<dyn Dummy + Send>`
    |
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18

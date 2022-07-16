@@ -1791,19 +1791,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .flat_map(|a| a.args.iter())
                         {
                             if let hir::GenericArg::Type(hir_ty) = &arg {
-                                if let hir::TyKind::Path(hir::QPath::TypeRelative(..)) =
-                                    &hir_ty.kind
-                                {
-                                    // Avoid ICE with associated types. As this is best
-                                    // effort only, it's ok to ignore the case. It
-                                    // would trigger in `is_send::<T::AssocType>();`
-                                    // from `typeck-default-trait-impl-assoc-type.rs`.
-                                } else {
-                                    let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, hir_ty);
-                                    let ty = self.resolve_vars_if_possible(ty);
-                                    if ty == predicate.self_ty() {
-                                        error.obligation.cause.span = hir_ty.span;
-                                    }
+                                let ty = self.resolve_vars_if_possible(
+                                    self.typeck_results.borrow().node_type(hir_ty.hir_id),
+                                );
+                                if ty == predicate.self_ty() {
+                                    error.obligation.cause.span = hir_ty.span;
                                 }
                             }
                         }
