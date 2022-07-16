@@ -4248,8 +4248,9 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         }
       }
       if (auto C = dyn_cast<Constant>(ip)) {
-        auto rule = [&](Value *ip) {
-          return ConstantExpr::getCast(arg->getOpcode(), C, arg->getType());
+        auto rule = [&arg](Value *ip) {
+          return ConstantExpr::getCast(arg->getOpcode(), cast<Constant>(ip),
+                                       arg->getType());
         };
 
         return applyChainRule(arg->getType(), bb, rule, ip);
