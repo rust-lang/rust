@@ -1,7 +1,9 @@
 //! UEFI-specific extensions to the primitives in `std::env` module
 
-use super::raw::{BootServices, Guid, RuntimeServices, SystemTable};
+use super::raw::{system, BootServices, Guid, Handle, RuntimeServices, Status, SystemTable};
 use crate::ffi::c_void;
+use crate::io;
+use crate::mem::MaybeUninit;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicPtr, Ordering};
 
@@ -65,4 +67,112 @@ pub(crate) fn get_handle_protocol<T>(
     };
 
     if r.is_error() { None } else { NonNull::new(protocol.cast()) }
+}
+
+pub(crate) fn open_protocol<T>(
+    handle: NonNull<c_void>,
+    mut protocol_guid: Guid,
+) -> io::Result<NonNull<T>> {
+    let boot_services = get_boot_services()
+        .ok_or(io::Error::new(io::ErrorKind::Other, "Failed to get BootServices"))?;
+    let system_handle = get_system_handle()
+        .ok_or(io::Error::new(io::ErrorKind::Other, "Failed to get System Handle"))?;
+    let mut protocol: MaybeUninit<*mut T> = MaybeUninit::uninit();
+
+    let r = unsafe {
+        ((*boot_services.as_ptr()).open_protocol)(
+            handle.as_ptr(),
+            &mut protocol_guid,
+            protocol.as_mut_ptr().cast(),
+            system_handle.as_ptr(),
+            crate::ptr::null_mut(),
+            system::OPEN_PROTOCOL_GET_PROTOCOL,
+        )
+    };
+
+    if r.is_error() {
+        match r {
+            Status::INVALID_PARAMETER => {
+                Err(io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER"))
+            }
+            Status::UNSUPPORTED => {
+                Err(io::Error::new(io::ErrorKind::Unsupported, "Handle does not support Protocol"))
+            }
+            Status::ACCESS_DENIED => {
+                Err(io::Error::new(io::ErrorKind::PermissionDenied, "EFI_ACCESS_DENIED"))
+            }
+            Status::ALREADY_STARTED => {
+                Err(io::Error::new(io::ErrorKind::Other, "EFI_ALREADY_STARTED"))
+            }
+            _ => Err(io::Error::new(
+                io::ErrorKind::Uncategorized,
+                format!("Status: {}", r.as_usize()),
+            )),
+        }
+    } else {
+        NonNull::new(unsafe { protocol.assume_init() })
+            .ok_or(io::Error::new(io::ErrorKind::Other, "Null Protocol"))
+    }
+}
+
+pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>> {
+    fn inner(
+        guid: &mut Guid,
+        boot_services: NonNull<BootServices>,
+        buf_size: &mut usize,
+        buf: *mut Handle,
+    ) -> io::Result<()> {
+        let r = unsafe {
+            ((*boot_services.as_ptr()).locate_handle)(
+                super::raw::BY_PROTOCOL,
+                guid,
+                crate::ptr::null_mut(),
+                buf_size,
+                buf,
+            )
+        };
+
+        if r.is_error() {
+            match r {
+                Status::NOT_FOUND => {
+                    Err(io::Error::new(io::ErrorKind::NotFound, "No handles match the search"))
+                }
+                Status::BUFFER_TOO_SMALL => Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "The BufferSize is too small for the result",
+                )),
+                Status::INVALID_PARAMETER => {
+                    Err(io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER"))
+                }
+                _ => Err(io::Error::new(
+                    io::ErrorKind::Uncategorized,
+                    format!("Status: {}", r.as_usize()),
+                )),
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    let boot_services = get_boot_services()
+        .ok_or(io::Error::new(io::ErrorKind::Other, "Unable to acquire boot services"))?;
+    let mut buf_len = 0usize;
+
+    match inner(&mut guid, boot_services, &mut buf_len, crate::ptr::null_mut()) {
+        Ok(()) => unreachable!(),
+        Err(e) => match e.kind() {
+            io::ErrorKind::InvalidData => {}
+            _ => return Err(e),
+        },
+    }
+
+    let mut buf: Vec<Handle> = Vec::with_capacity(buf_len);
+
+    match inner(&mut guid, boot_services, &mut buf_len, buf.as_mut_ptr()) {
+        Ok(()) => {
+            unsafe { buf.set_len(buf_len) };
+            Ok(buf.iter().filter_map(|x| NonNull::new(*x)).collect())
+        }
+        Err(e) => Err(e),
+    }
 }

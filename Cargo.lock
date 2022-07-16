@@ -2955,7 +2955,7 @@ dependencies = [
 [[package]]
 name = "r-efi"
 version = "4.0.0"
-source = "git+https://github.com/r-efi/r-efi#34d3da6498bdec2c0fb1a6e1b2f00c8affbcbeed"
+source = "git+https://github.com/r-efi/r-efi#b6eb9c0e4cbc6f5ea84af3d73e602e11cf001ec8"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",

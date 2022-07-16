@@ -10,6 +10,7 @@ use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 
+// FIXME: Do not store FileProtocol Instead store Handle
 pub struct File {
     ptr: uefi_fs::FileProtocol,
 }

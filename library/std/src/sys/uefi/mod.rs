@@ -136,9 +136,7 @@ pub fn abort_internal() -> ! {
 #[cfg(not(test))]
 #[no_mangle]
 pub extern "C" fn __rust_abort() {
-    unsafe {
-        abort_internal();
-    }
+    abort_internal();
 }
 
 // FIXME: Use EFI_RNG_PROTOCOL
