@@ -157,7 +157,7 @@ where
         variant: VariantIdx,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         // Downcast just changes the layout
-        let mut base = *base;
+        let mut base = base.clone();
         base.layout = base.layout.for_variant(self, variant);
         Ok(base)
     }
@@ -168,7 +168,7 @@ where
         variant: VariantIdx,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Downcast just changes the layout
-        let mut base = *base;
+        let mut base = base.clone();
         base.layout = base.layout.for_variant(self, variant);
         Ok(base)
     }
@@ -350,7 +350,7 @@ where
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
             OpaqueCast(ty) => {
-                let mut place = *base;
+                let mut place = base.clone();
                 place.layout = self.layout_of(ty)?;
                 place
             }
@@ -379,7 +379,7 @@ where
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
             OpaqueCast(ty) => {
-                let mut op = *base;
+                let mut op = base.clone();
                 op.layout = self.layout_of(ty)?;
                 op
             }

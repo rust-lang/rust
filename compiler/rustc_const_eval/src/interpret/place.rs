@@ -59,6 +59,21 @@ pub struct MemPlace<Tag: Provenance = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(MemPlace, 40);
 
+/// A MemPlace with its layout. Constructing it is only possible in this module.
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
+pub struct MPlaceTy<'tcx, Tag: Provenance = AllocId> {
+    mplace: MemPlace<Tag>,
+    pub layout: TyAndLayout<'tcx>,
+    /// rustc does not have a proper way to represent the type of a field of a `repr(packed)` struct:
+    /// it needs to have a different alignment than the field type would usually have.
+    /// So we represent this here with a separate field that "overwrites" `layout.align`.
+    /// This means `layout.align` should never be used for a `MPlaceTy`!
+    pub align: Align,
+}
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 64);
+
 #[derive(Copy, Clone, Debug)]
 pub enum Place<Tag: Provenance = AllocId> {
     /// A place referring to a value allocated in the `Memory` system.
@@ -72,7 +87,7 @@ pub enum Place<Tag: Provenance = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Place, 48);
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct PlaceTy<'tcx, Tag: Provenance = AllocId> {
     place: Place<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
@@ -93,21 +108,6 @@ impl<'tcx, Tag: Provenance> std::ops::Deref for PlaceTy<'tcx, Tag> {
         &self.place
     }
 }
-
-/// A MemPlace with its layout. Constructing it is only possible in this module.
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
-pub struct MPlaceTy<'tcx, Tag: Provenance = AllocId> {
-    mplace: MemPlace<Tag>,
-    pub layout: TyAndLayout<'tcx>,
-    /// rustc does not have a proper way to represent the type of a field of a `repr(packed)` struct:
-    /// it needs to have a different alignment than the field type would usually have.
-    /// So we represent this here with a separate field that "overwrites" `layout.align`.
-    /// This means `layout.align` should never be used for a `MPlaceTy`!
-    pub align: Align,
-}
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 64);
 
 impl<'tcx, Tag: Provenance> std::ops::Deref for MPlaceTy<'tcx, Tag> {
     type Target = MemPlace<Tag>;

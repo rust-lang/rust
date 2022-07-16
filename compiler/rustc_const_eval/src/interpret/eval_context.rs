@@ -674,7 +674,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             body,
             loc: Err(body.span), // Span used for errors caused during preamble.
             return_to_block,
-            return_place: *return_place,
+            return_place: return_place.clone(),
             // empty local array, we fill it in below, after we are inside the stack frame and
             // all methods actually know about the frame
             locals: IndexVec::new(),
@@ -795,7 +795,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let op = self
                 .local_to_op(self.frame(), mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
-            let dest = self.frame().return_place;
+            let dest = self.frame().return_place.clone();
             let err = self.copy_op(&op, &dest, /*allow_transmute*/ true);
             trace!("return value: {:?}", self.dump_place(*dest));
             // We delay actually short-circuiting on this error until *after* the stack frame is

@@ -111,7 +111,7 @@ impl<'tcx, Tag: Provenance> Immediate<Tag> {
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
 // as input for binary and cast operations.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct ImmTy<'tcx, Tag: Provenance = AllocId> {
     imm: Immediate<Tag>,
     pub layout: TyAndLayout<'tcx>,
@@ -187,7 +187,10 @@ pub enum Operand<Tag: Provenance = AllocId> {
     Indirect(MemPlace<Tag>),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Operand, 64);
+
+#[derive(Clone, Debug)]
 pub struct OpTy<'tcx, Tag: Provenance = AllocId> {
     op: Operand<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,

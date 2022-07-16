@@ -584,7 +584,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         });
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if op == BinOp::Shr || op == BinOp::Shl {
-            let r = r?;
+            let r = r.clone()?;
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!
             let left_ty = left.ty(self.local_decls, self.tcx);
@@ -616,10 +616,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
         }
 
-        if let (Some(l), Some(r)) = (&l, &r) {
+        if let (Some(l), Some(r)) = (l, r) {
             // The remaining operators are handled through `overflowing_binary_op`.
             if self.use_ecx(source_info, |this| {
-                let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
+                let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, &l, &r)?;
                 Ok(overflow)
             })? {
                 self.report_assert_as_lint(

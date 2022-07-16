@@ -444,7 +444,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             trace!("eval_fn_call: Will pass last argument by untupling");
                             Cow::from(
                                 args.iter()
-                                    .map(|&a| Ok(a))
+                                    .map(|a| Ok(a.clone()))
                                     .chain(
                                         (0..untuple_arg.layout.fields.count())
                                             .map(|i| self.operand_field(untuple_arg, i)),
@@ -525,7 +525,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We have to implement all "object safe receivers". So we have to go search for a
                 // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
                 // unwrap those newtypes until we are there.
-                let mut receiver = args[0];
+                let mut receiver = args[0].clone();
                 let receiver_place = loop {
                     match receiver.layout.ty.kind() {
                         ty::Ref(..) | ty::RawPtr(..) => break self.deref_operand(&receiver)?,
