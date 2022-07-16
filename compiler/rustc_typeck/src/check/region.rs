@@ -814,8 +814,7 @@ pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
         return tcx.region_scope_tree(typeck_root_def_id);
     }
 
-    let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(id) {
+    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id.expect_local()) {
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),

@@ -768,7 +768,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // the first place.
                 assert_ne!(hir::HirId::make_owner(encl_item_id), encl_body_owner_id);
 
-                let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
+                let encl_body_id =
+                    self.tcx.hir().body_owned_by(self.tcx.hir().local_def_id(encl_body_owner_id));
                 let encl_body = self.tcx.hir().body(encl_body_id);
 
                 err.encl_body_span = Some(encl_body.value.span);

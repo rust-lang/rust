@@ -464,15 +464,15 @@ fn check_unused_unsafe(
     def_id: LocalDefId,
     used_unsafe_blocks: &FxHashMap<HirId, UsedUnsafeBlockData>,
 ) -> Vec<(HirId, UnusedUnsafe)> {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let body_id = tcx.hir().maybe_body_owned_by(hir_id);
+    let body_id = tcx.hir().maybe_body_owned_by(def_id);
 
     let Some(body_id) = body_id else {
         debug!("check_unused_unsafe({:?}) - no body found", def_id);
         return vec![];
     };
-    let body = tcx.hir().body(body_id);
 
+    let body = tcx.hir().body(body_id);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let context = match tcx.hir().fn_sig_by_hir_id(hir_id) {
         Some(sig) if sig.header.unsafety == hir::Unsafety::Unsafe => Context::UnsafeFn(hir_id),
         _ => Context::Safe,

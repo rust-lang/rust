@@ -1783,8 +1783,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let generator_body = generator_did
             .as_local()
-            .map(|def_id| hir.local_def_id_to_hir_id(def_id))
-            .and_then(|hir_id| hir.maybe_body_owned_by(hir_id))
+            .and_then(|local_did| hir.maybe_body_owned_by(local_did))
             .map(|body_id| hir.body(body_id));
         let is_async = match generator_did.as_local() {
             Some(_) => generator_body
@@ -2752,7 +2751,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let body_hir_id = obligation.cause.body_id;
         let item_id = self.tcx.hir().get_parent_node(body_hir_id);
 
-        if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(item_id) {
+        if let Some(body_id) =
+            self.tcx.hir().maybe_body_owned_by(self.tcx.hir().local_def_id(item_id))
+        {
             let body = self.tcx.hir().body(body_id);
             if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
                 let future_trait = self.tcx.require_lang_item(LangItem::Future, None);

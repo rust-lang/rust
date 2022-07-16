@@ -207,9 +207,10 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         constness,
     );
 
-    let body_id = hir_id.map_or(hir::CRATE_HIR_ID, |id| {
-        tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
-    });
+    let body_id = local_did
+        .and_then(|id| tcx.hir().maybe_body_owned_by(id).map(|body| body.hir_id))
+        .or(hir_id)
+        .map_or(hir::CRATE_HIR_ID, |did| did);
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
 }

@@ -1614,16 +1614,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_anon_const(&mut self, id: hir::HirId) {
-        let def_id = self.tcx.hir().local_def_id(id);
-        debug!("EncodeContext::encode_info_for_anon_const({:?})", def_id);
-        let body_id = self.tcx.hir().body_owned_by(id);
+        let local_did = self.tcx.hir().local_def_id(id);
+        debug!("EncodeContext::encode_info_for_anon_const({:?})", local_did);
+        let body_id = self.tcx.hir().body_owned_by(local_did);
         let const_data = self.encode_rendered_const_for_body(body_id);
-        let qualifs = self.tcx.mir_const_qualif(def_id);
+        let qualifs = self.tcx.mir_const_qualif(local_did);
 
-        record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst);
-        record!(self.tables.mir_const_qualif[def_id.to_def_id()] <- qualifs);
-        record!(self.tables.rendered_const[def_id.to_def_id()] <- const_data);
-        self.encode_item_type(def_id.to_def_id());
+        record!(self.tables.kind[local_did.to_def_id()] <- EntryKind::AnonConst);
+        record!(self.tables.mir_const_qualif[local_did.to_def_id()] <- qualifs);
+        record!(self.tables.rendered_const[local_did.to_def_id()] <- const_data);
+        self.encode_item_type(local_did.to_def_id());
     }
 
     fn encode_native_libraries(&mut self) -> LazyArray<NativeLib> {

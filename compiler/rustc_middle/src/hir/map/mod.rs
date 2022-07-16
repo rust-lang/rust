@@ -398,7 +398,7 @@ impl<'hir> Map<'hir> {
 
     pub fn enclosing_body_owner(self, hir_id: HirId) -> HirId {
         for (parent, _) in self.parent_iter(hir_id) {
-            if let Some(body) = self.maybe_body_owned_by(parent) {
+            if let Some(local_did) = parent.as_owner() && let Some(body) = self.maybe_body_owned_by(local_did) {
                 return self.body_owner(body);
             }
         }
@@ -419,19 +419,20 @@ impl<'hir> Map<'hir> {
         self.local_def_id(self.body_owner(id))
     }
 
-    /// Given a `HirId`, returns the `BodyId` associated with it,
+    /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
-    pub fn maybe_body_owned_by(self, hir_id: HirId) -> Option<BodyId> {
-        self.find(hir_id).map(associated_body).flatten()
+    pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<BodyId> {
+        self.get_if_local(id.to_def_id()).map(associated_body).flatten()
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
-    pub fn body_owned_by(self, id: HirId) -> BodyId {
+    pub fn body_owned_by(self, id: LocalDefId) -> BodyId {
         self.maybe_body_owned_by(id).unwrap_or_else(|| {
+            let hir_id = self.local_def_id_to_hir_id(id);
             span_bug!(
-                self.span(id),
+                self.span(hir_id),
                 "body_owned_by: {} has no associated body",
-                self.node_to_string(id)
+                self.node_to_string(hir_id)
             );
         })
     }
