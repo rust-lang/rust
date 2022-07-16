@@ -8361,4 +8361,48 @@ mod test_map {
         let ys = map.get_many_key_value_mut(["baz", "baz"]);
         assert_eq!(ys, None);
     }
+
+    #[test]
+    #[should_panic = "panic in drop"]
+    fn test_clone_from_double_drop() {
+        #[derive(Clone)]
+        struct CheckedDrop {
+            panic_in_drop: bool,
+            dropped: bool,
+        }
+        impl Drop for CheckedDrop {
+            fn drop(&mut self) {
+                if self.panic_in_drop {
+                    self.dropped = true;
+                    panic!("panic in drop");
+                }
+                if self.dropped {
+                    panic!("double drop");
+                }
+                self.dropped = true;
+            }
+        }
+        const DISARMED: CheckedDrop = CheckedDrop {
+            panic_in_drop: false,
+            dropped: false,
+        };
+        const ARMED: CheckedDrop = CheckedDrop {
+            panic_in_drop: true,
+            dropped: false,
+        };
+
+        let mut map1 = HashMap::new();
+        map1.insert(1, DISARMED);
+        map1.insert(2, DISARMED);
+        map1.insert(3, DISARMED);
+        map1.insert(4, DISARMED);
+
+        let mut map2 = HashMap::new();
+        map2.insert(1, DISARMED);
+        map2.insert(2, ARMED);
+        map2.insert(3, DISARMED);
+        map2.insert(4, DISARMED);
+
+        map2.clone_from(&map1);
+    }
 }

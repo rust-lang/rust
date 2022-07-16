@@ -1,5 +1,9 @@
 // Extracted from the scopeguard crate
-use core::ops::{Deref, DerefMut};
+use core::{
+    mem,
+    ops::{Deref, DerefMut},
+    ptr,
+};
 
 pub struct ScopeGuard<T, F>
 where
@@ -15,6 +19,27 @@ where
     F: FnMut(&mut T),
 {
     ScopeGuard { dropfn, value }
+}
+
+impl<T, F> ScopeGuard<T, F>
+where
+    F: FnMut(&mut T),
+{
+    #[inline]
+    pub fn into_inner(guard: Self) -> T {
+        // Cannot move out of Drop-implementing types, so
+        // ptr::read the value and forget the guard.
+        unsafe {
+            let value = ptr::read(&guard.value);
+            // read the closure so that it is dropped, and assign it to a local
+            // variable to ensure that it is only dropped after the guard has
+            // been forgotten. (In case the Drop impl of the closure, or that
+            // of any consumed captured variable, panics).
+            let _dropfn = ptr::read(&guard.dropfn);
+            mem::forget(guard);
+            value
+        }
+    }
 }
 
 impl<T, F> Deref for ScopeGuard<T, F>
