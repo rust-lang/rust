@@ -1421,19 +1421,22 @@ impl<T> FusedIterator for Iter<'_, T> {}
 /// [`IntoIterator`]: core::iter::IntoIterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct IntoIter<T> {
-    iter: vec::IntoIter<T>,
+pub struct IntoIter<
+    T,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    iter: vec::IntoIter<T, A>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
+impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter").field(&self.iter.as_slice()).finish()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Iterator for IntoIter<T> {
+impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     type Item = T;
 
     #[inline]
@@ -1448,7 +1451,7 @@ impl<T> Iterator for IntoIter<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> DoubleEndedIterator for IntoIter<T> {
+impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back()
@@ -1456,21 +1459,21 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for IntoIter<T> {
+impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T> FusedIterator for IntoIter<T> {}
+impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
 
 // In addition to the SAFETY invariants of the following three unsafe traits
 // also refer to the vec::in_place_collect module documentation to get an overview
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-unsafe impl<T> SourceIter for IntoIter<T> {
-    type Source = IntoIter<T>;
+unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
+    type Source = IntoIter<T, A>;
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut Self::Source {
@@ -1480,9 +1483,9 @@ unsafe impl<T> SourceIter for IntoIter<T> {
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-unsafe impl<I> InPlaceIterable for IntoIter<I> {}
+unsafe impl<I, A: Allocator> InPlaceIterable for IntoIter<I, A> {}
 
-unsafe impl<I> AsVecIntoIter for IntoIter<I> {
+unsafe impl<I> AsVecIntoIter for IntoIter<I, Global> {
     type Item = I;
 
     fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {
@@ -1682,9 +1685,9 @@ impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> IntoIterator for BinaryHeap<T> {
+impl<T, A: Allocator> IntoIterator for BinaryHeap<T, A> {
     type Item = T;
-    type IntoIter = IntoIter<T>;
+    type IntoIter = IntoIter<T, A>;
 
     /// Creates a consuming iterator, that is, one that moves each value out of
     /// the binary heap in arbitrary order. The binary heap cannot be used
@@ -1704,7 +1707,7 @@ impl<T> IntoIterator for BinaryHeap<T> {
     ///     println!("{x}");
     /// }
     /// ```
-    fn into_iter(self) -> IntoIter<T> {
+    fn into_iter(self) -> IntoIter<T, A> {
         IntoIter { iter: self.data.into_iter() }
     }
 }
@@ -1720,7 +1723,7 @@ impl<'a, T, A: Allocator + 'a> IntoIterator for &'a BinaryHeap<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord> Extend<T> for BinaryHeap<T> {
+impl<T: Ord, A: Allocator> Extend<T> for BinaryHeap<T, A> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<I>>::spec_extend(self, iter);
@@ -1737,7 +1740,7 @@ impl<T: Ord> Extend<T> for BinaryHeap<T> {
     }
 }
 
-impl<T: Ord, I: IntoIterator<Item = T>> SpecExtend<I> for BinaryHeap<T> {
+impl<T: Ord, A: Allocator, I: IntoIterator<Item = T>> SpecExtend<I> for BinaryHeap<T, A> {
     default fn spec_extend(&mut self, iter: I) {
         self.extend_desugared(iter.into_iter());
     }
