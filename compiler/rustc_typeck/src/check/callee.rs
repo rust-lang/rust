@@ -397,7 +397,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         = self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
                     // Only suggest removing parens if there are no arguments
                     && arg_exprs.is_empty()
-                    && let Ok(path) = self.tcx.sess.source_map().span_to_snippet(callee_expr.span)
                 {
                     let descr = match kind {
                         def::CtorOf::Struct => "struct",
@@ -406,7 +405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let removal_span =
                         callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
                     unit_variant =
-                        Some((removal_span, descr, path));
+                        Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(qpath)));
                 }
 
                 let callee_ty = self.resolve_vars_if_possible(callee_ty);

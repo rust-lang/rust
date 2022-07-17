@@ -531,7 +531,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.ty_error()
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
-                report_unexpected_variant_res(tcx, res, expr.span);
+                report_unexpected_variant_res(tcx, res, qpath, expr.span);
                 tcx.ty_error()
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
