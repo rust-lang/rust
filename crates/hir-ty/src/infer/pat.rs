@@ -11,6 +11,7 @@ use hir_def::{
 use hir_expand::name::Name;
 
 use crate::{
+    consteval::intern_const_scalar,
     infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
     static_lifetime, ConcreteConst, ConstValue, Interner, Substitution, Ty, TyBuilder, TyExt,
@@ -262,13 +263,19 @@ impl<'a> InferenceContext<'a> {
                 if let &Some(slice_pat_id) = slice {
                     let rest_pat_ty = match expected.kind(Interner) {
                         TyKind::Array(_, length) => {
-                            let length = match length.data(Interner).value {
+                            let len = match length.data(Interner).value {
                                 ConstValue::Concrete(ConcreteConst {
-                                    interned: ConstScalar::Usize(length),
-                                }) => length.checked_sub((prefix.len() + suffix.len()) as u64),
+                                    interned: ConstScalar::UInt(len),
+                                }) => len.checked_sub((prefix.len() + suffix.len()) as u128),
                                 _ => None,
                             };
-                            TyKind::Array(elem_ty.clone(), crate::consteval::usize_const(length))
+                            TyKind::Array(
+                                elem_ty.clone(),
+                                intern_const_scalar(
+                                    len.map_or(ConstScalar::Unknown, |len| ConstScalar::UInt(len)),
+                                    TyBuilder::usize(),
+                                ),
+                            )
                         }
                         _ => TyKind::Slice(elem_ty.clone()),
                     }

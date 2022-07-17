@@ -729,7 +729,7 @@ impl<'a> InferenceContext<'a> {
                             let cur_elem_ty = self.infer_expr_inner(expr, &expected);
                             coerce.coerce(self, Some(expr), &cur_elem_ty);
                         }
-                        consteval::usize_const(Some(items.len() as u64))
+                        consteval::usize_const(Some(items.len() as u128))
                     }
                     &Array::Repeat { initializer, repeat } => {
                         self.infer_expr_coerce(initializer, &Expectation::has_type(elem_ty));
@@ -766,7 +766,7 @@ impl<'a> InferenceContext<'a> {
                 Literal::ByteString(bs) => {
                     let byte_type = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner);
 
-                    let len = consteval::usize_const(Some(bs.len() as u64));
+                    let len = consteval::usize_const(Some(bs.len() as u128));
 
                     let array_type = TyKind::Array(byte_type, len).intern(Interner);
                     TyKind::Ref(Mutability::Not, static_lifetime(), array_type).intern(Interner)

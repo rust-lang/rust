@@ -257,12 +257,7 @@ impl chalk_ir::interner::Interner for Interner {
         c1: &Self::InternedConcreteConst,
         c2: &Self::InternedConcreteConst,
     ) -> bool {
-        match (c1, c2) {
-            (&ConstScalar::Usize(a), &ConstScalar::Usize(b)) => a == b,
-            // we were previously assuming this to be true, I'm not whether true or false on
-            // unknown values is safer.
-            (_, _) => true,
-        }
+        (c1 == &ConstScalar::Unknown) || (c2 == &ConstScalar::Unknown) || (c1 == c2)
     }
 
     fn intern_generic_arg(

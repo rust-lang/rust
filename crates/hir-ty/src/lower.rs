@@ -44,7 +44,7 @@ use syntax::{ast, SmolStr};
 
 use crate::{
     all_super_traits,
-    consteval::{intern_scalar_const, path_to_const, unknown_const, unknown_const_as_generic},
+    consteval::{intern_const_scalar, path_to_const, unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     make_binders,
     mapping::ToChalk,
@@ -1743,7 +1743,7 @@ pub(crate) fn const_or_path_to_chalk(
     debruijn: DebruijnIndex,
 ) -> Const {
     match value {
-        ConstScalarOrPath::Scalar(s) => intern_scalar_const(s.clone(), expected_ty),
+        ConstScalarOrPath::Scalar(s) => intern_const_scalar(s.clone(), expected_ty),
         ConstScalarOrPath::Path(n) => {
             let path = ModPath::from_segments(PathKind::Plain, Some(n.clone()));
             path_to_const(db, resolver, &path, mode, args, debruijn)

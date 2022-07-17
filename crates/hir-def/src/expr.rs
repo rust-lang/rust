@@ -26,8 +26,10 @@ use crate::{
 pub use syntax::ast::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp};
 
 pub type ExprId = Idx<Expr>;
+
+/// FIXME: this is a hacky function which should be removed
 pub(crate) fn dummy_expr_id() -> ExprId {
-    ExprId::from_raw(RawIdx::from(!0))
+    ExprId::from_raw(RawIdx::from(u32::MAX))
 }
 
 pub type PatId = Idx<Pat>;
