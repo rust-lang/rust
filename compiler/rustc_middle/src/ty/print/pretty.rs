@@ -1030,11 +1030,11 @@ pub trait PrettyPrinter<'tcx>:
         }
     }
 
-    fn ty_infer_name(&self, _: ty::TyVid) -> Option<Symbol> {
+    fn ty_infer_name(&self, _: ty::TyVid) -> Option<String> {
         None
     }
 
-    fn const_infer_name(&self, _: ty::ConstVid<'tcx>) -> Option<Symbol> {
+    fn const_infer_name(&self, _: ty::ConstVid<'tcx>) -> Option<String> {
         None
     }
 
@@ -1550,8 +1550,8 @@ pub struct FmtPrinterData<'a, 'tcx> {
 
     pub region_highlight_mode: RegionHighlightMode<'tcx>,
 
-    pub ty_infer_name_resolver: Option<Box<dyn Fn(ty::TyVid) -> Option<Symbol> + 'a>>,
-    pub const_infer_name_resolver: Option<Box<dyn Fn(ty::ConstVid<'tcx>) -> Option<Symbol> + 'a>>,
+    pub ty_infer_name_resolver: Option<Box<dyn Fn(ty::TyVid) -> Option<String> + 'a>>,
+    pub const_infer_name_resolver: Option<Box<dyn Fn(ty::ConstVid<'tcx>) -> Option<String> + 'a>>,
 }
 
 impl<'a, 'tcx> Deref for FmtPrinter<'a, 'tcx> {
@@ -1841,11 +1841,11 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 }
 
 impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
-    fn ty_infer_name(&self, id: ty::TyVid) -> Option<Symbol> {
+    fn ty_infer_name(&self, id: ty::TyVid) -> Option<String> {
         self.0.ty_infer_name_resolver.as_ref().and_then(|func| func(id))
     }
 
-    fn const_infer_name(&self, id: ty::ConstVid<'tcx>) -> Option<Symbol> {
+    fn const_infer_name(&self, id: ty::ConstVid<'tcx>) -> Option<String> {
         self.0.const_infer_name_resolver.as_ref().and_then(|func| func(id))
     }
 

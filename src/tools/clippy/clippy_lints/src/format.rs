@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                 then {
                     let is_new_string = match value.kind {
                         ExprKind::Binary(..) => true,
-                        ExprKind::MethodCall(path, ..) => path.ident.name == sym::to_string,
+                        ExprKind::MethodCall(path, ..) => path.ident.name.as_str() == "to_string",
                         _ => false,
                     };
                     let sugg = if format_args.format_string_span.contains(value.span) {

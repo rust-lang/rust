@@ -17,7 +17,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
@@ -123,7 +123,12 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
             ty::GenericParamDefKind::Type { .. } => {
                 let param_ty = ty::ParamTy::for_def(param);
                 if !input_parameters.contains(&cgp::Parameter::from(param_ty)) {
-                    report_unused_parameter(tcx, tcx.def_span(param.def_id), "type", param_ty.name);
+                    report_unused_parameter(
+                        tcx,
+                        tcx.def_span(param.def_id),
+                        "type",
+                        &param_ty.to_string(),
+                    );
                 }
             }
             ty::GenericParamDefKind::Lifetime => {
@@ -135,7 +140,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                         tcx,
                         tcx.def_span(param.def_id),
                         "lifetime",
-                        param.name,
+                        &param.name.to_string(),
                     );
                 }
             }
@@ -146,7 +151,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                         tcx,
                         tcx.def_span(param.def_id),
                         "const",
-                        param_ct.name,
+                        &param_ct.to_string(),
                     );
                 }
             }
@@ -173,7 +178,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
     // used elsewhere are not projected back out.
 }
 
-fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol) {
+fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: &str) {
     let mut err = struct_span_err!(
         tcx.sess,
         span,

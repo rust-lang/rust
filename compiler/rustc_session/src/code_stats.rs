@@ -1,12 +1,11 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lock;
-use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
 use std::cmp::{self, Ordering};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct VariantInfo {
-    pub name: Option<Symbol>,
+    pub name: Option<String>,
     pub kind: SizeKind,
     pub size: u64,
     pub align: u64,
@@ -21,7 +20,7 @@ pub enum SizeKind {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FieldInfo {
-    pub name: Symbol,
+    pub name: String,
     pub offset: u64,
     pub size: u64,
     pub align: u64,
@@ -120,7 +119,7 @@ impl CodeStats {
                 let VariantInfo { ref name, kind: _, align: _, size, ref fields } = *variant_info;
                 let indent = if !struct_like {
                     let name = match name.as_ref() {
-                        Some(name) => name.to_string(),
+                        Some(name) => name.to_owned(),
                         None => i.to_string(),
                     };
                     println!(

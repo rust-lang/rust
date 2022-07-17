@@ -1856,7 +1856,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let remaining_private_fields_len = remaining_private_fields.len();
             let names = match &remaining_private_fields
                 .iter()
-                .map(|(name, _, _)| name)
+                .map(|(name, _, _)| name.to_string())
                 .collect::<Vec<_>>()[..]
             {
                 _ if remaining_private_fields_len > 6 => String::new(),

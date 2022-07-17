@@ -138,7 +138,7 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'_, 'tcx>, ns: Namespace) -> FmtPr
         if let TypeVariableOriginKind::TypeParameterDefinition(name, _) =
             infcx.inner.borrow_mut().type_variables().var_origin(ty_vid).kind
         {
-            Some(name)
+            Some(name.to_string())
         } else {
             None
         }
@@ -151,7 +151,7 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'_, 'tcx>, ns: Namespace) -> FmtPr
         if let ConstVariableOriginKind::ConstParameterDefinition(name, _) =
             infcx.inner.borrow_mut().const_unification_table().probe_value(ct_vid).origin.kind
         {
-            return Some(name);
+            return Some(name.to_string());
         } else {
             None
         }

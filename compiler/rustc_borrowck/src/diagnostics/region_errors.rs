@@ -19,7 +19,8 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::Region;
 use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::sym;
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use crate::borrowck_errors;
@@ -757,7 +758,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 return;
             };
 
-            let lifetime = if f.has_name() { fr_name.name } else { kw::UnderscoreLifetime };
+            let lifetime = if f.has_name() { fr_name.to_string() } else { "'_".to_string() };
 
             let arg = match param.param.pat.simple_ident() {
                 Some(simple_ident) => format!("argument `{}`", simple_ident),
@@ -769,7 +770,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 self.infcx.tcx,
                 diag,
                 fn_returns,
-                lifetime.to_string(),
+                lifetime,
                 Some(arg),
                 captures,
                 Some((param.param_ty_span, param.param_ty.to_string())),

@@ -19,7 +19,6 @@ use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::ToPolyTraitRef;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeVisitable};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Symbol;
 use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -1549,7 +1548,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Option<ObligationCause<'tcx>>,
         )],
     ) {
-        let mut derives = Vec::<(String, Span, Symbol)>::new();
+        let mut derives = Vec::<(String, Span, String)>::new();
         let mut traits = Vec::<Span>::new();
         for (pred, _, _) in unsatisfied_predicates {
             let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder() else { continue };
@@ -1582,12 +1581,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 derives.push((
                                     self_name.clone(),
                                     self_span,
-                                    parent_diagnostic_name,
+                                    parent_diagnostic_name.to_string(),
                                 ));
                             }
                         }
                     }
-                    derives.push((self_name, self_span, diagnostic_name));
+                    derives.push((self_name, self_span, diagnostic_name.to_string()));
                 } else {
                     traits.push(self.tcx.def_span(trait_pred.def_id()));
                 }
@@ -1610,7 +1609,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
             }
-            derives_grouped.push((self_name, self_span, trait_name.to_string()));
+            derives_grouped.push((self_name, self_span, trait_name));
         }
 
         let len = traits.len();
