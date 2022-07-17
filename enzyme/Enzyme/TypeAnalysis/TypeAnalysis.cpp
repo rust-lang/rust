@@ -2288,10 +2288,18 @@ void TypeAnalyzer::visitBinaryOperation(const DataLayout &dl, llvm::Type *T,
       // these are equal ptr - int => ptr and int - ptr => ptr; thus
       // howerver we do not want to propagate underlying ptr types since it's
       // legal to subtract unrelated pointer
-      if (AnalysisRet[{}] == BaseType::Integer) {
-        if (direction & UP) {
+      if (direction & UP) {
+        if (AnalysisRet[{}] == BaseType::Integer) {
           LHS |= TypeTree(AnalysisRHS[{}]).PurgeAnything().Only(-1);
           RHS |= TypeTree(AnalysisLHS[{}]).PurgeAnything().Only(-1);
+        }
+        if (AnalysisRet[{}] == BaseType::Pointer) {
+          if (AnalysisLHS[{}] == BaseType::Pointer) {
+            RHS |= TypeTree(BaseType::Integer).Only(-1);
+          }
+          if (AnalysisRHS[{}] == BaseType::Integer) {
+            LHS |= TypeTree(BaseType::Pointer).Only(-1);
+          }
         }
       }
       break;
@@ -2470,6 +2478,13 @@ void TypeAnalyzer::visitBinaryOperation(const DataLayout &dl, llvm::Type *T,
           // integer
           if (Args[i] && isa<ConstantInt>(Args[i]) &&
               (i == 0 ? AnalysisRHS : AnalysisLHS)[{}] == BaseType::Integer) {
+            Result = TypeTree(BaseType::Integer);
+          }
+        }
+      } else if (Opcode == BinaryOperator::URem) {
+        if (auto CI = dyn_cast_or_null<ConstantInt>(Args[1])) {
+          // If rem with a small integer, the result is also a small integer
+          if (CI->getLimitedValue() <= 4096) {
             Result = TypeTree(BaseType::Integer);
           }
         }
