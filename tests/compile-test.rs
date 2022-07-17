@@ -433,7 +433,7 @@ fn rustfix_coverage_known_exceptions_accuracy() {
         let rs_path = Path::new("tests/ui").join(filename);
         assert!(
             rs_path.exists(),
-            "`{}` does not exists",
+            "`{}` does not exist",
             rs_path.strip_prefix(env!("CARGO_MANIFEST_DIR")).unwrap().display()
         );
         let fixed_path = rs_path.with_extension("fixed");
@@ -441,6 +441,45 @@ fn rustfix_coverage_known_exceptions_accuracy() {
             !fixed_path.exists(),
             "`{}` exists",
             fixed_path.strip_prefix(env!("CARGO_MANIFEST_DIR")).unwrap().display()
+        );
+    }
+}
+
+#[test]
+fn ui_cargo_toml_metadata() {
+    let ui_cargo_path = Path::new("tests/ui-cargo");
+    let cargo_common_metadata_path = ui_cargo_path.join("cargo_common_metadata");
+    let publish_exceptions =
+        ["fail_publish", "fail_publish_true", "pass_publish_empty"].map(|path| cargo_common_metadata_path.join(path));
+
+    for entry in walkdir::WalkDir::new(ui_cargo_path) {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.file_name() != Some(OsStr::new("Cargo.toml")) {
+            continue;
+        }
+
+        let toml = fs::read_to_string(path).unwrap().parse::<toml::Value>().unwrap();
+
+        let package = toml.as_table().unwrap().get("package").unwrap().as_table().unwrap();
+
+        let name = package.get("name").unwrap().as_str().unwrap().replace('-', "_");
+        assert!(
+            path.parent()
+                .unwrap()
+                .components()
+                .map(|component| component.as_os_str().to_string_lossy().replace('-', "_"))
+                .any(|s| *s == name)
+                || path.starts_with(&cargo_common_metadata_path),
+            "{:?} has incorrect package name",
+            path
+        );
+
+        let publish = package.get("publish").and_then(toml::Value::as_bool).unwrap_or(true);
+        assert!(
+            !publish || publish_exceptions.contains(&path.parent().unwrap().to_path_buf()),
+            "{:?} lacks `publish = false`",
+            path
         );
     }
 }

@@ -32,6 +32,7 @@ compiletest_rs = { version = "0.8", features = ["tmp"] }
 tester = "0.9"
 regex = "1.5"
 toml = "0.5"
+walkdir = "2.3"
 # This is used by the `collect-metadata` alias.
 filetime = "0.2"
 
