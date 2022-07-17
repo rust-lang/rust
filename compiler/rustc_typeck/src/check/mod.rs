@@ -863,17 +863,14 @@ fn bad_non_zero_sized_fields<'tcx>(
     err.emit();
 }
 
-fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span) {
+fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, qpath: &hir::QPath<'_>, span: Span) {
     struct_span_err!(
         tcx.sess,
         span,
         E0533,
-        "expected unit struct, unit variant or constant, found {}{}",
+        "expected unit struct, unit variant or constant, found {} `{}`",
         res.descr(),
-        tcx.sess
-            .source_map()
-            .span_to_snippet(span)
-            .map_or_else(|_| String::new(), |s| format!(" `{s}`",)),
+        rustc_hir_pretty::qpath_to_string(qpath),
     )
     .emit();
 }
