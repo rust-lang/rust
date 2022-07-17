@@ -700,3 +700,38 @@ impl fmt::Debug for UdpSocket {
         res.field(name, &self.inner.as_raw()).finish()
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Converting SocketAddr to libc representation
+////////////////////////////////////////////////////////////////////////////////
+
+/// A type with the same memory layout as `c::sockaddr`. Used in converting Rust level
+/// SocketAddr* types into their system representation. The benefit of this specific
+/// type over using `c::sockaddr_storage` is that this type is exactly as large as it
+/// needs to be and not a lot larger. And it can be initialized more cleanly from Rust.
+#[repr(C)]
+pub(crate) union SocketAddrCRepr {
+    v4: c::sockaddr_in,
+    v6: c::sockaddr_in6,
+}
+
+impl SocketAddrCRepr {
+    pub fn as_ptr(&self) -> *const c::sockaddr {
+        self as *const _ as *const c::sockaddr
+    }
+}
+
+impl<'a> IntoInner<(SocketAddrCRepr, c::socklen_t)> for &'a SocketAddr {
+    fn into_inner(self) -> (SocketAddrCRepr, c::socklen_t) {
+        match *self {
+            SocketAddr::V4(ref a) => {
+                let sockaddr = SocketAddrCRepr { v4: a.into_inner() };
+                (sockaddr, mem::size_of::<c::sockaddr_in>() as c::socklen_t)
+            }
+            SocketAddr::V6(ref a) => {
+                let sockaddr = SocketAddrCRepr { v6: a.into_inner() };
+                (sockaddr, mem::size_of::<c::sockaddr_in6>() as c::socklen_t)
+            }
+        }
+    }
+}
