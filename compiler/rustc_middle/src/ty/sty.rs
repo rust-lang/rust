@@ -1707,13 +1707,6 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    pub fn expect_opaque_type(self) -> ty::OpaqueTypeKey<'tcx> {
-        match *self.kind() {
-            Opaque(def_id, substs) => ty::OpaqueTypeKey { def_id, substs },
-            _ => bug!("`expect_opaque_type` called on non-opaque type: {}", self),
-        }
-    }
-
     pub fn simd_size_and_type(self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
         match self.kind() {
             Adt(def, substs) => {

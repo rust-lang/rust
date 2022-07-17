@@ -763,12 +763,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // src/test/ui/impl-trait/hidden-type-is-opaque-2.rs for examples that hit this path.
         if formal_ret.has_infer_types() {
             for ty in ret_ty.walk() {
-                if let ty::subst::GenericArgKind::Type(ty) = ty.unpack() {
-                    if let ty::Opaque(def_id, _) = *ty.kind() {
-                        if self.infcx.opaque_type_origin(def_id, DUMMY_SP).is_some() {
-                            return None;
-                        }
-                    }
+                if let ty::subst::GenericArgKind::Type(ty) = ty.unpack()
+                    && let ty::Opaque(def_id, _) = *ty.kind()
+                    && let Some(def_id) = def_id.as_local()
+                    && self.infcx.opaque_type_origin(def_id, DUMMY_SP).is_some() {
+                    return None;
                 }
             }
         }

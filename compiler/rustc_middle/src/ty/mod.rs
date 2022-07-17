@@ -1108,8 +1108,7 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable, Lift)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct OpaqueTypeKey<'tcx> {
-    // FIXME(oli-obk): make this a LocalDefId
-    pub def_id: DefId,
+    pub def_id: LocalDefId,
     pub substs: SubstsRef<'tcx>,
 }
 
