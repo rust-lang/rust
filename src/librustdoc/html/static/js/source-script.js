@@ -33,7 +33,7 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     folders.className = "folders";
     if (elem.dirs) {
         for (const dir of elem.dirs) {
-            if (createDirEntry(dir, folders, fullPath, hasFoundFile)) {
+            if (createDirEntry(dir, folders, fullPath, false)) {
                 dirEntry.open = true;
                 hasFoundFile = true;
             }
