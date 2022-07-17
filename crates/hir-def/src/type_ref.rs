@@ -1,6 +1,8 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
+use std::fmt::Write;
+
 use hir_expand::{
     name::{AsName, Name},
     AstId, InFile,
@@ -182,11 +184,7 @@ impl TypeRef {
                 // `hir_def::body::lower` to lower this into an `Expr` and then evaluate it at the
                 // `hir_ty` level, which would allow knowing the type of:
                 // let v: [u8; 2 + 2] = [0u8; 4];
-                let len = inner.expr().map_or(
-                    ConstScalarOrPath::Scalar(ConstScalar::Unknown),
-                    ConstScalarOrPath::from_expr,
-                );
-
+                let len = ConstScalarOrPath::from_expr_opt(inner.expr());
                 TypeRef::Array(Box::new(TypeRef::from_ast_opt(ctx, inner.ty())), len)
             }
             ast::Type::SliceType(inner) => {
@@ -394,9 +392,16 @@ impl std::fmt::Display for ConstScalarOrPath {
 }
 
 impl ConstScalarOrPath {
+    pub(crate) fn from_expr_opt(expr: Option<ast::Expr>) -> Self {
+        match expr {
+            Some(x) => Self::from_expr(x),
+            None => Self::Scalar(ConstScalar::Unknown),
+        }
+    }
+
     // FIXME: as per the comments on `TypeRef::Array`, this evaluation should not happen at this
     // parse stage.
-    pub(crate) fn from_expr(expr: ast::Expr) -> Self {
+    fn from_expr(expr: ast::Expr) -> Self {
         match expr {
             ast::Expr::PathExpr(p) => {
                 match p.path().and_then(|x| x.segment()).and_then(|x| x.name_ref()) {
@@ -480,7 +485,7 @@ impl std::fmt::Display for ConstScalar {
             ConstScalar::UInt(num) => num.fmt(f),
             ConstScalar::Bool(flag) => flag.fmt(f),
             ConstScalar::Char(c) => write!(f, "'{c}'"),
-            ConstScalar::Unknown => f.write_str("{unknown}"),
+            ConstScalar::Unknown => f.write_char('_'),
         }
     }
 }

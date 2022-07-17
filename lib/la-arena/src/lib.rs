@@ -17,12 +17,6 @@ pub use map::ArenaMap;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RawIdx(u32);
 
-impl Default for RawIdx {
-    fn default() -> Self {
-        Self(u32::MAX)
-    }
-}
-
 impl From<RawIdx> for u32 {
     fn from(raw: RawIdx) -> u32 {
         raw.0
@@ -51,12 +45,6 @@ impl fmt::Display for RawIdx {
 pub struct Idx<T> {
     raw: RawIdx,
     _ty: PhantomData<fn() -> T>,
-}
-
-impl<T> Default for Idx<T> {
-    fn default() -> Self {
-        Self::from_raw(RawIdx::default())
-    }
 }
 
 impl<T> Clone for Idx<T> {

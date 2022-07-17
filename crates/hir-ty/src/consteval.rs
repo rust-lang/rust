@@ -395,22 +395,14 @@ pub fn unknown_const_as_generic(ty: Ty) -> GenericArg {
 }
 
 /// Interns a constant scalar with the given type
-pub fn intern_const_scalar_with_type(value: ConstScalar, ty: Ty) -> Const {
+pub fn intern_const_scalar(value: ConstScalar, ty: Ty) -> Const {
     ConstData { ty, value: ConstValue::Concrete(chalk_ir::ConcreteConst { interned: value }) }
         .intern(Interner)
 }
 
 /// Interns a possibly-unknown target usize
 pub fn usize_const(value: Option<u128>) -> Const {
-    intern_const_scalar_with_type(
-        value.map(ConstScalar::UInt).unwrap_or(ConstScalar::Unknown),
-        TyBuilder::usize(),
-    )
-}
-
-/// Interns a constant scalar with the default type
-pub fn intern_const_scalar(value: ConstScalar) -> Const {
-    intern_const_scalar_with_type(value, TyBuilder::builtin(value.builtin_type()))
+    intern_const_scalar(value.map_or(ConstScalar::Unknown, ConstScalar::UInt), TyBuilder::usize())
 }
 
 pub(crate) fn const_eval_recover(
@@ -470,7 +462,7 @@ pub(crate) fn eval_to_const<'a>(
         Ok(ComputedExpr::Literal(literal)) => literal.into(),
         _ => ConstScalar::Unknown,
     };
-    intern_const_scalar_with_type(const_scalar, TyBuilder::usize())
+    intern_const_scalar(const_scalar, TyBuilder::usize())
 }
 
 #[cfg(test)]

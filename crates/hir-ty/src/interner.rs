@@ -257,7 +257,7 @@ impl chalk_ir::interner::Interner for Interner {
         c1: &Self::InternedConcreteConst,
         c2: &Self::InternedConcreteConst,
     ) -> bool {
-        c1 == c2
+        (c1 == &ConstScalar::Unknown) || (c2 == &ConstScalar::Unknown) || (c1 == c2)
     }
 
     fn intern_generic_arg(

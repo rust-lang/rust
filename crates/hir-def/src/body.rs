@@ -24,7 +24,7 @@ use syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
 use crate::{
     attr::{Attrs, RawAttrs},
     db::DefDatabase,
-    expr::{Expr, ExprId, Label, LabelId, Pat, PatId},
+    expr::{dummy_expr_id, Expr, ExprId, Label, LabelId, Pat, PatId},
     item_scope::BuiltinShadowMode,
     macro_id_to_def_id,
     nameres::DefMap,
@@ -238,7 +238,7 @@ pub struct Mark {
 }
 
 /// The body of an item (function, const etc.).
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Body {
     pub exprs: Arena<Expr>,
     pub pats: Arena<Pat>,
@@ -386,6 +386,21 @@ impl Body {
         labels.shrink_to_fit();
         params.shrink_to_fit();
         pats.shrink_to_fit();
+    }
+}
+
+impl Default for Body {
+    fn default() -> Self {
+        Self {
+            body_expr: dummy_expr_id(),
+            exprs: Default::default(),
+            pats: Default::default(),
+            or_pats: Default::default(),
+            labels: Default::default(),
+            params: Default::default(),
+            block_scopes: Default::default(),
+            _c: Default::default(),
+        }
     }
 }
 

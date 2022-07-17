@@ -13,7 +13,7 @@
 //! See also a neighboring `body` module.
 
 use hir_expand::name::Name;
-use la_arena::Idx;
+use la_arena::{Idx, RawIdx};
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
@@ -26,6 +26,11 @@ use crate::{
 pub use syntax::ast::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp};
 
 pub type ExprId = Idx<Expr>;
+
+/// FIXME: this is a hacky function which should be removed
+pub(crate) fn dummy_expr_id() -> ExprId {
+    ExprId::from_raw(RawIdx::from(u32::MAX))
+}
 
 pub type PatId = Idx<Pat>;
 

@@ -273,6 +273,7 @@ impl<'a> InferenceContext<'a> {
                                 elem_ty.clone(),
                                 intern_const_scalar(
                                     len.map_or(ConstScalar::Unknown, |len| ConstScalar::UInt(len)),
+                                    TyBuilder::usize(),
                                 ),
                             )
                         }
