@@ -3,8 +3,8 @@ import * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 import * as path from "path";
 
-import {Config, prepareVSCodeConfig} from './config';
-import {createClient} from './client';
+import {Config, prepareVSCodeConfig} from "./config";
+import {createClient} from "./client";
 import {
     executeDiscoverProject,
     isRustDocument,
@@ -12,10 +12,15 @@ import {
     LazyOutputChannel,
     log,
     RustEditor,
-} from './util';
-import {ServerStatusParams} from './lsp_ext';
-import { Dependency, DependencyFile, RustDependenciesProvider, DependencyId } from './dependencies_provider';
-import { execRevealDependency } from './commands';
+} from "./util";
+import {ServerStatusParams} from "./lsp_ext";
+import {
+    Dependency,
+    DependencyFile,
+    RustDependenciesProvider,
+    DependencyId,
+} from "./dependencies_provider";
+import { execRevealDependency } from "./commands";
 import {
     Dependency,
     DependencyFile,

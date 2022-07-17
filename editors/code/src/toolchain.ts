@@ -103,12 +103,12 @@ export class Cargo {
         return await new Promise((resolve, reject) => {
             const crates: Crate[] = [];
 
-            const cargo = cp.spawn(pathToCargo, ['tree', '--prefix', 'none'], {
-                stdio: ['ignore', 'pipe', 'pipe'],
-                cwd: this.rootFolder
+            const cargo = cp.spawn(pathToCargo, ["tree", "--prefix", "none"], {
+                stdio: ["ignore", "pipe", "pipe"],
+                cwd: this.rootFolder,
             });
             const rl = readline.createInterface({ input: cargo.stdout });
-            rl.on('line', line => {
+            rl.on("line", (line) => {
                 const match = line.match(TREE_LINE_PATTERN);
                 if (match) {
                     const name = match[1];
@@ -121,18 +121,15 @@ export class Cargo {
                     crates.push({ name, version });
                 }
             });
-            cargo.on('exit', (exitCode, _) => {
-                if (exitCode === 0)
-                    resolve(crates);
-                else
-                    reject(new Error(`exit code: ${exitCode}.`));
+            cargo.on("exit", (exitCode, _) => {
+                if (exitCode === 0) resolve(crates);
+                else reject(new Error(`exit code: ${exitCode}.`));
             });
-
         });
     }
 
     private shouldIgnore(extraInfo: string): boolean {
-        return extraInfo !== undefined && (extraInfo === '*' || path.isAbsolute(extraInfo));
+        return extraInfo !== undefined && (extraInfo === "*" || path.isAbsolute(extraInfo));
     }
 
     private async runCargo(
@@ -169,26 +166,23 @@ export class Cargo {
 export async function activeToolchain(): Promise<string> {
     const pathToRustup = await rustupPath();
     return await new Promise((resolve, reject) => {
-        const execution = cp.spawn(pathToRustup, ['show', 'active-toolchain'], {
-            stdio: ['ignore', 'pipe', 'pipe'],
-            cwd: os.homedir()
+        const execution = cp.spawn(pathToRustup, ["show", "active-toolchain"], {
+            stdio: ["ignore", "pipe", "pipe"],
+            cwd: os.homedir(),
         });
         const rl = readline.createInterface({ input: execution.stdout });
 
         let currToolchain: string | undefined = undefined;
-        rl.on('line', line => {
+        rl.on("line", (line) => {
             const match = line.match(TOOLCHAIN_PATTERN);
             if (match) {
                 currToolchain = match[1];
             }
         });
-        execution.on('exit', (exitCode, _) => {
-            if (exitCode === 0 && currToolchain)
-                resolve(currToolchain);
-            else
-                reject(new Error(`exit code: ${exitCode}.`));
+        execution.on("exit", (exitCode, _) => {
+            if (exitCode === 0 && currToolchain) resolve(currToolchain);
+            else reject(new Error(`exit code: ${exitCode}.`));
         });
-
     });
 }
 

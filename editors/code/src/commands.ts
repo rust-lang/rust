@@ -8,7 +8,7 @@ import { applySnippetWorkspaceEdit, applySnippetTextEdits } from "./snippets";
 import { spawnSync } from "child_process";
 import { RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
 import { AstInspector } from "./ast_inspector";
-import { isRustDocument, isCargoTomlDocument, sleep, isRustEditor, RustEditor } from './util';
+import { isRustDocument, isCargoTomlDocument, sleep, isRustEditor, RustEditor } from "./util";
 import { startDebugSession, makeDebugConfig } from "./debug";
 import { LanguageClient } from "vscode-languageclient/node";
 import { LINKED_COMMANDS } from "./client";
