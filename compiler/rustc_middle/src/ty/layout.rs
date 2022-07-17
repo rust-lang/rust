@@ -3492,3 +3492,86 @@ fn make_thin_self_ptr<'tcx>(
         ..tcx.layout_of(ty::ParamEnv::reveal_all().and(unit_ptr_ty)).unwrap()
     }
 }
+
+/// Determines if this type permits "raw" initialization by just transmuting some
+/// uninitialized memory into an instance of `T`.
+///
+/// This code is intentionally conservative, and will not detect
+/// * making uninitialized types who have a full valid range (ints, floats, raw pointers)
+/// * uninit invalid &[T] where T has align 1 (only inside arrays)
+///
+/// A strict form of these checks that uses const evaluation exists in
+/// `rustc_const_eval::might_permit_raw_init`, and a tracking issue for making these checks
+/// stricter is <https://github.com/rust-lang/rust/issues/66151>.
+///
+/// FIXME: Once all the conservatism is removed from here, and the checks are ran by default,
+/// we can use the const evaluation checks always instead.
+pub fn might_permit_raw_init<'tcx, C>(this: TyAndLayout<'tcx>, cx: &C) -> bool
+where
+    C: HasDataLayout + ty::layout::HasParamEnv<'tcx> + ty::layout::HasTyCtxt<'tcx>,
+{
+    return might_permit_raw_init_inner(this, cx, false);
+
+    fn might_permit_raw_init_inner<'tcx, C>(
+        this: TyAndLayout<'tcx>,
+        cx: &C,
+        inside_array: bool,
+    ) -> bool
+    where
+        C: HasDataLayout + ty::layout::HasParamEnv<'tcx> + ty::layout::HasTyCtxt<'tcx>,
+    {
+        if inside_array {
+            if let ty::Ref(_, inner, _) = this.ty.kind() {
+                if let ty::Slice(inner) = inner.kind() {
+                    let penv = ty::ParamEnv::reveal_all().and(*inner);
+                    if let Ok(l) = cx.tcx().layout_of(penv) {
+                        return l.layout.align().abi == Align::ONE;
+                    }
+                }
+
+                if let ty::Str = inner.kind() {
+                    return true;
+                }
+            }
+        }
+
+        // Check the ABI.
+        let valid = match this.abi {
+            Abi::Uninhabited => false, // definitely UB
+            Abi::Scalar(s) => s.is_always_valid(cx),
+            Abi::ScalarPair(s1, s2) => s1.is_always_valid(cx) && s2.is_always_valid(cx),
+            Abi::Vector { element: s, count } => count == 0 || s.is_always_valid(cx),
+            Abi::Aggregate { .. } => true, // Fields are checked below.
+        };
+        if !valid {
+            // This is definitely not okay.
+            return false;
+        }
+
+        // If we have not found an error yet, we need to recursively descend into fields.
+        match &this.fields {
+            FieldsShape::Primitive | FieldsShape::Union { .. } => {}
+            FieldsShape::Array { count, .. } => {
+                if *count > 0 && !might_permit_raw_init_inner(this.field(cx, 0), cx, true) {
+                    // Found non empty array with a type that is unhappy about this kind of initialization
+                    return false;
+                }
+            }
+            FieldsShape::Arbitrary { offsets, .. } => {
+                for idx in 0..offsets.len() {
+                    if !might_permit_raw_init_inner(this.field(cx, idx), cx, inside_array) {
+                        // We found a field that is unhappy with this kind of initialization.
+                        return false;
+                    }
+                }
+            }
+        }
+
+        if matches!(this.variants, Variants::Multiple { .. }) {
+            // All uninit enums are automatically invalid, even if their discriminant includes all values.
+            return false;
+        }
+
+        true
+    }
+}

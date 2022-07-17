@@ -1,7 +1,10 @@
 use crate::const_eval::CompileTimeInterpreter;
 use crate::interpret::{InterpCx, MemoryKind, OpTy};
 use rustc_middle::ty::layout::LayoutCx;
-use rustc_middle::ty::{layout::TyAndLayout, ParamEnv, TyCtxt};
+use rustc_middle::ty::{
+    layout::{self, TyAndLayout},
+    ParamEnv, TyCtxt,
+};
 use rustc_session::Limit;
 use rustc_target::abi::InitKind;
 
@@ -12,7 +15,7 @@ pub fn might_permit_raw_init<'tcx>(
 ) -> bool {
     let strict = tcx.sess.opts.unstable_opts.strict_init_checks;
 
-    if strict {
+    if strict || kind == InitKind::Zero {
         let machine = CompileTimeInterpreter::new(Limit::new(0), false);
 
         let mut cx = InterpCx::new(tcx, rustc_span::DUMMY_SP, ParamEnv::reveal_all(), machine);
@@ -35,6 +38,6 @@ pub fn might_permit_raw_init<'tcx>(
         cx.validate_operand(&ot).is_ok()
     } else {
         let layout_cx = LayoutCx { tcx, param_env: ParamEnv::reveal_all() };
-        ty.might_permit_raw_init(&layout_cx, kind)
+        layout::might_permit_raw_init(ty, &layout_cx)
     }
 }
