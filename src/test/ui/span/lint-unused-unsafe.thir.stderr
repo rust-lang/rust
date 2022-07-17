@@ -1,14 +1,141 @@
 error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:21:13
+  --> $DIR/lint-unused-unsafe.rs:1054:29
    |
-LL | fn bad1() { unsafe {} }
-   |             ^^^^^^ unnecessary `unsafe` block
+LL |             let _ = async { unsafe {
+   |                             ^^^^^^ unnecessary `unsafe` block
    |
 note: the lint level is defined here
   --> $DIR/lint-unused-unsafe.rs:9:9
    |
 LL | #![deny(unused_unsafe)]
    |         ^^^^^^^^^^^^^
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1061:33
+   |
+LL |             let _ = async { unsafe {
+   |                             ------ because it's nested under this `unsafe` block
+LL |                 let _ = async { unsf() };
+LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
+   |                                 ^^^^^^ unnecessary `unsafe` block
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1062:33
+   |
+LL |             let _ = async { unsafe {
+   |                             ------ because it's nested under this `unsafe` block
+...
+LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
+   |                                 ^^^^^^ unnecessary `unsafe` block
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1063:33
+   |
+LL |             let _ = async { unsafe {
+   |                             ------ because it's nested under this `unsafe` block
+...
+LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
+   |                                 ^^^^^^ unnecessary `unsafe` block
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1068:29
+   |
+LL |             let _ = async { unsafe {
+   |                             ^^^^^^ unnecessary `unsafe` block
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1069:33
+   |
+LL |     async unsafe fn async_blocks() {
+   |     ------------------------------ because it's nested under this `unsafe` fn
+...
+LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
+   |                                 ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
+note: the lint level is defined here
+  --> $DIR/lint-unused-unsafe.rs:1066:17
+   |
+LL |         #[allow(unsafe_op_in_unsafe_fn)]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1070:33
+   |
+LL |     async unsafe fn async_blocks() {
+   |     ------------------------------ because it's nested under this `unsafe` fn
+...
+LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
+   |                                 ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1071:33
+   |
+LL |     async unsafe fn async_blocks() {
+   |     ------------------------------ because it's nested under this `unsafe` fn
+...
+LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
+   |                                 ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1073:29
+   |
+LL |     async unsafe fn async_blocks() {
+   |     ------------------------------ because it's nested under this `unsafe` fn
+...
+LL |             let _ = async { unsafe {
+   |                             ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1075:33
+   |
+LL |     async unsafe fn async_blocks() {
+   |     ------------------------------ because it's nested under this `unsafe` fn
+...
+LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
+   |                                 ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1076:33
+   |
+LL |     async unsafe fn async_blocks() {
+   |     ------------------------------ because it's nested under this `unsafe` fn
+...
+LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
+   |                                 ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1077:33
+   |
+LL |     async unsafe fn async_blocks() {
+   |     ------------------------------ because it's nested under this `unsafe` fn
+...
+LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
+   |                                 ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:1091:22
+   |
+LL |         let _x: [(); unsafe { unsafe { size() } }] = [];
+   |                      ^^^^^^ unnecessary `unsafe` block
+
+error: unnecessary `unsafe` block
+  --> $DIR/lint-unused-unsafe.rs:21:13
+   |
+LL | fn bad1() { unsafe {} }
+   |             ^^^^^^ unnecessary `unsafe` block
 
 error: unnecessary `unsafe` block
   --> $DIR/lint-unused-unsafe.rs:22:13
@@ -1688,136 +1815,9 @@ LL |             #[allow(unsafe_op_in_unsafe_fn)]
    |                     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1054:29
-   |
-LL |             let _ = async { unsafe {
-   |                             ^^^^^^ unnecessary `unsafe` block
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1061:33
-   |
-LL |             let _ = async { unsafe {
-   |                             ------ because it's nested under this `unsafe` block
-LL |                 let _ = async { unsf() };
-LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
-   |                                 ^^^^^^ unnecessary `unsafe` block
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1062:33
-   |
-LL |             let _ = async { unsafe {
-   |                             ------ because it's nested under this `unsafe` block
-...
-LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
-   |                                 ^^^^^^ unnecessary `unsafe` block
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1063:33
-   |
-LL |             let _ = async { unsafe {
-   |                             ------ because it's nested under this `unsafe` block
-...
-LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
-   |                                 ^^^^^^ unnecessary `unsafe` block
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1068:29
-   |
-LL |             let _ = async { unsafe {
-   |                             ^^^^^^ unnecessary `unsafe` block
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1069:33
-   |
-LL |     async unsafe fn async_blocks() {
-   |     ------------------------------ because it's nested under this `unsafe` fn
-...
-LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
-   |                                 ^^^^^^ unnecessary `unsafe` block
-   |
-   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
-note: the lint level is defined here
-  --> $DIR/lint-unused-unsafe.rs:1066:17
-   |
-LL |         #[allow(unsafe_op_in_unsafe_fn)]
-   |                 ^^^^^^^^^^^^^^^^^^^^^^
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1070:33
-   |
-LL |     async unsafe fn async_blocks() {
-   |     ------------------------------ because it's nested under this `unsafe` fn
-...
-LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
-   |                                 ^^^^^^ unnecessary `unsafe` block
-   |
-   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1071:33
-   |
-LL |     async unsafe fn async_blocks() {
-   |     ------------------------------ because it's nested under this `unsafe` fn
-...
-LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
-   |                                 ^^^^^^ unnecessary `unsafe` block
-   |
-   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1073:29
-   |
-LL |     async unsafe fn async_blocks() {
-   |     ------------------------------ because it's nested under this `unsafe` fn
-...
-LL |             let _ = async { unsafe {
-   |                             ^^^^^^ unnecessary `unsafe` block
-   |
-   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1075:33
-   |
-LL |     async unsafe fn async_blocks() {
-   |     ------------------------------ because it's nested under this `unsafe` fn
-...
-LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
-   |                                 ^^^^^^ unnecessary `unsafe` block
-   |
-   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1076:33
-   |
-LL |     async unsafe fn async_blocks() {
-   |     ------------------------------ because it's nested under this `unsafe` fn
-...
-LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
-   |                                 ^^^^^^ unnecessary `unsafe` block
-   |
-   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1077:33
-   |
-LL |     async unsafe fn async_blocks() {
-   |     ------------------------------ because it's nested under this `unsafe` fn
-...
-LL |                 let _ = async { unsafe { let _ = async { unsf() }; }};
-   |                                 ^^^^^^ unnecessary `unsafe` block
-   |
-   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
-
-error: unnecessary `unsafe` block
   --> $DIR/lint-unused-unsafe.rs:1087:22
    |
 LL |         let _x: [(); unsafe { 0 }] = [];
-   |                      ^^^^^^ unnecessary `unsafe` block
-
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:1091:22
-   |
-LL |         let _x: [(); unsafe { unsafe { size() } }] = [];
    |                      ^^^^^^ unnecessary `unsafe` block
 
 error: aborting due to 201 previous errors
