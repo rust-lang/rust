@@ -918,4 +918,26 @@ fn main() {
 ",
         )
     }
+
+    #[test]
+    fn issue_12484() {
+        check(
+            r#"
+//- minicore: sized
+trait SizeUser {
+    type Size;
+}
+trait Closure: SizeUser {}
+trait Encrypt: SizeUser {
+    fn encrypt(self, _: impl Closure<Size = Self::Size>);
+}
+fn test(thing: impl Encrypt) {
+    thing.$0;
+}
+        "#,
+            expect![[r#"
+                me encrypt(…) (as Encrypt) fn(self, impl Closure<Size = <Self as SizeUser>::Size>)
+            "#]],
+        )
+    }
 }
