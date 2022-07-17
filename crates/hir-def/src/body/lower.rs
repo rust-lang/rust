@@ -80,8 +80,7 @@ pub(super) fn lower(
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
-    let collector = ExprCollector::new(db, expander);
-    collector.collect(params, body)
+    ExprCollector::new(db, expander).collect(params, body)
 }
 
 struct ExprCollector<'a> {
@@ -190,8 +189,7 @@ impl<'a> ExprCollector<'a> {
     }
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
-        let expr_id = self.maybe_collect_expr(expr).unwrap_or_else(|| self.missing_expr());
-        expr_id
+        self.maybe_collect_expr(expr).unwrap_or_else(|| self.missing_expr())
     }
 
     /// Returns `None` if and only if the expression is `#[cfg]`d out.
