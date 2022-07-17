@@ -1271,6 +1271,7 @@ impl<'a> Resolver<'a> {
         let mut seen_modules = FxHashSet::default();
         let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), true)];
         let mut worklist_via_import = vec![];
+        let mut seen_exact_match = false;
 
         while let Some((in_module, path_segments, accessible)) = match worklist.pop() {
             None => worklist_via_import.pop(),
@@ -1311,6 +1312,15 @@ impl<'a> Resolver<'a> {
                     {
                         return;
                     }
+                }
+
+                // Note if we find an in-scope exact match on the identifier we are looking for
+                if ident.name == lookup_ident.name
+                    && ns == namespace
+                    && ptr::eq(in_module, parent_scope.module)
+                {
+                    seen_exact_match = true;
+                    return;
                 }
 
                 // collect results based on the filter function
@@ -1404,6 +1414,12 @@ impl<'a> Resolver<'a> {
                     }
                 }
             })
+        }
+
+        // If we've seen an exact match on the ident, assume correct intent from the user
+        // (ie. the user meant to use the ident like this) and clear any import candidates
+        if seen_exact_match {
+            candidates.clear();
         }
 
         // If only some candidates are accessible, take just them

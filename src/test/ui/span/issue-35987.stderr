@@ -3,11 +3,6 @@ error[E0404]: expected trait, found type parameter `Add`
    |
 LL | impl<T: Clone, Add> Add for Foo<T> {
    |                     ^^^ not a trait
-   |
-help: consider importing this trait instead
-   |
-LL | use std::ops::Add;
-   |
 
 error: aborting due to previous error
 

@@ -1,0 +1,12 @@
+error[E0574]: expected struct, variant or union type, found enum `Foo`
+  --> $DIR/init-enum-as-struct.rs:22:15
+   |
+LL | pub type Foos = i32;
+   | -------------------- similarly named type alias `Foos` defined here
+...
+LL |     let foo = Foo { b: 0 };
+   |               ^^^ help: a type alias with a similar name exists: `Foos`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0574`.
