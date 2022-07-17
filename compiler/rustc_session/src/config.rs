@@ -2707,6 +2707,14 @@ impl PpMode {
             | MirCFG => true,
         }
     }
+    pub fn needs_hir(&self) -> bool {
+        use PpMode::*;
+        match *self {
+            Source(_) | AstTree(_) => false,
+
+            Hir(_) | HirTree | ThirTree | Mir | MirCFG => true,
+        }
+    }
 
     pub fn needs_analysis(&self) -> bool {
         use PpMode::*;
