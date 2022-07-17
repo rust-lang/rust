@@ -109,7 +109,7 @@ pub fn run_tests(config: Config) -> Result<()> {
                     }
                     let comments = Comments::parse_file(&path)?;
                     // Ignore file if only/ignore rules do (not) apply
-                    if !test_file_conditions(&comments, &target) {
+                    if !test_file_conditions(&comments, &target, &config) {
                         ignored.fetch_add(1, Ordering::Relaxed);
                         eprintln!(
                             "{} ... {}",
@@ -499,19 +499,20 @@ fn output_path(path: &Path, comments: &Comments, kind: String, target: &str) -> 
     path.with_extension(kind)
 }
 
-fn test_condition(condition: &Condition, target: &str) -> bool {
+fn test_condition(condition: &Condition, target: &str, config: &Config) -> bool {
     match condition {
         Condition::Bitwidth(bits) => get_pointer_width(target) == *bits,
         Condition::Target(t) => target.contains(t),
+        Condition::OnHost => config.target.is_none(),
     }
 }
 
 /// Returns whether according to the in-file conditions, this file should be run.
-fn test_file_conditions(comments: &Comments, target: &str) -> bool {
-    if comments.ignore.iter().any(|c| test_condition(c, target)) {
+fn test_file_conditions(comments: &Comments, target: &str, config: &Config) -> bool {
+    if comments.ignore.iter().any(|c| test_condition(c, target, config)) {
         return false;
     }
-    comments.only.iter().all(|c| test_condition(c, target))
+    comments.only.iter().all(|c| test_condition(c, target, config))
 }
 
 // Taken 1:1 from compiletest-rs

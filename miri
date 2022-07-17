@@ -133,10 +133,9 @@ find_sysroot() {
 # Run command.
 case "$COMMAND" in
 install)
-    # "--locked" to respect the Cargo.lock file if it exists,
-    # "--offline" to avoid querying the registry (for yanked packages).
-    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR" --force --locked --offline "$@"
-    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR"/cargo-miri --force --locked --offline "$@"
+    # "--locked" to respect the Cargo.lock file if it exists.
+    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR" --force --locked "$@"
+    $CARGO install $CARGO_EXTRA_FLAGS --path "$MIRIDIR"/cargo-miri --force --locked "$@"
     ;;
 check)
     # Check, and let caller control flags.

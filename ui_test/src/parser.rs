@@ -43,6 +43,8 @@ pub(crate) enum Condition {
     Target(String),
     /// Tests that the bitwidth is the given one.
     Bitwidth(u8),
+    /// Tests that the target is the host.
+    OnHost,
 }
 
 #[derive(Debug, Clone)]
@@ -64,7 +66,9 @@ pub(crate) struct ErrorMatch {
 
 impl Condition {
     fn parse(c: &str) -> Self {
-        if let Some(bits) = c.strip_suffix("bit") {
+        if c == "on-host" {
+            Condition::OnHost
+        } else if let Some(bits) = c.strip_suffix("bit") {
             let bits: u8 = bits.parse().expect(
                 "ignore/only filter ending in 'bit' must be of the form 'Nbit' for some integer N",
             );
