@@ -152,21 +152,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .collect();
 
                 // Set page size.
-                let page_size = system_info.offset(
-                    field_offsets[2],
-                    dword_layout,
-                    &this.tcx,
-                )?;
+                let page_size = system_info.offset(field_offsets[2], dword_layout, &this.tcx)?;
                 this.write_scalar(
                     Scalar::from_int(PAGE_SIZE, dword_layout.size),
                     &page_size.into(),
                 )?;
                 // Set number of processors.
-                let num_cpus = system_info.offset(
-                    field_offsets[6],
-                    dword_layout,
-                    &this.tcx,
-                )?;
+                let num_cpus = system_info.offset(field_offsets[6], dword_layout, &this.tcx)?;
                 this.write_scalar(Scalar::from_int(NUM_CPUS, dword_layout.size), &num_cpus.into())?;
             }
 
