@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::convert::TryFrom;
 
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::Instance;
@@ -563,7 +562,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ty::Dynamic(..)
                 ));
                 let vtable = self.scalar_to_ptr(receiver_place.meta.unwrap_meta())?;
-                let fn_val = self.get_vtable_slot(vtable, u64::try_from(idx).unwrap())?;
+                let Some(ty::VtblEntry::Method(fn_inst)) = self.get_vtable_entries(vtable)?.get(idx).copied() else {
+                    throw_ub_format!(
+                        "calling index {idx} of vtable {vtable} but \
+                        that vtable is too small or does not have a method at that index"
+                    )
+                };
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we
                 // want for args[0]: We have to project to field 0 because we want
@@ -579,7 +583,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 trace!("Patched receiver operand to {:#?}", args[0]);
                 // recurse with concrete function
                 self.eval_fn_call(
-                    fn_val,
+                    FnVal::Instance(fn_inst),
                     (caller_abi, caller_fn_abi),
                     &args,
                     with_caller_location,
@@ -606,8 +610,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let (instance, place) = match place.layout.ty.kind() {
             ty::Dynamic(..) => {
-                // Dropping a trait object.
-                self.unpack_dyn_trait(&place)?
+                // Dropping a trait object. Need to find actual drop fn.
+                let place = self.unpack_dyn_trait(&place)?;
+                let instance = ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
+                (instance, place)
             }
             _ => (instance, place),
         };

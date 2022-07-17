@@ -299,29 +299,35 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
                 let val = self.read_immediate(src)?;
+                let (old_data, old_vptr) = val.to_scalar_pair()?;
+                let old_vptr = self.scalar_to_ptr(old_vptr)?;
                 if data_a.principal_def_id() == data_b.principal_def_id() {
                     return self.write_immediate(*val, dest);
                 }
                 // trait upcasting coercion
-                let vptr_entry_idx = self.tcx.vtable_trait_upcasting_coercion_new_vptr_slot((
+                let Some(vptr_entry_idx) = self.tcx.vtable_trait_upcasting_coercion_new_vptr_slot((
                     src_pointee_ty,
                     dest_pointee_ty,
-                ));
+                )) else {
+                    return self.write_immediate(*val, dest);
+                };
 
-                if let Some(entry_idx) = vptr_entry_idx {
-                    let entry_idx = u64::try_from(entry_idx).unwrap();
-                    let (old_data, old_vptr) = val.to_scalar_pair()?;
-                    let old_vptr = self.scalar_to_ptr(old_vptr)?;
-                    let new_vptr = self
-                        .read_new_vtable_after_trait_upcasting_from_vtable(old_vptr, entry_idx)?;
-                    self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
-                } else {
-                    self.write_immediate(*val, dest)
-                }
+                let (ty, _) = self.get_ptr_vtable(old_vptr)?;
+                let Some(ty::VtblEntry::TraitVPtr(new_trait)) = self.get_vtable_entries(old_vptr)?.get(vptr_entry_idx) else {
+                    throw_ub_format!(
+                        "upcasting to index {vptr_entry_idx} of vtable {old_vptr} but \
+                        that vtable is too small or does not have an upcast-vtable at that index"
+                    )
+                };
+                let new_trait = new_trait.map_bound(|trait_ref| {
+                    ty::ExistentialTraitRef::erase_self_ty(*self.tcx, trait_ref)
+                });
+                let new_vptr = self.get_vtable_ptr(ty, Some(new_trait))?;
+                self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
             (_, &ty::Dynamic(ref data, _)) => {
                 // Initial cast from sized to dyn trait
-                let vtable = self.get_vtable(src_pointee_ty, data.principal())?;
+                let vtable = self.get_vtable_ptr(src_pointee_ty, data.principal())?;
                 let ptr = self.read_immediate(src)?.to_scalar()?;
                 let val = Immediate::new_dyn_trait(ptr, vtable, &*self.tcx);
                 self.write_immediate(val, dest)

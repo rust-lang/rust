@@ -16,7 +16,7 @@ use std::ptr;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::display_allocation;
-use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
+use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
@@ -500,6 +500,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // contains a reference to memory that was created during its evaluation (i.e., not
                 // to another static), those inner references only exist in "resolved" form.
                 if self.tcx.is_foreign_item(def_id) {
+                    // This is unreachable in Miri, but can happen in CTFE where we actually *do* support
+                    // referencing arbitrary (declared) extern statics.
                     throw_unsup!(ReadExternStatic(def_id));
                 }
 
@@ -670,11 +672,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Can't do this in the match argument, we may get cycle errors since the lock would
         // be held throughout the match.
         match self.tcx.try_get_global_alloc(id) {
-            Some(GlobalAlloc::Static(did)) => {
-                assert!(!self.tcx.is_thread_local_static(did));
+            Some(GlobalAlloc::Static(def_id)) => {
+                assert!(self.tcx.is_static(def_id));
+                assert!(!self.tcx.is_thread_local_static(def_id));
                 // Use size and align of the type.
-                let ty = self.tcx.type_of(did);
+                let ty = self.tcx.type_of(def_id);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+                assert!(!layout.is_unsized());
                 (layout.size, layout.align.abi, AllocKind::LiveData)
             }
             Some(GlobalAlloc::Memory(alloc)) => {
@@ -685,8 +689,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             Some(GlobalAlloc::Function(_)) => bug!("We already checked function pointers above"),
             Some(GlobalAlloc::Vtable(..)) => {
-                // No data to be accessed here.
-                return (Size::ZERO, Align::ONE, AllocKind::Vtable);
+                // No data to be accessed here. But vtables are pointer-aligned.
+                return (Size::ZERO, self.tcx.data_layout.pointer_align.abi, AllocKind::Vtable);
             }
             // The rest must be dead.
             None => {
@@ -726,13 +730,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         ptr: Pointer<Option<M::Provenance>>,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
-        trace!("get_fn({:?})", ptr);
+        trace!("get_ptr_fn({:?})", ptr);
         let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr)?;
         if offset.bytes() != 0 {
             throw_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset)))
         }
         self.get_fn_alloc(alloc_id)
             .ok_or_else(|| err_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset))).into())
+    }
+
+    pub fn get_ptr_vtable(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+    ) -> InterpResult<'tcx, (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>)> {
+        trace!("get_ptr_vtable({:?})", ptr);
+        let (alloc_id, offset, _tag) = self.ptr_get_alloc_id(ptr)?;
+        if offset.bytes() != 0 {
+            throw_ub!(InvalidVtablePointer(Pointer::new(alloc_id, offset)))
+        }
+        match self.tcx.try_get_global_alloc(alloc_id) {
+            Some(GlobalAlloc::Vtable(ty, trait_ref)) => Ok((ty, trait_ref)),
+            _ => throw_ub!(InvalidVtablePointer(Pointer::new(alloc_id, offset))),
+        }
     }
 
     pub fn alloc_mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {

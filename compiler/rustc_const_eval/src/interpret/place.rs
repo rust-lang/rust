@@ -885,28 +885,19 @@ where
     }
 
     /// Turn a place with a `dyn Trait` type into a place with the actual dynamic type.
-    /// Also return some more information so drop doesn't have to run the same code twice.
     pub(super) fn unpack_dyn_trait(
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, (ty::Instance<'tcx>, MPlaceTy<'tcx, M::Provenance>)> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let vtable = self.scalar_to_ptr(mplace.vtable())?; // also sanity checks the type
-        let (instance, ty) = self.read_drop_type_from_vtable(vtable)?;
+        let (ty, _) = self.get_ptr_vtable(vtable)?;
         let layout = self.layout_of(ty)?;
-
-        // More sanity checks
-        if cfg!(debug_assertions) {
-            let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
-            assert_eq!(size, layout.size);
-            // only ABI alignment is preserved
-            assert_eq!(align, layout.align.abi);
-        }
 
         let mplace = MPlaceTy {
             mplace: MemPlace { meta: MemPlaceMeta::None, ..**mplace },
             layout,
             align: layout.align.abi,
         };
-        Ok((instance, mplace))
+        Ok(mplace)
     }
 }
