@@ -4,6 +4,9 @@ import * as fs from "fs";
 import { CtxInit } from "./ctx";
 import * as ra from "./lsp_ext";
 import { FetchDependencyGraphResult } from "./lsp_ext";
+import { Ctx } from "./ctx";
+import { setFlagsFromString } from "v8";
+import * as ra from "./lsp_ext";
 
 
 
@@ -13,9 +16,8 @@ export class RustDependenciesProvider
 
     dependenciesMap: { [id: string]: Dependency | DependencyFile };ctx: CtxInit;
 
-    constructor(
-        private readonly workspaceRoot: string,ctx: CtxInit) {
-    this.dependenciesMap = {};
+    constructor(private readonly workspaceRoot: string,ctx: CtxInit) {
+        this.dependenciesMap = {};
         this.ctx = ctx;
     }
 
@@ -78,6 +80,8 @@ export class RustDependenciesProvider
     }
 
     private async getRootDependencies(): Promise<Dependency[]> {
+        const crates = await this.ctx.client.sendRequest(ra.fetchDependencyGraph, {});
+
         const dependenciesResult: FetchDependencyGraphResult = await this.ctx.client.sendRequest(ra.fetchDependencyGraph, {});
         const crates = dependenciesResult.crates;
         const deps = crates.map((crate) => {

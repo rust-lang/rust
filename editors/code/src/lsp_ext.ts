@@ -86,6 +86,22 @@ export const fetchDependencyGraph = new lc.RequestType<
     void
 >("rust-analyzer/fetchDependencyGraph");
 
+export interface FetchDependencyGraphParams {}
+
+export interface FetchDependencyGraphResult {
+    crates: {
+        name: string;
+        version: string;
+        path: string;
+    }[];
+}
+
+export const fetchDependencyGraph = new lc.RequestType<
+    FetchDependencyGraphParams,
+    FetchDependencyGraphResult,
+    void
+>("rust-analyzer/fetchDependencyGraph");
+
 export type ExpandMacroParams = {
     textDocument: lc.TextDocumentIdentifier;
     position: lc.Position;
